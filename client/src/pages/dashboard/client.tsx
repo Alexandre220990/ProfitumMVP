@@ -46,11 +46,13 @@ export default function ClientDashboard() {
     <div className="min-h-screen bg-background">
       <header className="border-b">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold">Client Dashboard</h1>
+          <div>
+            <h1 className="text-2xl font-bold">Tableau de bord</h1>
+            <p className="text-muted-foreground">Bienvenue, {user.name}</p>
+          </div>
           <div className="space-x-4">
-            <span className="text-muted-foreground">{user.name}</span>
             <Button variant="outline" onClick={() => logoutMutation.mutate()}>
-              Logout
+              Déconnexion
             </Button>
           </div>
         </div>
@@ -58,19 +60,19 @@ export default function ClientDashboard() {
 
       <main className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
-          <h2 className="text-3xl font-bold">My Requests</h2>
+          <h2 className="text-3xl font-bold">Mes demandes</h2>
           <Dialog>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="mr-2 h-4 w-4" />
-                New Request
+                Nouvelle demande
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>New Request</DialogTitle>
+                <DialogTitle>Nouvelle demande</DialogTitle>
                 <DialogDescription>
-                  Submit a new request for expert consultation
+                  Soumettez une nouvelle demande de consultation experte
                 </DialogDescription>
               </DialogHeader>
               <Form {...form}>
@@ -80,7 +82,7 @@ export default function ClientDashboard() {
                     name="title"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Title</FormLabel>
+                        <FormLabel>Titre</FormLabel>
                         <FormControl>
                           <Input {...field} />
                         </FormControl>
@@ -104,7 +106,7 @@ export default function ClientDashboard() {
                   <DialogFooter>
                     <Button type="submit" disabled={createRequestMutation.isPending}>
                       {createRequestMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Submit Request
+                      Soumettre la demande
                     </Button>
                   </DialogFooter>
                 </form>
@@ -126,7 +128,7 @@ export default function ClientDashboard() {
                     <div>
                       <CardTitle>{request.title}</CardTitle>
                       <CardDescription>
-                        Submitted on {format(new Date(request.createdAt), "PPP")}
+                        Soumis le {format(new Date(request.createdAt), "PPP")}
                       </CardDescription>
                     </div>
                     <Badge>{request.status}</Badge>
@@ -136,7 +138,7 @@ export default function ClientDashboard() {
                   <p className="text-muted-foreground mb-4">{request.description}</p>
                   {request.status === "quoted" && (
                     <div className="mt-4">
-                      <h4 className="font-semibold mb-2">Quotes Received</h4>
+                      <h4 className="font-semibold mb-2">Devis reçus</h4>
                       <QueryQuotes requestId={request.id} />
                     </div>
                   )}

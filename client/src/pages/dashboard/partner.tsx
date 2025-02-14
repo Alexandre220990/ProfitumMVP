@@ -32,11 +32,13 @@ export default function PartnerDashboard() {
     <div className="min-h-screen bg-background">
       <header className="border-b">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold">Partner Dashboard</h1>
+          <div>
+            <h1 className="text-2xl font-bold">Tableau de bord Expert</h1>
+            <p className="text-muted-foreground">Bienvenue, {user.name}</p>
+          </div>
           <div className="space-x-4">
-            <span className="text-muted-foreground">{user.name}</span>
             <Button variant="outline" onClick={() => logoutMutation.mutate()}>
-              Logout
+              Déconnexion
             </Button>
           </div>
         </div>
@@ -137,7 +139,7 @@ function RequestCard({ request }: { request: Request }) {
       </CardHeader>
       <CardContent>
         <p className="text-muted-foreground mb-6">{request.description}</p>
-        
+
         <Dialog>
           <DialogTrigger asChild>
             <Button>Submit Quote</Button>

@@ -45,7 +45,7 @@ export default function AuthPage() {
           <CardHeader className="p-0">
             <CardTitle className="text-2xl">Welcome to Profitum</CardTitle>
           </CardHeader>
-          
+
           <Tabs defaultValue="login">
             <TabsList className="grid grid-cols-2">
               <TabsTrigger value="login">Login</TabsTrigger>
@@ -60,9 +60,9 @@ export default function AuthPage() {
                     name="username"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Username</FormLabel>
+                        <FormLabel>Nom d'utilisateur ou Email</FormLabel>
                         <FormControl>
-                          <Input {...field} />
+                          <Input {...field} placeholder="Entrez votre identifiant ou email" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
