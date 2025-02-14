@@ -86,7 +86,7 @@ export default function HomePage() {
           <p className="mt-4 text-lg">
             Accédez instantanément aux meilleurs experts, bénéficiez de tarifs négociés et suivez chaque étape de vos dossiers en toute transparence.
           </p>
-          <Link href="/auth?type=partner">
+          <Link href="/create-account-client">
             <Button className="mt-7 bg-yellow-400 text-black font-bold px-10 py-6 rounded-lg hover:bg-yellow-500">
               Inscrivez-vous dès maintenant !
             </Button>

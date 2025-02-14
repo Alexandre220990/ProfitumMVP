@@ -17,6 +17,20 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const loginSchema = z.object({
+  email: z.string().email({ message: "Email invalide" }),
+  password: z.string().min(6, { message: "Le mot de passe doit contenir au moins 6 caractères" }),
+});
+
+export const createClientSchema = z.object({
+  email: z.string().email({ message: "Email invalide" }),
+  password: z.string().min(6, { message: "Le mot de passe doit contenir au moins 6 caractères" }),
+  confirmPassword: z.string().min(6, { message: "Le mot de passe doit contenir au moins 6 caractères" }),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Les mots de passe ne correspondent pas",
+  path: ["confirmPassword"],
+});
+
 export const requests = pgTable("requests", {
   id: serial("id").primaryKey(),
   clientId: integer("client_id").references(() => users.id),

@@ -9,6 +9,8 @@ import AuthPage from "@/pages/auth-page";
 import ClientDashboard from "@/pages/dashboard/client";
 import PartnerDashboard from "@/pages/dashboard/partner";
 import ServicesPage from "@/pages/services-page";
+import CreateAccountClient from "@/pages/create-account-client";
+import { ProtectedRoute } from "./lib/protected-route";
 
 function Router() {
   return (
@@ -16,8 +18,9 @@ function Router() {
       <Route path="/" component={HomePage} />
       <Route path="/auth" component={AuthPage} />
       <Route path="/services" component={ServicesPage} />
-      <Route path="/dashboard/client" component={() => <ClientDashboard />} />
-      <Route path="/dashboard/partner" component={() => <PartnerDashboard />} />
+      <ProtectedRoute path="/dashboard/client" component={ClientDashboard} />
+      <ProtectedRoute path="/dashboard/partner" component={PartnerDashboard} />
+      <Route path="/create-account-client" component={AuthPage} />
       <Route component={NotFound} />
     </Switch>
   );
