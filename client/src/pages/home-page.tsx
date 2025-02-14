@@ -11,6 +11,9 @@ export default function HomePage() {
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold">Profitum</h1>
           <div className="space-x-4">
+            <Button variant="ghost" asChild>
+              <Link to="/services">Services</Link>
+            </Button>
             {user ? (
               <Button asChild>
                 <Link to={user.type === "client" ? "/dashboard/client" : "/dashboard/partner"}>

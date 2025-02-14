@@ -8,12 +8,14 @@ import HomePage from "@/pages/home-page";
 import AuthPage from "@/pages/auth-page";
 import ClientDashboard from "@/pages/dashboard/client";
 import PartnerDashboard from "@/pages/dashboard/partner";
+import ServicesPage from "@/pages/services-page";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={HomePage} />
       <Route path="/auth" component={AuthPage} />
+      <Route path="/services" component={ServicesPage} />
       <Route path="/dashboard/client" component={() => <ClientDashboard />} />
       <Route path="/dashboard/partner" component={() => <PartnerDashboard />} />
       <Route component={NotFound} />
