@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +15,14 @@ export default function AuthPage() {
   const { registerMutation, loginMutation, user } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
+
+  // Rediriger si déjà connecté
+  useEffect(() => {
+    if (user) {
+      setLocation(user.type === "client" ? "/dashboard/client" : "/dashboard/partner");
+    }
+  }, [user, setLocation]);
 
   const form = useForm<InsertUser>({
     resolver: zodResolver(insertUserSchema),
@@ -38,8 +47,10 @@ export default function AuthPage() {
           username: data.email,
           password: data.password,
         });
+        setLocation("/dashboard/client");
       } else {
         await registerMutation.mutateAsync(data);
+        setLocation("/dashboard/client");
       }
     } catch (error: any) {
       toast({
