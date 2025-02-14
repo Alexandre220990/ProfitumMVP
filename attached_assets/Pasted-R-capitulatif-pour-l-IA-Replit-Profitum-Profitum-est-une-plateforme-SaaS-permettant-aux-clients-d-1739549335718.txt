@@ -1,0 +1,39 @@
+Récapitulatif pour l'IA Replit - Profitum
+
+Profitum est une plateforme SaaS permettant aux clients de trouver des experts (consultants, avocats, etc.) et aux cabinets partenaires de gérer les demandes, établir des devis et organiser des rendez-vous. La plateforme prend une commission sur chaque contrat signé entre les clients et les experts.
+
+Pages Publiques :
+
+Page d'Accueil : Présentation des services et bouton d'inscription.
+Page de Services : Liste des services d'expertise.
+Page d'Inscription/Connexion : Formulaire pour clients et cabinets.
+Page d'Abonnement : Modèles d’abonnement pour clients et cabinets, options mensuelles ou annuelles.
+Pages Clients :
+
+Tableau de Bord : Vue des demandes et devis.
+Page de Demande de Service : Formulaire pour soumettre une demande.
+Page de Sélection d'Expert : Comparaison des devis, messagerie avec les cabinets.
+Page de Profil : Gestion des informations personnelles et historique des demandes.
+Pages Partenaires (Cabinets) :
+
+Tableau de Bord : Vue des demandes reçues.
+Page de Gestion des Demandes : Répondre aux demandes et soumettre des devis.
+Page de Gestion des Devis : Suivi des devis envoyés avec leurs statuts.
+Page de Gestion des Rendez-vous : Synchronisation du calendrier et gestion des rendez-vous avec les clients.
+Page de Profil : Modifier les informations du cabinet, services, et tarifs.
+Parcours Utilisateurs :
+
+Client : S'inscrit, soumet une demande, reçoit des devis, sélectionne un expert et gère ses demandes.
+Partenaire : S'inscrit, répond aux demandes, soumet des devis, gère les rendez-vous.
+Base de Données :
+
+Users : Contient les clients et partenaires avec leurs informations (nom, email, type).
+Demandes : Liée aux clients, contient les demandes d'expertise.
+Devis : Lié aux cabinets, contient les devis envoyés en réponse aux demandes.
+Rendezvous : Lié aux clients et cabinets, pour la gestion des rendez-vous.
+Abonnement : Gère les abonnements des utilisateurs (client/cabinet).
+Améliorations :
+
+Notifications en temps réel.
+Suggestions personnalisées pour clients et partenaires.
+Système d’abonnement flexible avec options mensuelles/annuelles.
