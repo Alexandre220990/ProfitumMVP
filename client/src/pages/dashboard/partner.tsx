@@ -47,15 +47,15 @@ export default function PartnerDashboard() {
       <main className="container mx-auto px-4 py-8">
         <Tabs defaultValue="requests">
           <TabsList className="mb-8">
-            <TabsTrigger value="requests">Available Requests</TabsTrigger>
-            <TabsTrigger value="quotes">My Quotes</TabsTrigger>
-            <TabsTrigger value="appointments">Appointments</TabsTrigger>
+            <TabsTrigger value="requests">Demandes disponibles</TabsTrigger>
+            <TabsTrigger value="quotes">Mes devis</TabsTrigger>
+            <TabsTrigger value="appointments">Rendez-vous</TabsTrigger>
           </TabsList>
 
           <TabsContent value="requests">
             <div className="mb-8">
-              <h2 className="text-3xl font-bold">Available Requests</h2>
-              <p className="text-muted-foreground">Browse and submit quotes for client requests</p>
+              <h2 className="text-3xl font-bold">Demandes disponibles</h2>
+              <p className="text-muted-foreground">Parcourez et répondez aux demandes des clients</p>
             </div>
 
             {isLoadingRequests ? (
@@ -73,8 +73,8 @@ export default function PartnerDashboard() {
 
           <TabsContent value="quotes">
             <div className="mb-8">
-              <h2 className="text-3xl font-bold">My Quotes</h2>
-              <p className="text-muted-foreground">Track the status of your submitted quotes</p>
+              <h2 className="text-3xl font-bold">Mes devis</h2>
+              <p className="text-muted-foreground">Suivez l'état de vos devis soumis</p>
             </div>
 
             {isLoadingQuotes ? (
@@ -92,8 +92,8 @@ export default function PartnerDashboard() {
 
           <TabsContent value="appointments">
             <div className="mb-8">
-              <h2 className="text-3xl font-bold">Appointments</h2>
-              <p className="text-muted-foreground">Manage your scheduled appointments</p>
+              <h2 className="text-3xl font-bold">Rendez-vous</h2>
+              <p className="text-muted-foreground">Gérez vos rendez-vous programmés</p>
             </div>
             <AppointmentsList />
           </TabsContent>
@@ -131,7 +131,7 @@ function RequestCard({ request }: { request: Request }) {
           <div>
             <CardTitle>{request.title}</CardTitle>
             <CardDescription>
-              Posted on {format(new Date(request.createdAt), "PPP")}
+              Posté le {format(new Date(request.createdAt!), "PPP")}
             </CardDescription>
           </div>
           <Badge>{request.status}</Badge>
@@ -142,13 +142,13 @@ function RequestCard({ request }: { request: Request }) {
 
         <Dialog>
           <DialogTrigger asChild>
-            <Button>Submit Quote</Button>
+            <Button>Soumettre un devis</Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Submit Quote</DialogTitle>
+              <DialogTitle>Soumettre un devis</DialogTitle>
               <DialogDescription>
-                Provide your quote for this request
+                Proposez votre devis pour cette demande
               </DialogDescription>
             </DialogHeader>
             <Form {...form}>
@@ -158,7 +158,7 @@ function RequestCard({ request }: { request: Request }) {
                   name="amount"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Amount (€)</FormLabel>
+                      <FormLabel>Montant (€)</FormLabel>
                       <FormControl>
                         <Input type="number" {...field} onChange={(e) => field.onChange(Number(e.target.value))} />
                       </FormControl>
@@ -182,7 +182,7 @@ function RequestCard({ request }: { request: Request }) {
                 <DialogFooter>
                   <Button type="submit" disabled={createQuoteMutation.isPending}>
                     {createQuoteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Submit Quote
+                    Soumettre le devis
                   </Button>
                 </DialogFooter>
               </form>
@@ -208,7 +208,7 @@ function QuoteCard({ quote }: { quote: Quote }) {
           </Badge>
         </div>
         <div className="mt-4 text-sm text-muted-foreground">
-          Submitted on {format(new Date(quote.createdAt), "PPP")}
+          Soumis le {format(new Date(quote.createdAt!), "PPP")}
         </div>
       </CardContent>
     </Card>
@@ -237,10 +237,10 @@ function AppointmentsList() {
               <Calendar className="h-8 w-8 text-muted-foreground" />
               <div>
                 <p className="font-medium">
-                  {format(new Date(appointment.datetime), "PPP 'at' p")}
+                  {format(new Date(appointment.datetime!), "PPP 'à' p")}
                 </p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Status: {appointment.status}
+                  Statut : {appointment.status}
                 </p>
               </div>
             </div>

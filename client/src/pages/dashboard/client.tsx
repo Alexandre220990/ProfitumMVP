@@ -128,7 +128,7 @@ export default function ClientDashboard() {
                     <div>
                       <CardTitle>{request.title}</CardTitle>
                       <CardDescription>
-                        Soumis le {format(new Date(request.createdAt), "PPP")}
+                        Soumis le {format(new Date(request.createdAt!), "PPP")}
                       </CardDescription>
                     </div>
                     <Badge>{request.status}</Badge>
