@@ -22,12 +22,12 @@ export default function AuthPage() {
     },
   });
 
-  const registerForm = useForm({
+  const registerForm = useForm<InsertUser>({
     resolver: zodResolver(insertUserSchema),
     defaultValues: {
       username: "",
       password: "",
-      type: "client",
+      type: "client" as const,
       name: "",
       email: "",
     },
@@ -97,16 +97,16 @@ export default function AuthPage() {
                     name="type"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Account Type</FormLabel>
+                        <FormLabel>Type de compte</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="Select account type" />
+                              <SelectValue placeholder="Sélectionnez le type de compte" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
                             <SelectItem value="client">Client</SelectItem>
-                            <SelectItem value="partner">Partner</SelectItem>
+                            <SelectItem value="partner">Expert</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -118,7 +118,7 @@ export default function AuthPage() {
                     name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Full Name</FormLabel>
+                        <FormLabel>Nom complet</FormLabel>
                         <FormControl>
                           <Input {...field} />
                         </FormControl>
@@ -144,7 +144,7 @@ export default function AuthPage() {
                     name="username"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Username</FormLabel>
+                        <FormLabel>Nom d'utilisateur</FormLabel>
                         <FormControl>
                           <Input {...field} />
                         </FormControl>
@@ -157,7 +157,7 @@ export default function AuthPage() {
                     name="password"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Password</FormLabel>
+                        <FormLabel>Mot de passe</FormLabel>
                         <FormControl>
                           <Input type="password" {...field} />
                         </FormControl>
@@ -167,7 +167,7 @@ export default function AuthPage() {
                   />
                   <Button type="submit" className="w-full" disabled={registerMutation.isPending}>
                     {registerMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Register
+                    S'inscrire
                   </Button>
                 </form>
               </Form>
@@ -176,18 +176,18 @@ export default function AuthPage() {
         </div>
 
         <div className="hidden md:flex flex-col justify-center space-y-6">
-          <h2 className="text-3xl font-bold">Find Expert Solutions</h2>
+          <h2 className="text-3xl font-bold">Trouvez des Solutions Expertes</h2>
           <p className="text-muted-foreground">
-            Connect with qualified experts and professionals. Get personalized quotes and schedule appointments all in one place.
+            Connectez-vous avec des experts qualifiés. Recevez des devis personnalisés et planifiez vos rendez-vous en un seul endroit.
           </p>
           <div className="grid grid-cols-2 gap-4">
             <div className="p-4 bg-primary/5 rounded-lg">
-              <h3 className="font-semibold mb-2">For Clients</h3>
-              <p className="text-sm text-muted-foreground">Submit requests and receive competitive quotes from experts</p>
+              <h3 className="font-semibold mb-2">Pour les Clients</h3>
+              <p className="text-sm text-muted-foreground">Soumettez des demandes et recevez des devis compétitifs d'experts</p>
             </div>
             <div className="p-4 bg-primary/5 rounded-lg">
-              <h3 className="font-semibold mb-2">For Partners</h3>
-              <p className="text-sm text-muted-foreground">Grow your business by connecting with clients seeking your expertise</p>
+              <h3 className="font-semibold mb-2">Pour les Experts</h3>
+              <p className="text-sm text-muted-foreground">Développez votre activité en vous connectant avec des clients à la recherche de votre expertise</p>
             </div>
           </div>
         </div>
