@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useLocation } from "wouter";
 import { Loader2 } from "lucide-react";
 
@@ -28,7 +28,6 @@ export default function AuthPage() {
       username: "",
       password: "",
       type: "client" as const,
-      name: "",
       email: "",
     },
   });
@@ -43,13 +42,13 @@ export default function AuthPage() {
       <Card className="w-full max-w-4xl grid md:grid-cols-2 gap-6 p-6">
         <div className="space-y-6">
           <CardHeader className="p-0">
-            <CardTitle className="text-2xl">Welcome to Profitum</CardTitle>
+            <CardTitle className="text-2xl">Bienvenue sur Profitum</CardTitle>
           </CardHeader>
 
           <Tabs defaultValue="login">
             <TabsList className="grid grid-cols-2">
-              <TabsTrigger value="login">Login</TabsTrigger>
-              <TabsTrigger value="register">Register</TabsTrigger>
+              <TabsTrigger value="login">Connexion</TabsTrigger>
+              <TabsTrigger value="register">Inscription</TabsTrigger>
             </TabsList>
 
             <TabsContent value="login">
@@ -73,7 +72,7 @@ export default function AuthPage() {
                     name="password"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Password</FormLabel>
+                        <FormLabel>Mot de passe</FormLabel>
                         <FormControl>
                           <Input type="password" {...field} />
                         </FormControl>
@@ -83,7 +82,7 @@ export default function AuthPage() {
                   />
                   <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
                     {loginMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Login
+                    Se connecter
                   </Button>
                 </form>
               </Form>
@@ -96,29 +95,46 @@ export default function AuthPage() {
                     control={registerForm.control}
                     name="type"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem className="space-y-1">
                         <FormLabel>Type de compte</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Sélectionnez le type de compte" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="client">Client</SelectItem>
-                            <SelectItem value="partner">Expert</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <FormControl>
+                          <RadioGroup
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                            className="grid grid-cols-2 gap-4"
+                          >
+                            <FormItem>
+                              <FormControl>
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="client" id="client" />
+                                  <label htmlFor="client" className="text-sm font-medium">
+                                    Client
+                                  </label>
+                                </div>
+                              </FormControl>
+                            </FormItem>
+                            <FormItem>
+                              <FormControl>
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="partner" id="partner" />
+                                  <label htmlFor="partner" className="text-sm font-medium">
+                                    Expert
+                                  </label>
+                                </div>
+                              </FormControl>
+                            </FormItem>
+                          </RadioGroup>
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                   <FormField
                     control={registerForm.control}
-                    name="name"
+                    name="username"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Nom complet</FormLabel>
+                        <FormLabel>Nom d'utilisateur (identifiant unique)</FormLabel>
                         <FormControl>
                           <Input {...field} />
                         </FormControl>
@@ -134,19 +150,6 @@ export default function AuthPage() {
                         <FormLabel>Email</FormLabel>
                         <FormControl>
                           <Input type="email" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={registerForm.control}
-                    name="username"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nom d'utilisateur</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

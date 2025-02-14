@@ -48,7 +48,7 @@ export default function ClientDashboard() {
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <div>
             <h1 className="text-2xl font-bold">Tableau de bord</h1>
-            <p className="text-muted-foreground">Bienvenue, {user.name}</p>
+            <p className="text-muted-foreground">Bienvenue, {user.username}</p>
           </div>
           <div className="space-x-4">
             <Button variant="outline" onClick={() => logoutMutation.mutate()}>

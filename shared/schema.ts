@@ -7,8 +7,7 @@ export const users = pgTable("users", {
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
   type: text("type", { enum: ["client", "partner"] }).notNull(),
-  name: text("name").notNull(),
-  email: text("email").notNull(),
+  email: text("email").notNull().unique(),
 });
 
 export const requests = pgTable("requests", {
@@ -37,12 +36,10 @@ export const appointments = pgTable("appointments", {
   status: text("status", { enum: ["scheduled", "completed", "cancelled"] }).notNull(),
 });
 
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
-  type: true,
-  name: true,
-  email: true,
+export const insertUserSchema = createInsertSchema(users).extend({
+  email: z.string().email("L'email n'est pas valide"),
+  username: z.string().min(3, "Le nom d'utilisateur doit contenir au moins 3 caractères"),
+  password: z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères"),
 });
 
 export const insertRequestSchema = createInsertSchema(requests).pick({
