@@ -16,7 +16,6 @@ export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
   const { toast } = useToast();
   const [, setLocation] = useLocation();
-  const [, params] = useLocation();
 
   // Rediriger si déjà connecté
   useEffect(() => {
@@ -54,7 +53,6 @@ export default function AuthPage() {
           type: "client", // S'assurer que le type est toujours "client"
         });
       }
-      // La redirection est gérée dans les mutations
     } catch (error: any) {
       toast({
         title: "Erreur",

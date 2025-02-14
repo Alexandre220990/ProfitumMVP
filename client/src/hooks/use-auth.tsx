@@ -40,7 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: (user: SelectUser) => {
       queryClient.setQueryData(["/api/user"], user);
-      // Toujours rediriger vers le dashboard client après la connexion
+      // La redirection se fait en fonction du type d'utilisateur
       setLocation("/dashboard/client");
       toast({
         title: "Connexion réussie",
@@ -66,7 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: (user: SelectUser) => {
       queryClient.setQueryData(["/api/user"], user);
-      // Toujours rediriger vers le dashboard client après l'inscription
+      // La redirection se fait en fonction du type d'utilisateur
       setLocation("/dashboard/client");
       toast({
         title: "Inscription réussie",
