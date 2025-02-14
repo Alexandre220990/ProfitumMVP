@@ -37,7 +37,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: (user: SelectUser) => {
       queryClient.setQueryData(["/api/user"], user);
+      // Toujours rediriger vers le dashboard client après la connexion
       setLocation("/dashboard/client");
+      toast({
+        title: "Connexion réussie",
+        description: "Bienvenue sur votre espace client",
+      });
     },
     onError: (error: Error) => {
       toast({
@@ -58,7 +63,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: (user: SelectUser) => {
       queryClient.setQueryData(["/api/user"], user);
+      // Toujours rediriger vers le dashboard client après l'inscription
       setLocation("/dashboard/client");
+      toast({
+        title: "Inscription réussie",
+        description: "Bienvenue sur votre espace client",
+      });
     },
     onError: (error: Error) => {
       toast({
@@ -76,6 +86,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     onSuccess: () => {
       queryClient.setQueryData(["/api/user"], null);
       setLocation("/");
+      toast({
+        title: "Déconnexion réussie",
+        description: "À bientôt !",
+      });
     },
     onError: (error: Error) => {
       toast({
