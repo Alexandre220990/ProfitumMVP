@@ -32,15 +32,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
+      console.log("Login attempt with:", credentials);
       const res = await apiRequest("POST", "/api/login", {
-        username: credentials.email, // Utiliser l'email comme username pour la connexion
+        username: credentials.email,
         password: credentials.password,
       });
-      return await res.json();
+      const userData = await res.json();
+      console.log("Login response:", userData);
+      return userData;
     },
     onSuccess: (user: SelectUser) => {
+      console.log("Login successful, user:", user);
       queryClient.setQueryData(["/api/user"], user);
-      // La redirection se fait en fonction du type d'utilisateur
       setLocation("/dashboard/client");
       toast({
         title: "Connexion réussie",
@@ -48,6 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     },
     onError: (error: Error) => {
+      console.error("Login error:", error);
       toast({
         title: "Échec de la connexion",
         description: error.message,
@@ -60,13 +64,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     mutationFn: async (credentials: InsertUser) => {
       const res = await apiRequest("POST", "/api/register", { 
         ...credentials,
-        type: "client" // Force le type à "client"
+        type: "client"
       });
       return await res.json();
     },
     onSuccess: (user: SelectUser) => {
       queryClient.setQueryData(["/api/user"], user);
-      // La redirection se fait en fonction du type d'utilisateur
       setLocation("/dashboard/client");
       toast({
         title: "Inscription réussie",

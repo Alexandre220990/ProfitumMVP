@@ -50,7 +50,7 @@ export default function AuthPage() {
       } else {
         await registerMutation.mutateAsync({
           ...data,
-          type: "client", // S'assurer que le type est toujours "client"
+          type: "client",
         });
       }
     } catch (error: any) {
@@ -64,7 +64,8 @@ export default function AuthPage() {
 
   // Mettre isLogin à true si on est sur /auth, false si on est sur /create-account-client
   useEffect(() => {
-    setIsLogin(window.location.pathname === "/auth");
+    const currentPath = window.location.pathname;
+    setIsLogin(currentPath === "/auth");
   }, []);
 
   return (
