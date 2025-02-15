@@ -1,7 +1,7 @@
-import { createContext, ReactNode, useContext, useEffect } from "react";
-import { useQuery, useMutation, UseMutationResult } from "@tanstack/react-query";
-import { insertUserSchema, User as SelectUser, InsertUser } from "@shared/schema";
-import { getQueryFn, apiRequest, queryClient } from "../lib/queryClient";
+import { createContext, ReactNode, useContext } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { type User as SelectUser, type InsertUser } from "@shared/schema";
+import { getQueryFn, apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 
@@ -9,15 +9,19 @@ type AuthContextType = {
   user: SelectUser | null;
   isLoading: boolean;
   error: Error | null;
-  loginMutation: UseMutationResult<SelectUser, Error, LoginData>;
-  logoutMutation: UseMutationResult<void, Error, void>;
-  registerMutation: UseMutationResult<SelectUser, Error, InsertUser>;
+  loginMutation: LoginMutation;
+  logoutMutation: LogoutMutation;
+  registerMutation: RegisterMutation;
 };
 
 type LoginData = {
   email: string;
   password: string;
 };
+
+type LoginMutation = ReturnType<typeof useMutation<SelectUser, Error, LoginData>>;
+type LogoutMutation = ReturnType<typeof useMutation<void, Error, void>>;
+type RegisterMutation = ReturnType<typeof useMutation<SelectUser, Error, InsertUser>>;
 
 export const AuthContext = createContext<AuthContextType | null>(null);
 
@@ -34,20 +38,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryFn: getQueryFn({ on401: "returnNull" }),
   });
 
-  useEffect(() => {
-    console.log("Current user state:", user);
-    if (user) {
-      console.log("User is logged in, type:", user.type);
-    }
-  }, [user]);
-
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
-      console.log("Attempting login with credentials:", credentials);
-      const res = await apiRequest("POST", "/api/login", {
-        username: credentials.email,
-        password: credentials.password,
-      });
+      console.log("Attempting login with:", credentials.email);
+      const res = await apiRequest("POST", "/api/login", credentials);
 
       if (!res.ok) {
         const error = await res.text();
@@ -74,19 +68,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error("Login mutation error:", error);
       toast({
         title: "Échec de la connexion",
-        description: error.message,
+        description: error.message || "Identifiants invalides",
         variant: "destructive",
       });
     },
   });
 
   const registerMutation = useMutation({
-    mutationFn: async (credentials: InsertUser) => {
-      console.log("Attempting registration with data:", credentials);
-      const res = await apiRequest("POST", "/api/register", {
-        ...credentials,
-        type: "client",
-      });
+    mutationFn: async (data: InsertUser) => {
+      console.log("Attempting registration with:", { ...data, password: "[HIDDEN]" });
+      const res = await apiRequest("POST", "/api/register", data);
 
       if (!res.ok) {
         const error = await res.text();
@@ -113,7 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error("Registration mutation error:", error);
       toast({
         title: "Échec de l'inscription",
-        description: error.message,
+        description: error.message || "Une erreur est survenue lors de l'inscription",
         variant: "destructive",
       });
     },
@@ -151,7 +142,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider
       value={{
-        user: user ?? null,
+        user,
         isLoading,
         error,
         loginMutation,

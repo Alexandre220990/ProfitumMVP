@@ -31,16 +31,22 @@ async function comparePasswords(supplied: string, stored: string) {
 export function setupAuth(app: Express) {
   console.log("Setting up authentication...");
 
+  if (!process.env.SESSION_SECRET) {
+    throw new Error("SESSION_SECRET must be set");
+  }
+
   const sessionSettings: session.SessionOptions = {
-    secret: process.env.SESSION_SECRET!,
+    secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     store: storage.sessionStore,
     cookie: {
       secure: process.env.NODE_ENV === "production",
       httpOnly: true,
-      maxAge: 24 * 60 * 60 * 1000 // 24 hours
-    }
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      sameSite: "lax"
+    },
+    name: "session"
   };
 
   app.set("trust proxy", 1);
@@ -49,27 +55,26 @@ export function setupAuth(app: Express) {
   app.use(passport.session());
 
   passport.use(
-    new LocalStrategy(async (username, password, done) => {
-      console.log("Attempting login for username:", username);
+    new LocalStrategy({
+      usernameField: 'email',
+      passwordField: 'password'
+    }, async (email, password, done) => {
+      console.log("Attempting login with email:", email);
       try {
-        // Try to find user by username or email
-        let user = await storage.getUserByUsername(username);
-        if (!user) {
-          user = await storage.getUserByEmail(username);
-        }
+        const user = await storage.getUserByEmail(email);
 
         if (!user) {
-          console.log("User not found");
+          console.log("User not found with email:", email);
           return done(null, false);
         }
 
         const isPasswordValid = await comparePasswords(password, user.password);
         if (!isPasswordValid) {
-          console.log("Invalid password");
+          console.log("Invalid password for user:", email);
           return done(null, false);
         }
 
-        console.log("Login successful for user:", user.username);
+        console.log("Login successful for user:", user.email);
         return done(null, user);
       } catch (error) {
         console.error("Login error:", error);
@@ -101,13 +106,7 @@ export function setupAuth(app: Express) {
   app.post("/api/register", async (req, res, next) => {
     console.log("Register request received:", { ...req.body, password: "[HIDDEN]" });
     try {
-      const existingUser = await storage.getUserByUsername(req.body.username);
       const existingEmail = await storage.getUserByEmail(req.body.email);
-
-      if (existingUser) {
-        console.log("Username already exists:", req.body.username);
-        return res.status(400).send("Ce nom d'utilisateur existe déjà");
-      }
       if (existingEmail) {
         console.log("Email already exists:", req.body.email);
         return res.status(400).send("Cette adresse email est déjà utilisée");
@@ -119,7 +118,7 @@ export function setupAuth(app: Express) {
         password: hashedPassword,
       });
 
-      console.log("User created successfully:", { id: user.id, username: user.username });
+      console.log("User created successfully:", { id: user.id, email: user.email });
 
       req.login(user, (err) => {
         if (err) {
@@ -136,9 +135,9 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/login", (req, res, next) => {
-    console.log("Login request received:", { username: req.body.username });
+    console.log("Login request received for email:", req.body.email);
 
-    passport.authenticate("local", (err, user, info) => {
+    passport.authenticate("local", (err: any, user: any, info: any) => {
       if (err) {
         console.error("Login error:", err);
         return next(err);
