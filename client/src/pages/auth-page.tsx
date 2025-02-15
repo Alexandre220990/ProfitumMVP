@@ -9,7 +9,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertUserSchema, type InsertUser } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
-import { Building2, Mail, Phone, MapPin, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 export default function AuthPage() {
   const { registerMutation, loginMutation, user } = useAuth();
@@ -73,18 +73,12 @@ export default function AuthPage() {
     }
   };
 
-  useEffect(() => {
-    const currentPath = window.location.pathname;
-    console.log("AuthPage - Current path:", currentPath);
-    setIsLogin(currentPath === "/auth");
-  }, []);
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 p-6">
       <Card className="w-full max-w-lg">
-        <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-2xl font-bold">
-            {isLogin ? "Connexion Client" : "Inscription Client"}
+        <CardHeader>
+          <CardTitle className="text-2xl text-center">
+            {isLogin ? "Connexion" : "Inscription"}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -243,10 +237,7 @@ export default function AuthPage() {
                 type="button"
                 variant="ghost"
                 className="w-full"
-                onClick={() => {
-                  setIsLogin(!isLogin);
-                  setLocation(isLogin ? "/create-account-client" : "/auth");
-                }}
+                onClick={() => setIsLogin(!isLogin)}
               >
                 {isLogin ? "Créer un compte" : "Déjà inscrit ? Se connecter"}
               </Button>
