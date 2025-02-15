@@ -2,6 +2,7 @@ import session from "express-session";
 import MemoryStore from "memorystore";
 import {
   type User,
+  mockUsers,
 } from "@shared/data";
 
 const MemorySessionStore = MemoryStore(session);
@@ -16,7 +17,7 @@ export interface IStorage {
 }
 
 class MemoryStorage implements IStorage {
-  private users: User[] = [];
+  private users: User[] = [...mockUsers];
   sessionStore: session.Store;
 
   constructor() {

@@ -27,31 +27,17 @@ export type User = z.infer<typeof userSchema>;
 export const mockUsers: User[] = [
   {
     id: 1,
-    username: "client1",
-    password: "hashedPassword123",
-    email: "client1@example.com",
+    username: "profitum",
+    password: "c67fd61258d3d0d103f48680858383143ad949e6349b6111b06276c37f966051.5eb15c5e86e2d2e19ad68858e2de1ccb", // Hashé pour "Profitum"
+    email: "profitum@client.fr",
     type: "client",
-    companyName: "Client Company",
+    companyName: "Profitum Client",
     phoneNumber: "0123456789",
     address: "123 Client Street",
-    city: "Client City",
-    postalCode: "12345",
+    city: "Paris",
+    postalCode: "75000",
     createdAt: new Date().toISOString(),
-  },
-  {
-    id: 2,
-    username: "partner1",
-    password: "hashedPassword456",
-    email: "partner1@example.com",
-    type: "partner",
-    companyName: "Partner Company",
-    siret: "12345678901234",
-    phoneNumber: "9876543210",
-    address: "456 Partner Avenue",
-    city: "Partner City",
-    postalCode: "54321",
-    createdAt: new Date().toISOString(),
-  },
+  }
 ];
 
 // Autres données mockées nécessaires pour l'application
