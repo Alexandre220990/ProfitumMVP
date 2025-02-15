@@ -12,23 +12,20 @@ import { useToast } from "@/hooks/use-toast";
 import { Building2, Mail, Phone, MapPin, Loader2 } from "lucide-react";
 
 export default function AuthPage() {
-  const { registerMutation, loginMutation, user, isLoading } = useAuth();
+  const { registerMutation, loginMutation, user } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const { toast } = useToast();
   const [, setLocation] = useLocation();
 
-  // ✅ Redirection si déjà connecté
+  console.log("AuthPage - Current user:", user);
+  console.log("AuthPage - isLogin:", isLogin);
+
   useEffect(() => {
     if (user) {
-      console.log("Utilisateur connecté, redirection vers /dashboard/client");
+      console.log("AuthPage - User is logged in, redirecting to dashboard");
       setLocation("/dashboard/client");
     }
   }, [user, setLocation]);
-
-  // ✅ Changement automatique de mode selon l'URL
-  useEffect(() => {
-    setIsLogin(window.location.pathname === "/auth");
-  }, []);
 
   const form = useForm<InsertUser>({
     resolver: zodResolver(insertUserSchema),
@@ -48,21 +45,26 @@ export default function AuthPage() {
 
   const onSubmit = async (data: InsertUser) => {
     try {
+      console.log("AuthPage - Form submitted:", { ...data, password: "[HIDDEN]" });
+
       if (isLogin) {
-        console.log("Tentative de connexion avec :", data);
+        console.log("AuthPage - Attempting login");
         await loginMutation.mutateAsync({
           email: data.email,
           password: data.password,
         });
       } else {
-        console.log("Tentative d'inscription avec :", data);
-        await registerMutation.mutateAsync({
+        console.log("AuthPage - Attempting registration");
+        const registrationData = {
           ...data,
-          type: "client",
-        });
+          type: "client" as const,
+        };
+        console.log("AuthPage - Registration data:", { ...registrationData, password: "[HIDDEN]" });
+
+        await registerMutation.mutateAsync(registrationData);
       }
     } catch (error: any) {
-      console.error("Erreur lors de l'authentification :", error);
+      console.error("AuthPage - Error during authentication:", error);
       toast({
         title: "Erreur",
         description: error.message || "Une erreur est survenue",
@@ -70,6 +72,12 @@ export default function AuthPage() {
       });
     }
   };
+
+  useEffect(() => {
+    const currentPath = window.location.pathname;
+    console.log("AuthPage - Current path:", currentPath);
+    setIsLogin(currentPath === "/auth");
+  }, []);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 p-6">
@@ -80,18 +88,14 @@ export default function AuthPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {/* ✅ Loader global si la session est en chargement */}
-          {isLoading ? (
-            <div className="flex justify-center">
-              <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
-            </div>
-          ) : (
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                {/* ✅ Affichage des champs pour l'inscription */}
-                {!isLogin && (
-                  <>
-                    <FormField control={form.control} name="username" render={({ field }) => (
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              {!isLogin && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="username"
+                    render={({ field }) => (
                       <FormItem>
                         <FormLabel>Nom d'utilisateur</FormLabel>
                         <FormControl>
@@ -99,39 +103,43 @@ export default function AuthPage() {
                         </FormControl>
                         <FormMessage />
                       </FormItem>
-                    )} />
+                    )}
+                  />
 
-                    <FormField control={form.control} name="companyName" render={({ field }) => (
+                  <FormField
+                    control={form.control}
+                    name="companyName"
+                    render={({ field }) => (
                       <FormItem>
                         <FormLabel>Nom de l'entreprise</FormLabel>
                         <FormControl>
-                          <div className="relative">
-                            <Building2 className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                            <Input {...field} className="pl-10" />
-                          </div>
+                          <Input {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
-                    )} />
-                  </>
-                )}
+                    )}
+                  />
+                </>
+              )}
 
-                {/* ✅ Email */}
-                <FormField control={form.control} name="email" render={({ field }) => (
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                        <Input {...field} type="email" className="pl-10" />
-                      </div>
+                      <Input {...field} type="email" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
-                )} />
+                )}
+              />
 
-                {/* ✅ Mot de passe */}
-                <FormField control={form.control} name="password" render={({ field }) => (
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
                   <FormItem>
                     <FormLabel>Mot de passe</FormLabel>
                     <FormControl>
@@ -139,48 +147,111 @@ export default function AuthPage() {
                     </FormControl>
                     <FormMessage />
                   </FormItem>
-                )} />
+                )}
+              />
 
-                {/* ✅ Affichage des champs supplémentaires pour l'inscription */}
-                {!isLogin && (
-                  <>
-                    <FormField control={form.control} name="phoneNumber" render={({ field }) => (
+              {!isLogin && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="phoneNumber"
+                    render={({ field }) => (
                       <FormItem>
                         <FormLabel>Téléphone</FormLabel>
                         <FormControl>
-                          <div className="relative">
-                            <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                            <Input {...field} className="pl-10" />
-                          </div>
+                          <Input {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
-                    )} />
-                  </>
-                )}
+                    )}
+                  />
 
-                {/* ✅ Bouton de soumission avec Loader */}
-                <Button type="submit" className="w-full flex justify-center" disabled={registerMutation.isPending || loginMutation.isPending}>
-                  {(registerMutation.isPending || loginMutation.isPending) ? (
+                  <FormField
+                    control={form.control}
+                    name="address"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Adresse</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="city"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Ville</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="postalCode"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Code postal</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="siret"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>SIRET</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
+              )}
+
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={registerMutation.isPending || loginMutation.isPending}
+              >
+                {(registerMutation.isPending || loginMutation.isPending) ? (
+                  <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : isLogin ? "Se connecter" : "S'inscrire"}
-                </Button>
+                    {isLogin ? "Connexion..." : "Inscription..."}
+                  </>
+                ) : (
+                  isLogin ? "Se connecter" : "S'inscrire"
+                )}
+              </Button>
 
-                {/* ✅ Changement de mode (Connexion <-> Inscription) */}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="w-full"
-                  onClick={() => {
-                    setIsLogin(!isLogin);
-                    setLocation(isLogin ? "/create-account-client" : "/auth");
-                  }}
-                >
-                  {isLogin ? "Créer un compte" : "Déjà inscrit ? Se connecter"}
-                </Button>
-              </form>
-            </Form>
-          )}
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full"
+                onClick={() => {
+                  setIsLogin(!isLogin);
+                  setLocation(isLogin ? "/create-account-client" : "/auth");
+                }}
+              >
+                {isLogin ? "Créer un compte" : "Déjà inscrit ? Se connecter"}
+              </Button>
+            </form>
+          </Form>
         </CardContent>
       </Card>
     </div>
