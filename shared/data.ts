@@ -4,7 +4,7 @@ import { z } from "zod";
 export const UserType = z.enum(["client", "partner"]);
 export type UserType = z.infer<typeof UserType>;
 
-// Schémas de base
+// Schéma de base pour l'utilisateur
 export const userSchema = z.object({
   id: z.number(),
   username: z.string(),
@@ -19,6 +19,46 @@ export const userSchema = z.object({
   siret: z.string().optional(),
   createdAt: z.string(),
 });
+
+// Types
+export type User = z.infer<typeof userSchema>;
+
+// Données mockées initiales
+export const mockUsers: User[] = [
+  {
+    id: 1,
+    username: "client1",
+    password: "hashedPassword123",
+    email: "client1@example.com",
+    type: "client",
+    companyName: "Client Company",
+    phoneNumber: "0123456789",
+    address: "123 Client Street",
+    city: "Client City",
+    postalCode: "12345",
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 2,
+    username: "partner1",
+    password: "hashedPassword456",
+    email: "partner1@example.com",
+    type: "partner",
+    companyName: "Partner Company",
+    siret: "12345678901234",
+    phoneNumber: "9876543210",
+    address: "456 Partner Avenue",
+    city: "Partner City",
+    postalCode: "54321",
+    createdAt: new Date().toISOString(),
+  },
+];
+
+// Autres données mockées nécessaires pour l'application
+export const mockRequests: [] = [];
+export const mockQuotes: [] = [];
+export const mockAppointments: [] = [];
+export const mockQuestionnaireResponses: [] = [];
 
 export const requestSchema = z.object({
   id: z.number(),
@@ -53,72 +93,7 @@ export const questionnaireResponseSchema = z.object({
   createdAt: z.string(),
 });
 
-// Types
-export type User = z.infer<typeof userSchema>;
 export type Request = z.infer<typeof requestSchema>;
 export type Quote = z.infer<typeof quoteSchema>;
 export type Appointment = z.infer<typeof appointmentSchema>;
 export type QuestionnaireResponse = z.infer<typeof questionnaireResponseSchema>;
-
-// Données mockées
-export const mockUsers: User[] = [
-  {
-    id: 1,
-    username: "client1",
-    password: "hashedPassword123",
-    email: "client1@example.com",
-    type: "client",
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 2,
-    username: "partner1",
-    password: "hashedPassword456",
-    email: "partner1@example.com",
-    type: "partner",
-    companyName: "Expert Services",
-    siret: "12345678901234",
-    createdAt: new Date().toISOString(),
-  },
-];
-
-export const mockRequests: Request[] = [
-  {
-    id: 1,
-    clientId: 1,
-    title: "Besoin d'une expertise en plomberie",
-    description: "Fuite d'eau dans la salle de bain",
-    status: "pending",
-    createdAt: new Date().toISOString(),
-  },
-];
-
-export const mockQuotes: Quote[] = [
-  {
-    id: 1,
-    requestId: 1,
-    partnerId: 2,
-    amount: 150,
-    description: "Réparation de la fuite et vérification du système",
-    status: "pending",
-    createdAt: new Date().toISOString(),
-  },
-];
-
-export const mockAppointments: Appointment[] = [
-  {
-    id: 1,
-    quoteId: 1,
-    datetime: new Date().toISOString(),
-    status: "scheduled",
-  },
-];
-
-export const mockQuestionnaireResponses: QuestionnaireResponse[] = [
-  {
-    id: 1,
-    userId: 1,
-    answers: ["Réponse 1", "Réponse 2", "Réponse 3"],
-    createdAt: new Date().toISOString(),
-  },
-];

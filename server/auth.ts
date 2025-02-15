@@ -7,12 +7,6 @@ import { promisify } from "util";
 import { storage } from "./storage";
 import { User } from "@shared/data";
 
-declare global {
-  namespace Express {
-    interface User extends User {}
-  }
-}
-
 const scryptAsync = promisify(scrypt);
 
 async function hashPassword(password: string) {
@@ -35,49 +29,56 @@ export function setupAuth(app: Express) {
     throw new Error("SESSION_SECRET must be set");
   }
 
-  const sessionSettings: session.SessionOptions = {
-    secret: process.env.SESSION_SECRET,
-    resave: false,
-    saveUninitialized: false,
-    store: storage.sessionStore,
-    cookie: {
-      secure: process.env.NODE_ENV === "production",
-      httpOnly: true,
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
-      sameSite: "lax"
-    },
-    name: "session"
-  };
+  app.use(
+    session({
+      secret: process.env.SESSION_SECRET,
+      resave: false,
+      saveUninitialized: false,
+      store: storage.sessionStore,
+      cookie: {
+        secure: process.env.NODE_ENV === "production",
+        httpOnly: true,
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        sameSite: "lax"
+      },
+      name: "session"
+    })
+  );
 
-  app.set("trust proxy", 1);
-  app.use(session(sessionSettings));
   app.use(passport.initialize());
   app.use(passport.session());
 
   passport.use(
-    new LocalStrategy({
-      usernameField: 'email',
-      passwordField: 'password'
-    }, async (email, password, done) => {
-      try {
-        const user = await storage.getUserByEmail(email);
-        if (!user) {
-          return done(null, false);
-        }
+    new LocalStrategy(
+      {
+        usernameField: 'email',
+        passwordField: 'password'
+      },
+      async (email, password, done) => {
+        try {
+          const user = await storage.getUserByEmail(email);
+          if (!user) {
+            console.log("User not found:", email);
+            return done(null, false);
+          }
 
-        const isPasswordValid = await comparePasswords(password, user.password);
-        if (!isPasswordValid) {
-          return done(null, false);
-        }
+          const isPasswordValid = await comparePasswords(password, user.password);
+          if (!isPasswordValid) {
+            console.log("Invalid password for user:", email);
+            return done(null, false);
+          }
 
-        return done(null, user);
-      } catch (error) {
-        return done(error);
+          console.log("Login successful:", user.email);
+          return done(null, user);
+        } catch (error) {
+          console.error("Login error:", error);
+          return done(error);
+        }
       }
-    }),
+    )
   );
 
-  passport.serializeUser((user, done) => {
+  passport.serializeUser((user: User, done) => {
     done(null, user.id);
   });
 
