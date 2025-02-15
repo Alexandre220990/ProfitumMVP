@@ -5,11 +5,11 @@ import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
-import { User as SelectUser } from "@shared/schema";
+import { User } from "@shared/data";
 
 declare global {
   namespace Express {
-    interface User extends SelectUser {}
+    interface User extends User {}
   }
 }
 
@@ -59,56 +59,44 @@ export function setupAuth(app: Express) {
       usernameField: 'email',
       passwordField: 'password'
     }, async (email, password, done) => {
-      console.log("Attempting login with email:", email);
       try {
         const user = await storage.getUserByEmail(email);
-
         if (!user) {
-          console.log("User not found with email:", email);
           return done(null, false);
         }
 
         const isPasswordValid = await comparePasswords(password, user.password);
         if (!isPasswordValid) {
-          console.log("Invalid password for user:", email);
           return done(null, false);
         }
 
-        console.log("Login successful for user:", user.email);
         return done(null, user);
       } catch (error) {
-        console.error("Login error:", error);
         return done(error);
       }
     }),
   );
 
   passport.serializeUser((user, done) => {
-    console.log("Serializing user:", user.id);
     done(null, user.id);
   });
 
   passport.deserializeUser(async (id: number, done) => {
-    console.log("Deserializing user:", id);
     try {
       const user = await storage.getUser(id);
       if (!user) {
-        console.log("User not found during deserialization");
         return done(null, false);
       }
       done(null, user);
     } catch (error) {
-      console.error("Deserialization error:", error);
       done(error);
     }
   });
 
   app.post("/api/register", async (req, res, next) => {
-    console.log("Register request received:", { ...req.body, password: "[HIDDEN]" });
     try {
       const existingEmail = await storage.getUserByEmail(req.body.email);
       if (existingEmail) {
-        console.log("Email already exists:", req.body.email);
         return res.status(400).send("Cette adresse email est déjà utilisée");
       }
 
@@ -118,60 +106,45 @@ export function setupAuth(app: Express) {
         password: hashedPassword,
       });
 
-      console.log("User created successfully:", { id: user.id, email: user.email });
-
       req.login(user, (err) => {
         if (err) {
-          console.error("Login error after registration:", err);
           return next(err);
         }
-        console.log("User logged in after registration:", user.id);
         res.status(201).json(user);
       });
     } catch (error) {
-      console.error("Registration error:", error);
       next(error);
     }
   });
 
   app.post("/api/login", (req, res, next) => {
-    console.log("Login request received for email:", req.body.email);
-
     passport.authenticate("local", (err: any, user: any, info: any) => {
       if (err) {
-        console.error("Login error:", err);
         return next(err);
       }
       if (!user) {
-        console.log("Authentication failed");
         return res.status(401).send("Identifiants invalides");
       }
 
       req.login(user, (err) => {
         if (err) {
-          console.error("Session creation error:", err);
           return next(err);
         }
-        console.log("Login successful:", user.id);
         res.status(200).json(user);
       });
     })(req, res, next);
   });
 
   app.post("/api/logout", (req, res, next) => {
-    console.log("Logout request received for user:", req.user?.id);
     req.logout((err) => {
       if (err) {
-        console.error("Logout error:", err);
         return next(err);
       }
-      console.log("Logout successful");
       res.sendStatus(200);
     });
   });
 
   app.get("/api/user", (req, res) => {
-    console.log("User session check:", req.isAuthenticated(), req.user?.id);
     if (!req.isAuthenticated()) return res.sendStatus(401);
     res.json(req.user);
   });

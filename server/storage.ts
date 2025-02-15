@@ -1,157 +1,147 @@
+import session from "express-session";
+import MemoryStore from "memorystore";
 import {
-  users,
-  requests,
-  quotes,
-  appointments,
-  questionnaireResponses, // 🚀 Ajout de la table questionnaireResponses
   type User,
   type Request,
   type Quote,
   type Appointment,
   type InsertUser,
-  type InsertRequest,
-  type InsertQuote,
-  type InsertAppointment,
-  type InsertQuestionnaireResponse, // 🚀 Type pour les réponses du questionnaire
-} from "@shared/schema";
-import session from "express-session";
-import connectPg from "connect-pg-simple";
-import { db } from "./db";
-import { eq } from "drizzle-orm";
+  mockUsers,
+  mockRequests,
+  mockQuotes,
+  mockAppointments,
+  mockQuestionnaireResponses,
+} from "@shared/data";
 
-const PostgresSessionStore = connectPg(session);
+const MemorySessionStore = MemoryStore(session);
 
 export interface IStorage {
   // Users
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  createUser(user: Omit<User, "id" | "createdAt">): Promise<User>;
 
   // Requests
-  createRequest(request: InsertRequest & { clientId: number }): Promise<Request>;
+  createRequest(request: Omit<Request, "id" | "status" | "createdAt">): Promise<Request>;
   getRequestById(id: number): Promise<Request | undefined>;
   getRequestsByClient(clientId: number): Promise<Request[]>;
   getRequestsForPartners(): Promise<Request[]>;
 
   // Quotes
-  createQuote(quote: InsertQuote & { partnerId: number }): Promise<Quote>;
+  createQuote(quote: Omit<Quote, "id" | "status" | "createdAt">): Promise<Quote>;
   getQuotesByRequest(requestId: number): Promise<Quote[]>;
   getQuotesByPartner(partnerId: number): Promise<Quote[]>;
   updateQuoteStatus(id: number, status: Quote["status"]): Promise<Quote>;
 
   // Appointments
-  createAppointment(appointment: InsertAppointment): Promise<Appointment>;
+  createAppointment(appointment: Omit<Appointment, "id" | "status">): Promise<Appointment>;
   getAppointmentsByQuote(quoteId: number): Promise<Appointment[]>;
-
-  // Questionnaire Responses
-  saveQuestionnaireResponse(userId: number, answers: string[]): Promise<InsertQuestionnaireResponse>;
-  getQuestionnaireResponses(userId: number): Promise<InsertQuestionnaireResponse[]>;
 
   sessionStore: session.Store;
 }
 
-export class DatabaseStorage implements IStorage {
+class MemoryStorage implements IStorage {
+  private users: User[] = [...mockUsers];
+  private requests: Request[] = [...mockRequests];
+  private quotes: Quote[] = [...mockQuotes];
+  private appointments: Appointment[] = [...mockAppointments];
   sessionStore: session.Store;
 
   constructor() {
-    if (!process.env.DATABASE_URL) {
-      throw new Error("DATABASE_URL must be set");
-    }
-    this.sessionStore = new PostgresSessionStore({
-      conObject: { connectionString: process.env.DATABASE_URL },
-      createTableIfMissing: true,
+    this.sessionStore = new MemorySessionStore({
+      checkPeriod: 86400000 // 24 heures
     });
   }
 
-  // ================================
-  // ✅ USERS
-  // ================================
+  // Users
   async getUser(id: number): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user;
+    return this.users.find(u => u.id === id);
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
-    return user;
+    return this.users.find(u => u.username === username);
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.email, email));
-    return user;
+    return this.users.find(u => u.email === email);
   }
 
-  async createUser(user: InsertUser): Promise<User> {
-    const [created] = await db.insert(users).values(user).returning();
-    return created;
+  async createUser(user: Omit<User, "id" | "createdAt">): Promise<User> {
+    const newUser = {
+      ...user,
+      id: this.users.length + 1,
+      createdAt: new Date().toISOString(),
+    };
+    this.users.push(newUser);
+    return newUser;
   }
 
-  // ================================
-  // ✅ REQUESTS
-  // ================================
-  async createRequest(request: InsertRequest & { clientId: number }): Promise<Request> {
-    const [created] = await db.insert(requests).values({ ...request, status: "pending" }).returning();
-    return created;
+  // Requests
+  async createRequest(request: Omit<Request, "id" | "status" | "createdAt">): Promise<Request> {
+    const newRequest = {
+      ...request,
+      id: this.requests.length + 1,
+      status: "pending",
+      createdAt: new Date().toISOString(),
+    } as Request;
+    this.requests.push(newRequest);
+    return newRequest;
   }
 
   async getRequestById(id: number): Promise<Request | undefined> {
-    const [request] = await db.select().from(requests).where(eq(requests.id, id));
-    return request;
+    return this.requests.find(r => r.id === id);
   }
 
   async getRequestsByClient(clientId: number): Promise<Request[]> {
-    return await db.select().from(requests).where(eq(requests.clientId, clientId));
+    return this.requests.filter(r => r.clientId === clientId);
   }
 
   async getRequestsForPartners(): Promise<Request[]> {
-    return await db.select().from(requests).where(eq(requests.status, "pending"));
+    return this.requests.filter(r => r.status === "pending");
   }
 
-  // ================================
-  // ✅ QUOTES
-  // ================================
-  async createQuote(quote: InsertQuote & { partnerId: number }): Promise<Quote> {
-    const [created] = await db.insert(quotes).values({ ...quote, status: "pending" }).returning();
-    return created;
+  // Quotes
+  async createQuote(quote: Omit<Quote, "id" | "status" | "createdAt">): Promise<Quote> {
+    const newQuote = {
+      ...quote,
+      id: this.quotes.length + 1,
+      status: "pending",
+      createdAt: new Date().toISOString(),
+    } as Quote;
+    this.quotes.push(newQuote);
+    return newQuote;
   }
 
   async getQuotesByRequest(requestId: number): Promise<Quote[]> {
-    return await db.select().from(quotes).where(eq(quotes.requestId, requestId));
+    return this.quotes.filter(q => q.requestId === requestId);
   }
 
   async getQuotesByPartner(partnerId: number): Promise<Quote[]> {
-    return await db.select().from(quotes).where(eq(quotes.partnerId, partnerId));
+    return this.quotes.filter(q => q.partnerId === partnerId);
   }
 
   async updateQuoteStatus(id: number, status: Quote["status"]): Promise<Quote> {
-    const [updated] = await db.update(quotes).set({ status }).where(eq(quotes.id, id)).returning();
-    return updated;
+    const quote = this.quotes.find(q => q.id === id);
+    if (!quote) throw new Error("Quote not found");
+    quote.status = status;
+    return quote;
   }
 
-  // ================================
-  // ✅ APPOINTMENTS
-  // ================================
-  async createAppointment(appointment: InsertAppointment): Promise<Appointment> {
-    const [created] = await db.insert(appointments).values({ ...appointment, status: "scheduled" }).returning();
-    return created;
+  // Appointments
+  async createAppointment(appointment: Omit<Appointment, "id" | "status">): Promise<Appointment> {
+    const newAppointment = {
+      ...appointment,
+      id: this.appointments.length + 1,
+      status: "scheduled",
+    } as Appointment;
+    this.appointments.push(newAppointment);
+    return newAppointment;
   }
 
   async getAppointmentsByQuote(quoteId: number): Promise<Appointment[]> {
-    return await db.select().from(appointments).where(eq(appointments.quoteId, quoteId));
-  }
-
-  // ================================
-  // ✅ QUESTIONNAIRE RESPONSES
-  // ================================
-  async saveQuestionnaireResponse(userId: number, answers: string[]): Promise<InsertQuestionnaireResponse> {
-    const [created] = await db.insert(questionnaireResponses).values({ userId, answers }).returning();
-    return created;
-  }
-
-  async getQuestionnaireResponses(userId: number): Promise<InsertQuestionnaireResponse[]> {
-    return await db.select().from(questionnaireResponses).where(eq(questionnaireResponses.userId, userId));
+    return this.appointments.filter(a => a.quoteId === quoteId);
   }
 }
 
-export const storage = new DatabaseStorage();
+export const storage = new MemoryStorage();
