@@ -10,7 +10,9 @@ import ClientDashboard from "@/pages/dashboard/client";
 import PartnerDashboard from "@/pages/dashboard/partner";
 import ServicesPage from "@/pages/services-page";
 import CreateAccountClient from "@/pages/create-account-client";
-import { ProtectedRoute } from "./lib/protected-route";
+import { ProtectedRoute } from "@/lib/protected-route";
+import Simulateur from "@/pages/simulateur";
+import Questionnaire from "@/components/Questionnaire";
 
 function Router() {
   return (
@@ -20,7 +22,9 @@ function Router() {
       <Route path="/services" component={ServicesPage} />
       <ProtectedRoute path="/dashboard/client" component={ClientDashboard} />
       <ProtectedRoute path="/dashboard/partner" component={PartnerDashboard} />
-      <Route path="/create-account-client" component={AuthPage} />
+      <Route path="/create-account-client" component={CreateAccountClient} />
+      <Route path="/simulateur" component={Simulateur} />
+      <Route path="/questionnaire" component={Questionnaire} />  {/* 🚀 Nouvelle route ajoutée */}
       <Route component={NotFound} />
     </Switch>
   );

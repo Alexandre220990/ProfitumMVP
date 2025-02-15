@@ -1,7 +1,10 @@
-import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// ================================
+// ✅ TABLE USERS (Déjà existante)
+// ================================
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
@@ -17,6 +20,54 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// ================================
+// ✅ TABLE QUESTIONNAIRE RESPONSES (Ajoutée)
+// ================================
+export const questionnaireResponses = pgTable("questionnaire_responses", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  answers: jsonb("answers").notNull(), // Stockage des réponses sous format JSON
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// ================================
+// ✅ TABLE REQUESTS (Déjà existante)
+// ================================
+export const requests = pgTable("requests", {
+  id: serial("id").primaryKey(),
+  clientId: integer("client_id").references(() => users.id),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  status: text("status", { enum: ["pending", "quoted", "accepted", "rejected"] }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// ================================
+// ✅ TABLE QUOTES (Déjà existante)
+// ================================
+export const quotes = pgTable("quotes", {
+  id: serial("id").primaryKey(),
+  requestId: integer("request_id").references(() => requests.id),
+  partnerId: integer("partner_id").references(() => users.id),
+  amount: integer("amount").notNull(),
+  description: text("description").notNull(),
+  status: text("status", { enum: ["pending", "accepted", "rejected"] }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// ================================
+// ✅ TABLE APPOINTMENTS (Déjà existante)
+// ================================
+export const appointments = pgTable("appointments", {
+  id: serial("id").primaryKey(),
+  quoteId: integer("quote_id").references(() => quotes.id),
+  datetime: timestamp("datetime").notNull(),
+  status: text("status", { enum: ["scheduled", "completed", "cancelled"] }).notNull(),
+});
+
+// ================================
+// ✅ SCHÉMAS ZOD
+// ================================
 export const loginSchema = z.object({
   email: z.string().email({ message: "Email invalide" }),
   password: z.string().min(6, { message: "Le mot de passe doit contenir au moins 6 caractères" }),
@@ -31,32 +82,13 @@ export const createClientSchema = z.object({
   path: ["confirmPassword"],
 });
 
-export const requests = pgTable("requests", {
-  id: serial("id").primaryKey(),
-  clientId: integer("client_id").references(() => users.id),
-  title: text("title").notNull(),
-  description: text("description").notNull(),
-  status: text("status", { enum: ["pending", "quoted", "accepted", "rejected"] }).notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
+// ✅ Schéma pour l'insertion des réponses du questionnaire
+export const insertQuestionnaireResponseSchema = createInsertSchema(questionnaireResponses).pick({
+  userId: true,
+  answers: true,
 });
 
-export const quotes = pgTable("quotes", {
-  id: serial("id").primaryKey(),
-  requestId: integer("request_id").references(() => requests.id),
-  partnerId: integer("partner_id").references(() => users.id),
-  amount: integer("amount").notNull(),
-  description: text("description").notNull(),
-  status: text("status", { enum: ["pending", "accepted", "rejected"] }).notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-});
-
-export const appointments = pgTable("appointments", {
-  id: serial("id").primaryKey(),
-  quoteId: integer("quote_id").references(() => quotes.id),
-  datetime: timestamp("datetime").notNull(),
-  status: text("status", { enum: ["scheduled", "completed", "cancelled"] }).notNull(),
-});
-
+// ✅ Schémas pour les autres tables
 export const insertUserSchema = createInsertSchema(users).extend({
   email: z.string().email("L'email n'est pas valide"),
   username: z.string().min(3, "Le nom d'utilisateur doit contenir au moins 3 caractères"),
@@ -85,12 +117,17 @@ export const insertAppointmentSchema = createInsertSchema(appointments).pick({
   datetime: true,
 });
 
+// ================================
+// ✅ TYPES DRIZZLE ORM
+// ================================
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertRequest = z.infer<typeof insertRequestSchema>;
 export type InsertQuote = z.infer<typeof insertQuoteSchema>;
 export type InsertAppointment = z.infer<typeof insertAppointmentSchema>;
+export type InsertQuestionnaireResponse = z.infer<typeof insertQuestionnaireResponseSchema>;
 
 export type User = typeof users.$inferSelect;
 export type Request = typeof requests.$inferSelect;
 export type Quote = typeof quotes.$inferSelect;
 export type Appointment = typeof appointments.$inferSelect;
+export type QuestionnaireResponse = typeof questionnaireResponses.$inferSelect;

@@ -1,4 +1,19 @@
-import { users, requests, quotes, appointments, type User, type Request, type Quote, type Appointment, type InsertUser, type InsertRequest, type InsertQuote, type InsertAppointment } from "@shared/schema";
+import {
+  users,
+  requests,
+  quotes,
+  appointments,
+  questionnaireResponses, // 🚀 Ajout de la table questionnaireResponses
+  type User,
+  type Request,
+  type Quote,
+  type Appointment,
+  type InsertUser,
+  type InsertRequest,
+  type InsertQuote,
+  type InsertAppointment,
+  type InsertQuestionnaireResponse, // 🚀 Type pour les réponses du questionnaire
+} from "@shared/schema";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { db } from "./db";
@@ -29,6 +44,10 @@ export interface IStorage {
   createAppointment(appointment: InsertAppointment): Promise<Appointment>;
   getAppointmentsByQuote(quoteId: number): Promise<Appointment[]>;
 
+  // Questionnaire Responses
+  saveQuestionnaireResponse(userId: number, answers: string[]): Promise<InsertQuestionnaireResponse>;
+  getQuestionnaireResponses(userId: number): Promise<InsertQuestionnaireResponse[]>;
+
   sessionStore: session.Store;
 }
 
@@ -45,6 +64,9 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
+  // ================================
+  // ✅ USERS
+  // ================================
   async getUser(id: number): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
@@ -55,19 +77,21 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
   async createUser(user: InsertUser): Promise<User> {
     const [created] = await db.insert(users).values(user).returning();
     return created;
   }
 
+  // ================================
+  // ✅ REQUESTS
+  // ================================
   async createRequest(request: InsertRequest & { clientId: number }): Promise<Request> {
-    const [created] = await db
-      .insert(requests)
-      .values({
-        ...request,
-        status: "pending",
-      })
-      .returning();
+    const [created] = await db.insert(requests).values({ ...request, status: "pending" }).returning();
     return created;
   }
 
@@ -84,14 +108,11 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(requests).where(eq(requests.status, "pending"));
   }
 
+  // ================================
+  // ✅ QUOTES
+  // ================================
   async createQuote(quote: InsertQuote & { partnerId: number }): Promise<Quote> {
-    const [created] = await db
-      .insert(quotes)
-      .values({
-        ...quote,
-        status: "pending",
-      })
-      .returning();
+    const [created] = await db.insert(quotes).values({ ...quote, status: "pending" }).returning();
     return created;
   }
 
@@ -104,22 +125,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateQuoteStatus(id: number, status: Quote["status"]): Promise<Quote> {
-    const [updated] = await db
-      .update(quotes)
-      .set({ status })
-      .where(eq(quotes.id, id))
-      .returning();
+    const [updated] = await db.update(quotes).set({ status }).where(eq(quotes.id, id)).returning();
     return updated;
   }
 
+  // ================================
+  // ✅ APPOINTMENTS
+  // ================================
   async createAppointment(appointment: InsertAppointment): Promise<Appointment> {
-    const [created] = await db
-      .insert(appointments)
-      .values({
-        ...appointment,
-        status: "scheduled",
-      })
-      .returning();
+    const [created] = await db.insert(appointments).values({ ...appointment, status: "scheduled" }).returning();
     return created;
   }
 
@@ -127,9 +141,16 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(appointments).where(eq(appointments.quoteId, quoteId));
   }
 
-  async getUserByEmail(email: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.email, email));
-    return user;
+  // ================================
+  // ✅ QUESTIONNAIRE RESPONSES
+  // ================================
+  async saveQuestionnaireResponse(userId: number, answers: string[]): Promise<InsertQuestionnaireResponse> {
+    const [created] = await db.insert(questionnaireResponses).values({ userId, answers }).returning();
+    return created;
+  }
+
+  async getQuestionnaireResponses(userId: number): Promise<InsertQuestionnaireResponse[]> {
+    return await db.select().from(questionnaireResponses).where(eq(questionnaireResponses.userId, userId));
   }
 }
 
