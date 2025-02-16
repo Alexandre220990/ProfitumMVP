@@ -1,152 +1,267 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useAuth } from "@/hooks/use-auth";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { Loader2, Plus } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { insertRequestSchema, type Request } from "@shared/schema";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { format } from "date-fns";
-import { Badge } from "@/components/ui/badge";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Link } from "wouter";
-import Questionnaire from "@/components/Questionnaire";
+import { Progress } from "@/components/ui/progress";
+import { HelpDialog } from "@/components/HelpDialog";
+import { helpContent } from "@/lib/help-content";
 
-export default function Simulateur() { // ✅ Exportation par défaut ajoutée
+const questions = [
+  {
+    id: 1,
+    text: "Quel est votre secteur d'activité ?",
+    options: ["Agriculture", "Transport / Logistique", "Industrie / Commerce", "Services", "Autre"],
+  },
+  {
+    id: 2,
+    text: "Êtes-vous propriétaire ou locataire de vos locaux professionnels ?",
+    options: ["Propriétaire", "Locataire"],
+  },
+  {
+    id: 3,
+    text: "Avez-vous des salariés ?",
+    options: ["Oui", "Non"],
+  },
+  {
+    id: 4,
+    text: "Utilisez-vous des véhicules professionnels utilisant du carburant ?",
+    options: ["Oui", "Non"],
+  },
+  {
+    id: 5,
+    text: "Avez-vous déjà payé des taxes foncières sur vos locaux ?",
+    options: ["Oui", "Non", "Je ne sais pas"],
+  },
+  {
+    id: 6,
+    text: "Êtes-vous affilié à la MSA (Mutualité Sociale Agricole) ?",
+    options: ["Oui", "Non"],
+  },
+  {
+    id: 7,
+    text: "Êtes-vous assujetti aux cotisations URSSAF ?",
+    options: ["Oui", "Non", "Je ne sais pas"],
+  },
+  {
+    id: 8,
+    text: "Avez-vous perçu des aides fiscales ou exonérations spécifiques liées à votre activité ?",
+    options: ["Oui", "Non", "Je ne sais pas"],
+  },
+];
+
+type AuditType = "MSA" | "TICPE" | "Foncier" | "URSSAF" | "DFS";
+
+const determineEligibleAudits = (answers: string[]): AuditType[] => {
+  const eligibleAudits = new Set<AuditType>();
+
+  const sector = answers[0];
+  const isOwner = answers[1] === "Propriétaire";
+  const hasEmployees = answers[2] === "Oui";
+  const usesVehicles = answers[3] === "Oui";
+  const paysPropertyTax = answers[4] === "Oui";
+  const hasMSA = answers[5] === "Oui";
+  const hasURSSAF = answers[6] === "Oui";
+  const hasAids = answers[7] === "Oui";
+
+  if (sector === "Agriculture" || hasMSA || hasAids) {
+    eligibleAudits.add("MSA");
+  }
+
+  if (usesVehicles || sector === "Transport / Logistique") {
+    eligibleAudits.add("TICPE");
+  }
+
+  if (isOwner || paysPropertyTax) {
+    eligibleAudits.add("Foncier");
+  }
+
+  if (hasEmployees || hasURSSAF) {
+    eligibleAudits.add("URSSAF");
+  }
+
+  if (sector === "Agriculture" || hasAids) {
+    eligibleAudits.add("DFS");
+  }
+
+  return Array.from(eligibleAudits);
+};
+
+const auditDescriptions = {
+  energy: "Optimisation de vos dépenses énergétiques TICPE et identification des sources d'économies potentielles.",
+  social: "Analyse et optimisation de vos charges sociales et cotisations URSSAF.",
+  property: "Évaluation et réduction de vos taxes foncières et charges immobilières.",
+  msa: "Analyse complète des cotisations MSA et optimisation des charges agricoles.",
+  dfs: "Dispositifs de Fiscalité Spécifique : analyse et optimisation des aides fiscales sectorielles.",
+};
+
+export default function Simulation() {
+  const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [answers, setAnswers] = useState<string[]>(Array(questions.length).fill(""));
+  const [showResults, setShowResults] = useState(false);
+
+  const handleAnswer = (value: string) => {
+    const newAnswers = [...answers];
+    newAnswers[currentQuestion] = value;
+    setAnswers(newAnswers);
+  };
+
+  const handleNext = () => {
+    if (currentQuestion === questions.length - 1) {
+      const eligible = determineEligibleAudits(answers);
+      localStorage.setItem('eligibleAudits', JSON.stringify(eligible));
+      setShowResults(true);
+    } else {
+      setCurrentQuestion(currentQuestion + 1);
+    }
+  };
+
+  const handlePrevious = () => {
+    setCurrentQuestion(currentQuestion - 1);
+  };
+
+  const eligibleAudits = determineEligibleAudits(answers);
+  const progress = ((currentQuestion + 1) / questions.length) * 100;
+
+  if (showResults) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="max-w-4xl mx-auto">
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>
+                {eligibleAudits.length > 0
+                  ? "Voici le résultat préliminaire, vous êtes éligible aux audits suivants :"
+                  : "Selon vos réponses, vous n'êtes pas éligible aux audits pour le moment."}
+              </CardTitle>
+            </CardHeader>
+          </Card>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {eligibleAudits.includes("TICPE") && (
+              <Card className="flex flex-col h-full">
+                <CardContent className="p-6 flex flex-col flex-grow">
+                  <h3 className="text-xl font-semibold mb-4">Audit Énergétique</h3>
+                  <p className="text-gray-600 mb-6 flex-grow">{auditDescriptions.energy}</p>
+                  <Link href="/audit/energy">
+                    <Button className="w-full">Accéder à l'audit</Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            )}
+
+            {eligibleAudits.includes("URSSAF") && (
+              <Card className="flex flex-col h-full">
+                <CardContent className="p-6 flex flex-col flex-grow">
+                  <h3 className="text-xl font-semibold mb-4">Audit Social</h3>
+                  <p className="text-gray-600 mb-6 flex-grow">{auditDescriptions.social}</p>
+                  <Link href="/audit/social">
+                    <Button className="w-full">Accéder à l'audit</Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            )}
+
+            {eligibleAudits.includes("Foncier") && (
+              <Card className="flex flex-col h-full">
+                <CardContent className="p-6 flex flex-col flex-grow">
+                  <h3 className="text-xl font-semibold mb-4">Audit Foncier</h3>
+                  <p className="text-gray-600 mb-6 flex-grow">{auditDescriptions.property}</p>
+                  <Link href="/audit/property">
+                    <Button className="w-full">Accéder à l'audit</Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            )}
+
+            {eligibleAudits.includes("MSA") && (
+              <Card className="flex flex-col h-full">
+                <CardContent className="p-6 flex flex-col flex-grow">
+                  <h3 className="text-xl font-semibold mb-4">Audit MSA</h3>
+                  <p className="text-gray-600 mb-6 flex-grow">{auditDescriptions.msa}</p>
+                  <Link href="/audit/msa">
+                    <Button className="w-full">Accéder à l'audit</Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            )}
+
+            {eligibleAudits.includes("DFS") && (
+              <Card className="flex flex-col h-full">
+                <CardContent className="p-6 flex flex-col flex-grow">
+                  <h3 className="text-xl font-semibold mb-4">Audit DFS</h3>
+                  <p className="text-gray-600 mb-6 flex-grow">{auditDescriptions.dfs}</p>
+                  <Link href="/audit/dfs">
+                    <Button className="w-full">Accéder à l'audit</Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          <div className="mt-6">
+            <Link href="/">
+              <Button variant="outline">Retour au tableau de bord</Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="p-10">
-      <h1 className="text-2xl font-bold">Simulateur</h1>
-      <p className="mt-2 text-gray-600">Bienvenue dans le simulateur.</p>
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-2xl mx-auto">
+        <div className="mb-8">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-sm text-gray-500">Question {currentQuestion + 1} sur {questions.length}</span>
+            <span className="text-sm font-medium">{Math.round(progress)}%</span>
+          </div>
+          <Progress value={progress} className="h-2" />
+        </div>
 
-      {/* ✅ Ajout du questionnaire ici */}
-      <div className="mt-6">
-        <Questionnaire />
+        <Card>
+          <CardHeader>
+            <CardTitle>{questions[currentQuestion].text}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              <RadioGroup
+                value={answers[currentQuestion]}
+                onValueChange={handleAnswer}
+                className="space-y-4"
+              >
+                {questions[currentQuestion].options.map((option, index) => (
+                  <div key={index} className="flex items-center space-x-2">
+                    <RadioGroupItem value={option} id={`option-${index}`} />
+                    <Label htmlFor={`option-${index}`}>{option}</Label>
+                  </div>
+                ))}
+              </RadioGroup>
+
+              <div className="flex justify-between mt-6">
+                <Button
+                  variant="outline"
+                  onClick={handlePrevious}
+                  disabled={currentQuestion === 0}
+                >
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Précédent
+                </Button>
+                <Button
+                  onClick={handleNext}
+                  disabled={!answers[currentQuestion]}
+                >
+                  {currentQuestion === questions.length - 1 ? "Voir les résultats" : "Suivant"}
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
 }
-
-function ClientDashboard() {
-  const { user, logoutMutation } = useAuth();
-
-  const { data: requests, isLoading: isLoadingRequests } = useQuery<Request[]>({
-    queryKey: ["/api/requests/client"],
-  });
-
-  const form = useForm({
-    resolver: zodResolver(insertRequestSchema),
-    defaultValues: {
-      title: "",
-      description: "",
-    },
-  });
-
-  const createRequestMutation = useMutation({
-    mutationFn: async (data: { title: string; description: string }) => {
-      const res = await apiRequest("POST", "/api/requests", data);
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/requests/client"] });
-      form.reset();
-    },
-  });
-
-  if (!user) return null;
-
-  const eligibleAudits = [
-    { name: "Audit financier", description: "Analyse des états financiers d'une entreprise." },
-    { name: "Audit fiscal", description: "Vérification des obligations fiscales et des déclarations." },
-    { name: "Audit de conformité", description: "Évaluation du respect des réglementations en vigueur." },
-    { name: "Audit de performance", description: "Analyse de l'efficacité et de la productivité des processus." },
-    { name: "Audit de gestion", description: "Examen des pratiques de gestion et des stratégies organisationnelles." },
-  ];
-
-  return (
-    <div className="min-h-screen bg-gray-100 p-10">
-      <header className="border-b mb-6">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold">Tableau de bord</h1>
-            <p className="text-muted-foreground">Bienvenue, {user.username}</p>
-          </div>
-          <Button variant="outline" onClick={() => logoutMutation.mutate()}>Déconnexion</Button>
-        </div>
-      </header>
-
-      <main className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Créer une nouvelle demande</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button className="w-full bg-blue-600 text-white hover:bg-blue-700">
-                    <Plus className="mr-2 h-4 w-4" /> Nouvelle demande
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Nouvelle demande</DialogTitle>
-                  </DialogHeader>
-                  <Form {...form}>
-                    <form onSubmit={form.handleSubmit((data) => createRequestMutation.mutate(data))} className="space-y-4">
-                      <FormField control={form.control} name="title" render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Titre</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )} />
-                      <FormField control={form.control} name="description" render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Description</FormLabel>
-                          <FormControl>
-                            <Textarea {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )} />
-                      <Button type="submit" disabled={createRequestMutation.isPending}>
-                        {createRequestMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Soumettre
-                      </Button>
-                    </form>
-                  </Form>
-                </DialogContent>
-              </Dialog>
-              <div className="flex flex-col gap-4 mt-4">
-                <Link href="/simulateur">
-                  <Button className="w-full bg-green-600 text-white hover:bg-green-700">Effectuer une simulation</Button>
-                </Link>
-                <Link href="/reports">
-                  <Button className="w-full bg-gray-600 text-white hover:bg-gray-700">Accéder aux rapports</Button>
-                </Link>
-              </div>
-              <div className="mt-6">
-                <h2 className="text-xl font-bold">Audits disponibles</h2>
-                <ul className="list-disc list-inside mt-2 text-gray-700">
-                  {eligibleAudits.map((audit, index) => (
-                    <li key={index}>
-                      <span className="font-semibold">{audit.name}:</span> {audit.description}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </main>
-    </div>
-  );
-}
-
-// ✅ Export unique pour éviter les erreurs
-export { Simulateur, ClientDashboard };

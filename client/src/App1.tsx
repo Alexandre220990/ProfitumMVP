@@ -5,7 +5,6 @@ import { Toaster } from "@/components/ui/toaster";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/home-page";
 import AuthPage from "@/pages/auth-page";
-import { AuthProvider } from "@/hooks/use-auth"; 
 import Dashboard from "@/pages/dashboard/client";
 import Simulateur from "@/pages/simulateur";
 import TICPE from "@/pages/audit/TICPE";
@@ -30,11 +29,9 @@ import Paiement from "@/pages/Paiement";
 import ProfilClient from "@/pages/ProfilClient";
 import DetailsDossier from "@/pages/DetailsDossier";
 import MarketplaceExperts from "@/pages/marketplace-experts";
+import InscriptionClient from "@/pages/InscriptionClient";
 import CreateAccountClient from "./pages/create-account-client";
-import ConnexionClient from "./pages/connexion-client";
-import ConnexionPartner from "./pages/connexion-partner";
-import ConditionsUtilisation from "./pages/conditions-utilisation";
-
+import NosServices from "@/pages/nos-services";
 
 function Router() {
   const { user, isLoading } = useUser();
@@ -75,9 +72,6 @@ function Router() {
         <Route path="/DetailsDossier" component={DetailsDossier} />
         <Route path="/marketplace-experts" component={MarketplaceExperts} />
         <Route path="/create-account-client" component={CreateAccountClient} />
-        <Route path="/connexion-client" component={ConnexionClient} />
-        <Route path="/connexion-partner" component={ConnexionPartner} />
-        <Route path="/conditions-utilisation" component={ConditionsUtilisation} />
         <Route component={NotFound} />
       </Switch>
     );
@@ -88,30 +82,26 @@ function Router() {
     <Switch>
       <Route path="/auth-page" component={AuthPage} />
       <Route path="/" component={Home} />
-      <Route path="/nos-services" component={NosServices} />
+      <Route path="/nos-services" component {NosServices} />
       <Route path="/experts" component={Experts}/>
       <Route path="/tarifs" component={Tarifs} />
       <Route path="/starter" component={Starter}/>
       <Route path="/growth" component={Growth} />
       <Route path="/scale" component={Scale} />
       <Route path="/paiement" component={Paiement} />
-      <Route path="/nos-services" component={NosServices} />
-      <Route path="/create-account-client" component={CreateAccountClient} />
-      <Route path="/connexion-client" component={ConnexionClient} />
-      <Route path="/connexion-partner" component={ConnexionPartner} />
-      <Route path="/conditions-utilisation" component={ConditionsUtilisation} />
+      <Route path="/InscriptionClient" component={InscriptionClient} />
       <Route component={NotFound} />
     </Switch>
   );
 }
 
-export default function App() {
+function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <Router />
-        <Toaster />
-      </AuthProvider>
+      <Router />
+      <Toaster />
     </QueryClientProvider>
   );
 }
+
+export default App;
