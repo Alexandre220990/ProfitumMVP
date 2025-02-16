@@ -20,8 +20,12 @@ export default function ConnexionClient() {
     }
     setError("");
     try {
-      await loginMutation.mutateAsync({ email, password });
-      setLocation("/dashboard/client");
+      const result = await loginMutation.mutateAsync({ email, password });
+      if (result.type === 'client') {
+        setLocation("/dashboard/client");
+      } else if (result.type === 'partner') {
+        setLocation("/dashboard/partner");
+      }
     } catch (err) {
       setError("Identifiants invalides");
       console.error("Erreur de connexion:", err);
