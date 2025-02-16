@@ -1,11 +1,40 @@
 import session from "express-session";
 import MemoryStore from "memorystore";
-import {
-  type User,
-  mockUsers,
-} from "@shared/data";
+import { type User } from "@shared/schema";
 
 const MemorySessionStore = MemoryStore(session);
+
+// Utilisateurs de test pré-configurés
+const testUsers: User[] = [
+  {
+    id: 1,
+    username: "Alex G.",
+    email: "alex@gmail.com",
+    password: "Profitum",
+    type: "client",
+    companyName: null,
+    phoneNumber: "0612345678",
+    address: "123 Rue Test",
+    city: "Paris",
+    postalCode: "75000",
+    siret: null,
+    createdAt: new Date(),
+  },
+  {
+    id: 2,
+    username: "Partenaire",
+    email: "partenaire@gmail.com",
+    password: "partenaire",
+    type: "partner",
+    companyName: "Partenaire Test SARL",
+    phoneNumber: "0687654321",
+    address: "456 Avenue Test",
+    city: "Lyon",
+    postalCode: "69000",
+    siret: "12345678901234",
+    createdAt: new Date(),
+  }
+];
 
 export interface IStorage {
   // Users
@@ -17,7 +46,7 @@ export interface IStorage {
 }
 
 class MemoryStorage implements IStorage {
-  private users: User[] = [...mockUsers];
+  private users: User[] = [...testUsers]; // Initialisation avec les utilisateurs de test
   sessionStore: session.Store;
 
   constructor() {
@@ -43,7 +72,7 @@ class MemoryStorage implements IStorage {
     const newUser = {
       ...user,
       id: this.users.length + 1,
-      createdAt: new Date().toISOString(),
+      createdAt: new Date(),
     };
     this.users.push(newUser);
     return newUser;
