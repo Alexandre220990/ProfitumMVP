@@ -1,7 +1,6 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createClientSchema } from "@shared/schema";
-import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,9 +8,11 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useLocation } from "wouter";
 import { UserCircle, Mail, Lock, Building, Phone, MapPin, FileText } from "lucide-react";
 import { Link } from "wouter";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function CreateAccountClient() {
   const [, setLocation] = useLocation();
+  const { registerMutation } = useAuth();
 
   const form = useForm({
     resolver: zodResolver(createClientSchema),
@@ -30,22 +31,21 @@ export default function CreateAccountClient() {
     },
   });
 
-  const createAccountMutation = useMutation({
-    mutationFn: async (data) => {
-      const res = await apiRequest("POST", "/api/clients", data);
-      return res.json();
-    },
-    onSuccess: () => {
+  const onSubmit = async (data: any) => {
+    try {
+      await registerMutation.mutateAsync(data);
       setLocation("/dashboard/client");
-    },
-  });
+    } catch (error) {
+      console.error("Erreur lors de la création du compte:", error);
+    }
+  };
 
   return (
     <div className="flex min-h-screen bg-gray-50">
 
       {/* Section Branding (Gauche) */}
       <div className="hidden md:flex w-1/2 bg-gradient-to-r from-blue-600 to-blue-800 text-white p-12 flex-col justify-center">
-        <h1 className="text-4xl font-extrabold">Rejoignez Profitum dès aujourd’hui !</h1>
+        <h1 className="text-4xl font-extrabold">Rejoignez Profitum dès aujourd'hui !</h1>
         <p className="mt-4 text-lg opacity-90">
           Accédez à des experts de confiance et faites évoluer votre entreprise sans effort.
         </p>
@@ -68,21 +68,7 @@ export default function CreateAccountClient() {
 
           {/* Formulaire */}
           <Form {...form}>
-            <form
-              onSubmit={form.handleSubmit(() => {
-                const formData = form.getValues();
-                if (!formData.email || !formData.password) {
-                  console.error("Données invalides ou incomplètes :", formData);
-                  return;
-                }
-                createAccountMutation.mutate(formData, {
-                  onSuccess: () => setLocation("/dashboard/client"),
-                  onError: (error) => console.error("Erreur lors de la création du compte :", error),
-                });
-              })}
-              className="grid grid-cols-1 gap-5"
-            >
-              {/* Champs d'inscription */}
+            <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 gap-5">
               {[
                 { name: "username", label: "Nom d'utilisateur", type: "text", icon: UserCircle },
                 { name: "email", label: "Adresse e-mail", type: "email", icon: Mail },
@@ -118,13 +104,12 @@ export default function CreateAccountClient() {
                 />
               ))}
 
-              {/* Bouton de soumission */}
               <Button
                 type="submit"
                 className="w-full py-3 text-lg bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-md transition-all"
-                disabled={createAccountMutation.isPending}
+                disabled={registerMutation.isPending}
               >
-                {createAccountMutation.isPending ? "Création en cours..." : "Créer un compte"}
+                {registerMutation.isPending ? "Création en cours..." : "Créer un compte"}
               </Button>
             </form>
           </Form>
@@ -132,7 +117,7 @@ export default function CreateAccountClient() {
           <p className="text-center text-gray-500 text-sm">
             En vous inscrivant, vous acceptez nos{" "}
             <Link href="/conditions" className="text-blue-600 font-medium hover:underline">
-              conditions d’utilisation
+              conditions d'utilisation
             </Link>.
           </p>
         </div>

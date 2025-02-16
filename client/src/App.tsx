@@ -30,11 +30,10 @@ import Paiement from "@/pages/Paiement";
 import ProfilClient from "@/pages/ProfilClient";
 import DetailsDossier from "@/pages/DetailsDossier";
 import MarketplaceExperts from "@/pages/marketplace-experts";
-import CreateAccountClient from "./pages/create-account-client";
-import ConnexionClient from "./pages/connexion-client";
-import ConnexionPartner from "./pages/connexion-partner";
-import ConditionsUtilisation from "./pages/conditions-utilisation";
-
+import CreateAccountClient from "@/pages/create-account-client";
+import ConnexionClient from "@/pages/connexion-client";
+import ConnexionPartner from "@/pages/connexion-partner";
+import ConditionsUtilisation from "@/pages/conditions-utilisation";
 
 function Router() {
   const { user, isLoading } = useUser();
@@ -52,7 +51,9 @@ function Router() {
   if (user) {
     return (
       <Switch>
-        <Route path="/dashboard/client" component={user.userType === "partner" ? PartnerDashboard : Dashboard} />
+        <Route path="/" component={user.type === "partner" ? PartnerDashboard : Dashboard} />
+        <Route path="/dashboard/client" component={Dashboard} />
+        <Route path="/dashboard/partner" component={PartnerDashboard} />
         <Route path="/simulateur" component={Simulateur} />
         <Route path="/audit/msa" component={MSA} />
         <Route path="/audit/dfs" component={DFS} />
@@ -62,7 +63,6 @@ function Router() {
         <Route path="/audit/foncier" component={Foncier} />
         <Route path="/audit/social" component={Social} />
         <Route path="/reports" component={Reports} />
-        <Route path="/auth" component={AuthPage} />
         <Route path="/dossier/:id" component={DossierDetails} />
         <Route path="/nos-services" component={NosServices} />
         <Route path="/experts" component={Experts} />
@@ -74,10 +74,6 @@ function Router() {
         <Route path="/profilclient" component={ProfilClient} />
         <Route path="/DetailsDossier" component={DetailsDossier} />
         <Route path="/marketplace-experts" component={MarketplaceExperts} />
-        <Route path="/create-account-client" component={CreateAccountClient} />
-        <Route path="/connexion-client" component={ConnexionClient} />
-        <Route path="/connexion-partner" component={ConnexionPartner} />
-        <Route path="/conditions-utilisation" component={ConditionsUtilisation} />
         <Route component={NotFound} />
       </Switch>
     );
@@ -86,7 +82,6 @@ function Router() {
   // If user is not logged in, show the public routes
   return (
     <Switch>
-      <Route path="/auth-page" component={AuthPage} />
       <Route path="/" component={Home} />
       <Route path="/nos-services" component={NosServices} />
       <Route path="/experts" component={Experts}/>
@@ -95,7 +90,6 @@ function Router() {
       <Route path="/growth" component={Growth} />
       <Route path="/scale" component={Scale} />
       <Route path="/paiement" component={Paiement} />
-      <Route path="/nos-services" component={NosServices} />
       <Route path="/create-account-client" component={CreateAccountClient} />
       <Route path="/connexion-client" component={ConnexionClient} />
       <Route path="/connexion-partner" component={ConnexionPartner} />

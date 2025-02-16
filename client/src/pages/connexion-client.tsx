@@ -1,22 +1,31 @@
 import { useState } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Mail, Lock, Eye, EyeOff, ShieldCheck } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function ConnexionClient() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [, setLocation] = useLocation();
+  const { loginMutation } = useAuth();
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!email || !password) {
       setError("Veuillez remplir tous les champs.");
       return;
     }
     setError("");
-    console.log("Authentification en cours...");
+    try {
+      await loginMutation.mutateAsync({ email, password });
+      setLocation("/dashboard/client");
+    } catch (err) {
+      setError("Identifiants invalides");
+      console.error("Erreur de connexion:", err);
+    }
   };
 
   return (
@@ -83,15 +92,19 @@ export default function ConnexionClient() {
               </Link>
             </div>
 
-            <Button onClick={handleLogin} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3">
-              Se connecter
+            <Button 
+              onClick={handleLogin} 
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3"
+              disabled={loginMutation.isPending}
+            >
+              {loginMutation.isPending ? "Connexion..." : "Se connecter"}
             </Button>
           </div>
 
           <p className="text-center text-gray-500 text-sm">
             En vous connectant, vous acceptez nos{" "}
             <Link href="/conditions" className="text-blue-600 font-medium hover:underline">
-              conditions d’utilisation
+              conditions d'utilisation
             </Link>.
           </p>
         </div>
