@@ -41,12 +41,9 @@ import ExpertPage from "@/pages/expert-page";
 import CharteSignature from "@/pages/charte-signature";
 
 function Router() {
-  console.log("Rendering Router");
-
   const { user, isLoading } = useAuth();
   const [, setLocation] = useLocation();
-  
-  // **Redirection après connexion**
+
   useEffect(() => {
     if (user) {
       switch (user.type) {
@@ -67,7 +64,6 @@ function Router() {
     }
   }, [user, setLocation]);
 
-  // **Affichage du loader pendant le chargement de l'authentification**
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -78,7 +74,6 @@ function Router() {
 
   return (
     <Switch>
-      {/* Routes privées (utilisateur connecté) */}
       {user ? (
         <>
           <Route path="/dashboard/client/:userId" component={Dashboard} />
@@ -96,11 +91,9 @@ function Router() {
           <Route path="/DetailsDossier/:userId" component={DetailsDossier} />
           <Route path="/marketplace-experts/:userId" component={MarketplaceExperts} />
           <Route path="/simulateur/:userId" component={Simulateur} />
-          <Route component={NotFound} />
         </>
       ) : (
         <>
-          {/* Routes publiques (utilisateur non connecté) */}
           <Route path="/" component={Home} />
           <Route path="/auth-page" component={AuthPage} />
           <Route path="/nos-services" component={NosServices} />
@@ -114,14 +107,13 @@ function Router() {
           <Route path="/connexion-client" component={ConnexionClient} />
           <Route path="/connexion-partner" component={ConnexionPartner} />
           <Route path="/conditions-utilisation" component={ConditionsUtilisation} />
-          <Route component={NotFound} />
         </>
       )}
+      <Route component={NotFound} />
     </Switch>
   );
 }
 
-// **Application principale**
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
