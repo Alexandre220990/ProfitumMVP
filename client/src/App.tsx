@@ -31,7 +31,7 @@ import ConnexionClient from "./pages/connexion-client";
 import ConnexionPartner from "./pages/connexion-partner";
 import ConditionsUtilisation from "./pages/conditions-utilisation";
 
-// Audits
+// Produits pages
 import TICPE from "@/pages/produits/ticpe";
 import Foncier from "@/pages/produits/foncier";
 import MSA from "@/pages/produits/msa";
@@ -74,7 +74,21 @@ function Router() {
 
   return (
     <Switch>
-      {user ? (
+      <Route path="/" component={Home} />
+      <Route path="/auth-page" component={AuthPage} />
+      <Route path="/nos-services" component={NosServices} />
+      <Route path="/experts" component={Experts} />
+      <Route path="/tarifs" component={Tarifs} />
+      <Route path="/starter" component={Starter} />
+      <Route path="/growth" component={Growth} />
+      <Route path="/scale" component={Scale} />
+      <Route path="/paiement" component={Paiement} />
+      <Route path="/create-account-client" component={CreateAccountClient} />
+      <Route path="/connexion-client" component={ConnexionClient} />
+      <Route path="/connexion-partner" component={ConnexionPartner} />
+      <Route path="/conditions-utilisation" component={ConditionsUtilisation} />
+
+      {user && (
         <>
           <Route path="/dashboard/client/:userId" component={Dashboard} />
           <Route path="/dashboard/partner/:userId" component={PartnerDashboard} />
@@ -92,23 +106,8 @@ function Router() {
           <Route path="/marketplace-experts/:userId" component={MarketplaceExperts} />
           <Route path="/simulateur/:userId" component={Simulateur} />
         </>
-      ) : (
-        <>
-          <Route path="/" component={Home} />
-          <Route path="/auth-page" component={AuthPage} />
-          <Route path="/nos-services" component={NosServices} />
-          <Route path="/experts" component={Experts} />
-          <Route path="/tarifs" component={Tarifs} />
-          <Route path="/starter" component={Starter} />
-          <Route path="/growth" component={Growth} />
-          <Route path="/scale" component={Scale} />
-          <Route path="/paiement" component={Paiement} />
-          <Route path="/create-account-client" component={CreateAccountClient} />
-          <Route path="/connexion-client" component={ConnexionClient} />
-          <Route path="/connexion-partner" component={ConnexionPartner} />
-          <Route path="/conditions-utilisation" component={ConditionsUtilisation} />
-        </>
       )}
+
       <Route component={NotFound} />
     </Switch>
   );
