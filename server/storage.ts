@@ -4,7 +4,7 @@ import { type User } from "@shared/schema";
 
 const MemorySessionStore = MemoryStore(session);
 
-// Utilisateurs de test pré-configurés
+// ✅ Utilisateurs de test pré-configurés
 const testUsers: User[] = [
   {
     id: 1,
@@ -37,25 +37,34 @@ const testUsers: User[] = [
 ];
 
 export interface IStorage {
-  // Users
+  // Gestion des utilisateurs
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: Omit<User, "id" | "createdAt">): Promise<User>;
+
+  // Gestion des rapports clients
+  saveClientReport(userId: number, report: any): Promise<void>;
+  getClientReports(userId: number): Promise<any[]>;
+
+  // Session
   sessionStore: session.Store;
 }
 
 class MemoryStorage implements IStorage {
-  private users: User[] = [...testUsers]; // Initialisation avec les utilisateurs de test
+  private users: User[] = [...testUsers]; // ✅ Stockage des utilisateurs
+  private clientReports: Record<number, any[]> = {}; // ✅ Stockage des rapports clients
   sessionStore: session.Store;
 
   constructor() {
     this.sessionStore = new MemorySessionStore({
-      checkPeriod: 86400000 // 24 heures
+      checkPeriod: 86400000, // Nettoyage toutes les 24 heures
     });
   }
 
-  // Users
+  // =======================================
+  // ✅ Gestion des utilisateurs
+  // =======================================
   async getUser(id: number): Promise<User | undefined> {
     return this.users.find(u => u.id === id);
   }
@@ -77,6 +86,21 @@ class MemoryStorage implements IStorage {
     this.users.push(newUser);
     return newUser;
   }
+
+  // =======================================
+  // ✅ Gestion des rapports clients
+  // =======================================
+  async saveClientReport(userId: number, report: any): Promise<void> {
+    if (!this.clientReports[userId]) {
+      this.clientReports[userId] = [];
+    }
+    this.clientReports[userId].push(report);
+  }
+
+  async getClientReports(userId: number): Promise<any[]> {
+    return this.clientReports[userId] || [];
+  }
 }
 
+// ✅ Exportation de l'instance
 export const storage = new MemoryStorage();

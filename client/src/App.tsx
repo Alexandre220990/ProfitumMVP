@@ -1,24 +1,20 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
+import { useAuth } from "@/hooks/use-auth";
+import { useEffect } from "react";
+import { Loader2 } from "lucide-react";
+
+// Pages et composants
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/home-page";
 import AuthPage from "@/pages/auth-page";
-import { AuthProvider } from "@/hooks/use-auth"; 
+import { AuthProvider } from "@/hooks/use-auth";
 import Dashboard from "@/pages/dashboard/client";
-import Simulateur from "@/pages/simulateur";
-import TICPE from "@/pages/audit/TICPE";
-import Foncier from "@/pages/audit/foncier";
-import MSA from "@/pages/audit/msa";
-import DFS from "@/pages/audit/dfs";
-import Social from "@/pages/audit/social";
-import ExpertPage from "@/pages/expert-page";
-import Reports from "@/pages/reports";
-import CharteSignature from "@/pages/charte-signature";
-import { useUser } from "@/hooks/use-user";
-import { Loader2 } from "lucide-react";
 import PartnerDashboard from "@/pages/dashboard/partner";
+import Simulateur from "@/pages/simulateur";
+import Reports from "@/pages/reports";
 import DossierDetails from "@/pages/dossier-details";
 import NosServices from "@/pages/Nos-Services";
 import Tarifs from "@/pages/Tarifs";
@@ -30,15 +26,48 @@ import Paiement from "@/pages/Paiement";
 import ProfilClient from "@/pages/ProfilClient";
 import DetailsDossier from "@/pages/DetailsDossier";
 import MarketplaceExperts from "@/pages/marketplace-experts";
-import CreateAccountClient from "@/pages/create-account-client";
-import ConnexionClient from "@/pages/connexion-client";
-import ConnexionPartner from "@/pages/connexion-partner";
-import ConditionsUtilisation from "@/pages/conditions-utilisation";
+import CreateAccountClient from "./pages/create-account-client";
+import ConnexionClient from "./pages/connexion-client";
+import ConnexionPartner from "./pages/connexion-partner";
+import ConditionsUtilisation from "./pages/conditions-utilisation";
+
+// Audits
+import TICPE from "@/pages/produits/ticpe";
+import Foncier from "@/pages/produits/foncier";
+import MSA from "@/pages/produits/msa";
+import DFS from "@/pages/produits/dfs";
+import Social from "@/pages/produits/social";
+import ExpertPage from "@/pages/expert-page";
+import CharteSignature from "@/pages/charte-signature";
 
 function Router() {
-  const { user, isLoading } = useUser();
+  console.log("Rendering Router");
 
-  // Loading state
+  const { user, isLoading } = useAuth();
+  const [, setLocation] = useLocation();
+  
+  // **Redirection après connexion**
+  useEffect(() => {
+    if (user) {
+      switch (user.type) {
+        case "client":
+          if (user.id) {
+            setLocation(`/dashboard/client/${user.id}`);
+          } else {
+            setLocation("/");
+          }
+          break;
+        case "partner":
+          setLocation("/dashboard/partner");
+          break;
+        default:
+          setLocation("/");
+          break;
+      }
+    }
+  }, [user, setLocation]);
+
+  // **Affichage du loader pendant le chargement de l'authentification**
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -47,58 +76,52 @@ function Router() {
     );
   }
 
-  // If user is logged in, show the respective dashboard
-  if (user) {
-    return (
-      <Switch>
-        <Route path="/" component={user.type === "partner" ? PartnerDashboard : Dashboard} />
-        <Route path="/dashboard/client" component={Dashboard} />
-        <Route path="/dashboard/partner" component={PartnerDashboard} />
-        <Route path="/simulateur" component={Simulateur} />
-        <Route path="/audit/msa" component={MSA} />
-        <Route path="/audit/dfs" component={DFS} />
-        <Route path="/audit/:type/expert/:id" component={ExpertPage} />
-        <Route path="/audit/:type/sign-charte" component={CharteSignature} />
-        <Route path="/audit/TICPE" component={TICPE} />
-        <Route path="/audit/foncier" component={Foncier} />
-        <Route path="/audit/social" component={Social} />
-        <Route path="/reports" component={Reports} />
-        <Route path="/dossier/:id" component={DossierDetails} />
-        <Route path="/nos-services" component={NosServices} />
-        <Route path="/experts" component={Experts} />
-        <Route path="/tarifs" component={Tarifs} />
-        <Route path="/starter" component={Starter} />
-        <Route path="/growth" component={Growth} />
-        <Route path="/scale" component={Scale} />
-        <Route path="/paiement" component={Paiement} />
-        <Route path="/profilclient" component={ProfilClient} />
-        <Route path="/DetailsDossier" component={DetailsDossier} />
-        <Route path="/marketplace-experts" component={MarketplaceExperts} />
-        <Route component={NotFound} />
-      </Switch>
-    );
-  }
-
-  // If user is not logged in, show the public routes
   return (
     <Switch>
-      <Route path="/" component={Home} />
-      <Route path="/nos-services" component={NosServices} />
-      <Route path="/experts" component={Experts}/>
-      <Route path="/tarifs" component={Tarifs} />
-      <Route path="/starter" component={Starter}/>
-      <Route path="/growth" component={Growth} />
-      <Route path="/scale" component={Scale} />
-      <Route path="/paiement" component={Paiement} />
-      <Route path="/create-account-client" component={CreateAccountClient} />
-      <Route path="/connexion-client" component={ConnexionClient} />
-      <Route path="/connexion-partner" component={ConnexionPartner} />
-      <Route path="/conditions-utilisation" component={ConditionsUtilisation} />
-      <Route component={NotFound} />
+      {/* Routes privées (utilisateur connecté) */}
+      {user ? (
+        <>
+          <Route path="/dashboard/client/:userId" component={Dashboard} />
+          <Route path="/dashboard/partner/:userId" component={PartnerDashboard} />
+          <Route path="/Produits/msa/:userId" component={MSA} />
+          <Route path="/Produits/dfs/:userId" component={DFS} />
+          <Route path="/Produits/ticpe/:userId" component={TICPE} />
+          <Route path="/Produits/foncier/:userId" component={Foncier} />
+          <Route path="/Produits/social/:userId" component={Social} />
+          <Route path="/audit/:type/expert/:userId" component={ExpertPage} />
+          <Route path="/audit/:type/sign-charte/:userId" component={CharteSignature} />
+          <Route path="/reports/:userId" component={Reports} />
+          <Route path="/dossier/:userId" component={DossierDetails} />
+          <Route path="/profilclient/:userId" component={ProfilClient} />
+          <Route path="/DetailsDossier/:userId" component={DetailsDossier} />
+          <Route path="/marketplace-experts/:userId" component={MarketplaceExperts} />
+          <Route path="/simulateur/:userId" component={Simulateur} />
+          <Route component={NotFound} />
+        </>
+      ) : (
+        <>
+          {/* Routes publiques (utilisateur non connecté) */}
+          <Route path="/" component={Home} />
+          <Route path="/auth-page" component={AuthPage} />
+          <Route path="/nos-services" component={NosServices} />
+          <Route path="/experts" component={Experts} />
+          <Route path="/tarifs" component={Tarifs} />
+          <Route path="/starter" component={Starter} />
+          <Route path="/growth" component={Growth} />
+          <Route path="/scale" component={Scale} />
+          <Route path="/paiement" component={Paiement} />
+          <Route path="/create-account-client" component={CreateAccountClient} />
+          <Route path="/connexion-client" component={ConnexionClient} />
+          <Route path="/connexion-partner" component={ConnexionPartner} />
+          <Route path="/conditions-utilisation" component={ConditionsUtilisation} />
+          <Route component={NotFound} />
+        </>
+      )}
     </Switch>
   );
 }
 
+// **Application principale**
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>

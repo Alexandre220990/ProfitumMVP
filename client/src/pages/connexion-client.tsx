@@ -1,17 +1,27 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Mail, Lock, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 
 export default function ConnexionClient() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const { toast } = useToast();
+  const { loginMutation, user } = useAuth(); // ✅ Ajout de `user` pour gérer la redirection
   const [, setLocation] = useLocation();
-  const { loginMutation } = useAuth();
+
+  // ✅ Vérification de l'état de connexion pour rediriger automatiquement
+  useEffect(() => {
+    if (user) {
+      console.log("Utilisateur connecté, redirection...");
+      setLocation(user.type === "client" ? "/dashboard/client" : "/dashboard/partner");
+    }
+  }, [user, setLocation]);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -19,16 +29,18 @@ export default function ConnexionClient() {
       return;
     }
     setError("");
+
     try {
-      const result = await loginMutation.mutateAsync({ email, password });
-      if (result.type === 'client') {
-        setLocation("/dashboard/client");
-      } else if (result.type === 'partner') {
-        setLocation("/dashboard/partner");
-      }
-    } catch (err) {
-      setError("Identifiants invalides");
+      await loginMutation.mutateAsync({ email, password }); // ✅ Correction et gestion propre
+    } catch (err: any) {
       console.error("Erreur de connexion:", err);
+      const errorMessage = err.message || "Identifiants invalides";
+      setError(errorMessage);
+      toast({
+        title: "Erreur de connexion",
+        description: errorMessage,
+        variant: "destructive",
+      });
     }
   };
 
@@ -99,7 +111,7 @@ export default function ConnexionClient() {
             <Button 
               onClick={handleLogin} 
               className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3"
-              disabled={loginMutation.isPending}
+              disabled={loginMutation.isPending} // ✅ Correction
             >
               {loginMutation.isPending ? "Connexion..." : "Se connecter"}
             </Button>

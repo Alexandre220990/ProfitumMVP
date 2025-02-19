@@ -12,12 +12,15 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "allowImportingTsExtensions": true,
-    "moduleResolution": "bundler",
-    "baseUrl": ".",
+    "moduleResolution": "node",  // ✅ Correction
+    "resolveJsonModule": true,   // ✅ Pour supporter les imports JSON
+    "allowJs": true,             // ✅ Permet d'importer du JS
+    "baseUrl": ".",              // ✅ Corrigé pour inclure `server/`
     "types": ["node", "vite/client"],
     "paths": {
-      "@/*": ["./client/src/*"],
-      "@shared/*": ["./shared/*"]
+      "@/*": ["./client/src/*", "./server/*"],  // ✅ Ajout de `server/`
+      "@shared/*": ["./shared/*"],              // ✅ OK pour `shared/`
+      "@server/*": ["./server/*"]               // ✅ Ajout d'un alias spécifique pour le serveur
     }
   }
 }

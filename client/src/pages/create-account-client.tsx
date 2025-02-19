@@ -1,7 +1,6 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createClientSchema } from "@shared/schema";
-import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -10,11 +9,26 @@ import { UserCircle, Mail, Lock, Building, Phone, MapPin, FileText } from "lucid
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 
+// Définition du type des données attendues pour l'inscription
+interface RegisterFormData {
+  username: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+  company_name: string;
+  phone_number: string;
+  address: string;
+  city: string;
+  postal_code: string;
+  siret: string;
+  type: "client";
+}
+
 export default function CreateAccountClient() {
   const [, setLocation] = useLocation();
   const { registerMutation } = useAuth();
 
-  const form = useForm({
+  const form = useForm<RegisterFormData>({
     resolver: zodResolver(createClientSchema),
     defaultValues: {
       username: "",
@@ -31,18 +45,28 @@ export default function CreateAccountClient() {
     },
   });
 
-  const onSubmit = async (data: any) => {
+  // 🔹 Fonction de soumission du formulaire
+  const onSubmit = async (data: RegisterFormData) => {
     try {
-      await registerMutation.mutateAsync(data);
-      setLocation("/dashboard/client");
+      console.log("📡 Envoi des données d'inscription :", data);
+
+      const response = await registerMutation.mutateAsync(data);
+
+      console.log("📌 Réponse de l'API:", response);
+
+      if (response?.success && response?.userId) {
+        console.log("✅ Utilisateur créé avec userId:", response.userId);
+        setLocation(`/dashboard/client/${response.userId}`);
+      } else {
+        console.error("❌ Erreur: userId non retourné après inscription");
+      }
     } catch (error) {
-      console.error("Erreur lors de la création du compte:", error);
+      console.error("❌ Erreur lors de la création du compte:", error);
     }
   };
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-
       {/* Section Branding (Gauche) */}
       <div className="hidden md:flex w-1/2 bg-gradient-to-r from-blue-600 to-blue-800 text-white p-12 flex-col justify-center">
         <h1 className="text-4xl font-extrabold">Rejoignez Profitum dès aujourd'hui !</h1>
@@ -84,7 +108,7 @@ export default function CreateAccountClient() {
                 <FormField
                   key={field.name}
                   control={form.control}
-                  name={field.name}
+                  name={field.name as keyof RegisterFormData}
                   render={({ field: controller }) => (
                     <FormItem>
                       <FormLabel className="text-lg">{field.label}</FormLabel>

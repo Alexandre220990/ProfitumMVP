@@ -1,267 +1,123 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useParams } from "wouter";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import HeaderClient from "@/components/HeaderClient";
 import { Link } from "wouter";
-import { Progress } from "@/components/ui/progress";
-import { HelpDialog } from "@/components/HelpDialog";
-import { helpContent } from "@/lib/help-content";
+import { ArrowLeftCircle } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
-const questions = [
-  {
-    id: 1,
-    text: "Quel est votre secteur d'activité ?",
-    options: ["Agriculture", "Transport / Logistique", "Industrie / Commerce", "Services", "Autre"],
-  },
-  {
-    id: 2,
-    text: "Êtes-vous propriétaire ou locataire de vos locaux professionnels ?",
-    options: ["Propriétaire", "Locataire"],
-  },
-  {
-    id: 3,
-    text: "Avez-vous des salariés ?",
-    options: ["Oui", "Non"],
-  },
-  {
-    id: 4,
-    text: "Utilisez-vous des véhicules professionnels utilisant du carburant ?",
-    options: ["Oui", "Non"],
-  },
-  {
-    id: 5,
-    text: "Avez-vous déjà payé des taxes foncières sur vos locaux ?",
-    options: ["Oui", "Non", "Je ne sais pas"],
-  },
-  {
-    id: 6,
-    text: "Êtes-vous affilié à la MSA (Mutualité Sociale Agricole) ?",
-    options: ["Oui", "Non"],
-  },
-  {
-    id: 7,
-    text: "Êtes-vous assujetti aux cotisations URSSAF ?",
-    options: ["Oui", "Non", "Je ne sais pas"],
-  },
-  {
-    id: 8,
-    text: "Avez-vous perçu des aides fiscales ou exonérations spécifiques liées à votre activité ?",
-    options: ["Oui", "Non", "Je ne sais pas"],
-  },
-];
+interface Question {
+  id: string;
+  question: string;
+  options: string[];
+  multiple?: boolean;
+}
 
-type AuditType = "MSA" | "TICPE" | "Foncier" | "URSSAF" | "DFS";
+interface Product {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  link: string;
+  criteria: (answers: Record<string, string[]>) => boolean;
+}
 
-const determineEligibleAudits = (answers: string[]): AuditType[] => {
-  const eligibleAudits = new Set<AuditType>();
+const Simulateur = () => {
+  const { user } = useAuth();
+  const { userId } = useParams();
+  const [answers, setAnswers] = useState<Record<string, string[]>>(() => {
+    const storedAnswers = localStorage.getItem("simulationAnswers");
+    return storedAnswers ? JSON.parse(storedAnswers) : {};
+  });
 
-  const sector = answers[0];
-  const isOwner = answers[1] === "Propriétaire";
-  const hasEmployees = answers[2] === "Oui";
-  const usesVehicles = answers[3] === "Oui";
-  const paysPropertyTax = answers[4] === "Oui";
-  const hasMSA = answers[5] === "Oui";
-  const hasURSSAF = answers[6] === "Oui";
-  const hasAids = answers[7] === "Oui";
+  const [step, setStep] = useState(0);
+  const [results, setResults] = useState<Product[] | null>(null);
 
-  if (sector === "Agriculture" || hasMSA || hasAids) {
-    eligibleAudits.add("MSA");
-  }
+  const questions: Question[] = [
+    { id: "taille", question: "Quelle est la taille de votre entreprise ?", options: ["Indépendant", "1-5 salariés", "6-10 salariés", "11-50 salariés", "+50 salariés"] },
+    { id: "secteur", question: "Quel est votre secteur d’activité ?", options: ["Agriculture", "Industrie", "Commerce", "BTP", "Transport", "Services", "Informatique", "Autre"], multiple: true },
+    { id: "locaux", question: "Êtes-vous propriétaire de vos locaux professionnels ?", options: ["Oui", "Non, locataire", "Non, espace partagé/domicile"] },
+    { id: "carburant", question: "Utilisez-vous des véhicules pour votre activité ?", options: ["Oui, véhicules lourds", "Oui, véhicules légers", "Oui, les deux", "Non"] },
+  ];
 
-  if (usesVehicles || sector === "Transport / Logistique") {
-    eligibleAudits.add("TICPE");
-  }
+  const products: Product[] = [
+    { id: "msa", name: "Optimisation MSA", description: "Réduction des charges sociales agricoles.", icon: "🌾", link: "/produits/msa", criteria: (answers) => answers.secteur?.includes("Agriculture") },
+    { id: "ticpe", name: "Récupération TICPE", description: "Remboursement de taxes sur le carburant.", icon: "⛽", link: "/produits/ticpe", criteria: (answers) => answers.carburant?.some((val) => val.startsWith("Oui")) },
+  ];
 
-  if (isOwner || paysPropertyTax) {
-    eligibleAudits.add("Foncier");
-  }
-
-  if (hasEmployees || hasURSSAF) {
-    eligibleAudits.add("URSSAF");
-  }
-
-  if (sector === "Agriculture" || hasAids) {
-    eligibleAudits.add("DFS");
-  }
-
-  return Array.from(eligibleAudits);
-};
-
-const auditDescriptions = {
-  energy: "Optimisation de vos dépenses énergétiques TICPE et identification des sources d'économies potentielles.",
-  social: "Analyse et optimisation de vos charges sociales et cotisations URSSAF.",
-  property: "Évaluation et réduction de vos taxes foncières et charges immobilières.",
-  msa: "Analyse complète des cotisations MSA et optimisation des charges agricoles.",
-  dfs: "Dispositifs de Fiscalité Spécifique : analyse et optimisation des aides fiscales sectorielles.",
-};
-
-export default function Simulation() {
-  const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [answers, setAnswers] = useState<string[]>(Array(questions.length).fill(""));
-  const [showResults, setShowResults] = useState(false);
-
-  const handleAnswer = (value: string) => {
-    const newAnswers = [...answers];
-    newAnswers[currentQuestion] = value;
-    setAnswers(newAnswers);
-  };
-
-  const handleNext = () => {
-    if (currentQuestion === questions.length - 1) {
-      const eligible = determineEligibleAudits(answers);
-      localStorage.setItem('eligibleAudits', JSON.stringify(eligible));
-      setShowResults(true);
-    } else {
-      setCurrentQuestion(currentQuestion + 1);
+  useEffect(() => {
+    const storedAnswers = localStorage.getItem("simulationAnswers");
+    if (storedAnswers) {
+      setAnswers(JSON.parse(storedAnswers));
     }
+  }, []);
+
+  const handleSelect = (answer: string) => {
+    const isMultiple = questions[step].multiple;
+    setAnswers((prev) => {
+      const currentAnswers = prev[questions[step].id] || [];
+      const updatedAnswers = isMultiple
+        ? currentAnswers.includes(answer)
+          ? currentAnswers.filter(a => a !== answer)
+          : [...currentAnswers, answer]
+        : [answer];
+
+      localStorage.setItem("simulationAnswers", JSON.stringify({ ...prev, [questions[step].id]: updatedAnswers }));
+      return { ...prev, [questions[step].id]: updatedAnswers };
+    });
   };
 
-  const handlePrevious = () => {
-    setCurrentQuestion(currentQuestion - 1);
+  const handleNext = () => setStep((prev) => prev + 1);
+  const handlePrevious = () => setStep((prev) => Math.max(0, prev - 1));
+
+  const handleSubmit = () => {
+    const matchedProducts = products.filter((product) => product.criteria(answers));
+    setResults(matchedProducts);
+    localStorage.setItem("eligible_products", JSON.stringify(matchedProducts));
+    localStorage.setItem("reload_dashboard", "true");
   };
-
-  const eligibleAudits = determineEligibleAudits(answers);
-  const progress = ((currentQuestion + 1) / questions.length) * 100;
-
-  if (showResults) {
-    return (
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-4xl mx-auto">
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>
-                {eligibleAudits.length > 0
-                  ? "Voici le résultat préliminaire, vous êtes éligible aux audits suivants :"
-                  : "Selon vos réponses, vous n'êtes pas éligible aux audits pour le moment."}
-              </CardTitle>
-            </CardHeader>
-          </Card>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {eligibleAudits.includes("TICPE") && (
-              <Card className="flex flex-col h-full">
-                <CardContent className="p-6 flex flex-col flex-grow">
-                  <h3 className="text-xl font-semibold mb-4">Audit Énergétique</h3>
-                  <p className="text-gray-600 mb-6 flex-grow">{auditDescriptions.energy}</p>
-                  <Link href="/audit/energy">
-                    <Button className="w-full">Accéder à l'audit</Button>
-                  </Link>
-                </CardContent>
-              </Card>
-            )}
-
-            {eligibleAudits.includes("URSSAF") && (
-              <Card className="flex flex-col h-full">
-                <CardContent className="p-6 flex flex-col flex-grow">
-                  <h3 className="text-xl font-semibold mb-4">Audit Social</h3>
-                  <p className="text-gray-600 mb-6 flex-grow">{auditDescriptions.social}</p>
-                  <Link href="/audit/social">
-                    <Button className="w-full">Accéder à l'audit</Button>
-                  </Link>
-                </CardContent>
-              </Card>
-            )}
-
-            {eligibleAudits.includes("Foncier") && (
-              <Card className="flex flex-col h-full">
-                <CardContent className="p-6 flex flex-col flex-grow">
-                  <h3 className="text-xl font-semibold mb-4">Audit Foncier</h3>
-                  <p className="text-gray-600 mb-6 flex-grow">{auditDescriptions.property}</p>
-                  <Link href="/audit/property">
-                    <Button className="w-full">Accéder à l'audit</Button>
-                  </Link>
-                </CardContent>
-              </Card>
-            )}
-
-            {eligibleAudits.includes("MSA") && (
-              <Card className="flex flex-col h-full">
-                <CardContent className="p-6 flex flex-col flex-grow">
-                  <h3 className="text-xl font-semibold mb-4">Audit MSA</h3>
-                  <p className="text-gray-600 mb-6 flex-grow">{auditDescriptions.msa}</p>
-                  <Link href="/audit/msa">
-                    <Button className="w-full">Accéder à l'audit</Button>
-                  </Link>
-                </CardContent>
-              </Card>
-            )}
-
-            {eligibleAudits.includes("DFS") && (
-              <Card className="flex flex-col h-full">
-                <CardContent className="p-6 flex flex-col flex-grow">
-                  <h3 className="text-xl font-semibold mb-4">Audit DFS</h3>
-                  <p className="text-gray-600 mb-6 flex-grow">{auditDescriptions.dfs}</p>
-                  <Link href="/audit/dfs">
-                    <Button className="w-full">Accéder à l'audit</Button>
-                  </Link>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-
-          <div className="mt-6">
-            <Link href="/">
-              <Button variant="outline">Retour au tableau de bord</Button>
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-2xl mx-auto">
-        <div className="mb-8">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-sm text-gray-500">Question {currentQuestion + 1} sur {questions.length}</span>
-            <span className="text-sm font-medium">{Math.round(progress)}%</span>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-200">
+      <HeaderClient />
+      <div className="max-w-5xl mx-auto p-10 mt-20">
+        <h1 className="text-4xl font-bold text-center text-gray-900 mb-6">🚀 Simulateur d’Optimisation</h1>
+
+        {results === null ? (
+          <Card className="p-8 shadow-xl bg-white rounded-xl">
+            {step < questions.length ? (
+              <>
+                <h2 className="text-2xl font-semibold text-gray-900 mb-6">{questions[step].question}</h2>
+                <div className="grid grid-cols-2 gap-6">
+                  {questions[step].options.map((option) => (
+                    <Button key={option} variant={answers[questions[step].id]?.includes(option) ? "default" : "outline"} onClick={() => handleSelect(option)}>
+                      {option}
+                    </Button>
+                  ))}
+                </div>
+                <div className="mt-6 flex justify-between">
+                  {step > 0 && <Button variant="ghost" onClick={handlePrevious}>← Retour</Button>}
+                  <Button onClick={handleNext} disabled={!answers[questions[step].id]?.length}>Suivant →</Button>
+                </div>
+              </>
+            ) : <Button onClick={handleSubmit}>Voir mes résultats</Button>}
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            {results.map((product) => (
+              <Card key={product.id} className="p-6 border border-gray-200 rounded-xl shadow-xl bg-white hover:shadow-2xl transition-all text-center">
+                <CardHeader>
+                  <span className="text-5xl">{product.icon}</span>
+                  <h3 className="text-xl font-bold mt-3">{product.name}</h3>
+                </CardHeader>
+              </Card>
+            ))}
           </div>
-          <Progress value={progress} className="h-2" />
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>{questions[currentQuestion].text}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
-              <RadioGroup
-                value={answers[currentQuestion]}
-                onValueChange={handleAnswer}
-                className="space-y-4"
-              >
-                {questions[currentQuestion].options.map((option, index) => (
-                  <div key={index} className="flex items-center space-x-2">
-                    <RadioGroupItem value={option} id={`option-${index}`} />
-                    <Label htmlFor={`option-${index}`}>{option}</Label>
-                  </div>
-                ))}
-              </RadioGroup>
-
-              <div className="flex justify-between mt-6">
-                <Button
-                  variant="outline"
-                  onClick={handlePrevious}
-                  disabled={currentQuestion === 0}
-                >
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Précédent
-                </Button>
-                <Button
-                  onClick={handleNext}
-                  disabled={!answers[currentQuestion]}
-                >
-                  {currentQuestion === questions.length - 1 ? "Voir les résultats" : "Suivant"}
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        )}
       </div>
     </div>
   );
-}
+};
+
+export default Simulateur;
