@@ -43,27 +43,6 @@ import CharteSignature from "@/pages/charte-signature";
 
 function Router() {
   const { user, isLoading } = useAuth();
-  const [, setLocation] = useLocation();
-
-  useEffect(() => {
-    if (user) {
-      switch (user.type) {
-        case "client":
-          if (user.id) {
-            setLocation(`/dashboard/client/${user.id}`);
-          } else {
-            setLocation("/");
-          }
-          break;
-        case "partner":
-          setLocation("/dashboard/partner");
-          break;
-        default:
-          setLocation("/");
-          break;
-      }
-    }
-  }, [user, setLocation]);
 
   if (isLoading) {
     return (
@@ -75,6 +54,7 @@ function Router() {
 
   return (
     <Switch>
+      {/* Routes publiques accessibles à tous */}
       <Route path="/" component={Home} />
       <Route path="/auth-page" component={AuthPage} />
       <Route path="/nos-services" component={NosServices} />
@@ -89,6 +69,7 @@ function Router() {
       <Route path="/connexion-partner" component={ConnexionPartner} />
       <Route path="/conditions-utilisation" component={ConditionsUtilisation} />
 
+      {/* Routes protégées nécessitant une authentification */}
       {user && (
         <>
           <Route path="/dashboard/client/:userId" component={Dashboard} />
