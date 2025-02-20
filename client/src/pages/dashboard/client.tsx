@@ -1,9 +1,11 @@
 import { useState } from "react";
+import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import HeaderClient from "@/components/HeaderClient";
-import { FolderOpen, DollarSign, ClipboardCheck, BarChart3, CheckCircle, Hourglass, FileSearch, ArrowRightCircle } from "lucide-react";
+import { FolderOpen, DollarSign, ClipboardCheck, BarChart3, ArrowRightCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Loader2 } from "lucide-react";
 
 interface Product {
   id: string;
@@ -18,7 +20,7 @@ interface Product {
 
 // 🔹 Simule des données réalistes pour les audits
 const allAudits: Product[] = [
-  { id: "dfs", name: "Déduction Forfaitaire Spécifique", description: "Optimisation des charges sociales des contrats spéciaux.", status: "not_initiated", gainsPotentiels: 5000, etapeActuelle: 1, etapesTotal: 6 },
+  { id: "dfs", name: "Déduction Forfaitaire Spécifique", description: "Optimisation des charges sociales.", status: "not_initiated", gainsPotentiels: 5000, etapeActuelle: 1, etapesTotal: 6 },
   { id: "foncier", name: "Audit Foncier", description: "Réduction des taxes foncières.", status: "not_initiated", gainsPotentiels: 12000, etapeActuelle: 1, etapesTotal: 6 },
   { id: "ticpe", name: "Audit TICPE", description: "Récupération de la taxe carburant.", status: "pending", gainsPotentiels: 15000, gainsRecuperes: 0, etapeActuelle: 3, etapesTotal: 6 },
   { id: "ursaff", name: "Audit URSSAF", description: "Vérification des cotisations sociales.", status: "pending", gainsPotentiels: 8000, gainsRecuperes: 0, etapeActuelle: 2, etapesTotal: 6 },
@@ -29,9 +31,10 @@ const allAudits: Product[] = [
 const categorizeAudits = (status: Product["status"]) => allAudits.filter(audit => audit.status === status);
 
 export default function DashboardClient() {
+  const { user, isLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<"opportunities" | "pending" | "completed">("opportunities");
 
-  // 🔹 Calcul des KPI
+  // ✅ Gestion des KPI
   const kpiData = {
     dossiersEnCours: categorizeAudits("pending").length,
     gainsPotentiels: allAudits.reduce((sum, audit) => sum + (audit.gainsPotentiels || 0), 0),
@@ -39,16 +42,31 @@ export default function DashboardClient() {
     auditsFinalises: categorizeAudits("completed").length,
   };
 
+  // ✅ Affichage d'un écran de chargement si `user` est en cours de chargement
+  if (isLoading) {
+    return (
+      <div className="flex justify-center min-h-screen items-center">
+        <Loader2 className="h-10 w-10 animate-spin text-gray-500" />
+      </div>
+    );
+  }
+
+  // ✅ Si `user` est null, afficher un message
+  if (!user) {
+    return (
+      <div className="flex justify-center min-h-screen items-center">
+        <p className="text-gray-500">Utilisateur non authentifié.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-100 pb-16">
       <HeaderClient />
-      <div className="max-w-6xl mx-auto px-6 py-24"> {/* 🔹 Espacement corrigé */}
+      <div className="max-w-6xl mx-auto px-6 py-16"> 
 
         {/* 📊 TITRE PREMIUM */}
-        <div className="bg-gradient-to-r from-blue-600 to-blue-800 p-6 rounded-lg shadow-md text-white text-center">
-          <h1 className="text-4xl font-bold">📑 Suivi de vos Audits</h1>
-          <p className="text-lg opacity-80 mt-2">Vue d’ensemble et suivi des gains</p>
-        </div>
+        <SectionTitle title="📑 Suivi de vos Audits" subtitle="Vue d’ensemble et suivi des gains" />
 
         {/* 🔥 SECTION KPI */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-8">
@@ -58,11 +76,7 @@ export default function DashboardClient() {
             { icon: ClipboardCheck, value: kpiData.gainsRecuperes.toLocaleString(), label: "Gains récupérés", color: "text-green-600" },
             { icon: BarChart3, value: kpiData.auditsFinalises, label: "Audits finalisés", color: "text-indigo-500" },
           ].map(({ icon: Icon, value, label, color }) => (
-            <div key={label} className="bg-white p-6 rounded-lg shadow-md flex flex-col items-center">
-              <Icon className={`h-10 w-10 ${color}`} />
-              <h3 className="text-xl font-semibold mt-2">{value}</h3>
-              <p className="text-gray-600">{label}</p>
-            </div>
+            <KpiCard key={label} icon={Icon} value={value} label={label} color={color} />
           ))}
         </div>
 
@@ -81,39 +95,46 @@ export default function DashboardClient() {
           ))}
         </div>
 
-        {/* 📂 TABLEAU AMÉLIORÉ */}
-        <Card className="shadow-xl rounded-lg mt-8">
-          <CardHeader>
-            <CardTitle>📜 {activeTab === "opportunities" ? "Opportunités d'Audit" : activeTab === "pending" ? "Audits en Cours" : "Audits Terminés"}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <table className="w-full border-collapse border border-gray-200 rounded-lg">
-              <thead>
-                <tr className="bg-gray-100 text-gray-700 text-left">
-                  <th className="p-3">Nom</th>
-                  <th className="p-3">Gains Potentiels</th>
-                  <th className="p-3 text-center">Progression</th>
-                  <th className="p-3 text-center">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {categorizeAudits(activeTab === "opportunities" ? "not_initiated" : activeTab === "pending" ? "pending" : "completed").map((audit) => (
-                  <tr key={audit.id} className="border-t hover:bg-gray-50">
-                    <td className="p-3">{audit.name}</td>
-                    <td className="p-3">{audit.gainsPotentiels?.toLocaleString()} €</td>
-                    <td className="p-3"><Progress value={(audit.etapeActuelle! / audit.etapesTotal!) * 100} /></td>
-                    <td className="p-3 text-center">
-                      <Button className="bg-blue-600 text-white flex items-center">
-                        Accéder <ArrowRightCircle className="ml-2 h-5 w-5" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </CardContent>
-        </Card>
+        {/* 📂 TABLEAU */}
+        <AuditTable activeTab={activeTab} />
       </div>
     </div>
+  );
+}
+
+// ✅ Composant pour afficher un titre de section
+function SectionTitle({ title, subtitle }: { title: string; subtitle: string }) {
+  return (
+    <div className="bg-gradient-to-r from-blue-600 to-blue-800 p-6 rounded-lg shadow-md text-white text-center">
+      <h1 className="text-4xl font-bold">{title}</h1>
+      <p className="text-lg opacity-80 mt-2">{subtitle}</p>
+    </div>
+  );
+}
+
+// ✅ Composant pour afficher une carte KPI
+function KpiCard({ icon: Icon, value, label, color }: { icon: any; value: any; label: string; color: string }) {
+  return (
+    <div className="bg-white p-6 rounded-lg shadow-md flex flex-col items-center">
+      <Icon className={`h-10 w-10 ${color}`} />
+      <h3 className="text-xl font-semibold mt-2">{value}</h3>
+      <p className="text-gray-600">{label}</p>
+    </div>
+  );
+}
+
+// ✅ Composant pour afficher le tableau des audits
+function AuditTable({ activeTab }: { activeTab: "opportunities" | "pending" | "completed" }) {
+  return (
+    <Card className="shadow-xl rounded-lg mt-8">
+      <CardHeader>
+        <CardTitle>
+          📜 {activeTab === "opportunities" ? "Opportunités d'Audit" : activeTab === "pending" ? "Audits en Cours" : "Audits Terminés"}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p className="text-gray-500">Aucun audit disponible.</p>
+      </CardContent>
+    </Card>
   );
 }

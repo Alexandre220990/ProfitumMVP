@@ -3,30 +3,59 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Loader2, Calendar } from "lucide-react";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { insertQuoteSchema, type Request, type Quote, type Appointment } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { type Request, type Quote, type Appointment } from "@shared/schema";
 
 export default function PartnerDashboard() {
-  const { user, logoutMutation } = useAuth();
+  const { user, isLoading, logout } = useAuth();
 
-  const { data: requests, isLoading: isLoadingRequests } = useQuery<Request[]>({
+  // ✅ Récupération des demandes disponibles
+  const { data: requests, isLoading: isLoadingRequests } = useQuery({
     queryKey: ["/api/requests/available"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/requests/available");
+      return res.json();
+    },
   });
 
-  const { data: quotes, isLoading: isLoadingQuotes } = useQuery<Quote[]>({
+  // ✅ Récupération des devis partenaires
+  const { data: quotes, isLoading: isLoadingQuotes } = useQuery({
     queryKey: ["/api/quotes/partner"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/quotes/partner");
+      return res.json();
+    },
   });
 
-  if (!user) return null;
+  // ✅ Récupération des rendez-vous
+  const { data: appointments, isLoading: isLoadingAppointments } = useQuery({
+    queryKey: ["/api/appointments/partner"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/appointments/partner");
+      return res.json();
+    },
+  });
+
+  // ✅ Ajoute un écran de chargement si `user` est en cours de chargement
+  if (isLoading) {
+    return (
+      <div className="flex justify-center min-h-screen items-center">
+        <Loader2 className="h-10 w-10 animate-spin text-gray-500" />
+      </div>
+    );
+  }
+
+  // ✅ Affiche un message si `user` est `null`
+  if (!user) {
+    return (
+      <div className="flex justify-center min-h-screen items-center">
+        <p className="text-gray-500">Utilisateur non authentifié.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -34,10 +63,10 @@ export default function PartnerDashboard() {
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <div>
             <h1 className="text-2xl font-bold">Tableau de bord Expert</h1>
-            <p className="text-muted-foreground">Bienvenue, {user.username}</p>
+            <p className="text-muted-foreground">Bienvenue, {user.email}</p>
           </div>
           <div className="space-x-4">
-            <Button variant="outline" onClick={() => logoutMutation.mutate()}>
+            <Button variant="outline" onClick={logout}>
               Déconnexion
             </Button>
           </div>
@@ -53,49 +82,21 @@ export default function PartnerDashboard() {
           </TabsList>
 
           <TabsContent value="requests">
-            <div className="mb-8">
-              <h2 className="text-3xl font-bold">Demandes disponibles</h2>
-              <p className="text-muted-foreground">Parcourez et répondez aux demandes des clients</p>
-            </div>
-
-            {isLoadingRequests ? (
-              <div className="flex justify-center">
-                <Loader2 className="h-8 w-8 animate-spin" />
-              </div>
-            ) : (
-              <div className="grid gap-6">
-                {requests?.map((request) => (
-                  <RequestCard key={request.id} request={request} />
-                ))}
-              </div>
-            )}
+            <Section title="Demandes disponibles" description="Parcourez et répondez aux demandes des clients">
+              {isLoadingRequests ? <Loader /> : <RequestList requests={requests} />}
+            </Section>
           </TabsContent>
 
           <TabsContent value="quotes">
-            <div className="mb-8">
-              <h2 className="text-3xl font-bold">Mes devis</h2>
-              <p className="text-muted-foreground">Suivez l'état de vos devis soumis</p>
-            </div>
-
-            {isLoadingQuotes ? (
-              <div className="flex justify-center">
-                <Loader2 className="h-8 w-8 animate-spin" />
-              </div>
-            ) : (
-              <div className="grid gap-6">
-                {quotes?.map((quote) => (
-                  <QuoteCard key={quote.id} quote={quote} />
-                ))}
-              </div>
-            )}
+            <Section title="Mes devis" description="Suivez l'état de vos devis soumis">
+              {isLoadingQuotes ? <Loader /> : <QuoteList quotes={quotes} />}
+            </Section>
           </TabsContent>
 
           <TabsContent value="appointments">
-            <div className="mb-8">
-              <h2 className="text-3xl font-bold">Rendez-vous</h2>
-              <p className="text-muted-foreground">Gérez vos rendez-vous programmés</p>
-            </div>
-            <AppointmentsList />
+            <Section title="Rendez-vous" description="Gérez vos rendez-vous programmés">
+              {isLoadingAppointments ? <Loader /> : <AppointmentList appointments={appointments} />}
+            </Section>
           </TabsContent>
         </Tabs>
       </main>
@@ -103,150 +104,83 @@ export default function PartnerDashboard() {
   );
 }
 
-function RequestCard({ request }: { request: Request }) {
-  const form = useForm({
-    resolver: zodResolver(insertQuoteSchema),
-    defaultValues: {
-      requestId: request.id,
-      amount: 0,
-      description: "",
-    },
-  });
-
-  const createQuoteMutation = useMutation({
-    mutationFn: async (data: { requestId: number; amount: number; description: string }) => {
-      const res = await apiRequest("POST", "/api/quotes", data);
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/quotes/partner"] });
-      form.reset();
-    },
-  });
-
+// ✅ Composant pour afficher un chargement
+function Loader() {
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex justify-between items-start">
-          <div>
-            <CardTitle>{request.title}</CardTitle>
-            <CardDescription>
-              Posté le {format(new Date(request.createdAt!), "PPP")}
-            </CardDescription>
-          </div>
-          <Badge>{request.status}</Badge>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <p className="text-muted-foreground mb-6">{request.description}</p>
-
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button>Soumettre un devis</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Soumettre un devis</DialogTitle>
-              <DialogDescription>
-                Proposez votre devis pour cette demande
-              </DialogDescription>
-            </DialogHeader>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit((data) => createQuoteMutation.mutate(data))} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="amount"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Montant (€)</FormLabel>
-                      <FormControl>
-                        <Input type="number" {...field} onChange={(e) => field.onChange(Number(e.target.value))} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Description</FormLabel>
-                      <FormControl>
-                        <Textarea {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <DialogFooter>
-                  <Button type="submit" disabled={createQuoteMutation.isPending}>
-                    {createQuoteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Soumettre le devis
-                  </Button>
-                </DialogFooter>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
-      </CardContent>
-    </Card>
+    <div className="flex justify-center">
+      <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+    </div>
   );
 }
 
-function QuoteCard({ quote }: { quote: Quote }) {
+// ✅ Composant générique pour afficher une section
+function Section({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
   return (
-    <Card>
+    <div className="mb-8">
+      <h2 className="text-3xl font-bold">{title}</h2>
+      <p className="text-muted-foreground">{description}</p>
+      <div className="grid gap-6 mt-4">{children}</div>
+    </div>
+  );
+}
+
+// ✅ Liste des demandes disponibles
+function RequestList({ requests }: { requests?: Request[] }) {
+  if (!requests || requests.length === 0) return <p className="text-gray-500">Aucune demande disponible.</p>;
+
+  return requests.map((request) => (
+    <Card key={request.id}>
+      <CardHeader>
+        <CardTitle>{request.title}</CardTitle>
+        <CardDescription>Posté le {format(new Date(request.createdAt!), "PPP")}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <p className="text-muted-foreground mb-6">{request.description}</p>
+        <Badge>{request.status}</Badge>
+      </CardContent>
+    </Card>
+  ));
+}
+
+// ✅ Liste des devis partenaires
+function QuoteList({ quotes }: { quotes?: Quote[] }) {
+  if (!quotes || quotes.length === 0) return <p className="text-gray-500">Aucun devis soumis.</p>;
+
+  return quotes.map((quote) => (
+    <Card key={quote.id}>
       <CardContent className="p-6">
         <div className="flex justify-between items-start">
           <div>
             <p className="font-medium text-lg">€{quote.amount}</p>
             <p className="text-muted-foreground">{quote.description}</p>
           </div>
-          <Badge variant={quote.status === "accepted" ? "default" : "secondary"}>
-            {quote.status}
-          </Badge>
+          <Badge variant={quote.status === "accepted" ? "default" : "secondary"}>{quote.status}</Badge>
         </div>
         <div className="mt-4 text-sm text-muted-foreground">
           Soumis le {format(new Date(quote.createdAt!), "PPP")}
         </div>
       </CardContent>
     </Card>
-  );
+  ));
 }
 
-function AppointmentsList() {
-  const { data: appointments, isLoading } = useQuery<Appointment[]>({
-    queryKey: ["/api/appointments/partner"],
-  });
+// ✅ Liste des rendez-vous
+function AppointmentList({ appointments }: { appointments?: Appointment[] }) {
+  if (!appointments || appointments.length === 0) return <p className="text-gray-500">Aucun rendez-vous prévu.</p>;
 
-  if (isLoading) {
-    return (
-      <div className="flex justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
-
-  return (
-    <div className="grid gap-6">
-      {appointments?.map((appointment) => (
-        <Card key={appointment.id}>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <Calendar className="h-8 w-8 text-muted-foreground" />
-              <div>
-                <p className="font-medium">
-                  {format(new Date(appointment.datetime!), "PPP 'à' p")}
-                </p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Statut : {appointment.status}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-  );
+  return appointments.map((appointment) => (
+    <Card key={appointment.id}>
+      <CardContent className="p-6">
+        <div className="flex items-center gap-4">
+          <Calendar className="h-8 w-8 text-muted-foreground" />
+          <div>
+            <p className="font-medium">
+              {format(new Date(appointment.datetime!), "PPP 'à' p")}
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">Statut : {appointment.status}</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  ));
 }

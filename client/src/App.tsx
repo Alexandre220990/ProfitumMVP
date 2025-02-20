@@ -30,6 +30,7 @@ import CreateAccountClient from "./pages/create-account-client";
 import ConnexionClient from "./pages/connexion-client";
 import ConnexionPartner from "./pages/connexion-partner";
 import ConditionsUtilisation from "./pages/conditions-utilisation";
+import MessagerieClient from "./pages/messagerie-client";
 
 // Produits pages
 import TICPE from "@/pages/produits/ticpe";
@@ -103,8 +104,9 @@ function Router() {
           <Route path="/dossier/:userId" component={DossierDetails} />
           <Route path="/profilclient/:userId" component={ProfilClient} />
           <Route path="/DetailsDossier/:userId" component={DetailsDossier} />
-          <Route path="/marketplace-experts/:userId" component={MarketplaceExperts} />
+          <Route path="/marketplace-experts" component={MarketplaceExperts} />
           <Route path="/simulateur/:userId" component={Simulateur} />
+          <Route path="/messagerie-client/:userId" component={MessagerieClient} />
         </>
       )}
 

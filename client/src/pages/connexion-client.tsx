@@ -12,16 +12,8 @@ export default function ConnexionClient() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const { toast } = useToast();
-  const { loginMutation, user } = useAuth(); // ✅ Ajout de `user` pour gérer la redirection
+  const { loginMutation } = useAuth(); 
   const [, setLocation] = useLocation();
-
-  // ✅ Vérification de l'état de connexion pour rediriger automatiquement
-  useEffect(() => {
-    if (user) {
-      console.log("Utilisateur connecté, redirection...");
-      setLocation(user.type === "client" ? "/dashboard/client" : "/dashboard/partner");
-    }
-  }, [user, setLocation]);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -31,14 +23,26 @@ export default function ConnexionClient() {
     setError("");
 
     try {
-      await loginMutation.mutateAsync({ email, password }); // ✅ Correction et gestion propre
+      const response = await loginMutation.mutateAsync({ email, password });
+
+      if (response?.success && response?.data) {
+        toast({
+          title: "Connexion réussie",
+          description: "Vous êtes connecté.",
+          variant: "success",
+        });
+
+        // ✅ Redirige uniquement après une connexion réussie
+        setLocation(`/dashboard/client/${response.data.id}`);
+      } else {
+        throw new Error("Identifiants invalides");
+      }
     } catch (err: any) {
       console.error("Erreur de connexion:", err);
-      const errorMessage = err.message || "Identifiants invalides";
-      setError(errorMessage);
+      setError(err.message || "Identifiants invalides");
       toast({
         title: "Erreur de connexion",
-        description: errorMessage,
+        description: err.message || "Identifiants invalides",
         variant: "destructive",
       });
     }
@@ -50,7 +54,7 @@ export default function ConnexionClient() {
       <div className="hidden md:flex w-1/2 bg-gradient-to-r from-blue-600 to-blue-800 text-white p-10 flex-col justify-center">
         <h1 className="text-4xl font-extrabold">Bienvenue sur Profitum !</h1>
         <p className="mt-4 text-lg opacity-90">
-          Connectez-vous et accédez à vos opportunités en quelques secondes.
+          Cher client, connectez-vous pour faire des économies dès maintenant.
         </p>
         <ShieldCheck className="w-16 h-16 mt-6 text-white opacity-90" />
         <p className="mt-2 text-sm opacity-80">
