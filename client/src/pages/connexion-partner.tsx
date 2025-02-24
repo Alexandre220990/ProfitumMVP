@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Mail, Lock, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import { PARTNER_TEST_ID } from "@shared/constants"; // ✅ Import de l'ID partenaire de test
 
 export default function ConnexionPartner() {
   const [email, setEmail] = useState("");
@@ -13,7 +12,7 @@ export default function ConnexionPartner() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const { toast } = useToast();
-  const { loginMutation } = useAuth(); // ❌ Suppression de `user`
+  const { loginMutation } = useAuth();
   const [, setLocation] = useLocation();
 
   const handleLogin = async () => {
@@ -24,25 +23,16 @@ export default function ConnexionPartner() {
     setError("");
 
     try {
-      const response = await loginMutation.mutateAsync({ email, password });
+      const user = await loginMutation.mutateAsync({ email, password });
 
-      if (response?.success && response?.data) {
-        const userId = response.data.id;
-
+      if (user.type === "partner") {
         toast({
           title: "Connexion réussie",
-          description: "Vous êtes connecté.",
-          variant: "success",
+          description: "Bienvenue sur votre tableau de bord partenaire.",
         });
-
-        // ✅ Vérification stricte de l'ID du partenaire
-        if (userId === 2) {
-          setLocation(`/dashboard/partner/${userId}`);
-        } else {
-          setLocation("/Tarifs"); // ✅ Redirection vers `/Tarifs` si l'ID ne correspond pas
-        }
+        setLocation(`/dashboard/partner/${user.id}`); // Use the user ID from the response
       } else {
-        throw new Error("Identifiants invalides");
+        setLocation("/Tarifs");
       }
     } catch (err: any) {
       console.error("Erreur de connexion:", err);
@@ -57,7 +47,6 @@ export default function ConnexionPartner() {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      {/* Section Image & Branding */}
       <div className="hidden md:flex w-1/2 bg-gradient-to-r from-blue-600 to-blue-800 text-white p-10 flex-col justify-center">
         <h1 className="text-4xl font-extrabold">Bienvenue sur Profitum !</h1>
         <p className="mt-4 text-lg opacity-90">
@@ -67,12 +56,11 @@ export default function ConnexionPartner() {
         <p className="mt-2 text-sm opacity-80">Des milliers d'opportunités, à portée de main.</p>
       </div>
 
-      {/* Section Connexion */}
       <div className="w-full md:w-1/2 flex items-center justify-center px-6">
         <div className="max-w-md w-full space-y-6 bg-white p-8 rounded-lg shadow-lg">
           <h2 className="text-3xl font-bold text-center text-gray-800">Connexion</h2>
           <p className="text-center text-gray-500">
-            Pas encore inscrit ? Consultez nos formules et choisissez celle qui correspond à vos besoins. <br />
+            Pas encore inscrit ? Consultez nos formules et choisissez celle qui correspond à vos besoins.
           </p>
           <div className="text-center">
             <Link href="/Tarifs" className="text-blue-600 font-medium hover:underline">
@@ -80,7 +68,6 @@ export default function ConnexionPartner() {
             </Link>
           </div>
 
-          {/* Formulaire */}
           <div className="space-y-4">
             <div className="relative">
               <Mail className="absolute left-3 top-3 text-gray-400 w-5 h-5" />
