@@ -4,6 +4,9 @@ import { type User } from "@shared/schema";
 
 const MemorySessionStore = MemoryStore(session);
 
+// ✅ ID du partenaire de test (exposé pour utilisation dans d'autres fichiers)
+export const PARTNER_TEST_ID = 2;
+
 // ✅ Utilisateurs de test pré-configurés
 const testUsers: User[] = [
   {
@@ -21,7 +24,7 @@ const testUsers: User[] = [
     createdAt: new Date(),
   },
   {
-    id: 2,
+    id: 2, // ✅ Référence dynamique à l'ID partenaire
     username: "Partenaire",
     email: "partenaire@gmail.com",
     password: "partenaire",
@@ -33,7 +36,7 @@ const testUsers: User[] = [
     postalCode: "69000",
     siret: "12345678901234",
     createdAt: new Date(),
-  }
+  },
 ];
 
 export interface IStorage {
@@ -47,18 +50,18 @@ export interface IStorage {
   saveClientReport(userId: number, report: any): Promise<void>;
   getClientReports(userId: number): Promise<any[]>;
 
-  // Session
+  // Gestion des sessions
   sessionStore: session.Store;
 }
 
 class MemoryStorage implements IStorage {
-  private users: User[] = [...testUsers]; // ✅ Stockage des utilisateurs
+  private users: User[] = [...testUsers]; // ✅ Stockage sécurisé des utilisateurs
   private clientReports: Record<number, any[]> = {}; // ✅ Stockage des rapports clients
   sessionStore: session.Store;
 
   constructor() {
     this.sessionStore = new MemorySessionStore({
-      checkPeriod: 86400000, // Nettoyage toutes les 24 heures
+      checkPeriod: 86400000, // Nettoyage automatique toutes les 24 heures
     });
   }
 
@@ -70,15 +73,15 @@ class MemoryStorage implements IStorage {
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return this.users.find(u => u.username === username);
+    return this.users.find(u => u.username.toLowerCase() === username.toLowerCase());
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    return this.users.find(u => u.email === email);
+    return this.users.find(u => u.email.toLowerCase() === email.toLowerCase());
   }
 
   async createUser(user: Omit<User, "id" | "createdAt">): Promise<User> {
-    const newUser = {
+    const newUser: User = {
       ...user,
       id: this.users.length + 1,
       createdAt: new Date(),
@@ -102,5 +105,5 @@ class MemoryStorage implements IStorage {
   }
 }
 
-// ✅ Exportation de l'instance
+// ✅ Exportation de l'instance pour une utilisation centralisée
 export const storage = new MemoryStorage();

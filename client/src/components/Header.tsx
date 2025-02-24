@@ -26,7 +26,7 @@ export default function Header() {
           </Link>
         </nav>
 
-        <Link href="/auth-page">
+        <Link href="/connexion-client">
           <button className="px-4 py-2 border border-blue-600 text-blue-600 rounded-lg font-medium hover:bg-blue-600 hover:text-white transition">
             Se connecter
           </button>

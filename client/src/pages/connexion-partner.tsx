@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Mail, Lock, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
+import { PARTNER_TEST_ID } from "@shared/constants"; // ✅ Import de l'ID partenaire de test
 
 export default function ConnexionPartner() {
   const [email, setEmail] = useState("");
@@ -12,7 +13,7 @@ export default function ConnexionPartner() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const { toast } = useToast();
-  const { loginMutation, user } = useAuth(); // ✅ Ajout de `user` pour gérer la redirection
+  const { loginMutation } = useAuth(); // ❌ Suppression de `user`
   const [, setLocation] = useLocation();
 
   const handleLogin = async () => {
@@ -26,14 +27,20 @@ export default function ConnexionPartner() {
       const response = await loginMutation.mutateAsync({ email, password });
 
       if (response?.success && response?.data) {
+        const userId = response.data.id;
+
         toast({
           title: "Connexion réussie",
           description: "Vous êtes connecté.",
           variant: "success",
         });
 
-        // ✅ Redirige uniquement après une connexion réussie
-        setLocation(`/dashboard/partner/${response.data.id}`);
+        // ✅ Vérification stricte de l'ID du partenaire
+        if (userId === 2) {
+          setLocation(`/dashboard/partner/${userId}`);
+        } else {
+          setLocation("/Tarifs"); // ✅ Redirection vers `/Tarifs` si l'ID ne correspond pas
+        }
       } else {
         throw new Error("Identifiants invalides");
       }
@@ -54,12 +61,10 @@ export default function ConnexionPartner() {
       <div className="hidden md:flex w-1/2 bg-gradient-to-r from-blue-600 to-blue-800 text-white p-10 flex-col justify-center">
         <h1 className="text-4xl font-extrabold">Bienvenue sur Profitum !</h1>
         <p className="mt-4 text-lg opacity-90">
-          Cher expert, connectez-vous pour accédez à vos opportunités en quelques secondes.
+          Cher expert, connectez-vous pour accéder à vos opportunités en quelques secondes.
         </p>
         <ShieldCheck className="w-16 h-16 mt-6 text-white opacity-90" />
-        <p className="mt-2 text-sm opacity-80">
-          Des milliers d'opportunités, à portée de main.
-        </p>
+        <p className="mt-2 text-sm opacity-80">Des milliers d'opportunités, à portée de main.</p>
       </div>
 
       {/* Section Connexion */}
@@ -67,11 +72,10 @@ export default function ConnexionPartner() {
         <div className="max-w-md w-full space-y-6 bg-white p-8 rounded-lg shadow-lg">
           <h2 className="text-3xl font-bold text-center text-gray-800">Connexion</h2>
           <p className="text-center text-gray-500">
-            Vous êtes expert spécialisé dans l'accompagnement aux entreprises ? <br />
-            Rejoignez dès maintenant Profitum pour accéder à nos outils révolutionnaires et accroître votre visibilité.
+            Pas encore inscrit ? Consultez nos formules et choisissez celle qui correspond à vos besoins. <br />
           </p>
           <div className="text-center">
-            <Link href="/create-account-partner" className="text-blue-600 font-medium hover:underline">
+            <Link href="/Tarifs" className="text-blue-600 font-medium hover:underline">
               Créez un compte
             </Link>
           </div>
@@ -118,7 +122,7 @@ export default function ConnexionPartner() {
             <Button 
               onClick={handleLogin} 
               className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3"
-              disabled={loginMutation.isPending} // ✅ Correction
+              disabled={loginMutation.isPending}
             >
               {loginMutation.isPending ? "Connexion..." : "Se connecter"}
             </Button>

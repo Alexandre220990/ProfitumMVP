@@ -41,6 +41,9 @@ import Social from "@/pages/produits/social";
 import ExpertPage from "@/pages/expert-page";
 import CharteSignature from "@/pages/charte-signature";
 
+// Dossiers clients
+import DossierClient from "@/pages/dossier-client/1";
+
 function Router() {
   const { user, isLoading } = useAuth();
 
@@ -68,12 +71,12 @@ function Router() {
       <Route path="/connexion-client" component={ConnexionClient} />
       <Route path="/connexion-partner" component={ConnexionPartner} />
       <Route path="/conditions-utilisation" component={ConditionsUtilisation} />
+      <Route path="/dashboard/partner" component={PartnerDashboard} />
 
       {/* Routes protégées nécessitant une authentification */}
       {user && (
         <>
           <Route path="/dashboard/client/:userId" component={Dashboard} />
-          <Route path="/dashboard/partner/:userId" component={PartnerDashboard} />
           <Route path="/Produits/msa/:userId" component={MSA} />
           <Route path="/Produits/dfs/:userId" component={DFS} />
           <Route path="/Produits/ticpe/:userId" component={TICPE} />
@@ -88,6 +91,7 @@ function Router() {
           <Route path="/marketplace-experts" component={MarketplaceExperts} />
           <Route path="/simulateur/:userId" component={Simulateur} />
           <Route path="/messagerie-client/:userId" component={MessagerieClient} />
+          <Route path="/dossier-client/1" component={DossierClient} />
         </>
       )}
 

@@ -1,186 +1,248 @@
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useAuth } from "@/hooks/use-auth";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { Loader2, Calendar } from "lucide-react";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { format } from "date-fns";
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { type Request, type Quote, type Appointment } from "@shared/schema";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { CheckCircle2, XCircle, Clock, Euro, FileText, Users } from "lucide-react";
+import { useLocation } from "wouter";
+import { useState } from "react";
 
 export default function PartnerDashboard() {
-  const { user, isLoading, logout } = useAuth();
+  const [, setLocation] = useLocation();
+  const [auditTypeFilter, setAuditTypeFilter] = useState("all");
 
-  // ✅ Récupération des demandes disponibles
-  const { data: requests, isLoading: isLoadingRequests } = useQuery({
-    queryKey: ["/api/requests/available"],
-    queryFn: async () => {
-      const res = await apiRequest("GET", "/api/requests/available");
-      return res.json();
-    },
-  });
+  const handleRowClick = (id: number) => {
+    setLocation(`/dossier-client/${id}`);
 
-  // ✅ Récupération des devis partenaires
-  const { data: quotes, isLoading: isLoadingQuotes } = useQuery({
-    queryKey: ["/api/quotes/partner"],
-    queryFn: async () => {
-      const res = await apiRequest("GET", "/api/quotes/partner");
-      return res.json();
-    },
-  });
+  // ✅ Données statiques réalistes
+  const stats = {
+    pendingRequests: 5,
+    activeFiles: 5,
+    monthlyRevenue: 12850,
+    conversionRate: 53,
+  };
 
-  // ✅ Récupération des rendez-vous
-  const { data: appointments, isLoading: isLoadingAppointments } = useQuery({
-    queryKey: ["/api/appointments/partner"],
-    queryFn: async () => {
-      const res = await apiRequest("GET", "/api/appointments/partner");
-      return res.json();
-    },
-  });
+  const incomingRequests = [
+    { id: 1, clientName: "Paul Lambert", auditType: "Audit TICPE", date: "01/03/2025", estimatedAmount: 4200, documentStatus: "2/10", status: "pending" },
+    { id: 2, clientName: "Isabelle Moreau", auditType: "Audit MSA", date: "28/02/2025", estimatedAmount: 3100, documentStatus: "5/7", status: "pending" },
+    { id: 3, clientName: "Alexandre Girard", auditType: "Audit DFS", date: "27/02/2025", estimatedAmount: 2900, documentStatus: "2/3", status: "pending" },
+    { id: 4, clientName: "Sophie Lefevre", auditType: "Audit Social", date: "26/02/2025", estimatedAmount: 3500, documentStatus: "4/4", status: "pending" },
+    { id: 5, clientName: "Martin Dubois", auditType: "Audit Fiscal", date: "25/02/2025", estimatedAmount: 5000, documentStatus: "2/2", status: "pending" },
+  ];
 
-  // ✅ Ajoute un écran de chargement si `user` est en cours de chargement
-  if (isLoading) {
-    return (
-      <div className="flex justify-center min-h-screen items-center">
-        <Loader2 className="h-10 w-10 animate-spin text-gray-500" />
-      </div>
-    );
-  }
+  const activeFiles = [
+    { id: 6, clientName: "Jean Dupont", auditType: "Audit TICPE", creationDate: "10/01/2025", documentStatus: "7/10", lastUpdate: "20/02/2025", status: "accepted" },
+    { id: 7, clientName: "Sophie Martin", auditType: "Audit TICPE", creationDate: "15/02/2025", documentStatus: "10/10", lastUpdate: "18/02/2025", status: "accepted" },
+    { id: 8, clientName: "David Morel", auditType: "Audit URSAFF", creationDate: "20/12/2024", documentStatus: "3/5", lastUpdate: "15/02/2025", status: "accepted" },
+    { id: 9, clientName: "Émilie Bernard", auditType: "Audit TICPE", creationDate: "05/10/2024", documentStatus: "2/10", lastUpdate: "10/02/2025", status: "accepted" },
+    { id: 10, clientName: "Antoine Rousseau", auditType: "Audit Social", creationDate: "08/02/2025", documentStatus: "3/4", lastUpdate: "05/02/2025", status: "accepted" },
+  ];
 
-  // ✅ Affiche un message si `user` est `null`
-  if (!user) {
-    return (
-      <div className="flex justify-center min-h-screen items-center">
-        <p className="text-gray-500">Utilisateur non authentifié.</p>
-      </div>
-    );
-  }
+  const closedFiles = [
+    { id: 11, clientName: "Julien Mercier", auditType: "Audit TICPE", closureDate: "01/02/2025", estimatedAmount: 7800, obtainedAmount: 5000, fiability: 64, status: "success", comments: "" },
+    { id: 12, clientName: "Céline Leroy", auditType: "Audit TICPE", closureDate: "28/01/2025", estimatedAmount: 3000, obtainedAmount: 4000, fiability: 67, status: "success", comments: "" },
+    { id: 13, clientName: "Vincent Morel", auditType: "Audit DFS", closureDate: "25/01/2025", estimatedAmount: 10000, obtainedAmount: 3000, fiability: 30, status: "success", comments: "" },
+    { id: 14, clientName: "Lucie Garnier", auditType: "Audit Social", closureDate: "22/01/2025", estimatedAmount: 1500, obtainedAmount: 1350, fiability: 90, status: "success", comments: "" },
+    { id: 15, clientName: "Michel Durand", auditType: "Audit MSA", closureDate: "20/01/2025", estimatedAmount: 2500, obtainedAmount: null, fiability: 0, status: "rejected", comments: "Hors périmètre" },
+    { id: 16, clientName: "Hugo Fabre", auditType: "Audit Foncier", closureDate: "18/01/2025", estimatedAmount: 500, obtainedAmount: null, fiability: 0, status: "rejected", comments: "Faible potentiel" },
+    { id: 17, clientName: "Marion Petit", auditType: "Audit TICPE", closureDate: "15/01/2025", estimatedAmount: 200, obtainedAmount: null, fiability: 0, status: "rejected", comments: "Abandon client" },
+  ];
+
+  // ✅ Fonction pour récupérer la couleur du statut
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "pending":
+        return "text-yellow-600 bg-yellow-100";
+      case "accepted":
+        return "text-green-600 bg-green-100";
+      case "rejected":
+        return "text-red-600 bg-red-100";
+      case "in_progress":
+        return "text-blue-600 bg-blue-100";
+      case "closed":
+        return "text-gray-600 bg-gray-100";
+      default:
+        return "text-gray-600 bg-gray-100";
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold">Tableau de bord Expert</h1>
-            <p className="text-muted-foreground">Bienvenue, {user.email}</p>
-          </div>
-          <div className="space-x-4">
-            <Button variant="outline" onClick={logout}>
-              Déconnexion
-            </Button>
-          </div>
-        </div>
+    <div className="min-h-screen bg-gray-50 p-6">
+      <header className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Tableau de bord</h1>
+        <Button onClick={() => setLocation("/profile")}>Mon Profil</Button>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
-        <Tabs defaultValue="requests">
-          <TabsList className="mb-8">
-            <TabsTrigger value="requests">Demandes disponibles</TabsTrigger>
-            <TabsTrigger value="quotes">Mes devis</TabsTrigger>
-            <TabsTrigger value="appointments">Rendez-vous</TabsTrigger>
-          </TabsList>
+      {/* ✅ Statistiques */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <Card>
+          <CardContent className="flex items-center justify-between pt-6">
+            <div>
+              <p className="text-sm font-medium text-gray-500">Demandes en attente</p>
+              <p className="text-2xl font-bold">{stats.pendingRequests}</p>
+            </div>
+            <Clock className="w-8 h-8 text-yellow-600" />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center justify-between pt-6">
+            <div>
+              <p className="text-sm font-medium text-gray-500">Dossiers actifs</p>
+              <p className="text-2xl font-bold">{stats.activeFiles}</p>
+            </div>
+            <FileText className="w-8 h-8 text-blue-600" />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center justify-between pt-6">
+            <div>
+              <p className="text-sm font-medium text-gray-500">CA du mois</p>
+              <p className="text-2xl font-bold">{stats.monthlyRevenue} €</p>
+            </div>
+            <Euro className="w-8 h-8 text-green-600" />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center justify-between pt-6">
+            <div>
+              <p className="text-sm font-medium text-gray-500">Taux de conversion</p>
+              <p className="text-2xl font-bold">{stats.conversionRate}%</p>
+            </div>
+            <Users className="w-8 h-8 text-purple-600" />
+          </CardContent>
+        </Card>
+      </div>
 
-          <TabsContent value="requests">
-            <Section title="Demandes disponibles" description="Parcourez et répondez aux demandes des clients">
-              {isLoadingRequests ? <Loader /> : <RequestList requests={requests} />}
-            </Section>
-          </TabsContent>
+      {/* ✅ Onglets */}
+      <Tabs defaultValue="requests" className="space-y-6 mt-6">
+        <TabsList>
+          <TabsTrigger value="requests">Demandes entrantes</TabsTrigger>
+          <TabsTrigger value="active">Dossiers actifs</TabsTrigger>
+          <TabsTrigger value="closed">Dossiers clôturés</TabsTrigger>
+        </TabsList>
 
-          <TabsContent value="quotes">
-            <Section title="Mes devis" description="Suivez l'état de vos devis soumis">
-              {isLoadingQuotes ? <Loader /> : <QuoteList quotes={quotes} />}
-            </Section>
-          </TabsContent>
+        {/* ✅ Demandes entrantes */}
+        <TabsContent value="requests">
+          <Card>
+            <CardHeader>
+              <CardTitle>Demandes en attente</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Client</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Montant</TableHead>
+                    <TableHead>Documents</TableHead>
+                    <TableHead>Statut</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {incomingRequests.map((request) => (
+                    <TableRow key={request.id} className="cursor-pointer hover:bg-gray-100" onClick={() => handleRowClick(request.id)}>
+                      <TableCell>{request.clientName}</TableCell>
+                      <TableCell>{request.auditType}</TableCell>
+                      <TableCell>{request.date}</TableCell>
+                      <TableCell>{request.estimatedAmount} €</TableCell>
+                      <TableCell>{request.documentStatus}</TableCell>
+                      <TableCell>
+                        <Badge className={getStatusColor(request.status)}>
+                          {request.status}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-          <TabsContent value="appointments">
-            <Section title="Rendez-vous" description="Gérez vos rendez-vous programmés">
-              {isLoadingAppointments ? <Loader /> : <AppointmentList appointments={appointments} />}
-            </Section>
-          </TabsContent>
-        </Tabs>
-      </main>
+        {/* ✅ Dossiers en cours */}
+        <TabsContent value="active">
+          <Card>
+            <CardHeader>
+              <CardTitle>Dossiers en cours</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Client</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Date de création</TableHead>
+                    <TableHead>Document</TableHead>
+                    <TableHead>Dernière mise à jour</TableHead>
+                    <TableHead>Statut</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {activeFiles.map((file) => (
+                    <TableRow key={file.id}>
+                      <TableCell>{file.clientName}</TableCell>
+                      <TableCell>{file.auditType}</TableCell>
+                      <TableCell>{file.creationDate}</TableCell>
+                      <TableCell>{file.documentStatus}</TableCell>
+                      <TableCell>{file.lastUpdate}</TableCell>
+                      <TableCell>
+                        <Badge className={getStatusColor(file.status)}>
+                          {file.status}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ✅ Dossiers clôturés */}
+        <TabsContent value="closed">
+          <Card>
+            <CardHeader>
+              <CardTitle>Dossiers clôturés</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Client</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Date de clôture</TableHead>
+                    <TableHead>Montant Estimé</TableHead>
+                    <TableHead>Montant Obtenu</TableHead>
+                    <TableHead>Fiabilité</TableHead>
+                    <TableHead>Statut</TableHead>
+                    <TableHead>Commentaires</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {closedFiles.map((file) => (
+                    <TableRow key={file.id}>
+                      <TableCell>{file.clientName}</TableCell>
+                      <TableCell>{file.auditType}</TableCell>
+                      <TableCell>{file.closureDate}</TableCell>
+                      <TableCell>{file.estimatedAmount} €</TableCell>
+                      <TableCell>{file.obtainedAmount} €</TableCell>
+                      <TableCell>{file.fiability}%</TableCell>
+                      <TableCell>
+                        <Badge className={getStatusColor(file.status)}>
+                          {file.status === "success" ? "Réussi" : "Refusé"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{file.comments}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
-  );
-}
-
-// ✅ Composant pour afficher un chargement
-function Loader() {
-  return (
-    <div className="flex justify-center">
-      <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
-    </div>
-  );
-}
-
-// ✅ Composant générique pour afficher une section
-function Section({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
-  return (
-    <div className="mb-8">
-      <h2 className="text-3xl font-bold">{title}</h2>
-      <p className="text-muted-foreground">{description}</p>
-      <div className="grid gap-6 mt-4">{children}</div>
-    </div>
-  );
-}
-
-// ✅ Liste des demandes disponibles
-function RequestList({ requests }: { requests?: Request[] }) {
-  if (!requests || requests.length === 0) return <p className="text-gray-500">Aucune demande disponible.</p>;
-
-  return requests.map((request) => (
-    <Card key={request.id}>
-      <CardHeader>
-        <CardTitle>{request.title}</CardTitle>
-        <CardDescription>Posté le {format(new Date(request.createdAt!), "PPP")}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <p className="text-muted-foreground mb-6">{request.description}</p>
-        <Badge>{request.status}</Badge>
-      </CardContent>
-    </Card>
-  ));
-}
-
-// ✅ Liste des devis partenaires
-function QuoteList({ quotes }: { quotes?: Quote[] }) {
-  if (!quotes || quotes.length === 0) return <p className="text-gray-500">Aucun devis soumis.</p>;
-
-  return quotes.map((quote) => (
-    <Card key={quote.id}>
-      <CardContent className="p-6">
-        <div className="flex justify-between items-start">
-          <div>
-            <p className="font-medium text-lg">€{quote.amount}</p>
-            <p className="text-muted-foreground">{quote.description}</p>
-          </div>
-          <Badge variant={quote.status === "accepted" ? "default" : "secondary"}>{quote.status}</Badge>
-        </div>
-        <div className="mt-4 text-sm text-muted-foreground">
-          Soumis le {format(new Date(quote.createdAt!), "PPP")}
-        </div>
-      </CardContent>
-    </Card>
-  ));
-}
-
-// ✅ Liste des rendez-vous
-function AppointmentList({ appointments }: { appointments?: Appointment[] }) {
-  if (!appointments || appointments.length === 0) return <p className="text-gray-500">Aucun rendez-vous prévu.</p>;
-
-  return appointments.map((appointment) => (
-    <Card key={appointment.id}>
-      <CardContent className="p-6">
-        <div className="flex items-center gap-4">
-          <Calendar className="h-8 w-8 text-muted-foreground" />
-          <div>
-            <p className="font-medium">
-              {format(new Date(appointment.datetime!), "PPP 'à' p")}
-            </p>
-            <p className="text-sm text-muted-foreground mt-1">Statut : {appointment.status}</p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  ));
+    )
+  }
 }

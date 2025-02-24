@@ -6,21 +6,23 @@
     "tsBuildInfoFile": "./node_modules/typescript/tsbuildinfo",
     "noEmit": true,
     "module": "ESNext",
+    "target": "ESNext",               // ✅ Ajout pour meilleure compatibilité
     "strict": true,
     "lib": ["esnext", "dom", "dom.iterable"],
     "jsx": "preserve",
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "allowImportingTsExtensions": true,
-    "moduleResolution": "node",  // ✅ Correction
-    "resolveJsonModule": true,   // ✅ Pour supporter les imports JSON
-    "allowJs": true,             // ✅ Permet d'importer du JS
-    "baseUrl": ".",              // ✅ Corrigé pour inclure `server/`
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "allowJs": true,
+    "baseUrl": ".",                   // ✅ OK pour inclure `server/`
+    "rootDir": ".",                    // ✅ Meilleure gestion des fichiers compilés
     "types": ["node", "vite/client"],
+    "forceConsistentCasingInFileNames": true, // ✅ Évite les erreurs de casse sur Windows/macOS
     "paths": {
-      "@/*": ["./client/src/*", "./server/*"],  // ✅ Ajout de `server/`
-      "@shared/*": ["./shared/*"],              // ✅ OK pour `shared/`
-      "@server/*": ["./server/*"]               // ✅ Ajout d'un alias spécifique pour le serveur
+      "@/*": ["./client/src/*"],       // ✅ Restreint @/* uniquement au client pour éviter les conflits
+      "@shared/*": ["./shared/*"],     // ✅ Alias propre pour shared
+      "@server/*": ["./server/*"]      // ✅ Alias propre pour server
     }
   }
 }
