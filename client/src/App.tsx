@@ -32,6 +32,12 @@ import ConnexionPartner from "./pages/connexion-partner";
 import ConditionsUtilisation from "./pages/conditions-utilisation";
 import MessagerieClient from "./pages/messagerie-client";
 
+// Pages de dossiers statiques
+import DossierClient1 from "@/pages/dossier-client/1";
+import DossierClient6 from "@/pages/dossier-client/6";
+import DossierClient7 from "@/pages/dossier-client/7";
+import DossierClient15 from "@/pages/dossier-client/15";
+
 // Produits pages
 import TICPE from "@/pages/produits/ticpe";
 import Foncier from "@/pages/produits/foncier";
@@ -40,7 +46,6 @@ import DFS from "@/pages/produits/dfs";
 import Social from "@/pages/produits/social";
 import ExpertPage from "@/pages/expert-page";
 import CharteSignature from "@/pages/charte-signature";
-import DossierClient from "@/pages/dossier-client/1";
 
 function Router() {
   const { user, isLoading } = useAuth();
@@ -73,6 +78,12 @@ function Router() {
       {/* Routes protégées nécessitant une authentification */}
       {user && (
         <>
+          {/* Routes de dossiers statiques */}
+          <Route path="/dossier-client/1" component={DossierClient1} />
+          <Route path="/dossier-client/6" component={DossierClient6} />
+          <Route path="/dossier-client/7" component={DossierClient7} />
+          <Route path="/dossier-client/15" component={DossierClient15} />
+
           <Route path="/dashboard/client/:userId" component={Dashboard} />
           <Route path="/dashboard/partner/:userId">
             {(params) => <PartnerDashboard params={params} />}
@@ -91,7 +102,6 @@ function Router() {
           <Route path="/marketplace-experts" component={MarketplaceExperts} />
           <Route path="/simulateur/:userId" component={Simulateur} />
           <Route path="/messagerie-client/:userId" component={MessagerieClient} />
-          <Route path="/dossier-client/:userId" component={DossierClient} />
         </>
       )}
 
