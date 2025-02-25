@@ -47,6 +47,10 @@ import DossierClient13 from "@/pages/dossier-client/13";
 import DossierClient14 from "@/pages/dossier-client/14";
 import DossierClient16 from "@/pages/dossier-client/16";
 import DossierClient17 from "@/pages/dossier-client/17";
+import DossierClient5 from "@/pages/dossier-client/5";
+import DossierClient8 from "@/pages/dossier-client/8";
+import DossierClient9 from "@/pages/dossier-client/9";
+import DossierClient10 from "@/pages/dossier-client/10";
 
 // Produits pages
 import TICPE from "@/pages/produits/ticpe";
@@ -96,8 +100,12 @@ function Router() {
           <Route path="/dossier-client/2" component={DossierClient2} />
           <Route path="/dossier-client/3" component={DossierClient3} />
           <Route path="/dossier-client/4" component={DossierClient4} />
+          <Route path="/dossier-client/5" component={DossierClient5} />
           <Route path="/dossier-client/6" component={DossierClient6} />
           <Route path="/dossier-client/7" component={DossierClient7} />
+          <Route path="/dossier-client/8" component={DossierClient8} />
+          <Route path="/dossier-client/9" component={DossierClient9} />
+          <Route path="/dossier-client/10" component={DossierClient10} />
           <Route path="/dossier-client/11" component={DossierClient11} />
           <Route path="/dossier-client/12" component={DossierClient12} />
           <Route path="/dossier-client/13" component={DossierClient13} />

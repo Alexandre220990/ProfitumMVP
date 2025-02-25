@@ -14,24 +14,13 @@ const PartnerDashboard = () => {
   const [auditTypeFilter, setAuditTypeFilter] = useState("all");
 
   const handleRowClick = (id: number) => {
-    // La redirection se fait maintenant vers les pages statiques spécifiques
-    switch (id) {
-      case 1:
-        setLocation('/dossier-client/1');
-        break;
-      case 6:
-        setLocation('/dossier-client/6');
-        break;
-      case 7:
-        setLocation('/dossier-client/7');
-        break;
-      case 15:
-        setLocation('/dossier-client/15');
-        break;
-      default:
-        // Pour les autres IDs, rediriger vers une page par défaut ou afficher un message
-        console.warn(`Page statique non disponible pour l'ID ${id}`);
-        setLocation('/dossier-client/1');
+    // La redirection se fait vers les pages statiques spécifiques
+    const validIds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17];
+    if (validIds.includes(id)) {
+      setLocation(`/dossier-client/${id}`);
+    } else {
+      console.warn(`Page statique non disponible pour l'ID ${id}`);
+      setLocation('/dashboard/partner');
     }
   };
 
