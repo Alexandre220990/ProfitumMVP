@@ -80,7 +80,7 @@ const PartnerDashboard = () => {
     <div className="min-h-screen bg-gray-50 p-6">
       <header className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Tableau de bord</h1>
-        <Button onClick={() => setLocation("/profile")}>Mon Profil</Button>
+        <Button onClick={() => setLocation("/profile/expert")}>Mon Profil</Button>
       </header>
 
       {/* ✅ Statistiques */}
