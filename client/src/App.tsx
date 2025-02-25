@@ -62,7 +62,9 @@ import ExpertPage from "@/pages/expert-page";
 import CharteSignature from "@/pages/charte-signature";
 import MessagerieClient from "./pages/messagerie-client";
 
-
+// Ajouter les imports des nouvelles pages de profil
+import ExpertProfile from "@/pages/profile/expert";
+import ClientProfile from "@/pages/profile/client";
 
 function Router() {
   const { user, isLoading } = useAuth();
@@ -95,6 +97,10 @@ function Router() {
       {/* Routes protégées nécessitant une authentification */}
       {user && (
         <>
+          {/* Nouvelles routes de profil */}
+          <Route path="/profile/expert" component={ExpertProfile} />
+          <Route path="/profile/client" component={ClientProfile} />
+
           {/* Routes de dossiers statiques */}
           <Route path="/dossier-client/1" component={DossierClient1} />
           <Route path="/dossier-client/2" component={DossierClient2} />
