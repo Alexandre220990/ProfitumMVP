@@ -30,10 +30,12 @@ import CreateAccountClient from "./pages/create-account-client";
 import ConnexionClient from "./pages/connexion-client";
 import ConnexionPartner from "./pages/connexion-partner";
 import ConditionsUtilisation from "./pages/conditions-utilisation";
-import MessagerieClient from "./pages/messagerie-client";
 
 // Pages de dossiers statiques
 import DossierClient1 from "@/pages/dossier-client/1";
+import DossierClient2 from "@/pages/dossier-client/2";
+import DossierClient3 from "@/pages/dossier-client/3";
+import DossierClient4 from "@/pages/dossier-client/4";
 import DossierClient6 from "@/pages/dossier-client/6";
 import DossierClient7 from "@/pages/dossier-client/7";
 import DossierClient15 from "@/pages/dossier-client/15";
@@ -46,6 +48,8 @@ import DFS from "@/pages/produits/dfs";
 import Social from "@/pages/produits/social";
 import ExpertPage from "@/pages/expert-page";
 import CharteSignature from "@/pages/charte-signature";
+import MessagerieClient from "./pages/messagerie-client";
+
 
 function Router() {
   const { user, isLoading } = useAuth();
@@ -80,6 +84,9 @@ function Router() {
         <>
           {/* Routes de dossiers statiques */}
           <Route path="/dossier-client/1" component={DossierClient1} />
+          <Route path="/dossier-client/2" component={DossierClient2} />
+          <Route path="/dossier-client/3" component={DossierClient3} />
+          <Route path="/dossier-client/4" component={DossierClient4} />
           <Route path="/dossier-client/6" component={DossierClient6} />
           <Route path="/dossier-client/7" component={DossierClient7} />
           <Route path="/dossier-client/15" component={DossierClient15} />
@@ -88,6 +95,8 @@ function Router() {
           <Route path="/dashboard/partner/:userId">
             {(params) => <PartnerDashboard params={params} />}
           </Route>
+
+          {/* Autres routes protégées */}
           <Route path="/Produits/msa/:userId" component={MSA} />
           <Route path="/Produits/dfs/:userId" component={DFS} />
           <Route path="/Produits/ticpe/:userId" component={TICPE} />
