@@ -34,11 +34,11 @@ const PartnerDashboard = () => {
   ];
 
   const activeFiles = [
-    { id: 6, clientName: "Jean Dupont", auditType: "Audit TICPE", creationDate: "10/01/2025", documentStatus: "7/10", lastUpdate: "20/02/2025", status: "accepted" as StatusType },
-    { id: 7, clientName: "Sophie Martin", auditType: "Audit TICPE", creationDate: "15/02/2025", documentStatus: "10/10", lastUpdate: "18/02/2025", status: "accepted" as StatusType },
-    { id: 8, clientName: "David Morel", auditType: "Audit URSAFF", creationDate: "20/12/2024", documentStatus: "3/5", lastUpdate: "15/02/2025", status: "accepted" as StatusType },
-    { id: 9, clientName: "Émilie Bernard", auditType: "Audit TICPE", creationDate: "05/10/2024", documentStatus: "2/10", lastUpdate: "10/02/2025", status: "accepted" as StatusType },
-    { id: 10, clientName: "Antoine Rousseau", auditType: "Audit Social", creationDate: "08/02/2025", documentStatus: "3/4", lastUpdate: "05/02/2025", status: "accepted" as StatusType },
+    { id: 6, clientName: "Jean Dupont", auditType: "Audit TICPE", creationDate: "10/01/2025", estimatedAmount : 8500, documentStatus: "7/10", lastUpdate: "20/02/2025", status: "accepted" as StatusType },
+    { id: 7, clientName: "Sophie Martin", auditType: "Audit TICPE", creationDate: "15/02/2025", estimatedAmount : 15000, documentStatus: "10/10", lastUpdate: "18/02/2025", status: "accepted" as StatusType },
+    { id: 8, clientName: "David Morel", auditType: "Audit URSAFF", creationDate: "20/12/2024", estimatedAmount : 3700, documentStatus: "3/5", lastUpdate: "15/02/2025", status: "accepted" as StatusType },
+    { id: 9, clientName: "Émilie Bernard", auditType: "Audit TICPE", creationDate: "05/10/2024", estimatedAmount : 5300, documentStatus: "2/10", lastUpdate: "10/02/2025", status: "accepted" as StatusType },
+    { id: 10, clientName: "Antoine Rousseau", auditType: "Audit Social", creationDate: "08/02/2025", estimatedAmount : 12200, documentStatus: "3/4", lastUpdate: "05/02/2025", status: "accepted" as StatusType },
   ];
 
   const closedFiles = [
@@ -137,7 +137,7 @@ const PartnerDashboard = () => {
                     <TableHead>Client</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Date</TableHead>
-                    <TableHead>Montant</TableHead>
+                    <TableHead>Montant Potentiel</TableHead>
                     <TableHead>Documents</TableHead>
                     <TableHead>Statut</TableHead>
                   </TableRow>
@@ -164,87 +164,97 @@ const PartnerDashboard = () => {
         </TabsContent>
 
         {/* ✅ Dossiers en cours */}
-        <TabsContent value="active">
-          <Card>
-            <CardHeader>
-              <CardTitle>Dossiers en cours</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Client</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Date de création</TableHead>
-                    <TableHead>Document</TableHead>
-                    <TableHead>Dernière mise à jour</TableHead>
-                    <TableHead>Statut</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {activeFiles.map((file) => (
-                    <TableRow key={file.id}>
-                      <TableCell>{file.clientName}</TableCell>
-                      <TableCell>{file.auditType}</TableCell>
-                      <TableCell>{file.creationDate}</TableCell>
-                      <TableCell>{file.documentStatus}</TableCell>
-                      <TableCell>{file.lastUpdate}</TableCell>
-                      <TableCell>
-                        <Badge className={getStatusColor(file.status)}>
-                          {file.status}
-                        </Badge>
-                      </TableCell>
+          <TabsContent value="active">
+            <Card>
+              <CardHeader>
+                <CardTitle>Dossiers en cours</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Client</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Date de création</TableHead>
+                      <TableHead>Montant Potentiel</TableHead>
+                      <TableHead>Document</TableHead>
+                      <TableHead>Dernière mise à jour</TableHead>
+                      <TableHead>Statut</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                  </TableHeader>
+                  <TableBody>
+                    {activeFiles.map((file) => (
+                      <TableRow 
+                        key={file.id} 
+                        className="cursor-pointer hover:bg-gray-100"
+                        onClick={() => handleRowClick(file.id)}
+                      >
+                        <TableCell>{file.clientName}</TableCell>
+                        <TableCell>{file.auditType}</TableCell>
+                        <TableCell>{file.creationDate}</TableCell>
+                        <TableCell>{file.estimatedAmount} €</TableCell>
+                        <TableCell>{file.documentStatus}</TableCell>
+                        <TableCell>{file.lastUpdate}</TableCell>
+                        <TableCell>
+                          <Badge className={getStatusColor(file.status)}>
+                            {file.status}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-        {/* ✅ Dossiers clôturés */}
-        <TabsContent value="closed">
-          <Card>
-            <CardHeader>
-              <CardTitle>Dossiers clôturés</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Client</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Date de clôture</TableHead>
-                    <TableHead>Montant Estimé</TableHead>
-                    <TableHead>Montant Obtenu</TableHead>
-                    <TableHead>Fiabilité</TableHead>
-                    <TableHead>Statut</TableHead>
-                    <TableHead>Commentaires</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {closedFiles.map((file) => (
-                    <TableRow key={file.id}>
-                      <TableCell>{file.clientName}</TableCell>
-                      <TableCell>{file.auditType}</TableCell>
-                      <TableCell>{file.closureDate}</TableCell>
-                      <TableCell>{file.estimatedAmount} €</TableCell>
-                      <TableCell>{file.obtainedAmount ? `${file.obtainedAmount} €` : '-'}</TableCell>
-                      <TableCell>{file.fiability}%</TableCell>
-                      <TableCell>
-                        <Badge className={getStatusColor(file.status)}>
-                          {file.status === "success" ? "Réussi" : "Refusé"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{file.comments}</TableCell>
+          {/* ✅ Dossiers clôturés */}
+          <TabsContent value="closed">
+            <Card>
+              <CardHeader>
+                <CardTitle>Dossiers clôturés</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Client</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Date de clôture</TableHead>
+                      <TableHead>Montant Estimé</TableHead>
+                      <TableHead>Montant Obtenu</TableHead>
+                      <TableHead>Fiabilité</TableHead>
+                      <TableHead>Statut</TableHead>
+                      <TableHead>Commentaires</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+                  </TableHeader>
+                  <TableBody>
+                    {closedFiles.map((file) => (
+                      <TableRow 
+                        key={file.id} 
+                        className="cursor-pointer hover:bg-gray-100"
+                        onClick={() => handleRowClick(file.id)}
+                      >
+                        <TableCell>{file.clientName}</TableCell>
+                        <TableCell>{file.auditType}</TableCell>
+                        <TableCell>{file.closureDate}</TableCell>
+                        <TableCell>{file.estimatedAmount} €</TableCell>
+                        <TableCell>{file.obtainedAmount ? `${file.obtainedAmount} €` : '-'}</TableCell>
+                        <TableCell>{file.fiability}%</TableCell>
+                        <TableCell>
+                          <Badge className={getStatusColor(file.status)}>
+                            {file.status === "success" ? "Réussi" : "Refusé"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{file.comments}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
     </div>
   );
 };

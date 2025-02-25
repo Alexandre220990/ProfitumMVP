@@ -8,23 +8,12 @@ import {
 import HeaderPartner from "@/components/HeaderPartner";
 
 const ClientFile: React.FC = () => {
-  const [status, setStatus] = useState<"pending" | "accepted" | "rejected">("pending");
-
-  const handleAccept = () => {
-    setStatus("accepted");
-    console.log("Le dossier a bien été accepté, une notification est envoyée au client.");
-  };
-
-  const handleReject = () => {
-    setStatus("rejected");
-    console.log("Dossier refusé");
-  };
+  const [status, setStatus] = useState<"accepted">("accepted"); // Dossier accepté
 
   const documents = [
-    { name: "Déclarations TICPE (2021-2023)", url: "#", type: "PDF" },
+    { name: "Déclarations TICPE (2024)", url: "#", type: "PDF" },
     { name: "Factures d’achats de carburant", url: "#", type: "PDF" },
     { name: "Justificatifs conformité environnementale", url: "#", type: "PDF" },
-    { name: "Attestations d’usage (manquantes pour 2022)", url: "#", type: "PDF" },
   ];
 
   return (
@@ -32,15 +21,22 @@ const ClientFile: React.FC = () => {
 
       {/* Espacement pour éviter que le bandeau cache le titre */}
       <div className="mt-20"></div>
-      
+
       {/* Header Partner */}
       <HeaderPartner />
+
+      {/* Bandeau flottant expert (accepté) */}
+      <div className="fixed top-0 left-0 w-full bg-green-600 text-white p-3 shadow-md flex justify-center">
+        <p className="font-semibold flex items-center">
+          <UserCheck className="w-5 h-5 mr-2" /> Dossier validé avec succès ✅
+        </p>
+      </div>
 
       {/* Titre */}
       <h1 className="text-2xl font-bold text-gray-800 mb-4 flex items-center">
         <FileText className="w-6 h-6 mr-2" /> Dossier Client – Audit TICPE
       </h1>
-      <p className="text-gray-600">📅 Date de création : [Date] | Statut : ✅ Transmis à l’expert</p>
+      <p className="text-gray-600">📅 Date de création : 10/01/2025 | Statut : ✅ Accepté par l'expert</p>
 
       {/* 1. Informations Générales */}
       <section className="mt-6">
@@ -48,13 +44,13 @@ const ClientFile: React.FC = () => {
           <Briefcase className="w-5 h-5 mr-2" /> 1. Informations Générales
         </h2>
         <div className="bg-gray-100 p-4 rounded-lg mt-2">
-          <p><Building className="inline w-4 h-4 mr-2" /> <strong>Client :</strong> Paul Lambert</p>
-          <p><Briefcase className="inline w-4 h-4 mr-2" /> <strong>Entreprise :</strong> Transports Lambert</p>
-          <p><Truck className="inline w-4 h-4 mr-2" /> <strong>Secteur :</strong> Transport routier de marchandises</p>
-          <p><Users className="inline w-4 h-4 mr-2" /> <strong>Effectif :</strong> 45 salariés</p>
-          <p><MapPin className="inline w-4 h-4 mr-2" /> <strong>Adresse :</strong> 12 Rue des Routiers, 75015 Paris</p>
-          <p><Mail className="inline w-4 h-4 mr-2" /> <strong>Contact :</strong> paul.lambert@email.com</p>
-          <p><Phone className="inline w-4 h-4 mr-2" /> <strong>Téléphone :</strong> +33 6 45 78 12 34</p>
+          <p><Building className="inline w-4 h-4 mr-2" /> <strong>Client :</strong> Jean Dupont</p>
+          <p><Briefcase className="inline w-4 h-4 mr-2" /> <strong>Entreprise :</strong> Dupont Transports</p>
+          <p><Truck className="inline w-4 h-4 mr-2" /> <strong>Secteur :</strong> Transport routier</p>
+          <p><Users className="inline w-4 h-4 mr-2" /> <strong>Effectif :</strong> 30 salariés</p>
+          <p><MapPin className="inline w-4 h-4 mr-2" /> <strong>Adresse :</strong> 15 Rue des Marchands, 69003 Lyon</p>
+          <p><Mail className="inline w-4 h-4 mr-2" /> <strong>Contact :</strong> jean.dupont@email.com</p>
+          <p><Phone className="inline w-4 h-4 mr-2" /> <strong>Téléphone :</strong> +33 6 12 34 56 78</p>
           <p><FileText className="inline w-4 h-4 mr-2" /> <strong>Responsable du dossier :</strong> [Nom du consultant]</p>
         </div>
       </section>
@@ -65,15 +61,14 @@ const ClientFile: React.FC = () => {
           <Search className="w-5 h-5 mr-2" /> 2. Contexte & Objectifs
         </h2>
         <div className="border-l-4 border-blue-500 bg-gray-100 p-4 rounded-lg mt-2">
-          <p><strong>Problématique :</strong> Paul Lambert souhaite <u>optimiser la récupération de la TICPE</u> et s’assurer de la <u>conformité fiscale</u> sur les 3 dernières années.</p>
+          <p><strong>Problématique :</strong> Jean Dupont souhaite <u>optimiser la récupération de la TICPE</u> et vérifier la <u>conformité des remboursements</u> des 3 dernières années.</p>
           <p className="mt-2 flex items-center">
             <Target className="w-5 h-5 mr-2" /> <strong>Objectifs principaux :</strong>
           </p>
           <ul className="list-disc list-inside ml-4">
-            <li>Vérification des montants remboursables</li>
-            <li>Identification des optimisations possibles</li>
-            <li>Sécurisation des déclarations pour éviter tout redressement</li>
-            <li>Conseil sur les stratégies futures pour réduire les coûts</li>
+            <li>Analyse des remboursements précédents</li>
+            <li>Correction des éventuelles erreurs de déclaration</li>
+            <li>Conseils pour optimiser les remboursements futurs</li>
           </ul>
         </div>
       </section>
@@ -96,19 +91,13 @@ const ClientFile: React.FC = () => {
                 <td className="p-3 border border-gray-200 flex items-center">
                   <Truck className="w-4 h-4 mr-2" /> Flotte de véhicules
                 </td>
-                <td className="p-3 border border-gray-200">12 camions (Euro 5 & Euro 6)</td>
+                <td className="p-3 border border-gray-200">8 camions (Euro 6)</td>
               </tr>
               <tr>
                 <td className="p-3 border border-gray-200 flex items-center">
                   <Fuel className="w-4 h-4 mr-2" /> Consommation annuelle
                 </td>
-                <td className="p-3 border border-gray-200">320 000 litres de gazole</td>
-              </tr>
-              <tr className="bg-gray-100">
-                <td className="p-3 border border-gray-200 flex items-center">
-                  <DollarSign className="w-4 h-4 mr-2" /> Remboursement TICPE précédent
-                </td>
-                <td className="p-3 border border-gray-200">21 500 € (2023)</td>
+                <td className="p-3 border border-gray-200">180 000 litres de gazole</td>
               </tr>
             </tbody>
           </table>
@@ -141,36 +130,9 @@ const ClientFile: React.FC = () => {
         </div>
       </section>
 
-      {/* Commentaire Client */}
-      <section className="mt-6">
-        <h2 className="text-xl font-semibold text-gray-700 flex items-center">
-          <MessageSquare className="w-5 h-5 mr-2" /> 5. Commentaire du client
-        </h2>
-        <blockquote className="italic bg-gray-100 p-4 rounded-lg mt-2">
-          "J’aimerais un suivi régulier et des conseils pour optimiser les futures demandes de remboursement."
-        </blockquote>
-      </section>
-          
-{/* Espacement pour éviter que le bandeau bas cache le contenu */}
+      {/* Espacement pour éviter que le bandeau bas cache le contenu */}
       <div className="mb-24"></div>
 
-      {/* Bandeau flottant bas pour les boutons */}
-      <div className="fixed bottom-0 left-0 w-full bg-white p-4 shadow-md flex justify-center space-x-4 border-t">
-        <button
-          onClick={handleAccept}
-          className="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600 flex items-center space-x-2 transition"
-        >
-          <UserCheck className="w-5 h-5" />
-          <span>Accepter le dossier</span>
-        </button>
-        <button
-          onClick={handleReject}
-          className="bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600 flex items-center space-x-2 transition"
-        >
-          <XCircle className="w-5 h-5" />
-          <span>Refuser le dossier</span>
-        </button>
-      </div>
     </div>
   );
 };

@@ -91,7 +91,7 @@ function Router() {
           <Route path="/marketplace-experts" component={MarketplaceExperts} />
           <Route path="/simulateur/:userId" component={Simulateur} />
           <Route path="/messagerie-client/:userId" component={MessagerieClient} />
-          <Route path="/dossier-client/1" component={DossierClient} />
+          <Route path="/dossier-client/:userId" component={DossierClient} />
         </>
       )}
 
