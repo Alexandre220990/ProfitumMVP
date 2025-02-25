@@ -50,7 +50,7 @@ export default function HomePage() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem asChild><Link href="/connexion-client">Client</Link></DropdownMenuItem>
-            <DropdownMenuItem asChild><Link href="/dashboard/partner">Partenaire</Link></DropdownMenuItem>
+            <DropdownMenuItem asChild><Link href="/connexion-partner">Partenaire</Link></DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

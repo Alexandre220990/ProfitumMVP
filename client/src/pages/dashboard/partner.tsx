@@ -7,12 +7,15 @@ import { CheckCircle2, XCircle, Clock, Euro, FileText, Users } from "lucide-reac
 import { useLocation } from "wouter";
 import { useState } from "react";
 
-export default function PartnerDashboard() {
+type StatusType = "pending" | "accepted" | "rejected" | "in_progress" | "closed" | "success";
+
+const PartnerDashboard = () => {
   const [, setLocation] = useLocation();
   const [auditTypeFilter, setAuditTypeFilter] = useState("all");
 
   const handleRowClick = (id: number) => {
     setLocation(`/dossier-client/${id}`);
+  };
 
   // ✅ Données statiques réalistes
   const stats = {
@@ -23,33 +26,33 @@ export default function PartnerDashboard() {
   };
 
   const incomingRequests = [
-    { id: 1, clientName: "Paul Lambert", auditType: "Audit TICPE", date: "01/03/2025", estimatedAmount: 4200, documentStatus: "2/10", status: "pending" },
-    { id: 2, clientName: "Isabelle Moreau", auditType: "Audit MSA", date: "28/02/2025", estimatedAmount: 3100, documentStatus: "5/7", status: "pending" },
-    { id: 3, clientName: "Alexandre Girard", auditType: "Audit DFS", date: "27/02/2025", estimatedAmount: 2900, documentStatus: "2/3", status: "pending" },
-    { id: 4, clientName: "Sophie Lefevre", auditType: "Audit Social", date: "26/02/2025", estimatedAmount: 3500, documentStatus: "4/4", status: "pending" },
-    { id: 5, clientName: "Martin Dubois", auditType: "Audit Fiscal", date: "25/02/2025", estimatedAmount: 5000, documentStatus: "2/2", status: "pending" },
+    { id: 1, clientName: "Paul Lambert", auditType: "Audit TICPE", date: "01/03/2025", estimatedAmount: 4200, documentStatus: "2/10", status: "pending" as StatusType },
+    { id: 2, clientName: "Isabelle Moreau", auditType: "Audit MSA", date: "28/02/2025", estimatedAmount: 3100, documentStatus: "5/7", status: "pending" as StatusType },
+    { id: 3, clientName: "Alexandre Girard", auditType: "Audit DFS", date: "27/02/2025", estimatedAmount: 2900, documentStatus: "2/3", status: "pending" as StatusType },
+    { id: 4, clientName: "Sophie Lefevre", auditType: "Audit Social", date: "26/02/2025", estimatedAmount: 3500, documentStatus: "4/4", status: "pending" as StatusType },
+    { id: 5, clientName: "Martin Dubois", auditType: "Audit Fiscal", date: "25/02/2025", estimatedAmount: 5000, documentStatus: "2/2", status: "pending" as StatusType },
   ];
 
   const activeFiles = [
-    { id: 6, clientName: "Jean Dupont", auditType: "Audit TICPE", creationDate: "10/01/2025", documentStatus: "7/10", lastUpdate: "20/02/2025", status: "accepted" },
-    { id: 7, clientName: "Sophie Martin", auditType: "Audit TICPE", creationDate: "15/02/2025", documentStatus: "10/10", lastUpdate: "18/02/2025", status: "accepted" },
-    { id: 8, clientName: "David Morel", auditType: "Audit URSAFF", creationDate: "20/12/2024", documentStatus: "3/5", lastUpdate: "15/02/2025", status: "accepted" },
-    { id: 9, clientName: "Émilie Bernard", auditType: "Audit TICPE", creationDate: "05/10/2024", documentStatus: "2/10", lastUpdate: "10/02/2025", status: "accepted" },
-    { id: 10, clientName: "Antoine Rousseau", auditType: "Audit Social", creationDate: "08/02/2025", documentStatus: "3/4", lastUpdate: "05/02/2025", status: "accepted" },
+    { id: 6, clientName: "Jean Dupont", auditType: "Audit TICPE", creationDate: "10/01/2025", documentStatus: "7/10", lastUpdate: "20/02/2025", status: "accepted" as StatusType },
+    { id: 7, clientName: "Sophie Martin", auditType: "Audit TICPE", creationDate: "15/02/2025", documentStatus: "10/10", lastUpdate: "18/02/2025", status: "accepted" as StatusType },
+    { id: 8, clientName: "David Morel", auditType: "Audit URSAFF", creationDate: "20/12/2024", documentStatus: "3/5", lastUpdate: "15/02/2025", status: "accepted" as StatusType },
+    { id: 9, clientName: "Émilie Bernard", auditType: "Audit TICPE", creationDate: "05/10/2024", documentStatus: "2/10", lastUpdate: "10/02/2025", status: "accepted" as StatusType },
+    { id: 10, clientName: "Antoine Rousseau", auditType: "Audit Social", creationDate: "08/02/2025", documentStatus: "3/4", lastUpdate: "05/02/2025", status: "accepted" as StatusType },
   ];
 
   const closedFiles = [
-    { id: 11, clientName: "Julien Mercier", auditType: "Audit TICPE", closureDate: "01/02/2025", estimatedAmount: 7800, obtainedAmount: 5000, fiability: 64, status: "success", comments: "" },
-    { id: 12, clientName: "Céline Leroy", auditType: "Audit TICPE", closureDate: "28/01/2025", estimatedAmount: 3000, obtainedAmount: 4000, fiability: 67, status: "success", comments: "" },
-    { id: 13, clientName: "Vincent Morel", auditType: "Audit DFS", closureDate: "25/01/2025", estimatedAmount: 10000, obtainedAmount: 3000, fiability: 30, status: "success", comments: "" },
-    { id: 14, clientName: "Lucie Garnier", auditType: "Audit Social", closureDate: "22/01/2025", estimatedAmount: 1500, obtainedAmount: 1350, fiability: 90, status: "success", comments: "" },
-    { id: 15, clientName: "Michel Durand", auditType: "Audit MSA", closureDate: "20/01/2025", estimatedAmount: 2500, obtainedAmount: null, fiability: 0, status: "rejected", comments: "Hors périmètre" },
-    { id: 16, clientName: "Hugo Fabre", auditType: "Audit Foncier", closureDate: "18/01/2025", estimatedAmount: 500, obtainedAmount: null, fiability: 0, status: "rejected", comments: "Faible potentiel" },
-    { id: 17, clientName: "Marion Petit", auditType: "Audit TICPE", closureDate: "15/01/2025", estimatedAmount: 200, obtainedAmount: null, fiability: 0, status: "rejected", comments: "Abandon client" },
+    { id: 11, clientName: "Julien Mercier", auditType: "Audit TICPE", closureDate: "01/02/2025", estimatedAmount: 7800, obtainedAmount: 5000, fiability: 64, status: "success" as StatusType, comments: "" },
+    { id: 12, clientName: "Céline Leroy", auditType: "Audit TICPE", closureDate: "28/01/2025", estimatedAmount: 3000, obtainedAmount: 4000, fiability: 67, status: "success" as StatusType, comments: "" },
+    { id: 13, clientName: "Vincent Morel", auditType: "Audit DFS", closureDate: "25/01/2025", estimatedAmount: 10000, obtainedAmount: 3000, fiability: 30, status: "success" as StatusType, comments: "" },
+    { id: 14, clientName: "Lucie Garnier", auditType: "Audit Social", closureDate: "22/01/2025", estimatedAmount: 1500, obtainedAmount: 1350, fiability: 90, status: "success" as StatusType, comments: "" },
+    { id: 15, clientName: "Michel Durand", auditType: "Audit MSA", closureDate: "20/01/2025", estimatedAmount: 2500, obtainedAmount: null, fiability: 0, status: "rejected" as StatusType, comments: "Hors périmètre" },
+    { id: 16, clientName: "Hugo Fabre", auditType: "Audit Foncier", closureDate: "18/01/2025", estimatedAmount: 500, obtainedAmount: null, fiability: 0, status: "rejected" as StatusType, comments: "Faible potentiel" },
+    { id: 17, clientName: "Marion Petit", auditType: "Audit TICPE", closureDate: "15/01/2025", estimatedAmount: 200, obtainedAmount: null, fiability: 0, status: "rejected" as StatusType, comments: "Abandon client" },
   ];
 
   // ✅ Fonction pour récupérer la couleur du statut
-  const getStatusColor = (status) => {
+  const getStatusColor = (status: StatusType): string => {
     switch (status) {
       case "pending":
         return "text-yellow-600 bg-yellow-100";
@@ -59,8 +62,8 @@ export default function PartnerDashboard() {
         return "text-red-600 bg-red-100";
       case "in_progress":
         return "text-blue-600 bg-blue-100";
-      case "closed":
-        return "text-gray-600 bg-gray-100";
+      case "success":
+        return "text-green-600 bg-green-100";
       default:
         return "text-gray-600 bg-gray-100";
     }
@@ -226,7 +229,7 @@ export default function PartnerDashboard() {
                       <TableCell>{file.auditType}</TableCell>
                       <TableCell>{file.closureDate}</TableCell>
                       <TableCell>{file.estimatedAmount} €</TableCell>
-                      <TableCell>{file.obtainedAmount} €</TableCell>
+                      <TableCell>{file.obtainedAmount ? `${file.obtainedAmount} €` : '-'}</TableCell>
                       <TableCell>{file.fiability}%</TableCell>
                       <TableCell>
                         <Badge className={getStatusColor(file.status)}>
@@ -243,6 +246,7 @@ export default function PartnerDashboard() {
         </TabsContent>
       </Tabs>
     </div>
-    )
-  }
-}
+  );
+};
+
+export default PartnerDashboard;
