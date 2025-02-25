@@ -14,7 +14,25 @@ const PartnerDashboard = () => {
   const [auditTypeFilter, setAuditTypeFilter] = useState("all");
 
   const handleRowClick = (id: number) => {
-    setLocation(`/dossier-client/${id}`);
+    // La redirection se fait maintenant vers les pages statiques spécifiques
+    switch (id) {
+      case 1:
+        setLocation('/dossier-client/1');
+        break;
+      case 6:
+        setLocation('/dossier-client/6');
+        break;
+      case 7:
+        setLocation('/dossier-client/7');
+        break;
+      case 15:
+        setLocation('/dossier-client/15');
+        break;
+      default:
+        // Pour les autres IDs, rediriger vers une page par défaut ou afficher un message
+        console.warn(`Page statique non disponible pour l'ID ${id}`);
+        setLocation('/dossier-client/1');
+    }
   };
 
   // ✅ Données statiques réalistes
@@ -164,97 +182,97 @@ const PartnerDashboard = () => {
         </TabsContent>
 
         {/* ✅ Dossiers en cours */}
-          <TabsContent value="active">
-            <Card>
-              <CardHeader>
-                <CardTitle>Dossiers en cours</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Client</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Date de création</TableHead>
-                      <TableHead>Montant Potentiel</TableHead>
-                      <TableHead>Document</TableHead>
-                      <TableHead>Dernière mise à jour</TableHead>
-                      <TableHead>Statut</TableHead>
+        <TabsContent value="active">
+          <Card>
+            <CardHeader>
+              <CardTitle>Dossiers en cours</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Client</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Date de création</TableHead>
+                    <TableHead>Montant Potentiel</TableHead>
+                    <TableHead>Document</TableHead>
+                    <TableHead>Dernière mise à jour</TableHead>
+                    <TableHead>Statut</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {activeFiles.map((file) => (
+                    <TableRow 
+                      key={file.id} 
+                      className="cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleRowClick(file.id)}
+                    >
+                      <TableCell>{file.clientName}</TableCell>
+                      <TableCell>{file.auditType}</TableCell>
+                      <TableCell>{file.creationDate}</TableCell>
+                      <TableCell>{file.estimatedAmount} €</TableCell>
+                      <TableCell>{file.documentStatus}</TableCell>
+                      <TableCell>{file.lastUpdate}</TableCell>
+                      <TableCell>
+                        <Badge className={getStatusColor(file.status)}>
+                          {file.status}
+                        </Badge>
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {activeFiles.map((file) => (
-                      <TableRow 
-                        key={file.id} 
-                        className="cursor-pointer hover:bg-gray-100"
-                        onClick={() => handleRowClick(file.id)}
-                      >
-                        <TableCell>{file.clientName}</TableCell>
-                        <TableCell>{file.auditType}</TableCell>
-                        <TableCell>{file.creationDate}</TableCell>
-                        <TableCell>{file.estimatedAmount} €</TableCell>
-                        <TableCell>{file.documentStatus}</TableCell>
-                        <TableCell>{file.lastUpdate}</TableCell>
-                        <TableCell>
-                          <Badge className={getStatusColor(file.status)}>
-                            {file.status}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-          {/* ✅ Dossiers clôturés */}
-          <TabsContent value="closed">
-            <Card>
-              <CardHeader>
-                <CardTitle>Dossiers clôturés</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Client</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Date de clôture</TableHead>
-                      <TableHead>Montant Estimé</TableHead>
-                      <TableHead>Montant Obtenu</TableHead>
-                      <TableHead>Fiabilité</TableHead>
-                      <TableHead>Statut</TableHead>
-                      <TableHead>Commentaires</TableHead>
+        {/* ✅ Dossiers clôturés */}
+        <TabsContent value="closed">
+          <Card>
+            <CardHeader>
+              <CardTitle>Dossiers clôturés</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Client</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Date de clôture</TableHead>
+                    <TableHead>Montant Estimé</TableHead>
+                    <TableHead>Montant Obtenu</TableHead>
+                    <TableHead>Fiabilité</TableHead>
+                    <TableHead>Statut</TableHead>
+                    <TableHead>Commentaires</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {closedFiles.map((file) => (
+                    <TableRow 
+                      key={file.id} 
+                      className="cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleRowClick(file.id)}
+                    >
+                      <TableCell>{file.clientName}</TableCell>
+                      <TableCell>{file.auditType}</TableCell>
+                      <TableCell>{file.closureDate}</TableCell>
+                      <TableCell>{file.estimatedAmount} €</TableCell>
+                      <TableCell>{file.obtainedAmount ? `${file.obtainedAmount} €` : '-'}</TableCell>
+                      <TableCell>{file.fiability}%</TableCell>
+                      <TableCell>
+                        <Badge className={getStatusColor(file.status)}>
+                          {file.status === "success" ? "Réussi" : "Refusé"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{file.comments}</TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {closedFiles.map((file) => (
-                      <TableRow 
-                        key={file.id} 
-                        className="cursor-pointer hover:bg-gray-100"
-                        onClick={() => handleRowClick(file.id)}
-                      >
-                        <TableCell>{file.clientName}</TableCell>
-                        <TableCell>{file.auditType}</TableCell>
-                        <TableCell>{file.closureDate}</TableCell>
-                        <TableCell>{file.estimatedAmount} €</TableCell>
-                        <TableCell>{file.obtainedAmount ? `${file.obtainedAmount} €` : '-'}</TableCell>
-                        <TableCell>{file.fiability}%</TableCell>
-                        <TableCell>
-                          <Badge className={getStatusColor(file.status)}>
-                            {file.status === "success" ? "Réussi" : "Refusé"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{file.comments}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
