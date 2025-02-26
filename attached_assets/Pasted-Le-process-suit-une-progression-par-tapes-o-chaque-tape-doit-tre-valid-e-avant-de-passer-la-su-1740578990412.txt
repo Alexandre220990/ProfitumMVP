@@ -1,0 +1,64 @@
+Le process suit une progression par étapes où chaque étape doit être validée avant de passer à la suivante. Voici le détail complet du processus :
+
+1️⃣ Signature de la Charte Contractuelle
+📍 Objectif : L'utilisateur doit signer une charte pour lancer l'audit.
+🔹 Action nécessaire :
+✅ Un bouton "Lire et signer la charte" est affiché.
+✅ L'utilisateur doit signer électroniquement la charte.
+🔹 Validation de l'étape :
+✅ Une fois signé, la charte est enregistrée en localStorage (signedCharters).
+✅ Le statut de l'audit passe à l'étape 2.
+
+2️⃣ Sélection et Validation de l'Expert
+📍 Objectif : Choisir un expert qui réalisera l'audit.
+🔹 Action nécessaire :
+✅ Une liste d'experts est affichée (Nom, Cabinet, Spécialité, Expérience, Honoraires).
+✅ L'utilisateur choisit un expert et valide son choix.
+🔹 Validation de l'étape :
+✅ L'expert sélectionné est enregistré en localStorage (selectedExperts).
+✅ L'étape passe à l'étape 3.
+
+3️⃣ Prise de Rendez-vous avec l'Expert
+📍 Objectif : Planifier un entretien avec l'expert.
+🔹 Action nécessaire :
+✅ Sélectionner une date via un calendrier.
+✅ Choisir un créneau horaire parmi les disponibilités de 9h à 17h (30 min d'intervalle).
+🔹 Validation de l'étape :
+✅ Une fois validé, la date et l'heure sont enregistrées (selectedDate, selectedTime).
+✅ Le statut de l'audit passe à l'étape 4.
+✅ Un message de confirmation est affiché : "RDV pris le XX/XX/XXXX à XX:XX".
+
+4️⃣ Téléversement des Documents Requis
+📍 Objectif : Fournir les documents nécessaires pour l'audit.
+🔹 Action nécessaire :
+✅ L'utilisateur doit téléverser les documents demandés :
+
+Bulletins de salaire (3 dernières années)
+Contrats de travail
+Conventions collectives
+Justificatifs de frais
+Déclarations sociales nominatives (DSN)
+Registre du personnel
+✅ Chaque document téléversé est stocké en localStorage.
+🔹 Validation de l'étape :
+✅ Dès qu'au moins 1 document est téléversé, l'audit passe à l'étape 5.
+✅ Option : L'utilisateur peut supprimer un document déjà téléversé.
+5️⃣ Finalisation et Rapport de l'Audit
+📍 Objectif : Clôturer l'audit et générer un rapport.
+🔹 Action nécessaire :
+✅ L'expert effectue l'analyse des documents.
+✅ Un rapport final est généré.
+✅ L'utilisateur peut télécharger le rapport une fois terminé.
+🔹 Validation de l'étape :
+✅ L'audit est complet et archivé.
+
+🛠 Fonctionnalités Clés du Processus :
+✅ Étapes verrouillées : Impossible de sauter une étape avant de valider la précédente.
+✅ Suivi en temps réel : Chaque étape est suivie avec un indicateur visuel (Completed / Current / Upcoming).
+✅ Persistance des données : Tout est sauvegardé en localStorage, donc les utilisateurs reprennent leur audit là où ils l’ont laissé.
+✅ Interactions intuitives :
+
+Bouton de validation à chaque étape.
+Formulaire de téléversement de documents.
+Sélection de créneau via un calendrier interactif.
+Affichage du statut de l’audit.

@@ -115,8 +115,9 @@ export default function PaiementPage() {
 
       {/* Hero Section */}
       <header className="text-center py-20 bg-gradient-to-r from-blue-600 to-blue-800 text-white">
-        <h1 className="text-5xl font-extrabold tracking-tight">Optimisez votre croissance 🚀</h1>
-        <p className="mt-4 text-lg opacity-90">Des outils puissants pour accélérer votre activité.</p>
+        <h1 className="text-5xl font-extrabold tracking-tight">Vous êtes expert et souhaitez</h1>
+        <h1 className="text-5xl font-extrabold tracking-tight">optimiser votre croissance ? </h1>
+        <p className="mt-4 text-lg opacity-90">Que vous soyez auditeur, courtier, gestionnaire de patrimoine ou toute autre profession d'accompagnement aux entreprises, nous avons les outils pour accélérer votre business.</p>
       </header>
 
       {/* Plans Section */}
@@ -173,9 +174,11 @@ export default function PaiementPage() {
           <p className="text-lg font-semibold">
             Plan sélectionné : <span className="text-blue-600">{selectedPlan.name}</span> - {billingCycle === "monthly" ? `${selectedPlan.price} € / mois` : `${selectedPlan.annualPrice} € / an`}
           </p>
-          <Button className="bg-green-500 text-white px-6 py-3 text-lg font-medium rounded-lg hover:bg-green-600 flex items-center">
-            <CreditCard className="mr-2" /> Payer maintenant
-          </Button>
+          <Link href="/pages/Paiement">
+            <Button className="bg-green-500 text-white px-6 py-3 text-lg font-medium rounded-lg hover:bg-green-600 flex items-center">
+              <CreditCard className="mr-2" /> Payer maintenant
+            </Button>
+          </Link>
         </div>
       </div>
 

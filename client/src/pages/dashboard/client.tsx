@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import HeaderClient from "@/components/HeaderClient";
 import {
@@ -7,47 +8,58 @@ import {
   DollarSign,
   ClipboardCheck,
   BarChart3,
-  Loader2,
   CheckCircle,
   Clock,
   FilePlus,
+  Loader2,
+  PiggyBank,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
+import { CircularProgressbar, buildStyles } from "react-circular-progressbar";
+import "react-circular-progressbar/dist/styles.css";
 
-interface Product {
+interface Dossier {
   id: string;
   name: string;
-  description: string;
-  status: "not_initiated" | "pending" | "completed";
-  gainsPotentiels?: number;
-  gainsRecuperes?: number;
-  etapeActuelle?: number;
-  etapesTotal?: number;
+  status: "pending" | "completed" | "not_initiated";
+  progress: number;
+  currentStep: string;
+  potentialGain: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // 🔹 Données statiques des audits
-const allAudits: Product[] = [
-  { id: "dfs", name: "Déduction Forfaitaire Spécifique", description: "Optimisation des charges sociales.", status: "not_initiated", gainsPotentiels: 5000, etapeActuelle: 1, etapesTotal: 6 },
-  { id: "foncier", name: "Audit Foncier", description: "Réduction des taxes foncières.", status: "not_initiated", gainsPotentiels: 12000, etapeActuelle: 1, etapesTotal: 6 },
-  { id: "ticpe", name: "Audit TICPE", description: "Récupération de la taxe carburant.", status: "pending", gainsPotentiels: 15000, gainsRecuperes: 0, etapeActuelle: 3, etapesTotal: 6 },
-  { id: "ursaff", name: "Audit URSSAF", description: "Vérification des cotisations sociales.", status: "pending", gainsPotentiels: 8000, gainsRecuperes: 0, etapeActuelle: 2, etapesTotal: 6 },
-  { id: "msa", name: "Audit MSA", description: "Réduction des charges agricoles.", status: "completed", gainsPotentiels: 10000, gainsRecuperes: 9500, etapeActuelle: 6, etapesTotal: 6 },
+const allDossiers: Dossier[] = [
+  { id: "dfs", name: "DFS", status: "not_initiated", potentialGain: 5000, currentStep: "Analyse préliminaire", progress: 0, createdAt: "2024-01-12", updatedAt: "2024-02-15" },
+  { id: "foncier", name: "Foncier", status: "not_initiated", potentialGain: 12000, currentStep: "Vérification des documents", progress: 0, createdAt: "2024-02-05", updatedAt: "2024-02-20" },
+  { id: "ticpe", name: "Audit TICPE", status: "pending", potentialGain: 15000, currentStep: "Validation des pièces justificatives", progress: 50, createdAt: "2024-01-20", updatedAt: "2024-02-18" },
+  { id: "ursaff", name: "Audit URSSAF", status: "pending", potentialGain: 8000, currentStep: "Analyse des cotisations", progress: 30, createdAt: "2024-01-28", updatedAt: "2024-02-19" },
+  { id: "msa", name: "Audit MSA", status: "completed", potentialGain: 10000, currentStep: "Terminé", progress: 100, createdAt: "2024-01-15", updatedAt: "2024-02-17" },
+  { id: "courtier-energie", name: "Courtier énergétique", status: "completed", potentialGain: 2500, currentStep: "Terminé", progress: 100, createdAt: "2025-01-15", updatedAt: "2025-02-17" },
 ];
 
 // 🔹 Filtrer les audits par statut
-const categorizeAudits = (status: Product["status"]) => allAudits.filter(audit => audit.status === status);
+const categorizeDossiers = (status: Dossier["status"]) => allDossiers.filter(dossier => dossier.status === status);
 
 export default function DashboardClient() {
   const { user, isLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<"opportunities" | "pending" | "completed">("opportunities");
 
+  // 🔹 Récupérer tous les audits en cours
+  const auditsEnCours = categorizeDossiers("pending");
+
+  // 🔹 Calcul de l'avancement moyen des audits en cours
+  const avancementGlobal = auditsEnCours.length > 0
+    ? auditsEnCours.reduce((sum, audit) => sum + audit.progress, 0) / auditsEnCours.length
+    : 0;
+  
   // ✅ Données KPI
   const kpiData = {
-    dossiersEnCours: categorizeAudits("pending").length,
-    gainsPotentiels: allAudits.reduce((sum, audit) => sum + (audit.gainsPotentiels || 0), 0),
-    gainsRecuperes: categorizeAudits("completed").reduce((sum, audit) => sum + (audit.gainsRecuperes || 0), 0),
-    auditsFinalises: categorizeAudits("completed").length,
+    dossiersEnCours: categorizeDossiers("pending").length,
+    gainsPotentiels: allDossiers.reduce((sum, dossier) => sum + dossier.potentialGain, 0),
+    auditsFinalises: categorizeDossiers("completed").length,
+      avancementGlobal,
   };
 
   if (isLoading) {
@@ -77,8 +89,26 @@ export default function DashboardClient() {
           {[
             { icon: FolderOpen, value: kpiData.dossiersEnCours, label: "Dossiers en cours", color: "text-blue-500" },
             { icon: DollarSign, value: `${kpiData.gainsPotentiels.toLocaleString()} €`, label: "Gains potentiels", color: "text-green-500" },
-            { icon: ClipboardCheck, value: `${kpiData.gainsRecuperes.toLocaleString()} €`, label: "Gains récupérés", color: "text-green-600" },
-            { icon: BarChart3, value: kpiData.auditsFinalises, label: "Audits finalisés", color: "text-indigo-500" },
+            { icon: PiggyBank, value: kpiData.auditsFinalises, label: "Audits finalisés", color: "text-indigo-500" },
+            { 
+              icon: BarChart3, 
+              value: (
+                <div className="w-16 h-16">
+                  <CircularProgressbar 
+                    value={kpiData.avancementGlobal} 
+                    text={`${kpiData.avancementGlobal.toFixed(0)}%`} 
+                    styles={buildStyles({
+                      textColor: "#1E293B",
+                      pathColor: kpiData.avancementGlobal === 100 ? "#10B981" : "#3B82F6",
+                      trailColor: "#E5E7EB",
+                      textSize: "20px",
+                    })} 
+                  />
+                </div>
+              ), 
+              label: "Avancement global", 
+              color: "text-purple-500" 
+            }
           ].map(({ icon: Icon, value, label, color }) => (
             <KpiCard key={label} icon={Icon} value={value} label={label} color={color} />
           ))}
@@ -87,9 +117,9 @@ export default function DashboardClient() {
         {/* 📂 Navigation minimaliste */}
         <div className="mt-8 flex justify-center space-x-4">
           {[
-            { key: "opportunities", label: "📌 Opportunités", icon: FilePlus },
-            { key: "pending", label: "⏳ En Cours", icon: Clock },
-            { key: "completed", label: "✅ Terminés", icon: CheckCircle },
+            { key: "opportunities", label: "Opportunités", icon: FilePlus },
+            { key: "pending", label: "En Cours", icon: Clock },
+            { key: "completed", label: "Terminés", icon: CheckCircle },
           ].map(({ key, label, icon: Icon }) => (
             <Button
               key={key}
@@ -131,27 +161,75 @@ function KpiCard({ icon: Icon, value, label, color }: { icon: any; value: any; l
   );
 }
 
-// ✅ Composant pour afficher le tableau des audits minimaliste
-function AuditTable({ activeTab }: { activeTab: "opportunities" | "pending" | "completed" }) {
-  const audits = categorizeAudits(activeTab === "opportunities" ? "not_initiated" : activeTab);
+  export function AuditTable({ activeTab }: { activeTab: "opportunities" | "pending" | "completed" }) {
+    const dossiers = categorizeDossiers(activeTab === "opportunities" ? "not_initiated" : activeTab);
 
   return (
     <Card className="shadow-lg rounded-lg mt-8">
       <CardHeader>
-        <CardTitle className="text-gray-800 text-lg font-semibold">
-          {activeTab === "opportunities" ? "Opportunités d'Audit" : activeTab === "pending" ? "Audits en Cours" : "Audits Terminés"}
-        </CardTitle>
+        <CardTitle className="text-gray-800 text-lg font-semibold">Mes Dossiers</CardTitle>
       </CardHeader>
       <CardContent>
-        {audits.length > 0 ? (
-          audits.map((audit) => (
-            <div key={audit.id} className="flex justify-between items-center py-4 border-b">
-              <p className="text-gray-700">{audit.name}</p>
-              {audit.status !== "completed" && <Progress value={(audit.etapeActuelle! / audit.etapesTotal!) * 100} />}
-            </div>
-          ))
+        {dossiers.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-gray-100 text-gray-800 text-sm font-semibold">
+                  <th className="p-3 text-left">Nom du dossier</th>
+                  <th className="p-3 text-left">Statut</th>
+                  <th className="p-3 text-left">Étape en cours</th>
+                  <th className="p-3 text-left">Gains Potentiels</th>
+                  <th className="p-3 text-left">Avancement</th>
+                  <th className="p-3 text-left">Créé le</th>
+                  <th className="p-3 text-left">Mis à jour</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dossiers.map((dossier) => (
+                  <tr
+                    key={dossier.id}
+                    className="border-b hover:bg-gray-50 transition cursor-pointer"
+                  >
+                    <td className="p-3 font-medium text-gray-900">
+                      <Link href={`/produits/${dossier.id}`} className="hover:underline">
+                        {dossier.name}
+                      </Link>
+                    </td>
+                    <td className="p-3">
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium 
+                        ${dossier.status === "completed" ? "bg-green-100 text-green-700" : 
+                          dossier.status === "pending" ? "bg-yellow-100 text-yellow-700" : 
+                          "bg-gray-100 text-gray-700"}`}>
+                        {dossier.status === "completed" ? "Terminé" : dossier.status === "pending" ? "En cours" : "Non initié"}
+                      </span>
+                    </td>
+                    <td className="p-3">{dossier.currentStep}</td>
+                    <td className="p-3 font-semibold text-green-600">
+                      {dossier.potentialGain.toLocaleString()} €
+                    </td>
+                    <td className="p-3 text-center">
+                      <div className="w-8 h-8 flex items-center justify-center"> {/* ✅ Réduction du cercle */}
+                        <CircularProgressbar 
+                          value={dossier.progress}  
+                          strokeWidth={10}  // ✅ Augmenté pour rester lisible malgré la petite taille
+                          styles={buildStyles({
+                            pathColor: dossier.progress === 100 ? "#10B981" : "#3B82F6",
+                            trailColor: "#E5E7EB",
+                            textColor: "#1E293B",
+                            textSize: "32px",
+                          })}
+                        />
+                      </div>
+                    </td>
+                    <td className="p-3 text-gray-500 text-sm">{new Date(dossier.createdAt).toLocaleDateString()}</td>
+                    <td className="p-3 text-gray-500 text-sm">{new Date(dossier.updatedAt).toLocaleDateString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : (
-          <p className="text-gray-500">Aucun audit disponible.</p>
+          <p className="text-gray-500">Aucun dossier disponible.</p>
         )}
       </CardContent>
     </Card>

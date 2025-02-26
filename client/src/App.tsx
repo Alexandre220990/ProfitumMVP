@@ -39,8 +39,6 @@ import DossierClient4 from "@/pages/dossier-client/4";
 import DossierClient6 from "@/pages/dossier-client/6";
 import DossierClient7 from "@/pages/dossier-client/7";
 import DossierClient15 from "@/pages/dossier-client/15";
-
-// Import des nouveaux composants de dossiers
 import DossierClient11 from "@/pages/dossier-client/11";
 import DossierClient12 from "@/pages/dossier-client/12";
 import DossierClient13 from "@/pages/dossier-client/13";
@@ -126,11 +124,11 @@ function Router() {
           </Route>
 
           {/* Autres routes protégées */}
-          <Route path="/Produits/msa/:userId" component={MSA} />
-          <Route path="/Produits/dfs/:userId" component={DFS} />
-          <Route path="/Produits/ticpe/:userId" component={TICPE} />
-          <Route path="/Produits/foncier/:userId" component={Foncier} />
-          <Route path="/Produits/social/:userId" component={Social} />
+          <Route path="/produits/msa" component={MSA} />
+          <Route path="/produits/dfs" component={DFS} />
+          <Route path="/produits/ticpe" component={TICPE} />
+          <Route path="/produits/foncier" component={Foncier} />
+          <Route path="/produits/social" component={Social} />
           <Route path="/audit/:type/expert/:userId" component={ExpertPage} />
           <Route path="/audit/:type/sign-charte/:userId" component={CharteSignature} />
           <Route path="/reports/:userId" component={Reports} />
