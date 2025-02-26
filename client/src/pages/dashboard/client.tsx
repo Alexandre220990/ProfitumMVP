@@ -25,6 +25,7 @@ interface Dossier {
   progress: number;
   currentStep: string;
   potentialGain: number;
+  obtainedGain?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -35,8 +36,8 @@ const allDossiers: Dossier[] = [
   { id: "foncier", name: "Foncier", status: "not_initiated", potentialGain: 12000, currentStep: "Vérification des documents", progress: 0, createdAt: "2024-02-05", updatedAt: "2024-02-20" },
   { id: "ticpe", name: "Audit TICPE", status: "pending", potentialGain: 15000, currentStep: "Validation des pièces justificatives", progress: 50, createdAt: "2024-01-20", updatedAt: "2024-02-18" },
   { id: "ursaff", name: "Audit URSSAF", status: "pending", potentialGain: 8000, currentStep: "Analyse des cotisations", progress: 30, createdAt: "2024-01-28", updatedAt: "2024-02-19" },
-  { id: "msa", name: "Audit MSA", status: "completed", potentialGain: 10000, currentStep: "Terminé", progress: 100, createdAt: "2024-01-15", updatedAt: "2024-02-17" },
-  { id: "courtier-energie", name: "Courtier énergétique", status: "completed", potentialGain: 2500, currentStep: "Terminé", progress: 100, createdAt: "2025-01-15", updatedAt: "2025-02-17" },
+  { id: "msa", name: "Audit MSA", status: "completed", potentialGain: 10000, obtainedGain: 12000, currentStep: "Terminé", progress: 100, createdAt: "2024-01-15", updatedAt: "2024-02-17" },
+  { id: "courtier-energie", name: "Courtier énergétique", status: "completed", potentialGain: 2500, obtainedGain: 2000, currentStep: "Terminé", progress: 100, createdAt: "2025-01-15", updatedAt: "2025-02-17" },
 ];
 
 // 🔹 Filtrer les audits par statut
@@ -53,13 +54,14 @@ export default function DashboardClient() {
   const avancementGlobal = auditsEnCours.length > 0
     ? auditsEnCours.reduce((sum, audit) => sum + audit.progress, 0) / auditsEnCours.length
     : 0;
-  
+
   // ✅ Données KPI
   const kpiData = {
     dossiersEnCours: categorizeDossiers("pending").length,
     gainsPotentiels: allDossiers.reduce((sum, dossier) => sum + dossier.potentialGain, 0),
+    gainsObtenus: allDossiers.filter(d => d.status === "completed").reduce((sum, dossier) => sum + (dossier.obtainedGain || 0), 0),
     auditsFinalises: categorizeDossiers("completed").length,
-      avancementGlobal,
+    avancementGlobal,
   };
 
   if (isLoading) {
@@ -88,7 +90,23 @@ export default function DashboardClient() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-8">
           {[
             { icon: FolderOpen, value: kpiData.dossiersEnCours, label: "Dossiers en cours", color: "text-blue-500" },
-            { icon: DollarSign, value: `${kpiData.gainsPotentiels.toLocaleString()} €`, label: "Gains potentiels", color: "text-green-500" },
+            { 
+              icon: DollarSign, 
+              component: (
+                <div className="space-y-1">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-red-500 font-medium">Potentiel:</span>
+                    <span className="text-lg">{kpiData.gainsPotentiels.toLocaleString()} €</span>
+                  </div>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-green-500 font-medium">Obtenus:</span>
+                    <span className="text-lg">{kpiData.gainsObtenus.toLocaleString()} €</span>
+                  </div>
+                </div>
+              ),
+              label: "Gains", 
+              color: "text-green-500" 
+            },
             { icon: PiggyBank, value: kpiData.auditsFinalises, label: "Audits finalisés", color: "text-indigo-500" },
             { 
               icon: BarChart3, 
@@ -109,8 +127,8 @@ export default function DashboardClient() {
               label: "Avancement global", 
               color: "text-purple-500" 
             }
-          ].map(({ icon: Icon, value, label, color }) => (
-            <KpiCard key={label} icon={Icon} value={value} label={label} color={color} />
+          ].map(({ icon: Icon, value, component, label, color }) => (
+            <KpiCard key={label} icon={Icon} value={value} component={component} label={label} color={color} />
           ))}
         </div>
 
@@ -151,18 +169,18 @@ function SectionTitle({ title, subtitle }: { title: string; subtitle: string }) 
 }
 
 // ✅ Composant pour afficher une carte KPI minimaliste
-function KpiCard({ icon: Icon, value, label, color }: { icon: any; value: any; label: string; color: string }) {
+function KpiCard({ icon: Icon, value, component, label, color }: { icon: any; value?: any; component?: any; label: string; color: string }) {
   return (
     <div className="bg-white p-4 rounded-lg shadow-sm flex flex-col items-center">
       <Icon className={`h-8 w-8 ${color}`} />
-      <h3 className="text-xl font-semibold mt-2">{value}</h3>
+      {component ? component : <h3 className="text-xl font-semibold mt-2">{value}</h3>}
       <p className="text-gray-600 text-sm">{label}</p>
     </div>
   );
 }
 
-  export function AuditTable({ activeTab }: { activeTab: "opportunities" | "pending" | "completed" }) {
-    const dossiers = categorizeDossiers(activeTab === "opportunities" ? "not_initiated" : activeTab);
+export function AuditTable({ activeTab }: { activeTab: "opportunities" | "pending" | "completed" }) {
+  const dossiers = categorizeDossiers(activeTab === "opportunities" ? "not_initiated" : activeTab);
 
   return (
     <Card className="shadow-lg rounded-lg mt-8">
@@ -179,6 +197,12 @@ function KpiCard({ icon: Icon, value, label, color }: { icon: any; value: any; l
                   <th className="p-3 text-left">Statut</th>
                   <th className="p-3 text-left">Étape en cours</th>
                   <th className="p-3 text-left">Gains Potentiels</th>
+                  {activeTab === "completed" && (
+                    <>
+                      <th className="p-3 text-left">Gains Obtenus</th>
+                      <th className="p-3 text-left">Fiabilité</th>
+                    </>
+                  )}
                   <th className="p-3 text-left">Avancement</th>
                   <th className="p-3 text-left">Créé le</th>
                   <th className="p-3 text-left">Mis à jour</th>
@@ -204,14 +228,37 @@ function KpiCard({ icon: Icon, value, label, color }: { icon: any; value: any; l
                       </span>
                     </td>
                     <td className="p-3">{dossier.currentStep}</td>
-                    <td className="p-3 font-semibold text-green-600">
+                    <td className="p-3 font-semibold text-red-600">
                       {dossier.potentialGain.toLocaleString()} €
                     </td>
+                    {activeTab === "completed" && (
+                      <>
+                        <td className="p-3 font-semibold text-green-600">
+                          {dossier.obtainedGain?.toLocaleString()} €
+                        </td>
+                        <td className="p-3">
+                          <div className="flex items-center gap-2">
+                            <div className="w-12 h-12">
+                              <CircularProgressbar
+                                value={((dossier.obtainedGain || 0) / dossier.potentialGain) * 100}
+                                text={`${Math.round((dossier.obtainedGain || 0) / dossier.potentialGain * 100)}%`}
+                                styles={buildStyles({
+                                  textSize: '28px',
+                                  pathColor: `${((dossier.obtainedGain || 0) / dossier.potentialGain) >= 1 ? '#10B981' : '#3B82F6'}`,
+                                  textColor: '#1E293B',
+                                  trailColor: '#E5E7EB',
+                                })}
+                              />
+                            </div>
+                          </div>
+                        </td>
+                      </>
+                    )}
                     <td className="p-3 text-center">
-                      <div className="w-8 h-8 flex items-center justify-center"> {/* ✅ Réduction du cercle */}
+                      <div className="w-8 h-8 flex items-center justify-center">
                         <CircularProgressbar 
-                          value={dossier.progress}  
-                          strokeWidth={10}  // ✅ Augmenté pour rester lisible malgré la petite taille
+                          value={dossier.progress}
+                          strokeWidth={10}
                           styles={buildStyles({
                             pathColor: dossier.progress === 100 ? "#10B981" : "#3B82F6",
                             trailColor: "#E5E7EB",
