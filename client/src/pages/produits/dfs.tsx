@@ -8,15 +8,15 @@ import {
   Calendar,
   Upload,
   Trash2,
-  Loader2,
   ArrowLeft,
   Download,
-  ExternalLink
+  ExternalLink,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import CharterDialog from "@/components/CharterDialog";
 import {
   Dialog,
   DialogContent,
@@ -31,6 +31,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Progress } from "@/components/ui/progress";
 import HeaderClient from "@/components/HeaderClient";
+import { motion } from "framer-motion";
 
 type StepStatus = "completed" | "current" | "upcoming";
 
@@ -44,7 +45,6 @@ type Expert = {
   description: string;
 };
 
-// Liste des experts DFS
 const dfsExperts: Expert[] = [
   {
     id: 1,
@@ -133,25 +133,22 @@ export default function DFSAudit() {
   const { toast } = useToast();
   const auditType = "dfs";
 
-  // États pour la charte
   const [isCharterSigned, setIsCharterSigned] = useState(false);
   const [showCharterDialog, setShowCharterDialog] = useState(false);
   const [acceptedCGU, setAcceptedCGU] = useState(false);
 
-  // États pour l'expert
   const [selectedExpert, setSelectedExpert] = useState<Expert | null>(null);
   const [showExpertDialog, setShowExpertDialog] = useState(false);
   const [tempSelectedExpert, setTempSelectedExpert] = useState<Expert | null>(null);
 
-  // États pour le RDV
   const [showCalendarDialog, setShowCalendarDialog] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedTime, setSelectedTime] = useState<string>();
   const [confirmedDateTime, setConfirmedDateTime] = useState<string>();
 
-  // États pour les documents
   const [uploadedDocuments, setUploadedDocuments] = useState<DocumentItem[]>(documentsList);
   const [progress, setProgress] = useState(0);
+  const [expandedSection, setExpandedSection] = useState<string | null>(null);
 
   useEffect(() => {
     setProgress((currentStep - 1) * 25);
@@ -190,12 +187,10 @@ export default function DFSAudit() {
       setCurrentStep(newStep);
       setProgress((newStep - 1) * 25);
 
-      // Mettre à jour le localStorage
       const auditProgress = JSON.parse(localStorage.getItem('auditProgress') || '{}');
       auditProgress[auditType] = newStep;
       localStorage.setItem('auditProgress', JSON.stringify(auditProgress));
 
-      // Notification du changement d'étape
       toast({
         title: `Navigation vers l'étape ${newStep}`,
         description: "Vous pouvez revenir aux étapes précédentes à tout moment",
@@ -282,7 +277,6 @@ export default function DFSAudit() {
   };
 
   const handleDownloadCharter = () => {
-    // Simuler le téléchargement de la charte
     toast({
       title: "Téléchargement de la charte",
       description: "La charte signée a été téléchargée",
@@ -329,6 +323,10 @@ export default function DFSAudit() {
     }
   ];
 
+  const toggleSection = (section: string) => {
+    setExpandedSection(expandedSection === section ? null : section);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <HeaderClient />
@@ -346,7 +344,12 @@ export default function DFSAudit() {
               Étape précédente
             </Button>
           </div>
-          <Progress value={progress} className="h-2" />
+          <motion.div
+            initial={{ width: "0%" }}
+            animate={{ width: `${progress}%` }}
+            transition={{ duration: 0.5, ease: "easeInOut" }}
+            className="h-2 bg-blue-500 rounded-full"
+          />
           <div className="flex justify-between mt-4">
             {steps.map((step, index) => (
               <StepIndicator key={index} step={index + 1} currentStep={currentStep} />
@@ -354,172 +357,189 @@ export default function DFSAudit() {
           </div>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Étapes du processus</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                {steps.map((step, index) => {
-                  const stepNumber = index + 1;
-                  return (
-                    <div
-                      key={index}
-                      className={cn(
-                        "p-4 rounded-lg border cursor-pointer transition-all",
-                        stepNumber === currentStep && "bg-blue-50 border-blue-200",
-                        stepNumber < currentStep && "bg-green-50 border-green-200",
-                        stepNumber > currentStep && "bg-gray-50 border-gray-200"
-                      )}
-                      onClick={() => handleStepChange(stepNumber)}
-                    >
-                      <div className="flex items-center gap-4">
-                        <step.icon className={cn(
-                          "w-6 h-6",
-                          stepNumber === currentStep && "text-blue-500",
-                          stepNumber < currentStep && "text-green-500",
-                          stepNumber > currentStep && "text-gray-400"
-                        )} />
-                        <div className="flex-grow">
-                          <h3 className="font-semibold">{step.title}</h3>
-                          <p className="text-sm text-gray-600">{step.description}</p>
-                        </div>
-                        {step.action && (stepNumber === currentStep || (stepNumber === 1 && isCharterSigned)) && (
-                          <Button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              step.action();
-                            }}
-                            variant={stepNumber === currentStep ? "default" : "outline"}
-                            className="flex items-center gap-2"
-                          >
-                            {step.actionIcon && <step.actionIcon className="w-4 h-4" />}
-                            {step.actionLabel}
-                          </Button>
-                        )}
+        <Card className="w-full">
+          <CardHeader>
+            <CardTitle>Étapes du processus</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              {steps.map((step, index) => {
+                const stepNumber = index + 1;
+                const isExpanded = expandedSection === `step-${stepNumber}`;
+                const hasExpandableContent = stepNumber === 4 || stepNumber === 5;
+
+                return (
+                  <motion.div
+                    key={index}
+                    initial={false}
+                    animate={{ height: "auto" }}
+                    className={cn(
+                      "p-6 rounded-lg border cursor-pointer transition-all",
+                      stepNumber === currentStep && "bg-blue-50 border-blue-200",
+                      stepNumber < currentStep && "bg-green-50 border-green-200",
+                      stepNumber > currentStep && "bg-gray-50 border-gray-200"
+                    )}
+                    onClick={() => {
+                      handleStepChange(stepNumber);
+                      if (hasExpandableContent) {
+                        toggleSection(`step-${stepNumber}`);
+                      }
+                    }}
+                  >
+                    <div className="flex items-center gap-4">
+                      <step.icon className={cn(
+                        "w-6 h-6",
+                        stepNumber === currentStep && "text-blue-500",
+                        stepNumber < currentStep && "text-green-500",
+                        stepNumber > currentStep && "text-gray-400"
+                      )} />
+                      <div className="flex-grow">
+                        <h3 className="font-semibold">{step.title}</h3>
+                        <p className="text-sm text-gray-600">{step.description}</p>
                       </div>
-                      {stepNumber === 2 && selectedExpert && (
-                        <div className="mt-4 p-4 bg-white rounded-lg border">
-                          <h4 className="font-medium">{selectedExpert.name}</h4>
-                          <p className="text-sm text-gray-600">{selectedExpert.company}</p>
-                          <p className="text-sm text-gray-600">{selectedExpert.speciality}</p>
-                        </div>
+                      {hasExpandableContent && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="ml-2"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleSection(`step-${stepNumber}`);
+                          }}
+                        >
+                          {isExpanded ? (
+                            <ChevronUp className="h-4 w-4" />
+                          ) : (
+                            <ChevronDown className="h-4 w-4" />
+                          )}
+                        </Button>
+                      )}
+                      {step.action && (stepNumber === currentStep || (stepNumber === 1 && isCharterSigned)) && (
+                        <Button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            step.action();
+                          }}
+                          variant={stepNumber === currentStep ? "default" : "outline"}
+                          className="flex items-center gap-2"
+                        >
+                          {step.actionIcon && <step.actionIcon className="w-4 h-4" />}
+                          {step.actionLabel}
+                        </Button>
                       )}
                     </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
 
-          <div className="space-y-6">
-            {currentStep === 4 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Documents requis</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {uploadedDocuments.map((doc) => (
-                      <div key={doc.id} className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className={cn(
-                            "text-sm",
-                            doc.uploadedFiles.length > 0 && "text-green-600"
-                          )}>
-                            {doc.label}
-                          </span>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDocumentUpload(doc.id, [{ id: Date.now(), name: "Document test.pdf" }])}
-                          >
-                            <Upload className="w-4 h-4 mr-2" />
-                            Téléverser
-                          </Button>
-                        </div>
-                        {doc.uploadedFiles.length > 0 && (
-                          <div className="ml-4 space-y-1">
-                            {doc.uploadedFiles.map((file) => (
-                              <div key={file.id} className="flex items-center justify-between text-sm">
-                                <div className="flex items-center gap-2">
-                                  <Check className="w-4 h-4 text-green-600" />
-                                  <span>{file.name}</span>
-                                </div>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleDeleteDocument(doc.id, file.id)}
-                                  className="h-6 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                    {stepNumber === 2 && selectedExpert && (
+                      <div className="mt-4 p-4 bg-white rounded-lg border">
+                        <h4 className="font-medium">{selectedExpert.name}</h4>
+                        <p className="text-sm text-gray-600">{selectedExpert.company}</p>
+                        <p className="text-sm text-gray-600">{selectedExpert.speciality}</p>
                       </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+                    )}
 
-            {currentStep === 5 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Rapport d'audit</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="p-4 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-semibold">Rapport final</h3>
-                      <Button
-                        onClick={() => {
-                          toast({
-                            title: "Rapport téléchargé",
-                            description: "Le rapport d'audit a été téléchargé avec succès",
-                          });
-                        }}
-                        className="flex items-center gap-2"
+                    {stepNumber === 4 && isExpanded && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.3 }}
+                        className="mt-4 space-y-4"
                       >
-                        <Download className="w-4 h-4" />
-                        Télécharger le rapport
-                      </Button>
-                    </div>
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Date de finalisation:</span>
-                          <span className="font-medium">{format(new Date(), 'dd/MM/yyyy')}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Expert en charge:</span>
-                          <span className="font-medium">{selectedExpert?.name}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Documents analysés:</span>
-                          <span className="font-medium">
-                            {uploadedDocuments.reduce((sum, doc) => sum + doc.uploadedFiles.length, 0)} documents
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="border-t pt-4">
-                      <p className="text-sm text-gray-600">
-                        Le rapport complet contient l'analyse détaillée de votre situation, 
-                        les recommandations de l'expert et les prochaines étapes à suivre.
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        </div>
+                        {uploadedDocuments.map((doc) => (
+                          <div key={doc.id} className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className={cn(
+                                "text-sm",
+                                doc.uploadedFiles.length > 0 && "text-green-600"
+                              )}>
+                                {doc.label}
+                              </span>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDocumentUpload(doc.id, [{ id: Date.now(), name: "Document test.pdf" }])}
+                              >
+                                <Upload className="w-4 h-4 mr-2" />
+                                Téléverser
+                              </Button>
+                            </div>
+                            {doc.uploadedFiles.length > 0 && (
+                              <div className="ml-4 space-y-1">
+                                {doc.uploadedFiles.map((file) => (
+                                  <div key={file.id} className="flex items-center justify-between text-sm">
+                                    <div className="flex items-center gap-2">
+                                      <Check className="w-4 h-4 text-green-600" />
+                                      <span>{file.name}</span>
+                                    </div>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleDeleteDocument(doc.id, file.id)}
+                                      className="h-6 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </motion.div>
+                    )}
 
-        {/* Dialogue de signature de la charte */}
+                    {stepNumber === 5 && isExpanded && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.3 }}
+                        className="mt-4 space-y-4"
+                      >
+                        <div className="p-4 space-y-4">
+                          <div className="flex items-center justify-between">
+                            <h3 className="font-semibold">Rapport final</h3>
+                            <Button
+                              onClick={() => {
+                                toast({
+                                  title: "Rapport téléchargé",
+                                  description: "Le rapport d'audit a été téléchargé avec succès",
+                                });
+                              }}
+                              className="flex items-center gap-2"
+                            >
+                              <Download className="w-4 h-4" />
+                              Télécharger le rapport
+                            </Button>
+                          </div>
+                          <div className="bg-gray-50 p-4 rounded-lg">
+                            <div className="space-y-2">
+                              <div className="flex justify-between text-sm">
+                                <span className="text-gray-600">Date de finalisation:</span>
+                                <span className="font-medium">{format(new Date(), 'dd/MM/yyyy')}</span>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span className="text-gray-600">Expert en charge:</span>
+                                <span className="font-medium">{selectedExpert?.name}</span>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span className="text-gray-600">Documents analysés:</span>
+                                <span className="font-medium">
+                                  {uploadedDocuments.reduce((sum, doc) => sum + doc.uploadedFiles.length, 0)} documents
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </motion.div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
         <Dialog open={showCharterDialog} onOpenChange={setShowCharterDialog}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
@@ -529,7 +549,6 @@ export default function DFSAudit() {
               </DialogDescription>
             </DialogHeader>
             <div className="max-h-[60vh] overflow-y-auto p-4 bg-gray-50 rounded-md my-4">
-              {/* Contenu de la charte */}
               <h3 className="text-lg font-semibold mb-4">Charte de l'Audit DFS</h3>
               <p className="mb-4">
                 Cette charte définit les engagements mutuels entre le client et l'expert...
@@ -560,7 +579,6 @@ export default function DFSAudit() {
           </DialogContent>
         </Dialog>
 
-        {/* Dialogue de sélection d'expert */}
         <Dialog open={showExpertDialog} onOpenChange={setShowExpertDialog}>
           <DialogContent className="max-w-3xl">
             <DialogHeader>
@@ -618,7 +636,6 @@ export default function DFSAudit() {
           </DialogContent>
         </Dialog>
 
-        {/* Dialogue de prise de rendez-vous */}
         <Dialog open={showCalendarDialog} onOpenChange={setShowCalendarDialog}>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
