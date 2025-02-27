@@ -12,7 +12,8 @@ import {
   Download,
   ExternalLink,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  RefreshCcw
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
@@ -32,6 +33,8 @@ import { fr } from "date-fns/locale";
 import { Progress } from "@/components/ui/progress";
 import HeaderClient from "@/components/HeaderClient";
 import { motion } from "framer-motion";
+import { useAuth } from "@/hooks/use-auth";
+import { useParams } from "wouter";
 
 type StepStatus = "completed" | "current" | "upcoming";
 
@@ -129,6 +132,9 @@ const StepIndicator = ({ step, currentStep }: { step: number; currentStep: numbe
 
 export default function DFSAudit() {
   const [currentStep, setCurrentStep] = useState(1);
+  const { user } = useAuth();
+  const params = useParams();
+  const userId = params.userId;
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const auditType = "dfs";
@@ -283,6 +289,43 @@ export default function DFSAudit() {
     });
   };
 
+  const handleReset = () => {
+    const confirmReset = window.confirm("Êtes-vous sûr de vouloir réinitialiser ce dossier ? Toutes les données seront perdues.");
+    if (confirmReset) {
+      // Clear all localStorage data for this audit
+      const storageKeys = [
+        'signedCharters',
+        'auditProgress',
+        'selectedExperts',
+        `${auditType}_datetime`,
+        `${auditType}_documents`
+      ];
+
+      storageKeys.forEach(key => {
+        const data = JSON.parse(localStorage.getItem(key) || '{}');
+        delete data[auditType];
+        localStorage.setItem(key, JSON.stringify(data));
+      });
+
+      // Reset all states
+      setCurrentStep(1);
+      setProgress(0);
+      setIsCharterSigned(false);
+      setSelectedExpert(null);
+      setConfirmedDateTime(undefined);
+      setUploadedDocuments(documentsList);
+
+      toast({
+        title: "Dossier réinitialisé",
+        description: "Le dossier a été remis à zéro avec succès",
+      });
+
+      // Return to dashboard
+      setLocation('/dashboard/client');
+    }
+  };
+
+
   const steps = [
     {
       title: "Signature de la charte",
@@ -333,7 +376,17 @@ export default function DFSAudit() {
       <div className="container mx-auto p-6">
         <div className="mb-8">
           <div className="flex justify-between items-center mb-4">
-            <h1 className="text-3xl font-bold">Audit DFS</h1>
+            <div className="flex items-center gap-4">
+              <h1 className="text-3xl font-bold">Audit DFS</h1>
+              <Button
+                variant="destructive"
+                onClick={handleReset}
+                className="flex items-center gap-2"
+              >
+                <RefreshCcw className="w-4 h-4" />
+                Réinitialiser
+              </Button>
+            </div>
             <Button
               variant="outline"
               onClick={handlePreviousStep}

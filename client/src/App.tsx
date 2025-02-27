@@ -124,11 +124,11 @@ function Router() {
           </Route>
 
           {/* Autres routes protégées */}
-          <Route path="/produits/msa" component={MSA} />
-          <Route path="/produits/dfs" component={DFS} />
-          <Route path="/produits/ticpe" component={TICPE} />
-          <Route path="/produits/foncier" component={Foncier} />
-          <Route path="/produits/social" component={Social} />
+          <Route path="/produits/msa/:userId" component={MSA} />
+          <Route path="/produits/dfs/:userId" component={DFS} />
+          <Route path="/produits/ticpe/:userId" component={TICPE} />
+          <Route path="/produits/foncier/:userId" component={Foncier} />
+          <Route path="/produits/social/:userId" component={Social} />
           <Route path="/audit/:type/expert/:userId" component={ExpertPage} />
           <Route path="/audit/:type/sign-charte/:userId" component={CharteSignature} />
           <Route path="/reports/:userId" component={Reports} />
