@@ -467,15 +467,53 @@ export default function DFSAudit() {
               </Card>
             )}
 
+            {/* Remplacer la section du rapport d'audit */}
             {currentStep === 5 && (
               <Card>
                 <CardHeader>
                   <CardTitle>Rapport d'audit</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-center py-8">
-                    <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-500" />
-                    <p className="text-gray-600">Génération du rapport en cours...</p>
+                  <div className="p-4 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-semibold">Rapport final</h3>
+                      <Button
+                        onClick={() => {
+                          toast({
+                            title: "Rapport téléchargé",
+                            description: "Le rapport d'audit a été téléchargé avec succès",
+                          });
+                        }}
+                        className="flex items-center gap-2"
+                      >
+                        <Download className="w-4 h-4" />
+                        Télécharger le rapport
+                      </Button>
+                    </div>
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Date de finalisation:</span>
+                          <span className="font-medium">{format(new Date(), 'dd/MM/yyyy')}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Expert en charge:</span>
+                          <span className="font-medium">{selectedExpert?.name}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Documents analysés:</span>
+                          <span className="font-medium">
+                            {uploadedDocuments.reduce((sum, doc) => sum + doc.uploadedFiles.length, 0)} documents
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="border-t pt-4">
+                      <p className="text-sm text-gray-600">
+                        Le rapport complet contient l'analyse détaillée de votre situation, 
+                        les recommandations de l'expert et les prochaines étapes à suivre.
+                      </p>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
