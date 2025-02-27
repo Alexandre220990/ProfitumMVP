@@ -189,9 +189,19 @@ export default function DFSAudit() {
     if (currentStep > 1) {
       const newStep = currentStep - 1;
       setCurrentStep(newStep);
+
+      // Update progress in localStorage
       const auditProgress = JSON.parse(localStorage.getItem('auditProgress') || '{}');
       auditProgress[auditType] = newStep;
       localStorage.setItem('auditProgress', JSON.stringify(auditProgress));
+
+      // Update progress bar
+      setProgress((newStep - 1) * 25);
+
+      toast({
+        title: "Retour à l'étape précédente",
+        description: `Vous êtes revenu à l'étape ${newStep}`,
+      });
     }
   };
 
@@ -322,16 +332,15 @@ export default function DFSAudit() {
         <div className="mb-8">
           <div className="flex justify-between items-center mb-4">
             <h1 className="text-3xl font-bold">Audit DFS</h1>
-            {currentStep > 1 && (
-              <Button
-                variant="outline"
-                onClick={handlePreviousStep}
-                className="flex items-center gap-2"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Étape précédente
-              </Button>
-            )}
+            <Button
+              variant="outline"
+              onClick={handlePreviousStep}
+              className="flex items-center gap-2"
+              disabled={currentStep <= 1}
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Étape précédente
+            </Button>
           </div>
           <Progress value={progress} className="h-2" />
           <div className="flex justify-between mt-4">
@@ -344,7 +353,7 @@ export default function DFSAudit() {
         <div className="grid gap-6 md:grid-cols-2">
           <Card>
             <CardHeader>
-              <CardTitle>Étape en cours</CardTitle>
+              <CardTitle>Étapes du processus</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
@@ -354,11 +363,17 @@ export default function DFSAudit() {
                     <div
                       key={index}
                       className={cn(
-                        "p-4 rounded-lg border",
+                        "p-4 rounded-lg border cursor-pointer transition-all",
                         stepNumber === currentStep && "bg-blue-50 border-blue-200",
                         stepNumber < currentStep && "bg-green-50 border-green-200",
                         stepNumber > currentStep && "bg-gray-50 border-gray-200"
                       )}
+                      onClick={() => {
+                        if (stepNumber <= Math.max(currentStep, 5)) {
+                          setCurrentStep(stepNumber);
+                          setProgress((stepNumber - 1) * 25);
+                        }
+                      }}
                     >
                       <div className="flex items-center gap-4">
                         <step.icon className={cn(
@@ -373,7 +388,10 @@ export default function DFSAudit() {
                         </div>
                         {step.action && (stepNumber === currentStep || (stepNumber === 1 && isCharterSigned)) && (
                           <Button
-                            onClick={step.action}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              step.action();
+                            }}
                             variant={stepNumber === currentStep ? "default" : "outline"}
                             className="flex items-center gap-2"
                           >
