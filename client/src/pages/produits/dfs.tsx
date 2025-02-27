@@ -185,23 +185,27 @@ export default function DFSAudit() {
     }
   }, [auditType, currentStep]);
 
-  const handlePreviousStep = () => {
-    if (currentStep > 1) {
-      const newStep = currentStep - 1;
+  const handleStepChange = (newStep: number) => {
+    if (newStep >= 1 && newStep <= 5) {
       setCurrentStep(newStep);
+      setProgress((newStep - 1) * 25);
 
-      // Update progress in localStorage
+      // Mettre à jour le localStorage
       const auditProgress = JSON.parse(localStorage.getItem('auditProgress') || '{}');
       auditProgress[auditType] = newStep;
       localStorage.setItem('auditProgress', JSON.stringify(auditProgress));
 
-      // Update progress bar
-      setProgress((newStep - 1) * 25);
-
+      // Notification du changement d'étape
       toast({
-        title: "Retour à l'étape précédente",
-        description: `Vous êtes revenu à l'étape ${newStep}`,
+        title: `Navigation vers l'étape ${newStep}`,
+        description: "Vous pouvez revenir aux étapes précédentes à tout moment",
       });
+    }
+  };
+
+  const handlePreviousStep = () => {
+    if (currentStep > 1) {
+      handleStepChange(currentStep - 1);
     }
   };
 
@@ -368,12 +372,7 @@ export default function DFSAudit() {
                         stepNumber < currentStep && "bg-green-50 border-green-200",
                         stepNumber > currentStep && "bg-gray-50 border-gray-200"
                       )}
-                      onClick={() => {
-                        if (stepNumber <= Math.max(currentStep, 5)) {
-                          setCurrentStep(stepNumber);
-                          setProgress((stepNumber - 1) * 25);
-                        }
-                      }}
+                      onClick={() => handleStepChange(stepNumber)}
                     >
                       <div className="flex items-center gap-4">
                         <step.icon className={cn(
@@ -467,7 +466,6 @@ export default function DFSAudit() {
               </Card>
             )}
 
-            {/* Remplacer la section du rapport d'audit */}
             {currentStep === 5 && (
               <Card>
                 <CardHeader>
