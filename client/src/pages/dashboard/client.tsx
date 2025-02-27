@@ -31,12 +31,8 @@ interface Dossier {
   updatedAt: string;
 }
 
-// 🔹 Filtrer les audits par statut
-const categorizeDossiers = (status: Dossier["status"]) => allDossiers.filter(dossier => dossier.status === status);
-
-
 export default function DashboardClient() {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const [location, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState<"opportunities" | "pending" | "completed">("opportunities");
 
@@ -50,8 +46,6 @@ export default function DashboardClient() {
   // Fonction pour obtenir les données d'un audit depuis le localStorage
   const getAuditData = (auditType: string) => {
     const progress = JSON.parse(localStorage.getItem('auditProgress') || '{}')[auditType] || 0;
-    const documents = JSON.parse(localStorage.getItem(`${auditType}_documents`) || '{}');
-    const datetime = localStorage.getItem(`${auditType}_datetime`);
     const status = getAuditStatus(auditType);
 
     return {
@@ -76,7 +70,7 @@ export default function DashboardClient() {
       foncier: 10000,
       social: 5000
     };
-    return gains[auditType] || 5000;
+    return gains[auditType as keyof typeof gains] || 5000;
   };
 
   // Fonction helper pour calculer les gains obtenus
@@ -87,12 +81,10 @@ export default function DashboardClient() {
   };
 
   // Générer la liste des dossiers
-  const generateDossiers = () => {
-    const auditTypes = ['dfs', 'ticpe', 'msa', 'foncier', 'social'];
-    return auditTypes.map(type => getAuditData(type));
-  };
+  const allDossiers = ['dfs', 'ticpe', 'msa', 'foncier', 'social'].map(type => getAuditData(type));
 
-  const allDossiers = generateDossiers();
+  // 🔹 Filtrer les audits par statut
+  const categorizeDossiers = (status: Dossier["status"]) => allDossiers.filter(dossier => dossier.status === status);
 
   // 🔹 Récupérer tous les audits en cours
   const auditsEnCours = categorizeDossiers("pending");
@@ -199,7 +191,7 @@ export default function DashboardClient() {
         </div>
 
         {/* 📂 Tableau des audits */}
-        <AuditTable activeTab={activeTab} allDossiers={allDossiers}/>
+        <AuditTable activeTab={activeTab} allDossiers={allDossiers} user={user}/>
       </div>
     </div>
   );
@@ -226,7 +218,7 @@ function KpiCard({ icon: Icon, value, component, label, color }: { icon: any; va
   );
 }
 
-export function AuditTable({ activeTab, allDossiers }: { activeTab: "opportunities" | "pending" | "completed"; allDossiers: Dossier[] }) {
+export function AuditTable({ activeTab, allDossiers, user }: { activeTab: "opportunities" | "pending" | "completed"; allDossiers: Dossier[]; user: any }) {
   const dossiers = allDossiers.filter(dossier => activeTab === "opportunities" ? dossier.status === "not_initiated" : dossier.status === activeTab);
 
   return (
