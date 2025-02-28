@@ -410,9 +410,18 @@ export default function DFSAudit() {
           </div>
         </div>
 
-        <Card className="w-full">
+        <Card className="w-full ">
           <CardHeader>
-            <CardTitle>Étapes du processus</CardTitle>
+            <CardTitle>Audit Déduction Forfaitaire Spécifique (DFS)</CardTitle>
+            <p className="text-m text-muted-foreground">
+              Obtenez jusqu'à 7600€ de déductions par an et par employé ! 
+            </p>
+          </CardHeader>
+          <CardHeader>
+            <CardTitle>Processus en cours :</CardTitle>
+            <p className="text-m text-muted-foreground">
+              Suivez les étapes pour finaliser le dossier et obtenir vos remboursements.
+            </p>
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
