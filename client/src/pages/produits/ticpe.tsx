@@ -1,162 +1,226 @@
-import { useState, useEffect, useCallback } from "react";
-import { useRoute } from "wouter";
+import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import HeaderClient from "@/components/HeaderClient";
-import ExpertSelection from "@/components/ExpertSelection";
-import ScheduleMeeting from "@/components/ScheduleMeeting";
-import DocumentUpload from "@/components/DocumentUpload";
-import { Progress } from "@/components/ui/progress";
-import { BadgeCheck, ArrowLeftCircle, FileSearch, DollarSign, TrendingUp, FolderOpen } from "lucide-react";
+import { motion } from "framer-motion";
+import { useAuth } from "@/hooks/use-auth";
+import { 
+  Calendar, ArrowLeft, ArrowRight, RefreshCcw,
+  FileText, DollarSign, Clock, Users
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useRoute } from "wouter";
 
-interface ProcessStep {
-  id: number;
-  title: string;
-  description?: string;
-  component?: React.ComponentType<any>;
-}
 
-const processSteps: ProcessStep[] = [
-  { id: 1, title: "Sélectionner un expert", component: ExpertSelection },
-  { id: 2, title: "Choisir un créneau", component: ScheduleMeeting },
-  { id: 3, title: "Joindre les documents", component: DocumentUpload },
-  { id: 4, title: "Attente du retour de l’expert", description: "Votre dossier est en cours d’analyse." },
-  { id: 5, title: "Réception des résultats", description: "Téléchargez votre rapport." },
-  { id: 6, title: "Acceptation de la mission", description: "Finalisez et validez votre audit." }
-];
-
-export default function AuditProcess() {
-  const [currentStep, setCurrentStep] = useState<number>(1);
+export default function TICPEAudit() {
+  const [currentStep, setCurrentStep] = useState(1);
+  const { user } = useAuth();
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
-
-  // ✅ Récupération des paramètres d'URL
   const [match, params] = useRoute("/produits/:auditType/:userId");
+  const auditType = "ticpe";
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    const savedProgress = JSON.parse(localStorage.getItem('auditProgress') || '{}')[auditType];
+    if (savedProgress) {
+      setCurrentStep(savedProgress);
+      setProgress((savedProgress - 1) * 25);
+    }
+  }, [auditType]);
 
   if (!match || !params?.auditType || !params?.userId) {
     return <div className="text-center text-red-500 text-xl">❌ Erreur : Audit non trouvé</div>;
   }
 
-  const auditType = params.auditType;
   const userId = params.userId;
 
-  // ✅ Gestion du stockage et récupération de la progression
-  const getProgress = useCallback(() => {
-    const progress = JSON.parse(localStorage.getItem("auditProgress") || "{}");
-    if (!progress[auditType]) {
-      progress[auditType] = 1;
-      localStorage.setItem("auditProgress", JSON.stringify(progress));
-    }
-    return progress[auditType];
-  }, [auditType]);
 
-  useEffect(() => {
-    setCurrentStep(getProgress());
-  }, [auditType, getProgress]);
+  const handleStepChange = (newStep: number) => {
+    if (newStep >= 1 && newStep <= 5) {
+      setCurrentStep(newStep);
+      setProgress((newStep - 1) * 25);
 
-  // ✅ Fonction pour compléter une étape
-  const handleStepCompletion = (stepId: number) => {
-    if (stepId === currentStep) {
-      setCurrentStep(stepId + 1);
-      const auditProgress = JSON.parse(localStorage.getItem("auditProgress") || "{}");
-      auditProgress[auditType] = stepId + 1;
-      localStorage.setItem("auditProgress", JSON.stringify(auditProgress));
-      toast({ title: "Succès", description: `Étape ${stepId} complétée.` });
+      // Update localStorage
+      const auditProgress = JSON.parse(localStorage.getItem('auditProgress') || '{}');
+      auditProgress[auditType] = newStep;
+      localStorage.setItem('auditProgress', JSON.stringify(auditProgress));
+
+      toast({
+        title: `Navigation vers l'étape ${newStep}`,
+        description: "Vous pouvez revenir aux étapes précédentes à tout moment",
+      });
     }
   };
 
-  // ✅ Fonction pour revenir à l'étape précédente
-  const handleStepBack = () => {
+  const handlePreviousStep = () => {
     if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-      const auditProgress = JSON.parse(localStorage.getItem("auditProgress") || "{}");
-      auditProgress[auditType] = currentStep - 1;
-      localStorage.setItem("auditProgress", JSON.stringify(auditProgress));
+      handleStepChange(currentStep - 1);
     }
   };
 
-  // ✅ Gestion correcte des composants d’étape
-  const renderStepComponent = (id: number) => {
-    const step = processSteps.find((step) => step.id === id);
-    if (!step?.component) return null;
+  const handleReset = () => {
+    const confirmReset = window.confirm("Êtes-vous sûr de vouloir réinitialiser ce dossier ? Toutes les données seront perdues.");
+    if (confirmReset) {
+      const storageKeys = [
+        'signedCharters',
+        'auditProgress',
+        'selectedExperts',
+        `${auditType}_datetime`,
+        `${auditType}_documents`
+      ];
 
-    const Component = step.component;
-    return <Component onComplete={() => handleStepCompletion(id)} />;
+      storageKeys.forEach(key => {
+        const data = JSON.parse(localStorage.getItem(key) || '{}');
+        delete data[auditType];
+        localStorage.setItem(key, JSON.stringify(data));
+      });
+
+      setCurrentStep(1);
+      setProgress(0);
+
+      toast({
+        title: "Dossier réinitialisé",
+        description: "Le dossier a été remis à zéro avec succès",
+      });
+
+      setLocation('/dashboard/client');
+    }
   };
 
-  // 🔹 Calcul des KPI fictifs
-  const kpiData = {
-    etapeActuelle: currentStep,
-    etapesTotal: processSteps.length,
-    gainsEstimes: 12000,
-    tempsRestant: (processSteps.length - currentStep) * 3, // 3 jours par étape en moyenne
-  };
+  const steps = [
+    {
+      title: "Charte d'engagement",
+      description: "Signez la charte pour commencer l'audit",
+      icon: FileText,
+    },
+    {
+      title: "Sélection de l'expert",
+      description: "Choisissez votre expert TICPE",
+      icon: Users,
+    },
+    {
+      title: "Rendez-vous",
+      description: "Planifiez votre premier rendez-vous",
+      icon: Calendar,
+    },
+    {
+      title: "Documents",
+      description: "Téléchargez les documents requis",
+      icon: FileText,
+    },
+    {
+      title: "Finalisation",
+      description: "Validation et rapport final",
+      icon: DollarSign,
+    }
+  ];
 
   return (
-    <div className="min-h-screen bg-gray-100 pb-16">
+    <div className="min-h-screen bg-gray-50">
       <HeaderClient />
-      <div className="max-w-4xl mx-auto px-6 py-24"> {/* 🔹 Espacement corrigé */}
+      <div className="container mx-auto p-6">
+        <div className="mb-8">
+          <div className="flex justify-between items-center mb-4">
+            <div className="flex items-center gap-4">
+              <h1 className="text-3xl font-bold">Audit TICPE</h1>
+              <Button
+                variant="destructive"
+                onClick={handleReset}
+                className="flex items-center gap-2"
+              >
+                <RefreshCcw className="w-4 h-4" />
+                Réinitialiser
+              </Button>
+            </div>
+            <Button
+              variant="outline"
+              onClick={handlePreviousStep}
+              className="flex items-center gap-2"
+              disabled={currentStep <= 1}
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Étape précédente
+            </Button>
+          </div>
 
-        {/* 🔙 Bouton Retour */}
-        <div className="flex justify-start mb-4">
-          <Button variant="outline" asChild>
-            <a href={`/dashboard/${userId}`} className="flex items-center">
-              <ArrowLeftCircle className="mr-2 h-5 w-5" />
-              Retour au tableau de bord
-            </a>
-          </Button>
+          {/* Progress bar */}
+          <motion.div
+            initial={{ width: "0%" }}
+            animate={{ width: `${progress}%` }}
+            transition={{ duration: 0.5, ease: "easeInOut" }}
+            className="h-2 bg-blue-500 rounded-full mb-4"
+          />
+
+          {/* KPI cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+            <Card>
+              <CardHeader>
+                <CardTitle>Étape actuelle</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{currentStep} / 5</div>
+                <p className="text-gray-600">{steps[currentStep - 1]?.title}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Temps estimé</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">30 min</div>
+                <p className="text-gray-600">Pour compléter cette étape</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Gain potentiel</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600">12 000 €</div>
+                <p className="text-gray-600">Estimation préliminaire</p>
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
-        {/* 📊 TITRE PREMIUM */}
-        <div className="bg-gradient-to-r from-blue-600 to-blue-800 p-6 rounded-lg shadow-md text-white text-center">
-          <h1 className="text-4xl font-bold">📑 Suivi de l'Audit {auditType.toUpperCase()}</h1>
-          <p className="text-lg opacity-80 mt-2">Étape {kpiData.etapeActuelle} sur {kpiData.etapesTotal}</p>
-        </div>
-
-        {/* 🔥 SECTION KPI */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
-          <div className="bg-white p-6 rounded-lg shadow-md flex flex-col items-center">
-            <FolderOpen className="h-10 w-10 text-blue-500" />
-            <h3 className="text-xl font-semibold mt-2">{kpiData.etapeActuelle} / {kpiData.etapesTotal}</h3>
-            <p className="text-gray-600">Étape en cours</p>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow-md flex flex-col items-center">
-            <DollarSign className="h-10 w-10 text-green-500" />
-            <h3 className="text-xl font-semibold mt-2">{kpiData.gainsEstimes.toLocaleString()} €</h3>
-            <p className="text-gray-600">Gains estimés</p>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow-md flex flex-col items-center">
-            <TrendingUp className="h-10 w-10 text-indigo-500" />
-            <h3 className="text-xl font-semibold mt-2">{kpiData.tempsRestant} jours</h3>
-            <p className="text-gray-600">Temps restant estimé</p>
-          </div>
-        </div>
-
-        {/* 📜 SUIVI DU PROCESSUS */}
-        <Card className="shadow-xl rounded-lg mt-8">
+        {/* Steps */}
+        <Card className="w-full">
           <CardHeader>
-            <CardTitle>📜 Étapes de l'Audit</CardTitle>
+            <CardTitle>Étapes de l'audit</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
-              {processSteps.map(({ id, title, description }) => (
-                <div
-                  key={id}
-                  className={`p-4 border-2 rounded-lg transition-all transform hover:scale-105 ${
-                    id === currentStep
-                      ? 'border-blue-500 bg-blue-50 shadow-md'
-                      : id < currentStep
-                      ? 'border-green-500 bg-green-50 shadow-sm'
-                      : 'border-gray-300 bg-white hover:bg-gray-50 cursor-pointer'
-                  }`}
-                >
-                  <h3 className="font-semibold text-lg flex items-center">
-                    {title} {id < currentStep && <BadgeCheck className="ml-2 text-green-500" />}
-                  </h3>
-                  {description && <p className="text-gray-600">{description}</p>}
-                  {id === currentStep && renderStepComponent(id)}
-                </div>
-              ))}
+              {steps.map((step, index) => {
+                const stepNumber = index + 1;
+                return (
+                  <div
+                    key={index}
+                    className={cn(
+                      "p-6 rounded-lg border cursor-pointer transition-all",
+                      stepNumber === currentStep && "bg-blue-50 border-blue-200",
+                      stepNumber < currentStep && "bg-green-50 border-green-200",
+                      stepNumber > currentStep && "bg-gray-50 border-gray-200"
+                    )}
+                    onClick={() => handleStepChange(stepNumber)}
+                  >
+                    <div className="flex items-center gap-4">
+                      <step.icon className={cn(
+                        "w-6 h-6",
+                        stepNumber === currentStep && "text-blue-500",
+                        stepNumber < currentStep && "text-green-500",
+                        stepNumber > currentStep && "text-gray-400"
+                      )} />
+                      <div className="flex-grow">
+                        <h3 className="font-semibold">{step.title}</h3>
+                        <p className="text-sm text-gray-600">{step.description}</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </CardContent>
         </Card>
