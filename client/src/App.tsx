@@ -59,7 +59,7 @@ import Social from "@/pages/produits/social";
 import ExpertPage from "@/pages/expert-page";
 import CharteSignature from "@/pages/charte-signature";
 import MessagerieClient from "./pages/messagerie-client";
-import CourtageEnergie from "@/pages/produits/courtage-energie"; //Import the new page
+import CourtageEnergie from "@/pages/produits/courtage-energie";
 
 // Ajouter les imports des nouvelles pages de profil
 import ExpertProfile from "@/pages/profile/expert";
@@ -120,9 +120,7 @@ function Router() {
           <Route path="/dossier-client/17" component={DossierClient17} />
 
           <Route path="/dashboard/client/:userId" component={Dashboard} />
-          <Route path="/dashboard/partner/:userId">
-            {(params) => <PartnerDashboard params={params} />}
-          </Route>
+          <Route path="/dashboard/partner/:userId" component={PartnerDashboard} />
 
           {/* Routes de produits avec userId */}
           <Route path="/produits/msa/:userId" component={MSA} />

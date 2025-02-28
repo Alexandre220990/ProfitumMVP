@@ -453,7 +453,9 @@ export default function TICPEAudit() {
                         <Button
                           onClick={(e) => {
                             e.stopPropagation();
-                            step.action();
+                            if (step.action) {
+                              step.action();
+                            }
                           }}
                           variant={stepNumber === currentStep ? "default" : "outline"}
                           className="flex items-center gap-2"
