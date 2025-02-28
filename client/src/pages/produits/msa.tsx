@@ -1,6 +1,9 @@
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
+import HeaderClient from "@/components/HeaderClient";
 import {
   FileSignature,
   Check,
@@ -15,9 +18,6 @@ import {
   ChevronUp,
   RefreshCcw
 } from "lucide-react";
-import { useState, useEffect } from "react";
-import { cn } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
   DialogContent,
@@ -31,8 +31,8 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Progress } from "@/components/ui/progress";
-import HeaderClient from "@/components/HeaderClient";
 import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useParams } from "wouter";
 
@@ -48,24 +48,24 @@ type Expert = {
   description: string;
 };
 
-const dfsExperts: Expert[] = [
+const msaExperts: Expert[] = [
   {
     id: 1,
-    name: "Sophie Martin",
-    company: "DFS Consulting",
-    speciality: "Expert Fiscalité Saisonnière",
-    experience: "15 ans d'expertise",
-    compensation: 30,
-    description: "Spécialiste des audits DFS pour les entreprises de taille moyenne"
+    name: "Marie Lambert",
+    company: "MSA Consulting",
+    speciality: "Expert MSA Agricole",
+    experience: "18 ans d'expertise",
+    compensation: 32,
+    description: "Spécialiste en optimisation des cotisations MSA pour le secteur agricole"
   },
   {
     id: 2,
-    name: "Pierre Dubois",
-    company: "SeasonOptim",
-    speciality: "Optimisation DFS",
-    experience: "12 ans d'expérience",
-    compensation: 28,
-    description: "Expert en optimisation fiscale pour le secteur saisonnier"
+    name: "Paul Durand",
+    company: "AgriOptim",
+    speciality: "Consultant MSA",
+    experience: "15 ans d'expérience",
+    compensation: 30,
+    description: "Expert en charges sociales agricoles et optimisation MSA"
   }
 ];
 
@@ -76,15 +76,11 @@ type DocumentItem = {
 };
 
 const documentsList: DocumentItem[] = [
-  { id: "payslips", label: "Bulletins de salaire (des trois dernières années)", uploadedFiles: [] },
-  { id: "contracts", label: "Contrats de travail des salariés concernés", uploadedFiles: [] },
-  { id: "conventions", label: "Conventions collectives applicables", uploadedFiles: [] },
-  { id: "attestations", label: "Attestation de l'activité réelle des salariés", uploadedFiles: [] },
-  { id: "expenses", label: "Justificatifs de frais professionnels remboursés", uploadedFiles: [] },
-  { id: "dsn", label: "Déclarations sociales nominatives (DSN)", uploadedFiles: [] },
-  { id: "register", label: "Registre unique du personnel", uploadedFiles: [] },
-  { id: "urssaf", label: "Historique des cotisations URSSAF", uploadedFiles: [] },
-  { id: "travel", label: "Justificatifs de déplacements professionnels", uploadedFiles: [] },
+  { id: "cotisations", label: "Appels de cotisations MSA", uploadedFiles: [] },
+  { id: "declarations", label: "Déclarations de revenus professionnels", uploadedFiles: [] },
+  { id: "registre", label: "Registre du personnel", uploadedFiles: [] },
+  { id: "bulletins", label: "Bulletins de salaire", uploadedFiles: [] },
+  { id: "contrats", label: "Contrats de travail", uploadedFiles: [] },
   { id: "other", label: "Autre document", uploadedFiles: [] },
 ];
 
@@ -130,14 +126,14 @@ const StepIndicator = ({ step, currentStep }: { step: number; currentStep: numbe
   );
 };
 
-export default function DFSAudit() {
+export default function MSAAudit() {
   const [currentStep, setCurrentStep] = useState(1);
   const { user } = useAuth();
   const params = useParams();
   const userId = params.userId;
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const auditType = "dfs";
+  const auditType = "msa";
 
   const [isCharterSigned, setIsCharterSigned] = useState(false);
   const [showCharterDialog, setShowCharterDialog] = useState(false);
@@ -179,10 +175,10 @@ export default function DFSAudit() {
 
     const savedDocuments = JSON.parse(localStorage.getItem(`${auditType}_documents`) || '{}');
     if (Object.keys(savedDocuments).length > 0) {
-      setUploadedDocuments(prevDocs =>
-        prevDocs.map(doc => ({
-          ...doc,
-          uploadedFiles: savedDocuments[doc.id] ? savedDocuments[doc.id].map(f => ({ id: f.id, name: f.name })) : []
+      setUploadedDocuments(
+        documentsList.map(d => ({
+          ...d,
+          uploadedFiles: savedDocuments[d.id] || []
         }))
       );
     }
@@ -210,13 +206,46 @@ export default function DFSAudit() {
     }
   };
 
+  const handleReset = () => {
+    const confirmReset = window.confirm("Êtes-vous sûr de vouloir réinitialiser ce dossier ? Toutes les données seront perdues.");
+    if (confirmReset) {
+      const storageKeys = [
+        'signedCharters',
+        'auditProgress',
+        'selectedExperts',
+        `${auditType}_datetime`,
+        `${auditType}_documents`
+      ];
+
+      storageKeys.forEach(key => {
+        const data = JSON.parse(localStorage.getItem(key) || '{}');
+        delete data[auditType];
+        localStorage.setItem(key, JSON.stringify(data));
+      });
+
+      setCurrentStep(1);
+      setProgress(0);
+      setIsCharterSigned(false);
+      setSelectedExpert(null);
+      setConfirmedDateTime(undefined);
+      setUploadedDocuments(documentsList);
+
+      toast({
+        title: "Dossier réinitialisé",
+        description: "Le dossier a été remis à zéro avec succès",
+      });
+
+      setLocation('/dashboard/client');
+    }
+  };
+
   const handleCharterSign = () => {
     if (acceptedCGU) {
       const signedCharters = JSON.parse(localStorage.getItem('signedCharters') || '{}');
       signedCharters[auditType] = true;
       localStorage.setItem('signedCharters', JSON.stringify(signedCharters));
       setIsCharterSigned(true);
-      updateProgress(2);
+      handleStepChange(2);
       setShowCharterDialog(false);
       toast({
         title: "La charte est validée avec succès !",
@@ -231,7 +260,7 @@ export default function DFSAudit() {
       const savedExperts = JSON.parse(localStorage.getItem('selectedExperts') || '{}');
       savedExperts[auditType] = tempSelectedExpert;
       localStorage.setItem('selectedExperts', JSON.stringify(savedExperts));
-      updateProgress(3);
+      handleStepChange(3);
       setShowExpertDialog(false);
       toast({
         title: "Expert sélectionné",
@@ -251,7 +280,6 @@ export default function DFSAudit() {
       return d;
     });
     setUploadedDocuments(updatedDocs);
-
     localStorage.setItem(`${auditType}_documents`, JSON.stringify(
       updatedDocs.reduce((acc, d) => ({
         ...acc,
@@ -261,25 +289,17 @@ export default function DFSAudit() {
   };
 
   const handleDeleteDocument = (docId: string, fileId: number) => {
-    const updatedDocs = uploadedDocuments.map(doc => ({
-      ...doc,
-      uploadedFiles: doc.uploadedFiles.filter(file => file.id !== fileId)
-    }));
-
-    setUploadedDocuments(updatedDocs);
-    localStorage.setItem(`${auditType}_documents`, JSON.stringify(
-      updatedDocs.reduce((acc, d) => ({
-        ...acc,
-        [d.id]: d.uploadedFiles
-      }), {})
-    ));
-  };
-
-  const updateProgress = (step: number) => {
-    const auditProgress = JSON.parse(localStorage.getItem('auditProgress') || '{}');
-    auditProgress[auditType] = step;
-    localStorage.setItem('auditProgress', JSON.stringify(auditProgress));
-    setCurrentStep(step);
+    setUploadedDocuments(docs =>
+      docs.map(d => {
+        if (d.id === docId) {
+          return {
+            ...d,
+            uploadedFiles: d.uploadedFiles.filter(f => f.id !== fileId)
+          };
+        }
+        return d;
+      })
+    );
   };
 
   const handleDownloadCharter = () => {
@@ -289,42 +309,9 @@ export default function DFSAudit() {
     });
   };
 
-  const handleReset = () => {
-    const confirmReset = window.confirm("Êtes-vous sûr de vouloir réinitialiser ce dossier ? Toutes les données seront perdues.");
-    if (confirmReset) {
-      // Clear all localStorage data for this audit
-      const storageKeys = [
-        'signedCharters',
-        'auditProgress',
-        'selectedExperts',
-        `${auditType}_datetime`,
-        `${auditType}_documents`
-      ];
-
-      storageKeys.forEach(key => {
-        const data = JSON.parse(localStorage.getItem(key) || '{}');
-        delete data[auditType];
-        localStorage.setItem(key, JSON.stringify(data));
-      });
-
-      // Reset all states
-      setCurrentStep(1);
-      setProgress(0);
-      setIsCharterSigned(false);
-      setSelectedExpert(null);
-      setConfirmedDateTime(undefined);
-      setUploadedDocuments(documentsList);
-
-      toast({
-        title: "Dossier réinitialisé",
-        description: "Le dossier a été remis à zéro avec succès",
-      });
-
-      // Return to dashboard
-      setLocation('/dashboard/client');
-    }
+  const toggleSection = (section: string) => {
+    setExpandedSection(expandedSection === section ? null : section);
   };
-
 
   const steps = [
     {
@@ -366,10 +353,6 @@ export default function DFSAudit() {
     }
   ];
 
-  const toggleSection = (section: string) => {
-    setExpandedSection(expandedSection === section ? null : section);
-  };
-
   return (
     <div className="min-h-screen bg-gray-50">
       <HeaderClient />
@@ -377,7 +360,7 @@ export default function DFSAudit() {
         <div className="mb-8">
           <div className="flex justify-between items-center mb-4">
             <div className="flex items-center gap-4">
-              <h1 className="text-3xl font-bold">Audit DFS</h1>
+              <h1 className="text-3xl font-bold">Audit MSA</h1>
               <Button
                 variant="destructive"
                 onClick={handleReset}
@@ -410,17 +393,11 @@ export default function DFSAudit() {
           </div>
         </div>
 
-        <Card className="w-full ">
+        <Card className="w-full">
           <CardHeader>
-            <CardTitle>Audit Déduction Forfaitaire Spécifique (DFS)</CardTitle>
+            <CardTitle>Audit MSA</CardTitle>
             <p className="text-m text-muted-foreground">
-              Obtenez jusqu'à 7600€ de déductions par an et par employé ! 
-            </p>
-          </CardHeader>
-          <CardHeader>
-            <CardTitle>Processus en cours :</CardTitle>
-            <p className="text-m text-muted-foreground">
-              Suivez les étapes pour finaliser le dossier et obtenir vos remboursements.
+              Optimisez vos cotisations MSA et bénéficiez d'économies substantielles !
             </p>
           </CardHeader>
           <CardContent>
@@ -605,13 +582,13 @@ export default function DFSAudit() {
         <Dialog open={showCharterDialog} onOpenChange={setShowCharterDialog}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Charte Contractuelle DFS</DialogTitle>
+              <DialogTitle>Charte Contractuelle MSA</DialogTitle>
               <DialogDescription>
                 Veuillez lire attentivement la charte avant de la signer
               </DialogDescription>
             </DialogHeader>
             <div className="max-h-[60vh] overflow-y-auto p-4 bg-gray-50 rounded-md my-4">
-              <h3 className="text-lg font-semibold mb-4">Charte de l'Audit DFS</h3>
+              <h3 className="text-lg font-semibold mb-4">Charte de l'Audit MSA</h3>
               <p className="mb-4">
                 Cette charte définit les engagements mutuels entre le client et l'expert...
                 [Contenu de la charte]
@@ -644,13 +621,13 @@ export default function DFSAudit() {
         <Dialog open={showExpertDialog} onOpenChange={setShowExpertDialog}>
           <DialogContent className="max-w-3xl">
             <DialogHeader>
-              <DialogTitle>Sélection de l'expert DFS</DialogTitle>
+              <DialogTitle>Sélection de l'expert MSA</DialogTitle>
               <DialogDescription>
-                Choisissez un expert spécialisé en DFS pour votre audit
+                Choisissez un expert spécialisé en MSA pour votre audit
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
-              {dfsExperts.map((expert) => (
+              {msaExperts.map((expert) => (
                 <div
                   key={expert.id}
                   className={cn(
@@ -737,7 +714,7 @@ export default function DFSAudit() {
                     const formattedDateTime = `${formattedDate} à ${selectedTime}`;
                     setConfirmedDateTime(formattedDateTime);
                     localStorage.setItem(`${auditType}_datetime`, formattedDateTime);
-                    updateProgress(4);
+                    handleStepChange(4);
                     setShowCalendarDialog(false);
                     toast({
                       title: "Rendez-vous confirmé",
