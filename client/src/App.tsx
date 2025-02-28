@@ -119,27 +119,27 @@ function Router() {
           <Route path="/dossier-client/16" component={DossierClient16} />
           <Route path="/dossier-client/17" component={DossierClient17} />
 
-          <Route path="/dashboard/client/:userId" component={Dashboard} />
-          <Route path="/dashboard/partner/:userId" component={PartnerDashboard} />
+          <Route path="/dashboard/client" component={Dashboard} />
+          <Route path="/dashboard/partner" component={PartnerDashboard} />
 
-          {/* Routes de produits avec userId */}
-          <Route path="/produits/msa/:userId" component={MSA} />
-          <Route path="/produits/dfs/:userId" component={DFS} />
-          <Route path="/produits/ticpe/:userId" component={TICPE} />
-          <Route path="/produits/foncier/:userId" component={Foncier} />
-          <Route path="/produits/social/:userId" component={Social} />
-          <Route path="/produits/courtage-energie/:userId" component={CourtageEnergie} />
+          {/* Routes de produits */}
+          <Route path="/produits/msa" component={MSA} />
+          <Route path="/produits/dfs" component={DFS} />
+          <Route path="/produits/ticpe" component={TICPE} />
+          <Route path="/produits/foncier" component={Foncier} />
+          <Route path="/produits/social" component={Social} />
+          <Route path="/produits/courtage-energie" component={CourtageEnergie} />
 
           {/* Autres routes protégées */}
-          <Route path="/audit/:type/expert/:userId" component={ExpertPage} />
-          <Route path="/audit/:type/sign-charte/:userId" component={CharteSignature} />
-          <Route path="/reports/:userId" component={Reports} />
-          <Route path="/dossier/:userId" component={DossierDetails} />
-          <Route path="/profilclient/:userId" component={ProfilClient} />
-          <Route path="/DetailsDossier/:userId" component={DetailsDossier} />
+          <Route path="/audit/:type/expert" component={ExpertPage} />
+          <Route path="/audit/:type/sign-charte" component={CharteSignature} />
+          <Route path="/reports" component={Reports} />
+          <Route path="/dossier" component={DossierDetails} />
+          <Route path="/profilclient" component={ProfilClient} />
+          <Route path="/DetailsDossier" component={DetailsDossier} />
           <Route path="/marketplace-experts" component={MarketplaceExperts} />
-          <Route path="/simulateur/:userId" component={Simulateur} />
-          <Route path="/messagerie-client/:userId" component={MessagerieClient} />
+          <Route path="/simulateur" component={Simulateur} />
+          <Route path="/messagerie-client" component={MessagerieClient} />
         </>
       )}
 
