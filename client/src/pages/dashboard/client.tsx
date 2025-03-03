@@ -40,20 +40,24 @@ export default function DashboardClient() {
   useEffect(() => {
     if (user?.id) {
       // Vérifie si une simulation a déjà été effectuée pour cet utilisateur
-      const auditProgress = localStorage.getItem('auditProgress');
+      const auditProgress = localStorage.getItem(`auditProgress_${user.id}`);
       setHasSimulated(!!auditProgress);
     }
   }, [user]);
 
   const getAuditStatus = (auditType: string): "not_initiated" | "pending" | "completed" => {
-    const progress = JSON.parse(localStorage.getItem('auditProgress') || '{}')[auditType];
-    if (!progress && progress !== 0) return "not_initiated";
+    if (!user?.id) return "not_initiated";
+
+    const progress = JSON.parse(localStorage.getItem(`auditProgress_${user.id}`) || '{}')[auditType];
+    if (progress === undefined) return "not_initiated";
     if (progress === 5) return "completed";
-    return "pending";
+    return progress > 0 ? "pending" : "not_initiated";
   };
 
   const getAuditData = (auditType: string) => {
-    const progress = JSON.parse(localStorage.getItem('auditProgress') || '{}')[auditType] || 0;
+    if (!user?.id) return null;
+
+    const progress = JSON.parse(localStorage.getItem(`auditProgress_${user.id}`) || '{}')[auditType] || 0;
     const status = getAuditStatus(auditType);
 
     return {
@@ -85,8 +89,8 @@ export default function DashboardClient() {
     return Math.round(potential * (0.8 + Math.random() * 0.4));
   };
 
-  const allDossiers = hasSimulated
-    ? ['dfs', 'ticpe', 'msa', 'foncier', 'social'].map(type => getAuditData(type))
+  const allDossiers = hasSimulated && user?.id
+    ? Object.keys(JSON.parse(localStorage.getItem(`auditProgress_${user.id}`) || '{}')).map(type => getAuditData(type)).filter(Boolean)
     : [];
 
   const categorizeDossiers = (status: Dossier["status"]) => allDossiers.filter(dossier => dossier.status === status);

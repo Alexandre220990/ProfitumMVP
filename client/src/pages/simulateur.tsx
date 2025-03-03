@@ -45,7 +45,7 @@ const Simulateur = () => {
 
   useEffect(() => {
     if (user?.id && userId && Number(user.id) === Number(userId)) {
-      const storedAnswers = localStorage.getItem(`simulationAnswers_${userId}`);
+      const storedAnswers = localStorage.getItem(`simulationAnswers_${user.id}`);
       if (storedAnswers) {
         setAnswers(JSON.parse(storedAnswers));
       }
@@ -75,7 +75,7 @@ const Simulateur = () => {
         : [answer];
 
       const newAnswers = { ...prev, [questions[step].id]: updatedAnswers };
-      localStorage.setItem(`simulationAnswers_${userId}`, JSON.stringify(newAnswers));
+      localStorage.setItem(`simulationAnswers_${user?.id}`, JSON.stringify(newAnswers));
       return newAnswers;
     });
   };
@@ -87,11 +87,13 @@ const Simulateur = () => {
     const matchedProducts = products.filter((product) => product.criteria(answers));
     setResults(matchedProducts);
 
+    // Sauvegarder uniquement les produits éligibles avec l'id de l'utilisateur
     const auditProgress = matchedProducts.reduce((acc, product) => {
-      acc[product.id] = 0; 
+      acc[product.id] = 0;
       return acc;
-    }, {});
-    localStorage.setItem(`auditProgress`, JSON.stringify(auditProgress));
+    }, {} as Record<string, number>);
+
+    localStorage.setItem(`auditProgress_${user?.id}`, JSON.stringify(auditProgress));
   };
 
   if (!user || !userId || Number(user.id) !== Number(userId)) {
@@ -140,7 +142,7 @@ const Simulateur = () => {
               {results.map((product) => {
                 const Icon = getIconForProduct(product.id);
                 return (
-                  <Card key={product.id} className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
+                  <Card key={product.id} className="flex flex-col overflow-hidden hover:shadow-lg transition-shadow duration-300">
                     <CardHeader className="space-y-1 text-center bg-blue-50 p-6">
                       <div className="mx-auto bg-blue-100 rounded-full w-16 h-16 flex items-center justify-center mb-4">
                         <Icon className="h-8 w-8 text-blue-600" />
@@ -149,15 +151,17 @@ const Simulateur = () => {
                         {product.name}
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="p-6">
-                      <CardDescription className="text-gray-600 text-sm min-h-[60px]">
+                    <CardContent className="p-6 flex flex-col flex-grow">
+                      <CardDescription className="text-gray-600 text-sm mb-6">
                         {product.description}
                       </CardDescription>
-                      <Link href={`/dashboard/client/${userId}`} className="block mt-4">
-                        <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
-                          Voir les détails
-                        </Button>
-                      </Link>
+                      <div className="mt-auto">
+                        <Link href={`/produits/${product.id}/${user.id}`} className="block">
+                          <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+                            Commencer le process
+                          </Button>
+                        </Link>
+                      </div>
                     </CardContent>
                   </Card>
                 );
