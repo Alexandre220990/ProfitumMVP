@@ -38,14 +38,16 @@ export default function DashboardClient() {
   const [hasSimulated, setHasSimulated] = useState(false);
 
   useEffect(() => {
-    // Vérifie si une simulation a déjà été effectuée
-    const simulationDone = localStorage.getItem('auditProgress');
-    setHasSimulated(!!simulationDone);
-  }, []);
+    if (user?.id) {
+      // Vérifie si une simulation a déjà été effectuée pour cet utilisateur
+      const auditProgress = localStorage.getItem('auditProgress');
+      setHasSimulated(!!auditProgress);
+    }
+  }, [user]);
 
   const getAuditStatus = (auditType: string): "not_initiated" | "pending" | "completed" => {
     const progress = JSON.parse(localStorage.getItem('auditProgress') || '{}')[auditType];
-    if (!progress) return "not_initiated";
+    if (!progress && progress !== 0) return "not_initiated";
     if (progress === 5) return "completed";
     return "pending";
   };
@@ -83,7 +85,7 @@ export default function DashboardClient() {
     return Math.round(potential * (0.8 + Math.random() * 0.4));
   };
 
-  const allDossiers = hasSimulated 
+  const allDossiers = hasSimulated
     ? ['dfs', 'ticpe', 'msa', 'foncier', 'social'].map(type => getAuditData(type))
     : [];
 
@@ -139,9 +141,9 @@ export default function DashboardClient() {
           >
             <RefreshCcw className="w-6 h-6" />
           </Button>
-          <SectionTitle 
-            title="Suivi de vos Audits" 
-            subtitle="Suivi en temps réel de vos dossiers et gains" 
+          <SectionTitle
+            title="Suivi de vos Audits"
+            subtitle="Suivi en temps réel de vos dossiers et gains"
           />
         </div>
 
@@ -151,7 +153,7 @@ export default function DashboardClient() {
               Bienvenue sur votre tableau de bord !
             </h2>
             <p className="text-gray-600 mb-6">
-              Pour découvrir les opportunités d'optimisation adaptées à votre entreprise, 
+              Pour découvrir les opportunités d'optimisation adaptées à votre entreprise,
               commencez par lancer une simulation.
             </p>
             <Button
@@ -229,7 +231,7 @@ export default function DashboardClient() {
             </div>
 
             {/* Tableau des audits */}
-            <AuditTable activeTab={activeTab} allDossiers={allDossiers} user={user}/>
+            <AuditTable activeTab={activeTab} allDossiers={allDossiers} user={user} />
           </>
         )}
       </div>

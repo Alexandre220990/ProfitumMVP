@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { useParams } from "wouter";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import HeaderClient from "@/components/HeaderClient";
 import { Link } from "wouter";
-import { ArrowLeftCircle } from "lucide-react";
+import { ArrowLeftCircle, Building, Truck, DollarSign, BarChart3 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 
 interface Question {
@@ -23,6 +23,19 @@ interface Product {
   criteria: (answers: Record<string, string[]>) => boolean;
 }
 
+const getIconForProduct = (productId: string) => {
+  switch (productId) {
+    case 'msa':
+      return Building;
+    case 'ticpe':
+      return Truck;
+    case 'dfs':
+      return DollarSign;
+    default:
+      return BarChart3;
+  }
+};
+
 const Simulateur = () => {
   const { user } = useAuth();
   const { userId } = useParams();
@@ -31,7 +44,6 @@ const Simulateur = () => {
   const [results, setResults] = useState<Product[] | null>(null);
 
   useEffect(() => {
-    // Ne chargez les réponses que si l'utilisateur actuel correspond à userId
     if (user?.id && userId && Number(user.id) === Number(userId)) {
       const storedAnswers = localStorage.getItem(`simulationAnswers_${userId}`);
       if (storedAnswers) {
@@ -62,7 +74,6 @@ const Simulateur = () => {
           : [...currentAnswers, answer]
         : [answer];
 
-      // Sauvegarder avec l'ID de l'utilisateur
       const newAnswers = { ...prev, [questions[step].id]: updatedAnswers };
       localStorage.setItem(`simulationAnswers_${userId}`, JSON.stringify(newAnswers));
       return newAnswers;
@@ -75,12 +86,14 @@ const Simulateur = () => {
   const handleSubmit = () => {
     const matchedProducts = products.filter((product) => product.criteria(answers));
     setResults(matchedProducts);
-    // Sauvegarder les résultats avec l'ID de l'utilisateur
-    localStorage.setItem(`eligible_products_${userId}`, JSON.stringify(matchedProducts));
-    localStorage.setItem(`auditProgress_${userId}`, "true");
+
+    const auditProgress = matchedProducts.reduce((acc, product) => {
+      acc[product.id] = 0; 
+      return acc;
+    }, {});
+    localStorage.setItem(`auditProgress`, JSON.stringify(auditProgress));
   };
 
-  // Vérifier si l'utilisateur est authentifié et correspond à userId
   if (!user || !userId || Number(user.id) !== Number(userId)) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -102,9 +115,9 @@ const Simulateur = () => {
                 <h2 className="text-2xl font-semibold text-gray-900 mb-6">{questions[step].question}</h2>
                 <div className="grid grid-cols-2 gap-6">
                   {questions[step].options.map((option) => (
-                    <Button 
-                      key={option} 
-                      variant={answers[questions[step].id]?.includes(option) ? "default" : "outline"} 
+                    <Button
+                      key={option}
+                      variant={answers[questions[step].id]?.includes(option) ? "default" : "outline"}
                       onClick={() => handleSelect(option)}
                     >
                       {option}
@@ -119,15 +132,45 @@ const Simulateur = () => {
             ) : <Button onClick={handleSubmit}>Voir mes résultats</Button>}
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            {results.map((product) => (
-              <Card key={product.id} className="p-6 border border-gray-200 rounded-xl shadow-xl bg-white hover:shadow-2xl transition-all text-center">
-                <CardHeader>
-                  <span className="text-5xl">{product.icon}</span>
-                  <h3 className="text-xl font-bold mt-3">{product.name}</h3>
-                </CardHeader>
-              </Card>
-            ))}
+          <div>
+            <h2 className="text-2xl font-semibold text-gray-800 mb-6 text-center">
+              Produits recommandés pour votre entreprise
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {results.map((product) => {
+                const Icon = getIconForProduct(product.id);
+                return (
+                  <Card key={product.id} className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
+                    <CardHeader className="space-y-1 text-center bg-blue-50 p-6">
+                      <div className="mx-auto bg-blue-100 rounded-full w-16 h-16 flex items-center justify-center mb-4">
+                        <Icon className="h-8 w-8 text-blue-600" />
+                      </div>
+                      <CardTitle className="text-xl font-bold text-gray-900">
+                        {product.name}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-6">
+                      <CardDescription className="text-gray-600 text-sm min-h-[60px]">
+                        {product.description}
+                      </CardDescription>
+                      <Link href={`/dashboard/client/${userId}`} className="block mt-4">
+                        <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+                          Voir les détails
+                        </Button>
+                      </Link>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+
+            <div className="mt-8 text-center">
+              <Link href={`/dashboard/client/${userId}`}>
+                <Button variant="outline" className="mx-auto">
+                  Retour au tableau de bord
+                </Button>
+              </Link>
+            </div>
           </div>
         )}
       </div>
