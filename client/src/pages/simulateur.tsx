@@ -32,7 +32,7 @@ const Simulateur = () => {
 
   useEffect(() => {
     // Ne chargez les réponses que si l'utilisateur actuel correspond à userId
-    if (user?.id === userId) {
+    if (user?.id && userId && Number(user.id) === Number(userId)) {
       const storedAnswers = localStorage.getItem(`simulationAnswers_${userId}`);
       if (storedAnswers) {
         setAnswers(JSON.parse(storedAnswers));
@@ -80,11 +80,11 @@ const Simulateur = () => {
     localStorage.setItem(`auditProgress_${userId}`, "true");
   };
 
-  // Vérifier si l'utilisateur actuel correspond à userId
-  if (user?.id !== userId) {
+  // Vérifier si l'utilisateur est authentifié et correspond à userId
+  if (!user || !userId || Number(user.id) !== Number(userId)) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-red-500">Accès non autorisé</p>
+        <p className="text-red-500">Accès non autorisé. Veuillez vous connecter avec le bon compte.</p>
       </div>
     );
   }
@@ -102,7 +102,11 @@ const Simulateur = () => {
                 <h2 className="text-2xl font-semibold text-gray-900 mb-6">{questions[step].question}</h2>
                 <div className="grid grid-cols-2 gap-6">
                   {questions[step].options.map((option) => (
-                    <Button key={option} variant={answers[questions[step].id]?.includes(option) ? "default" : "outline"} onClick={() => handleSelect(option)}>
+                    <Button 
+                      key={option} 
+                      variant={answers[questions[step].id]?.includes(option) ? "default" : "outline"} 
+                      onClick={() => handleSelect(option)}
+                    >
                       {option}
                     </Button>
                   ))}
