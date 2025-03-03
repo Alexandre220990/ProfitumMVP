@@ -13,11 +13,13 @@ import {
   FilePlus,
   Loader2,
   PiggyBank,
+  RefreshCcw,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CircularProgressbar, buildStyles } from "react-circular-progressbar";
 import "react-circular-progressbar/dist/styles.css";
 import { useLocation } from 'wouter';
+
 
 interface Dossier {
   id: string;
@@ -119,11 +121,21 @@ export default function DashboardClient() {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50 pb-16">
-      <HeaderClient />
-      <div className="max-w-5xl mx-auto px-4 py-10">
-        <SectionTitle title="Suivi de vos Audits" subtitle="Suivi en temps réel de vos dossiers et gains" />
+        return (
+          <div className="min-h-screen bg-gray-50 pb-16">
+            <HeaderClient />
+            <div className="max-w-5xl mx-auto px-4 py-10">
+              <div className="mt-16"></div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => (window.location.href = `/pages/simulateur/${user.id}`)}
+                  className="text-gray-600 hover:text-blue-600 transition duration-300"
+                >
+                  <RefreshCcw className="w-6 h-6" />
+                </button>
+                <SectionTitle title="Suivi de vos Audits" subtitle="Suivi en temps réel de vos dossiers et gains" />
+              </div>
+            </div>
 
         {/* 🔥 KPI Minimaliste */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-8">
@@ -193,7 +205,6 @@ export default function DashboardClient() {
         {/* 📂 Tableau des audits */}
         <AuditTable activeTab={activeTab} allDossiers={allDossiers} user={user}/>
       </div>
-    </div>
   );
 }
 
