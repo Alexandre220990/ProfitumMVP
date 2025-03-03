@@ -9,7 +9,6 @@ import { UserCircle, Mail, Lock, Building, Phone, MapPin, FileText } from "lucid
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 
-// Définition du type des données attendues pour l'inscription
 interface RegisterFormData {
   username: string;
   email: string;
@@ -45,20 +44,22 @@ export default function CreateAccountClient() {
     },
   });
 
-  // 🔹 Fonction de soumission du formulaire
   const onSubmit = async (data: RegisterFormData) => {
     try {
       console.log("📡 Envoi des données d'inscription :", data);
+
+      // Nettoyer le localStorage avant la création du compte
+      localStorage.clear();
 
       const response = await registerMutation.mutateAsync(data);
 
       console.log("📌 Réponse de l'API:", response);
 
-      if (response?.success && response?.userId) {
-        console.log("✅ Utilisateur créé avec userId:", response.userId);
-        setLocation(`/dashboard/client/${response.userId}`);
+      if (response?.id) {
+        console.log("✅ Utilisateur créé avec id:", response.id);
+        setLocation(`/dashboard/client/${response.id}`);
       } else {
-        console.error("❌ Erreur: userId non retourné après inscription");
+        console.error("❌ Erreur: id non retourné après inscription");
       }
     } catch (error) {
       console.error("❌ Erreur lors de la création du compte:", error);
