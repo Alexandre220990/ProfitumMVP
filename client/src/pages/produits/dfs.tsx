@@ -19,10 +19,10 @@ import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 
 // Icons
-import { 
-  FileSignature, Check, UserCog, Calendar, Upload, Trash2, 
-  ArrowLeft, ArrowRight, Download, ExternalLink, ChevronDown, ChevronUp, 
-  RefreshCcw, TrendingUp, FileText, DollarSign, Clock, Users 
+import {
+  FileSignature, Check, UserCog, Calendar, Upload, Trash2,
+  ArrowLeft, ArrowRight, Download, ExternalLink, ChevronDown, ChevronUp,
+  RefreshCcw, TrendingUp, FileText, DollarSign, Clock, Users
 } from "lucide-react";
 
 type StepStatus = "completed" | "current" | "upcoming";
@@ -281,7 +281,7 @@ export default function DFSAudit() {
   const handleReset = () => {
     const confirmReset = window.confirm("Êtes-vous sûr de vouloir réinitialiser ce dossier ? Toutes les données seront perdues.");
     if (confirmReset) {
-      
+
       // Clear all localStorage data for this audit
       const storageKeys = [
         'signedCharters',
@@ -363,44 +363,60 @@ export default function DFSAudit() {
   return (
     <div className="min-h-screen bg-gray-50">
       <HeaderClient />
-      <div className="container mx-auto p-6">
-           <div className="pt-24">
-          <div className="flex justify-between items-center mb-6">
-            <div className="flex items-center gap-4">
-              <h1 className="text-3xl font-bold">Audit DFS</h1>
+
+      {/* Nouvelle section pour le titre et les boutons */}
+      <div className="bg-white shadow-sm">
+        <div className="container mx-auto px-6 py-8">
+          <div className="flex flex-col space-y-4">
+            <div className="flex items-center justify-between">
+              <h1 className="text-3xl font-bold text-gray-900">Audit DFS</h1>
+              <div className="flex items-center gap-4">
+                <Button
+                  variant="outline"
+                  onClick={handleReset}
+                  className="flex items-center gap-2 text-gray-600 hover:text-red-600"
+                >
+                  <RefreshCcw className="w-4 h-4" />
+                  Réinitialiser
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handlePreviousStep}
+                  className="flex items-center gap-2"
+                  disabled={currentStep <= 1}
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Étape précédente
+                </Button>
+              </div>
             </div>
-            <Button
-              variant="outline"
-              onClick={handlePreviousStep}
-              className="flex items-center gap-2"
-              disabled={currentStep <= 1}
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Étape précédente
-            </Button>
-          </div>
 
-             {/* Progress bar */}
-          <motion.div
-            initial={{ width: "0%" }}
-            animate={{ width: `${progress}%` }}
-            transition={{ duration: 0.5, ease: "easeInOut" }}
-            className="h-2 bg-blue-500 rounded-full mb-4"
-          />
+            {/* Barre de progression */}
+            <div className="w-full">
+              <motion.div
+                initial={{ width: "0%" }}
+                animate={{ width: `${progress}%` }}
+                transition={{ duration: 0.5, ease: "easeInOut" }}
+                className="h-2 bg-blue-500 rounded-full"
+              />
+            </div>
 
-             {/* KPI cards */}
-          <div className="flex justify-between mt-4">
-            {steps.map((step, index) => (
-              <StepIndicator key={index} step={index + 1} currentStep={currentStep} />
-            ))}
+            {/* Indicateurs d'étapes */}
+            <div className="flex justify-between mt-4">
+              {steps.map((step, index) => (
+                <StepIndicator key={index} step={index + 1} currentStep={currentStep} />
+              ))}
+            </div>
           </div>
         </div>
+      </div>
 
+      <div className="container mx-auto p-6">
         <Card className="w-full ">
           <CardHeader>
             <CardTitle>Audit Déduction Forfaitaire Spécifique (DFS)</CardTitle>
             <p className="text-m text-muted-foreground">
-              Obtenez jusqu'à 7600€ de déductions par an et par employé ! 
+              Obtenez jusqu'à 7600€ de déductions par an et par employé !
             </p>
           </CardHeader>
           <CardHeader>
@@ -595,51 +611,51 @@ export default function DFSAudit() {
               <DialogDescription>
                 Veuillez lire attentivement la charte avant de la signer.
               </DialogDescription>
-              </DialogHeader>
-              <div className="max-h-[60vh] overflow-y-auto p-4 bg-gray-50 rounded-md my-4">
-                <h3 className="text-lg font-semibold mb-4">Charte de l'Audit DFS</h3>
+            </DialogHeader>
+            <div className="max-h-[60vh] overflow-y-auto p-4 bg-gray-50 rounded-md my-4">
+              <h3 className="text-lg font-semibold mb-4">Charte de l'Audit DFS</h3>
 
-                <p className="mb-4">
-                  Cette charte définit les engagements mutuels entre le client et l'expert DFS dans le cadre de l’audit relatif à la mise en place de la Déduction Forfaitaire Spécifique (DFS) pour les frais professionnels.
-                </p>
+              <p className="mb-4">
+                Cette charte définit les engagements mutuels entre le client et l'expert DFS dans le cadre de l’audit relatif à la mise en place de la Déduction Forfaitaire Spécifique (DFS) pour les frais professionnels.
+              </p>
 
-                <h4 className="text-md font-semibold mt-4">1. Objet de la Charte</h4>
-                <p className="mb-4">
-                  L’objectif de cette charte est d’encadrer les relations entre le client et l’expert afin de garantir un audit conforme aux réglementations en vigueur et d’optimiser l’application de la DFS.
-                </p>
+              <h4 className="text-md font-semibold mt-4">1. Objet de la Charte</h4>
+              <p className="mb-4">
+                L’objectif de cette charte est d’encadrer les relations entre le client et l’expert afin de garantir un audit conforme aux réglementations en vigueur et d’optimiser l’application de la DFS.
+              </p>
 
-                <h4 className="text-md font-semibold mt-4">2. Engagements du Client</h4>
-                <ul className="list-disc pl-5 mb-4">
-                  <li>Fournir tous les documents nécessaires pour justifier l’application de la DFS.</li>
-                  <li>Garantir l’exactitude des informations transmises à l’expert.</li>
-                  <li>Collaborer activement avec l’expert en répondant aux demandes de clarification.</li>
-                  <li>Informer ses salariés de l’impact de la DFS sur leur rémunération et leurs cotisations sociales.</li>
-                </ul>
+              <h4 className="text-md font-semibold mt-4">2. Engagements du Client</h4>
+              <ul className="list-disc pl-5 mb-4">
+                <li>Fournir tous les documents nécessaires pour justifier l’application de la DFS.</li>
+                <li>Garantir l’exactitude des informations transmises à l’expert.</li>
+                <li>Collaborer activement avec l’expert en répondant aux demandes de clarification.</li>
+                <li>Informer ses salariés de l’impact de la DFS sur leur rémunération et leurs cotisations sociales.</li>
+              </ul>
 
-                <h4 className="text-md font-semibold mt-4">3. Engagements de l'Expert</h4>
-                <ul className="list-disc pl-5 mb-4">
-                  <li>Analyser la situation de l’entreprise et des salariés pour vérifier l’éligibilité à la DFS.</li>
-                  <li>Garantir la confidentialité des informations et documents transmis.</li>
-                  <li>Accompagner le client dans la mise en conformité avec les obligations URSSAF.</li>
-                  <li>Assurer un suivi régulier et apporter des recommandations adaptées.</li>
-                </ul>
+              <h4 className="text-md font-semibold mt-4">3. Engagements de l'Expert</h4>
+              <ul className="list-disc pl-5 mb-4">
+                <li>Analyser la situation de l’entreprise et des salariés pour vérifier l’éligibilité à la DFS.</li>
+                <li>Garantir la confidentialité des informations et documents transmis.</li>
+                <li>Accompagner le client dans la mise en conformité avec les obligations URSSAF.</li>
+                <li>Assurer un suivi régulier et apporter des recommandations adaptées.</li>
+              </ul>
 
-                <h4 className="text-md font-semibold mt-4">4. Modalités d'Application de la DFS</h4>
-                <p className="mb-4">
-                  L’audit comprend l’étude de la convention collective applicable, l’analyse des bulletins de salaire et la mise en place des démarches pour appliquer la DFS. La durée estimée est de deux à six semaines en fonction de la taille de l’entreprise et de la complexité du dossier.
-                </p>
+              <h4 className="text-md font-semibold mt-4">4. Modalités d'Application de la DFS</h4>
+              <p className="mb-4">
+                L’audit comprend l’étude de la convention collective applicable, l’analyse des bulletins de salaire et la mise en place des démarches pour appliquer la DFS. La durée estimée est de deux à six semaines en fonction de la taille de l’entreprise et de la complexité du dossier.
+              </p>
 
-                <h4 className="text-md font-semibold mt-4">5. Clause de Responsabilité</h4>
-                <ul className="list-disc pl-5 mb-4">
-                  <li>L’expert ne peut être tenu responsable des sanctions URSSAF en cas d’erreurs ou d’omissions dans les informations fournies par le client.</li>
-                  <li>L’expert s’engage à fournir des recommandations conformes à la réglementation, mais la mise en œuvre effective relève de la responsabilité du client.</li>
-                </ul>
+              <h4 className="text-md font-semibold mt-4">5. Clause de Responsabilité</h4>
+              <ul className="list-disc pl-5 mb-4">
+                <li>L’expert ne peut être tenu responsable des sanctions URSSAF en cas d’erreurs ou d’omissions dans les informations fournies par le client.</li>
+                <li>L’expert s’engage à fournir des recommandations conformes à la réglementation, mais la mise en œuvre effective relève de la responsabilité du client.</li>
+              </ul>
 
-                <h4 className="text-md font-semibold mt-4">6. Résiliation et Litiges</h4>
-                <ul className="list-disc pl-5 mb-4">
-                  <li>Chaque partie peut résilier l’audit en cas de manquement grave, avec un préavis de 15 jours.</li>
-                  <li>En cas de litige, une résolution à l’amiable sera privilégiée. À défaut, le litige sera soumis aux tribunaux compétents.</li>
-                </ul>
+              <h4 className="text-md font-semibold mt-4">6. Résiliation et Litiges</h4>
+              <ul className="list-disc pl-5 mb-4">
+                <li>Chaque partie peut résilier l’audit en cas de manquement grave, avec un préavis de 15 jours.</li>
+                <li>En cas de litige, une résolution à l’amiable sera privilégiée. À défaut, le litige sera soumis aux tribunaux compétents.</li>
+              </ul>
             </div>
             <div className="flex items-center space-x-2 mb-4">
               <Checkbox

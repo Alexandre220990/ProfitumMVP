@@ -373,43 +373,55 @@ export default function DFSAudit() {
   return (
     <div className="min-h-screen bg-gray-50">
       <HeaderClient />
-      <div className="container mx-auto p-6">
-        <div className="mb-8">
-          <div className="flex justify-between items-center mb-4">
-            <div className="flex items-center gap-4">
-              <h1 className="text-3xl font-bold">Audit DFS</h1>
-              <Button
-                variant="destructive"
-                onClick={handleReset}
-                className="flex items-center gap-2"
-              >
-                <RefreshCcw className="w-4 h-4" />
-                Réinitialiser
-              </Button>
+
+      {/* Nouvelle section pour le titre et les boutons */}
+      <div className="bg-white shadow-sm">
+        <div className="container mx-auto px-6 py-8">
+          <div className="flex flex-col space-y-4">
+            <div className="flex items-center justify-between">
+              <h1 className="text-3xl font-bold text-gray-900">Audit MSA</h1>
+              <div className="flex items-center gap-4">
+                <Button
+                  variant="outline"
+                  onClick={handleReset}
+                  className="flex items-center gap-2 text-gray-600 hover:text-red-600"
+                >
+                  <RefreshCcw className="w-4 h-4" />
+                  Réinitialiser
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handlePreviousStep}
+                  className="flex items-center gap-2"
+                  disabled={currentStep <= 1}
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Étape précédente
+                </Button>
+              </div>
             </div>
-            <Button
-              variant="outline"
-              onClick={handlePreviousStep}
-              className="flex items-center gap-2"
-              disabled={currentStep <= 1}
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Étape précédente
-            </Button>
-          </div>
-          <motion.div
-            initial={{ width: "0%" }}
-            animate={{ width: `${progress}%` }}
-            transition={{ duration: 0.5, ease: "easeInOut" }}
-            className="h-2 bg-blue-500 rounded-full"
-          />
-          <div className="flex justify-between mt-4">
-            {steps.map((step, index) => (
-              <StepIndicator key={index} step={index + 1} currentStep={currentStep} />
-            ))}
+
+            {/* Barre de progression */}
+            <div className="w-full">
+              <motion.div
+                initial={{ width: "0%" }}
+                animate={{ width: `${progress}%` }}
+                transition={{ duration: 0.5, ease: "easeInOut" }}
+                className="h-2 bg-blue-500 rounded-full"
+              />
+            </div>
+
+            {/* Indicateurs d'étapes */}
+            <div className="flex justify-between mt-4">
+              {steps.map((step, index) => (
+                <StepIndicator key={index} step={index + 1} currentStep={currentStep} />
+              ))}
+            </div>
           </div>
         </div>
+      </div>
 
+      <div className="container mx-auto p-6">
         <Card className="w-full ">
           <CardHeader>
             <CardTitle>Audit Déduction Forfaitaire Spécifique (DFS)</CardTitle>
