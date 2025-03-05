@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { 
   UserCircle, TrendingUp, ShieldCheck, Users, CheckCircle, Briefcase, DollarSign, 
-  Lightbulb, BarChart2, Handshake, FileText
+  Lightbulb, BarChart2, Handshake
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -28,30 +28,20 @@ const keyMetrics = [
 ];
 
 export default function HomePage() {
-  const [, setLocation] = useLocation();
-
   return (
     <div className="flex flex-col min-h-screen">
       <div className="flex-grow p-6 space-y-4">
         {/* Navigation */}
         <div className="bg-blue-900 text-white py-3 px-6 rounded-lg flex justify-between items-center text-sm">
           <div className="flex items-center space-x-6">
-            <button onClick={() => setLocation("/")} className="cursor-pointer">
-              <img src="/Logo-Profitum.png" alt="Profitum Logo" className="h-10" />
-            </button>
+            <Link href="/">
+              <img src="/Logo-Profitum.png" alt="Profitum Logo" className="h-10 cursor-pointer" />
+            </Link>
             <div className="flex space-x-6">
-              <button onClick={() => setLocation("/nos-services")} className="hover:text-gray-300">
-                Nos Services
-              </button>
-              <button onClick={() => setLocation("/experts")} className="hover:text-gray-300">
-                Nos Experts
-              </button>
-              <button onClick={() => setLocation("/tarifs")} className="hover:text-gray-300">
-                Tarifs
-              </button>
-              <button onClick={() => setLocation("/contact")} className="hover:text-gray-300">
-                Contact
-              </button>
+              <Link href="/nos-services">Nos Services</Link>
+              <Link href="/experts">Nos Experts</Link>
+              <Link href="/tarifs">Tarifs</Link>
+              <Link href="/contact">Contact</Link>
             </div>
           </div>
           <DropdownMenu>
@@ -61,11 +51,11 @@ export default function HomePage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={() => setLocation("/connexion-client")}>
-                Client
+              <DropdownMenuItem asChild>
+                <Link href="/connexion-client">Client</Link>
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setLocation("/connexion-partner")}>
-                Partenaire
+              <DropdownMenuItem asChild>
+                <Link href="/connexion-partner">Partenaire</Link>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -75,12 +65,11 @@ export default function HomePage() {
         <header className="bg-gradient-to-r from-blue-700 to-blue-900 text-white p-10 rounded-lg shadow-xl text-center">
           <h1 className="text-4xl font-bold">Une plateforme incontournable !</h1>
           <p className="mt-4 text-lg">Accédez instantanément aux meilleurs experts, bénéficiez de tarifs négociés et suivez chaque étape de vos dossiers en toute transparence.</p>
-          <Button 
-            onClick={() => setLocation("/create-account-client")}
-            className="mt-7 bg-yellow-400 text-black font-bold px-10 py-6 rounded-lg hover:bg-yellow-500"
-          >
-            Inscrivez-vous dès maintenant !
-          </Button>
+          <Link href="/create-account-client">
+            <Button className="mt-7 bg-yellow-400 text-black font-bold px-10 py-6 rounded-lg hover:bg-yellow-500">
+              Inscrivez-vous dès maintenant !
+            </Button>
+          </Link>
         </header>
 
         {/* Key Metrics */}
@@ -103,15 +92,13 @@ export default function HomePage() {
               { icon: Handshake, title: "Tarifs négociés", desc: "Bénéficiez des meilleurs prix grâce à nos accords avec nos partenaires." },
               { icon: TrendingUp, title: "Économies garanties", desc: "Nos services permettent en moyenne de réduire vos charges de 15%." },
             ].map((advantage, index) => (
-              <button
-                key={index}
-                onClick={() => setLocation("/create-account-client")}
-                className="p-6 border-2 border-blue-600 shadow-md rounded-lg flex flex-col items-center hover:shadow-xl hover:-translate-y-1 bg-white cursor-pointer transition-all"
-              >
-                <advantage.icon className="text-blue-600 w-14 h-14 mb-4" />
-                <h3 className="text-xl font-semibold">{advantage.title}</h3>
-                <p className="text-gray-700 mt-2 text-center">{advantage.desc}</p>
-              </button>
+              <Link key={index} href="/create-account-client">
+                <div className="p-6 border-2 border-blue-600 shadow-md rounded-lg flex flex-col items-center hover:shadow-xl hover:-translate-y-1 bg-white cursor-pointer transition-all">
+                  <advantage.icon className="text-blue-600 w-14 h-14 mb-4" />
+                  <h3 className="text-xl font-semibold">{advantage.title}</h3>
+                  <p className="text-gray-700 mt-2 text-center">{advantage.desc}</p>
+                </div>
+              </Link>
             ))}
           </div>
         </section>
