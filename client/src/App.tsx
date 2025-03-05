@@ -1,15 +1,13 @@
-import { Switch, Route, useLocation } from "wouter";
+import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
-import { useAuth } from "@/hooks/use-auth";
+import { AuthProvider } from "@/hooks/use-auth";
 import { Loader2 } from "lucide-react";
 
-// Pages et composants
+// Pages
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/home-page";
-import AuthPage from "@/pages/auth-page";
-import { AuthProvider } from "@/hooks/use-auth";
 import Dashboard from "@/pages/dashboard/client";
 import PartnerDashboard from "@/pages/dashboard/partner";
 import Simulateur from "@/pages/simulateur";
@@ -33,23 +31,11 @@ import MessagerieClient from "./pages/messagerie-client";
 import ExpertProfile from "@/pages/profile/expert";
 import ClientProfile from "@/pages/profile/client";
 
-
 function Router() {
-  const { user, isLoading } = useAuth();
-  const [location, setLocation] = useLocation();
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-border" />
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen">
       <Switch>
-        {/* Routes publiques accessibles à tous */}
+        {/* Routes publiques */}
         <Route path="/" component={Home} />
         <Route path="/connexion-client" component={ConnexionClient} />
         <Route path="/connexion-partner" component={ConnexionPartner} />
@@ -63,24 +49,20 @@ function Router() {
         <Route path="/create-account-client" component={CreateAccountClient} />
         <Route path="/conditions-utilisation" component={ConditionsUtilisation} />
 
-        {/* Routes protégées nécessitant une authentification */}
-        {user && (
-          <>
-            <Route path="/profile/expert" component={ExpertProfile} />
-            <Route path="/profile/client" component={ClientProfile} />
-            <Route path="/dashboard/client" component={Dashboard} />
-            <Route path="/dashboard/partner" component={PartnerDashboard} />
-            <Route path="/simulateur" component={Simulateur} />
-            <Route path="/reports" component={Reports} />
-            <Route path="/messagerie-client" component={MessagerieClient} />
-            <Route path="/dossier/:id" component={DossierDetails} />
-            <Route path="/profil-client" component={ProfilClient} />
-            <Route path="/details-dossier" component={DetailsDossier} />
-            <Route path="/marketplace-experts" component={MarketplaceExperts} />
-          </>
-        )}
+        {/* Routes protégées */}
+        <Route path="/profile/expert" component={ExpertProfile} />
+        <Route path="/profile/client" component={ClientProfile} />
+        <Route path="/dashboard/client" component={Dashboard} />
+        <Route path="/dashboard/partner" component={PartnerDashboard} />
+        <Route path="/simulateur" component={Simulateur} />
+        <Route path="/reports" component={Reports} />
+        <Route path="/messagerie-client" component={MessagerieClient} />
+        <Route path="/dossier/:id" component={DossierDetails} />
+        <Route path="/profil-client" component={ProfilClient} />
+        <Route path="/details-dossier" component={DetailsDossier} />
+        <Route path="/marketplace-experts" component={MarketplaceExperts} />
 
-        {/* Fallback pour les routes non trouvées */}
+        {/* Route 404 */}
         <Route component={NotFound} />
       </Switch>
     </div>
