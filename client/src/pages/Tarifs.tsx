@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
-import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
+import { Button } from "@/components/ui/button";
 import { Star, ShieldCheck, Zap, Bell, FileText, BarChart, Users, Rocket, Globe, Code, CreditCard, Clock, TrendingUp, UserCircle } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 
@@ -78,21 +77,27 @@ export default function PaiementPage() {
   const [billingCycle, setBillingCycle] = useState("monthly");
 
   return (
-    <div className="relative w-full min-h-screen overflow-y-auto bg-white">
+    <div className="relative w-full min-h-screen bg-white">
       {/* Navigation */}
       <nav className="sticky top-0 z-50 w-full bg-blue-900 text-white py-3 px-6">
         <div className="container mx-auto flex justify-between items-center">
           <div className="flex items-center space-x-6">
             <Link href="/">
-              <a className="cursor-pointer">
-                <img src="/Logo-Profitum.png" alt="Profitum Logo" className="h-10" />
-              </a>
+              <img src="/Logo-Profitum.png" alt="Profitum Logo" className="h-10 cursor-pointer" />
             </Link>
             <div className="flex space-x-6">
-              <Link href="/nos-services"><a className="hover:text-blue-200">Nos Services</a></Link>
-              <Link href="/experts"><a className="hover:text-blue-200">Nos Experts</a></Link>
-              <Link href="/tarifs"><a className="hover:text-blue-200">Tarifs</a></Link>
-              <Link href="/contact"><a className="hover:text-blue-200">Contact</a></Link>
+              <Link href="/nos-services">
+                <span className="hover:text-blue-200 cursor-pointer">Nos Services</span>
+              </Link>
+              <Link href="/experts">
+                <span className="hover:text-blue-200 cursor-pointer">Nos Experts</span>
+              </Link>
+              <Link href="/tarifs">
+                <span className="hover:text-blue-200 cursor-pointer">Tarifs</span>
+              </Link>
+              <Link href="/contact">
+                <span className="hover:text-blue-200 cursor-pointer">Contact</span>
+              </Link>
             </div>
           </div>
           <DropdownMenu>
@@ -103,17 +108,21 @@ export default function PaiementPage() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem>
-                <Link href="/connexion-client"><a className="w-full">Client</a></Link>
+                <Link href="/connexion-client">
+                  <span className="w-full">Client</span>
+                </Link>
               </DropdownMenuItem>
               <DropdownMenuItem>
-                <Link href="/connexion-partner"><a className="w-full">Partenaire</a></Link>
+                <Link href="/connexion-partner">
+                  <span className="w-full">Partenaire</span>
+                </Link>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </nav>
 
-      <main className="flex-1 w-full">
+      <main className="flex-1 w-full mt-16">
         {/* Hero Section */}
         <header className="w-full py-20 bg-gradient-to-r from-blue-600 to-blue-800 text-white text-center">
           <h1 className="text-5xl font-extrabold tracking-tight mb-2">Vous êtes expert et souhaitez</h1>
@@ -190,12 +199,10 @@ export default function PaiementPage() {
             </p>
           </div>
           <Link href="/paiement">
-            <a className="w-full sm:w-auto">
-              <Button className="w-full sm:w-auto bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-lg flex items-center justify-center">
-                <CreditCard className="mr-2" />
-                <span>Payer maintenant</span>
-              </Button>
-            </a>
+            <Button className="w-full sm:w-auto bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-lg flex items-center justify-center">
+              <CreditCard className="mr-2" />
+              <span>Payer maintenant</span>
+            </Button>
           </Link>
         </div>
       </div>

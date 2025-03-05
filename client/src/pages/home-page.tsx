@@ -37,10 +37,18 @@ export default function HomePage() {
               <img src="/Logo-Profitum.png" alt="Profitum Logo" className="h-10 cursor-pointer" />
             </Link>
             <div className="flex space-x-6">
-              <Link href="/nos-services">Nos Services</Link>
-              <Link href="/experts">Nos Experts</Link>
-              <Link href="/tarifs">Tarifs</Link>
-              <Link href="/contact">Contact</Link>
+              <Link href="/nos-services">
+                <span className="cursor-pointer hover:text-blue-200">Nos Services</span>
+              </Link>
+              <Link href="/experts">
+                <span className="cursor-pointer hover:text-blue-200">Nos Experts</span>
+              </Link>
+              <Link href="/tarifs">
+                <span className="cursor-pointer hover:text-blue-200">Tarifs</span>
+              </Link>
+              <Link href="/contact">
+                <span className="cursor-pointer hover:text-blue-200">Contact</span>
+              </Link>
             </div>
           </div>
           <DropdownMenu>
@@ -50,11 +58,15 @@ export default function HomePage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem asChild>
-                <Link href="/connexion-client">Client</Link>
+              <DropdownMenuItem>
+                <Link href="/connexion-client">
+                  <span className="w-full">Client</span>
+                </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/connexion-partner">Partenaire</Link>
+              <DropdownMenuItem>
+                <Link href="/connexion-partner">
+                  <span className="w-full">Partenaire</span>
+                </Link>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
