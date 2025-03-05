@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { 
   UserCircle, TrendingUp, ShieldCheck, Users, CheckCircle, Briefcase, DollarSign, 
@@ -27,54 +27,48 @@ const keyMetrics = [
 ];
 
 export default function HomePage() {
-  const [, setLocation] = useLocation();
-
-  const navigate = (path: string) => {
-    setLocation(path);
-  };
-
   return (
     <div className="p-6 space-y-4">
       {/* Navigation */}
-      <div className="bg-blue-900 text-white py-3 px-6 rounded-lg flex justify-between items-center text-sm">
+      <nav className="bg-blue-900 text-white py-3 px-6 rounded-lg flex justify-between items-center text-sm">
         <div className="flex items-center space-x-6">
-          <button onClick={() => navigate("/")} className="cursor-pointer">
-            <img src="/Logo-Profitum.png" alt="Profitum Logo" className="h-10" />
-          </button>
+          <Link href="/">
+            <img src="/Logo-Profitum.png" alt="Profitum Logo" className="h-10 cursor-pointer" />
+          </Link>
           <div className="flex space-x-6">
-            <button onClick={() => navigate("/nos-services")} className="hover:text-blue-200">Nos Services</button>
-            <button onClick={() => navigate("/experts")} className="hover:text-blue-200">Nos Experts</button>
-            <button onClick={() => navigate("/tarifs")} className="hover:text-blue-200">Tarifs</button>
-            <button onClick={() => navigate("/contact")} className="hover:text-blue-200">Contact</button>
+            <Link href="/nos-services" className="hover:text-blue-200">Nos Services</Link>
+            <Link href="/experts" className="hover:text-blue-200">Nos Experts</Link>
+            <Link href="/tarifs" className="hover:text-blue-200">Tarifs</Link>
+            <Link href="/contact" className="hover:text-blue-200">Contact</Link>
           </div>
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button className="bg-white text-blue-600 flex items-center">
-              <UserCircle className="mr-2" /> Connexion
+            <Button variant="outline" className="bg-white text-blue-600 flex items-center gap-2">
+              <UserCircle className="h-4 w-4" />
+              <span>Connexion</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onSelect={() => navigate("/connexion-client")}>
-              Client
+            <DropdownMenuItem asChild>
+              <Link href="/connexion-client">Client</Link>
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => navigate("/connexion-partner")}>
-              Partenaire
+            <DropdownMenuItem asChild>
+              <Link href="/connexion-partner">Partenaire</Link>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-      </div>
+      </nav>
 
       {/* Header principal */}
       <header className="bg-gradient-to-r from-blue-700 to-blue-900 text-white p-10 rounded-lg shadow-xl text-center">
         <h1 className="text-4xl font-bold">Une plateforme incontournable !</h1>
         <p className="mt-4 text-lg">Accédez instantanément aux meilleurs experts, bénéficiez de tarifs négociés et suivez chaque étape de vos dossiers en toute transparence.</p>
-        <Button 
-          onClick={() => navigate("/create-account-client")}
-          className="mt-7 bg-yellow-400 text-black font-bold px-10 py-6 rounded-lg hover:bg-yellow-500"
-        >
-          Inscrivez-vous dès maintenant !
-        </Button>
+        <Link href="/create-account-client">
+          <Button className="mt-7 bg-yellow-400 text-black font-bold px-10 py-6 rounded-lg hover:bg-yellow-500">
+            Inscrivez-vous dès maintenant !
+          </Button>
+        </Link>
       </header>
 
       {/* Key Metrics */}
@@ -97,15 +91,13 @@ export default function HomePage() {
             { icon: Handshake, title: "Tarifs négociés", desc: "Bénéficiez des meilleurs prix grâce à nos accords avec nos partenaires." },
             { icon: TrendingUp, title: "Économies garanties", desc: "Nos services permettent en moyenne de réduire vos charges de 15%." },
           ].map((advantage, index) => (
-            <div 
-              key={index} 
-              onClick={() => navigate("/create-account-client")}
-              className="p-6 border-2 border-blue-600 shadow-md rounded-lg flex flex-col items-center hover:shadow-xl hover:-translate-y-1 bg-white cursor-pointer transition-all duration-300"
-            >
-              <advantage.icon className="text-blue-600 w-14 h-14 mb-4" />
-              <h3 className="text-xl font-semibold">{advantage.title}</h3>
-              <p className="text-gray-700 mt-2 text-center">{advantage.desc}</p>
-            </div>
+            <Link key={index} href="/create-account-client">
+              <div className="p-6 border-2 border-blue-600 shadow-md rounded-lg flex flex-col items-center hover:shadow-xl hover:-translate-y-1 bg-white cursor-pointer transition-all duration-300">
+                <advantage.icon className="text-blue-600 w-14 h-14 mb-4" />
+                <h3 className="text-xl font-semibold">{advantage.title}</h3>
+                <p className="text-gray-700 mt-2 text-center">{advantage.desc}</p>
+              </div>
+            </Link>
           ))}
         </div>
       </section>
@@ -125,7 +117,7 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-blue-900 text-white text-center py-6 mt-10">
+      <footer className="bg-blue-900 text-white text-center py-6 mt-10 rounded-lg">
         <p>© 2025 Profitum. Tous droits réservés.</p>
       </footer>
     </div>
