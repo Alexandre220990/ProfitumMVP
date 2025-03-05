@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import HeaderClient from "@/components/HeaderClient";
 import {
@@ -18,6 +18,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CircularProgressbar, buildStyles } from "react-circular-progressbar";
 import "react-circular-progressbar/dist/styles.css";
+import { useLocation } from 'wouter';
+
 
 interface Dossier {
   id: string;
@@ -33,38 +35,26 @@ interface Dossier {
 
 export default function DashboardClient() {
   const { user, isLoading } = useAuth();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState<"opportunities" | "pending" | "completed">("opportunities");
-  const [hasSimulated, setHasSimulated] = useState(false);
-
-  useEffect(() => {
-    if (user?.id) {
-      // Vérifie si une simulation a déjà été effectuée pour cet utilisateur
-      const auditProgress = localStorage.getItem(`auditProgress_${user.id}`);
-      setHasSimulated(!!auditProgress);
-    }
-  }, [user]);
 
   const getAuditStatus = (auditType: string): "not_initiated" | "pending" | "completed" => {
-    if (!user?.id) return "not_initiated";
-
-    const progress = JSON.parse(localStorage.getItem(`auditProgress_${user.id}`) || '{}')[auditType];
-    if (progress === undefined) return "not_initiated";
+    const progress = JSON.parse(localStorage.getItem('auditProgress') || '{}')[auditType];
+    if (!progress) return "not_initiated";
     if (progress === 5) return "completed";
-    return progress > 0 ? "pending" : "not_initiated";
+    return "pending";
   };
 
+  // Fonction pour obtenir les données d'un audit depuis le localStorage
   const getAuditData = (auditType: string) => {
-    if (!user?.id) return null;
-
-    const progress = JSON.parse(localStorage.getItem(`auditProgress_${user.id}`) || '{}')[auditType] || 0;
+    const progress = JSON.parse(localStorage.getItem('auditProgress') || '{}')[auditType] || 0;
     const status = getAuditStatus(auditType);
 
     return {
       id: auditType,
       name: `Audit ${auditType.toUpperCase()}`,
       status,
-      progress: progress * 20,
+      progress: progress * 20, // Convert steps (1-5) to percentage
       currentStep: status === "completed" ? "Terminé" : `Étape ${progress}`,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -73,6 +63,7 @@ export default function DashboardClient() {
     };
   };
 
+  // Fonction helper pour obtenir un gain potentiel par défaut
   const getDefaultGain = (auditType: string): number => {
     const gains = {
       dfs: 15000,
@@ -84,35 +75,34 @@ export default function DashboardClient() {
     return gains[auditType as keyof typeof gains] || 5000;
   };
 
+  // Fonction helper pour calculer les gains obtenus
   const calculateObtainedGain = (auditType: string): number => {
     const potential = getDefaultGain(auditType);
+    // Simuler un gain obtenu entre 80% et 120% du potentiel
     return Math.round(potential * (0.8 + Math.random() * 0.4));
   };
 
-  const allDossiers = hasSimulated && user?.id
-    ? Object.keys(JSON.parse(localStorage.getItem(`auditProgress_${user.id}`) || '{}')).map(type => getAuditData(type)).filter(Boolean)
-    : [];
+  // Générer la liste des dossiers
+  const allDossiers = ['dfs', 'ticpe', 'msa', 'foncier', 'social'].map(type => getAuditData(type));
 
+  // 🔹 Filtrer les audits par statut
   const categorizeDossiers = (status: Dossier["status"]) => allDossiers.filter(dossier => dossier.status === status);
 
+  // 🔹 Récupérer tous les audits en cours
   const auditsEnCours = categorizeDossiers("pending");
 
+  // 🔹 Calcul de l'avancement moyen des audits en cours
   const avancementGlobal = auditsEnCours.length > 0
     ? auditsEnCours.reduce((sum, audit) => sum + audit.progress, 0) / auditsEnCours.length
     : 0;
 
+  // ✅ Données KPI
   const kpiData = {
     dossiersEnCours: categorizeDossiers("pending").length,
     gainsPotentiels: allDossiers.reduce((sum, dossier) => sum + dossier.potentialGain, 0),
     gainsObtenus: allDossiers.filter(d => d.status === "completed").reduce((sum, dossier) => sum + (dossier.obtainedGain || 0), 0),
     auditsFinalises: categorizeDossiers("completed").length,
     avancementGlobal,
-  };
-
-  const handleSimulationClick = () => {
-    if (user?.id) {
-      setLocation(`/simulateur/${user.id}`);
-    }
   };
 
   if (isLoading) {
@@ -131,115 +121,90 @@ export default function DashboardClient() {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50 pb-16">
-      <HeaderClient />
-      <div className="max-w-5xl mx-auto px-4 py-10">
-        <div className="mt-16"></div>
+        return (
+          <div className="min-h-screen bg-gray-50 pb-16">
+            <HeaderClient />
+            <div className="max-w-5xl mx-auto px-4 py-10">
+              <div className="mt-16"></div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => (window.location.href = `/pages/simulateur/${user.id}`)}
+                  className="text-gray-600 hover:text-blue-600 transition duration-300"
+                >
+                  <RefreshCcw className="w-6 h-6" />
+                </button>
+                <SectionTitle title="Suivi de vos Audits" subtitle="Suivi en temps réel de vos dossiers et gains" />
+              </div>
+            </div>
 
-        {/* En-tête avec titre et bouton */}
-        <div className="flex items-center justify-center relative mb-8">
-          <Button
-            onClick={handleSimulationClick}
-            className="absolute left-0 text-gray-600 hover:text-blue-600 transition duration-300"
-          >
-            <RefreshCcw className="w-6 h-6" />
-          </Button>
-          <SectionTitle
-            title="Suivi de vos Audits"
-            subtitle="Suivi en temps réel de vos dossiers et gains"
-          />
+        {/* 🔥 KPI Minimaliste */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-8">
+          {[
+            { icon: FolderOpen, value: kpiData.dossiersEnCours, label: "Dossiers en cours", color: "text-blue-500" },
+            {
+              icon: DollarSign,
+              component: (
+                <div className="space-y-1">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-red-500 font-medium">Potentiel:</span>
+                    <span className="text-lg">{kpiData.gainsPotentiels.toLocaleString()} €</span>
+                  </div>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-green-500 font-medium">Obtenus:</span>
+                    <span className="text-lg">{kpiData.gainsObtenus.toLocaleString()} €</span>
+                  </div>
+                </div>
+              ),
+              label: "Gains",
+              color: "text-green-500"
+            },
+            { icon: PiggyBank, value: kpiData.auditsFinalises, label: "Audits finalisés", color: "text-indigo-500" },
+            {
+              icon: BarChart3,
+              value: (
+                <div className="w-16 h-16">
+                  <CircularProgressbar
+                    value={kpiData.avancementGlobal}
+                    text={`${kpiData.avancementGlobal.toFixed(0)}%`}
+                    styles={buildStyles({
+                      textColor: "#1E293B",
+                      pathColor: kpiData.avancementGlobal === 100 ? "#10B981" : "#3B82F6",
+                      trailColor: "#E5E7EB",
+                      textSize: "20px",
+                    })}
+                  />
+                </div>
+              ),
+              label: "Avancement global",
+              color: "text-purple-500"
+            }
+          ].map(({ icon: Icon, value, component, label, color }) => (
+            <KpiCard key={label} icon={Icon} value={value} component={component} label={label} color={color} />
+          ))}
         </div>
 
-        {!hasSimulated ? (
-          <div className="text-center mt-10">
-            <h2 className="text-2xl font-semibold text-gray-700 mb-4">
-              Bienvenue sur votre tableau de bord !
-            </h2>
-            <p className="text-gray-600 mb-6">
-              Pour découvrir les opportunités d'optimisation adaptées à votre entreprise,
-              commencez par lancer une simulation.
-            </p>
+        {/* 📂 Navigation minimaliste */}
+        <div className="mt-8 flex justify-center space-x-4">
+          {[
+            { key: "opportunities", label: "Opportunités", icon: FilePlus },
+            { key: "pending", label: "En Cours", icon: Clock },
+            { key: "completed", label: "Terminés", icon: CheckCircle },
+          ].map(({ key, label, icon: Icon }) => (
             <Button
-              onClick={handleSimulationClick}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg"
+              key={key}
+              className={`px-6 flex items-center space-x-2 text-lg transition-all ${
+                activeTab === key ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+              }`}
+              onClick={() => setActiveTab(key as "opportunities" | "pending" | "completed")}
             >
-              Lancer la simulation
+              <Icon className="h-5 w-5" /> <span>{label}</span>
             </Button>
-          </div>
-        ) : (
-          <>
-            {/* KPI Minimaliste */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-8">
-              {[
-                { icon: FolderOpen, value: kpiData.dossiersEnCours, label: "Dossiers en cours", color: "text-blue-500" },
-                {
-                  icon: DollarSign,
-                  component: (
-                    <div className="space-y-1">
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-red-500 font-medium">Potentiel:</span>
-                        <span className="text-lg">{kpiData.gainsPotentiels.toLocaleString()} €</span>
-                      </div>
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-green-500 font-medium">Obtenus:</span>
-                        <span className="text-lg">{kpiData.gainsObtenus.toLocaleString()} €</span>
-                      </div>
-                    </div>
-                  ),
-                  label: "Gains",
-                  color: "text-green-500"
-                },
-                { icon: PiggyBank, value: kpiData.auditsFinalises, label: "Audits finalisés", color: "text-indigo-500" },
-                {
-                  icon: BarChart3,
-                  value: (
-                    <div className="w-16 h-16">
-                      <CircularProgressbar
-                        value={kpiData.avancementGlobal}
-                        text={`${kpiData.avancementGlobal.toFixed(0)}%`}
-                        styles={buildStyles({
-                          textColor: "#1E293B",
-                          pathColor: kpiData.avancementGlobal === 100 ? "#10B981" : "#3B82F6",
-                          trailColor: "#E5E7EB",
-                          textSize: "20px",
-                        })}
-                      />
-                    </div>
-                  ),
-                  label: "Avancement global",
-                  color: "text-purple-500"
-                }
-              ].map(({ icon: Icon, value, component, label, color }) => (
-                <KpiCard key={label} icon={Icon} value={value} component={component} label={label} color={color} />
-              ))}
-            </div>
+          ))}
+        </div>
 
-            {/* Navigation minimaliste */}
-            <div className="mt-8 flex justify-center space-x-4">
-              {[
-                { key: "opportunities", label: "Opportunités", icon: FilePlus },
-                { key: "pending", label: "En Cours", icon: Clock },
-                { key: "completed", label: "Terminés", icon: CheckCircle },
-              ].map(({ key, label, icon: Icon }) => (
-                <Button
-                  key={key}
-                  className={`px-6 flex items-center space-x-2 text-lg transition-all ${
-                    activeTab === key ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                  }`}
-                  onClick={() => setActiveTab(key as "opportunities" | "pending" | "completed")}
-                >
-                  <Icon className="h-5 w-5" /> <span>{label}</span>
-                </Button>
-              ))}
-            </div>
-
-            {/* Tableau des audits */}
-            <AuditTable activeTab={activeTab} allDossiers={allDossiers} user={user} />
-          </>
-        )}
+        {/* 📂 Tableau des audits */}
+        <AuditTable activeTab={activeTab} allDossiers={allDossiers} user={user}/>
       </div>
-    </div>
   );
 }
 
