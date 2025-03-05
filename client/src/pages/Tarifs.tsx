@@ -77,27 +77,29 @@ export default function PaiementPage() {
   const [billingCycle, setBillingCycle] = useState("monthly");
 
   return (
-    <div className="relative w-full min-h-screen bg-white">
+    <div className="min-h-screen bg-white">
       {/* Navigation */}
       <nav className="sticky top-0 z-50 w-full bg-blue-900 text-white py-3 px-6">
         <div className="container mx-auto flex justify-between items-center">
           <div className="flex items-center space-x-6">
-            <Link href="/">
-              <img src="/Logo-Profitum.png" alt="Profitum Logo" className="h-10 cursor-pointer" />
-            </Link>
+            <Button asChild variant="ghost" className="p-0">
+              <Link href="/">
+                <img src="/Logo-Profitum.png" alt="Profitum Logo" className="h-10" />
+              </Link>
+            </Button>
             <div className="flex space-x-6">
-              <Link href="/nos-services">
-                <span className="hover:text-blue-200 cursor-pointer">Nos Services</span>
-              </Link>
-              <Link href="/experts">
-                <span className="hover:text-blue-200 cursor-pointer">Nos Experts</span>
-              </Link>
-              <Link href="/tarifs">
-                <span className="hover:text-blue-200 cursor-pointer">Tarifs</span>
-              </Link>
-              <Link href="/contact">
-                <span className="hover:text-blue-200 cursor-pointer">Contact</span>
-              </Link>
+              <Button asChild variant="ghost" className="text-white hover:text-blue-200">
+                <Link href="/nos-services">Nos Services</Link>
+              </Button>
+              <Button asChild variant="ghost" className="text-white hover:text-blue-200">
+                <Link href="/experts">Nos Experts</Link>
+              </Button>
+              <Button asChild variant="ghost" className="text-white hover:text-blue-200">
+                <Link href="/tarifs">Tarifs</Link>
+              </Button>
+              <Button asChild variant="ghost" className="text-white hover:text-blue-200">
+                <Link href="/contact">Contact</Link>
+              </Button>
             </div>
           </div>
           <DropdownMenu>
@@ -107,15 +109,11 @@ export default function PaiementPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem>
-                <Link href="/connexion-client">
-                  <span className="w-full">Client</span>
-                </Link>
+              <DropdownMenuItem asChild>
+                <Link href="/connexion-client">Client</Link>
               </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Link href="/connexion-partner">
-                  <span className="w-full">Partenaire</span>
-                </Link>
+              <DropdownMenuItem asChild>
+                <Link href="/connexion-partner">Partenaire</Link>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -136,12 +134,13 @@ export default function PaiementPage() {
         <section className="w-full py-16 px-4">
           <div className="container mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl">
             {plans.map((plan) => (
-              <div
+              <Button
                 key={plan.id}
-                onClick={() => setSelectedPlan(plan)}
-                className={`relative p-8 rounded-xl shadow-lg transition-all duration-300 hover:scale-105 cursor-pointer ${
+                variant="ghost"
+                className={`relative p-8 rounded-xl shadow-lg transition-all duration-300 hover:scale-105 h-auto ${
                   selectedPlan.id === plan.id ? "border-2 border-blue-500 bg-blue-50" : "border border-gray-200 bg-white"
                 }`}
+                onClick={() => setSelectedPlan(plan)}
               >
                 {plan.recommended && (
                   <div className="absolute top-0 left-0 bg-yellow-400 text-black px-3 py-1 rounded-tr-lg rounded-bl-lg font-bold">
@@ -161,7 +160,7 @@ export default function PaiementPage() {
                     </li>
                   ))}
                 </ul>
-              </div>
+              </Button>
             ))}
           </div>
         </section>
@@ -198,12 +197,12 @@ export default function PaiementPage() {
               {billingCycle === "monthly" ? `${selectedPlan.price} € / mois` : `${selectedPlan.annualPrice} € / an`}
             </p>
           </div>
-          <Link href="/paiement">
-            <Button className="w-full sm:w-auto bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-lg flex items-center justify-center">
+          <Button asChild className="bg-green-500 hover:bg-green-600 text-white">
+            <Link href="/paiement">
               <CreditCard className="mr-2" />
               <span>Payer maintenant</span>
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </div>
       </div>
     </div>

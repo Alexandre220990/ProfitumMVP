@@ -33,22 +33,24 @@ export default function HomePage() {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-blue-900 text-white py-3 px-6">
         <div className="container mx-auto flex justify-between items-center">
           <div className="flex items-center space-x-6">
-            <Link href="/">
-              <img src="/Logo-Profitum.png" alt="Profitum Logo" className="h-10 cursor-pointer" />
-            </Link>
+            <Button asChild variant="ghost" className="p-0">
+              <Link href="/">
+                <img src="/Logo-Profitum.png" alt="Profitum Logo" className="h-10" />
+              </Link>
+            </Button>
             <div className="flex space-x-6">
-              <Link href="/nos-services">
-                <span className="cursor-pointer hover:text-blue-200">Nos Services</span>
-              </Link>
-              <Link href="/experts">
-                <span className="cursor-pointer hover:text-blue-200">Nos Experts</span>
-              </Link>
-              <Link href="/tarifs">
-                <span className="cursor-pointer hover:text-blue-200">Tarifs</span>
-              </Link>
-              <Link href="/contact">
-                <span className="cursor-pointer hover:text-blue-200">Contact</span>
-              </Link>
+              <Button asChild variant="ghost" className="text-white hover:text-blue-200">
+                <Link href="/nos-services">Nos Services</Link>
+              </Button>
+              <Button asChild variant="ghost" className="text-white hover:text-blue-200">
+                <Link href="/experts">Nos Experts</Link>
+              </Button>
+              <Button asChild variant="ghost" className="text-white hover:text-blue-200">
+                <Link href="/tarifs">Tarifs</Link>
+              </Button>
+              <Button asChild variant="ghost" className="text-white hover:text-blue-200">
+                <Link href="/contact">Contact</Link>
+              </Button>
             </div>
           </div>
           <DropdownMenu>
@@ -58,32 +60,27 @@ export default function HomePage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem>
-                <Link href="/connexion-client">
-                  <span className="w-full">Client</span>
-                </Link>
+              <DropdownMenuItem asChild>
+                <Link href="/connexion-client">Client</Link>
               </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Link href="/connexion-partner">
-                  <span className="w-full">Partenaire</span>
-                </Link>
+              <DropdownMenuItem asChild>
+                <Link href="/connexion-partner">Partenaire</Link>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </nav>
 
-      {/* Content wrapper with padding for fixed navbar */}
-      <div className="pt-20">
+      <main className="pt-20">
         {/* Header principal */}
         <header className="bg-gradient-to-r from-blue-700 to-blue-900 text-white p-10 text-center">
           <h1 className="text-4xl font-bold">Une plateforme incontournable !</h1>
           <p className="mt-4 text-lg">Accédez instantanément aux meilleurs experts, bénéficiez de tarifs négociés et suivez chaque étape de vos dossiers en toute transparence.</p>
-          <Link href="/create-account-client">
-            <Button className="mt-7 bg-yellow-400 text-black font-bold px-10 py-6 rounded-lg hover:bg-yellow-500">
+          <Button asChild className="mt-7 bg-yellow-400 text-black hover:bg-yellow-500">
+            <Link href="/create-account-client">
               Inscrivez-vous dès maintenant !
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </header>
 
         {/* Key Metrics */}
@@ -103,17 +100,25 @@ export default function HomePage() {
         <section className="py-12 container mx-auto text-center">
           <h2 className="text-3xl font-bold mb-8">Pourquoi choisir Profitum ?</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[{ icon: ShieldCheck, title: "Experts vérifiés", desc: "Tous nos experts sont rigoureusement sélectionnés pour garantir un accompagnement de qualité.", link: "/create-account-client" },
+            {[
+              { icon: ShieldCheck, title: "Experts vérifiés", desc: "Tous nos experts sont rigoureusement sélectionnés pour garantir un accompagnement de qualité.", link: "/create-account-client" },
               { icon: Handshake, title: "Tarifs négociés", desc: "Bénéficiez des meilleurs prix grâce à nos accords avec nos partenaires." },
               { icon: TrendingUp, title: "Économies garanties", desc: "Nos services permettent en moyenne de réduire vos charges de 15%." },
             ].map((advantage, index) => (
-              <Link key={index} href={advantage.link || "#"} >
-                <div className="p-6 border-2 border-blue-600 shadow-md rounded-lg flex flex-col items-center hover:shadow-xl hover:-translate-y-1 bg-white cursor-pointer">
-                  <advantage.icon className="text-blue-600 w-14 h-14 mb-4" />
-                  <h3 className="text-xl font-semibold">{advantage.title}</h3>
-                  <p className="text-gray-700 mt-2 text-center">{advantage.desc}</p>
-                </div>
-              </Link>
+              <Button
+                key={index}
+                asChild
+                variant="ghost"
+                className="p-6 border-2 border-blue-600 shadow-md rounded-lg hover:shadow-xl hover:-translate-y-1 bg-white h-auto"
+              >
+                <Link href={advantage.link || "#"}>
+                  <div className="flex flex-col items-center">
+                    <advantage.icon className="text-blue-600 w-14 h-14 mb-4" />
+                    <h3 className="text-xl font-semibold">{advantage.title}</h3>
+                    <p className="text-gray-700 mt-2">{advantage.desc}</p>
+                  </div>
+                </Link>
+              </Button>
             ))}
           </div>
         </section>
@@ -140,7 +145,7 @@ export default function HomePage() {
             <p>© 2025 Profitum. Tous droits réservés.</p>
           </div>
         </footer>
-      </div>
+      </main>
     </div>
   );
 }
