@@ -35,7 +35,6 @@ import HeaderClient from "@/components/HeaderClient";
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/use-auth";
 import { useParams } from "wouter";
-import Footer from "@/components/Footer";
 
 type StepStatus = "completed" | "current" | "upcoming";
 
@@ -91,7 +90,7 @@ const msaExperts: Expert[] = [
     company: "Bâtiment Durable",
     speciality: "Optimisation énergétique des bâtiments",
     experience: "10 ans d'expérience",
-    compensation: 28,
+    compensation: 28, 
     rating: 4.6,
     location: "Marseille",
     description: "Audit et optimisation de la consommation énergétique des bâtiments tertiaires et industriels."
@@ -149,7 +148,7 @@ const StepIndicator = ({ step, currentStep }: { step: number; currentStep: numbe
           <span className="font-semibold">{step}</span>
         )}
       </div>
-      {step < 6 && (
+      {step < 5 && (
         <div
           className={cn(
             "h-1 w-full mx-2",
@@ -188,12 +187,12 @@ export default function EnergyAudit() {
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
 
   useEffect(() => {
-    setProgress((currentStep -1) * (100 / 6));
+    setProgress((currentStep - 1) * 25);
 
     const signedCharters = JSON.parse(localStorage.getItem('signedCharters') || '{}');
     setIsCharterSigned(!!signedCharters[auditType]);
 
-    const savedProgress = JSON.parse(localStorage.getItem(`auditProgress_${user?.id}`) || '{}');
+    const savedProgress = JSON.parse(localStorage.getItem('auditProgress') || '{}');
     if (savedProgress[auditType]) {
       setCurrentStep(savedProgress[auditType]);
     }
@@ -217,16 +216,16 @@ export default function EnergyAudit() {
         }))
       );
     }
-  }, [auditType, currentStep, user]);
+  }, [auditType, currentStep]);
 
   const handleStepChange = (newStep: number) => {
-    if (newStep >= 1 && newStep <= 6) {
+    if (newStep >= 1 && newStep <= 5) {
       setCurrentStep(newStep);
-      setProgress((newStep - 1) * (100 / 6));
+      setProgress((newStep - 1) * 25);
 
-      const auditProgress = JSON.parse(localStorage.getItem(`auditProgress_${user?.id}`) || '{}');
+      const auditProgress = JSON.parse(localStorage.getItem('auditProgress') || '{}');
       auditProgress[auditType] = newStep;
-      localStorage.setItem(`auditProgress_${user?.id}`, JSON.stringify(auditProgress));
+      localStorage.setItem('auditProgress', JSON.stringify(auditProgress));
 
       toast({
         title: `Navigation vers l'étape ${newStep}`,
@@ -307,9 +306,9 @@ export default function EnergyAudit() {
   };
 
   const updateProgress = (step: number) => {
-    const auditProgress = JSON.parse(localStorage.getItem(`auditProgress_${user?.id}`) || '{}');
+    const auditProgress = JSON.parse(localStorage.getItem('auditProgress') || '{}');
     auditProgress[auditType] = step;
-    localStorage.setItem(`auditProgress_${user?.id}`, JSON.stringify(auditProgress));
+    localStorage.setItem('auditProgress', JSON.stringify(auditProgress));
     setCurrentStep(step);
   };
 
@@ -357,27 +356,6 @@ export default function EnergyAudit() {
   };
 
 
-  const handleFinalization = () => {
-    const confirmFinalization = window.confirm("Êtes-vous sûr de vouloir finaliser ce dossier ? Cette action est irréversible.");
-    if (confirmFinalization) {
-      updateProgress(6);
-      toast({
-        title: "Dossier finalisé avec succès !",
-        description: "Votre dossier a été validé. Vous recevrez votre remboursement prochainement.",
-      });
-
-      // Mettre à jour le statut dans le localStorage
-      const auditProgress = JSON.parse(localStorage.getItem(`auditProgress_${user?.id}`) || '{}');
-      auditProgress[auditType] = 6; // 6 représente l'étape "finalisé"
-      localStorage.setItem(`auditProgress_${user?.id}`, JSON.stringify(auditProgress));
-
-      // Redirection vers le dashboard après un court délai
-      setTimeout(() => {
-        setLocation('/dashboard/client');
-      }, 2000);
-    }
-  };
-
   const steps = [
     {
       title: "Signature de la charte",
@@ -414,15 +392,7 @@ export default function EnergyAudit() {
       title: "Finalisation",
       description: "Rapport et recommandations",
       icon: Check,
-      action: currentStep === 5 ? handleFinalization : undefined,
-      actionLabel: "Valider le dossier et lancer la procédure",
-      status: currentStep === 5 ? "current" : currentStep > 5 ? "completed" : "upcoming"
-    },
-    {
-      title: "Dossier Finalisé",
-      description: "Vous recevrez votre remboursement prochainement",
-      icon: Check,
-      status: currentStep === 6 ? "completed" : "upcoming"
+      status: currentStep === 5 ? "completed" : "upcoming"
     }
   ];
 
@@ -431,10 +401,10 @@ export default function EnergyAudit() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-gray-50">
       <HeaderClient />
-      <div className="container mx-auto p-6 flex-grow">
-        <div className="pt-24">
+      <div className="container mx-auto p-6">
+           <div className="pt-24">
           <div className="flex justify-between items-center mb-6">
             <div className="flex items-center gap-4">
               <h1 className="text-3xl font-bold">Audit MSA</h1>
@@ -449,24 +419,26 @@ export default function EnergyAudit() {
               Étape précédente
             </Button>
           </div>
+        </div>  
+      
+          <motion.div
+            initial={{ width: "0%" }}
+            animate={{ width: `${progress}%` }}
+            transition={{ duration: 0.5, ease: "easeInOut" }}
+            className="h-2 bg-blue-500 rounded-full"
+          />
+          <div className="flex justify-between mt-4">
+            {steps.map((step, index) => (
+              <StepIndicator key={index} step={index + 1} currentStep={currentStep} />
+            ))}
+          </div>
         </div>
 
-        <motion.div
-          initial={{ width: "0%" }}
-          animate={{ width: `${progress}%` }}
-          transition={{ duration: 0.5, ease: "easeInOut" }}
-          className="h-2 bg-blue-500 rounded-full"
-        />
-        <div className="flex justify-between mt-4">
-          {steps.map((step, index) => (
-            <StepIndicator key={index} step={index + 1} currentStep={currentStep} />
-          ))}
-        </div>
         <Card className="w-full ">
           <CardHeader>
             <CardTitle>Audit des fournisseurs d'énergies</CardTitle>
             <p className="text-m text-muted-foreground">
-              Obtenez jusqu'à 25% de réduction sur vos cotisations MSA !
+              Obtenez jusqu'à 25% de réduction sur vos cotisations MSA ! 
             </p>
           </CardHeader>
           <CardHeader>
@@ -670,52 +642,52 @@ export default function EnergyAudit() {
             <div className="max-h-[60vh] overflow-y-auto p-4 bg-gray-50 rounded-md my-4">
               <h3 className="text-lg font-semibold mb-4">Charte de l'Audit Énergétique</h3>
 
-              <p className="mb-4">
-                Cette charte définit les engagements mutuels entre le client et l'expert MSA dans le cadre de l’audit relatif à la optimisation des fournisseurs d'énergie.
-              </p>
+                  <p className="mb-4">
+                    Cette charte définit les engagements mutuels entre le client et l'expert MSA dans le cadre de l’audit relatif à la optimisation des fournisseurs d'énergie. 
+                  </p>
 
-              <h4 className="text-md font-semibold mt-4">1. Objet de la Charte</h4>
-              <p className="mb-4">
-                L’objectif de cette charte est d’encadrer les relations entre le client et l’expert afin de garantir un audit structuré et conforme aux exigences réglementaires.
-              </p>
+                  <h4 className="text-md font-semibold mt-4">1. Objet de la Charte</h4>
+                  <p className="mb-4">
+                    L’objectif de cette charte est d’encadrer les relations entre le client et l’expert afin de garantir un audit structuré et conforme aux exigences réglementaires.
+                  </p>
 
-              <h4 className="text-md font-semibold mt-4">2. Engagements du Client</h4>
-              <ul className="list-disc pl-5 mb-4">
-                <li>Fournir tous les justificatifs nécessaires dans les délais impartis.</li>
-                <li>Autoriser l'expert mandaté à procéder à un revelé de vos données de consommations auprès de votre fournisseur d'énergie actuel. Seules vos données de consommation sont concernées et serviront pour garantir un résultat optimal de l'appel d'offre aux fournisseurs. </li>
-                <li>Garantir l’authenticité des documents et des informations transmises.</li>
-                <li>Collaborer activement avec l’expert en répondant aux demandes de clarification.</li>
-                <li>Respecter les échéances convenues pour éviter tout retard dans la récupération des montants dus.</li>
-              </ul>
+                  <h4 className="text-md font-semibold mt-4">2. Engagements du Client</h4>
+                  <ul className="list-disc pl-5 mb-4">
+                    <li>Fournir tous les justificatifs nécessaires dans les délais impartis.</li>
+                    <li>Autoriser l'expert mandaté à procéder à un revelé de vos données de consommations auprès de votre fournisseur d'énergie actuel. Seules vos données de consommation sont concernées et serviront pour garantir un résultat optimal de l'appel d'offre aux fournisseurs. </li> 
+                    <li>Garantir l’authenticité des documents et des informations transmises.</li>
+                    <li>Collaborer activement avec l’expert en répondant aux demandes de clarification.</li>
+                    <li>Respecter les échéances convenues pour éviter tout retard dans la récupération des montants dus.</li>
+                  </ul>
 
-              <h4 className="text-md font-semibold mt-4">3. Engagements de l'Expert</h4>
-              <ul className="list-disc pl-5 mb-4">
-                <li>Analyser minutieusement les documents fournis pour optimiser la récupération de la MSA.</li>
-                <li>Garantir la confidentialité des informations et documents transmis.</li>
-                <li>Assurer un suivi régulier et apporter des conseils adaptés au client.</li>
-                <li>Respecter la réglementation en vigueur et veiller à la conformité des démarches.</li>
-              </ul>
+                  <h4 className="text-md font-semibold mt-4">3. Engagements de l'Expert</h4>
+                  <ul className="list-disc pl-5 mb-4">
+                    <li>Analyser minutieusement les documents fournis pour optimiser la récupération de la MSA.</li>
+                    <li>Garantir la confidentialité des informations et documents transmis.</li>
+                    <li>Assurer un suivi régulier et apporter des conseils adaptés au client.</li>
+                    <li>Respecter la réglementation en vigueur et veiller à la conformité des démarches.</li>
+                  </ul>
 
-              <h4 className="text-md font-semibold mt-4">4. Modalités de l'optimisation des dépenses énergétiques :</h4>
-              <p className="mb-4">
-                L’audit suit un processus structuré comprenant l’analyse des dépenses, la vérification de l’éligibilité et l’établissement d'un rapport comprenant les offres les plus pertinentes par rapport à votre situation. La durée estimée est de moins d'une semaine.
-                La rémunération de l’expert est basée sur un pourcentage des montants récupérés selon le taux de commission applicable de l'expert affiché sur la plateforme. Nous ne garantissons aucun dossier qui pourrait être conclu en dehors de l'application.
-                L'expert fournit un service clé en main avec la consitutution du dossier de cloture avec votre fournisseur d'énergie actuel, la création de votre dossier chez le nouveau fournisseur et la transition pour qu'il n'y ait pas de coupure.
-              </p>
+                  <h4 className="text-md font-semibold mt-4">4. Modalités de l'optimisation des dépenses énergétiques :</h4>
+                  <p className="mb-4">
+                    L’audit suit un processus structuré comprenant l’analyse des dépenses, la vérification de l’éligibilité et l’établissement d'un rapport comprenant les offres les plus pertinentes par rapport à votre situation. La durée estimée est de moins d'une semaine.  
+                    La rémunération de l’expert est basée sur un pourcentage des montants récupérés selon le taux de commission applicable de l'expert affiché sur la plateforme. Nous ne garantissons aucun dossier qui pourrait être conclu en dehors de l'application.
+                    L'expert fournit un service clé en main avec la consitutution du dossier de cloture avec votre fournisseur d'énergie actuel, la création de votre dossier chez le nouveau fournisseur et la transition pour qu'il n'y ait pas de coupure. 
+                  </p>
 
-              <h4 className="text-md font-semibold mt-4">5. Clause de Responsabilité</h4>
-              <ul className="list-disc pl-5 mb-4">
-                <li>L’expert ne peut être tenu responsable des rejets de remboursement liés à des informations incomplètes ou erronées fournies par le client.</li>
-                <li>L’expert met tout en œuvre pour optimiser la récupération, mais ne garantit pas un montant spécifique, celui-ci dépendant des critères d’éligibilité.</li>
-              </ul>
+                  <h4 className="text-md font-semibold mt-4">5. Clause de Responsabilité</h4>
+                  <ul className="list-disc pl-5 mb-4">
+                    <li>L’expert ne peut être tenu responsable des rejets de remboursement liés à des informations incomplètes ou erronées fournies par le client.</li>
+                    <li>L’expert met tout en œuvre pour optimiser la récupération, mais ne garantit pas un montant spécifique, celui-ci dépendant des critères d’éligibilité.</li>
+                  </ul>
 
-              <h4 className="text-md font-semibold mt-4">6. Résiliation et Litiges</h4>
-              <ul className="list-disc pl-5 mb-4">
-                <li>Chaque partie peut résilier l’audit en cas de manquement grave, avec un préavis de 15 jours.</li>
-                <li>En cas de litige, une résolution à l’amiable sera privilégiée. À défaut, le litige sera soumis aux tribunaux compétents.</li>
-              </ul>
-            </div>
-            <div className="flex items-center space-x-2 mb-4">
+                  <h4 className="text-md font-semibold mt-4">6. Résiliation et Litiges</h4>
+                  <ul className="list-disc pl-5 mb-4">
+                    <li>Chaque partie peut résilier l’audit en cas de manquement grave, avec un préavis de 15 jours.</li>
+                    <li>En cas de litige, une résolution à l’amiable sera privilégiée. À défaut, le litige sera soumis aux tribunaux compétents.</li>
+                  </ul>
+              </div>
+              <div className="flex items-center space-x-2 mb-4">
               <Checkbox
                 id="cgu"
                 checked={acceptedCGU}
@@ -855,7 +827,5 @@ export default function EnergyAudit() {
           </DialogContent>
         </Dialog>
       </div>
-      <Footer />
-    </div>
   );
 }
