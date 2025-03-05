@@ -58,7 +58,7 @@ function Router() {
     <Switch>
       {/* Routes publiques accessibles à tous */}
       <Route path="/" component={Home} />
-      <Route path="/auth-page" component={AuthPage} />
+      <Route path="/auth" component={AuthPage} />
       <Route path="/nos-services" component={NosServices} />
       <Route path="/experts" component={Experts} />
       <Route path="/tarifs" component={Tarifs} />
@@ -76,31 +76,23 @@ function Router() {
         <>
           <Route path="/profile/expert" component={ExpertProfile} />
           <Route path="/profile/client" component={ClientProfile} />
-
-          <Route path="/dashboard/client/:userId" component={Dashboard} />
-          <Route 
-            path="/dashboard/partner/:userId" 
-            component={({ params }) => <PartnerDashboard userId={params.userId} />} 
-          />
-
-          {/* Routes produits */}
-          <Route path="/produits/msa/:userId" component={MSA} />
-          <Route path="/produits/dfs/:userId" component={DFS} />
-          <Route path="/produits/ticpe/:userId" component={TICPE} />
-          <Route path="/produits/audit_energetique/:userId" component={AuditEnergetique} />
-          <Route path="/produits/foncier/:userId" component={Foncier} />
-          <Route path="/produits/social/:userId" component={Social} />
-
-          {/* Autres routes protégées */}
-          <Route path="/audit/:type/expert/:userId" component={ExpertPage} />
-          <Route path="/audit/:type/sign-charte/:userId" component={CharteSignature} />
-          <Route path="/reports/:userId" component={Reports} />
-          <Route path="/dossier/:userId" component={DossierDetails} />
-          <Route path="/profilclient/:userId" component={ProfilClient} />
-          <Route path="/DetailsDossier/:userId" component={DetailsDossier} />
+          <Route path="/dashboard/client" component={Dashboard} />
+          <Route path="/dashboard/partner" component={PartnerDashboard} />
+          <Route path="/produits/msa" component={MSA} />
+          <Route path="/produits/dfs" component={DFS} />
+          <Route path="/produits/ticpe" component={TICPE} />
+          <Route path="/produits/audit_energetique" component={AuditEnergetique} />
+          <Route path="/produits/foncier" component={Foncier} />
+          <Route path="/produits/social" component={Social} />
+          <Route path="/audit/:type/expert/:id" component={ExpertPage} />
+          <Route path="/audit/:type/sign-charte" component={CharteSignature} />
+          <Route path="/reports" component={Reports} />
+          <Route path="/dossier/:id" component={DossierDetails} />
+          <Route path="/profilclient" component={ProfilClient} />
+          <Route path="/DetailsDossier" component={DetailsDossier} />
           <Route path="/marketplace-experts" component={MarketplaceExperts} />
-          <Route path="/simulateur/:userId" component={Simulateur} />
-          <Route path="/messagerie-client/:userId" component={MessagerieClient} />
+          <Route path="/simulateur" component={Simulateur} />
+          <Route path="/messagerie-client" component={MessagerieClient} />
         </>
       )}
 
