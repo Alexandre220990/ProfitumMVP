@@ -1,1 +1,0 @@
-// Ce fichier est supprimé car il crée des conflits avec App.tsx
