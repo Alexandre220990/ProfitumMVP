@@ -59,7 +59,7 @@ const benefits = [
   {
     icon: TrendingUp,
     title: "Visibilité maximisée",
-    description: "Profitez d’une mise en avant stratégique et boostez votre attractivité.",
+    description: "Profitez d'une mise en avant stratégique et boostez votre attractivité.",
   },
   {
     icon: BarChart,
@@ -72,116 +72,133 @@ const benefits = [
     description: "Données protégées et transactions sécurisées pour une tranquillité absolue.",
   },
 ];
+
 export default function PaiementPage() {
-  const [, setLocation] = useLocation();
-  const [selectedPlan, setSelectedPlan] = useState(plans[1]); // Plan recommandé par défaut
+  const [selectedPlan, setSelectedPlan] = useState(plans[1]);
   const [billingCycle, setBillingCycle] = useState("monthly");
 
   return (
-    <div className="flex flex-col min-h-screen bg-white text-gray-900">
-
-      {/* Bandeau de navigation */}
-      <div className="bg-blue-900 text-white py-3 px-6 rounded-lg flex justify-between items-center text-sm">
-        <div className="flex items-center space-x-6">
-          <Link href="/">
-            <img src="/Logo-Profitum.png" alt="Profitum Logo" className="h-10 cursor-pointer" />
-          </Link>
-          <div className="flex space-x-6">
-            <Link href="/Nos-Services">Nos Services</Link>
-            <Link href="/experts">Nos Experts</Link>
-            <Link href="/tarifs">Tarifs</Link>
-            <Link href="/contact">Contact</Link>
-          </div>
-        </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button className="bg-white text-blue-600 flex items-center">
-              <UserCircle className="mr-2" /> Connexion
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem asChild>
-              <Link href="/connexion-client">Client</Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="/connexion-partner">Partenaire</Link>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
-      {/* Spacer */}
-      <div className="h-12"></div>
-
-      {/* Hero Section */}
-      <header className="text-center py-20 bg-gradient-to-r from-blue-600 to-blue-800 text-white">
-        <h1 className="text-5xl font-extrabold tracking-tight">Vous êtes expert et souhaitez</h1>
-        <h1 className="text-5xl font-extrabold tracking-tight">optimiser votre croissance ? </h1>
-        <p className="mt-4 text-lg opacity-90">Que vous soyez auditeur, courtier, gestionnaire de patrimoine ou toute autre profession d'accompagnement aux entreprises, nous avons les outils pour accélérer votre business.</p>
-      </header>
-
-      {/* Plans Section */}
-      <section className="container mx-auto py-16 grid grid-cols-1 md:grid-cols-3 gap-8 px-8 max-w-7xl">
-        {plans.map((plan) => (
-          <div 
-            key={plan.id} 
-            className={`relative p-8 rounded-xl shadow-lg transition-all duration-300 hover:scale-105 cursor-pointer border ${
-              selectedPlan.id === plan.id ? "border-blue-500 bg-blue-50 shadow-lg" : "border-gray-300 bg-white"
-            }`}
-            onClick={() => setSelectedPlan(plan)}
-          >
-            {plan.recommended && (
-              <div className="absolute top-0 left-0 bg-yellow-400 text-black px-3 py-1 rounded-tr-lg rounded-bl-lg font-bold">
-                ⭐ Recommandé
-              </div>
-            )}
-            <h3 className="text-3xl font-bold">{plan.name}</h3>
-            <p className="mt-2 opacity-80">{plan.description}</p>
-            <p className="text-4xl font-bold mt-4">
-              {billingCycle === "monthly" ? `${plan.price} € / mois` : `${plan.annualPrice} € / an`}
-            </p>
-            <ul className="mt-6 space-y-3 text-left">
-              {plan.features.map((feature, i) => (
-                <li key={i} className="flex items-center">
-                  <feature.icon className="text-blue-600 mr-2 w-6 h-6" />
-                  {feature.text}
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
-      </section>
-      
-      {/* Benefits Section */}
-      <section className="py-16 px-6 text-center bg-gray-100">
-        <h2 className="text-4xl font-bold mb-10">Pourquoi choisir Profitum ?</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 max-w-6xl mx-auto">
-          {benefits.map((benefit, index) => (
-            <div key={index} className="p-8 bg-white rounded-lg flex items-center shadow-md hover:scale-105 transition">
-              <benefit.icon className="text-blue-600 w-14 h-14 mr-6" />
-              <div>
-                <h3 className="text-2xl font-semibold">{benefit.title}</h3>
-                <p className="text-gray-600">{benefit.description}</p>
-              </div>
+    <div className="relative w-full min-h-screen overflow-y-auto bg-white">
+      {/* Navigation */}
+      <nav className="sticky top-0 z-50 w-full bg-blue-900 text-white py-3 px-6">
+        <div className="container mx-auto flex justify-between items-center">
+          <div className="flex items-center space-x-6">
+            <Link href="/">
+              <a className="cursor-pointer">
+                <img src="/Logo-Profitum.png" alt="Profitum Logo" className="h-10" />
+              </a>
+            </Link>
+            <div className="flex space-x-6">
+              <Link href="/nos-services"><a className="hover:text-blue-200">Nos Services</a></Link>
+              <Link href="/experts"><a className="hover:text-blue-200">Nos Experts</a></Link>
+              <Link href="/tarifs"><a className="hover:text-blue-200">Tarifs</a></Link>
+              <Link href="/contact"><a className="hover:text-blue-200">Contact</a></Link>
             </div>
-          ))}
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button className="bg-white text-blue-600 flex items-center">
+                <UserCircle className="mr-2" /> Connexion
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem>
+                <Link href="/connexion-client"><a className="w-full">Client</a></Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Link href="/connexion-partner"><a className="w-full">Partenaire</a></Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-      </section>
-      
-      {/* CTA Fixé en bas */}
-      <div className="sticky bottom-0 bg-white text-gray-900 py-4 shadow-lg border-t">
-        <div className="container mx-auto flex justify-between items-center px-8">
-          <p className="text-lg font-semibold">
-            Plan sélectionné : <span className="text-blue-600">{selectedPlan.name}</span> - {billingCycle === "monthly" ? `${selectedPlan.price} € / mois` : `${selectedPlan.annualPrice} € / an`}
+      </nav>
+
+      <main className="flex-1 w-full">
+        {/* Hero Section */}
+        <header className="w-full py-20 bg-gradient-to-r from-blue-600 to-blue-800 text-white text-center">
+          <h1 className="text-5xl font-extrabold tracking-tight mb-2">Vous êtes expert et souhaitez</h1>
+          <h1 className="text-5xl font-extrabold tracking-tight">optimiser votre croissance ?</h1>
+          <p className="mt-4 text-lg opacity-90 max-w-3xl mx-auto">
+            Que vous soyez auditeur, courtier, gestionnaire de patrimoine ou toute autre profession d'accompagnement aux entreprises, nous avons les outils pour accélérer votre business.
           </p>
-          <Link href="/pages/Paiement">
-            <Button className="bg-green-500 text-white px-6 py-3 text-lg font-medium rounded-lg hover:bg-green-600 flex items-center">
-              <CreditCard className="mr-2" /> Payer maintenant
-            </Button>
+        </header>
+
+        {/* Plans Section */}
+        <section className="w-full py-16 px-4">
+          <div className="container mx-auto grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl">
+            {plans.map((plan) => (
+              <div
+                key={plan.id}
+                onClick={() => setSelectedPlan(plan)}
+                className={`relative p-8 rounded-xl shadow-lg transition-all duration-300 hover:scale-105 cursor-pointer ${
+                  selectedPlan.id === plan.id ? "border-2 border-blue-500 bg-blue-50" : "border border-gray-200 bg-white"
+                }`}
+              >
+                {plan.recommended && (
+                  <div className="absolute top-0 left-0 bg-yellow-400 text-black px-3 py-1 rounded-tr-lg rounded-bl-lg font-bold">
+                    ⭐ Recommandé
+                  </div>
+                )}
+                <h3 className="text-3xl font-bold">{plan.name}</h3>
+                <p className="mt-2 text-gray-600">{plan.description}</p>
+                <p className="text-4xl font-bold mt-4">
+                  {billingCycle === "monthly" ? `${plan.price} € / mois` : `${plan.annualPrice} € / an`}
+                </p>
+                <ul className="mt-6 space-y-3">
+                  {plan.features.map((feature, i) => (
+                    <li key={i} className="flex items-center text-gray-700">
+                      <feature.icon className="text-blue-600 mr-2 w-5 h-5 flex-shrink-0" />
+                      <span>{feature.text}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Benefits Section */}
+        <section className="w-full py-16 bg-gray-100">
+          <div className="container mx-auto px-4">
+            <h2 className="text-4xl font-bold text-center mb-10">Pourquoi choisir Profitum ?</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl mx-auto">
+              {benefits.map((benefit, index) => (
+                <div key={index} className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
+                  <div className="flex items-start">
+                    <benefit.icon className="text-blue-600 w-12 h-12 mr-4 flex-shrink-0" />
+                    <div>
+                      <h3 className="text-xl font-semibold mb-2">{benefit.title}</h3>
+                      <p className="text-gray-600">{benefit.description}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      </main>
+
+      {/* CTA Footer */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg py-4 z-50">
+        <div className="container mx-auto px-4 flex flex-col sm:flex-row justify-between items-center">
+          <div className="text-center sm:text-left mb-4 sm:mb-0">
+            <p className="text-lg font-semibold">
+              Plan sélectionné : <span className="text-blue-600">{selectedPlan.name}</span>
+            </p>
+            <p className="text-gray-600">
+              {billingCycle === "monthly" ? `${selectedPlan.price} € / mois` : `${selectedPlan.annualPrice} € / an`}
+            </p>
+          </div>
+          <Link href="/paiement">
+            <a className="w-full sm:w-auto">
+              <Button className="w-full sm:w-auto bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-lg flex items-center justify-center">
+                <CreditCard className="mr-2" />
+                <span>Payer maintenant</span>
+              </Button>
+            </a>
           </Link>
         </div>
       </div>
-
     </div>
   );
 }
