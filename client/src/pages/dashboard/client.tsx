@@ -22,7 +22,7 @@ import "react-circular-progressbar/dist/styles.css";
 interface Dossier {
   id: string;
   name: string;
-  status: "not_initiated" | "pending" | "completed" | "finalized";
+  status: "pending" | "completed" | "not_initiated";
   progress: number;
   currentStep: string;
   potentialGain: number;
@@ -45,12 +45,11 @@ export default function DashboardClient() {
     }
   }, [user]);
 
-  const getAuditStatus = (auditType: string): "not_initiated" | "pending" | "completed" | "finalized" => {
+  const getAuditStatus = (auditType: string): "not_initiated" | "pending" | "completed" => {
     if (!user?.id) return "not_initiated";
 
     const progress = JSON.parse(localStorage.getItem(`auditProgress_${user.id}`) || '{}')[auditType];
     if (progress === undefined) return "not_initiated";
-    if (progress === 6) return "finalized"; // Nouvelle étape finale
     if (progress === 5) return "completed";
     return progress > 0 ? "pending" : "not_initiated";
   };
@@ -66,11 +65,11 @@ export default function DashboardClient() {
       name: `Audit ${auditType.toUpperCase()}`,
       status,
       progress: progress * 20,
-      currentStep: status === "completed" || status === "finalized" ? "Terminé" : `Étape ${progress}`,
+      currentStep: status === "completed" ? "Terminé" : `Étape ${progress}`,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       potentialGain: getDefaultGain(auditType),
-      obtainedGain: status === "completed" || status === "finalized" ? calculateObtainedGain(auditType) : undefined
+      obtainedGain: status === "completed" ? calculateObtainedGain(auditType) : undefined
     };
   };
 
@@ -105,8 +104,8 @@ export default function DashboardClient() {
   const kpiData = {
     dossiersEnCours: categorizeDossiers("pending").length,
     gainsPotentiels: allDossiers.reduce((sum, dossier) => sum + dossier.potentialGain, 0),
-    gainsObtenus: allDossiers.filter(d => d.status === "completed" || d.status === "finalized").reduce((sum, dossier) => sum + (dossier.obtainedGain || 0), 0),
-    auditsFinalises: categorizeDossiers("completed").length + categorizeDossiers("finalized").length,
+    gainsObtenus: allDossiers.filter(d => d.status === "completed").reduce((sum, dossier) => sum + (dossier.obtainedGain || 0), 0),
+    auditsFinalises: categorizeDossiers("completed").length,
     avancementGlobal,
   };
 
@@ -266,18 +265,7 @@ function KpiCard({ icon: Icon, value, component, label, color }: { icon: any; va
 }
 
 export function AuditTable({ activeTab, allDossiers, user }: { activeTab: "opportunities" | "pending" | "completed"; allDossiers: Dossier[]; user: any }) {
-  const dossiers = allDossiers.filter(dossier => {
-    switch (activeTab) {
-      case "opportunities":
-        return dossier.status === "not_initiated";
-      case "pending":
-        return dossier.status === "pending";
-      case "completed":
-        return dossier.status === "completed" || dossier.status === "finalized";
-      default:
-        return false;
-    }
-  });
+  const dossiers = allDossiers.filter(dossier => activeTab === "opportunities" ? dossier.status === "not_initiated" : dossier.status === activeTab);
 
   return (
     <Card className="shadow-lg rounded-lg mt-8">
@@ -318,14 +306,10 @@ export function AuditTable({ activeTab, allDossiers, user }: { activeTab: "oppor
                     </td>
                     <td className="p-3">
                       <span className={`px-3 py-1 rounded-full text-xs font-medium
-                        ${dossier.status === "finalized" ? "bg-purple-100 text-purple-700" :
-                          dossier.status === "completed" ? "bg-green-100 text-green-700" :
+                        ${dossier.status === "completed" ? "bg-green-100 text-green-700" :
                           dossier.status === "pending" ? "bg-yellow-100 text-yellow-700" :
                             "bg-gray-100 text-gray-700"}`}>
-                        {dossier.status === "finalized" ? "Finalisé" :
-                         dossier.status === "completed" ? "Terminé" :
-                         dossier.status === "pending" ? "En cours" :
-                         "Non initié"}
+                        {dossier.status === "completed" ? "Terminé" : dossier.status === "pending" ? "En cours" : "Non initié"}
                       </span>
                     </td>
                     <td className="p-3">{dossier.currentStep}</td>
