@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { useAuth } from "@/hooks/use-auth";
 import { Loader2 } from "lucide-react";
+import { useEffect } from "react";
 
 // Pages et composants
 import NotFound from "@/pages/not-found";
@@ -66,7 +67,13 @@ import ClientProfile from "@/pages/profile/client";
 
 function Router() {
   const { user, isLoading } = useAuth();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
+
+  // Add debugging logs
+  useEffect(() => {
+    console.log("Router rendering, location:", location);
+    console.log("Auth state:", { isLoading, hasUser: !!user });
+  }, [location, isLoading, user]);
 
   if (isLoading) {
     return (
@@ -77,76 +84,88 @@ function Router() {
   }
 
   return (
-    <Switch>
-      {/* Routes publiques accessibles à tous */}
-      <Route path="/" component={Home} />
-      <Route path="/connexion-client" component={ConnexionClient} />
-      <Route path="/connexion-partner" component={ConnexionPartner} />
-      <Route path="/nos-services" component={NosServices} />
-      <Route path="/experts" component={Experts} />
-      <Route path="/tarifs" component={Tarifs} />
-      <Route path="/starter" component={Starter} />
-      <Route path="/growth" component={Growth} />
-      <Route path="/scale" component={Scale} />
-      <Route path="/paiement" component={Paiement} />
-      <Route path="/create-account-client" component={CreateAccountClient} />
-      <Route path="/conditions-utilisation" component={ConditionsUtilisation} />
+    <div className="min-h-screen">
+      <Switch>
+        {/* Routes publiques accessibles à tous */}
+        <Route path="/">
+          {() => {
+            console.log("Rendering Home page");
+            return <Home />;
+          }}
+        </Route>
+        <Route path="/connexion-client" component={ConnexionClient} />
+        <Route path="/connexion-partner" component={ConnexionPartner} />
+        <Route path="/nos-services" component={NosServices} />
+        <Route path="/experts" component={Experts} />
+        <Route path="/tarifs" component={Tarifs} />
+        <Route path="/starter" component={Starter} />
+        <Route path="/growth" component={Growth} />
+        <Route path="/scale" component={Scale} />
+        <Route path="/paiement" component={Paiement} />
+        <Route path="/create-account-client" component={CreateAccountClient} />
+        <Route path="/conditions-utilisation" component={ConditionsUtilisation} />
 
-      {/* Routes protégées nécessitant une authentification */}
-      {user && (
-        <>
-          <Route path="/profile/expert" component={ExpertProfile} />
-          <Route path="/profile/client" component={ClientProfile} />
-          <Route path="/dashboard/client" component={Dashboard} />
-          <Route path="/dashboard/partner" component={PartnerDashboard} />
-          <Route path="/simulateur" component={Simulateur} />
-          <Route path="/reports" component={Reports} />
-          <Route path="/messagerie-client" component={MessagerieClient} />
+        {/* Routes protégées nécessitant une authentification */}
+        {user && (
+          <>
+            <Route path="/profile/expert" component={ExpertProfile} />
+            <Route path="/profile/client" component={ClientProfile} />
+            <Route path="/dashboard/client" component={Dashboard} />
+            <Route path="/dashboard/partner" component={PartnerDashboard} />
+            <Route path="/simulateur" component={Simulateur} />
+            <Route path="/reports" component={Reports} />
+            <Route path="/messagerie-client" component={MessagerieClient} />
 
-          {/* Routes de produits */}
-          <Route path="/produits/msa" component={MSA} />
-          <Route path="/produits/dfs" component={DFS} />
-          <Route path="/produits/ticpe" component={TICPE} />
-          <Route path="/produits/audit_energetique" component={AuditEnergetique} />
-          <Route path="/produits/foncier" component={Foncier} />
-          <Route path="/produits/social" component={Social} />
+            {/* Routes de produits */}
+            <Route path="/produits/msa" component={MSA} />
+            <Route path="/produits/dfs" component={DFS} />
+            <Route path="/produits/ticpe" component={TICPE} />
+            <Route path="/produits/audit_energetique" component={AuditEnergetique} />
+            <Route path="/produits/foncier" component={Foncier} />
+            <Route path="/produits/social" component={Social} />
 
-          {/* Routes de dossiers statiques */}
-          <Route path="/dossier-client/1" component={DossierClient1} />
-          <Route path="/dossier-client/2" component={DossierClient2} />
-          <Route path="/dossier-client/3" component={DossierClient3} />
-          <Route path="/dossier-client/4" component={DossierClient4} />
-          <Route path="/dossier-client/5" component={DossierClient5} />
-          <Route path="/dossier-client/6" component={DossierClient6} />
-          <Route path="/dossier-client/7" component={DossierClient7} />
-          <Route path="/dossier-client/8" component={DossierClient8} />
-          <Route path="/dossier-client/9" component={DossierClient9} />
-          <Route path="/dossier-client/10" component={DossierClient10} />
-          <Route path="/dossier-client/11" component={DossierClient11} />
-          <Route path="/dossier-client/12" component={DossierClient12} />
-          <Route path="/dossier-client/13" component={DossierClient13} />
-          <Route path="/dossier-client/14" component={DossierClient14} />
-          <Route path="/dossier-client/15" component={DossierClient15} />
-          <Route path="/dossier-client/16" component={DossierClient16} />
-          <Route path="/dossier-client/17" component={DossierClient17} />
+            {/* Routes de dossiers statiques */}
+            <Route path="/dossier-client/1" component={DossierClient1} />
+            <Route path="/dossier-client/2" component={DossierClient2} />
+            <Route path="/dossier-client/3" component={DossierClient3} />
+            <Route path="/dossier-client/4" component={DossierClient4} />
+            <Route path="/dossier-client/5" component={DossierClient5} />
+            <Route path="/dossier-client/6" component={DossierClient6} />
+            <Route path="/dossier-client/7" component={DossierClient7} />
+            <Route path="/dossier-client/8" component={DossierClient8} />
+            <Route path="/dossier-client/9" component={DossierClient9} />
+            <Route path="/dossier-client/10" component={DossierClient10} />
+            <Route path="/dossier-client/11" component={DossierClient11} />
+            <Route path="/dossier-client/12" component={DossierClient12} />
+            <Route path="/dossier-client/13" component={DossierClient13} />
+            <Route path="/dossier-client/14" component={DossierClient14} />
+            <Route path="/dossier-client/15" component={DossierClient15} />
+            <Route path="/dossier-client/16" component={DossierClient16} />
+            <Route path="/dossier-client/17" component={DossierClient17} />
 
-          {/* Autres routes protégées */}
-          <Route path="/expert/:type" component={ExpertPage} />
-          <Route path="/charte-signature" component={CharteSignature} />
-          <Route path="/dossier/:id" component={DossierDetails} />
-          <Route path="/profil-client" component={ProfilClient} />
-          <Route path="/details-dossier" component={DetailsDossier} />
-          <Route path="/marketplace-experts" component={MarketplaceExperts} />
-        </>
-      )}
+            {/* Autres routes protégées */}
+            <Route path="/expert/:type" component={ExpertPage} />
+            <Route path="/charte-signature" component={CharteSignature} />
+            <Route path="/dossier/:id" component={DossierDetails} />
+            <Route path="/profil-client" component={ProfilClient} />
+            <Route path="/details-dossier" component={DetailsDossier} />
+            <Route path="/marketplace-experts" component={MarketplaceExperts} />
+          </>
+        )}
 
-      {/* Fallback pour les routes non trouvées */}
-      <Route component={NotFound} />
-    </Switch>
+        {/* Fallback pour les routes non trouvées */}
+        <Route component={NotFound} />
+      </Switch>
+    </div>
   );
 }
 
 export default function App() {
+  // Add debugging log
+  useEffect(() => {
+    console.log("App component mounted");
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
