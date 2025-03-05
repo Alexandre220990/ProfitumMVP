@@ -3,7 +3,6 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { useAuth } from "@/hooks/use-auth";
-import { useEffect } from "react";
 import { Loader2 } from "lucide-react";
 
 // Pages et composants
@@ -36,19 +35,19 @@ import DossierClient1 from "@/pages/dossier-client/1";
 import DossierClient2 from "@/pages/dossier-client/2";
 import DossierClient3 from "@/pages/dossier-client/3";
 import DossierClient4 from "@/pages/dossier-client/4";
+import DossierClient5 from "@/pages/dossier-client/5";
 import DossierClient6 from "@/pages/dossier-client/6";
 import DossierClient7 from "@/pages/dossier-client/7";
-import DossierClient15 from "@/pages/dossier-client/15";
+import DossierClient8 from "@/pages/dossier-client/8";
+import DossierClient9 from "@/pages/dossier-client/9";
+import DossierClient10 from "@/pages/dossier-client/10";
 import DossierClient11 from "@/pages/dossier-client/11";
 import DossierClient12 from "@/pages/dossier-client/12";
 import DossierClient13 from "@/pages/dossier-client/13";
 import DossierClient14 from "@/pages/dossier-client/14";
+import DossierClient15 from "@/pages/dossier-client/15";
 import DossierClient16 from "@/pages/dossier-client/16";
 import DossierClient17 from "@/pages/dossier-client/17";
-import DossierClient5 from "@/pages/dossier-client/5";
-import DossierClient8 from "@/pages/dossier-client/8";
-import DossierClient9 from "@/pages/dossier-client/9";
-import DossierClient10 from "@/pages/dossier-client/10";
 
 // Produits pages
 import TICPE from "@/pages/produits/ticpe";
@@ -67,6 +66,7 @@ import ClientProfile from "@/pages/profile/client";
 
 function Router() {
   const { user, isLoading } = useAuth();
+  const [, setLocation] = useLocation();
 
   if (isLoading) {
     return (
@@ -80,7 +80,8 @@ function Router() {
     <Switch>
       {/* Routes publiques accessibles à tous */}
       <Route path="/" component={Home} />
-      <Route path="/auth-page" component={AuthPage} />
+      <Route path="/connexion-client" component={ConnexionClient} />
+      <Route path="/connexion-partner" component={ConnexionPartner} />
       <Route path="/nos-services" component={NosServices} />
       <Route path="/experts" component={Experts} />
       <Route path="/tarifs" component={Tarifs} />
@@ -89,16 +90,26 @@ function Router() {
       <Route path="/scale" component={Scale} />
       <Route path="/paiement" component={Paiement} />
       <Route path="/create-account-client" component={CreateAccountClient} />
-      <Route path="/connexion-client" component={ConnexionClient} />
-      <Route path="/connexion-partner" component={ConnexionPartner} />
       <Route path="/conditions-utilisation" component={ConditionsUtilisation} />
 
       {/* Routes protégées nécessitant une authentification */}
       {user && (
         <>
-          {/* Nouvelles routes de profil */}
           <Route path="/profile/expert" component={ExpertProfile} />
           <Route path="/profile/client" component={ClientProfile} />
+          <Route path="/dashboard/client" component={Dashboard} />
+          <Route path="/dashboard/partner" component={PartnerDashboard} />
+          <Route path="/simulateur" component={Simulateur} />
+          <Route path="/reports" component={Reports} />
+          <Route path="/messagerie-client" component={MessagerieClient} />
+
+          {/* Routes de produits */}
+          <Route path="/produits/msa" component={MSA} />
+          <Route path="/produits/dfs" component={DFS} />
+          <Route path="/produits/ticpe" component={TICPE} />
+          <Route path="/produits/audit_energetique" component={AuditEnergetique} />
+          <Route path="/produits/foncier" component={Foncier} />
+          <Route path="/produits/social" component={Social} />
 
           {/* Routes de dossiers statiques */}
           <Route path="/dossier-client/1" component={DossierClient1} />
@@ -119,30 +130,17 @@ function Router() {
           <Route path="/dossier-client/16" component={DossierClient16} />
           <Route path="/dossier-client/17" component={DossierClient17} />
 
-          <Route path="/dashboard/client/:userId" component={Dashboard} />
-          <Route path="/dashboard/partner/:userId">
-            {(params) => <PartnerDashboard params={params} />}
-          </Route>
-
           {/* Autres routes protégées */}
-          <Route path="/produits/msa/:userId" component={MSA} />
-          <Route path="/produits/dfs/:userId" component={DFS} />
-          <Route path="/produits/ticpe/:userId" component={TICPE} />
-          <Route path="/produits/audit_energetique/:userId" component={AuditEnergetique} />
-          <Route path="/produits/foncier/:userId" component={Foncier} />
-          <Route path="/produits/social/:userId" component={Social} />
-          <Route path="/audit/:type/expert/:userId" component={ExpertPage} />
-          <Route path="/audit/:type/sign-charte/:userId" component={CharteSignature} />
-          <Route path="/reports/:userId" component={Reports} />
-          <Route path="/dossier/:userId" component={DossierDetails} />
-          <Route path="/profilclient/:userId" component={ProfilClient} />
-          <Route path="/DetailsDossier/:userId" component={DetailsDossier} />
+          <Route path="/expert/:type" component={ExpertPage} />
+          <Route path="/charte-signature" component={CharteSignature} />
+          <Route path="/dossier/:id" component={DossierDetails} />
+          <Route path="/profil-client" component={ProfilClient} />
+          <Route path="/details-dossier" component={DetailsDossier} />
           <Route path="/marketplace-experts" component={MarketplaceExperts} />
-          <Route path="/simulateur/:userId" component={Simulateur} />
-          <Route path="/messagerie-client/:userId" component={MessagerieClient} />
         </>
       )}
 
+      {/* Fallback pour les routes non trouvées */}
       <Route component={NotFound} />
     </Switch>
   );
