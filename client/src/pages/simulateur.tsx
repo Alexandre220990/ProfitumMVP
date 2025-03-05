@@ -53,15 +53,74 @@ const Simulateur = () => {
   }, [user, userId]);
 
   const questions: Question[] = [
-    { id: "taille", question: "Quelle est la taille de votre entreprise ?", options: ["Indépendant", "1-5 salariés", "6-10 salariés", "11-50 salariés", "+50 salariés"] },
     { id: "secteur", question: "Quel est votre secteur d'activité ?", options: ["Agriculture", "Industrie", "Commerce", "BTP", "Transport", "Services", "Informatique", "Autre"], multiple: true },
     { id: "locaux", question: "Êtes-vous propriétaire de vos locaux professionnels ?", options: ["Oui", "Non, locataire", "Non, espace partagé/domicile"] },
+      { id: "structure", question: "Quelle est la structure juridique de votre entreprise ?", options: ["SAS / SASU", "SARL / EURL", "EI / Micro-entreprise", "Association", "Autre"] },
+      { id: "salariés", question: "Combien de salariés employez-vous ?", options: ["0 (dirigeant seul)", "1-5", "6-20", "21-50", "50+"] },
+      { id: "chiffre", question: "Quel est votre chiffre d'affaires annuel moyen ?", options: ["Moins de 100 000 €", "Entre 100 000 et 500 000 €", "Entre 500 000 et 2 000 000 €", "Plus de 2 000 000 €"] },
+      { id: "secteur", question: "À quelle catégorie d'activité appartient votre entreprise ?", options: ["Commerce", "Industrie", "Services", "BTP", "Santé", "Agriculture", "Autre"], multiple: true },
+      { id: "tva", question: "Êtes-vous assujetti à la TVA ?", options: ["Oui", "Non", "Je ne sais pas"] },
+      { id: "exonérations", question: "Votre entreprise bénéficie-t-elle d’aides ou exonérations sociales ?", options: ["Oui (exonérations ZFU, JEI, CIR, etc.)", "Non", "Je ne sais pas"] },
+      { id: "audit", question: "Avez-vous déjà réalisé un audit social ou fiscal ?", options: ["Oui, récemment", "Oui, il y a plus de 2 ans", "Non"] },
+      { id: "contrats", question: "Avez-vous des salariés en contrat aidé ou exonéré de charges ?", options: ["Oui", "Non", "Je ne sais pas"] },
+      { id: "charges", question: "Quels sont vos principaux postes de dépenses ?", options: ["Salaires et charges sociales", "Loyers et charges locatives", "Matériel et équipements", "Prestations de services externes", "Transport et logistique", "Autres"], multiple: true },
+      { id: "masse", question: "Quelle est votre masse salariale mensuelle estimée ?", options: ["Moins de 5 000 €", "Entre 5 000 et 20 000 €", "Entre 20 000 et 50 000 €", "Plus de 50 000 €"] },
+      { id: "optimisation", question: "Souhaitez-vous optimiser vos cotisations sociales et fiscales ?", options: ["Oui", "Non", "Je ne sais pas"] },
+      { id: "gestion", question: "Disposez-vous d’un service de gestion comptable ou RH interne ?", options: ["Oui", "Non, nous sous-traitons", "Non, tout est géré en interne par le dirigeant"] },
+      { id: "subventions", question: "Pensez-vous que votre entreprise pourrait être éligible à des subventions ou exonérations ?", options: ["Oui", "Non", "Je ne sais pas"] },
+      { id: "interet", question: "Quels sont les sujets d'optimisation qui vous intéressent ?", options: ["Réduction des charges sociales", "Récupération de cotisations payées en trop", "Exonérations fiscales", "Crédit d’impôt et aides publiques", "Financement et subventions", "Optimisation des contrats de travail"], multiple: true },
     { id: "carburant", question: "Utilisez-vous des véhicules pour votre activité ?", options: ["Oui, véhicules lourds", "Oui, véhicules légers", "Oui, les deux", "Non"] },
   ];
 
   const products: Product[] = [
-    { id: "msa", name: "Optimisation MSA", description: "Réduction des charges sociales agricoles.", icon: "🌾", link: "/produits/msa", criteria: (answers) => answers.secteur?.includes("Agriculture") },
-    { id: "ticpe", name: "Récupération TICPE", description: "Remboursement de taxes sur le carburant.", icon: "⛽", link: "/produits/ticpe", criteria: (answers) => answers.carburant?.some((val) => val.startsWith("Oui")) },
+    { 
+      id: "urssaf", 
+      name: "Audit des cotisations URSSAF et MSA", 
+      description: "Vérification et réduction des cotisations sociales.", 
+      icon: "🏢", 
+      link: "/produits/urssaf", 
+      criteria: (answers) => answers.audit?.includes("Oui, récemment") || answers.audit?.includes("Oui, il y a plus de 2 ans") 
+    },
+    { 
+      id: "social", 
+      name: "Réduction des charges sociales et exonérations employeurs", 
+      description: "Audit des charges sociales et exonérations pour les employeurs.", 
+      icon: "👥", 
+      link: "/produits/social", 
+      criteria: (answers) => answers.exonérations?.includes("Oui (exonérations ZFU, JEI, CIR, etc.)") || answers.contrats?.includes("Oui") 
+    },
+    { 
+      id: "ticpe", 
+      name: "Récupération de TICPE", 
+      description: "Remboursement de la taxe intérieure sur les produits énergétiques.", 
+      icon: "⛽", 
+      link: "/produits/ticpe", 
+      criteria: (answers) => answers.charges?.includes("Transport et logistique") 
+    },
+    { 
+      id: "msa", 
+      name: "Optimisation des cotisations MSA", 
+      description: "Réduction des charges sociales agricoles.", 
+      icon: "🌾", 
+      link: "/produits/msa", 
+      criteria: (answers) => answers.secteur?.includes("Agriculture") 
+    },
+    { 
+      id: "foncier", 
+      name: "Audit des taxes foncières et optimisation", 
+      description: "Analyse et réduction des taxes foncières.", 
+      icon: "🏠", 
+      link: "/produits/foncier", 
+      criteria: (answers) => answers.structure?.includes("SAS / SASU") || answers.structure?.includes("SARL / EURL") 
+    },
+    { 
+      id: "audit_energetique", 
+      name: "Audit énergétique", 
+      description: "Optimisation des coûts énergétiques et éligibilité aux aides.", 
+      icon: "⚡", 
+      link: "/produits/audit-energetique", 
+      criteria: (answers) => answers.charges?.includes("Matériel et équipements") || answers.charges?.includes("Loyers et charges locatives") 
+    },
   ];
 
   const handleSelect = (answer: string) => {

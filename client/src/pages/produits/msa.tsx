@@ -46,26 +46,65 @@ type Expert = {
   experience: string;
   compensation: number;
   description: string;
+  location: string;
+  rating: number;
 };
 
-const dfsExperts: Expert[] = [
+const msaExperts: Expert[] = [
   {
     id: 1,
-    name: "Sophie Martin",
-    company: "DFS Consulting",
-    speciality: "Expert Fiscalité Saisonnière",
+    name: "Henry Gervais",
+    company: "AgriCompta Conseil",
+    speciality: "Expert Audit MSA",
     experience: "15 ans d'expertise",
-    compensation: 30,
-    description: "Spécialiste des audits DFS pour les entreprises de taille moyenne"
+    compensation: 30, // % du succès
+    rating: 4.8,
+    location: "Paris",
+    description: "Spécialiste des audits MSA pour les exploitations agricoles et les entreprises du secteur agricole."
   },
   {
     id: 2,
-    name: "Pierre Dubois",
-    company: "SeasonOptim",
-    speciality: "Optimisation DFS",
+    name: "Eugène Colin",
+    company: "MSA Optim",
+    speciality: "Optimisation des cotisations MSA",
     experience: "12 ans d'expérience",
-    compensation: 28,
-    description: "Expert en optimisation fiscale pour le secteur saisonnier"
+    compensation: 28, // % du succès
+    rating: 4.6,
+    location: "Marseilles",
+    description: "Expert en optimisation des cotisations sociales et accompagnement des employeurs agricoles."
+  },
+  {
+    id: 3,
+    name: "Nathalie Lefèvre",
+    company: "MSA Stratégie",
+    speciality: "Planification et conformité MSA",
+    experience: "20 ans d'expérience",
+    compensation: 2500, // Montant fixe par audit
+    rating: 4.9,
+    location: "Lyon",
+    description: "Accompagnement sur-mesure des grandes entreprises pour leur conformité MSA."
+  },
+  {
+    id: 4,
+    name: "Jean-Luc Bernard",
+    company: "AgroFinance",
+    speciality: "Fiscalité agricole et subventions",
+    experience: "10 ans d'expérience",
+    compensation: 25, // % du succès
+    rating: 4.5,
+    location: "Nantes",
+    description: "Optimisation des subventions et avantages fiscaux pour les entreprises agricoles."
+  },
+  {
+    id: 5,
+    name: "Camille Roche",
+    company: "EcoAudit",
+    speciality: "Audit et transition écologique MSA",
+    experience: "8 ans d'expérience",
+    compensation: 2000, // Montant fixe par mission
+    rating: 4.7,
+    location: "Nice",
+    description: "Spécialiste de la transition écologique et des crédits d'impôt pour les entreprises engagées."
   }
 ];
 
@@ -85,6 +124,19 @@ const documentsList: DocumentItem[] = [
   { id: "register", label: "Registre unique du personnel", uploadedFiles: [] },
   { id: "urssaf", label: "Historique des cotisations URSSAF", uploadedFiles: [] },
   { id: "travel", label: "Justificatifs de déplacements professionnels", uploadedFiles: [] },
+  { id: "kbis", label: "Extrait Kbis ou numéro SIREN/SIRET", uploadedFiles: [] },
+  { id: "statuts", label: "Statuts de l’entreprise (si applicable)", uploadedFiles: [] },
+  { id: "salariesList", label: "Liste des salariés avec numéros de Sécurité sociale", uploadedFiles: [] },
+  { id: "duerp", label: "Document Unique d'Évaluation des Risques Professionnels (DUERP)", uploadedFiles: [] },
+  { id: "workAccidents", label: "Registre des accidents du travail et maladies professionnelles", uploadedFiles: [] },
+  { id: "medical", label: "Fiches de suivi médical des salariés (visites médicales)", uploadedFiles: [] },
+  { id: "safetyTraining", label: "Justificatifs des formations obligatoires (sécurité, gestes et postures)", uploadedFiles: [] },
+  { id: "compliance", label: "Attestation de conformité aux obligations sociales et fiscales", uploadedFiles: [] },
+  { id: "fiscalDeclarations", label: "Déclarations de résultats et liasses fiscales", uploadedFiles: [] },
+  { id: "accounting", label: "Grand livre comptable et balance générale", uploadedFiles: [] },
+  { id: "financialStatements", label: "Comptes annuels (bilan, compte de résultat)", uploadedFiles: [] },
+  { id: "socialAids", label: "Justificatifs des aides ou exonérations perçues", uploadedFiles: [] },
+  { id: "agreements", label: "Éventuels accords d’entreprise ou décisions unilatérales", uploadedFiles: [] },
   { id: "other", label: "Autre document", uploadedFiles: [] },
 ];
 
@@ -130,14 +182,14 @@ const StepIndicator = ({ step, currentStep }: { step: number; currentStep: numbe
   );
 };
 
-export default function DFSAudit() {
+export default function MSAAudit() {
   const [currentStep, setCurrentStep] = useState(1);
   const { user } = useAuth();
   const params = useParams();
   const userId = params.userId;
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const auditType = "dfs";
+  const auditType = "msa";
 
   const [isCharterSigned, setIsCharterSigned] = useState(false);
   const [showCharterDialog, setShowCharterDialog] = useState(false);
@@ -373,60 +425,42 @@ export default function DFSAudit() {
   return (
     <div className="min-h-screen bg-gray-50">
       <HeaderClient />
-
-      {/* Nouvelle section pour le titre et les boutons */}
-      <div className="bg-white shadow-sm">
-        <div className="container mx-auto px-6 py-8">
-          <div className="flex flex-col space-y-4">
-            <div className="flex items-center justify-between">
-              <h1 className="text-3xl font-bold text-gray-900">Audit MSA</h1>
-              <div className="flex items-center gap-4">
-                <Button
-                  variant="outline"
-                  onClick={handleReset}
-                  className="flex items-center gap-2 text-gray-600 hover:text-red-600"
-                >
-                  <RefreshCcw className="w-4 h-4" />
-                  Réinitialiser
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={handlePreviousStep}
-                  className="flex items-center gap-2"
-                  disabled={currentStep <= 1}
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  Étape précédente
-                </Button>
-              </div>
+      <div className="container mx-auto p-6">
+           <div className="pt-24">
+          <div className="flex justify-between items-center mb-6">
+            <div className="flex items-center gap-4">
+              <h1 className="text-3xl font-bold">Audit MSA</h1>
             </div>
-
-            {/* Barre de progression */}
-            <div className="w-full">
-              <motion.div
-                initial={{ width: "0%" }}
-                animate={{ width: `${progress}%` }}
-                transition={{ duration: 0.5, ease: "easeInOut" }}
-                className="h-2 bg-blue-500 rounded-full"
-              />
-            </div>
-
-            {/* Indicateurs d'étapes */}
-            <div className="flex justify-between mt-4">
-              {steps.map((step, index) => (
-                <StepIndicator key={index} step={index + 1} currentStep={currentStep} />
-              ))}
-            </div>
+            <Button
+              variant="outline"
+              onClick={handlePreviousStep}
+              className="flex items-center gap-2"
+              disabled={currentStep <= 1}
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Étape précédente
+            </Button>
+          </div>
+        </div>  
+      
+          <motion.div
+            initial={{ width: "0%" }}
+            animate={{ width: `${progress}%` }}
+            transition={{ duration: 0.5, ease: "easeInOut" }}
+            className="h-2 bg-blue-500 rounded-full"
+          />
+          <div className="flex justify-between mt-4">
+            {steps.map((step, index) => (
+              <StepIndicator key={index} step={index + 1} currentStep={currentStep} />
+            ))}
           </div>
         </div>
-      </div>
 
-      <div className="container mx-auto p-6">
         <Card className="w-full ">
           <CardHeader>
-            <CardTitle>Audit Déduction Forfaitaire Spécifique (DFS)</CardTitle>
+            <CardTitle>Audit de la Mutualité Sociale Agricole (MSA)</CardTitle>
             <p className="text-m text-muted-foreground">
-              Obtenez jusqu'à 7600€ de déductions par an et par employé ! 
+              Obtenez jusqu'à 25% de réduction sur vos cotisations MSA ! 
             </p>
           </CardHeader>
           <CardHeader>
@@ -506,8 +540,13 @@ export default function DFSAudit() {
                     {stepNumber === 2 && selectedExpert && (
                       <div className="mt-4 p-4 bg-white rounded-lg border">
                         <h4 className="font-medium">{selectedExpert.name}</h4>
-                        <p className="text-sm text-gray-600">{selectedExpert.company}</p>
-                        <p className="text-sm text-gray-600">{selectedExpert.speciality}</p>
+                        <p className="text-sm text-gray-600">Cabinet : {selectedExpert.company}</p>
+                        <p className="text-sm text-gray-600">Spécialité : {selectedExpert.speciality}</p>
+                        <p className="text-sm text-gray-600">{selectedExpert.description}</p>
+                        <p className="text-sm text-gray-600">Note : {selectedExpert.rating} /5</p>
+                        <p className="text-sm text-gray-600">{selectedExpert.experience}</p>
+                        <p className="text-sm text-gray-600">Localisation : {selectedExpert.location}</p>
+                        <p className="text-sm text-gray-600">Commission : {selectedExpert.compensation}% des gains récupérés</p>
                       </div>
                     )}
 
@@ -623,13 +662,52 @@ export default function DFSAudit() {
               </DialogDescription>
             </DialogHeader>
             <div className="max-h-[60vh] overflow-y-auto p-4 bg-gray-50 rounded-md my-4">
-              <h3 className="text-lg font-semibold mb-4">Charte de l'Audit DFS</h3>
-              <p className="mb-4">
-                Cette charte définit les engagements mutuels entre le client et l'expert...
-                [Contenu de la charte]
-              </p>
-            </div>
-            <div className="flex items-center space-x-2 mb-4">
+              <h3 className="text-lg font-semibold mb-4">Charte de l'Audit MSA</h3>
+
+                  <p className="mb-4">
+                    Cette charte définit les engagements mutuels entre le client et l'expert MSA dans le cadre de l’audit relatif à la récupération de la Mutuelle Sociale Agricole (MSA).
+                  </p>
+
+                  <h4 className="text-md font-semibold mt-4">1. Objet de la Charte</h4>
+                  <p className="mb-4">
+                    L’objectif de cette charte est d’encadrer les relations entre le client et l’expert afin de garantir un audit structuré et conforme aux exigences réglementaires.
+                  </p>
+
+                  <h4 className="text-md font-semibold mt-4">2. Engagements du Client</h4>
+                  <ul className="list-disc pl-5 mb-4">
+                    <li>Fournir tous les justificatifs nécessaires dans les délais impartis.</li>
+                    <li>Garantir l’authenticité des documents et des informations transmises.</li>
+                    <li>Collaborer activement avec l’expert en répondant aux demandes de clarification.</li>
+                    <li>Respecter les échéances convenues pour éviter tout retard dans la récupération des montants dus.</li>
+                  </ul>
+
+                  <h4 className="text-md font-semibold mt-4">3. Engagements de l'Expert</h4>
+                  <ul className="list-disc pl-5 mb-4">
+                    <li>Analyser minutieusement les documents fournis pour optimiser la récupération de la MSA.</li>
+                    <li>Garantir la confidentialité des informations et documents transmis.</li>
+                    <li>Assurer un suivi régulier et apporter des conseils adaptés au client.</li>
+                    <li>Respecter la réglementation en vigueur et veiller à la conformité des démarches.</li>
+                  </ul>
+
+                  <h4 className="text-md font-semibold mt-4">4. Modalités de Récupération de la MSA</h4>
+                  <p className="mb-4">
+                    L’audit suit un processus structuré comprenant l’analyse des dépenses, la vérification de l’éligibilité et l’établissement du dossier de remboursement. La durée estimée est de une à deux semaines selon la complexité du dossier et la réactivité du client.  
+                    La rémunération de l’expert est basée sur un forfait fixe ou un pourcentage des montants récupérés, selon l’accord convenu.
+                  </p>
+
+                  <h4 className="text-md font-semibold mt-4">5. Clause de Responsabilité</h4>
+                  <ul className="list-disc pl-5 mb-4">
+                    <li>L’expert ne peut être tenu responsable des rejets de remboursement liés à des informations incomplètes ou erronées fournies par le client.</li>
+                    <li>L’expert met tout en œuvre pour optimiser la récupération, mais ne garantit pas un montant spécifique, celui-ci dépendant des critères d’éligibilité.</li>
+                  </ul>
+
+                  <h4 className="text-md font-semibold mt-4">6. Résiliation et Litiges</h4>
+                  <ul className="list-disc pl-5 mb-4">
+                    <li>Chaque partie peut résilier l’audit en cas de manquement grave, avec un préavis de 15 jours.</li>
+                    <li>En cas de litige, une résolution à l’amiable sera privilégiée. À défaut, le litige sera soumis aux tribunaux compétents.</li>
+                  </ul>
+              </div>
+              <div className="flex items-center space-x-2 mb-4">
               <Checkbox
                 id="cgu"
                 checked={acceptedCGU}
@@ -654,15 +732,15 @@ export default function DFSAudit() {
         </Dialog>
 
         <Dialog open={showExpertDialog} onOpenChange={setShowExpertDialog}>
-          <DialogContent className="max-w-3xl">
+            <DialogContent className="max-w-3xl max-h-[70vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Sélection de l'expert DFS</DialogTitle>
+              <DialogTitle>Sélection de l'expert MSA</DialogTitle>
               <DialogDescription>
-                Choisissez un expert spécialisé en DFS pour votre audit
+                Choisissez un expert spécialisé en MSA pour votre audit
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
-              {dfsExperts.map((expert) => (
+              {msaExperts.map((expert) => (
                 <div
                   key={expert.id}
                   className={cn(
@@ -678,8 +756,12 @@ export default function DFSAudit() {
                       <h4 className="font-semibold">{expert.name}</h4>
                       <p className="text-sm text-gray-600">{expert.company}</p>
                       <p className="text-sm text-blue-600">{expert.speciality}</p>
-                      <p className="text-sm text-gray-500">{expert.experience}</p>
                       <p className="text-sm mt-2">{expert.description}</p>
+                      <p className="text-sm text-gray-500">{expert.experience}</p>
+                      <p className="text-sm text-gray-500">{expert.rating}</p>
+                      <p className="text-sm text-gray-500">{expert.location}</p>
+                      <p className="text-sm text-gray-500">Commission{expert.compensation} %  </p>
+                    
                     </div>
                     <Button
                       variant="outline"
@@ -765,6 +847,5 @@ export default function DFSAudit() {
           </DialogContent>
         </Dialog>
       </div>
-    </div>
   );
 }

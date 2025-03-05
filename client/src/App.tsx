@@ -52,6 +52,7 @@ import DossierClient10 from "@/pages/dossier-client/10";
 
 // Produits pages
 import TICPE from "@/pages/produits/ticpe";
+import AuditEnergetique from "@/pages/produits/audit_energetique";
 import Foncier from "@/pages/produits/foncier";
 import MSA from "@/pages/produits/msa";
 import DFS from "@/pages/produits/dfs";
@@ -127,6 +128,7 @@ function Router() {
           <Route path="/produits/msa/:userId" component={MSA} />
           <Route path="/produits/dfs/:userId" component={DFS} />
           <Route path="/produits/ticpe/:userId" component={TICPE} />
+          <Route path="/produits/audit_energetique/:userId" component={AuditEnergetique} />
           <Route path="/produits/foncier/:userId" component={Foncier} />
           <Route path="/produits/social/:userId" component={Social} />
           <Route path="/audit/:type/expert/:userId" component={ExpertPage} />

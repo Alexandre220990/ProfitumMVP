@@ -50,62 +50,62 @@ type Expert = {
   rating: number;
 };
 
-const FoncierExperts: Expert[] = [
+const msaExperts: Expert[] = [
   {
     id: 1,
-    name: "Louis Martin",
-    company: "Foncier Conseil",
-    speciality: "Audit et optimisation fiscale foncière",
-    experience: "15 ans d'expertise",
-    compensation: 30, // % du succès
-    rating: 4.8,
+    name: "François Delorme",
+    company: "Energie Conseil",
+    speciality: "Audit énergétique industriel",
+    experience: "18 ans d'expertise",
+    compensation: 32, // % du succès
+    rating: 4.9,
     location: "Paris",
-    description: "Expert en réduction des taxes foncières et en optimisation des bases fiscales."
+    description: "Spécialiste en optimisation des coûts énergétiques pour les industries et le BTP."
   },
   {
     id: 2,
-    name: "Sophie Bernard",
-    company: "Taxe Foncier Plus",
-    speciality: "Réduction des impôts locaux",
-    experience: "12 ans d'expérience",
-    compensation: 28, // % du succès
+    name: "Isabelle Moreau",
+    company: "EcoWatt Consulting",
+    speciality: "Optimisation énergétique PME",
+    experience: "14 ans d'expérience",
+    compensation: 25,
     rating: 4.7,
     location: "Lyon",
-    description: "Spécialiste en vérification des bases de calcul des taxes locales et correction des erreurs fiscales."
+    description: "Accompagnement des PME dans la réduction de leur facture énergétique et l'accès aux subventions."
   },
   {
     id: 3,
-    name: "Jean-Paul Dubois",
-    company: "OptiFoncier",
-    speciality: "Négociation et contestation des taxes foncières",
-    experience: "18 ans d'expérience",
-    compensation: 32, // % du succès
-    rating: 4.9,
+    name: "Julien Garnier",
+    company: "GreenPower Experts",
+    speciality: "Transition énergétique et énergies renouvelables",
+    experience: "20 ans d'expérience",
+    compensation: 30, // % du succès
+    rating: 4.8,
     location: "Bordeaux",
-    description: "Accompagne les entreprises dans la réduction de leurs contributions foncières et la contestation d'imposition."
+    description: "Accompagnement des entreprises dans la transition énergétique et la mise en place de solutions renouvelables."
   },
   {
     id: 4,
-    name: "Emilie Lefèvre",
-    company: "Foncier & Patrimoine",
-    speciality: "Audit foncier pour entreprises et commerces",
+    name: "Clara Dubois",
+    company: "Bâtiment Durable",
+    speciality: "Optimisation énergétique des bâtiments",
     experience: "10 ans d'expérience",
-    compensation: 25, // % du succès
+    compensation: 28, 
     rating: 4.6,
     location: "Marseille",
-    description: "Spécialiste en optimisation fiscale foncière pour les commerces et les grandes entreprises."
+    description: "Audit et optimisation de la consommation énergétique des bâtiments tertiaires et industriels."
   },
   {
     id: 5,
-    name: "Nicolas Carpentier",
-    company: "Expertise Fiscale Immobilière",
-    speciality: "Fiscalité foncière et exonérations",
-    experience: "14 ans d'expérience",
-    compensation: 29, // % du succès
-    rating: 4.7,
+    name: "Marc Lefebvre",
+    company: "Audit Énergie Plus",
+    speciality: "Fiscalité énergétique et crédits d'impôt",
+    experience: "12 ans d'expérience",
+    compensation: 27, // % du succès
+    rating: 4.5,
     location: "Nantes",
-    description: "Expert en exonérations foncières et réduction des charges fiscales pour les entreprises."
-  },
+    description: "Spécialiste de l'optimisation des crédits d'impôt et des dispositifs fiscaux liés à l'énergie."
+  }
 ];
 
 type DocumentItem = {
@@ -115,8 +115,7 @@ type DocumentItem = {
 };
 
 const documentsList: DocumentItem[] = [
-  { id: "DocumentFoncier", label: "Déclaration foncière de l'année précédente", uploadedFiles: [] },
-  { id: "PlanCadastral", label: "Plan cadastral du bien concerné", uploadedFiles: [] },
+  { id: "energyreceipt", label: "Facture du fournisseur actuel d'énergie de moins de 3 mois", uploadedFiles: [] },
 ];
 
 const getTimeSlots = () => {
@@ -161,14 +160,14 @@ const StepIndicator = ({ step, currentStep }: { step: number; currentStep: numbe
   );
 };
 
-export default function FoncierAudit() {
+export default function EnergyAudit() {
   const [currentStep, setCurrentStep] = useState(1);
   const { user } = useAuth();
   const params = useParams();
   const userId = params.userId;
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const auditType = "foncier";
+  const auditType = "msa";
 
   const [isCharterSigned, setIsCharterSigned] = useState(false);
   const [showCharterDialog, setShowCharterDialog] = useState(false);
@@ -439,7 +438,7 @@ export default function FoncierAudit() {
           <CardHeader>
             <CardTitle>Audit des fournisseurs d'énergies</CardTitle>
             <p className="text-m text-muted-foreground">
-              Obtenez jusqu'à 30% de réduction sur votre consommation d'énergie ! 
+              Obtenez jusqu'à 25% de réduction sur vos cotisations MSA ! 
             </p>
           </CardHeader>
           <CardHeader>
@@ -635,16 +634,16 @@ export default function FoncierAudit() {
         <Dialog open={showCharterDialog} onOpenChange={setShowCharterDialog}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Charte Contractuelle de l'optimisation de vos charges foncières. </DialogTitle>
+              <DialogTitle>Charte Contractuelle DFS</DialogTitle>
               <DialogDescription>
                 Veuillez lire attentivement la charte avant de la signer
               </DialogDescription>
             </DialogHeader>
             <div className="max-h-[60vh] overflow-y-auto p-4 bg-gray-50 rounded-md my-4">
-              <h3 className="text-lg font-semibold mb-4">Charte de l'Audit Foncier</h3>
+              <h3 className="text-lg font-semibold mb-4">Charte de l'Audit Énergétique</h3>
 
                   <p className="mb-4">
-                    Cette charte définit les engagements mutuels entre le client et l'expert dans le cadre de l’audit foncier. 
+                    Cette charte définit les engagements mutuels entre le client et l'expert MSA dans le cadre de l’audit relatif à la optimisation des fournisseurs d'énergie. 
                   </p>
 
                   <h4 className="text-md font-semibold mt-4">1. Objet de la Charte</h4>
@@ -673,7 +672,7 @@ export default function FoncierAudit() {
                   <p className="mb-4">
                     L’audit suit un processus structuré comprenant l’analyse des dépenses, la vérification de l’éligibilité et l’établissement d'un rapport comprenant les offres les plus pertinentes par rapport à votre situation. La durée estimée est de moins d'une semaine.  
                     La rémunération de l’expert est basée sur un pourcentage des montants récupérés selon le taux de commission applicable de l'expert affiché sur la plateforme. Nous ne garantissons aucun dossier qui pourrait être conclu en dehors de l'application.
-                    L'expert fournit un service clé en main avec la consitutution du dossier, la demande et le suivi de dossier auprès de l'administration. 
+                    L'expert fournit un service clé en main avec la consitutution du dossier de cloture avec votre fournisseur d'énergie actuel, la création de votre dossier chez le nouveau fournisseur et la transition pour qu'il n'y ait pas de coupure. 
                   </p>
 
                   <h4 className="text-md font-semibold mt-4">5. Clause de Responsabilité</h4>
@@ -717,11 +716,11 @@ export default function FoncierAudit() {
             <DialogHeader>
               <DialogTitle>Sélection de l'expert MSA</DialogTitle>
               <DialogDescription>
-                Choisissez un expert spécialisé en audit foncier.
+                Choisissez un expert spécialisé en MSA pour votre audit
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
-              {FoncierExperts.map((expert) => (
+              {msaExperts.map((expert) => (
                 <div
                   key={expert.id}
                   className={cn(
