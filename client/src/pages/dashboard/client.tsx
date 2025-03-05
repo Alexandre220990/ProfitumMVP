@@ -39,7 +39,6 @@ export default function DashboardClient() {
 
   useEffect(() => {
     if (user?.id) {
-      // Vérifie si une simulation a déjà été effectuée pour cet utilisateur
       const auditProgress = localStorage.getItem(`auditProgress_${user.id}`);
       setHasSimulated(!!auditProgress);
     }
@@ -50,13 +49,15 @@ export default function DashboardClient() {
 
     const progress = JSON.parse(localStorage.getItem(`auditProgress_${user.id}`) || '{}')[auditType];
     if (progress === undefined) return "not_initiated";
-    if (progress === 6) return "finalized"; // Nouvelle étape finale
+    if (progress === 6) return "finalized";
     if (progress === 5) return "completed";
     return progress > 0 ? "pending" : "not_initiated";
   };
 
-  const getAuditData = (auditType: string) => {
-    if (!user?.id) return null;
+  const getAuditData = (auditType: string): Dossier => {
+    if (!user?.id) {
+      throw new Error('User not authenticated');
+    }
 
     const progress = JSON.parse(localStorage.getItem(`auditProgress_${user.id}`) || '{}')[auditType] || 0;
     const status = getAuditStatus(auditType);
@@ -65,7 +66,7 @@ export default function DashboardClient() {
       id: auditType,
       name: `Audit ${auditType.toUpperCase()}`,
       status,
-      progress: progress * 20,
+      progress: progress * (100 / 6), // Adjusted for 6 steps
       currentStep: status === "completed" || status === "finalized" ? "Terminé" : `Étape ${progress}`,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -90,24 +91,22 @@ export default function DashboardClient() {
     return Math.round(potential * (0.8 + Math.random() * 0.4));
   };
 
-  const allDossiers = hasSimulated && user?.id
-    ? Object.keys(JSON.parse(localStorage.getItem(`auditProgress_${user.id}`) || '{}')).map(type => getAuditData(type)).filter(Boolean)
+  const allDossiers: Dossier[] = hasSimulated && user?.id
+    ? Object.keys(JSON.parse(localStorage.getItem(`auditProgress_${user.id}`) || '{}')).map(type => getAuditData(type))
     : [];
 
-  const categorizeDossiers = (status: Dossier["status"]) => allDossiers.filter(dossier => dossier.status === status);
+  const categorizeDossiers = (status: Dossier["status"]) => 
+    allDossiers.filter(dossier => dossier.status === status);
 
   const auditsEnCours = categorizeDossiers("pending");
-
-  const avancementGlobal = auditsEnCours.length > 0
-    ? auditsEnCours.reduce((sum, audit) => sum + audit.progress, 0) / auditsEnCours.length
-    : 0;
 
   const kpiData = {
     dossiersEnCours: categorizeDossiers("pending").length,
     gainsPotentiels: allDossiers.reduce((sum, dossier) => sum + dossier.potentialGain, 0),
-    gainsObtenus: allDossiers.filter(d => d.status === "completed" || d.status === "finalized").reduce((sum, dossier) => sum + (dossier.obtainedGain || 0), 0),
+    gainsObtenus: allDossiers
+      .filter(d => d.status === "completed" || d.status === "finalized")
+      .reduce((sum, dossier) => sum + (dossier.obtainedGain || 0), 0),
     auditsFinalises: categorizeDossiers("completed").length + categorizeDossiers("finalized").length,
-    avancementGlobal,
   };
 
   const handleSimulationClick = () => {
@@ -138,7 +137,6 @@ export default function DashboardClient() {
       <div className="max-w-5xl mx-auto px-4 py-10">
         <div className="mt-16"></div>
 
-        {/* En-tête avec titre et bouton */}
         <div className="flex items-center justify-center relative mb-8">
           <Button
             onClick={handleSimulationClick}
@@ -170,7 +168,6 @@ export default function DashboardClient() {
           </div>
         ) : (
           <>
-            {/* KPI Minimaliste */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-8">
               {[
                 { icon: FolderOpen, value: kpiData.dossiersEnCours, label: "Dossiers en cours", color: "text-blue-500" },
@@ -197,11 +194,13 @@ export default function DashboardClient() {
                   value: (
                     <div className="w-16 h-16">
                       <CircularProgressbar
-                        value={kpiData.avancementGlobal}
-                        text={`${kpiData.avancementGlobal.toFixed(0)}%`}
+                        value={auditsEnCours.length > 0 ? 
+                          (auditsEnCours.reduce((sum, audit) => sum + audit.progress, 0) / auditsEnCours.length) : 0}
+                        text={`${auditsEnCours.length > 0 ? 
+                          Math.round(auditsEnCours.reduce((sum, audit) => sum + audit.progress, 0) / auditsEnCours.length) : 0}%`}
                         styles={buildStyles({
                           textColor: "#1E293B",
-                          pathColor: kpiData.avancementGlobal === 100 ? "#10B981" : "#3B82F6",
+                          pathColor: "#3B82F6",
                           trailColor: "#E5E7EB",
                           textSize: "20px",
                         })}
@@ -216,7 +215,6 @@ export default function DashboardClient() {
               ))}
             </div>
 
-            {/* Navigation minimaliste */}
             <div className="mt-8 flex justify-center space-x-4">
               {[
                 { key: "opportunities", label: "Opportunités", icon: FilePlus },
@@ -235,7 +233,6 @@ export default function DashboardClient() {
               ))}
             </div>
 
-            {/* Tableau des audits */}
             <AuditTable activeTab={activeTab} allDossiers={allDossiers} user={user} />
           </>
         )}
@@ -244,7 +241,6 @@ export default function DashboardClient() {
   );
 }
 
-// ✅ Composant pour afficher un titre de section
 function SectionTitle({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div className="text-center">
@@ -254,7 +250,6 @@ function SectionTitle({ title, subtitle }: { title: string; subtitle: string }) 
   );
 }
 
-// ✅ Composant pour afficher une carte KPI minimaliste
 function KpiCard({ icon: Icon, value, component, label, color }: { icon: any; value?: any; component?: any; label: string; color: string }) {
   return (
     <div className="bg-white p-4 rounded-lg shadow-sm flex flex-col items-center">
