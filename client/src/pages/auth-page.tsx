@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { useLocation } from "wouter";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +13,7 @@ const AuthPage = () => {
   const { loginMutation, registerMutation, isLoading } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const { toast } = useToast();
-  const [, setLocation] = useLocation();
+  const navigate = useNavigate();
 
   const form = useForm({
     defaultValues: {
@@ -40,7 +40,7 @@ const AuthPage = () => {
       }
 
       toast({ title: "Succès", description: "Authentification réussie !" });
-      setLocation(response.type === "client" ? `/dashboard/client/${response.id}` : "/dashboard/partner");
+      navigate(response.type === "client" ? `/dashboard/client/${response.id}` : "/dashboard/expert");
 
     } catch (error: any) {
       console.error("AuthPage - Error during authentication:", error);

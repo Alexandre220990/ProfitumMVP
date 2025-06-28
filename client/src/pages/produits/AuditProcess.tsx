@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useRoute, Link } from "wouter";
+import { useParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
@@ -16,6 +16,7 @@ const processSteps = [
   { id: 2, title: "Sélectionner un expert", component: ExpertSelection },
   { id: 3, title: "Choisir un créneau", component: ScheduleMeeting },
   { id: 4, title: "Joindre les documents", component: DocumentUpload },
+  { id: 5, title: "Attente du retour de l'expert", description: "Votre dossier est en cours d'analyse." },
   { id: 5, title: "Attente du retour de l’expert", description: "Votre dossier est en cours d’analyse." },
   { id: 6, title: "Réception des résultats", description: "Téléchargez votre rapport." },
   { id: 7, title: "Acceptation de la mission", description: "Finalisez et validez votre audit." }

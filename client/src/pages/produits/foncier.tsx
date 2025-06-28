@@ -1,4 +1,4 @@
-import { useLocation } from "wouter";
+import { useLocation, useParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,7 +34,6 @@ import { Progress } from "@/components/ui/progress";
 import HeaderClient from "@/components/HeaderClient";
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/use-auth";
-import { useParams } from "wouter";
 
 type StepStatus = "completed" | "current" | "upcoming";
 
@@ -161,12 +160,11 @@ const StepIndicator = ({ step, currentStep }: { step: number; currentStep: numbe
   );
 };
 
-export default function FoncierAudit() {
+const Foncier = () => {
+  const location = useLocation();
+  const { id } = useParams();
   const [currentStep, setCurrentStep] = useState(1);
   const { user } = useAuth();
-  const params = useParams();
-  const userId = params.userId;
-  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const auditType = "foncier";
 
@@ -352,7 +350,7 @@ export default function FoncierAudit() {
       });
 
       // Return to dashboard
-      setLocation('/dashboard/client');
+      location('/dashboard/client');
     }
   };
 
@@ -644,20 +642,20 @@ export default function FoncierAudit() {
               <h3 className="text-lg font-semibold mb-4">Charte de l'Audit Foncier</h3>
 
                   <p className="mb-4">
-                    Cette charte définit les engagements mutuels entre le client et l'expert dans le cadre de l’audit foncier. 
+                    Cette charte définit les engagements mutuels entre le client et l'expert dans le cadre de l'audit foncier. 
                   </p>
 
                   <h4 className="text-md font-semibold mt-4">1. Objet de la Charte</h4>
                   <p className="mb-4">
-                    L’objectif de cette charte est d’encadrer les relations entre le client et l’expert afin de garantir un audit structuré et conforme aux exigences réglementaires.
+                    L'objectif de cette charte est d'encadrer les relations entre le client et l'expert afin de garantir un audit structuré et conforme aux exigences réglementaires.
                   </p>
 
                   <h4 className="text-md font-semibold mt-4">2. Engagements du Client</h4>
                   <ul className="list-disc pl-5 mb-4">
                     <li>Fournir tous les justificatifs nécessaires dans les délais impartis.</li>
                     <li>Autoriser l'expert mandaté à procéder à un revelé de vos données de consommations auprès de votre fournisseur d'énergie actuel. Seules vos données de consommation sont concernées et serviront pour garantir un résultat optimal de l'appel d'offre aux fournisseurs. </li> 
-                    <li>Garantir l’authenticité des documents et des informations transmises.</li>
-                    <li>Collaborer activement avec l’expert en répondant aux demandes de clarification.</li>
+                    <li>Garantir l'authenticité des documents et des informations transmises.</li>
+                    <li>Collaborer activement avec l'expert en répondant aux demandes de clarification.</li>
                     <li>Respecter les échéances convenues pour éviter tout retard dans la récupération des montants dus.</li>
                   </ul>
 
@@ -671,21 +669,21 @@ export default function FoncierAudit() {
 
                   <h4 className="text-md font-semibold mt-4">4. Modalités de l'optimisation des dépenses énergétiques :</h4>
                   <p className="mb-4">
-                    L’audit suit un processus structuré comprenant l’analyse des dépenses, la vérification de l’éligibilité et l’établissement d'un rapport comprenant les offres les plus pertinentes par rapport à votre situation. La durée estimée est de moins d'une semaine.  
-                    La rémunération de l’expert est basée sur un pourcentage des montants récupérés selon le taux de commission applicable de l'expert affiché sur la plateforme. Nous ne garantissons aucun dossier qui pourrait être conclu en dehors de l'application.
+                    L'audit suit un processus structuré comprenant l'analyse des dépenses, la vérification de l'éligibilité et l'établissement d'un rapport comprenant les offres les plus pertinentes par rapport à votre situation. La durée estimée est de moins d'une semaine.  
+                    La rémunération de l'expert est basée sur un pourcentage des montants récupérés selon le taux de commission applicable de l'expert affiché sur la plateforme. Nous ne garantissons aucun dossier qui pourrait être conclu en dehors de l'application.
                     L'expert fournit un service clé en main avec la consitutution du dossier, la demande et le suivi de dossier auprès de l'administration. 
                   </p>
 
                   <h4 className="text-md font-semibold mt-4">5. Clause de Responsabilité</h4>
                   <ul className="list-disc pl-5 mb-4">
-                    <li>L’expert ne peut être tenu responsable des rejets de remboursement liés à des informations incomplètes ou erronées fournies par le client.</li>
-                    <li>L’expert met tout en œuvre pour optimiser la récupération, mais ne garantit pas un montant spécifique, celui-ci dépendant des critères d’éligibilité.</li>
+                    <li>L'expert ne peut être tenu responsable des rejets de remboursement liés à des informations incomplètes ou erronées fournies par le client.</li>
+                    <li>L'expert met tout en œuvre pour optimiser la récupération, mais ne garantit pas un montant spécifique, celui-ci dépendant des critères d'éligibilité.</li>
                   </ul>
 
                   <h4 className="text-md font-semibold mt-4">6. Résiliation et Litiges</h4>
                   <ul className="list-disc pl-5 mb-4">
-                    <li>Chaque partie peut résilier l’audit en cas de manquement grave, avec un préavis de 15 jours.</li>
-                    <li>En cas de litige, une résolution à l’amiable sera privilégiée. À défaut, le litige sera soumis aux tribunaux compétents.</li>
+                    <li>Chaque partie peut résilier l'audit en cas de manquement grave, avec un préavis de 15 jours.</li>
+                    <li>En cas de litige, une résolution à l'amiable sera privilégiée. À défaut, le litige sera soumis aux tribunaux compétents.</li>
                   </ul>
               </div>
               <div className="flex items-center space-x-2 mb-4">
@@ -749,7 +747,7 @@ export default function FoncierAudit() {
                       size="sm"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setLocation(`/expert/${expert.id}`);
+                        location(`/expert/${expert.id}`);
                       }}
                     >
                       <ExternalLink className="w-4 h-4 mr-2" />
@@ -830,3 +828,5 @@ export default function FoncierAudit() {
       </div>
   );
 }
+
+export default Foncier;

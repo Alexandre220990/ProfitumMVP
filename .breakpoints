@@ -1,0 +1,20 @@
+{
+  "files": {
+    "client/src/App.tsx": [
+      {
+        "id": "cbe84f45-adde-43a5-afa0-42af4a46f761",
+        "line": 1,
+        "version": 1078,
+        "index": 22
+      }
+    ],
+    "client/src/pages/simulateur.tsx": [
+      {
+        "id": "9621da8d-1963-4203-8d21-fdfdb77d2756",
+        "line": 52,
+        "version": 418,
+        "index": 1394
+      }
+    ]
+  }
+}

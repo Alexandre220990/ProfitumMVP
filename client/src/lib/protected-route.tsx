@@ -1,24 +1,15 @@
 import { useEffect, memo, useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Loader2 } from "lucide-react";
-import { Route, useLocation } from "wouter";
+import { Navigate, useLocation } from "react-router-dom";
 
 interface ProtectedRouteProps {
-  path: string;
-  component: React.ComponentType;
+  children: React.ReactNode;
 }
 
-export const ProtectedRoute = memo(({ path, component: Component }: ProtectedRouteProps) => {
+export const ProtectedRoute = memo(({ children }: ProtectedRouteProps) => {
   const { user, isLoading } = useAuth();
-  const [, setLocation] = useLocation();
-
-  // 🔒 Redirection automatique si l'utilisateur n'est pas connecté
-  useEffect(() => {
-    if (!isLoading && !user) {
-      console.warn("🔒 Redirection vers /connexion-client (Utilisateur non connecté)");
-      setLocation("/connexion-client");
-    }
-  }, [isLoading, user, setLocation]);
+  const location = useLocation();
 
   // ⏳ Affichage d'un loader pendant le chargement des données utilisateur
   if (isLoading) {
@@ -29,12 +20,13 @@ export const ProtectedRoute = memo(({ path, component: Component }: ProtectedRou
     );
   }
 
-  // ❌ Si l'utilisateur n'est pas défini après le chargement, éviter le rendu
-  if (!user) return null;
+  // Si l'utilisateur n'est pas connecté, on redirige vers la page de connexion
+  if (!user) {
+    return <Navigate to="/connexion-client" state={{ from: location }} replace />;
+  }
 
   // ✅ Optimisation avec `useMemo()` pour éviter un re-render inutile
-  const RenderComponent = useMemo(() => <Component />, [Component]);
+  const RenderComponent = useMemo(() => <>{children}</>, [children]);
 
-  // ✅ Utilisation correcte du `Route` de `wouter`
-  return <Route path={path}>{RenderComponent}</Route>;
+  return RenderComponent;
 });

@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Link } from "wouter";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Star, ShieldCheck, Zap, Bell, FileText, BarChart, Users, Rocket, Globe, Code, CreditCard, Clock, TrendingUp, UserCircle } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 
@@ -59,7 +59,7 @@ const benefits = [
   {
     icon: TrendingUp,
     title: "Visibilité maximisée",
-    description: "Profitez d’une mise en avant stratégique et boostez votre attractivité.",
+    description: "Profitez d'une mise en avant stratégique et boostez votre attractivité.",
   },
   {
     icon: BarChart,
@@ -72,10 +72,21 @@ const benefits = [
     description: "Données protégées et transactions sécurisées pour une tranquillité absolue.",
   },
 ];
-export default function PaiementPage() {
-  const [, setLocation] = useLocation();
+
+const Tarifs = () => {
+  const navigate = useNavigate();
   const [selectedPlan, setSelectedPlan] = useState(plans[1]); // Plan recommandé par défaut
-  const [billingCycle, setBillingCycle] = useState("monthly");
+  const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
+
+  const handlePaymentClick = () => {
+    // Sauvegarder le plan sélectionné dans le localStorage
+    localStorage.setItem("selectedPlan", JSON.stringify({
+      ...selectedPlan,
+      price: billingCycle === "monthly" ? selectedPlan.price : selectedPlan.annualPrice
+    }));
+    // Rediriger vers la page de paiement
+    navigate("/paiement");
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-white text-gray-900">
@@ -83,14 +94,14 @@ export default function PaiementPage() {
       {/* Bandeau de navigation */}
       <div className="bg-blue-900 text-white py-3 px-6 rounded-lg flex justify-between items-center text-sm">
         <div className="flex items-center space-x-6">
-          <Link href="/">
+          <Link to="/">
             <img src="/Logo-Profitum.png" alt="Profitum Logo" className="h-10 cursor-pointer" />
           </Link>
           <div className="flex space-x-6">
-            <Link href="/Nos-Services">Nos Services</Link>
-            <Link href="/experts">Nos Experts</Link>
-            <Link href="/tarifs">Tarifs</Link>
-            <Link href="/contact">Contact</Link>
+            <Link to="/Nos-Services">Nos Services</Link>
+            <Link to="/experts">Nos Experts</Link>
+            <Link to="/tarifs">Tarifs</Link>
+            <Link to="/contact">Contact</Link>
           </div>
         </div>
         <DropdownMenu>
@@ -101,10 +112,10 @@ export default function PaiementPage() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem asChild>
-              <Link href="/connexion-client">Client</Link>
+              <Link to="/connexion-client">Client</Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href="/connexion-partner">Partenaire</Link>
+              <Link to="/connexion-partner">Partenaire</Link>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -123,32 +134,33 @@ export default function PaiementPage() {
       {/* Plans Section */}
       <section className="container mx-auto py-16 grid grid-cols-1 md:grid-cols-3 gap-8 px-8 max-w-7xl">
         {plans.map((plan) => (
-          <div 
-            key={plan.id} 
-            className={`relative p-8 rounded-xl shadow-lg transition-all duration-300 hover:scale-105 cursor-pointer border ${
-              selectedPlan.id === plan.id ? "border-blue-500 bg-blue-50 shadow-lg" : "border-gray-300 bg-white"
-            }`}
-            onClick={() => setSelectedPlan(plan)}
-          >
+          <Card key={plan.id} className={`relative p-8 rounded-xl shadow-lg transition-all duration-300 hover:scale-105 cursor-pointer border ${
+            selectedPlan.id === plan.id ? "border-blue-500 bg-blue-50 shadow-lg" : "border-gray-300 bg-white"
+          }`} onClick={() => setSelectedPlan(plan)}>
             {plan.recommended && (
               <div className="absolute top-0 left-0 bg-yellow-400 text-black px-3 py-1 rounded-tr-lg rounded-bl-lg font-bold">
                 ⭐ Recommandé
               </div>
             )}
-            <h3 className="text-3xl font-bold">{plan.name}</h3>
-            <p className="mt-2 opacity-80">{plan.description}</p>
-            <p className="text-4xl font-bold mt-4">
-              {billingCycle === "monthly" ? `${plan.price} € / mois` : `${plan.annualPrice} € / an`}
-            </p>
-            <ul className="mt-6 space-y-3 text-left">
-              {plan.features.map((feature, i) => (
-                <li key={i} className="flex items-center">
-                  <feature.icon className="text-blue-600 mr-2 w-6 h-6" />
-                  {feature.text}
-                </li>
-              ))}
-            </ul>
-          </div>
+            <CardHeader>
+              <CardTitle>{plan.name}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold mb-4">{billingCycle === "monthly" ? `${plan.price} € / mois` : `${plan.annualPrice} € / an`}</p>
+              <p className="text-gray-600">{plan.description}</p>
+              <ul className="mt-6 space-y-3 text-left">
+                {plan.features.map((feature, i) => (
+                  <li key={i} className="flex items-center">
+                    <feature.icon className="text-blue-600 mr-2 w-6 h-6" />
+                    {feature.text}
+                  </li>
+                ))}
+              </ul>
+              <Button asChild className="w-full mt-6">
+                <Link to={`/paiement?plan=${plan.id}`}>Choisir ce plan</Link>
+              </Button>
+            </CardContent>
+          </Card>
         ))}
       </section>
       
@@ -174,14 +186,16 @@ export default function PaiementPage() {
           <p className="text-lg font-semibold">
             Plan sélectionné : <span className="text-blue-600">{selectedPlan.name}</span> - {billingCycle === "monthly" ? `${selectedPlan.price} € / mois` : `${selectedPlan.annualPrice} € / an`}
           </p>
-          <Link href="/pages/Paiement">
-            <Button className="bg-green-500 text-white px-6 py-3 text-lg font-medium rounded-lg hover:bg-green-600 flex items-center">
-              <CreditCard className="mr-2" /> Payer maintenant
-            </Button>
-          </Link>
+          <Button 
+            onClick={handlePaymentClick}
+            className="bg-green-500 text-white px-6 py-3 text-lg font-medium rounded-lg hover:bg-green-600 flex items-center"
+          >
+            <CreditCard className="mr-2" /> Payer maintenant
+          </Button>
         </div>
       </div>
-
     </div>
   );
-}
+};
+
+export default Tarifs;

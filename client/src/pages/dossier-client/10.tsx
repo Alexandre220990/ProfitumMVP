@@ -1,10 +1,10 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useLocation } from "wouter";
+import { useNavigate } from "react-router-dom";
 
 const DossierClient10 = () => {
-  const [, setLocation] = useLocation();
+  const navigate = useNavigate();
 
   const documents = [
     { name: "Déclarations sociales (2024)", url: "#", type: "PDF" },
@@ -57,7 +57,7 @@ const DossierClient10 = () => {
           </div>
 
           <div className="flex justify-between items-center">
-            <Button variant="outline" onClick={() => setLocation("/dashboard/partner")}>
+            <Button variant="outline" onClick={() => navigate("/dashboard/partner")}>
               Retour au tableau de bord
             </Button>
             <div className="space-x-2">

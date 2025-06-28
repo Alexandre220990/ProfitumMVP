@@ -16,7 +16,7 @@ export const users = pgTable("users", {
   address: text("address"),
   city: text("city"),
   postalCode: text("postal_code"),
-  siret: text("siret"),
+  siren: text("siren").check("siren_length", "length(siren) = 9"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

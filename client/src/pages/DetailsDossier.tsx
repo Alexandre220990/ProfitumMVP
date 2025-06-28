@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import { useParams } from "wouter";
-import { Card, CardContent } from "@/components/ui/card";
+import { useParams, Link } from "react-router-dom";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Link } from "wouter";
 import HeaderClient from "@/components/HeaderClient";
 import { FolderOpen, Calendar, User, Briefcase, FileText, Phone, ArrowLeft } from "lucide-react";
 import { get } from "@/lib/api"; // Utilisation de la fonction get depuis lib/api.ts
+import { Badge } from "@/components/ui/badge";
 
 export default function DetailsDossier() {
   const { id } = useParams();
@@ -43,13 +43,43 @@ export default function DetailsDossier() {
     <div className="min-h-screen bg-gray-100">
       <HeaderClient />
       <div className="container mx-auto px-6 py-10">
-        <div className="mb-6">
-          <Link href="/">
-            <Button variant="ghost" className="flex items-center gap-2 text-gray-700 hover:text-blue-600">
-              <ArrowLeft className="w-5 h-5" /> Retour au Dashboard
-            </Button>
-          </Link>
-        </div>
+        <Card className="mb-6">
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <CardTitle>Détails du dossier #{id}</CardTitle>
+              <Badge variant="default">En cours</Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <p className="text-sm text-gray-500">Client</p>
+                <p className="font-medium">{dossier.client}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Date de création</p>
+                <p className="font-medium">{dossier.date}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Type d'audit</p>
+                <p className="font-medium">{dossier.type}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Montant estimé</p>
+                <p className="font-medium">{dossier.montantEstime} €</p>
+              </div>
+            </div>
+
+            <div className="flex justify-between items-center">
+              <Button variant="outline" asChild>
+                <Link to="/dashboard/partner">Retour au tableau de bord</Link>
+              </Button>
+              <div className="space-x-2">
+                <Button variant="default">Dossier en cours</Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         <h1 className="text-4xl font-extrabold text-center text-gray-900 mb-12">📂 Détails de votre dossier</h1>
 
@@ -87,7 +117,7 @@ export default function DetailsDossier() {
         </div>
 
         <div className="flex justify-center gap-6 mt-12">
-          <Link href="/marketplace-experts">
+          <Link to="/marketplace-experts">
             <Button className="bg-blue-600 text-white hover:bg-blue-700 px-8 py-3 text-lg rounded-lg shadow-md">
               🚀 Accéder à la Marketplace des Experts
             </Button>

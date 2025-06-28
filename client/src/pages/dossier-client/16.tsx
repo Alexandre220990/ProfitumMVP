@@ -1,10 +1,10 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useLocation } from "wouter";
+import { useLocation } from "react-router-dom";
 
 const DossierClient16 = () => {
-  const [, setLocation] = useLocation();
+  const location = useLocation();
 
   const documents = [
     { name: "Déclarations MSA (2024)", url: "#", type: "PDF" },
@@ -57,7 +57,7 @@ const DossierClient16 = () => {
           </div>
 
           <div className="flex justify-between items-center">
-            <Button variant="outline" onClick={() => setLocation("/dashboard/partner")}>
+            <Button variant="outline" onClick={() => location.push("/dashboard/partner")}>
               Retour au tableau de bord
             </Button>
             <div className="space-x-2">

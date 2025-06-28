@@ -1,11 +1,11 @@
 import { BarChart3, TrendingUp } from "lucide-react";
-import { Link } from "wouter";
+import { Link } from "react-router-dom";
 
 export default function Header() {
   return (
     <>
       <div className="flex items-center justify-between w-full p-4 shadow-md bg-white">
-        <Link href="/">
+        <Link to="/">
           <div className="flex items-center gap-2 cursor-pointer">
             <div className="relative">
               <BarChart3 className="h-8 w-8 text-blue-600" />
@@ -16,17 +16,17 @@ export default function Header() {
         </Link>
 
         <nav className="flex items-center gap-6">
-          <Link href="/create-account-client">
+          <Link to="/create-account-client">
             <button className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition">
               S'inscrire
             </button>
           </Link>
-          <Link href="/experts">
+          <Link to="/experts">
             <span className="text-blue-600 hover:text-blue-700 cursor-pointer font-medium">Nos experts</span>
           </Link>
         </nav>
 
-        <Link href="/connexion-client">
+        <Link to="/connexion-client">
           <button className="px-4 py-2 border border-blue-600 text-blue-600 rounded-lg font-medium hover:bg-blue-600 hover:text-white transition">
             Se connecter
           </button>

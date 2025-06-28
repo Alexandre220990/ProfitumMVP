@@ -2,19 +2,32 @@ import React from "react";
 
 // ✅ Définition du type des props
 interface ProgressBarProps {
-  progress: number; // Assure que la valeur de `progress` est bien un nombre
+  current: number;
+  total: number;
+  className?: string;
 }
 
-export default function ProgressBar({ progress }: ProgressBarProps): JSX.Element {
-  // ✅ Vérification que `progress` est bien compris entre 0 et 100
-  const validProgress = Math.min(100, Math.max(0, progress));
-
+/**
+ * Composant de barre de progression
+ * Affiche visuellement la progression d'une simulation
+ */
+export const ProgressBar: React.FC<ProgressBarProps> = ({ 
+  current, 
+  total, 
+  className = '' 
+}) => {
+  // Éviter la division par zéro
+  const percent = total > 0 ? Math.round((current / total) * 100) : 0;
+  
   return (
-    <div className="w-full bg-gray-200 rounded-full h-2 mb-4 overflow-hidden">
-      <div
-        className="bg-blue-500 h-2 rounded-full transition-all duration-300 ease-in-out"
-        style={{ width: `${validProgress}%` }}
-      ></div>
+    <div className={`w-full bg-gray-200 rounded-full h-2.5 ${className}`}>
+      <div 
+        className="bg-blue-600 h-2.5 rounded-full transition-all duration-300 ease-in-out" 
+        style={{ width: `${percent}%` }} 
+      />
+      <div className="text-xs text-gray-500 mt-1 text-right">
+        {current} / {total} questions ({percent}%)
+      </div>
     </div>
   );
-}
+};

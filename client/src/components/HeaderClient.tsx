@@ -1,41 +1,70 @@
-import { Link, useLocation } from "wouter";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { User, Settings, LogOut, MessageCircle, FileText, Briefcase, HelpCircle } from "lucide-react";
+import { User, Settings, LogOut, FileText, Briefcase, HelpCircle, MessageSquare } from "lucide-react";
+import { API_URL } from "../config";
 
-export default function HeaderClient() {
+interface HeaderClientProps {
+  onLogout?: () => void;
+}
+
+export default function HeaderClient({ onLogout }: HeaderClientProps) {
   const { user, logout } = useAuth();
-  const [, setLocation] = useLocation();
-
+  const navigate = useNavigate();
+  
   const handleLogout = async () => {
     await logout();
-    setLocation("/"); // Redirection vers la page d'accueil après déconnexion
+    if (onLogout) {
+      onLogout();
+    } else {
+      navigate("/"); // Redirection par défaut vers la page d'accueil
+    }
+  };
+
+  const handleSimulateurClick = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/simulations/check-recent/${user?.id}`);
+      const data = await response.json();
+      
+      if (data.success && data.data?.simulation) {
+        navigate(`/simulateur?simulationId=${data.data.simulation.id}`);
+      } else {
+        navigate('/simulateur');
+      }
+    } catch (error) {
+      console.error('Erreur lors de la redirection vers le simulateur:', error);
+      navigate('/simulateur');
+    }
   };
 
   return (
-    <header className="bg-white shadow-md py-4 px-8 flex justify-between items-center fixed top-0 w-full z-50">
+    <header className="bg-white shadow-md py-4 px-8 flex justify-between items-center fixed top-0 left-0 right-0 w-full z-50">
 
       {/* LOGO PROFITUM */}
-        <Link href={`/dashboard/client/${user?.id || ""}`}>        <img src="/profitum_logo_texte.png" alt="Logo Profitum" className="h-14 cursor-pointer transition-transform hover:scale-105" />
-      </Link>
+      <div onClick={() => navigate(`/dashboard/client/${user?.id}`)} className="cursor-pointer">
+        <img src="/profitum_logo_texte.png" alt="Logo Profitum" className="h-14 cursor-pointer transition-transform hover:scale-105" />
+      </div>
 
-      {/* NAVIGATION PRINCIPALE */}
+      {/* NAVIGATION CLIENT */}
       <nav className="flex space-x-10 text-gray-700 font-semibold text-lg">
-          <Link href={`/messagerie-client/${user?.id}`} 
-            className="flex items-center space-x-2 hover:text-blue-600 transition-colors">
-            Messagerie
-          </Link>
-        <Link href="/documents-client" className="flex items-center space-x-2 hover:text-blue-600 transition-colors">
-          <FileText className="h-5 w-5" /> <span>Mes documents</span>
-        </Link>
-        <Link href="/marketplace-experts" className="flex items-center space-x-2 hover:text-blue-600 transition-colors">
-          <Briefcase className="h-5 w-5" /> <span>Experts</span>
-        </Link>
-        <Link href="/faq-client" className="flex items-center space-x-2 hover:text-blue-600 transition-colors">
-          <HelpCircle className="h-5 w-5" /> <span>FAQ</span>
-        </Link>
+        <div onClick={() => navigate(`/dashboard/client/${user?.id}`)} 
+          className="flex items-center space-x-2 hover:text-blue-600 transition-colors cursor-pointer">
+          <Briefcase className="h-5 w-5" /> <span>Tableau de bord</span>
+        </div>
+        <div onClick={() => navigate("/messagerie-client/demo")} 
+          className="flex items-center space-x-2 hover:text-blue-600 transition-colors cursor-pointer">
+          <MessageSquare className="h-5 w-5" /> <span>Messagerie</span>
+        </div>
+        <div onClick={() => navigate("/documents-client")} 
+          className="flex items-center space-x-2 hover:text-blue-600 transition-colors cursor-pointer">
+          <FileText className="h-5 w-5" /> <span>Documents</span>
+        </div>
+        <div onClick={() => navigate("/aide-client")} 
+          className="flex items-center space-x-2 hover:text-blue-600 transition-colors cursor-pointer">
+          <HelpCircle className="h-5 w-5" /> <span>Aide</span>
+        </div>
       </nav>
 
       {/* BOUTON PROFIL INTERACTIF */}
@@ -55,18 +84,17 @@ export default function HeaderClient() {
 
         {/* MENU DÉROULANT */}
         <DropdownMenuContent align="end" className="w-56 shadow-lg border rounded-lg">
-          <div className="px-4 py-2 text-gray-900 font-semibold">👋 Bonjour, {user?.username || "Utilisateur"} !</div>
-          <DropdownMenuItem asChild>
-            <Link href="/MonProfil" className="flex items-center px-4 py-2 hover:bg-gray-100 transition">
-              <User className="mr-2 h-5 w-5" /> <span>Mon profil</span>
-            </Link>
+          <div className="px-4 py-2 text-gray-900 font-semibold">👋 Bonjour, {user?.username || "Client"} !</div>
+          <DropdownMenuItem onClick={() => navigate(`/profile/client`)} 
+            className="flex items-center px-4 py-2 hover:bg-gray-100 transition cursor-pointer">
+            <User className="mr-2 h-5 w-5" /> <span>Mon profil</span>
           </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href="/settings" className="flex items-center px-4 py-2 hover:bg-gray-100 transition">
-              <Settings className="mr-2 h-5 w-5" /> <span>Paramètres</span>
-            </Link>
+          <DropdownMenuItem onClick={() => navigate("/settings")} 
+            className="flex items-center px-4 py-2 hover:bg-gray-100 transition cursor-pointer">
+            <Settings className="mr-2 h-5 w-5" /> <span>Paramètres</span>
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={handleLogout} className="flex items-center px-4 py-2 text-red-600 hover:bg-red-100 transition cursor-pointer">
+          <DropdownMenuItem onClick={handleLogout} 
+            className="flex items-center px-4 py-2 text-red-600 hover:bg-red-100 transition cursor-pointer">
             <LogOut className="mr-2 h-5 w-5" /> <span>Déconnexion</span>
           </DropdownMenuItem>
         </DropdownMenuContent>

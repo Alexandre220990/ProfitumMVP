@@ -1,143 +1,372 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
-import { Link } from "wouter";
-import { Button } from "@/components/ui/button";
-import HeaderClient from "@/components/HeaderClient";
+import { API_URL } from "@/config";
 import {
-  FolderOpen,
-  DollarSign,
-  ClipboardCheck,
-  BarChart3,
-  CheckCircle,
-  Clock,
-  FilePlus,
   Loader2,
   PiggyBank,
   RefreshCcw,
+  Rocket,
+  RefreshCw,
+  FolderOpen,
+  DollarSign,
+  BarChart3,
+  AlertCircle,
+  Search
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import HeaderClient from "@/components/HeaderClient";
+import { KpiCard } from "@/components/dashboard/KpiCard";
+import { SectionTitle } from "@/components/dashboard/SectionTitle";
+import { AuditTable } from "@/components/dashboard/AuditTable";
+import { EmptyAuditState } from "@/components/dashboard/EmptyAuditState";
+import { useDashboardClientEffects } from "@/hooks/useDashboardClientEffects";
+import { useKpiData } from "@/hooks/useKpiData";
 import { CircularProgressbar, buildStyles } from "react-circular-progressbar";
 import "react-circular-progressbar/dist/styles.css";
-import { useLocation } from 'wouter';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Audit, AuditStatus } from "@/types/audit";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { EmptyEligibleProductsState } from "@/components/empty-eligible-products-state";
 
-
-interface Dossier {
-  id: string;
-  name: string;
-  status: "pending" | "completed" | "not_initiated";
-  progress: number;
-  currentStep: string;
-  potentialGain: number;
-  obtainedGain?: number;
-  createdAt: string;
-  updatedAt: string;
-}
+// Extension du type AuditStatus pour inclure "all"
+type StatusType = AuditStatus | "all";
 
 export default function DashboardClient() {
-  const { user, isLoading } = useAuth();
-  const [location, setLocation] = useLocation();
-  const [activeTab, setActiveTab] = useState<"opportunities" | "pending" | "completed">("opportunities");
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<StatusType>("all");
+  
+  // Données de démonstration pour TICPE
+  const demoAudits: Audit[] = [
+    {
+      id: "1",
+      client_id: user?.id || "",
+      expert_id: "1",
+      audit_type: "TICPE",
+      status: "en_cours",
+      current_step: 2,
+      potential_gain: 25000,
+      obtained_gain: 0,
+      reliability: 0,
+      progress: 45,
+      description: "Optimisation de la taxe intérieure sur les produits énergétiques",
+      is_eligible_product: true,
+      charter_signed: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      tauxFinal: 0.02,
+      dureeFinale: 12
+    }
+  ];
 
-  const getAuditStatus = (auditType: string): "not_initiated" | "pending" | "completed" => {
-    const progress = JSON.parse(localStorage.getItem('auditProgress') || '{}')[auditType];
-    if (!progress) return "not_initiated";
-    if (progress === 5) return "completed";
-    return "pending";
+  const {
+    showWelcomeDialog,
+    setShowWelcomeDialog,
+    showSimulationDialog,
+    setShowSimulationDialog,
+    loadingTooLong,
+    useFallbackData,
+    setUseFallbackData,
+    audits,
+    isLoadingAudits,
+    auditsError,
+    refreshAudits,
+    hasRecentSimulation
+  } = useDashboardClientEffects();
+
+  const kpiData = useKpiData(audits as Audit[]);
+
+  const handleCloseDialog = useCallback(() => {
+    setShowSimulationDialog(false);
+    if (user?.id) {
+      localStorage.removeItem(`hasRecentSimulation_${user.id}`);
+    }
+  }, [user, setShowSimulationDialog]);
+
+  const handleSimulation = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/simulations/check-recent/${user?.id}`);
+      const data = await response.json();
+      
+      if (data.success && data.data.simulation) {
+        navigate(`/simulateur?simulationID=${data.data.simulation.id}`);
+      } else {
+        navigate('/simulateur');
+      }
+    } catch (error) {
+      navigate('/simulateur');
+    }
+  }, [user, navigate]);
+
+  const handleNavigation = useCallback((path: string) => {
+    navigate(path);
+  }, [navigate]);
+
+  const handleRefresh = useCallback(() => {
+    navigate(0);
+  }, [navigate]);
+
+  const handleLogout = useCallback(() => {
+    localStorage.removeItem('user');
+    sessionStorage.removeItem('user');
+    handleRefresh();
+  }, [handleRefresh]);
+
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
   };
 
-  // Fonction pour obtenir les données d'un audit depuis le localStorage
-  const getAuditData = (auditType: string) => {
-    const progress = JSON.parse(localStorage.getItem('auditProgress') || '{}')[auditType] || 0;
-    const status = getAuditStatus(auditType);
-
-    return {
-      id: auditType,
-      name: `Audit ${auditType.toUpperCase()}`,
-      status,
-      progress: progress * 20, // Convert steps (1-5) to percentage
-      currentStep: status === "completed" ? "Terminé" : `Étape ${progress}`,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      potentialGain: getDefaultGain(auditType),
-      obtainedGain: status === "completed" ? calculateObtainedGain(auditType) : undefined
-    };
+  const handleStatusFilter = (value: StatusType) => {
+    setStatusFilter(value);
   };
 
-  // Fonction helper pour obtenir un gain potentiel par défaut
-  const getDefaultGain = (auditType: string): number => {
-    const gains = {
-      dfs: 15000,
-      ticpe: 12000,
-      msa: 8000,
-      foncier: 10000,
-      social: 5000
-    };
-    return gains[auditType as keyof typeof gains] || 5000;
-  };
+  const filteredAudits = (useFallbackData ? [
+    {
+      id: "1",
+      client_id: user?.id || "",
+      expert_id: "1",
+      audit_type: "TICPE",
+      status: "en_cours",
+      current_step: 2,
+      potential_gain: 25000,
+      obtained_gain: 0,
+      reliability: 0,
+      progress: 45,
+      description: "Optimisation de la taxe intérieure sur les produits énergétiques",
+      is_eligible_product: true,
+      charter_signed: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      tauxFinal: 0.02,
+      dureeFinale: 12
+    }
+  ] : audits).filter((audit) => {
+    const matchesSearch = audit.audit_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         audit.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === "all" || audit.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
-  // Fonction helper pour calculer les gains obtenus
-  const calculateObtainedGain = (auditType: string): number => {
-    const potential = getDefaultGain(auditType);
-    // Simuler un gain obtenu entre 80% et 120% du potentiel
-    return Math.round(potential * (0.8 + Math.random() * 0.4));
-  };
-
-  // Générer la liste des dossiers
-  const allDossiers = ['dfs', 'ticpe', 'msa', 'foncier', 'social'].map(type => getAuditData(type));
-
-  // 🔹 Filtrer les audits par statut
-  const categorizeDossiers = (status: Dossier["status"]) => allDossiers.filter(dossier => dossier.status === status);
-
-  // 🔹 Récupérer tous les audits en cours
-  const auditsEnCours = categorizeDossiers("pending");
-
-  // 🔹 Calcul de l'avancement moyen des audits en cours
-  const avancementGlobal = auditsEnCours.length > 0
-    ? auditsEnCours.reduce((sum, audit) => sum + audit.progress, 0) / auditsEnCours.length
-    : 0;
-
-  // ✅ Données KPI
-  const kpiData = {
-    dossiersEnCours: categorizeDossiers("pending").length,
-    gainsPotentiels: allDossiers.reduce((sum, dossier) => sum + dossier.potentialGain, 0),
-    gainsObtenus: allDossiers.filter(d => d.status === "completed").reduce((sum, dossier) => sum + (dossier.obtainedGain || 0), 0),
-    auditsFinalises: categorizeDossiers("completed").length,
-    avancementGlobal,
-  };
-
-  if (isLoading) {
+  if (isLoadingAudits && !loadingTooLong) {
     return (
-      <div className="flex justify-center min-h-screen items-center">
-        <Loader2 className="h-10 w-10 animate-spin text-gray-500" />
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center">
+        <Loader2 className="h-10 w-10 animate-spin text-gray-500 mb-4" />
+        <p className="text-gray-600">Chargement de votre tableau de bord...</p>
+        {isLoadingAudits && (
+          <Button 
+            variant="outline" 
+            className="mt-4"
+            onClick={() => setUseFallbackData(true)}
+          >
+            Utiliser des données de démonstration
+          </Button>
+        )}
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="flex justify-center min-h-screen items-center">
-        <p className="text-gray-500">Utilisateur non authentifié.</p>
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center">
+        <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full">
+          <h2 className="text-2xl font-bold text-center mb-4">Authentification requise</h2>
+          <p className="text-gray-600 mb-6 text-center">
+            Vous devez être connecté pour accéder à cette page.
+          </p>
+          <div className="flex flex-col gap-3">
+            <Button 
+              onClick={() => handleNavigation("/connexion-client")}
+              className="w-full"
+            >
+              Se connecter
+            </Button>
+            <Button 
+              variant="outline"
+              onClick={() => handleNavigation("/")}
+              className="w-full"
+            >
+              Retour à l'accueil
+            </Button>
+          </div>
+        </div>
       </div>
     );
   }
 
-        return (
-          <div className="min-h-screen bg-gray-50 pb-16">
-            <HeaderClient />
-            <div className="max-w-5xl mx-auto px-4 py-10">
-              <div className="mt-16"></div>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => (window.location.href = `/pages/simulateur/${user.id}`)}
-                  className="text-gray-600 hover:text-blue-600 transition duration-300"
-                >
-                  <RefreshCcw className="w-6 h-6" />
-                </button>
-                <SectionTitle title="Suivi de vos Audits" subtitle="Suivi en temps réel de vos dossiers et gains" />
-              </div>
+  if (auditsError && !useFallbackData) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <HeaderClient />
+        <div className="max-w-5xl mx-auto px-4 py-10">
+          <div className="mt-16"></div>
+          
+          <div className="bg-white p-8 rounded-lg shadow-md">
+            <h2 className="text-2xl font-semibold text-gray-800 mb-4">Problème de chargement des données</h2>
+            <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
+              <p className="text-red-700">Une erreur est survenue lors du chargement des audits</p>
+              <p className="text-gray-600 mt-2">Message d'erreur : {auditsError}</p>
             </div>
+            
+            <p className="text-gray-600 mb-6">
+              Nous rencontrons actuellement des difficultés pour charger vos données. Vous pouvez :
+            </p>
+            
+            <div className="flex flex-col gap-4">
+              <div className="flex gap-4">
+                <Button onClick={refreshAudits} className="flex-1">
+                  <RefreshCw className="mr-2 h-4 w-4" /> Réessayer
+                </Button>
+                <Button 
+                  onClick={() => setUseFallbackData(true)}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  <PiggyBank className="mr-2 h-4 w-4" /> Utiliser des données de démonstration
+                </Button>
+              </div>
+              
+              <Button 
+                variant="ghost" 
+                onClick={() => handleNavigation("/")}
+                className="text-gray-500"
+              >
+                Retour à l'accueil
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-        {/* 🔥 KPI Minimaliste */}
+  if (Array.isArray(audits) && audits.length === 0) {
+    return (
+      <div className="min-h-screen bg-gray-50 pb-16">
+        <HeaderClient />
+        <div className="max-w-5xl mx-auto px-4 py-10">
+          <div className="mt-16"></div>
+          <div className="flex items-center gap-3">
+            <SectionTitle 
+              title="Bienvenue sur votre tableau de bord" 
+              subtitle="Commencez par effectuer une simulation pour découvrir vos opportunités d'optimisation" 
+            />
+            <button
+              onClick={refreshAudits}
+              className="text-gray-600 hover:text-blue-600 transition duration-300 ml-auto"
+              title="Rafraîchir les audits"
+            >
+              <RefreshCcw className="w-6 h-6" />
+            </button>
+          </div>
+
+          <EmptyEligibleProductsState />
+        </div>
+
+        <Dialog open={showSimulationDialog} onOpenChange={setShowSimulationDialog}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Rocket className="h-6 w-6 text-blue-500" />
+                Découvrez vos opportunités
+              </DialogTitle>
+              <DialogDescription>
+                Effectuez une simulation rapide pour identifier les possibilités d'optimisation pour votre entreprise.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              <p className="text-sm text-gray-600">
+                Cette simulation ne prendra que quelques minutes et vous permettra d'avoir une première estimation de vos gains potentiels.
+              </p>
+            </div>
+            <DialogFooter>
+              <Button
+                onClick={handleSimulation}
+                className="w-full"
+              >
+                Accéder à la simulation
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 pb-16">
+      <HeaderClient onLogout={handleLogout} />
+      <div className="max-w-5xl mx-auto px-4 py-10">
+        <div className="mt-16"></div>
+        
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleSimulation}
+            className="text-gray-600 hover:text-blue-600 transition duration-300"
+          >
+            <RefreshCcw className="w-6 h-6" />
+          </button>
+          <SectionTitle title="Suivi de vos Audits" subtitle="Suivi en temps réel de vos dossiers et gains" />
+          <div className="flex gap-2 ml-auto">
+            <Button
+              variant="outline"
+              onClick={() => setUseFallbackData(true)}
+              className="flex items-center gap-2"
+            >
+              <PiggyBank className="w-4 h-4" />
+              Données de démonstration
+            </Button>
+            <button
+              onClick={refreshAudits}
+              className="text-gray-600 hover:text-blue-600 transition duration-300"
+              title="Rafraîchir les audits"
+            >
+              <RefreshCcw className="w-6 h-6" />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex flex-col md:flex-row gap-4 mt-6">
+          <div className="flex-1">
+            <Label htmlFor="search">Rechercher un audit</Label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                id="search"
+                placeholder="Rechercher par type ou description..."
+                className="pl-10"
+                value={searchTerm}
+                onChange={handleSearch}
+              />
+            </div>
+          </div>
+          <div className="w-full md:w-48">
+            <Label htmlFor="status">Filtrer par statut</Label>
+            <Select value={statusFilter} onValueChange={handleStatusFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="Statut" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous</SelectItem>
+                <SelectItem value="non_démarré">Non démarré</SelectItem>
+                <SelectItem value="en_cours">En cours</SelectItem>
+                <SelectItem value="terminé">Terminé</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-8">
           {[
             { icon: FolderOpen, value: kpiData.dossiersEnCours, label: "Dossiers en cours", color: "text-blue-500" },
@@ -178,157 +407,97 @@ export default function DashboardClient() {
               label: "Avancement global",
               color: "text-purple-500"
             }
-          ].map(({ icon: Icon, value, component, label, color }) => (
-            <KpiCard key={label} icon={Icon} value={value} component={component} label={label} color={color} />
+          ].map(({ icon, value, component, label, color }) => (
+            <KpiCard key={label} icon={icon} value={value} component={component} label={label} color={color} />
           ))}
         </div>
 
-        {/* 📂 Navigation minimaliste */}
-        <div className="mt-8 flex justify-center space-x-4">
-          {[
-            { key: "opportunities", label: "Opportunités", icon: FilePlus },
-            { key: "pending", label: "En Cours", icon: Clock },
-            { key: "completed", label: "Terminés", icon: CheckCircle },
-          ].map(({ key, label, icon: Icon }) => (
-            <Button
-              key={key}
-              className={`px-6 flex items-center space-x-2 text-lg transition-all ${
-                activeTab === key ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-              }`}
-              onClick={() => setActiveTab(key as "opportunities" | "pending" | "completed")}
-            >
-              <Icon className="h-5 w-5" /> <span>{label}</span>
-            </Button>
-          ))}
-        </div>
-
-        {/* 📂 Tableau des audits */}
-        <AuditTable activeTab={activeTab} allDossiers={allDossiers} user={user}/>
-      </div>
-  );
-}
-
-// ✅ Composant pour afficher un titre de section
-function SectionTitle({ title, subtitle }: { title: string; subtitle: string }) {
-  return (
-    <div className="text-center">
-      <h1 className="text-3xl font-semibold text-gray-800">{title}</h1>
-      <p className="text-gray-500 mt-2">{subtitle}</p>
-    </div>
-  );
-}
-
-// ✅ Composant pour afficher une carte KPI minimaliste
-function KpiCard({ icon: Icon, value, component, label, color }: { icon: any; value?: any; component?: any; label: string; color: string }) {
-  return (
-    <div className="bg-white p-4 rounded-lg shadow-sm flex flex-col items-center">
-      <Icon className={`h-8 w-8 ${color}`} />
-      {component ? component : <h3 className="text-xl font-semibold mt-2">{value}</h3>}
-      <p className="text-gray-600 text-sm">{label}</p>
-    </div>
-  );
-}
-
-export function AuditTable({ activeTab, allDossiers, user }: { activeTab: "opportunities" | "pending" | "completed"; allDossiers: Dossier[]; user: any }) {
-  const dossiers = allDossiers.filter(dossier => activeTab === "opportunities" ? dossier.status === "not_initiated" : dossier.status === activeTab);
-
-  return (
-    <Card className="shadow-lg rounded-lg mt-8">
-      <CardHeader>
-        <CardTitle className="text-gray-800 text-lg font-semibold">Mes Dossiers</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {dossiers.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="bg-gray-100 text-gray-800 text-sm font-semibold">
-                  <th className="p-3 text-left">Nom du dossier</th>
-                  <th className="p-3 text-left">Statut</th>
-                  <th className="p-3 text-left">Étape en cours</th>
-                  <th className="p-3 text-left">Gains Potentiels</th>
-                  {activeTab === "completed" && (
-                    <>
-                      <th className="p-3 text-left">Gains Obtenus</th>
-                      <th className="p-3 text-left">Fiabilité</th>
-                    </>
-                  )}
-                  <th className="p-3 text-left">Avancement</th>
-                  <th className="p-3 text-left">Créé le</th>
-                  <th className="p-3 text-left">Mis à jour</th>
-                </tr>
-              </thead>
-              <tbody>
-                {dossiers.map((dossier) => (
-                  <tr
-                    key={dossier.id}
-                    className="border-b hover:bg-gray-50 transition cursor-pointer"
-                  >
-                    <td className="p-3 font-medium text-gray-900">
-                      <Link href={`/produits/${dossier.id}/${user?.id}`} className="hover:underline">
-                        {dossier.name}
-                      </Link>
-                    </td>
-                    <td className="p-3">
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium
-                        ${dossier.status === "completed" ? "bg-green-100 text-green-700" :
-                          dossier.status === "pending" ? "bg-yellow-100 text-yellow-700" :
-                            "bg-gray-100 text-gray-700"}`}>
-                        {dossier.status === "completed" ? "Terminé" : dossier.status === "pending" ? "En cours" : "Non initié"}
-                      </span>
-                    </td>
-                    <td className="p-3">{dossier.currentStep}</td>
-                    <td className="p-3 font-semibold text-red-600">
-                      {dossier.potentialGain.toLocaleString()} €
-                    </td>
-                    {activeTab === "completed" && (
-                      <>
-                        <td className="p-3 font-semibold text-green-600">
-                          {dossier.obtainedGain?.toLocaleString()} €
-                        </td>
-                        <td className="p-3">
-                          <div className="flex items-center gap-2">
-                            <div className="w-12 h-12">
-                              <CircularProgressbar
-                                value={((dossier.obtainedGain || 0) / dossier.potentialGain) * 100}
-                                text={`${Math.round((dossier.obtainedGain || 0) / dossier.potentialGain * 100)}%`}
-                                styles={buildStyles({
-                                  textSize: '28px',
-                                  pathColor: `${((dossier.obtainedGain || 0) / dossier.potentialGain) >= 1 ? '#10B981' : '#3B82F6'}`,
-                                  textColor: '#1E293B',
-                                  trailColor: '#E5E7EB',
-                                })}
-                              />
-                            </div>
-                          </div>
-                        </td>
-                      </>
-                    )}
-                    <td className="p-3 text-center">
-                      <div className="w-8 h-8 flex items-center justify-center">
-                        <CircularProgressbar
-                          value={dossier.progress}
-                          strokeWidth={10}
-                          styles={buildStyles({
-                            pathColor: dossier.progress === 100 ? "#10B981" : "#3B82F6",
-                            trailColor: "#E5E7EB",
-                            textColor: "#1E293B",
-                            textSize: "32px",
-                          })}
-                        />
-                      </div>
-                    </td>
-                    <td className="p-3 text-gray-500 text-sm">{new Date(dossier.createdAt).toLocaleDateString()}</td>
-                    <td className="p-3 text-gray-500 text-sm">{new Date(dossier.updatedAt).toLocaleDateString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        {!isLoadingAudits && !auditsError && filteredAudits.length === 0 ? (
+          <EmptyAuditState hasRecentSimulation={hasRecentSimulation} />
         ) : (
-          <p className="text-gray-500">Aucun dossier disponible.</p>
+          <AuditTable
+            activeTab={statusFilter === "all" ? "opportunities" : 
+                      statusFilter === "non_démarré" ? "opportunities" :
+                      statusFilter === "en_cours" ? "pending" : "completed"}
+            allDossiers={filteredAudits}
+            user={user}
+            onNewSimulation={handleSimulation}
+            onViewDossier={(id, auditType) => {
+              const produitNom = auditType || 'TICPE';
+              handleNavigation(`/dossier-client/${produitNom}/${id}`);
+            }}
+            onViewAudit={(id) => handleNavigation(`/audit/${id}`)}
+          />
         )}
-      </CardContent>
-    </Card>
+      </div>
+
+      <Dialog open={showWelcomeDialog} onOpenChange={setShowWelcomeDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Rocket className="h-6 w-6 text-blue-500" />
+              Découvrez vos opportunités
+            </DialogTitle>
+            <DialogDescription>
+              Effectuez une simulation rapide pour identifier les possibilités d'optimisation pour votre entreprise.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-gray-600">
+              Cette simulation ne prendra que quelques minutes et vous permettra d'avoir une première estimation de vos gains potentiels.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={() => {
+                setShowWelcomeDialog(false);
+                if (user?.id) {
+                  handleNavigation(`/chatbot/user?${user.id}`);
+                } else {
+                  handleNavigation('/chatbot');
+                }
+              }}
+              className="w-full"
+            >
+              Commencer avec l'assistant IA
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showSimulationDialog} onOpenChange={setShowSimulationDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Simulation terminée</DialogTitle>
+            <DialogDescription>
+              Votre simulation a été effectuée avec succès, mais aucun audit n'a été créé. 
+              Veuillez vérifier vos réponses ou contacter notre support.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={handleCloseDialog}>
+              Fermer
+            </Button>
+            <Button onClick={() => handleNavigation('/simulateur')}>
+              Refaire une simulation
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {loadingTooLong && !useFallbackData && (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Le chargement prend plus de temps que prévu. Voulez-vous utiliser les données en cache ?
+            <div className="mt-2">
+              <Button variant="outline" size="sm" onClick={() => setUseFallbackData(true)}>
+                Utiliser les données en cache
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+    </div>
   );
 }

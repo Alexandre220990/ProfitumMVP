@@ -1,9 +1,9 @@
 import { Users, Folder, RefreshCw, BarChart, PhoneCall, Star, HelpCircle } from "lucide-react";
-import { useLocation } from "wouter";
+import { useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
 export default function Starter() {
-  const [, setLocation] = useLocation();
+  const location = useLocation();
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 text-gray-900">
@@ -15,7 +15,7 @@ export default function Starter() {
         </p>
         <Button
           className="mt-6 bg-green-500 text-white px-6 py-3 text-lg font-medium rounded-lg hover:bg-green-600"
-          onClick={() => setLocation("/paiement")}
+          onClick={() => location.push("/paiement")}
         >
           Commencez maintenant !
         </Button>
@@ -29,7 +29,7 @@ export default function Starter() {
             { icon: <Users className="text-green-500 w-12 h-12 mb-4" />, text: "Accès à la base de prospects qualifiés" },
             { icon: <Folder className="text-green-500 w-12 h-12 mb-4" />, text: "Gestion centralisée des dossiers" },
             { icon: <RefreshCw className="text-green-500 w-12 h-12 mb-4" />, text: "Automatisation des relances" },
-            { icon: <BarChart className="text-green-500 w-12 h-12 mb-4" />, text: "Accès aux outils d’analyse & KPI" },
+            { icon: <BarChart className="text-green-500 w-12 h-12 mb-4" />, text: "Accès aux outils d'analyse & KPI" },
             { icon: <PhoneCall className="text-green-500 w-12 h-12 mb-4" />, text: "3 prises de contact prospects" },
           ].map((item, index) => (
             <div key={index} className="flex flex-col items-center p-6 bg-white shadow-lg rounded-lg">
@@ -43,7 +43,7 @@ export default function Starter() {
       {/* Témoignages */}
       <section className="py-16 px-6 text-center">
         <h2 className="text-3xl font-bold mb-8">Ils ont choisi Profitum</h2>
-        <p className="text-lg mb-6">"Grâce à Profitum, j’ai gagné 30% de CA supplémentaire !" - Client satisfait</p>
+        <p className="text-lg mb-6">"Grâce à Profitum, j'ai gagné 30% de CA supplémentaire !" - Client satisfait</p>
         <div className="flex justify-center gap-4">
           {[...Array(5)].map((_, index) => (
             <Star key={index} className="text-yellow-500 w-8 h-8" />
@@ -56,7 +56,7 @@ export default function Starter() {
         <h2 className="text-3xl font-bold mb-8">Questions Fréquentes</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {[
-            { question: "L’abonnement est-il sans engagement ?", answer: "Oui, vous pouvez annuler à tout moment." },
+            { question: "L'abonnement est-il sans engagement ?", answer: "Oui, vous pouvez annuler à tout moment." },
             { question: "Quel type de prospects vais-je recevoir ?", answer: "Des leads qualifiés selon votre expertise." },
             { question: "Comment contacter le support ?", answer: "Par email, avec une réponse sous 24h." },
           ].map((faq, index) => (
@@ -75,7 +75,7 @@ export default function Starter() {
         <h2 className="text-3xl font-bold mb-4">Prêt à démarrer ?</h2>
         <Button
           className="bg-green-500 text-white px-6 py-3 text-lg font-medium rounded-lg hover:bg-green-600"
-          onClick={() => setLocation("/inscription")}
+          onClick={() => location.push("/inscription")}
         >
           Je commence maintenant !
         </Button>

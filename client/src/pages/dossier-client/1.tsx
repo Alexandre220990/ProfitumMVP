@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { 
   Building, Briefcase, Users, MapPin, Mail, Phone, FileText, 
   Search, Target, Truck, Fuel, DollarSign, AlertTriangle, 
@@ -8,23 +9,26 @@ import {
 import HeaderPartner from "@/components/HeaderPartner";
 
 const ClientFile: React.FC = () => {
+  const navigate = useNavigate();
   const [status, setStatus] = useState<"pending" | "accepted" | "rejected">("pending");
 
   const handleAccept = () => {
     setStatus("accepted");
     console.log("Le dossier a bien été accepté, une notification est envoyée au client.");
+    navigate("/dashboard/partner");
   };
 
   const handleReject = () => {
     setStatus("rejected");
     console.log("Dossier refusé");
+    navigate("/dashboard/partner");
   };
 
   const documents = [
     { name: "Déclarations TICPE (2021-2023)", url: "#", type: "PDF" },
-    { name: "Factures d’achats de carburant", url: "#", type: "PDF" },
+    { name: "Factures d'achats de carburant", url: "#", type: "PDF" },
     { name: "Justificatifs conformité environnementale", url: "#", type: "PDF" },
-    { name: "Attestations d’usage (manquantes pour 2022)", url: "#", type: "PDF" },
+    { name: "Attestations d'usage (manquantes pour 2022)", url: "#", type: "PDF" },
   ];
 
   return (
@@ -40,7 +44,7 @@ const ClientFile: React.FC = () => {
       <h1 className="text-2xl font-bold text-gray-800 mb-4 flex items-center">
         <FileText className="w-6 h-6 mr-2" /> Dossier Client – Audit TICPE
       </h1>
-      <p className="text-gray-600">📅 Date de création : [Date] | Statut : ✅ Transmis à l’expert</p>
+      <p className="text-gray-600">📅 Date de création : [Date] | Statut : ✅ Transmis à l'expert</p>
 
       {/* 1. Informations Générales */}
       <section className="mt-6">
@@ -65,7 +69,7 @@ const ClientFile: React.FC = () => {
           <Search className="w-5 h-5 mr-2" /> 2. Contexte & Objectifs
         </h2>
         <div className="border-l-4 border-blue-500 bg-gray-100 p-4 rounded-lg mt-2">
-          <p><strong>Problématique :</strong> Paul Lambert souhaite <u>optimiser la récupération de la TICPE</u> et s’assurer de la <u>conformité fiscale</u> sur les 3 dernières années.</p>
+          <p><strong>Problématique :</strong> Paul Lambert souhaite <u>optimiser la récupération de la TICPE</u> et s'assurer de la <u>conformité fiscale</u> sur les 3 dernières années.</p>
           <p className="mt-2 flex items-center">
             <Target className="w-5 h-5 mr-2" /> <strong>Objectifs principaux :</strong>
           </p>
@@ -147,7 +151,7 @@ const ClientFile: React.FC = () => {
           <MessageSquare className="w-5 h-5 mr-2" /> 5. Commentaire du client
         </h2>
         <blockquote className="italic bg-gray-100 p-4 rounded-lg mt-2">
-          "J’aimerais un suivi régulier et des conseils pour optimiser les futures demandes de remboursement."
+          "J'aimerais un suivi régulier et des conseils pour optimiser les futures demandes de remboursement."
         </blockquote>
       </section>
           

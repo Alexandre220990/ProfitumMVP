@@ -4,6 +4,69 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Profitum</title>
+    <!-- Script pour les routes SPA -->
+    <script>
+      // Redirection SPA - pour éviter les 404 en cas de rechargement direct
+      (function() {
+        // Obtenir le chemin actuel
+        const path = window.location.pathname;
+        
+        // Vérifier si c'est un UUID au format attendu
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        
+        // Extraire l'ID client de l'URL si le format correspond
+        if (path.startsWith('/dashboard/client/')) {
+          const parts = path.split('/');
+          if (parts.length >= 4) {
+            const potentialUUID = parts[3];
+            console.log("Potential UUID found:", potentialUUID);
+            
+            if (uuidRegex.test(potentialUUID)) {
+              // Stocker l'UUID pour le récupérer dans le composant Dashboard
+              sessionStorage.setItem('current_client_uuid', potentialUUID);
+              console.log("UUID stored in sessionStorage:", potentialUUID);
+            }
+          }
+        }
+      })();
+    </script>
+    
+    <!-- Handler global pour les erreurs -->
+    <script>
+      window.addEventListener('error', function(event) {
+        console.error('Erreur globale détectée:', event.error);
+        
+        // Afficher un message dans la console
+        console.error('Message:', event.message);
+        console.error('Source:', event.filename);
+        console.error('Ligne:', event.lineno);
+        console.error('Colonne:', event.colno);
+        
+        // Empêcher le navigateur d'afficher son propre message d'erreur
+        event.preventDefault();
+        
+        // Si l'écran est blanc, essayer de fournir un message visible
+        if (document.body && !document.body.hasChildNodes()) {
+          const errorDiv = document.createElement('div');
+          errorDiv.style.padding = '20px';
+          errorDiv.style.margin = '20px';
+          errorDiv.style.color = 'red';
+          errorDiv.style.border = '1px solid red';
+          errorDiv.style.borderRadius = '5px';
+          errorDiv.innerHTML = `<h3>Une erreur est survenue</h3>
+            <p>Message: ${event.message}</p>
+            <p>Source: ${event.filename}</p>
+            <p>Ligne: ${event.lineno}, Colonne: ${event.colno}</p>
+            <button onclick="window.location.reload()">Recharger la page</button>`;
+          document.body.appendChild(errorDiv);
+        }
+      });
+      
+      // Handler pour les rejets de promesses non gérés
+      window.addEventListener('unhandledrejection', function(event) {
+        console.error('Promesse rejetée non gérée:', event.reason);
+      });
+    </script>
   </head>
   <body>
     <div id="root"></div>

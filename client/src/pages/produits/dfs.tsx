@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useLocation, useRoute, useParams } from "wouter";
+import { useLocation, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -119,12 +119,11 @@ const StepIndicator = ({ step, currentStep }: { step: number; currentStep: numbe
   );
 };
 
-export default function DFSAudit() {
+const DFS = () => {
+  const location = useLocation();
+  const { clientProduitId } = useParams();
   const [currentStep, setCurrentStep] = useState(1);
   const { user } = useAuth();
-  const params = useParams();
-  const userId = params.userId;
-  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const auditType = "dfs";
 
@@ -311,7 +310,7 @@ export default function DFSAudit() {
       });
 
       // Return to dashboard
-      setLocation('/dashboard/client');
+      location('/dashboard/client');
     }
   };
 
@@ -616,25 +615,25 @@ export default function DFSAudit() {
               <h3 className="text-lg font-semibold mb-4">Charte de l'Audit DFS</h3>
 
               <p className="mb-4">
-                Cette charte définit les engagements mutuels entre le client et l'expert DFS dans le cadre de l’audit relatif à la mise en place de la Déduction Forfaitaire Spécifique (DFS) pour les frais professionnels.
+                Cette charte définit les engagements mutuels entre le client et l'expert DFS dans le cadre de l'audit relatif à la mise en place de la Déduction Forfaitaire Spécifique (DFS) pour les frais professionnels.
               </p>
 
               <h4 className="text-md font-semibold mt-4">1. Objet de la Charte</h4>
               <p className="mb-4">
-                L’objectif de cette charte est d’encadrer les relations entre le client et l’expert afin de garantir un audit conforme aux réglementations en vigueur et d’optimiser l’application de la DFS.
+                L'objectif de cette charte est d'encadrer les relations entre le client et l'expert afin de garantir un audit conforme aux réglementations en vigueur et d'optimiser l'application de la DFS.
               </p>
 
               <h4 className="text-md font-semibold mt-4">2. Engagements du Client</h4>
               <ul className="list-disc pl-5 mb-4">
-                <li>Fournir tous les documents nécessaires pour justifier l’application de la DFS.</li>
-                <li>Garantir l’exactitude des informations transmises à l’expert.</li>
-                <li>Collaborer activement avec l’expert en répondant aux demandes de clarification.</li>
-                <li>Informer ses salariés de l’impact de la DFS sur leur rémunération et leurs cotisations sociales.</li>
+                <li>Fournir tous les documents nécessaires pour justifier l'application de la DFS.</li>
+                <li>Garantir l'exactitude des informations transmises à l'expert.</li>
+                <li>Collaborer activement avec l'expert en répondant aux demandes de clarification.</li>
+                <li>Informer ses salariés de l'impact de la DFS sur leur rémunération et leurs cotisations sociales.</li>
               </ul>
 
               <h4 className="text-md font-semibold mt-4">3. Engagements de l'Expert</h4>
               <ul className="list-disc pl-5 mb-4">
-                <li>Analyser la situation de l’entreprise et des salariés pour vérifier l’éligibilité à la DFS.</li>
+                <li>Analyser la situation de l'entreprise et des salariés pour vérifier l'éligibilité à la DFS.</li>
                 <li>Garantir la confidentialité des informations et documents transmis.</li>
                 <li>Accompagner le client dans la mise en conformité avec les obligations URSSAF.</li>
                 <li>Assurer un suivi régulier et apporter des recommandations adaptées.</li>
@@ -642,19 +641,19 @@ export default function DFSAudit() {
 
               <h4 className="text-md font-semibold mt-4">4. Modalités d'Application de la DFS</h4>
               <p className="mb-4">
-                L’audit comprend l’étude de la convention collective applicable, l’analyse des bulletins de salaire et la mise en place des démarches pour appliquer la DFS. La durée estimée est de deux à six semaines en fonction de la taille de l’entreprise et de la complexité du dossier.
+                L'audit comprend l'étude de la convention collective applicable, l'analyse des bulletins de salaire et la mise en place des démarches pour appliquer la DFS. La durée estimée est de deux à six semaines en fonction de la taille de l'entreprise et de la complexité du dossier.
               </p>
 
               <h4 className="text-md font-semibold mt-4">5. Clause de Responsabilité</h4>
               <ul className="list-disc pl-5 mb-4">
-                <li>L’expert ne peut être tenu responsable des sanctions URSSAF en cas d’erreurs ou d’omissions dans les informations fournies par le client.</li>
-                <li>L’expert s’engage à fournir des recommandations conformes à la réglementation, mais la mise en œuvre effective relève de la responsabilité du client.</li>
+                <li>L'expert ne peut être tenu responsable des sanctions URSSAF en cas d'erreurs ou d'omissions dans les informations fournies par le client.</li>
+                <li>L'expert s'engage à fournir des recommandations conformes à la réglementation, mais la mise en œuvre effective relève de la responsabilité du client.</li>
               </ul>
 
               <h4 className="text-md font-semibold mt-4">6. Résiliation et Litiges</h4>
               <ul className="list-disc pl-5 mb-4">
-                <li>Chaque partie peut résilier l’audit en cas de manquement grave, avec un préavis de 15 jours.</li>
-                <li>En cas de litige, une résolution à l’amiable sera privilégiée. À défaut, le litige sera soumis aux tribunaux compétents.</li>
+                <li>Chaque partie peut résilier l'audit en cas de manquement grave, avec un préavis de 15 jours.</li>
+                <li>En cas de litige, une résolution à l'amiable sera privilégiée. À défaut, le litige sera soumis aux tribunaux compétents.</li>
               </ul>
             </div>
             <div className="flex items-center space-x-2 mb-4">
@@ -796,3 +795,5 @@ export default function DFSAudit() {
     </div>
   );
 }
+
+export default DFS;

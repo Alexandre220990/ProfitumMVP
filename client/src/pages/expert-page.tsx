@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { useParams } from "wouter";
-import { Card, CardContent } from "@/components/ui/card";
+import { useParams, Link } from "react-router-dom";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Link } from "wouter";
+import { Badge } from "@/components/ui/badge";
 import HeaderClient from "@/components/HeaderClient";
 import { FolderOpen, Calendar, User, Briefcase, FileText, Phone, ArrowLeft } from "lucide-react";
 import { get } from "@/lib/api"; // Utilisation de la fonction get depuis lib/api.ts
@@ -45,7 +45,7 @@ export default function ExpertPage() {
       <HeaderClient />
       <div className="container mx-auto px-6 py-10">
         <div className="mb-6">
-          <Link href="/dashboard">
+          <Link to="/dashboard">
             <Button variant="ghost" className="flex items-center gap-2 text-gray-700 hover:text-blue-600">
               <ArrowLeft className="w-5 h-5" /> Retour au Dashboard
             </Button>
@@ -92,7 +92,7 @@ export default function ExpertPage() {
         </div>
 
         <div className="flex justify-center gap-6 mt-12">
-          <Link href="/marketplace-experts">
+          <Link to="/marketplace-experts">
             <Button className="bg-blue-600 text-white hover:bg-blue-700 px-8 py-3 text-lg rounded-lg shadow-md">
               🚀 Accéder à la Marketplace des Experts
             </Button>

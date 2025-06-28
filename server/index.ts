@@ -1,14 +1,21 @@
 import express, { type Request, Response, NextFunction } from "express";
-import { createServer } from "http"; // ✅ Ajout de `createServer`
+import cors from "cors";
+import { createServer } from "http";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
-const server = createServer(app); // ✅ Création du serveur HTTP
+const server = createServer(app);
 
 // ✅ Middleware JSON & URL Encoded
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// ✅ Middleware CORS autorisant les credentials
+app.use(cors({
+  origin: ['http://localhost:3000', 'http://[::1]:3000'],
+  credentials: true
+}));
 
 // ✅ Middleware de logging API
 app.use((req, res, next) => {
@@ -28,11 +35,9 @@ app.use((req, res, next) => {
       if (capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
-
       if (logLine.length > 150) {
         logLine = logLine.slice(0, 149) + "…";
       }
-
       log(logLine);
     }
   });
@@ -46,14 +51,14 @@ app.use((req, res, next) => {
     // Enregistrement des routes
     registerRoutes(app);
 
-    // ✅ Configuration de Vite en mode développement
+    // ✅ Configuration Vite dev ou static selon l'environnement
     if (app.get("env") === "development") {
       await setupVite(app, server);
     } else {
       serveStatic(app);
     }
 
-    // ✅ Middleware de gestion des erreurs
+    // ✅ Middleware d’erreurs
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
       const status = err.status || err.statusCode || 500;
       const message = err.message || "Erreur interne du serveur";
@@ -61,13 +66,13 @@ app.use((req, res, next) => {
       res.status(status).json({ success: false, message });
     });
 
-    // ✅ Correction de l'erreur listen (conversion PORT en number)
-    const PORT = parseInt(process.env.PORT || "5000", 10); // ✅ Conversion sécurisée en number
+    // ✅ Lancement du serveur
+    const PORT = parseInt(process.env.PORT || "3001", 10);
     server.listen(PORT, "0.0.0.0", () => {
       log(`🚀 Server running on http://localhost:${PORT}`);
     });
 
-    // ✅ Gestion des erreurs globales pour éviter les crashs
+    // ✅ Gestion des erreurs globales
     process.on("unhandledRejection", (err) => {
       console.error("❌ Unhandled promise rejection:", err);
     });
@@ -79,6 +84,6 @@ app.use((req, res, next) => {
 
   } catch (err) {
     console.error("❌ Erreur lors de l'initialisation du serveur:", err);
-    process.exit(1); // Quitter proprement si l'initialisation échoue
+    process.exit(1);
   }
 })();

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "wouter";
+import { useParams, useNavigate } from "react-router-dom";
 import { 
   Building, Briefcase, Users, MapPin, Mail, Phone, FileText, 
   Search, Target, Truck, Fuel, DollarSign, AlertTriangle, 
@@ -44,6 +44,7 @@ interface Dossier {
 
 const ClientFile = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [dossier, setDossier] = useState<Dossier | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -137,11 +138,13 @@ const ClientFile = () => {
   const handleAccept = () => {
     console.log("Dossier accepté:", dossier.id);
     // Logique d'acceptation à implémenter
+    navigate("/dashboard/partner");
   };
 
   const handleReject = () => {
     console.log("Dossier refusé:", dossier.id);
     // Logique de refus à implémenter
+    navigate("/dashboard/partner");
   };
 
   const progressionPourcentage = dossier.progression

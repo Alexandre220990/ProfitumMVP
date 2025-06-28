@@ -30,20 +30,13 @@ export function log(message: string, source = "express") {
  * 🔥 Configuration et démarrage de Vite en mode middleware
  */
 export async function setupVite(app: Express, server: Server) {
-  const ALLOWED_HOSTS = [
-    "localhost",
-    "127.0.0.1",
-    "05a189ee-dcb6-4ffd-bc12-eec721f22742-00-187ulkq5m4u9j.riker.replit.dev", // ✅ Ajout de l'hôte Replit
-  ];
-
   const serverOptions = {
     middlewareMode: true,
     hmr: {
       server,
-      protocol: "wss",
-      host: "05a189ee-dcb6-4ffd-bc12-eec721f22742-00-187ulkq5m4u9j.riker.replit.dev",
-    },
-    allowedHosts: ALLOWED_HOSTS, // ✅ Liste des hôtes autorisés
+      protocol: "ws",
+      host: "localhost"
+    }
   };
 
   try {
@@ -57,22 +50,22 @@ export async function setupVite(app: Express, server: Server) {
           process.exit(1);
         },
       },
-      server: serverOptions, // ✅ Correction complète
+      server: serverOptions,
       appType: "custom",
     });
 
     app.use(vite.middlewares);
+
     app.use("*", async (req, res, next) => {
       const url = req.originalUrl;
 
       try {
         const clientTemplate = path.resolve(__dirname, "..", "client", "index.html");
 
-        // ✅ Recharge toujours `index.html` pour éviter les caches
         let template = await fs.promises.readFile(clientTemplate, "utf-8");
         template = template.replace(
           `src="/src/main.tsx"`,
-          `src="/src/main.tsx?v=${nanoid()}"`, // 🔥 Ajout d'un ID unique pour éviter les conflits de cache
+          `src="/src/main.tsx?v=${nanoid()}"`,
         );
 
         const page = await vite.transformIndexHtml(url, template);
@@ -94,7 +87,7 @@ export async function setupVite(app: Express, server: Server) {
  * 📦 Gestion des fichiers statiques en mode production
  */
 export function serveStatic(app: Express) {
-  const distPath = path.resolve(__dirname, "..", "client", "dist"); // ✅ Correction du chemin
+  const distPath = path.resolve(__dirname, "..", "client", "dist");
 
   if (!fs.existsSync(distPath)) {
     throw new Error(
@@ -104,7 +97,6 @@ export function serveStatic(app: Express) {
 
   app.use(express.static(distPath));
 
-  // ✅ Redirection vers `index.html` si la route n'existe pas
   app.use("*", (_req, res) => {
     res.sendFile(path.resolve(distPath, "index.html"));
   });

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { CheckCircle2, Download } from "lucide-react";
-import { Link } from "wouter";
+import { Link } from "react-router-dom";
 import { get, post } from "@/lib/api"; // Importation des fonctions génériques
 
 export default function CharterSignature() {
@@ -77,7 +77,7 @@ export default function CharterSignature() {
                 </div>
 
                 <div className="flex justify-between items-center">
-                  <Link href={window.location.pathname.replace('/sign-charter', '')}>
+                  <Link to={window.location.pathname.replace('/sign-charter', '')}>
                     <Button variant="outline">Retour</Button>
                   </Link>
                   <Button 
@@ -95,7 +95,7 @@ export default function CharterSignature() {
                   <span>Vous avez signé la charte avec succès! ✅</span>
                 </div>
                 <div className="flex gap-4">
-                  <Link href={window.location.pathname.replace('/sign-charter', '')}>
+                  <Link to={window.location.pathname.replace('/sign-charter', '')}>
                     <Button variant="outline">Retour</Button>
                   </Link>
                   <Button 

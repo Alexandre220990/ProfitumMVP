@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { 
   Building, Briefcase, Users, MapPin, Mail, Phone, FileText, 
   Search, Target, Truck, Fuel, DollarSign, AlertTriangle, 
@@ -8,7 +9,12 @@ import {
 import HeaderPartner from "@/components/HeaderPartner";
 
 const ClientFile: React.FC = () => {
+  const navigate = useNavigate();
   const [status, setStatus] = useState<"accepted">("accepted"); // Dossier accepté
+
+  const handleReturnToDashboard = () => {
+    navigate("/dashboard/partner");
+  };
 
   const documents = [
     { name: "Déclarations TICPE (2024)", url: "#", type: "PDF" },
@@ -129,6 +135,16 @@ const ClientFile: React.FC = () => {
           </ul>
         </div>
       </section>
+
+      {/* Ajout du bouton de retour */}
+      <div className="fixed bottom-0 left-0 w-full bg-white p-4 shadow-md flex justify-center space-x-4 border-t">
+        <button
+          onClick={handleReturnToDashboard}
+          className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 flex items-center space-x-2 transition"
+        >
+          <span>Retour au tableau de bord</span>
+        </button>
+      </div>
 
       {/* Espacement pour éviter que le bandeau bas cache le contenu */}
       <div className="mb-24"></div>

@@ -1,87 +1,112 @@
-export async function apiRequest(
-  url: string,
-  method: "GET" | "POST" | "PUT" | "DELETE" = "POST",
-  data?: any,
-  headers: Record<string, string> = {},
-  cache: boolean = false // ✅ Ajout d'un paramètre pour gérer le cache des requêtes GET
-) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15000); // ✅ Timeout augmenté à 15 sec
+import axios from 'axios';
+import { ApiResponse } from '@/types/api';
 
+// Configuration de base d'Axios
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+const API_PREFIX = '/api'; // Préfixe centralisé pour toutes les routes API
+
+const api = axios.create({
+  baseURL: BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  withCredentials: true // Important pour CORS
+});
+
+// Intercepteur pour ajouter le token d'authentification Supabase
+api.interceptors.request.use((config) => {
   try {
-    console.log(`[API] ${method} ${url}`, data || "Aucune donnée envoyée");
-
-    const fetchOptions: RequestInit = {
-      method,
-      headers: {
-        "Content-Type": "application/json",
-        ...headers,
-      },
-      body: method !== "GET" && data ? JSON.stringify(data) : null,
-      signal: controller.signal,
-      credentials: "include", // ✅ Assure que les sessions fonctionnent
-      cache: cache ? "force-cache" : "no-store", // ✅ Gestion du cache uniquement pour GET
-    };
-
-    const fetchPromise = fetch(url, fetchOptions);
-
-    const response = await Promise.race([
-      fetchPromise,
-      new Promise<Response>((_, reject) =>
-        setTimeout(() => {
-          controller.abort();
-          reject(new Error("Timeout de la requête après 15s"));
-        }, 15000)
-      ),
-    ]);
-
-    clearTimeout(timeout);
-
-    if (!response.ok) {
-      console.warn(`[API] Erreur ${response.status} sur ${url}`);
-      let errorData;
-      try {
-        errorData = await response.json();
-      } catch {
-        errorData = { message: `Erreur ${response.status}` };
-      }
-      return { success: false, status: response.status, data: errorData };
+    // Récupérer le token Supabase depuis localStorage
+    const supabaseToken = localStorage.getItem('token');
+    
+    if (supabaseToken) {
+      config.headers.Authorization = `Bearer ${supabaseToken}`;
+      console.log('🔐 Token Supabase ajouté aux headers');
+    } else {
+      console.log('⚠️ Aucun token Supabase trouvé dans localStorage');
     }
-
-    // ✅ Vérification si le body est JSON
-    const contentType = response.headers.get("content-type");
-    const isJson = contentType && contentType.includes("application/json");
-
-    const result = isJson ? await response.json() : null;
-
-    console.log(`[API] Réponse OK (${response.status})`, result);
-    return { success: true, status: response.status, data: result };
-  } catch (error: any) {
-    clearTimeout(timeout);
-
-    if (error.name === "AbortError") {
-      console.error("[API] Timeout atteint, requête annulée");
-      return { success: false, status: 408, data: { message: "Requête annulée (timeout)" } };
-    }
-
-    console.error("[API] Erreur:", error);
-    return { success: false, status: 500, data: { message: error.message || "Erreur serveur" } };
+  } catch (error) {
+    console.error('Erreur lors de la récupération du token:', error);
   }
-}
+  
+  return config;
+});
 
-// ✅ Ajout du paramètre `cache` dans GET pour activer le caching des réponses
-export const get = async (url: string, headers?: Record<string, string>, cache: boolean = false) => {
-  return apiRequest(url, "GET", undefined, headers, cache);
+// Fonction générique pour gérer les réponses
+const handleResponse = <T>(response: any): ApiResponse<T> => {
+  if (response.data) {
+    return {
+      success: true,
+      data: response.data.data as T,
+      message: response.data.message
+    };
+  }
+  return {
+    success: true,
+    data: null,
+    message: response.data?.message
+  };
 };
 
-export const post = async (url: string, data?: any, headers?: Record<string, string>) => {
-  return apiRequest(url, "POST", data, headers);
+// Fonction pour gérer les erreurs
+const handleError = <T>(error: any): ApiResponse<T> => {
+  if (error.response) {
+    return {
+      success: false,
+      data: null,
+      message: error.response.data.message || 'Une erreur est survenue'
+    };
+  }
+  return {
+    success: false,
+    data: null,
+    message: error.message || 'Une erreur est survenue'
+  };
 };
 
-export const put = async (url: string, data?: any, headers?: Record<string, string>) => {
-  return apiRequest(url, "PUT", data, headers);
+// Fonction pour ajouter le préfixe API si nécessaire
+const addApiPrefix = (url: string): string => {
+  if (url.startsWith(API_PREFIX)) {
+    return url;
+  }
+  return `${API_PREFIX}${url.startsWith('/') ? url : `/${url}`}`;
 };
 
-export const del = async (url: string, headers?: Record<string, string>) => {
-  return apiRequest(url, "DELETE", undefined, headers);
+// Fonctions API typées
+export const get = async <T>(url: string): Promise<ApiResponse<T>> => {
+  try {
+    const response = await api.get(addApiPrefix(url));
+    return handleResponse<T>(response);
+  } catch (error) {
+    return handleError<T>(error);
+  }
 };
+
+export const post = async <T>(url: string, data?: any): Promise<ApiResponse<T>> => {
+  try {
+    const response = await api.post(addApiPrefix(url), data);
+    return handleResponse<T>(response);
+  } catch (error) {
+    return handleError<T>(error);
+  }
+};
+
+export const put = async <T>(url: string, data?: any): Promise<ApiResponse<T>> => {
+  try {
+    const response = await api.put(addApiPrefix(url), data);
+    return handleResponse<T>(response);
+  } catch (error) {
+    return handleError<T>(error);
+  }
+};
+
+export const del = async <T>(url: string): Promise<ApiResponse<T>> => {
+  try {
+    const response = await api.delete(addApiPrefix(url));
+    return handleResponse<T>(response);
+  } catch (error) {
+    return handleError<T>(error);
+  }
+};
+
+export default api;

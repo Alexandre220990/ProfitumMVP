@@ -1,0 +1,13 @@
+{
+    "venvPath": ".",
+    "venv": "venv_311",
+    "include": [
+        "server/**/*.py"
+    ],
+    "exclude": [
+        "**/node_modules",
+        "**/__pycache__"
+    ],
+    "pythonVersion": "3.11",
+    "typeCheckingMode": "basic"
+} 

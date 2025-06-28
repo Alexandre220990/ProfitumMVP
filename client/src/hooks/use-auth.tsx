@@ -1,141 +1,165 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { useLocation } from "wouter";
-import { useToast } from "@/hooks/use-toast";
-import { useMutation, UseMutationResult } from "@tanstack/react-query";
-
-interface UserType {
-  id: string | number;
-  email: string;
-  type: string;
-  username: string;
-}
+import { useNavigate } from "react-router-dom";
+import { useToast } from "@/components/ui/use-toast";
+import { UserType, LoginCredentials, RegisterCredentials } from "@/types/api";
+import { 
+  loginWithSupabase, 
+  registerWithSupabase, 
+  logoutFromSupabase, 
+  checkSupabaseAuth 
+} from "@/lib/supabase-auth";
 
 interface AuthContextType {
   user: UserType | null;
   isLoading: boolean;
-  loginMutation: UseMutationResult<UserType, Error, { email: string; password: string }, unknown>;
-  registerMutation: UseMutationResult<UserType, Error, { email: string; password: string; username: string }, unknown>;
+  login: (credentials: LoginCredentials) => Promise<void>;
+  register: (data: RegisterCredentials) => Promise<void>;
   logout: () => void;
+  checkAuth: () => Promise<boolean>;
+  setUser: (user: UserType | null) => void;
 }
 
-export const AuthContext = createContext<AuthContextType>({
-  user: null,
-  isLoading: false,
-  loginMutation: {} as any,
-  registerMutation: {} as any,
-  logout: () => {},
-});
+const AuthContext = createContext<AuthContextType | null>(null);
 
-interface AuthProviderProps {
-  children: ReactNode;
-}
-
-export function AuthProvider({ children }: AuthProviderProps) {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
-  const [, setLocation] = useLocation();
-  const [user, setUser] = useState<UserType | null>(() => {
-    const storedUser = localStorage.getItem("user");
-    return storedUser ? JSON.parse(storedUser) : null;
-  });
+  const navigate = useNavigate();
+  const [user, setUser] = useState<UserType | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (user) {
-      localStorage.setItem("user", JSON.stringify(user));
-    } else {
-      localStorage.removeItem("user");
-    }
-  }, [user]);
+    checkAuth();
+  }, []);
 
-  const redirectUser = (user: UserType) => {
-    if (user.type === "partner") {
-      setLocation(`/dashboard/partner/${user.id}`);
-    } else if (user.type === "client") {
-      setLocation(`/dashboard/client/${user.id}`);
+  const checkAuth = async (): Promise<boolean> => {
+    try {
+      console.log('🔍 Vérification de l\'authentification Supabase...');
+      const response = await checkSupabaseAuth();
+      
+      if (response.success && response.data?.user) {
+        console.log('✅ Utilisateur authentifié avec Supabase:', response.data.user);
+        setUser(response.data.user);
+        return true;
+      }
+      
+      console.log('❌ Aucun utilisateur authentifié');
+      setUser(null);
+      return false;
+    } catch (error) {
+      console.error('❌ Erreur lors de la vérification de l\'authentification:', error);
+      setUser(null);
+      return false;
     }
   };
 
-  const loginMutation = useMutation({
-    mutationFn: async ({ email, password }: { email: string; password: string }) => {
-      console.log("Attempting login with:", email);
-      const storedUser = JSON.parse(localStorage.getItem("fakeUser") || "null");
-
-      if (storedUser && storedUser.email === email && storedUser.password === password) {
-        return storedUser;
+  const login = async (credentials: LoginCredentials) => {
+    setIsLoading(true);
+    try {
+      console.log('🔐 Tentative de connexion avec Supabase...');
+      const response = await loginWithSupabase(credentials);
+      
+      if (!response.success || !response.data) {
+        throw new Error(response.message || "Erreur de connexion");
       }
 
-      const testUsers = [
-        { id: 1, email: "alex@gmail.com", password: "Profitum", type: "client", username: "Alex" },
-        { id: 2, email: "partenaire@gmail.com", password: "partenaire", type: "partner", username: "Partenaire" }
-      ];
+      const { token, user } = response.data;
 
-      const testUser = testUsers.find(u => u.email === email && u.password === password);
-      if (testUser) {
-        return testUser;
+      // Stocker le token pour compatibilité (optionnel)
+      if (token) {
+        localStorage.setItem("token", token);
+      }
+      
+      setUser(user);
+
+      toast({
+        title: "Connexion réussie",
+        description: `Bienvenue ${user.name || user.email}`,
+      });
+
+      // Rediriger vers le dashboard approprié selon le type d'utilisateur
+      if (user.type === 'client') {
+        navigate(`/dashboard/client/${user.id}`);
+      } else if (user.type === 'expert') {
+        navigate(`/dashboard/expert/${user.id}`);
+      } else {
+        navigate("/dashboard");
+      }
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: error instanceof Error ? error.message : "Erreur de connexion",
+        variant: "destructive",
+      });
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const register = async (data: RegisterCredentials) => {
+    setIsLoading(true);
+    try {
+      console.log('📝 Tentative d\'inscription avec Supabase...');
+      const response = await registerWithSupabase(data);
+      
+      if (!response.success || !response.data) {
+        throw new Error(response.message || "Erreur d'inscription");
       }
 
-      throw new Error("Email ou mot de passe incorrect");
-    },
-    onSuccess: (data) => {
-      setUser(data);
-      toast({ 
-        title: "Connexion réussie", 
-        description: `Bienvenue ${data.username} !` 
-      });
-      redirectUser(data);
-    },
-    onError: (error: Error) => {
-      toast({ 
-        title: "Erreur", 
-        description: error.message, 
-        variant: "destructive" 
-      });
-    },
-  });
+      const { token, user } = response.data;
 
-  const registerMutation = useMutation({
-    mutationFn: async ({ email, password, username }: { email: string; password: string; username: string }) => {
-      const newUser = {
-        id: Date.now(),
-        email,
-        type: "client",
-        username
-      };
-      localStorage.setItem("fakeUser", JSON.stringify({ ...newUser, password }));
-      return newUser;
-    },
-    onSuccess: (data) => {
-      setUser(data);
-      toast({ 
-        title: "Inscription réussie", 
-        description: `Bienvenue ${data.username} !` 
-      });
-      redirectUser(data);
-    },
-    onError: (error: Error) => {
-      toast({ 
-        title: "Erreur", 
-        description: error.message, 
-        variant: "destructive" 
-      });
-    },
-  });
+      // Stocker le token pour compatibilité (optionnel)
+      if (token) {
+        localStorage.setItem("token", token);
+      }
+      
+      setUser(user);
 
-  const isLoading = loginMutation.isPending || registerMutation.isPending;
+      toast({
+        title: "Inscription réussie",
+        description: response.message || "Votre compte a été créé avec succès",
+      });
 
-  const logout = () => {
-    setUser(null);
-    setLocation("/");
-    toast({ title: "Déconnexion réussie", description: "À bientôt !" });
+      navigate("/dashboard");
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: error instanceof Error ? error.message : "Erreur d'inscription",
+        variant: "destructive",
+      });
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await logoutFromSupabase();
+      localStorage.removeItem("token"); // Supprimer aussi l'ancien token
+      setUser(null);
+      navigate("/");
+      toast({
+        title: "Déconnexion",
+        description: "Vous avez été déconnecté",
+      });
+    } catch (error) {
+      console.error('Erreur lors de la déconnexion:', error);
+    }
   };
 
   return (
-    <AuthContext.Provider value={{
-      user,
-      loginMutation,
-      registerMutation,
-      logout,
-      isLoading,
-    }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isLoading,
+        login,
+        register,
+        logout,
+        checkAuth,
+        setUser,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -144,7 +168,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    throw new Error("useAuth doit être utilisé dans un AuthProvider");
   }
   return context;
 }

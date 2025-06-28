@@ -35,15 +35,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 
 const profileSchema = z.object({
-  fullName: z.string().min(2, "Le nom doit contenir au moins 2 caractères"),
+  name: z.string().min(2, "Le nom doit contenir au moins 2 caractères"),
   email: z.string().email("Email invalide"),
   phone: z.string().min(10, "Numéro de téléphone invalide"),
-  address: z.string().min(5, "Adresse invalide"),
   company: z.string().min(2, "Nom de l'entreprise requis"),
-  siret: z.string().min(14, "Numéro SIRET invalide"),
-  sector: z.string().min(2, "Secteur d'activité requis"),
-  employees: z.string().min(1, "Nombre d'employés requis"),
-  description: z.string().min(10, "Description trop courte"),
+  revenuAnnuel: z.string().optional(),
+  secteurActivite: z.string().optional(),
+  nombreEmployes: z.string().optional(),
+  ancienneteEntreprise: z.string().optional(),
+  besoinFinancement: z.string().optional(),
+  typeProjet: z.string().optional(),
 });
 
 const ClientProfile = () => {
@@ -51,15 +52,16 @@ const ClientProfile = () => {
   const [isEditing, setIsEditing] = useState(false);
 
   const defaultValues = {
-    fullName: "Marie Martin",
+    name: "Marie Martin",
     email: "marie.martin@entreprise.com",
     phone: "+33 6 98 76 54 32",
-    address: "456 Rue des Entrepreneurs, 69002 Lyon",
     company: "Transport Express Sud",
-    siret: "12345678901234",
-    sector: "Transport routier",
-    employees: "45",
-    description: "Entreprise de transport routier spécialisée dans la livraison express...",
+    revenuAnnuel: "1500000",
+    secteurActivite: "Transport routier",
+    nombreEmployes: "45",
+    ancienneteEntreprise: "10",
+    besoinFinancement: "50000",
+    typeProjet: "Optimisation fiscale",
   };
 
   const form = useForm({
@@ -122,7 +124,7 @@ const ClientProfile = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
-                  name="fullName"
+                  name="name"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Nom complet</FormLabel>
@@ -177,10 +179,10 @@ const ClientProfile = () => {
 
                 <FormField
                   control={form.control}
-                  name="address"
+                  name="company"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Adresse</FormLabel>
+                      <FormLabel>Nom de l'entreprise</FormLabel>
                       <FormControl>
                         <Input 
                           {...field} 
@@ -207,10 +209,10 @@ const ClientProfile = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
-                  name="company"
+                  name="revenuAnnuel"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Nom de l'entreprise</FormLabel>
+                      <FormLabel>Revenu Annuel</FormLabel>
                       <FormControl>
                         <Input 
                           {...field} 
@@ -225,25 +227,7 @@ const ClientProfile = () => {
 
                 <FormField
                   control={form.control}
-                  name="siret"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Numéro SIRET</FormLabel>
-                      <FormControl>
-                        <Input 
-                          {...field} 
-                          disabled={!isEditing}
-                          className="bg-background"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="sector"
+                  name="secteurActivite"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Secteur d'activité</FormLabel>
@@ -261,10 +245,29 @@ const ClientProfile = () => {
 
                 <FormField
                   control={form.control}
-                  name="employees"
+                  name="nombreEmployes"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Nombre d'employés</FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field} 
+                          type="number"
+                          disabled={!isEditing}
+                          className="bg-background"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="ancienneteEntreprise"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Ancienneté de l'entreprise</FormLabel>
                       <FormControl>
                         <Input 
                           {...field} 
@@ -281,15 +284,33 @@ const ClientProfile = () => {
 
               <FormField
                 control={form.control}
-                name="description"
+                name="besoinFinancement"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Description de l'entreprise</FormLabel>
+                    <FormLabel>Besoin de financement</FormLabel>
                     <FormControl>
-                      <Textarea 
+                      <Input 
                         {...field} 
                         disabled={!isEditing}
-                        className="min-h-[100px] bg-background"
+                        className="bg-background"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="typeProjet"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Type de projet</FormLabel>
+                    <FormControl>
+                      <Input 
+                        {...field} 
+                        disabled={!isEditing}
+                        className="bg-background"
                       />
                     </FormControl>
                     <FormMessage />

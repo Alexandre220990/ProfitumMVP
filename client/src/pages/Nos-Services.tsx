@@ -1,4 +1,4 @@
-import { Link } from "wouter";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
   UserCircle, Leaf, Tractor, Lightbulb, ShieldCheck, Briefcase, Users,
@@ -19,12 +19,12 @@ const services = [
 ];
 
 const advantages = [
-  { icon: Lightbulb, title: "L’Ultra-Sélection", description: "Nous sélectionnons les meilleurs experts pour vous. Fini les mauvaises surprises, place aux résultats concrets." },
-  { icon: Clock, title: "L’Expertise Instantanée", description: "Accédez aux bons experts en un clic, sans attente. Un réseau qualifié, accessible immédiatement." },
+  { icon: Lightbulb, title: "L'Ultra-Sélection", description: "Nous sélectionnons les meilleurs experts pour vous. Fini les mauvaises surprises, place aux résultats concrets." },
+  { icon: Clock, title: "L'Expertise Instantanée", description: "Accédez aux bons experts en un clic, sans attente. Un réseau qualifié, accessible immédiatement." },
   { icon: ShieldCheck, title: "La Transparence Absolue", description: "Comparez, sélectionnez et collaborez en toute sérénité, avec une vision claire des coûts et prestations." },
   { icon: Layers, title: "Un Suivi Intelligent", description: "Documents centralisés, tableau de bord intuitif, alertes stratégiques : tout est automatisé pour vous." },
-  { icon: BarChart, title: "L’Optimisation Financière", description: "Ne payez que ce qui est nécessaire. Benchmark des tarifs, négociation efficace, gain de temps et d’argent." },
-  { icon: TrendingUp, title: "Votre Business, Sans Limite", description: "Prenez de l’avance. Moins de paperasse, plus de décisions stratégiques et rentables." },
+  { icon: BarChart, title: "L'Optimisation Financière", description: "Ne payez que ce qui est nécessaire. Benchmark des tarifs, négociation efficace, gain de temps et d'argent." },
+  { icon: TrendingUp, title: "Votre Business, Sans Limite", description: "Prenez de l'avance. Moins de paperasse, plus de décisions stratégiques et rentables." },
 ];
 
 export default function NosServices() {
@@ -33,14 +33,14 @@ export default function NosServices() {
       {/* Bandeau de navigation */}
       <div className="bg-blue-900 text-white py-3 px-6 rounded-lg flex justify-between items-center text-sm">
         <div className="flex items-center space-x-6">
-          <Link href="/">
+          <Link to="/">
             <img src="/Logo-Profitum.png" alt="Profitum Logo" className="h-10 cursor-pointer" />
           </Link>
           <div className="flex space-x-6">
-            <Link href="/Nos-Services">Nos Services</Link>
-            <Link href="/experts">Nos Experts</Link>
-            <Link href="/tarifs">Tarifs</Link>
-            <Link href="/contact">Contact</Link>
+            <Link to="/Nos-Services">Nos Services</Link>
+            <Link to="/experts">Nos Experts</Link>
+            <Link to="/tarifs">Tarifs</Link>
+            <Link to="/contact">Contact</Link>
           </div>
         </div>
         <DropdownMenu>
@@ -51,10 +51,10 @@ export default function NosServices() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem asChild>
-              <Link href="/connexion-client">Client</Link>
+              <Link to="/connexion-client">Client</Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href="/connexion-partner">Partenaire</Link>
+              <Link to="/connexion-partner">Partenaire</Link>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -67,7 +67,7 @@ export default function NosServices() {
             🚀 Révolutionnez votre gestion avec <span className="text-yellow-400">Profitum</span> !
           </h2>
           <p className="text-lg mb-10 opacity-90 animate-fade-in delay-200">
-            L’expertise simplifiée, la transparence garantie et l’efficacité au bout des doigts.
+            L'expertise simplifiée, la transparence garantie et l'efficacité au bout des doigts.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {advantages.map((adv, index) => (
@@ -109,7 +109,7 @@ export default function NosServices() {
           <p className="mt-4 text-lg text-gray-700">
             Accès instantané, sécurité des données et suivi des dossiers en toute simplicité.
           </p>
-          <Link href="/create-account-client">
+          <Link to="/create-account-client">
             <Button className="mt-7 bg-yellow-400 text-black font-bold px-6 py-6 rounded-lg hover:bg-yellow-500 transition-all duration-300">
               Accédez à la Marketplace des Experts
             </Button>
