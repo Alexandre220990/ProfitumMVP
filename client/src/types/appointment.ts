@@ -1,5 +1,4 @@
-export interface Appointment {
-  id: number;
+export interface Appointment { id: number;
   clientId: number;
   expertId: number;
   date: Date;
@@ -9,5 +8,4 @@ export interface Appointment {
   location: string;
   notes: string | null;
   createdAt: Date;
-  updatedAt: Date;
-} 
+  updatedAt: Date; } 

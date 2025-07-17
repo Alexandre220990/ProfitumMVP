@@ -132,6 +132,18 @@ export interface Expert extends BaseEntity {
   card_expiry: string | null;
   card_cvc: string | null;
   abonnement: string | null;
+  // Nouveaux champs ajoutés
+  website: string | null;
+  linkedin: string | null;
+  languages: string[] | null;
+  availability: string | null;
+  max_clients: number | null;
+  hourly_rate: DoublePrecision | null;
+  phone: string | null;
+  auth_id: UUID | null;
+  approved_by: UUID | null;
+  approved_at: Timestamp | null;
+  approval_status: string | null;
 }
 
 export interface ExpertCategory extends BaseEntity {

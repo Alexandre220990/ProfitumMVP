@@ -1,7 +1,6 @@
-import { Json } from './supabase';
+import { Json } from "./supabase";
 
-export interface Product {
-  id: number;
+export interface Product { id: number;
   nom: string;
   name: string;
   description: string | null;
@@ -15,5 +14,4 @@ export interface Product {
   category: string | null;
   priority: number | null;
   createdAt: string;
-  updatedAt: string;
-} 
+  updatedAt: string; } 

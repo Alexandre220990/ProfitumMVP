@@ -2,8 +2,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-const ConditionsUtilisation = () => {
-  return (
+const ConditionsUtilisation = () => { return (
     <div className="container mx-auto p-4">
       <Card className="mb-6">
         <CardHeader>
@@ -37,7 +36,6 @@ const ConditionsUtilisation = () => {
         </Button>
       </div>
     </div>
-  );
-};
+  ); };
 
 export default ConditionsUtilisation;

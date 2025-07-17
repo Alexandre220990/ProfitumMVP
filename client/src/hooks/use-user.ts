@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 type User = {
   id: number;
@@ -30,7 +30,7 @@ async function handleRequest(
       method,
       headers: body ? { "Content-Type": "application/json" } : undefined,
       body: body ? JSON.stringify(body) : undefined,
-      credentials: "include",
+      credentials: "include"
     });
 
     const data = await response.json();
@@ -38,7 +38,7 @@ async function handleRequest(
     if (!response.ok) {
       return {
         success: false,
-        message: data.message || response.statusText,
+        message: data.message || response.statusText
       };
     }
 
@@ -46,7 +46,7 @@ async function handleRequest(
   } catch (e: any) {
     return {
       success: false,
-      message: e.message || "Une erreur est survenue",
+      message: e.message || "Une erreur est survenue"
     };
   }
 }
@@ -108,6 +108,6 @@ export function useUser() {
     error,
     login: loginMutation.mutateAsync,
     logout: logoutMutation.mutateAsync,
-    register: registerMutation.mutateAsync,
+    register: registerMutation.mutateAsync
   };
 }

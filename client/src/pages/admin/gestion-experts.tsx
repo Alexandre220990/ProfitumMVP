@@ -1,32 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useAuth } from "@/hooks/use-auth";
-import { useNavigate } from "react-router-dom";
-import { Shield, Users, Search, Filter, Eye, CheckCircle, XCircle, Edit, MoreHorizontal, UserPlus } from "lucide-react";
-import { createClient } from '@supabase/supabase-js';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { useState, useEffect } from 'react';
+import { useNavigate, Navigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/use-auth';
+import { supabase } from '@/lib/supabase';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { UserPlus, MoreHorizontal, Eye, Edit, CheckCircle, XCircle } from 'lucide-react';
 
-// Configuration Supabase
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Configuration Supabase - Utilise l'instance importée depuis @/lib/supabase
 
 interface Expert {
   id: string;
@@ -54,31 +39,41 @@ interface Pagination {
 }
 
 const GestionExperts = () => {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
+
   const navigate = useNavigate();
   const [experts, setExperts] = useState<Expert[]>([]);
-  const [pagination, setPagination] = useState<Pagination | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-
-  // Filtres
+  const [pagination, setPagination] = useState<Pagination | null>(null);
   const [filters, setFilters] = useState({
     search: '',
-    status: '',
-    approval_status: '',
-    specialization: '',
-    sortBy: 'created_at',
-    sortOrder: 'desc'
+    status: 'all',
+    approval_status: 'all',
+    sortBy: 'created_at'
   });
 
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Rediriger si l'utilisateur n'est pas un admin
-  useEffect(() => {
-    if (user && user.type !== 'admin') {
-      navigate('/connect-admin');
-    }
-  }, [user, navigate]);
+  // Vérification d'authentification
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-red-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Vérification de l'authentification...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/connect-admin" replace />;
+  }
+
+  if (user.type !== 'admin') {
+    return <Navigate to="/connect-admin" replace />;
+  }
 
   // Charger les experts
   const fetchExperts = async () => {
@@ -86,36 +81,32 @@ const GestionExperts = () => {
       setLoading(true);
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
+        console.log('Session expirée, redirection vers connect-admin');
         navigate('/connect-admin');
         return;
       }
-
       const params = new URLSearchParams({
         page: currentPage.toString(),
         limit: '10',
         ...filters
       });
-
       if (filters.status && filters.status !== "all") params.append('status', filters.status);
       if (filters.approval_status && filters.approval_status !== "all") params.append('approval_status', filters.approval_status);
-
       const response = await fetch(`http://localhost:5001/api/admin/experts?${params}`, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json'
         }
       });
-
       if (!response.ok) {
         throw new Error('Erreur lors du chargement des experts');
       }
-
       const data = await response.json();
       setExperts(data.data.experts);
       setPagination(data.data.pagination);
     } catch (err) {
       setError('Erreur lors du chargement des experts');
-      console.error('Erreur experts:', err);
+      console.error('Erreur experts: ', err);
     } finally {
       setLoading(false);
     }
@@ -130,7 +121,6 @@ const GestionExperts = () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
-
       const response = await fetch(`http://localhost:5001/api/admin/experts/${expertId}/approve`, {
         method: 'PUT',
         headers: {
@@ -138,12 +128,11 @@ const GestionExperts = () => {
           'Content-Type': 'application/json'
         }
       });
-
       if (response.ok) {
         fetchExperts(); // Recharger la liste
       }
     } catch (err) {
-      console.error('Erreur approbation:', err);
+      console.error('Erreur approbation: ', err);
     }
   };
 
@@ -152,21 +141,19 @@ const GestionExperts = () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
-
       const response = await fetch(`http://localhost:5001/api/admin/experts/${expertId}/reject`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ reason: 'Rejeté par l\'administrateur' })
+        body: JSON.stringify({ reason: "Rejeté par l'administrateur" })
       });
-
       if (response.ok) {
         fetchExperts(); // Recharger la liste
       }
     } catch (err) {
-      console.error('Erreur rejet:', err);
+      console.error('Erreur rejet: ', err);
     }
   };
 
@@ -221,7 +208,7 @@ const GestionExperts = () => {
             </div>
             <div className="flex items-center space-x-3">
               <Button 
-                onClick={() => navigate('/admin/expert/nouveau')}
+                onClick={() => navigate('/admin/formulaire-expert')}
                 className="bg-blue-600 hover:bg-blue-700 text-white"
               >
                 <UserPlus className="mr-2 h-4 w-4" />
@@ -229,7 +216,7 @@ const GestionExperts = () => {
               </Button>
               <Button 
                 variant="outline" 
-                onClick={() => navigate('/admin/dashboard')}
+                onClick={() => navigate('/admin')}
               >
                 ← Retour au Dashboard
               </Button>

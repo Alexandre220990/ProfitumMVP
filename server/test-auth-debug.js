@@ -1,162 +1,153 @@
 const { createClient } = require('@supabase/supabase-js');
-require('dotenv').config();
 
-// Configuration Supabase
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_ANON_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
+// Configuration Supabase CORRECTE depuis le .env
+const supabaseUrl = 'https://gvvlsgtubqfxdztldunj.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2dmxzZ3R1YnFmeGR6dGxkdW5qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE3Njk4NDksImV4cCI6MjA1NzM0NTg0OX0.pN73GQUJHmd099PUcxAVGm-TFTe3KHeBemBk9IlGAcg';
+const supabaseServiceKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2dmxzZ3R1YnFmeGR6dGxkdW5qIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0MTc2OTg0OSwiZXhwIjoyMDU3MzQ1ODQ5fQ.pN73GQUJHmd099PUcxAVGm-TFTe3KHeBemBk9IlGAcg';
 
-// Token client fourni
-const CLIENT_TOKEN = '0538de29-4287-4c28-b76a-b65ef993f393';
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-async function testAuthAndRoutes() {
-  console.log('🔍 Test d\'authentification et des routes API\n');
-
-  // 1. Vérifier les variables d'environnement
-  console.log('1️⃣ Vérification des variables d\'environnement...');
-  console.log(`   SUPABASE_URL: ${supabaseUrl ? '✅ Défini' : '❌ Manquant'}`);
-  console.log(`   SUPABASE_ANON_KEY: ${supabaseKey ? '✅ Défini' : '❌ Manquant'}`);
-  console.log(`   JWT_SECRET: ${process.env.JWT_SECRET ? '✅ Défini' : '❌ Manquant'}`);
-  console.log(`   DATABASE_URL: ${process.env.DATABASE_URL ? '✅ Défini' : '❌ Manquant'}`);
-  console.log(`   SUPABASE_SERVICE_ROLE_KEY: ${process.env.SUPABASE_SERVICE_ROLE_KEY ? '✅ Défini' : '❌ Manquant'}`);
-
-  // 2. Tester l'authentification avec le token client
-  console.log('\n2️⃣ Test d\'authentification avec le token client...');
-  try {
-    const { data: { user }, error } = await supabase.auth.getUser(CLIENT_TOKEN);
-    
-    if (error) {
-      console.log(`   ❌ Erreur d'authentification: ${error.message}`);
-      console.log(`   Code d'erreur: ${error.status}`);
-    } else if (user) {
-      console.log(`   ✅ Utilisateur authentifié: ${user.email}`);
-      console.log(`   ID utilisateur: ${user.id}`);
-      console.log(`   Créé le: ${user.created_at}`);
-      console.log(`   Dernière connexion: ${user.last_sign_in_at}`);
-    } else {
-      console.log('   ⚠️ Aucun utilisateur trouvé');
-    }
-  } catch (error) {
-    console.log(`   ❌ Erreur lors de la vérification du token: ${error.message}`);
-  }
-
-  // 3. Vérifier la structure de la base de données
-  console.log('\n3️⃣ Vérification de la structure de la base de données...');
+async function testAuth() {
+  console.log('🔍 Test d\'authentification avec grandjean.laporte@gmail.com');
+  console.log('🌐 URL Supabase:', supabaseUrl);
   
   try {
-    // Vérifier la table Client
-    const { data: clients, error: clientsError } = await supabase
-      .from('Client')
-      .select('*')
-      .limit(5);
+    // 1. Connexion avec les identifiants
+    console.log('\n1️⃣ Tentative de connexion...');
+    const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
+      email: 'grandjean.laporte@gmail.com',
+      password: 'profitum'
+    });
 
-    if (clientsError) {
-      console.log(`   ❌ Erreur table Client: ${clientsError.message}`);
-    } else {
-      console.log(`   ✅ Table Client accessible: ${clients.length} clients trouvés`);
-      if (clients.length > 0) {
-        console.log(`   Exemple de client: ${clients[0].id} - ${clients[0].email || 'Pas d\'email'}`);
-      }
+    if (loginError) {
+      console.error('❌ Erreur de connexion:', loginError.message);
+      return;
     }
 
-    // Vérifier la table ProduitEligible
-    const { data: produits, error: produitsError } = await supabase
-      .from('ProduitEligible')
+    if (!loginData.user || !loginData.session) {
+      console.error('❌ Pas d\'utilisateur ou de session après connexion');
+      return;
+    }
+
+    console.log('✅ Connexion réussie !');
+    console.log('👤 Utilisateur ID:', loginData.user.id);
+    console.log('📧 Email:', loginData.user.email);
+    console.log('🏷️ Type:', loginData.user.user_metadata?.type);
+    console.log('🔑 Token:', loginData.session.access_token.substring(0, 50) + '...');
+
+    // 2. Test de récupération de session
+    console.log('\n2️⃣ Test de récupération de session...');
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError) {
+      console.error('❌ Erreur récupération session:', sessionError.message);
+    } else if (sessionData.session) {
+      console.log('✅ Session récupérée avec succès');
+      console.log('🔑 Token session:', sessionData.session.access_token.substring(0, 50) + '...');
+    } else {
+      console.log('⚠️ Aucune session trouvée');
+    }
+
+    // 3. Test de récupération d'utilisateur
+    console.log('\n3️⃣ Test de récupération d\'utilisateur...');
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    
+    if (userError) {
+      console.error('❌ Erreur récupération utilisateur:', userError.message);
+    } else if (userData.user) {
+      console.log('✅ Utilisateur récupéré avec succès');
+      console.log('👤 ID:', userData.user.id);
+      console.log('📧 Email:', userData.user.email);
+    } else {
+      console.log('⚠️ Aucun utilisateur trouvé');
+    }
+
+    // 4. Test d'appel API avec le token
+    console.log('\n4️⃣ Test d\'appel API avec le token...');
+    const token = loginData.session.access_token;
+    
+    const response = await fetch('http://localhost:5001/api/produits-eligibles', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    console.log('📡 Status API:', response.status);
+    console.log('📡 Headers réponse:', Object.fromEntries(response.headers.entries()));
+    
+    const responseText = await response.text();
+    console.log('📡 Corps réponse:', responseText.substring(0, 200) + (responseText.length > 200 ? '...' : ''));
+
+    // 5. Test avec le token stocké en localStorage (simulation frontend)
+    console.log('\n5️⃣ Test avec token localStorage (simulation frontend)...');
+    const localStorageToken = token; // Simule le token du localStorage
+    
+    const response2 = await fetch('http://localhost:5001/api/produits-eligibles', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${localStorageToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    console.log('📡 Status API (localStorage):', response2.status);
+    const responseText2 = await response2.text();
+    console.log('📡 Corps réponse (localStorage):', responseText2.substring(0, 200) + (responseText2.length > 200 ? '...' : ''));
+
+    // 6. Vérification des produits éligibles en base
+    console.log('\n6️⃣ Vérification des produits éligibles en base...');
+    
+    // Utiliser le service role key pour accéder directement à la base
+    const supabaseService = createClient(supabaseUrl, supabaseServiceKey);
+    
+    const { data: produits, error: produitsError } = await supabaseService
+      .from('produit_eligible')
       .select('*')
-      .limit(3);
+      .eq('client_id', loginData.user.id);
 
     if (produitsError) {
-      console.log(`   ❌ Erreur table ProduitEligible: ${produitsError.message}`);
+      console.error('❌ Erreur récupération produits:', produitsError.message);
     } else {
-      console.log(`   ✅ Table ProduitEligible accessible: ${produits.length} produits trouvés`);
+      console.log('✅ Produits éligibles trouvés:', produits.length);
+      console.log('📋 Produits:', produits.map(p => ({ id: p.id, nom: p.nom, statut: p.statut })));
     }
 
-    // Vérifier la table ClientProduitEligible
-    const { data: clientProduits, error: clientProduitsError } = await supabase
-      .from('ClientProduitEligible')
-      .select('*')
-      .limit(3);
-
-    if (clientProduitsError) {
-      console.log(`   ❌ Erreur table ClientProduitEligible: ${clientProduitsError.message}`);
-    } else {
-      console.log(`   ✅ Table ClientProduitEligible accessible: ${clientProduits.length} entrées trouvées`);
-      if (clientProduits.length > 0) {
-        console.log(`   Structure d'une entrée:`, Object.keys(clientProduits[0]));
-      }
-    }
-
-  } catch (error) {
-    console.log(`   ❌ Erreur générale de base de données: ${error.message}`);
-  }
-
-  // 4. Tester les routes API avec le token
-  console.log('\n4️⃣ Test des routes API avec authentification...');
-  
-  const API_BASE = 'http://localhost:3001/api'; // Ajuster selon ton port
-  
-  const routesToTest = [
-    '/auth/check',
-    '/produits-eligibles/client/0538de29-4287-4c28-b76a-b65ef993f393',
-    '/simulations/check-recent/0538de29-4287-4c28-b76a-b65ef993f393'
-  ];
-
-  for (const route of routesToTest) {
-    try {
-      console.log(`   🔄 Test de ${route}...`);
-      
-      const response = await fetch(`${API_BASE}${route}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${CLIENT_TOKEN}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      console.log(`   Status: ${response.status} ${response.statusText}`);
-      
-      if (response.ok) {
-        const data = await response.json();
-        console.log(`   ✅ Succès: ${data.success ? 'Oui' : 'Non'}`);
-        if (data.message) {
-          console.log(`   Message: ${data.message}`);
-        }
-      } else {
-        const errorData = await response.text();
-        console.log(`   ❌ Erreur: ${errorData.substring(0, 100)}...`);
-      }
-      
-    } catch (error) {
-      console.log(`   ❌ Erreur réseau: ${error.message}`);
-    }
+    // 7. Test de validation du token côté serveur
+    console.log('\n7️⃣ Test de validation du token côté serveur...');
     
-    console.log(''); // Ligne vide pour la lisibilité
-  }
-
-  // 5. Vérifier les contraintes de clé étrangère
-  console.log('5️⃣ Vérification des contraintes de clé étrangère...');
-  
-  try {
-    // Vérifier si le client existe
-    const { data: clientExists, error: clientCheckError } = await supabase
-      .from('Client')
-      .select('id')
-      .eq('id', CLIENT_TOKEN)
-      .single();
-
-    if (clientCheckError) {
-      console.log(`   ❌ Client ${CLIENT_TOKEN} non trouvé dans la table Client`);
-      console.log(`   Erreur: ${clientCheckError.message}`);
-    } else {
-      console.log(`   ✅ Client ${CLIENT_TOKEN} existe dans la table Client`);
+    // Simuler le middleware d'authentification du serveur
+    const jwt = require('jsonwebtoken');
+    const jwtSecret = '+aiFgbefNjLDV8MZOPyWt326RzCL1ZAS/JCOuzxG6/dnAp86jDjQKdWsJBCI7dR3p4I+hP70+aA7g+ZZcqSrRA==';
+    
+    try {
+      const decoded = jwt.verify(token, jwtSecret);
+      console.log('✅ Token JWT valide côté serveur');
+      console.log('🔍 Token décodé:', decoded);
+    } catch (jwtError) {
+      console.log('⚠️ Token JWT invalide côté serveur:', jwtError.message);
+      
+      // Essayer avec le secret alternatif
+      try {
+        const decoded2 = jwt.verify(token, 'EhAhS26BXDsowVPe');
+        console.log('✅ Token JWT valide avec secret alternatif');
+        console.log('🔍 Token décodé:', decoded2);
+      } catch (jwtError2) {
+        console.log('❌ Token JWT invalide avec secret alternatif:', jwtError2.message);
+      }
     }
 
   } catch (error) {
-    console.log(`   ❌ Erreur lors de la vérification du client: ${error.message}`);
+    console.error('❌ Erreur générale:', error.message);
   }
-
-  console.log('\n✅ Test terminé !');
 }
 
-// Exécuter le test
-testAuthAndRoutes(); 
+// Lancer le test
+testAuth().then(() => {
+  console.log('\n🏁 Test terminé');
+  process.exit(0);
+}).catch(error => {
+  console.error('❌ Erreur fatale:', error);
+  process.exit(1);
+}); 

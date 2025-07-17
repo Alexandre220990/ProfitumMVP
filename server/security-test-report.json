@@ -1,0 +1,124 @@
+{
+  "timestamp": "2025-07-01T21:03:37.628Z",
+  "successRate": 96,
+  "totalTests": 23,
+  "passedTests": 22,
+  "failedTests": 1,
+  "details": [
+    {
+      "name": "Génération de clé sécurisée",
+      "passed": true,
+      "details": "Clé 256 bits générée"
+    },
+    {
+      "name": "Système de chiffrement",
+      "passed": false,
+      "details": "Erreur: crypto.createCipher is not a function"
+    },
+    {
+      "name": "Répertoire de sauvegarde",
+      "passed": true,
+      "details": "Répertoire créé"
+    },
+    {
+      "name": "Création de sauvegarde",
+      "passed": true,
+      "details": "Fichier de sauvegarde créé"
+    },
+    {
+      "name": "Vérification d'intégrité",
+      "passed": true,
+      "details": "Intégrité vérifiée"
+    },
+    {
+      "name": "Répertoire d'incidents",
+      "passed": true,
+      "details": "Répertoire créé"
+    },
+    {
+      "name": "Création d'incident",
+      "passed": true,
+      "details": "Incident créé"
+    },
+    {
+      "name": "Mise à jour de statut",
+      "passed": true,
+      "details": "Statut mis à jour"
+    },
+    {
+      "name": "Politique de sécurité",
+      "passed": true,
+      "details": "Document trouvé"
+    },
+    {
+      "name": "Contenu politique",
+      "passed": true,
+      "details": "Document complet"
+    },
+    {
+      "name": "Sections requises",
+      "passed": true,
+      "details": "Sections ISO 27001 présentes"
+    },
+    {
+      "name": "Procédures opérationnelles",
+      "passed": true,
+      "details": "Document trouvé"
+    },
+    {
+      "name": "Contenu procédures",
+      "passed": true,
+      "details": "Document complet"
+    },
+    {
+      "name": "Procédures critiques",
+      "passed": true,
+      "details": "Procédures critiques présentes"
+    },
+    {
+      "name": "Répertoire ./lib",
+      "passed": true,
+      "details": "Répertoire présent"
+    },
+    {
+      "name": "Répertoire ./docs",
+      "passed": true,
+      "details": "Répertoire présent"
+    },
+    {
+      "name": "Répertoire ./backups",
+      "passed": true,
+      "details": "Répertoire présent"
+    },
+    {
+      "name": "Répertoire ./incidents",
+      "passed": true,
+      "details": "Répertoire présent"
+    },
+    {
+      "name": "Fichier de config ./package.json",
+      "passed": true,
+      "details": "Fichier présent"
+    },
+    {
+      "name": "Fichier de config ./tsconfig.json",
+      "passed": true,
+      "details": "Fichier présent"
+    },
+    {
+      "name": "Module sécurité ./lib/encryption.ts",
+      "passed": true,
+      "details": "Module présent"
+    },
+    {
+      "name": "Module sécurité ./lib/backup.ts",
+      "passed": true,
+      "details": "Module présent"
+    },
+    {
+      "name": "Module sécurité ./lib/incident-management.ts",
+      "passed": true,
+      "details": "Module présent"
+    }
+  ]
+}

@@ -1,113 +1,231 @@
-import { useState } from "react";
-import { UserCircle, ClipboardList, CheckCircle, Users, Headphones, ShieldCheck, Briefcase, FileText, DollarSign, ThumbsUp, Search, BookOpen, Edit3 } from "lucide-react";
+import React, { useState, useCallback, useMemo } from "react";
+import { 
+  UserCircle, 
+  ClipboardList, 
+  CheckCircle, 
+  Users, 
+  Headphones, 
+  ShieldCheck, 
+  FileText, 
+  DollarSign, 
+  ThumbsUp, 
+  Search 
+} from "lucide-react";
 
-const stepsData = {
+interface StepData {
+  icon: React.ReactNode;
+  title: string;
+  desc: string;
+}
+
+interface StepsData {
+  client: StepData[];
+  expert: StepData[];
+}
+
+// Optimisation : Données des étapes avec useMemo
+const useStepsData = (): StepsData => useMemo(() => ({
   client: [
     {
-      icon: <UserCircle className="w-8 h-8 text-blue-600 mb-2" />,
+      icon: <UserCircle className="w-6 h-6 text-slate-600" />,
       title: "Création de compte",
       desc: "Validation par le service client"
     },
     {
-      icon: <ClipboardList className="w-8 h-8 text-blue-600 mb-2" />,
-      title: "Définissez votre profil entreprise",
-      desc: "Effectuez votre 1e simulation grâce à notre agent IA"
+      icon: <ClipboardList className="w-6 h-6 text-slate-600" />,
+      title: "Profil entreprise",
+      desc: "Simulation IA pour définir vos besoins"
     },
     {
-      icon: <CheckCircle className="w-8 h-8 text-blue-600 mb-2" />,
-      title: "Découvrez vos éligibilités",
-      desc: "et démarrez facilement vos dossiers"
+      icon: <CheckCircle className="w-6 h-6 text-slate-600" />,
+      title: "Éligibilités",
+      desc: "Découvrez vos opportunités d'optimisation"
     },
     {
-      icon: <Users className="w-8 h-8 text-blue-600 mb-2" />,
-      title: "Recherchez, comparez et sélectionnez",
-      desc: "les meilleurs experts"
+      icon: <Users className="w-6 h-6 text-slate-600" />,
+      title: "Sélection d'experts",
+      desc: "Comparez et choisissez les meilleurs spécialistes"
     },
     {
-      icon: <Headphones className="w-8 h-8 text-blue-600 mb-2" />,
+      icon: <Headphones className="w-6 h-6 text-slate-600" />,
       title: "Briefing & validation",
-      desc: "Prise de contact avec l'expert et finalisation du dossier"
+      desc: "Finalisation du dossier avec l'expert"
     },
     {
-      icon: <ShieldCheck className="w-8 h-8 text-blue-600 mb-2" />,
-      title: "Rapports et remboursements ",
-      desc: "Recevez les rapports d'experts et recevez directement vos remboursements des trop perçus"
+      icon: <ShieldCheck className="w-6 h-6 text-slate-600" />,
+      title: "Rapports & remboursements",
+      desc: "Suivi et réception des optimisations"
     }
   ],
   expert: [
     {
-      icon: <UserCircle className="w-8 h-8 text-yellow-500 mb-2" />,
+      icon: <UserCircle className="w-6 h-6 text-slate-600" />,
       title: "Inscription & profil",
-      desc: "Création de votre profil"
+      desc: "Création de votre profil expert"
     },
     {
-      icon: <ThumbsUp className="w-8 h-8 text-yellow-500 mb-2" />,
+      icon: <ThumbsUp className="w-6 h-6 text-slate-600" />,
       title: "Validation conseiller",
-      desc: "Entretien et validation avec un conseiller"
+      desc: "Entretien et validation de votre expertise"
     },
     {
-      icon: <ClipboardList className="w-8 h-8 text-yellow-500 mb-2" />,
-      title: "Sélection de l'abonnement et contractualisation",
-      desc: "en fonction de vos besoins"
+      icon: <ClipboardList className="w-6 h-6 text-slate-600" />,
+      title: "Abonnement & contractualisation",
+      desc: "Choix de votre formule d'accompagnement"
     },
     {
-      icon: <Search className="w-8 h-8 text-yellow-500 mb-2" />,
-      title: "Programmation du ciblage client",
-      desc: "Secteur, taille, type d'entreprise, etc."
+      icon: <Search className="w-6 h-6 text-slate-600" />,
+      title: "Ciblage client",
+      desc: "Configuration de votre périmètre d'intervention"
     },
     {
-      icon: <FileText className="w-8 h-8 text-yellow-500 mb-2" />,
-      title: "Commencez à recevoir et à suivre vos 1e demandes",
-      desc: "Et uploadez votre activité actuelle pour un suivi global"
+      icon: <FileText className="w-6 h-6 text-slate-600" />,
+      title: "Réception des demandes",
+      desc: "Suivi et gestion de vos missions"
     },
     {
-      icon: <DollarSign className="w-8 h-8 text-yellow-500 mb-2" />,
+      icon: <DollarSign className="w-6 h-6 text-slate-600" />,
       title: "Paiement rapide",
-      desc: "Gains versés sous 8 jours"
+      desc: "Rémunération sous 8 jours"
     }
   ]
-};
+}), []);
+
+// Optimisation : Composant Step optimisé avec React.memo
+const ProcessStep = React.memo(({
+  step,
+  index,
+  isActive
+}: {
+  step: StepData;
+  index: number;
+  isActive: boolean;
+}) => {
+  return (
+    <div
+      className={`group relative bg-white/50 backdrop-blur-sm rounded-2xl border border-slate-200/60 transition-all duration-300 hover:bg-white hover:border-slate-300 hover:shadow-lg hover:shadow-slate-200/50 ${
+        isActive ? 'ring-2 ring-blue-500/20' : ''
+      }`}
+    >
+      <div className="p-6 space-y-4">
+        {/* Numéro d'étape */}
+        <div className="flex items-center justify-between">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-sm font-medium text-slate-600">
+            {index + 1}
+          </div>
+          <div className="text-slate-400 group-hover:text-slate-600 transition-colors">
+            {step.icon}
+          </div>
+        </div>
+        
+        {/* Contenu */}
+        <div className="space-y-2">
+          <h3 className="font-semibold text-slate-900 text-sm leading-tight">
+            {step.title}
+          </h3>
+          <p className="text-xs text-slate-500 leading-relaxed">
+            {step.desc}
+          </p>
+        </div>
+      </div>
+      
+      {/* Indicateur de progression */}
+      {index < 5 && (
+        <div className="absolute -bottom-3 left-1/2 transform -translate-x-1/2 w-6 h-6 bg-white border-2 border-slate-200 rounded-full flex items-center justify-center">
+          <div className="w-2 h-2 bg-slate-300 rounded-full"></div>
+        </div>
+      )}
+    </div>
+  );
+});
+
+ProcessStep.displayName = 'ProcessStep';
+
+// Optimisation : Composant RoleToggle optimisé avec React.memo
+const RoleToggle = React.memo(({
+  role,
+  onRoleChange
+}: {
+  role: 'client' | 'expert';
+  onRoleChange: (newRole: 'client' | 'expert') => void;
+}) => (
+  <div className="inline-flex bg-slate-100/80 backdrop-blur-sm rounded-2xl p-1.5 shadow-sm border border-slate-200/60">
+    <button
+      className={`px-6 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 ${
+        role === 'client' 
+          ? 'bg-white text-slate-900 shadow-sm border border-slate-200/60' 
+          : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+      }`}
+      onClick={() => onRoleChange('client')}
+      aria-label="Voir le processus client"
+    >
+      Client
+    </button>
+    <button
+      className={`px-6 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 ${
+        role === 'expert' 
+          ? 'bg-white text-slate-900 shadow-sm border border-slate-200/60' 
+          : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+      }`}
+      onClick={() => onRoleChange('expert')}
+      aria-label="Voir le processus expert"
+    >
+      Expert
+    </button>
+  </div>
+));
+
+RoleToggle.displayName = 'RoleToggle';
 
 export default function ProcessSteps() {
   const [role, setRole] = useState<'client' | 'expert'>('client');
+  const stepsData = useStepsData();
+
+  // Optimisation : Gestion du changement de rôle avec useCallback
+  const handleRoleChange = useCallback((newRole: 'client' | 'expert') => {
+    setRole(newRole);
+  }, []);
+
+  // Optimisation : Étapes actuelles avec useMemo
+  const currentSteps = useMemo(() => {
+    return stepsData[role];
+  }, [stepsData, role]);
 
   return (
-    <section className="w-full max-w-7xl px-4 mx-auto py-12">
-      <h2 className="text-3xl font-bold text-center mb-2">Fonctionnement de la plateforme</h2>
-      <p className="text-center text-gray-500 mb-6">Découvrez notre service de mise en relation spécialisé dans l'optimisation de vos finances.</p>
-      <div className="flex justify-center mb-8">
-        <div className="inline-flex rounded-full bg-gray-100 p-1 shadow-sm">
-          <button
-            className={`px-6 py-2 rounded-full font-semibold transition-colors ${role === 'client' ? 'bg-blue-600 text-white shadow' : 'text-blue-600 hover:bg-blue-100'}`}
-            onClick={() => setRole('client')}
-          >
-            Client
-          </button>
-          <button
-            className={`px-6 py-2 rounded-full font-semibold transition-colors ${role === 'expert' ? 'bg-yellow-400 text-gray-900 shadow' : 'text-yellow-600 hover:bg-yellow-100'}`}
-            onClick={() => setRole('expert')}
-          >
-            Expert
-          </button>
-        </div>
+    <section className="w-full max-w-6xl mx-auto px-6 py-16">
+      {/* En-tête */}
+      <div className="text-center space-y-4 mb-12">
+        <h2 className="text-3xl font-light text-slate-900 tracking-tight">
+          Comment ça fonctionne
+        </h2>
+        <p className="text-slate-600 text-lg max-w-2xl mx-auto leading-relaxed">
+          Découvrez notre approche simple et efficace pour optimiser vos finances
+        </p>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6">
-        {stepsData[role].map((step, idx) => (
-          <div
-            key={idx}
-            className="bg-white rounded-xl shadow flex flex-col items-center text-center border-t-4 border-blue-600 md:border-t-0 md:border-l-4 md:border-blue-600 lg:border-t-4 lg:border-l-0 transition-all min-h-[340px] px-4 py-8 transform hover:scale-105 hover:shadow-lg duration-200 cursor-pointer"
-          >
-            <div className="flex flex-col items-center w-full">
-              {step.icon}
-              <div className="text-2xl font-bold mb-1 mt-2">{idx + 1}</div>
-              <div className="font-semibold mb-2 text-base leading-tight break-words w-full">{step.title}</div>
-              <div className="text-gray-500 text-sm mt-2 leading-snug w-full break-words text-center">
-                {step.desc}
-              </div>
-            </div>
-          </div>
+      
+      {/* Sélecteur de rôle */}
+      <div className="flex justify-center mb-12">
+        <RoleToggle role={role} onRoleChange={handleRoleChange} />
+      </div>
+      
+      {/* Grille des étapes */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {currentSteps.map((step, idx) => (
+          <ProcessStep
+            key={`${role}-${idx}`}
+            step={step}
+            index={idx}
+            isActive={idx === 0}
+          />
         ))}
+      </div>
+      
+      {/* Note de bas de page */}
+      <div className="text-center mt-12 pt-8 border-t border-slate-200/60">
+        <p className="text-sm text-slate-500">
+          Processus simplifié et transparent pour un accompagnement optimal
+        </p>
       </div>
     </section>
   );
-} 
+}

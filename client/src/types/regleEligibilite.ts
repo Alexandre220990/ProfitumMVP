@@ -1,7 +1,6 @@
-import { Json } from './supabase';
+import { Json } from "./supabase";
 
-export interface RegleEligibilite {
-  id: number;
+export interface RegleEligibilite { id: number;
   produitId: number;
   type: string;
   criteres: Json;
@@ -10,5 +9,4 @@ export interface RegleEligibilite {
   priorite: number;
   active: boolean;
   createdAt: Date;
-  updatedAt: Date;
-} 
+  updatedAt: Date; } 

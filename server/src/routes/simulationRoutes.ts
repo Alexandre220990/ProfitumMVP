@@ -21,7 +21,7 @@ console.log(`SimulationRoutes - Utilisation de la clé API: ${supabaseKey.substr
 const supabase = createClient<Database>(supabaseUrl, supabaseKey);
 
 // Middleware d'authentification
-const authenticateToken = async (req: Request, res: Response, next: Function) => {
+const authenticateUser = async (req: Request, res: Response, next: Function) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
@@ -51,7 +51,7 @@ const authenticateToken = async (req: Request, res: Response, next: Function) =>
 };
 
 // Route pour récupérer les questions
-router.get('/questions', authenticateToken, async (req: Request, res: Response) => {
+router.get('/questions', authenticateUser, async (req: Request, res: Response) => {
   try {
     console.log('Récupération des questions de simulation');
     
@@ -125,7 +125,7 @@ router.get('/questions', authenticateToken, async (req: Request, res: Response) 
 });
 
 // Route pour créer une nouvelle simulation
-router.post('/', authenticateToken, async (req: Request, res: Response) => {
+router.post('/', authenticateUser, async (req: Request, res: Response) => {
   try {
     const { client_id, answers } = req.body;
     
@@ -182,7 +182,7 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
 });
 
 // Route pour terminer une simulation
-router.post('/:id/terminer', authenticateToken, async (req: Request, res: Response) => {
+router.post('/:id/terminer', authenticateUser, async (req: Request, res: Response) => {
   try {
     const simulationId = parseInt(req.params.id);
     
@@ -224,7 +224,7 @@ router.post('/:id/terminer', authenticateToken, async (req: Request, res: Respon
 });
 
 // Route pour sauvegarder les réponses
-router.post('/:id/answers', authenticateToken, async (req: Request, res: Response) => {
+router.post('/:id/answers', authenticateUser, async (req: Request, res: Response) => {
   try {
     const simulationId = parseInt(req.params.id);
     const { answers } = req.body;
@@ -271,7 +271,7 @@ router.post('/:id/answers', authenticateToken, async (req: Request, res: Respons
 });
 
 // Route pour récupérer les réponses d'une simulation
-router.get('/:id/answers', authenticateToken, async (req: Request, res: Response) => {
+router.get('/:id/answers', authenticateUser, async (req: Request, res: Response) => {
   try {
     const simulationId = parseInt(req.params.id);
     
@@ -313,7 +313,7 @@ router.get('/:id/answers', authenticateToken, async (req: Request, res: Response
 });
 
 // Route pour traiter une réponse en temps réel
-router.post('/:id/answer', authenticateToken, async (req: Request, res: Response) => {
+router.post('/:id/answer', authenticateUser, async (req: Request, res: Response) => {
   try {
     const simulationId = parseInt(req.params.id);
     const { questionId, answer, timestamp } = req.body;

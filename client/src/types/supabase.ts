@@ -6,8 +6,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export interface Database {
-  public: {
+export interface Database { public: {
     Tables: {
       Appointment: {
         Row: {
@@ -24,10 +23,8 @@ export interface Database {
           notes: string | null
           rappel_envoye: boolean
           createdAt: string
-          updatedAt: string
-        }
-        Insert: {
-          id?: number
+          updatedAt: string }
+        Insert: { id?: number
           clientId: string
           expertId: string
           auditId: string
@@ -40,10 +37,8 @@ export interface Database {
           notes?: string | null
           rappel_envoye?: boolean
           createdAt?: string
-          updatedAt?: string
-        }
-        Update: {
-          id?: number
+          updatedAt?: string }
+        Update: { id?: number
           clientId?: string
           expertId?: string
           auditId?: string
@@ -56,11 +51,9 @@ export interface Database {
           notes?: string | null
           rappel_envoye?: boolean
           createdAt?: string
-          updatedAt?: string
-        }
+          updatedAt?: string }
       }
-      Audit: {
-        Row: {
+      Audit: { Row: {
           id: string
           type: string
           description: string | null
@@ -77,10 +70,8 @@ export interface Database {
           charter_signed: boolean
           current_step: number
           progress: number
-          appointment_datetime: string | null
-        }
-        Insert: {
-          id?: string
+          appointment_datetime: string | null }
+        Insert: { id?: string
           type: string
           description?: string | null
           montant?: number | null
@@ -96,10 +87,8 @@ export interface Database {
           charter_signed?: boolean
           current_step?: number
           progress?: number
-          appointment_datetime?: string | null
-        }
-        Update: {
-          id?: string
+          appointment_datetime?: string | null }
+        Update: { id?: string
           type?: string
           description?: string | null
           montant?: number | null
@@ -115,11 +104,9 @@ export interface Database {
           charter_signed?: boolean
           current_step?: number
           progress?: number
-          appointment_datetime?: string | null
-        }
+          appointment_datetime?: string | null }
       }
-      Charter: {
-        Row: {
+      Charter: { Row: {
           id: number
           audit_type: string
           clientId: string
@@ -127,31 +114,25 @@ export interface Database {
           signed_at: string | null
           content_version: string
           createdAt: string
-          updatedAt: string
-        }
-        Insert: {
-          id?: number
+          updatedAt: string }
+        Insert: { id?: number
           audit_type: string
           clientId: string
           status: string
           signed_at?: string | null
           content_version: string
           createdAt?: string
-          updatedAt?: string
-        }
-        Update: {
-          id?: number
+          updatedAt?: string }
+        Update: { id?: number
           audit_type?: string
           clientId?: string
           status?: string
           signed_at?: string | null
           content_version?: string
           createdAt?: string
-          updatedAt?: string
-        }
+          updatedAt?: string }
       }
-      Client: {
-        Row: {
+      Client: { Row: {
           id: string
           email: string
           password: string
@@ -167,10 +148,8 @@ export interface Database {
           dateSimulation: string
           createdAt: string
           updatedAt: string
-          simulationId: number | null
-        }
-        Insert: {
-          id?: string
+          simulationId: number | null }
+        Insert: { id?: string
           email: string
           password: string
           name: string
@@ -185,10 +164,8 @@ export interface Database {
           dateSimulation?: string
           createdAt?: string
           updatedAt?: string
-          simulationId?: number | null
-        }
-        Update: {
-          id?: string
+          simulationId?: number | null }
+        Update: { id?: string
           email?: string
           password?: string
           name?: string
@@ -203,11 +180,9 @@ export interface Database {
           dateSimulation?: string
           createdAt?: string
           updatedAt?: string
-          simulationId?: number | null
-        }
+          simulationId?: number | null }
       }
-      ClientProduitEligible: {
-        Row: {
+      ClientProduitEligible: { Row: {
           id: string
           clientId: string
           produitId: string
@@ -217,10 +192,8 @@ export interface Database {
           dureeFinale: number | null
           createdAt: string
           updatedAt: string
-          simulationId: number | null
-        }
-        Insert: {
-          id?: string
+          simulationId: number | null }
+        Insert: { id?: string
           clientId: string
           produitId: string
           statut: string
@@ -229,10 +202,8 @@ export interface Database {
           dureeFinale?: number | null
           createdAt?: string
           updatedAt?: string
-          simulationId?: number | null
-        }
-        Update: {
-          id?: string
+          simulationId?: number | null }
+        Update: { id?: string
           clientId?: string
           produitId?: string
           statut?: string
@@ -241,11 +212,9 @@ export interface Database {
           dureeFinale?: number | null
           createdAt?: string
           updatedAt?: string
-          simulationId?: number | null
-        }
+          simulationId?: number | null }
       }
-      Document: {
-        Row: {
+      Document: { Row: {
           id: number
           clientId: string
           filename: string
@@ -259,10 +228,8 @@ export interface Database {
           status: string
           audit_id: string | null
           createdAt: string
-          updatedAt: string
-        }
-        Insert: {
-          id?: number
+          updatedAt: string }
+        Insert: { id?: number
           clientId: string
           filename: string
           original_name: string
@@ -275,10 +242,8 @@ export interface Database {
           status: string
           audit_id?: string | null
           createdAt?: string
-          updatedAt?: string
-        }
-        Update: {
-          id?: number
+          updatedAt?: string }
+        Update: { id?: number
           clientId?: string
           filename?: string
           original_name?: string
@@ -291,11 +256,9 @@ export interface Database {
           status?: string
           audit_id?: string | null
           createdAt?: string
-          updatedAt?: string
-        }
+          updatedAt?: string }
       }
-      Dossier: {
-        Row: {
+      Dossier: { Row: {
           id: number
           type: string
           status: string
@@ -304,10 +267,8 @@ export interface Database {
           createdAt: string
           updatedAt: string
           clientId: string
-          expertId: string | null
-        }
-        Insert: {
-          id?: number
+          expertId: string | null }
+        Insert: { id?: number
           type: string
           status: string
           montant?: number | null
@@ -315,10 +276,8 @@ export interface Database {
           createdAt?: string
           updatedAt?: string
           clientId: string
-          expertId?: string | null
-        }
-        Update: {
-          id?: number
+          expertId?: string | null }
+        Update: { id?: number
           type?: string
           status?: string
           montant?: number | null
@@ -326,11 +285,9 @@ export interface Database {
           createdAt?: string
           updatedAt?: string
           clientId?: string
-          expertId?: string | null
-        }
+          expertId?: string | null }
       }
-      Expert: {
-        Row: {
+      Expert: { Row: {
           id: string
           email: string
           password: string
@@ -351,10 +308,8 @@ export interface Database {
           card_number: string | null
           card_expiry: string | null
           card_cvc: string | null
-          abonnement: string | null
-        }
-        Insert: {
-          id?: string
+          abonnement: string | null }
+        Insert: { id?: string
           email: string
           password: string
           name: string
@@ -374,10 +329,8 @@ export interface Database {
           card_number?: string | null
           card_expiry?: string | null
           card_cvc?: string | null
-          abonnement?: string | null
-        }
-        Update: {
-          id?: string
+          abonnement?: string | null }
+        Update: { id?: string
           email?: string
           password?: string
           name?: string
@@ -397,34 +350,26 @@ export interface Database {
           card_number?: string | null
           card_expiry?: string | null
           card_cvc?: string | null
-          abonnement?: string | null
-        }
+          abonnement?: string | null }
       }
-      ExpertCategory: {
-        Row: {
+      ExpertCategory: { Row: {
           id: number
           name: string
           description: string | null
           createdAt: string
-          updatedAt: string
-        }
-        Insert: {
-          id?: number
+          updatedAt: string }
+        Insert: { id?: number
           name: string
           description?: string | null
           createdAt?: string
-          updatedAt?: string
-        }
-        Update: {
-          id?: number
+          updatedAt?: string }
+        Update: { id?: number
           name?: string
           description?: string | null
           createdAt?: string
-          updatedAt?: string
-        }
+          updatedAt?: string }
       }
-      ExpertProduitEligible: {
-        Row: {
+      ExpertProduitEligible: { Row: {
           id: string
           expertId: string
           produitId: string
@@ -436,10 +381,8 @@ export interface Database {
           filtresVolume: Json | null
           statut: string
           createdAt: string
-          updatedAt: string
-        }
-        Insert: {
-          id?: string
+          updatedAt: string }
+        Insert: { id?: string
           expertId: string
           produitId: string
           niveauExpertise: string
@@ -450,10 +393,8 @@ export interface Database {
           filtresVolume?: Json | null
           statut: string
           createdAt?: string
-          updatedAt?: string
-        }
-        Update: {
-          id?: string
+          updatedAt?: string }
+        Update: { id?: string
           expertId?: string
           produitId?: string
           niveauExpertise?: string
@@ -464,83 +405,63 @@ export interface Database {
           filtresVolume?: Json | null
           statut?: string
           createdAt?: string
-          updatedAt?: string
-        }
+          updatedAt?: string }
       }
-      ExpertSpecialization: {
-        Row: {
+      ExpertSpecialization: { Row: {
           expertId: string
-          specializationId: number
-        }
-        Insert: {
-          expertId: string
-          specializationId: number
-        }
-        Update: {
-          expertId?: string
-          specializationId?: number
-        }
+          specializationId: number }
+        Insert: { expertId: string
+          specializationId: number }
+        Update: { expertId?: string
+          specializationId?: number }
       }
-      Notification: {
-        Row: {
+      Notification: { Row: {
           id: number
           recipient_id: string
           message: string
           status: string
           type_notification: string
           lu: boolean
-          date_notification: string
-        }
-        Insert: {
-          id?: number
+          date_notification: string }
+        Insert: { id?: number
           recipient_id: string
           message: string
           status: string
           type_notification: string
           lu?: boolean
-          date_notification?: string
-        }
-        Update: {
-          id?: number
+          date_notification?: string }
+        Update: { id?: number
           recipient_id?: string
           message?: string
           status?: string
           type_notification?: string
           lu?: boolean
-          date_notification?: string
-        }
+          date_notification?: string }
       }
-      Plan: {
-        Row: {
+      Plan: { Row: {
           id: number
           name: string
           price: number
           description: string | null
           features: string[] | null
           createdAt: string
-          updatedAt: string
-        }
-        Insert: {
-          id?: number
+          updatedAt: string }
+        Insert: { id?: number
           name: string
           price: number
           description?: string | null
           features?: string[] | null
           createdAt?: string
-          updatedAt?: string
-        }
-        Update: {
-          id?: number
+          updatedAt?: string }
+        Update: { id?: number
           name?: string
           price?: number
           description?: string | null
           features?: string[] | null
           createdAt?: string
-          updatedAt?: string
-        }
+          updatedAt?: string }
       }
-      ProduitEligible: {
-        Row: {
+      ProduitEligible: { Row: {
           id: string
           name: string
           description: string | null
@@ -554,10 +475,8 @@ export interface Database {
           documentation: Json | null
           version: string
           category: string | null
-          priority: number | null
-        }
-        Insert: {
-          id?: string
+          priority: number | null }
+        Insert: { id?: string
           name: string
           description?: string | null
           type: string
@@ -570,10 +489,8 @@ export interface Database {
           documentation?: Json | null
           version: string
           category?: string | null
-          priority?: number | null
-        }
-        Update: {
-          id?: string
+          priority?: number | null }
+        Update: { id?: string
           name?: string
           description?: string | null
           type?: string
@@ -586,11 +503,9 @@ export interface Database {
           documentation?: Json | null
           version?: string
           category?: string | null
-          priority?: number | null
-        }
+          priority?: number | null }
       }
-      Question: {
-        Row: {
+      Question: { Row: {
           id: number
           texte: string
           type: string
@@ -604,10 +519,8 @@ export interface Database {
           branchement: Json | null
           importance: number | null
           createdAt: string
-          updatedAt: string
-        }
-        Insert: {
-          id?: number
+          updatedAt: string }
+        Insert: { id?: number
           texte: string
           type: string
           ordre: number
@@ -620,10 +533,8 @@ export interface Database {
           branchement?: Json | null
           importance?: number | null
           createdAt?: string
-          updatedAt?: string
-        }
-        Update: {
-          id?: number
+          updatedAt?: string }
+        Update: { id?: number
           texte?: string
           type?: string
           ordre?: number
@@ -636,63 +547,49 @@ export interface Database {
           branchement?: Json | null
           importance?: number | null
           createdAt?: string
-          updatedAt?: string
-        }
+          updatedAt?: string }
       }
-      RegleEligibilite: {
-        Row: {
+      RegleEligibilite: { Row: {
           id: string
           produitid: string
           questionid: number
           operateur: string
           valeur: Json | null
-          poids: number | null
-        }
-        Insert: {
-          id?: string
+          poids: number | null }
+        Insert: { id?: string
           produitid: string
           questionid: number
           operateur: string
           valeur?: Json | null
-          poids?: number | null
-        }
-        Update: {
-          id?: string
+          poids?: number | null }
+        Update: { id?: string
           produitid?: string
           questionid?: number
           operateur?: string
           valeur?: Json | null
-          poids?: number | null
-        }
+          poids?: number | null }
       }
-      Reponse: {
-        Row: {
+      Reponse: { Row: {
           id: number
           simulationId: number
           questionId: number
           valeur: string
           createdAt: string
-          updatedAt: string
-        }
-        Insert: {
-          id?: number
+          updatedAt: string }
+        Insert: { id?: number
           simulationId: number
           questionId: number
           valeur: string
           createdAt?: string
-          updatedAt?: string
-        }
-        Update: {
-          id?: number
+          updatedAt?: string }
+        Update: { id?: number
           simulationId?: number
           questionId?: number
           valeur?: string
           createdAt?: string
-          updatedAt?: string
-        }
+          updatedAt?: string }
       }
-      Simulation: {
-        Row: {
+      Simulation: { Row: {
           id: number
           clientId: string
           dateCreation: string
@@ -703,10 +600,8 @@ export interface Database {
           abandonA: string | null
           createdAt: string
           updatedAt: string
-          CheminParcouru: Json | null
-        }
-        Insert: {
-          id?: number
+          CheminParcouru: Json | null }
+        Insert: { id?: number
           clientId: string
           dateCreation?: string
           statut: string
@@ -716,10 +611,8 @@ export interface Database {
           abandonA?: string | null
           createdAt?: string
           updatedAt?: string
-          CheminParcouru?: Json | null
-        }
-        Update: {
-          id?: number
+          CheminParcouru?: Json | null }
+        Update: { id?: number
           clientId?: string
           dateCreation?: string
           statut?: string
@@ -729,11 +622,9 @@ export interface Database {
           abandonA?: string | null
           createdAt?: string
           updatedAt?: string
-          CheminParcouru?: Json | null
-        }
+          CheminParcouru?: Json | null }
       }
-      SimulationProcessed: {
-        Row: {
+      SimulationProcessed: { Row: {
           id: string
           clientid: string
           simulationid: number
@@ -745,10 +636,8 @@ export interface Database {
           dureeanalysems: number | null
           statut: string
           createdat: string
-          updatedat: string
-        }
-        Insert: {
-          id?: string
+          updatedat: string }
+        Insert: { id?: string
           clientid: string
           simulationid: number
           dateprocessed?: string
@@ -759,10 +648,8 @@ export interface Database {
           dureeanalysems?: number | null
           statut: string
           createdat?: string
-          updatedat?: string
-        }
-        Update: {
-          id?: string
+          updatedat?: string }
+        Update: { id?: string
           clientid?: string
           simulationid?: number
           dateprocessed?: string
@@ -773,11 +660,9 @@ export interface Database {
           dureeanalysems?: number | null
           statut?: string
           createdat?: string
-          updatedat?: string
-        }
+          updatedat?: string }
       }
-      SimulationResult: {
-        Row: {
+      SimulationResult: { Row: {
           id: number
           clientId: string
           produitEligible: string
@@ -789,10 +674,8 @@ export interface Database {
           dateSimulation: string
           createdAt: string
           updatedAt: string
-          simulationId: number
-        }
-        Insert: {
-          id?: number
+          simulationId: number }
+        Insert: { id?: number
           clientId: string
           produitEligible: string
           tauxInteret?: number | null
@@ -803,10 +686,8 @@ export interface Database {
           dateSimulation?: string
           createdAt?: string
           updatedAt?: string
-          simulationId: number
-        }
-        Update: {
-          id?: number
+          simulationId: number }
+        Update: { id?: number
           clientId?: string
           produitEligible?: string
           tauxInteret?: number | null
@@ -817,11 +698,9 @@ export interface Database {
           dateSimulation?: string
           createdAt?: string
           updatedAt?: string
-          simulationId?: number
-        }
+          simulationId?: number }
       }
-      Specialization: {
-        Row: {
+      Specialization: { Row: {
           id: number
           name: string
           description: string | null
@@ -829,28 +708,23 @@ export interface Database {
           tauxSuccess: number | null
           dureeAverage: number | null
           createdAt: string
-          updatedAt: string
-        }
-        Insert: {
-          id?: number
+          updatedAt: string }
+        Insert: { id?: number
           name: string
           description?: string | null
           conditions?: Json | null
           tauxSuccess?: number | null
           dureeAverage?: number | null
           createdAt?: string
-          updatedAt?: string
-        }
-        Update: {
-          id?: number
+          updatedAt?: string }
+        Update: { id?: number
           name?: string
           description?: string | null
           conditions?: Json | null
           tauxSuccess?: number | null
           dureeAverage?: number | null
           createdAt?: string
-          updatedAt?: string
-        }
+          updatedAt?: string }
       }
     }
   }

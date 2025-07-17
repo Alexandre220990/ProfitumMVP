@@ -1,10 +1,9 @@
-import { Json } from './supabase';
+import { Json } from "./supabase";
 
 /**
  * Interface pour les données publiques d'un expert
  */
-export interface PublicExpert {
-  id: string;
+export interface PublicExpert { id: string;
   name: string;
   email: string;
   phone_number?: string;
@@ -21,19 +20,16 @@ export interface PublicExpert {
   updated_at: string;
   clients?: number;
   audits?: number;
-  category_id?: number;
-}
+  category_id?: number; }
 
 /**
  * Interface complète d'un expert (usage interne uniquement)
  */
-export interface Expert extends PublicExpert {
-  password: string;
+export interface Expert extends PublicExpert { password: string;
   card_number?: string;
   card_expiry?: string;
   card_cvc?: string;
-  abonnement?: string;
-}
+  abonnement?: string; }
 
 export const SPECIALIZATIONS = [
   "Audit TICPE",

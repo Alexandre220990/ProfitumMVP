@@ -1,5 +1,7 @@
-import express, { Request, Response } from 'express';
-import { authMiddleware } from '../middleware/auth';
+import express, { Router, Request, Response } from 'express';
+import { authenticateUser } from '../middleware/authenticate';
+import { AuthUser } from '../types/auth';
+import { supabase } from '../lib/supabase';
 
 const router = express.Router();
 
@@ -8,29 +10,59 @@ const router = express.Router();
  * @route GET /api/me
  * @access Private
  */
-router.get('/', authMiddleware, (req: Request, res: Response) => {
-  if (!req.user) {
-    return res.status(401).json({ success: false, message: 'Utilisateur non authentifié' });
-  }
-  
-  // Retourner les informations de l'utilisateur sans données sensibles
-  return res.json({
-    success: true,
-    data: {
-      user: {
-        id: req.user.id,
-        email: req.user.email,
-        username: req.user.user_metadata.username,
-        type: req.user.type,
-        company_name: req.user.user_metadata.company_name || null,
-        siren: req.user.user_metadata.siren || null,
-        phone_number: req.user.user_metadata.phone_number || null,
-        address: req.user.user_metadata.address || null,
-        city: req.user.user_metadata.city || null,
-        postal_code: req.user.user_metadata.postal_code || null
-      }
+router.get('/', authenticateUser, async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Non authentifié' });
     }
-  });
+
+    const authUser = req.user as AuthUser;
+
+    // Récupérer les informations selon le type d'utilisateur
+    let userData = null;
+    
+    if (authUser.type === 'client') {
+      const { data: client, error } = await supabase
+        .from('Client')
+        .select('*')
+        .eq('id', authUser.id)
+        .single();
+
+      if (error) {
+        console.error('Erreur lors de la récupération des données client:', error);
+        return res.status(500).json({ success: false, message: 'Erreur serveur' });
+      }
+      
+      userData = client;
+    } else if (authUser.type === 'expert') {
+      const { data: expert, error } = await supabase
+        .from('Expert')
+        .select('*')
+        .eq('id', authUser.id)
+        .single();
+
+      if (error) {
+        console.error('Erreur lors de la récupération des données expert:', error);
+        return res.status(500).json({ success: false, message: 'Erreur serveur' });
+      }
+      
+      userData = expert;
+    }
+
+    res.json({
+      success: true,
+      data: {
+        id: authUser.id,
+        email: authUser.email,
+        type: authUser.type,
+        user_metadata: authUser.user_metadata,
+        profile: userData
+      }
+    });
+  } catch (error) {
+    console.error('Erreur lors de la récupération des informations utilisateur:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
 });
 
 export default router; 

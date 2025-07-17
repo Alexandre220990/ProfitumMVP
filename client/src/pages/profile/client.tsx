@@ -1,333 +1,354 @@
-import React, { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import {
-  Building2,
-  FileText,
-  MessageSquare,
-  CheckCircle,
-  Mail,
-  Phone,
-  MapPin,
-  Briefcase,
-  Users,
-  Save
-} from "lucide-react";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { Building2, FileText, MessageSquare, CheckCircle, MapPin, Briefcase, Users, Save, Edit3, X, ArrowRight, Shield, TrendingUp } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { z } from "zod";
 
 const profileSchema = z.object({
   name: z.string().min(2, "Le nom doit contenir au moins 2 caractères"),
   email: z.string().email("Email invalide"),
-  phone: z.string().min(10, "Numéro de téléphone invalide"),
-  company: z.string().min(2, "Nom de l'entreprise requis"),
-  revenuAnnuel: z.string().optional(),
-  secteurActivite: z.string().optional(),
-  nombreEmployes: z.string().optional(),
-  ancienneteEntreprise: z.string().optional(),
-  besoinFinancement: z.string().optional(),
-  typeProjet: z.string().optional(),
+  company: z.string().optional(),
+  phone: z.string().optional(),
 });
 
-const ClientProfile = () => {
+type ProfileData = z.infer<typeof profileSchema>;
+
+const ClientProfile = () => { 
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const { toast } = useToast();
+  
   const [isEditing, setIsEditing] = useState(false);
-
-  const defaultValues = {
-    name: "Marie Martin",
-    email: "marie.martin@entreprise.com",
-    phone: "+33 6 98 76 54 32",
-    company: "Transport Express Sud",
-    revenuAnnuel: "1500000",
-    secteurActivite: "Transport routier",
-    nombreEmployes: "45",
-    ancienneteEntreprise: "10",
-    besoinFinancement: "50000",
-    typeProjet: "Optimisation fiscale",
-  };
-
-  const form = useForm({
-    resolver: zodResolver(profileSchema),
-    defaultValues,
+  const [isSaving, setIsSaving] = useState(false);
+  const [formData, setFormData] = useState<ProfileData>({
+    name: user?.name || "",
+    email: user?.email || "",
+    company: "",
+    phone: "",
   });
 
-  const onSubmit = (data: z.infer<typeof profileSchema>) => {
-    toast({
-      title: "Profil mis à jour",
-      description: "Vos modifications ont été enregistrées avec succès.",
-    });
-    setIsEditing(false);
+  const handleInputChange = (field: keyof ProfileData, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const stats = [
-    { icon: FileText, label: "Dossiers en cours", value: "3" },
-    { icon: CheckCircle, label: "Dossiers complétés", value: "8" },
-    { icon: MessageSquare, label: "Messages", value: "12" },
-    { icon: Building2, label: "Économies réalisées", value: "45k€" },
-  ];
+  const onSubmit = async (data: ProfileData) => { 
+    setIsSaving(true);
+    // Simulation de sauvegarde
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    console.log("Données à sauvegarder:", data);
+    toast({
+      title: "Profil mis à jour",
+      description: "Vos informations ont été sauvegardées avec succès.",
+    });
+    setIsEditing(false);
+    setIsSaving(false);
+  };
+
+  const handleSave = () => {
+    try {
+      const validatedData = profileSchema.parse(formData);
+      onSubmit(validatedData);
+    } catch (error) {
+      toast({
+        title: "Erreur de validation",
+        description: "Veuillez vérifier les informations saisies.",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
-    <div className="container mx-auto p-6 space-y-8">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Mon Profil Client</h1>
-        <Button 
-          onClick={() => setIsEditing(!isEditing)}
-          variant={isEditing ? "destructive" : "default"}
-        >
-          {isEditing ? "Annuler" : "Modifier le profil"}
-        </Button>
-      </div>
-
-      {/* Statistiques */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 my-6">
-        {stats.map((stat, index) => (
-          <Card key={index}>
-            <CardContent className="flex items-center justify-between p-6">
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">{stat.label}</p>
-                <p className="text-2xl font-bold">{stat.value}</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-6xl mx-auto">
+          {/* Header amélioré */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-4 rounded-2xl shadow-lg">
+                    <Users className="w-8 h-8 text-white" />
+                  </div>
+                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white animate-pulse"></div>
+                </div>
+                <div>
+                  <h1 className="text-3xl font-bold text-slate-900">Profil Client</h1>
+                  <p className="text-slate-600">Gérez vos informations personnelles</p>
+                </div>
               </div>
-              <stat.icon className="h-8 w-8 text-muted-foreground" />
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Informations Personnelles</CardTitle>
-              <CardDescription>
-                Vos informations de contact
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nom complet</FormLabel>
-                      <FormControl>
-                        <Input 
-                          {...field} 
-                          disabled={!isEditing}
-                          className="bg-background"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
+              <div className="flex gap-3">
+                <Button 
+                  variant="outline" 
+                  onClick={() => navigate('/dashboard')}
+                  className="hover:shadow-md transition-all duration-200 hover:-translate-y-0.5"
+                >
+                  <Briefcase className="w-4 h-4 mr-2" />
+                  Tableau de bord
+                </Button>
+                <Button 
+                  variant={isEditing ? "destructive" : "default"}
+                  onClick={() => setIsEditing(!isEditing)}
+                  className="hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group"
+                >
+                  {isEditing ? (
+                    <>
+                      <X className="w-4 h-4 mr-2 group-hover:rotate-90 transition-transform duration-200" />
+                      Annuler
+                    </>
+                  ) : (
+                    <>
+                      <Edit3 className="w-4 h-4 mr-2 group-hover:rotate-12 transition-transform duration-200" />
+                      Modifier
+                    </>
                   )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input 
-                          {...field} 
+                </Button>
+              </div>
+            </div>
+          </div>
+          
+          <div className="grid lg:grid-cols-3 gap-8">
+            {/* Informations personnelles améliorées */}
+            <div className="lg:col-span-2 space-y-6">
+              <Card className="bg-white/80 backdrop-blur-sm border border-white/20 shadow-xl hover:shadow-2xl transition-all duration-300">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <div className="p-2 bg-blue-100 rounded-lg">
+                      <Building2 className="w-5 h-5 text-blue-600" />
+                    </div>
+                    Informations personnelles
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-6">
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="space-y-2 group">
+                        <Label htmlFor="name" className="text-sm font-medium text-slate-700 flex items-center gap-2">
+                          <span>Nom complet</span>
+                          {formData.name && formData.name.length >= 2 && (
+                            <CheckCircle className="w-4 h-4 text-green-500 animate-fade-in" />
+                          )}
+                        </Label>
+                        <Input
+                          id="name"
+                          value={formData.name}
+                          onChange={(e) => handleInputChange('name', e.target.value)}
+                          disabled={!isEditing}
+                          placeholder="Votre nom complet"
+                          className="transition-all duration-300 group-hover:shadow-md focus:shadow-lg"
+                        />
+                      </div>
+                      <div className="space-y-2 group">
+                        <Label htmlFor="email" className="text-sm font-medium text-slate-700 flex items-center gap-2">
+                          <span>Email</span>
+                          {formData.email && /\S+@\S+\.\S+/.test(formData.email) && (
+                            <CheckCircle className="w-4 h-4 text-green-500 animate-fade-in" />
+                          )}
+                        </Label>
+                        <Input
+                          id="email"
                           type="email"
+                          value={formData.email}
+                          onChange={(e) => handleInputChange('email', e.target.value)}
                           disabled={!isEditing}
-                          className="bg-background"
+                          placeholder="votre@email.com"
+                          className="transition-all duration-300 group-hover:shadow-md focus:shadow-lg"
                         />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Téléphone</FormLabel>
-                      <FormControl>
-                        <Input 
-                          {...field} 
+                      </div>
+                    </div>
+                    
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="space-y-2 group">
+                        <Label htmlFor="company" className="text-sm font-medium text-slate-700">
+                          Entreprise
+                        </Label>
+                        <Input
+                          id="company"
+                          value={formData.company}
+                          onChange={(e) => handleInputChange('company', e.target.value)}
                           disabled={!isEditing}
-                          className="bg-background"
+                          placeholder="Nom de votre entreprise"
+                          className="transition-all duration-300 group-hover:shadow-md focus:shadow-lg"
                         />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="company"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nom de l'entreprise</FormLabel>
-                      <FormControl>
-                        <Input 
-                          {...field} 
+                      </div>
+                      <div className="space-y-2 group">
+                        <Label htmlFor="phone" className="text-sm font-medium text-slate-700">
+                          Téléphone
+                        </Label>
+                        <Input
+                          id="phone"
+                          value={formData.phone}
+                          onChange={(e) => handleInputChange('phone', e.target.value)}
                           disabled={!isEditing}
-                          className="bg-background"
+                          placeholder="Votre numéro de téléphone"
+                          className="transition-all duration-300 group-hover:shadow-md focus:shadow-lg"
                         />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </CardContent>
-          </Card>
+                      </div>
+                    </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Informations Entreprise</CardTitle>
-              <CardDescription>
-                Les informations concernant votre entreprise
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="revenuAnnuel"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Revenu Annuel</FormLabel>
-                      <FormControl>
-                        <Input 
-                          {...field} 
-                          disabled={!isEditing}
-                          className="bg-background"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                    {isEditing && (
+                      <div className="flex gap-3 pt-4 animate-fade-in">
+                        <Button 
+                          onClick={handleSave} 
+                          className="flex items-center gap-2 hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5"
+                          disabled={isSaving}
+                        >
+                          {isSaving ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                              Sauvegarde...
+                            </>
+                          ) : (
+                            <>
+                              <Save className="w-4 h-4" />
+                              Sauvegarder
+                            </>
+                          )}
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          onClick={() => setIsEditing(false)}
+                          className="hover:shadow-md transition-all duration-200 hover:-translate-y-0.5"
+                        >
+                          Annuler
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
 
-                <FormField
-                  control={form.control}
-                  name="secteurActivite"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Secteur d'activité</FormLabel>
-                      <FormControl>
-                        <Input 
-                          {...field} 
-                          disabled={!isEditing}
-                          className="bg-background"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              {/* Documents et communications améliorés */}
+              <Card className="bg-white/80 backdrop-blur-sm border border-white/20 shadow-xl hover:shadow-2xl transition-all duration-300">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <div className="p-2 bg-green-100 rounded-lg">
+                      <FileText className="w-5 h-5 text-green-600" />
+                    </div>
+                    Documents et communications
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div className="group cursor-pointer" onClick={() => navigate('/documents')}>
+                      <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100 hover:border-blue-200 hover:shadow-md transition-all duration-300 group-hover:-translate-y-1">
+                        <div className="p-3 bg-blue-500 rounded-lg group-hover:scale-110 transition-transform duration-200">
+                          <FileText className="w-6 h-6 text-white" />
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-medium text-slate-900">Documents</h4>
+                          <p className="text-sm text-slate-600">Gérez vos documents</p>
+                        </div>
+                        <ArrowRight className="w-4 h-4 text-blue-500 group-hover:translate-x-1 transition-transform duration-200" />
+                      </div>
+                    </div>
+                    
+                    <div className="group cursor-pointer" onClick={() => navigate('/messagerie')}>
+                      <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100 hover:border-green-200 hover:shadow-md transition-all duration-300 group-hover:-translate-y-1">
+                        <div className="p-3 bg-green-500 rounded-lg group-hover:scale-110 transition-transform duration-200">
+                          <MessageSquare className="w-6 h-6 text-white" />
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-medium text-slate-900">Messages</h4>
+                          <p className="text-sm text-slate-600">Consultez vos conversations</p>
+                        </div>
+                        <ArrowRight className="w-4 h-4 text-green-500 group-hover:translate-x-1 transition-transform duration-200" />
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
 
-                <FormField
-                  control={form.control}
-                  name="nombreEmployes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nombre d'employés</FormLabel>
-                      <FormControl>
-                        <Input 
-                          {...field} 
-                          type="number"
-                          disabled={!isEditing}
-                          className="bg-background"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+            {/* Sidebar améliorée */}
+            <div className="space-y-6">
+              {/* Statut du compte amélioré */}
+              <Card className="bg-white/80 backdrop-blur-sm border border-white/20 shadow-xl hover:shadow-2xl transition-all duration-300">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Shield className="w-5 h-5 text-blue-600" />
+                    Statut du compte
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg border border-green-100">
+                    <div className="p-2 bg-green-500 rounded-lg">
+                      <CheckCircle className="w-4 h-4 text-white" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-sm text-slate-900">Compte vérifié</div>
+                      <div className="text-sm text-slate-600">Email confirmé</div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                    <div className="p-2 bg-blue-500 rounded-lg">
+                      <MapPin className="w-4 h-4 text-white" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-sm text-slate-900">Localisation</div>
+                      <div className="text-sm text-slate-600">France</div>
+                    </div>
+                  </div>
 
-                <FormField
-                  control={form.control}
-                  name="ancienneteEntreprise"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Ancienneté de l'entreprise</FormLabel>
-                      <FormControl>
-                        <Input 
-                          {...field} 
-                          type="number"
-                          disabled={!isEditing}
-                          className="bg-background"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+                  <div className="flex items-center gap-3 p-3 bg-purple-50 rounded-lg border border-purple-100">
+                    <div className="p-2 bg-purple-500 rounded-lg">
+                      <Users className="w-4 h-4 text-white" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-sm text-slate-900">Type de compte</div>
+                      <div className="text-sm text-slate-600">Client</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-              <FormField
-                control={form.control}
-                name="besoinFinancement"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Besoin de financement</FormLabel>
-                    <FormControl>
-                      <Input 
-                        {...field} 
-                        disabled={!isEditing}
-                        className="bg-background"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="typeProjet"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Type de projet</FormLabel>
-                    <FormControl>
-                      <Input 
-                        {...field} 
-                        disabled={!isEditing}
-                        className="bg-background"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </CardContent>
-          </Card>
-
-          {isEditing && (
-            <Button type="submit" className="w-full">
-              <Save className="w-4 h-4 mr-2" />
-              Enregistrer les modifications
-            </Button>
-          )}
-        </form>
-      </Form>
+              {/* Actions rapides améliorées */}
+              <Card className="bg-white/80 backdrop-blur-sm border border-white/20 shadow-xl hover:shadow-2xl transition-all duration-300">
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-indigo-600" />
+                    Actions rapides
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <Button 
+                    variant="outline" 
+                    className="w-full justify-start group hover:shadow-md transition-all duration-200 hover:-translate-y-0.5"
+                    onClick={() => navigate('/produits')}
+                  >
+                    <Briefcase className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform duration-200" />
+                    Voir les produits
+                    <ArrowRight className="w-4 h-4 ml-auto group-hover:translate-x-1 transition-transform duration-200" />
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="w-full justify-start group hover:shadow-md transition-all duration-200 hover:-translate-y-0.5"
+                    onClick={() => navigate('/experts')}
+                  >
+                    <Users className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform duration-200" />
+                    Trouver un expert
+                    <ArrowRight className="w-4 h-4 ml-auto group-hover:translate-x-1 transition-transform duration-200" />
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="w-full justify-start group hover:shadow-md transition-all duration-200 hover:-translate-y-0.5"
+                    onClick={() => navigate('/aide')}
+                  >
+                    <MessageSquare className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform duration-200" />
+                    Support client
+                    <ArrowRight className="w-4 h-4 ml-auto group-hover:translate-x-1 transition-transform duration-200" />
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

@@ -1,23 +1,23 @@
 import express, { Router, Request, Response, NextFunction, RequestHandler } from 'express';
-import { authMiddleware } from '../middleware/auth';
-import { AuthUser, RequestWithUser } from '../types/auth';
+import { authenticateUser } from '../middleware/authenticate';
+import { AuthUser } from '../types/auth';
 import crypto from 'crypto';
 import { supabase } from '../lib/supabase';
 
 const router = express.Router();
 
 // Obtenir tous les audits d'un client
-router.get('/client/:clientId', authMiddleware, (async (req, res) => {
-  const typedReq = req as RequestWithUser;
+router.get('/client/:clientId', authenticateUser, (async (req, res) => {
   try {
-    if (!typedReq.user) {
+    if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
     }
 
+    const authUser = req.user as AuthUser;
     const { clientId } = req.params;
     
     // Vérifier que l'utilisateur a accès à ces informations
-    if (clientId !== typedReq.user.id && typedReq.user.type !== 'expert') {
+    if (clientId !== authUser.id && authUser.type !== 'expert') {
       return res.status(403).json({ message: 'Accès non autorisé' });
     }
 
@@ -62,13 +62,13 @@ router.get('/client/:clientId', authMiddleware, (async (req, res) => {
 }) as RequestHandler);
 
 // Obtenir un audit spécifique par ID
-router.get('/:auditId', authMiddleware, (async (req, res) => {
-  const typedReq = req as RequestWithUser;
+router.get('/:auditId', authenticateUser, (async (req, res) => {
   try {
-    if (!typedReq.user) {
+    if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
     }
     
+    const authUser = req.user as AuthUser;
     const { auditId } = req.params;
     
     // Récupérer l'audit
@@ -92,7 +92,7 @@ router.get('/:auditId', authMiddleware, (async (req, res) => {
     }
     
     // Vérifier que l'utilisateur a accès à cet audit
-    if (audit.clientId !== typedReq.user.id && audit.expertId !== typedReq.user.id && typedReq.user.type !== 'expert') {
+    if (audit.clientId !== authUser.id && audit.expertId !== authUser.id && authUser.type !== 'expert') {
       return res.status(403).json({ message: 'Accès non autorisé' });
     }
 
@@ -110,13 +110,13 @@ router.get('/:auditId', authMiddleware, (async (req, res) => {
 }) as RequestHandler);
 
 // Créer un nouvel audit
-router.post('/', authMiddleware, (async (req, res) => {
-  const typedReq = req as RequestWithUser;
+router.post('/', authenticateUser, (async (req, res) => {
   try {
-    if (!typedReq.user) {
+    if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
     }
     
+    const authUser = req.user as AuthUser;
     const { clientId, type, expertId, documents, eligibility, comments } = req.body;
     
     // Vérifier l'éligibilité
@@ -206,14 +206,83 @@ router.post('/', authMiddleware, (async (req, res) => {
   }
 }) as RequestHandler);
 
-// Mettre à jour le statut d'un audit
-router.put('/:auditId/status', authMiddleware, (async (req, res) => {
-  const typedReq = req as RequestWithUser;
+// Signer la charte pour un audit
+router.post('/sign-charter', authenticateUser, (async (req, res) => {
   try {
-    if (!typedReq.user) {
+    if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
     }
     
+    const authUser = req.user as AuthUser;
+    const { auditId, auditType } = req.body;
+    
+    if (!auditId || !auditType) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'auditId et auditType sont requis' 
+      });
+    }
+    
+    // Vérifier que l'utilisateur a accès à cet audit
+    const { data: audit, error: auditError } = await supabase
+      .from('Audit')
+      .select('*')
+      .eq('id', auditId)
+      .single();
+    
+    if (auditError) {
+      console.error('Erreur lors de la récupération de l\'audit:', auditError);
+      throw auditError;
+    }
+    
+    if (!audit) {
+      return res.status(404).json({ message: 'Audit non trouvé' });
+    }
+    
+    if (audit.clientId !== authUser.id && authUser.type !== 'expert') {
+      return res.status(403).json({ message: 'Accès non autorisé' });
+    }
+    
+    // Mettre à jour l'audit pour marquer la charte comme signée
+    const { data: updatedAudit, error: updateError } = await supabase
+      .from('Audit')
+      .update({
+        charter_signed: true,
+        status: 'en_cours',
+        current_step: 2,
+        updatedAt: new Date().toISOString()
+      })
+      .eq('id', auditId)
+      .select()
+      .single();
+    
+    if (updateError) {
+      console.error('Erreur lors de la mise à jour de l\'audit:', updateError);
+      throw updateError;
+    }
+
+    res.json({
+      success: true,
+      data: { audit_id: auditId },
+      message: 'Charte signée avec succès'
+    });
+  } catch (error) {
+    console.error('Erreur lors de la signature de la charte:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la signature de la charte'
+    });
+  }
+}) as RequestHandler);
+
+// Mettre à jour le statut d'un audit
+router.put('/:auditId/status', authenticateUser, (async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Non authentifié' });
+    }
+    
+    const authUser = req.user as AuthUser;
     const { auditId } = req.params;
     const { status, comments } = req.body;
     
@@ -229,7 +298,7 @@ router.put('/:auditId/status', authMiddleware, (async (req, res) => {
       throw auditError;
     }
     
-    if (audit.expertId !== typedReq.user.id) {
+    if (audit.expertId !== authUser.id) {
       return res.status(403).json({ message: 'Accès non autorisé' });
     }
     
@@ -265,13 +334,13 @@ router.put('/:auditId/status', authMiddleware, (async (req, res) => {
 }) as RequestHandler);
 
 // Télécharger un document pour un audit
-router.post('/:auditId/documents', authMiddleware, (async (req, res) => {
-  const typedReq = req as RequestWithUser;
+router.post('/:auditId/documents', authenticateUser, (async (req, res) => {
   try {
-    if (!typedReq.user) {
+    if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
     }
     
+    const authUser = req.user as AuthUser;
     const { auditId } = req.params;
     const { name, url, type } = req.body;
     
@@ -287,7 +356,7 @@ router.post('/:auditId/documents', authMiddleware, (async (req, res) => {
       throw auditError;
     }
     
-    if (audit.clientId !== typedReq.user.id && audit.expertId !== typedReq.user.id) {
+    if (audit.clientId !== authUser.id && audit.expertId !== authUser.id) {
       return res.status(403).json({ message: 'Accès non autorisé' });
     }
     
@@ -327,13 +396,13 @@ router.post('/:auditId/documents', authMiddleware, (async (req, res) => {
 }) as RequestHandler);
 
 // Supprimer un document
-router.delete('/documents/:documentId', authMiddleware, (async (req, res) => {
-  const typedReq = req as RequestWithUser;
+router.delete('/documents/:documentId', authenticateUser, (async (req, res) => {
   try {
-    if (!typedReq.user) {
+    if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
     }
     
+    const authUser = req.user as AuthUser;
     const { documentId } = req.params;
     
     // Récupérer le document pour vérifier l'accès
@@ -357,7 +426,7 @@ router.delete('/documents/:documentId', authMiddleware, (async (req, res) => {
     
     // Vérifier que l'utilisateur a accès à ce document
     const audit = document.Audit;
-    if (audit.clientId !== typedReq.user.id && audit.expertId !== typedReq.user.id) {
+    if (audit.clientId !== authUser.id && audit.expertId !== authUser.id) {
       return res.status(403).json({ message: 'Accès non autorisé' });
     }
     

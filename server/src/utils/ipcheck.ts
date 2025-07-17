@@ -19,18 +19,27 @@ export function checkNetworkInterfaces() {
       console.log(`  ${family} [${idx}]: ${iface.address} ${internal}`);
       
       if (iface.family === 'IPv6') {
-        console.log(`    URL HTTP: http://[${iface.address}]:5001`);
+        console.log(`    API Python: http://[${iface.address}]:5001`);
+        console.log(`    WebSocket classique: ws://[${iface.address}]:5002`);
+        console.log(`    WebSocket unifié: ws://[${iface.address}]:5003`);
+        console.log(`    API Node: http://[${iface.address}]:5004`);
       } else {
-        console.log(`    URL HTTP: http://${iface.address}:5001`);
+        console.log(`    API Python: http://${iface.address}:5001`);
+        console.log(`    WebSocket classique: ws://${iface.address}:5002`);
+        console.log(`    WebSocket unifié: ws://${iface.address}:5003`);
+        console.log(`    API Node: http://${iface.address}:5004`);
       }
     });
   }
   
   console.log('\n📍 ADRESSES SPÉCIALES:');
   console.log('=====================');
-  console.log('  🔵 IPv4 localhost: http://127.0.0.1:5001');
-  console.log('  🟢 IPv6 localhost: http://[::1]:5001');
-  console.log('  🌐 Hostname local: http://localhost:5001');
+  console.log('  🔵 IPv4 localhost: http://127.0.0.1:5001 (API Python)');
+  console.log('  🟢 IPv6 localhost: http://[::1]:5001 (API Python)');
+  console.log('  🌐 Hostname local: http://localhost:5001 (API Python)');
+  console.log('  🟦 WebSocket classique: ws://[::1]:5002');
+  console.log('  🟪 WebSocket unifié: ws://[::1]:5003');
+  console.log('  🟧 API Node: http://[::1]:5004');
   console.log('=================================\n');
 }
 

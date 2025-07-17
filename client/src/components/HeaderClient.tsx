@@ -1,105 +1,187 @@
-import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
-import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { User, Settings, LogOut, FileText, Briefcase, HelpCircle, MessageSquare } from "lucide-react";
-import { API_URL } from "../config";
+import { useNavigate } from "react-router-dom";
+import { Briefcase, Calendar, MessageSquare, FileText, User, LogOut, Bell, Settings, ChevronDown, Users } from "lucide-react";
+import Button from "@/components/ui/design-system/Button";
+import Badge from "@/components/ui/design-system/Badge";
+import { useToast } from "@/components/ui/toast-notifications";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 interface HeaderClientProps {
   onLogout?: () => void;
 }
 
-export default function HeaderClient({ onLogout }: HeaderClientProps) {
+export default function HeaderClient({ onLogout }: HeaderClientProps) { 
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const { addToast } = useToast();
   
-  const handleLogout = async () => {
-    await logout();
-    if (onLogout) {
-      onLogout();
-    } else {
-      navigate("/"); // Redirection par défaut vers la page d'accueil
+  const handleLogout = async () => { 
+    try {
+      await logout();
+      addToast({
+        type: 'success',
+        title: 'Déconnexion réussie',
+        message: 'Vous avez été déconnecté avec succès',
+        duration: 3000
+      });
+      
+      if (onLogout) {
+        onLogout(); 
+      } else { 
+        navigate("/"); 
+      }
+    } catch (error) {
+      addToast({
+        type: 'error',
+        title: 'Erreur de déconnexion',
+        message: 'Une erreur est survenue lors de la déconnexion',
+        duration: 5000
+      });
     }
   };
 
-  const handleSimulateurClick = async () => {
-    try {
-      const response = await fetch(`${API_URL}/api/simulations/check-recent/${user?.id}`);
-      const data = await response.json();
-      
-      if (data.success && data.data?.simulation) {
-        navigate(`/simulateur?simulationId=${data.data.simulation.id}`);
-      } else {
-        navigate('/simulateur');
-      }
-    } catch (error) {
-      console.error('Erreur lors de la redirection vers le simulateur:', error);
-      navigate('/simulateur');
-    }
+  const handleNavigation = (path: string) => {
+    navigate(path);
   };
 
   return (
-    <header className="bg-white shadow-md py-4 px-8 flex justify-between items-center fixed top-0 left-0 right-0 w-full z-50">
+    <header className="bg-white/90 backdrop-blur-md border-b border-slate-200/60 shadow-sm sticky top-0 z-50">
+      <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+        
+        {/* LOGO */}
+        <div className="flex items-center">
+          <div 
+            onClick={() => navigate(`/dashboard/client/${user?.id}`)} 
+            className="cursor-pointer group"
+          >
+            <img 
+              src="/profitum_logo_texte.png" 
+              alt="Logo Profitum" 
+              className="h-8 cursor-pointer transition-all duration-300 group-hover:scale-105" 
+            />
+          </div>
+        </div>
 
-      {/* LOGO PROFITUM */}
-      <div onClick={() => navigate(`/dashboard/client/${user?.id}`)} className="cursor-pointer">
-        <img src="/profitum_logo_texte.png" alt="Logo Profitum" className="h-14 cursor-pointer transition-transform hover:scale-105" />
-      </div>
-
-      {/* NAVIGATION CLIENT */}
-      <nav className="flex space-x-10 text-gray-700 font-semibold text-lg">
-        <div onClick={() => navigate(`/dashboard/client/${user?.id}`)} 
-          className="flex items-center space-x-2 hover:text-blue-600 transition-colors cursor-pointer">
-          <Briefcase className="h-5 w-5" /> <span>Tableau de bord</span>
-        </div>
-        <div onClick={() => navigate("/messagerie-client/demo")} 
-          className="flex items-center space-x-2 hover:text-blue-600 transition-colors cursor-pointer">
-          <MessageSquare className="h-5 w-5" /> <span>Messagerie</span>
-        </div>
-        <div onClick={() => navigate("/documents-client")} 
-          className="flex items-center space-x-2 hover:text-blue-600 transition-colors cursor-pointer">
-          <FileText className="h-5 w-5" /> <span>Documents</span>
-        </div>
-        <div onClick={() => navigate("/aide-client")} 
-          className="flex items-center space-x-2 hover:text-blue-600 transition-colors cursor-pointer">
-          <HelpCircle className="h-5 w-5" /> <span>Aide</span>
-        </div>
-      </nav>
-
-      {/* BOUTON PROFIL INTERACTIF */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button className="relative rounded-full p-1 border-none shadow-md bg-gray-100 hover:bg-gray-200 transition-all">
-            {/* Contour lumineux au hover */}
-            <div className="absolute inset-0 rounded-full border-2 border-transparent hover:border-blue-500 transition"></div>
-            <Avatar className="h-12 w-12 transition-transform hover:scale-105">
-              <AvatarImage src="/avatar.png" className="rounded-full object-cover" />
-              <AvatarFallback className="flex items-center justify-center bg-blue-500 text-white font-bold text-lg">
-                {user?.username?.slice(0, 2).toUpperCase() || "?"}
-              </AvatarFallback>
-            </Avatar>
+        {/* NAVIGATION PRINCIPALE - CENTRÉE */}
+        <nav className="hidden md:flex items-center justify-center space-x-1 flex-1 max-w-2xl mx-8">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleNavigation(`/dashboard/client/${user?.id}`)}
+            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200"
+          >
+            <Briefcase className="h-4 w-4" />
+            <span>Dashboard</span>
           </Button>
-        </DropdownMenuTrigger>
 
-        {/* MENU DÉROULANT */}
-        <DropdownMenuContent align="end" className="w-56 shadow-lg border rounded-lg">
-          <div className="px-4 py-2 text-gray-900 font-semibold">👋 Bonjour, {user?.username || "Client"} !</div>
-          <DropdownMenuItem onClick={() => navigate(`/profile/client`)} 
-            className="flex items-center px-4 py-2 hover:bg-gray-100 transition cursor-pointer">
-            <User className="mr-2 h-5 w-5" /> <span>Mon profil</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => navigate("/settings")} 
-            className="flex items-center px-4 py-2 hover:bg-gray-100 transition cursor-pointer">
-            <Settings className="mr-2 h-5 w-5" /> <span>Paramètres</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={handleLogout} 
-            className="flex items-center px-4 py-2 text-red-600 hover:bg-red-100 transition cursor-pointer">
-            <LogOut className="mr-2 h-5 w-5" /> <span>Déconnexion</span>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleNavigation("/agenda-client")}
+            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200"
+          >
+            <Calendar className="h-4 w-4" />
+            <span>Agenda</span>
+          </Button>
 
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleNavigation("/messagerie-client")}
+            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200 relative"
+          >
+            <MessageSquare className="h-4 w-4" />
+            <span>Messages</span>
+            <Badge variant="primary" className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs">
+              3
+            </Badge>
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleNavigation("/documents-client")}
+            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200"
+          >
+            <FileText className="h-4 w-4" />
+            <span>Documents</span>
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleNavigation("/marketplace-experts")}
+            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200"
+          >
+            <Users className="h-4 w-4" />
+            <span>Marketplace</span>
+          </Button>
+        </nav>
+
+        {/* ACTIONS UTILISATEUR - Compactes */}
+        <div className="flex items-center space-x-2">
+          {/* Notifications */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              addToast({
+                type: 'info',
+                title: 'Notifications',
+                message: 'Aucune nouvelle notification',
+                duration: 3000
+              });
+            }}
+            className="relative p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200"
+          >
+            <Bell className="h-5 w-5" />
+            <Badge variant="primary" className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-xs">
+              2
+            </Badge>
+          </Button>
+
+          {/* Menu utilisateur */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200"
+              >
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
+                  {user?.username?.charAt(0).toUpperCase() || 'U'}
+                </div>
+                <span className="hidden sm:block">{user?.username || 'Utilisateur'}</span>
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem 
+                onClick={() => handleNavigation("/profile/client")}
+                className="cursor-pointer"
+              >
+                <User className="mr-2 h-4 w-4" />
+                Mon profil
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => handleNavigation("/settings")}
+                className="cursor-pointer"
+              >
+                <Settings className="mr-2 h-4 w-4" />
+                Paramètres
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                onClick={handleLogout}
+                className="cursor-pointer text-red-600 focus:text-red-600"
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Déconnexion
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
     </header>
   );
 }

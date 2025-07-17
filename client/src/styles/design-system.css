@@ -1,0 +1,576 @@
+/* ============================================================================
+   DESIGN SYSTEM - FinancialTracker
+   Basé sur le style existant de la home page
+   ============================================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800;900&display=swap');
+
+/* ============================================================================
+   VARIABLES CSS - PALETTE DE COULEURS
+   ============================================================================ */
+
+:root {
+  /* Couleurs primaires - Bleu professionnel */
+  --color-primary-50: #eff6ff;
+  --color-primary-100: #dbeafe;
+  --color-primary-200: #bfdbfe;
+  --color-primary-300: #93c5fd;
+  --color-primary-400: #60a5fa;
+  --color-primary-500: #3b82f6;
+  --color-primary-600: #2563eb;
+  --color-primary-700: #1d4ed8;
+  --color-primary-800: #1e40af;
+  --color-primary-900: #1e3a8a;
+  --color-primary-950: #172554;
+
+  /* Couleurs secondaires - Indigo */
+  --color-secondary-50: #eef2ff;
+  --color-secondary-100: #e0e7ff;
+  --color-secondary-200: #c7d2fe;
+  --color-secondary-300: #a5b4fc;
+  --color-secondary-400: #818cf8;
+  --color-secondary-500: #6366f1;
+  --color-secondary-600: #4f46e5;
+  --color-secondary-700: #4338ca;
+  --color-secondary-800: #3730a3;
+  --color-secondary-900: #312e81;
+  --color-secondary-950: #1e1b4b;
+
+  /* Couleurs d'accent - Vert succès */
+  --color-success-50: #ecfdf5;
+  --color-success-100: #d1fae5;
+  --color-success-200: #a7f3d0;
+  --color-success-300: #6ee7b7;
+  --color-success-400: #34d399;
+  --color-success-500: #10b981;
+  --color-success-600: #059669;
+  --color-success-700: #047857;
+  --color-success-800: #065f46;
+  --color-success-900: #064e3b;
+  --color-success-950: #022c22;
+
+  /* Couleurs d'erreur - Rouge */
+  --color-error-50: #fef2f2;
+  --color-error-100: #fee2e2;
+  --color-error-200: #fecaca;
+  --color-error-300: #fca5a5;
+  --color-error-400: #f87171;
+  --color-error-500: #ef4444;
+  --color-error-600: #dc2626;
+  --color-error-700: #b91c1c;
+  --color-error-800: #991b1b;
+  --color-error-900: #7f1d1d;
+  --color-error-950: #450a0a;
+
+  /* Couleurs d'avertissement - Orange */
+  --color-warning-50: #fffbeb;
+  --color-warning-100: #fef3c7;
+  --color-warning-200: #fde68a;
+  --color-warning-300: #fcd34d;
+  --color-warning-400: #fbbf24;
+  --color-warning-500: #f59e0b;
+  --color-warning-600: #d97706;
+  --color-warning-700: #b45309;
+  --color-warning-800: #92400e;
+  --color-warning-900: #78350f;
+  --color-warning-950: #451a03;
+
+  /* Couleurs neutres - Slate */
+  --color-neutral-50: #f8fafc;
+  --color-neutral-100: #f1f5f9;
+  --color-neutral-200: #e2e8f0;
+  --color-neutral-300: #cbd5e1;
+  --color-neutral-400: #94a3b8;
+  --color-neutral-500: #64748b;
+  --color-neutral-600: #475569;
+  --color-neutral-700: #334155;
+  --color-neutral-800: #1e293b;
+  --color-neutral-900: #0f172a;
+  --color-neutral-950: #020617;
+
+  /* Couleurs de fond */
+  --color-background-primary: #ffffff;
+  --color-background-secondary: #f8fafc;
+  --color-background-tertiary: #f1f5f9;
+  --color-background-dark: #0f172a;
+  --color-background-dark-secondary: #1e293b;
+
+  /* Couleurs de texte */
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-tertiary: #64748b;
+  --color-text-inverse: #ffffff;
+  --color-text-muted: #94a3b8;
+
+  /* Couleurs de bordure */
+  --color-border-primary: #e2e8f0;
+  --color-border-secondary: #cbd5e1;
+  --color-border-accent: #3b82f6;
+  --color-border-error: #ef4444;
+  --color-border-success: #10b981;
+
+  /* Couleurs d'ombre */
+  --color-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --color-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --color-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --color-shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --color-shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+
+  /* Rayons de bordure */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.5rem;
+  --radius-full: 9999px;
+
+  /* Espacement */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-2xl: 3rem;
+  --spacing-3xl: 4rem;
+
+  /* Transitions */
+  --transition-fast: 150ms ease-in-out;
+  --transition-normal: 300ms ease-in-out;
+  --transition-slow: 500ms ease-in-out;
+
+  /* Z-index */
+  --z-dropdown: 1000;
+  --z-sticky: 1020;
+  --z-fixed: 1030;
+  --z-modal-backdrop: 1040;
+  --z-modal: 1050;
+  --z-popover: 1060;
+  --z-tooltip: 1070;
+  --z-toast: 1080;
+}
+
+/* ============================================================================
+   THÈME SOMBRE
+   ============================================================================ */
+
+[data-theme="dark"] {
+  --color-background-primary: #0f172a;
+  --color-background-secondary: #1e293b;
+  --color-background-tertiary: #334155;
+  --color-background-dark: #ffffff;
+  --color-background-dark-secondary: #f8fafc;
+
+  --color-text-primary: #f8fafc;
+  --color-text-secondary: #cbd5e1;
+  --color-text-tertiary: #94a3b8;
+  --color-text-inverse: #0f172a;
+  --color-text-muted: #64748b;
+
+  --color-border-primary: #334155;
+  --color-border-secondary: #475569;
+}
+
+/* ============================================================================
+   TYPOGRAPHIE
+   ============================================================================ */
+
+.font-display {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 200;
+  letter-spacing: -0.025em;
+}
+
+.font-heading {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+.font-body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 400;
+  line-height: 1.6;
+}
+
+.font-mono {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', 'Cascadia Code', monospace;
+}
+
+/* ============================================================================
+   COMPOSANTS DE BASE
+   ============================================================================ */
+
+/* Boutons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border-radius: var(--radius-lg);
+  font-weight: 500;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  transition: all var(--transition-normal);
+  cursor: pointer;
+  border: none;
+  outline: none;
+  text-decoration: none;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--color-primary-600), var(--color-secondary-600));
+  color: var(--color-text-inverse);
+  box-shadow: var(--color-shadow-md);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--color-primary-700), var(--color-secondary-700));
+  transform: translateY(-1px);
+  box-shadow: var(--color-shadow-lg);
+}
+
+.btn-secondary {
+  background: var(--color-background-secondary);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-primary);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--color-background-tertiary);
+  border-color: var(--color-border-secondary);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--color-text-primary);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: var(--color-background-secondary);
+}
+
+.btn-success {
+  background: linear-gradient(135deg, var(--color-success-600), var(--color-success-700));
+  color: var(--color-text-inverse);
+}
+
+.btn-error {
+  background: linear-gradient(135deg, var(--color-error-600), var(--color-error-700));
+  color: var(--color-text-inverse);
+}
+
+/* Cartes */
+.card {
+  background: var(--color-background-primary);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--color-shadow-sm);
+  transition: all var(--transition-normal);
+  overflow: hidden;
+}
+
+.card:hover {
+  box-shadow: var(--color-shadow-lg);
+  transform: translateY(-2px);
+}
+
+.card-glass {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.card-dark {
+  background: var(--color-background-dark);
+  color: var(--color-text-inverse);
+  border-color: var(--color-border-primary);
+}
+
+/* Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.badge-primary {
+  background: linear-gradient(135deg, var(--color-primary-50), var(--color-secondary-50));
+  color: var(--color-primary-700);
+  border: 1px solid var(--color-primary-200);
+}
+
+.badge-success {
+  background: var(--color-success-50);
+  color: var(--color-success-700);
+  border: 1px solid var(--color-success-200);
+}
+
+.badge-warning {
+  background: var(--color-warning-50);
+  color: var(--color-warning-700);
+  border: 1px solid var(--color-warning-200);
+}
+
+.badge-error {
+  background: var(--color-error-50);
+  color: var(--color-error-700);
+  border: 1px solid var(--color-error-200);
+}
+
+/* Inputs */
+.input {
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-lg);
+  background: var(--color-background-primary);
+  color: var(--color-text-primary);
+  font-size: 0.875rem;
+  transition: all var(--transition-normal);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--color-border-accent);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ============================================================================
+   ANIMATIONS
+   ============================================================================ */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Classes d'animation */
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out;
+}
+
+.animate-slide-in {
+  animation: slideIn 0.3s ease-out;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.2s ease-out;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient 3s ease infinite;
+}
+
+/* ============================================================================
+   UTILITAIRES
+   ============================================================================ */
+
+/* Gradients */
+.gradient-primary {
+  background: linear-gradient(135deg, var(--color-primary-600), var(--color-secondary-600));
+}
+
+.gradient-success {
+  background: linear-gradient(135deg, var(--color-success-500), var(--color-success-600));
+}
+
+.gradient-dark {
+  background: linear-gradient(135deg, var(--color-neutral-900), var(--color-neutral-800));
+}
+
+/* Effets de survol */
+.hover-lift {
+  transition: all var(--transition-normal);
+}
+
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--color-shadow-xl);
+}
+
+.hover-glow {
+  transition: all var(--transition-normal);
+}
+
+.hover-glow:hover {
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+}
+
+/* Backdrop blur */
+.backdrop-blur-sm {
+  backdrop-filter: blur(4px);
+}
+
+.backdrop-blur-md {
+  backdrop-filter: blur(8px);
+}
+
+.backdrop-blur-lg {
+  backdrop-filter: blur(12px);
+}
+
+.backdrop-blur-xl {
+  backdrop-filter: blur(16px);
+}
+
+/* ============================================================================
+   RESPONSIVE
+   ============================================================================ */
+
+@media (max-width: 640px) {
+  .btn {
+    padding: var(--spacing-md) var(--spacing-lg);
+    font-size: 1rem;
+  }
+  
+  .card {
+    border-radius: var(--radius-xl);
+  }
+}
+
+@media (max-width: 768px) {
+  :root {
+    --spacing-xl: 1.5rem;
+    --spacing-2xl: 2rem;
+    --spacing-3xl: 3rem;
+  }
+}
+
+/* ============================================================================
+   ACCESSIBILITÉ
+   ============================================================================ */
+
+/* Focus visible */
+.btn:focus-visible,
+.input:focus-visible,
+.card:focus-visible {
+  outline: 2px solid var(--color-border-accent);
+  outline-offset: 2px;
+}
+
+/* Réduction de mouvement */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Contraste élevé */
+@media (prefers-contrast: high) {
+  .btn {
+    border-width: 2px;
+  }
+  
+  .card {
+    border-width: 2px;
+  }
+}
+
+/* ============================================================================
+   PRINT
+   ============================================================================ */
+
+@media print {
+  .btn,
+  .badge {
+    border: 1px solid #000;
+    background: white !important;
+    color: black !important;
+  }
+  
+  .card {
+    border: 1px solid #000;
+    box-shadow: none;
+  }
+} 

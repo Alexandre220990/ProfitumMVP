@@ -1,186 +1,232 @@
+import { useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './contexts/AuthContext';
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import ProtectedRoute from "@/components/ProtectedRoute";
+import { ClientProvider } from './contexts/ClientContext';
+import { AdminProvider } from './contexts/AdminContext';
+import { reminderService } from './services/reminder-service';
 
-// Pages
-import Home from "@/pages/home-page";
-import HomeTest from "@/pages/home-page-test";
-import HomeRedirect from "@/pages/home-redirect";
-import AuthPage from "@/pages/auth-page";
-import ConnectAdmin from "@/pages/connect-admin";
-import ClientDashboard from "@/pages/dashboard/client";
-import ExpertDashboard from "@/pages/dashboard/expert";
-import AdminDashboard from "@/pages/dashboard/admin";
-import GestionExperts from "@/pages/admin/gestion-experts";
-import GestionClients from "@/pages/admin/gestion-clients";
-import FormulaireExpert from "@/pages/admin/formulaire-expert";
-import ClientDetails from "@/pages/admin/client-details";
-import Simulateur from "@/pages/simulateur";
-import Paiement from "@/pages/Paiement";
-import Growth from "@/pages/Growth";
-import Scale from "@/pages/Scale";
-import Starter from "@/pages/starter";
-import Tarifs from "@/pages/Tarifs";
-import NosServices from "@/pages/Nos-Services";
-import Contact from "@/pages/contact";
-import Experts from "@/pages/experts";
-import ConnexionClient from "@/pages/connexion-client";
-import ConnexionPartner from "@/pages/connexion-partner";
-import CreateAccountClient from "@/pages/create-account-client";
-import CreateAccountExpert from "@/pages/create-account-expert";
-import MessagerieClient from "@/pages/messagerie-client";
-import MessagerieExpert from "@/pages/messagerie-expert";
-import DocumentsClient from "@/pages/documents-client";
-import DocumentsExpert from "@/pages/documents-expert";
-import AideClient from "@/pages/aide-client";
-import AideExpert from "@/pages/aide-expert";
-import Settings from "@/pages/settings";
-import DemandesEnAttente from "@/pages/demandes-en-attente";
-import ProfilClient from "@/pages/ProfilClient";
-import ProfilExpert from "@/pages/ProfilExpert";
-import ConditionsUtilisation from "@/pages/conditions-utilisation";
-import ResultatsPage from "@/pages/resultats";
-import Reports from "@/pages/reports";
-import DossierDetails from "@/pages/dossier-details";
-import DetailsDossier from "@/pages/DetailsDossier";
-import MarketplaceExperts from "@/pages/marketplace-experts";
-import NotFound from "@/pages/not-found";
-import Confirmation from "@/pages/confirmation";
-import ChatbotPage from "@/pages/chatbot";
-import TICPEPage from "@/pages/produits/ticpe";
-import DFSPage from "@/pages/produits/dfs";
-import URSSAFPage from "@/pages/produits/urssaf";
-import SocialProductsPage from "@/pages/produits/social";
-import ExpertProfile from "@/pages/expert-profile";
-import MessagerieExpertDemo from "@/pages/messagerie-expert-demo";
-import ExpertDossier from "@/pages/expert-dossier";
-import MessagerieClientDemo from "@/pages/messagerie-client-demo";
-import KPIPage from "@/pages/dashboard/KPI";
+// Pages principales
+import DashboardClient from './pages/dashboard/client';
+import ClientHome from './pages/dashboard/client-home';
+import ClientAssignments from './pages/dashboard/client-assignments';
+import AgendaClient from './pages/agenda-client';
+import AideClient from './pages/aide-client';
+import AideExpert from './pages/aide-expert';
+import ProfileClient from './pages/profile/client';
+import ProfileExpert from './pages/profile/expert';
+import MessagerieClient from './pages/messagerie-client';
+import MessagerieExpert from './pages/messagerie-expert';
+import ClientDocuments from './pages/dashboard/client-documents';
+import Settings from './pages/settings';
+import Experts from './pages/marketplace/experts';
+import ExpertDetail from './pages/marketplace/expert-detail';
+import MarketplaceExperts from './pages/marketplace-experts';
+import ExpertsVerifies from './pages/experts-verifies';
+import DossierClient from './pages/dossier-client/[id]';
+import ProduitClient from './pages/dossier-client/[produit]/[id]';
+import AuditEnergetique from './pages/produits/audit_energetique';
+import CeeProduct from './pages/produits/cee-product';
+import ComptableProduct from './pages/produits/comptable-product';
+import TicpeProduct from './pages/produits/ticpe-product';
+import UrssafProduct from './pages/produits/urssaf-product';
+import DfsProduct from './pages/produits/dfs-product';
+import FoncierProduct from './pages/produits/foncier-product';
+import MsaProduct from './pages/produits/msa-product';
+import CirProduct from './pages/produits/cir-product';
+import SocialProduct from './pages/produits/social-product';
 
-// Dossiers clients
-import DossierClient2 from "@/pages/dossier-client/2";
-import DossierClient3 from "@/pages/dossier-client/3";
-import DossierClient4 from "@/pages/dossier-client/4";
-import DossierClient5 from "@/pages/dossier-client/5";
-import DossierClient8 from "@/pages/dossier-client/8";
-import DossierClient9 from "@/pages/dossier-client/9";
-import DossierClient10 from "@/pages/dossier-client/10";
-import DossierClient13 from "@/pages/dossier-client/13";
-import DossierClient14 from "@/pages/dossier-client/14";
-import DossierClient16 from "@/pages/dossier-client/16";
-import DossierClient17 from "@/pages/dossier-client/17";
-import ClientDemoDashboard from "@/pages/dashboard/client-demo";
-import ClientAudit from "@/pages/dashboard/client-audit";
-import DossierClientProduit from "@/pages/dossier-client/[produit]/[id]";
+// Pages d'authentification
+import ConnexionClient from './pages/connexion-client';
+import ConnexionExpert from './pages/connexion-expert';
+import CreateAccountClient from './pages/create-account-client';
+import CreateAccountExpert from './pages/create-account-expert';
+import WelcomeExpert from './pages/welcome-expert';
+import DemoConfirmation from './pages/demo-confirmation';
+import ConnectAdmin from './pages/connect-admin';
+import HomePage from './pages/home-page';
+import SimulateurEligibilite from './pages/simulateur-eligibilite';
+import UnauthorizedPage from './pages/unauthorized';
 
-const queryClient = new QueryClient();
+// Admin pages
+import AdminDashboard from './pages/admin/dashboard';
+import AdminClientDetails from './pages/admin/client-details';
+import AdminDocumentationNew from './pages/admin/documentation-new';
+import AdminGestionDossiers from './pages/admin/gestion-dossiers';
+import AdminGestionExperts from './pages/admin/gestion-experts';
+import AdminGestionClients from './pages/admin/gestion-clients';
+import AdminMonitoring from './pages/admin/monitoring';
+import AdminValidationDashboard from './pages/admin/validation-dashboard';
+import AdminFormulaireExpert from './pages/admin/formulaire-expert';
+import AdminDocumentUpload from './pages/admin/admin-document-upload';
+import AdminTerminalTests from './pages/admin/terminal-tests';
+import AdminTests from './pages/admin/tests';
+import MessagerieAdmin from './pages/admin/messagerie-admin';
+
+// Expert pages
+import ExpertDashboard from './pages/expert/dashboard';
+import ExpertDetails from './pages/expert/[id]';
+
+// Analytics page
+import AnalyticsPage from './pages/analytics';
+
+// Components
+import ProtectedRoute from './components/ProtectedRoute';
+import { ToastProvider } from "./components/ui/toast-notifications";
 
 function App() {
+  // Démarrer le service de rappels automatiques
+  useEffect(() => {
+    reminderService.start();
+    
+    // Arrêter le service lors du démontage
+    return () => {
+      reminderService.stop();
+    };
+  }, []);
+
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-          <Routes>
-            {/* Routes publiques */}
-            <Route path="/" element={<HomeRedirect />} />
-            <Route path="/home" element={<Home />} />
-            <Route path="/home-test" element={<HomeTest />} />
-            <Route path="/auth" element={<AuthPage />} />
-            <Route path="/connect-admin" element={<ConnectAdmin />} />
-            <Route path="/connexion-client" element={<ConnexionClient />} />
-            <Route path="/connexion-partner" element={<ConnexionPartner />} />
-            <Route path="/create-account-client" element={<CreateAccountClient />} />
-            <Route path="/create-account-expert" element={<CreateAccountExpert />} />
-            <Route path="/Nos-Services" element={<NosServices />} />
-            <Route path="/experts" element={<Experts />} />
-            <Route path="/tarifs" element={<Tarifs />} />
-            <Route path="/contact" element={<Contact />} />
-            <Route path="/Growth" element={<Growth />} />
-            <Route path="/Scale" element={<Scale />} />
-            <Route path="/Starter" element={<Starter />} />
-            <Route path="/paiement" element={<Paiement />} />
-            <Route path="/conditions-utilisation" element={<ConditionsUtilisation />} />
+    <AuthProvider>
+      <ClientProvider>
+        <AdminProvider>
+          <ToastProvider>
+            <div className="min-h-screen bg-gray-50">
+              <Routes>
+                {/* Routes publiques */}
+                <Route path="/" element={<HomePage />} />
+                <Route path="/home" element={<HomePage />} />
+                <Route path="/simulateur" element={<SimulateurEligibilite />} />
+                <Route path="/experts" element={<Experts />} />
+                <Route path="/experts/:id" element={<ExpertDetail />} />
+                <Route path="/connexion-client" element={<ConnexionClient />} />
+                <Route path="/connexion-expert" element={<ConnexionExpert />} />
+                <Route path="/connect-admin" element={<ConnectAdmin />} />
+                <Route path="/register-client" element={<CreateAccountClient />} />
+                <Route path="/register-expert" element={<CreateAccountExpert />} />
+                <Route path="/welcome-expert" element={<WelcomeExpert />} />
+                <Route path="/demo-confirmation" element={<DemoConfirmation />} />
+                <Route path="/experts-verifies" element={<ExpertsVerifies />} />
+                <Route path="/unauthorized" element={<UnauthorizedPage />} />
+                
+                {/* Routes client directes (avec protection) */}
+                <Route path="/agenda-client" element={<ProtectedRoute requiredType="client" />}>
+                  <Route index element={<AgendaClient />} />
+                </Route>
+                
+                {/* Routes produits directes (avec protection) */}
+                <Route path="/produits" element={<ProtectedRoute requiredType="client" />}>
+                  <Route path="urssaf/:id" element={<UrssafProduct />} />
+                  <Route path="dfs/:id" element={<DfsProduct />} />
+                  <Route path="foncier/:id" element={<FoncierProduct />} />
+                  <Route path="msa/:id" element={<MsaProduct />} />
+                  <Route path="cir/:id" element={<CirProduct />} />
+                  <Route path="social/:id" element={<SocialProduct />} />
+                  <Route path="ticpe/:id" element={<TicpeProduct />} />
+                  <Route path="audit_energetique/:id" element={<AuditEnergetique />} />
+                </Route>
+                <Route path="/aide-client" element={<ProtectedRoute requiredType="client" />}>
+                  <Route index element={<AideClient />} />
+                </Route>
+                <Route path="/messagerie-client" element={<ProtectedRoute requiredType="client" />}>
+                  <Route index element={<MessagerieClient />} />
+                </Route>
+                <Route path="/profile/client" element={<ProtectedRoute requiredType="client" />}>
+                  <Route index element={<ProfileClient />} />
+                </Route>
+                <Route path="/client-document" element={<ProtectedRoute requiredType="client" />}>
+                  <Route index element={<ClientDocuments />} />
+                </Route>
+                <Route path="/documents-client" element={<ProtectedRoute requiredType="client" />}>
+                  <Route index element={<ClientDocuments />} />
+                </Route>
+                <Route path="/settings" element={<ProtectedRoute requiredType="client" />}>
+                  <Route index element={<Settings />} />
+                </Route>
+                <Route path="/experts" element={<ProtectedRoute requiredType="client" />}>
+                  <Route index element={<Experts />} />
+                </Route>
+                <Route path="/marketplace-experts" element={<ProtectedRoute requiredType="client" />}>
+                  <Route index element={<MarketplaceExperts />} />
+                </Route>
 
-            {/* Routes protégées - Client */}
-            <Route path="/dashboard/client/:id" element={<ClientDashboard />} />
-            <Route path="/dashboard/client/demo" element={<ClientDemoDashboard />} />
-            <Route path="/dashboard/client/demo/audit/:id" element={<ClientAudit />} />
-            <Route path="/dashboard/client/demo/KPI" element={<KPIPage />} />
-            <Route path="/messagerie-client/:id" element={<MessagerieClient />} />
-            <Route path="/messagerie-client/demo" element={<MessagerieClientDemo />} />
-            <Route path="/documents-client" element={<DocumentsClient />} />
-            <Route path="/aide-client" element={<AideClient />} />
-            <Route path="/profile/client" element={<ProfilClient />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/simulateur" element={<Simulateur />} />
-            <Route path="/chatbot" element={<ChatbotPage />} />
-            <Route path="/resultats" element={<ResultatsPage />} />
-            <Route path="/reports" element={<Reports />} />
-            <Route path="/dossier" element={<DossierDetails />} />
-            <Route path="/DetailsDossier" element={<DetailsDossier />} />
+                {/* Routes client */}
+                <Route path="/dashboard" element={<ProtectedRoute requiredType="client" />}>
+                  <Route index element={<DashboardClient />} />
+                  <Route path="client" element={<DashboardClient />} />
+                  <Route path="client/:id" element={<DashboardClient />} />
+                  <Route path="client/demo" element={<DashboardClient />} />
+                  <Route path="client-home/:id" element={<ClientHome />} />
+                  <Route path="client-assignments" element={<ClientAssignments />} />
+                  <Route path="agenda-client" element={<AgendaClient />} />
+                  <Route path="aide-client" element={<AideClient />} />
+                  <Route path="profile/client" element={<ProfileClient />} />
+                  <Route path="messagerie-client" element={<MessagerieClient />} />
+                  <Route path="dossier-client/:id" element={<DossierClient />} />
+                  <Route path="dossier-client/:produit/:id" element={<ProduitClient />} />
+                  <Route path="produits/audit_energetique" element={<AuditEnergetique />} />
+                  <Route path="produits/cee-product" element={<CeeProduct />} />
+                  <Route path="produits/comptable-product" element={<ComptableProduct />} />
+                  <Route path="produits/ticpe-product" element={<TicpeProduct />} />
+                  <Route path="produits/urssaf-product" element={<UrssafProduct />} />
+                  <Route path="produits/urssaf/:id" element={<UrssafProduct />} />
+                  <Route path="produits/dfs/:id" element={<DfsProduct />} />
+                  <Route path="produits/foncier/:id" element={<FoncierProduct />} />
+                  <Route path="produits/msa/:id" element={<MsaProduct />} />
+                  <Route path="produits/cir/:id" element={<CirProduct />} />
+                  <Route path="produits/social/:id" element={<SocialProduct />} />
+                  <Route path="produits/ticpe/:id" element={<TicpeProduct />} />
+                  <Route path="produits/audit_energetique/:id" element={<AuditEnergetique />} />
+                </Route>
 
-            {/* Routes protégées - Expert */}
-            <Route path="/dashboard-expert/:id" element={<ExpertDashboard />} />
-            <Route path="/dashboard/expert" element={<ExpertDashboard />} />
-            <Route path="/dashboard/expert/:id" element={<ExpertDashboard />} />
-            <Route path="/dashboard/expert/:id/dossier/:dossierId" element={<ExpertDossier />} />
-            <Route path="/expert/:id" element={<ExpertProfile />} />
-            <Route path="/messagerie-expert" element={<MessagerieExpert />} />
-            <Route path="/messagerie-expert/demo" element={<MessagerieExpertDemo />} />
-            <Route path="/documents-expert" element={<DocumentsExpert />} />
-            <Route path="/aide-expert" element={<AideExpert />} />
-            <Route path="/profile/expert" element={<ProfilExpert />} />
-            <Route path="/demandes-en-attente" element={<DemandesEnAttente />} />
-            <Route path="/marketplace-experts" element={<MarketplaceExperts />} />
+                {/* Routes expert */}
+                <Route path="/expert" element={<ProtectedRoute requiredType="expert" />}>
+                  <Route index element={<ExpertDashboard />} />
+                  <Route path="dashboard" element={<ExpertDashboard />} />
+                  <Route path="analytics" element={<AnalyticsPage />} />
+                  <Route path=":id" element={<ExpertDetails />} />
+                  <Route path="aide-expert" element={<AideExpert />} />
+                  <Route path="profile/expert" element={<ProfileExpert />} />
+                  <Route path="messagerie-expert" element={<MessagerieExpert />} />
+                </Route>
 
-            {/* Routes protégées - Admin */}
-            <Route path="/dashboard/admin" element={<AdminDashboard />} />
-            <Route path="/admin/gestion-experts" element={<GestionExperts />} />
-            <Route path="/admin/gestion-clients" element={<GestionClients />} />
-            <Route path="/admin/expert/nouveau" element={<FormulaireExpert />} />
-            <Route path="/admin/expert/:id/edit" element={<FormulaireExpert />} />
-            <Route path="/admin/client/:id" element={<ClientDetails />} />
+                {/* Route dashboard/expert pour compatibilité */}
+                <Route path="/dashboard/expert" element={<ProtectedRoute requiredType="expert" />}>
+                  <Route index element={<ExpertDashboard />} />
+                  <Route path=":id" element={<ExpertDashboard />} />
+                  <Route path=":id/dossier/:dossierId" element={<ExpertDashboard />} />
+                </Route>
 
-            {/* Routes des dossiers clients */}
-            <Route path="/dossier-client/2" element={<DossierClient2 />} />
-            <Route path="/dossier-client/3" element={<DossierClient3 />} />
-            <Route path="/dossier-client/4" element={<DossierClient4 />} />
-            <Route path="/dossier-client/5" element={<DossierClient5 />} />
-            <Route path="/dossier-client/8" element={<DossierClient8 />} />
-            <Route path="/dossier-client/9" element={<DossierClient9 />} />
-            <Route path="/dossier-client/10" element={<DossierClient10 />} />
-            <Route path="/dossier-client/13" element={<DossierClient13 />} />
-            <Route path="/dossier-client/14" element={<DossierClient14 />} />
-            <Route path="/dossier-client/16" element={<DossierClient16 />} />
-            <Route path="/dossier-client/17" element={<DossierClient17 />} />
-            
-            {/* Route dynamique pour les dossiers clients */}
-            <Route path="/dossier-client/:produit/:id" element={<DossierClientProduit />} />
-
-            {/* Route d'erreur */}
-            <Route path="*" element={<NotFound />} />
-
-            {/* Nouvelle route de confirmation */}
-            <Route path="/confirmation" element={<Confirmation />} />
-
-            {/* Nouvelle route pour la page TICPE */}
-            <Route path="/produits/ticpe" element={<TICPEPage />} />
-            <Route path="/produits/ticpe/:uuid" element={<TICPEPage />} />
-            <Route path="/produits/ticpe/:uuid/:clientUuid" element={<TICPEPage />} />
-            <Route path="/produits/ticpe/:uuid/:clientUuid/:auditUuid" element={<TICPEPage />} />
-            <Route path="/produits/ticpe/:clientProduitId" element={<TICPEPage />} />
-            <Route path="/produits/dfs" element={<DFSPage />} />
-            <Route path="/produits/dfs/:clientProduitId" element={<DFSPage />} />
-            <Route path="/produits/urssaf" element={<URSSAFPage />} />
-            <Route path="/produits/urssaf/:clientProduitId" element={<URSSAFPage />} />
-            <Route path="/produits/social/:productId" element={<SocialProductsPage />} />
-          </Routes>
-          <Toaster />
-          <Sonner />
-      </AuthProvider>
-    </QueryClientProvider>
+                {/* Routes admin */}
+                <Route path="/admin" element={<ProtectedRoute requiredType="admin" />}>
+                  <Route index element={<AdminDashboard />} />
+                  <Route path="dashboard" element={<AdminDashboard />} />
+                  <Route path="analytics" element={<AnalyticsPage />} />
+                  <Route path="clients/:id" element={<AdminClientDetails />} />
+                  <Route path="documentation" element={<AdminDocumentationNew />} />
+                  <Route path="documentation/new" element={<AdminDocumentationNew />} />
+                  <Route path="gestion-dossiers" element={<AdminGestionDossiers />} />
+                  <Route path="gestion-experts" element={<AdminGestionExperts />} />
+                  <Route path="gestion-clients" element={<AdminGestionClients />} />
+                  <Route path="monitoring" element={<AdminMonitoring />} />
+                  <Route path="validation-dashboard" element={<AdminValidationDashboard />} />
+                  <Route path="formulaire-expert" element={<AdminFormulaireExpert />} />
+                  <Route path="admin-document-upload" element={<AdminDocumentUpload />} />
+                  <Route path="terminal-tests" element={<AdminTerminalTests />} />
+                  <Route path="tests" element={<AdminTests />} />
+                  <Route path="messagerie-admin" element={<MessagerieAdmin />} />
+                  {/* Routes avec paramètres */}
+                  <Route path="expert/:id" element={<AdminFormulaireExpert />} />
+                  <Route path="expert/:id/edit" element={<AdminFormulaireExpert />} />
+                  <Route path="client/:id" element={<AdminClientDetails />} />
+                  <Route path="client/:id/edit" element={<AdminClientDetails />} />
+                </Route>
+              </Routes>
+            </div>
+            <Toaster position="top-right" />
+          </ToastProvider>
+        </AdminProvider>
+      </ClientProvider>
+    </AuthProvider>
   );
 }
 

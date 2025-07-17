@@ -1,7 +1,5 @@
-export interface ExpertProduitEligible {
-  id: number;
+export interface ExpertProduitEligible { id: number;
   expertId: string;
   produitEligibleId: number;
   createdAt: string;
-  updatedAt: string;
-} 
+  updatedAt: string; } 

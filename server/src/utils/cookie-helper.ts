@@ -6,9 +6,10 @@ import { Request, Response } from 'express';
  */
 export const configureCookies = (req: Request, res: Response, name: string, value: string, options: any = {}) => {
   // En développement, permettre les cookies sur [::1] et localhost
-  const isLocalhost = 
+  const isLocalhost =
+    req.headers.host?.includes('[::1]') ||
     req.headers.host?.includes('localhost') ||
-    req.headers.host?.includes('[::1]');
+    req.headers.host?.includes('127.0.0.1');
   
   const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
   

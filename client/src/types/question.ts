@@ -1,7 +1,6 @@
-import { Json } from './supabase';
+import { Json } from "./supabase";
 
-export interface Question {
-  id: number;
+export interface Question { id: number;
   texte: string;
   type: string;
   categorie: string;
@@ -14,8 +13,7 @@ export interface Question {
   options?: {
     min?: number;
     max?: number;
-    choix?: string[];
-  };
+    choix?: string[]; };
   createdAt: string;
   updatedAt: string;
 } 

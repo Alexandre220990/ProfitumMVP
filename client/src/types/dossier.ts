@@ -1,5 +1,4 @@
-export interface Dossier {
-  id: number;
+export interface Dossier { id: number;
   type: string;
   status: string;
   montant: number | null;
@@ -11,5 +10,4 @@ export interface Dossier {
   clientName: string;
   documents: Record<string, any> | null;
   current_step: number;
-  progress: number;
-} 
+  progress: number; } 

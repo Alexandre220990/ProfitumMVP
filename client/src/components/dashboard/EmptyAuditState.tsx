@@ -1,18 +1,15 @@
-import { Link } from 'react-router-dom';
-import { useClientId } from '@/hooks/useClientId';
-import { useMemo } from 'react';
+import { Link } from "react-router-dom";
+import { useClientId } from "@/hooks/useClientId";
+import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { MessageSquare, Rocket } from "lucide-react";
 
-interface EmptyAuditStateProps {
-  hasRecentSimulation: boolean;
-}
+interface EmptyAuditStateProps { hasRecentSimulation: boolean; }
 
-export function EmptyAuditState({ hasRecentSimulation }: EmptyAuditStateProps) {
-  const clientId = useClientId();
+export function EmptyAuditState({ hasRecentSimulation }: EmptyAuditStateProps) { const clientId = useClientId();
 
   const redirectUrl = useMemo(() => {
-    return `/simulateur?clientId=${clientId}${hasRecentSimulation ? '&useLast=true' : ''}`;
+    return `/simulateur?clientId=${clientId }${ hasRecentSimulation ? '&useLast=true' : '' }`;
   }, [clientId, hasRecentSimulation]);
 
   return (
@@ -22,25 +19,25 @@ export function EmptyAuditState({ hasRecentSimulation }: EmptyAuditStateProps) {
       </h3>
       <p className="mt-2 text-gray-600 max-w-2xl mx-auto mb-8">
         Pour découvrir les opportunités d'optimisation adaptées à votre entreprise, 
-        vous pouvez soit discuter avec notre chatbot, soit lancer une simulation complète.
+        vous pouvez lancer une simulation complète.
       </p>
       <div className="flex justify-center gap-4">
-        <Link to="/chatbot">
+        <Link to="/simulateur">
           <Button
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
             size="lg"
           >
             <MessageSquare className="w-5 h-5" />
-            Discuter avec le chatbot
+            Lancer une simulation
           </Button>
         </Link>
-        <Link to={redirectUrl}>
+        <Link to={ redirectUrl }>
           <Button
             className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
             size="lg"
           >
             <Rocket className="w-5 h-5" />
-            {hasRecentSimulation ? "Reprendre la simulation" : "Lancer une simulation"}
+            { hasRecentSimulation ? "Reprendre la simulation" : "Lancer une simulation" }
           </Button>
         </Link>
       </div>

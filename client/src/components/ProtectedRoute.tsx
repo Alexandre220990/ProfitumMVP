@@ -1,12 +1,11 @@
-import { Navigate, useLocation } from "react-router-dom";
+import { Navigate, useLocation, Outlet } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 
 interface ProtectedRouteProps {
-  children: React.ReactNode;
-  requiredType?: "client" | "expert";
+  requiredType?: "client" | "expert" | "admin";
 }
 
-export default function ProtectedRoute({ children, requiredType }: ProtectedRouteProps) {
+export default function ProtectedRoute({ requiredType }: ProtectedRouteProps) {
   const { user, isLoading } = useAuth();
   const location = useLocation();
 
@@ -19,12 +18,19 @@ export default function ProtectedRoute({ children, requiredType }: ProtectedRout
   }
 
   if (!user) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    // Rediriger vers la bonne page de connexion selon le type requis
+    if (requiredType === 'expert') {
+      return <Navigate to="/connexion-expert" state={{ from: location }} replace />;
+    } else if (requiredType === 'admin') {
+      return <Navigate to="/connect-admin" state={{ from: location }} replace />;
+    } else {
+      return <Navigate to="/connexion-client" state={{ from: location }} replace />;
+    }
   }
 
   if (requiredType && user.type !== requiredType) {
     return <Navigate to="/unauthorized" replace />;
   }
 
-  return <>{children}</>;
+  return <Outlet />;
 } 

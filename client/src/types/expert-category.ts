@@ -1,7 +1,5 @@
-export interface ExpertCategory {
-  id: number;
+export interface ExpertCategory { id: number;
   nom: string;
   description: string | null;
   createdAt: string;
-  updatedAt: string;
-} 
+  updatedAt: string; } 

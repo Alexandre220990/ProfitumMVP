@@ -1,0 +1,1 @@
+import MonitoringPage from "@/pages/admin/monitoring";

@@ -1,5 +1,4 @@
-export interface SimulationResult {
-  id: number;
+export interface SimulationResult { id: number;
   clientId: string;
   produitEligible: string | null;
   tauxInteret: number | null;
@@ -10,5 +9,4 @@ export interface SimulationResult {
   dateSimulation: string | null;
   simulationId: number | null;
   createdAt: string;
-  updatedAt: string;
-} 
+  updatedAt: string; } 

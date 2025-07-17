@@ -1,105 +1,66 @@
-import { useState, useEffect } from 'react';
-import { useAuth } from './use-auth';
-import { get, post } from '@/lib/api';
-import { useToast } from './use-toast';
+import { useState, useEffect } from "react";
+import { useAuth } from "./use-auth";
+import { get, post } from "@/lib/api";
+import { useToast } from "./use-toast";
 
-interface AuditProgress {
-  current_step: number;
+interface AuditProgress { current_step: number;
   progress: Record<string, any>;
   signed_charters: Record<string, boolean>;
   selected_experts: Record<string, any>;
-  documents: Record<string, any>;
-}
+  documents: Record<string, any>; }
 
-interface ApiResponse<T> {
-  success: boolean;
+interface ApiResponse<T> { success: boolean;
   data: T;
-  error?: string;
-}
+  message?: string; }
 
-export function useAuditProgress(requestId: string = 'default') {
-  const { user } = useAuth();
+export function useAuditProgress(requestId: string = 'default') { const { user } = useAuth();
   const { toast } = useToast();
   const [progress, setProgress] = useState<AuditProgress | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchProgress = async () => {
+  useEffect(() => { const fetchProgress = async () => {
       if (!user?.id) return;
 
       try {
-        const response = await get<ApiResponse<AuditProgress>>(`/api/audit-progress/${requestId}`);
-        if (response.success) {
-          setProgress(response.data);
-        } else {
-          throw new Error(response.error || "Erreur lors de la récupération de la progression");
-        }
-      } catch (err) {
-        console.error("Erreur:", err);
+        const response = await get<ApiResponse<AuditProgress>>(`/api/audit-progress/${requestId }`);
+        if (response.success && response.data?.data) { setProgress(response.data.data); } else { throw new Error(response.message || "Erreur lors de la récupération de la progression"); }
+      } catch (err) { console.error("Erreur: ", err);
         setError(err instanceof Error ? err.message : "Une erreur est survenue");
         toast({
-          title: "Erreur",
-          description: "Impossible de charger la progression de l'audit",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
+          title: "Erreur", description: "Impossible de charger la progression de l'audit", variant: "destructive" });
+      } finally { setLoading(false); }
     };
 
     fetchProgress();
   }, [user?.id, requestId, toast]);
 
-  const updateProgress = async (updates: Partial<AuditProgress>) => {
-    if (!user?.id) return;
+  const updateProgress = async (updates: Partial<AuditProgress>) => { if (!user?.id) return;
 
     try {
-      const response = await post<ApiResponse<AuditProgress>>(`/api/audit-progress/${requestId}`, updates);
-      if (response.success) {
-        setProgress(response.data);
+      const response = await post<ApiResponse<AuditProgress>>(`/api/audit-progress/${requestId }`, updates);
+      if (response.success && response.data?.data) { setProgress(response.data.data);
         toast({
-          title: "Succès",
-          description: "Progression mise à jour avec succès",
-        });
-      } else {
-        throw new Error(response.error || "Erreur lors de la mise à jour de la progression");
-      }
-    } catch (err) {
-      console.error("Erreur:", err);
+          title: "Succès", description: "Progression mise à jour avec succès" });
+      } else { throw new Error(response.message || "Erreur lors de la mise à jour de la progression"); }
+    } catch (err) { console.error("Erreur: ", err);
       toast({
-        title: "Erreur",
-        description: "Impossible de mettre à jour la progression",
-        variant: "destructive",
-      });
+        title: "Erreur", description: "Impossible de mettre à jour la progression", variant: "destructive" });
       throw err;
     }
   };
 
-  const updateStep = async (step: number) => {
-    await updateProgress({ current_step: step });
+  const updateStep = async (step: number) => { await updateProgress({ current_step: step });
   };
 
-  const updateSignedCharters = async (charters: Record<string, boolean>) => {
-    await updateProgress({ signed_charters: charters });
+  const updateSignedCharters = async (charters: Record<string, boolean>) => { await updateProgress({ signed_charters: charters });
   };
 
-  const updateSelectedExperts = async (experts: Record<string, any>) => {
-    await updateProgress({ selected_experts: experts });
+  const updateSelectedExperts = async (experts: Record<string, any>) => { await updateProgress({ selected_experts: experts });
   };
 
-  const updateDocuments = async (documents: Record<string, any>) => {
-    await updateProgress({ documents });
+  const updateDocuments = async (documents: Record<string, any>) => { await updateProgress({ documents });
   };
 
-  return {
-    progress,
-    loading,
-    error,
-    updateProgress,
-    updateStep,
-    updateSignedCharters,
-    updateSelectedExperts,
-    updateDocuments,
-  };
+  return { progress, loading, error, updateProgress, updateStep, updateSignedCharters, updateSelectedExperts, updateDocuments };
 } 

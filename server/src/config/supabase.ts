@@ -1,16 +1,17 @@
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
+import path from 'path';
 import https from 'https';
 
-dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 // Configuration Supabase
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+const supabaseAnonKey = process.env.SUPABASE_KEY;
 
 if (!supabaseUrl || !supabaseServiceRoleKey || !supabaseAnonKey) {
-  throw new Error('Configuration Supabase manquante: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY et SUPABASE_ANON_KEY sont requis');
+  throw new Error('Configuration Supabase manquante: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY et SUPABASE_KEY sont requis');
 }
 
 // Configuration HTTPS

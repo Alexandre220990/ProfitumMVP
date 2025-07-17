@@ -1,11 +1,8 @@
-import { Users, Folder, RefreshCw, BarChart, PhoneCall, TrendingUp, ShieldCheck, HelpCircle, Star, UserCircle } from "lucide-react";
-import { useLocation, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const Growth = () => {
-  const location = useLocation();
 
   return (
     <div className="container mx-auto p-4">
@@ -26,7 +23,6 @@ const Growth = () => {
         </Button>
       </div>
     </div>
-  );
-};
+  ); };
 
 export default Growth;

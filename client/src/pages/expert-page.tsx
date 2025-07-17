@@ -1,40 +1,29 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
 import HeaderClient from "@/components/HeaderClient";
 import { FolderOpen, Calendar, User, Briefcase, FileText, Phone, ArrowLeft } from "lucide-react";
 import { get } from "@/lib/api"; // Utilisation de la fonction get depuis lib/api.ts
 
-export default function ExpertPage() {
-  const { id } = useParams();
+export default function ExpertPage() { const { id } = useParams();
   const [dossier, setDossier] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
-  useEffect(() => {
-    const fetchDossier = async () => {
+  useEffect(() => { const fetchDossier = async () => {
       try {
-        const response = await get(`/api/dossiers/${id}`);
+        const response = await get(`/api/dossiers/${id }`);
         setDossier(response);
-      } catch (error) {
-        console.error("Erreur lors de la récupération du dossier:", error);
-      } finally {
-        setLoading(false);
-      }
+      } catch (error) { console.error("Erreur lors de la récupération du dossier: ", error); } finally { setLoading(false); }
     };
 
     fetchDossier();
   }, [id]);
 
-  if (loading) {
-    return <p className="text-center text-gray-600 mt-10">Chargement...</p>;
-  }
+  if (loading) { return <p className="text-center text-gray-600 mt-10">Chargement...</p>; }
 
-  if (!dossier) {
-    return <p className="text-center text-red-500 mt-10">❌ Dossier introuvable.</p>;
-  }
+  if (!dossier) { return <p className="text-center text-red-500 mt-10">❌ Dossier introuvable.</p>; }
 
   const progressionPourcentage = dossier.progression?.length
     ? (dossier.progression.filter((e: any) => e.completed).length / dossier.progression.length) * 100
@@ -59,14 +48,14 @@ export default function ExpertPage() {
             <CardContent className="p-8 space-y-6">
               <div className="flex items-center space-x-3">
                 <FolderOpen className="w-7 h-7 text-blue-600" />
-                <h2 className="text-2xl font-semibold">{dossier.nom}</h2>
+                <h2 className="text-2xl font-semibold">{ dossier.nom }</h2>
               </div>
               <div className="text-gray-600 space-y-2">
-                <p className="flex items-center gap-2"><Calendar className="w-5 h-5 text-gray-500" /> Date de création: {dossier.date}</p>
-                <p className="flex items-center gap-2"><User className="w-5 h-5 text-gray-500" /> Expert: {dossier.expert}</p>
-                <p className="flex items-center gap-2"><Briefcase className="w-5 h-5 text-gray-500" /> Produit: {dossier.produit}</p>
-                <p className="flex items-center gap-2"><FileText className="w-5 h-5 text-gray-500" /> Documents: {dossier.documents?.join(", ") || "Aucun document disponible"}</p>
-                <p className="flex items-center gap-2"><Phone className="w-5 h-5 text-gray-500" /> Contact: <a href={`mailto:${dossier.contact?.email}`} className="text-blue-600 font-medium">{dossier.contact?.email || "Non renseigné"}</a> | {dossier.contact?.tel || "Non renseigné"}</p>
+                <p className="flex items-center gap-2"><Calendar className="w-5 h-5 text-gray-500" /> Date de création: { dossier.date }</p>
+                <p className="flex items-center gap-2"><User className="w-5 h-5 text-gray-500" /> Expert: { dossier.expert }</p>
+                <p className="flex items-center gap-2"><Briefcase className="w-5 h-5 text-gray-500" /> Produit: { dossier.produit }</p>
+                <p className="flex items-center gap-2"><FileText className="w-5 h-5 text-gray-500" /> Documents: { dossier.documents?.join(", ") || "Aucun document disponible" }</p>
+                <p className="flex items-center gap-2"><Phone className="w-5 h-5 text-gray-500" /> Contact: <a href={ `mailto:${dossier.contact?.email }`} className="text-blue-600 font-medium">{ dossier.contact?.email || "Non renseigné" }</a> | { dossier.contact?.tel || "Non renseigné" }</p>
               </div>
             </CardContent>
           </Card>
@@ -74,13 +63,13 @@ export default function ExpertPage() {
           <Card className="shadow-lg bg-white rounded-xl">
             <CardContent className="p-8">
               <h2 className="text-2xl font-semibold mb-4">📊 Progression du dossier</h2>
-              <Progress value={progressionPourcentage} className="mb-6 h-4 bg-gray-200 rounded-full" />
+              <Progress value={ progressionPourcentage } className="mb-6 h-4 bg-gray-200 rounded-full" />
               <ul className="space-y-3">
-                {dossier.progression?.length > 0 ? (
+                { dossier.progression?.length > 0 ? (
                   dossier.progression.map((step: any, index: number) => (
-                    <li key={index} className="flex items-center space-x-3">
-                      <div className={`w-5 h-5 rounded-full ${step.completed ? "bg-green-500" : "bg-gray-300"}`} />
-                      <p className={`${step.completed ? "text-gray-900 font-semibold" : "text-gray-500"}`}>{step.étape}</p>
+                    <li key={index } className="flex items-center space-x-3">
+                      <div className={ `w-5 h-5 rounded-full ${step.completed ? "bg-green-500" : "bg-gray-300" }`} />
+                      <p className={ `${step.completed ? "text-gray-900 font-semibold" : "text-gray-500" }`}>{ step.étape }</p>
                     </li>
                   ))
                 ) : (

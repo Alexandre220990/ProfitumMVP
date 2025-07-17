@@ -1,11 +1,21 @@
-import express, { Response, RequestHandler } from 'express';
-import { authMiddleware, getAuthHeaders } from '../middleware/auth';
-import { RequestWithUser, AuthUser, BaseUser, UserMetadata } from '../types/auth';
+import express, { Response, Request } from 'express';
 import crypto from 'crypto';
 import { supabase } from '../lib/supabase';
 const fetch = require('node-fetch');
 import { PYTHON_API_URL } from '../config/api';
 import jwt from 'jsonwebtoken';
+import { authenticateUser } from '../middleware/authenticate';
+
+// Types pour l'authentification
+interface AuthUser {
+  id: string;
+  email: string;
+  type: 'client' | 'expert' | 'admin';
+  user_metadata?: any;
+  app_metadata?: any;
+  aud?: string;
+  created_at?: string;
+}
 
 interface TableTestResult {
   status: string;
@@ -27,8 +37,7 @@ const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || "EhAhS26BXDsowVPe";
 
 // Route de test pour vérifier les tables
-router.get('/test-tables', (async (req, res) => {
-  const typedReq = req as RequestWithUser;
+router.get('/test-tables', async (req: Request, res: Response) => {
   try {
     console.log('Test des tables...');
     const results: Record<string, any> = {};
@@ -83,7 +92,6 @@ router.get('/test-tables', (async (req, res) => {
           }
         } catch (error) {
           console.error(`Erreur lors de l'échantillonnage de ${table}:`, error);
-          // Ne pas écraser le statut si l'échantillonnage échoue
           tableTest.sampleError = error instanceof Error ? error.message : 'Erreur inconnue';
         }
         
@@ -116,10 +124,10 @@ router.get('/test-tables', (async (req, res) => {
       error: error instanceof Error ? error.message : 'Erreur inconnue'
     });
   }
-}) as RequestHandler);
+});
 
 // Vérifier s'il existe une simulation récente pour le client (SANS AUTHENTIFICATION)
-router.get('/check-recent/:clientId', (async (req, res) => {
+router.get('/check-recent/:clientId', async (req: Request, res: Response) => {
   try {
     const { clientId } = req.params;
     console.log('🔍 Vérification simulation récente pour le client:', clientId);
@@ -153,7 +161,6 @@ router.get('/check-recent/:clientId', (async (req, res) => {
     
     if (processedError) {
       console.error('⚠️ Erreur lors de la vérification des simulations traitées:', processedError);
-      // Ne pas interrompre le flux si cette requête échoue
     }
 
     // Déterminer s'il y a une simulation récente
@@ -167,7 +174,6 @@ router.get('/check-recent/:clientId', (async (req, res) => {
       processedFound: Array.isArray(recentProcessed) && recentProcessed.length > 0
     });
 
-    // Formater la réponse
     res.json({
       success: true,
       hasRecentSimulation,
@@ -184,305 +190,303 @@ router.get('/check-recent/:clientId', (async (req, res) => {
       error: error instanceof Error ? error.message : 'Erreur inconnue'
     });
   }
-}) as RequestHandler);
+});
 
-// Route pour créer ou récupérer une simulation
-router.post('/', authMiddleware, (async (req, res) => {
-  const typedReq = req as RequestWithUser;
+// Route pour créer une simulation
+router.post('/', authenticateUser, async (req: Request, res: Response) => {
   try {
-    console.log('[POST /api/simulations] Requête reçue');
-    console.log('Headers:', req.headers);
-    console.log('Body reçu:', req.body);
-
-    const { client_id } = req.body;
-
-    if (!client_id) {
-      console.log('❌ Client ID manquant');
-      return res.status(400).json({ 
-        success: false, 
-        message: "L'ID du client est requis" 
-      });
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Non authentifié' });
     }
 
-    // Vérifier que l'utilisateur a le droit de créer une simulation pour ce client
-    if (typedReq.user?.id !== client_id) {
-      console.log('❌ Accès non autorisé');
+    const authUser = req.user as AuthUser;
+    const { clientId, type, data } = req.body;
+
+    // Vérifier que l'utilisateur a le droit de créer une simulation
+    if (authUser.type === 'client' && authUser.id !== clientId) {
       return res.status(403).json({ 
         success: false, 
-        message: "Accès non autorisé" 
+        message: 'Vous ne pouvez créer des simulations que pour votre propre compte' 
       });
     }
 
-    console.log(`[POST /api/simulations] Client ID reçu : ${client_id}`);
-    
-    // Créer une nouvelle simulation
-    const now = new Date().toISOString();
-    
-    const { data: simulation, error } = await supabase
+    console.log('🚀 Création d\'une nouvelle simulation:', { clientId, type, userId: authUser.id });
+
+    // Créer la simulation en base
+    const { data: simulation, error: simulationError } = await supabase
       .from('Simulation')
       .insert({
-        clientId: client_id,
-        statut: 'en_cours',
-        dateCreation: now,
-        createdAt: now,
-        updatedAt: now
+        clientId,
+        type,
+        data: data || {},
+        status: 'pending',
+        createdBy: authUser.id
       })
       .select()
       .single();
-    
-    if (error) {
-      console.error('❌ Erreur lors de la création de la simulation:', error);
-      return res.status(500).json({
+
+    if (simulationError) {
+      console.error('❌ Erreur lors de la création de la simulation:', simulationError);
+      throw simulationError;
+    }
+
+    console.log('✅ Simulation créée avec succès:', simulation.id);
+
+    // Envoyer à l'API Python pour analyse
+    try {
+      const startTime = Date.now();
+      
+      const response = await fetch(`${PYTHON_API_URL}/analyze`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          simulation_id: simulation.id,
+          client_id: clientId,
+          answers: data,
+          type: type
+        })
+      });
+
+      const responseTime = Date.now() - startTime;
+      console.log(`⏱️ Temps de réponse Python: ${responseTime}ms`);
+
+      if (!response.ok) {
+        throw new Error(`Erreur API Python: ${response.status} ${response.statusText}`);
+      }
+
+      const pythonResponse: PythonAnalyseResponse = await response.json();
+      console.log('📊 Réponse Python reçue:', pythonResponse);
+
+      // Mettre à jour la simulation avec les résultats
+      const { error: updateError } = await supabase
+        .from('Simulation')
+        .update({
+          status: 'completed',
+          results: pythonResponse,
+          processedAt: new Date().toISOString()
+        })
+        .eq('id', simulation.id);
+
+      if (updateError) {
+        console.error('❌ Erreur lors de la mise à jour de la simulation:', updateError);
+      }
+
+      // Enregistrer les produits éligibles
+      if (pythonResponse.eligibleProduitIds && pythonResponse.eligibleProduitIds.length > 0) {
+        await enregistrerProduitsEligibles(clientId, simulation.id, pythonResponse.eligibleProduitIds);
+      }
+
+      res.json({
+        success: true,
+        data: {
+          simulation: {
+            ...simulation,
+            results: pythonResponse
+          }
+        },
+        message: 'Simulation créée et analysée avec succès'
+      });
+
+    } catch (pythonError) {
+      console.error('❌ Erreur lors de l\'analyse Python:', pythonError);
+      
+      // Marquer la simulation comme échouée
+      await supabase
+        .from('Simulation')
+        .update({
+          status: 'failed',
+          error: pythonError instanceof Error ? pythonError.message : 'Erreur inconnue'
+        })
+        .eq('id', simulation.id);
+
+      res.status(500).json({
         success: false,
-        message: 'Erreur lors de la création de la simulation'
+        message: 'Erreur lors de l\'analyse de la simulation',
+        error: pythonError instanceof Error ? pythonError.message : 'Erreur inconnue'
       });
     }
-    
-    console.log('✅ Simulation créée:', simulation);
-    
-    return res.status(200).json({
-      success: true,
-      data: {
-        simulation,
-        message: 'Simulation créée avec succès'
-      }
-    });
+
   } catch (error) {
-    console.error('❌ Exception générale dans POST /api/simulations:', error);
-    
-    return res.status(500).json({
+    console.error('❌ Erreur lors de la création de la simulation:', error);
+    res.status(500).json({
       success: false,
-      message: error instanceof Error ? error.message : 'Erreur inconnue lors du traitement de la demande'
+      message: 'Erreur lors de la création de la simulation',
+      error: error instanceof Error ? error.message : 'Erreur inconnue'
     });
   }
-}) as RequestHandler);
+});
 
-// Fonction pour enregistrer une simulation traitée
-async function enregistrerSimulationTraitee(
-  clientId: string,
-  simulationId: number, // L'ID généré par PostgreSQL
-  produitsEligiblesIds: string[],
-  produitsDetails: any[],
-  rawAnswers: any,
-  score: number,
-  dureeAnalyseMs: number
-) {
+// Route pour récupérer les simulations d'un client
+router.get('/client/:clientId', authenticateUser, async (req: Request, res: Response) => {
   try {
-    console.log(`Enregistrement de la simulation traitée ${simulationId} pour le client ${clientId}`);
-    
-    const now = new Date().toISOString();
-    
-    const { data, error } = await supabase
-      .from('SimulationProcessed')
-      .insert({
-        clientid: clientId,
-        simulationid: simulationId,
-        dateprocessed: now,
-        produitseligiblesids: produitsEligiblesIds,
-        produitsdetails: produitsDetails,
-        rawanswers: rawAnswers,
-        score: score,
-        dureeanalysems: dureeAnalyseMs,
-        statut: 'completed',
-        createdat: now,
-        updatedat: now
-      })
-      .select()
-      .single();
-      
-    if (error) {
-      console.error('Erreur lors de l\'enregistrement de la simulation traitée:', error);
-      return null;
-    }
-    
-    console.log('Simulation traitée enregistrée avec succès:', data);
-    return data;
-  } catch (error) {
-    console.error('Exception lors de l\'enregistrement de la simulation traitée:', error);
-    return null;
-  }
-}
-
-// Récupérer les simulations d'un client
-router.get('/client/:clientId', authMiddleware, (async (req, res) => {
-  const typedReq = req as RequestWithUser;
-  try {
-    if (!typedReq.user) {
-      return res.status(401).json({ message: 'Utilisateur non authentifié' });
-    }
-    
-    if (typedReq.params.clientId !== typedReq.user.id && typedReq.user.type !== 'expert') {
-      return res.status(403).json({ message: 'Accès non autorisé' });
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Non authentifié' });
     }
 
-    // Récupérer les simulations avec leurs résultats associés
+    const authUser = req.user as AuthUser;
+    const { clientId } = req.params;
+
+    // Vérifier les permissions
+    if (authUser.type === 'client' && authUser.id !== clientId) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Vous ne pouvez voir que vos propres simulations' 
+      });
+    }
+
+    console.log('🔍 Récupération des simulations pour le client:', clientId);
+
     const { data: simulations, error } = await supabase
       .from('Simulation')
-      .select(`
-        *,
-        SimulationResult (*)
-      `)
-      .eq('clientId', typedReq.params.clientId)
-      .order('createdAt', { ascending: false });
+      .select('*')
+      .eq('clientId', clientId)
+      .order('created_at', { ascending: false });
 
     if (error) {
+      console.error('❌ Erreur lors de la récupération des simulations:', error);
       throw error;
     }
 
     res.json({
       success: true,
-      data: simulations
+      data: {
+        simulations: simulations || []
+      }
     });
+
   } catch (error) {
-    console.error('Erreur lors de la récupération des simulations:', error);
+    console.error('❌ Erreur lors de la récupération des simulations:', error);
     res.status(500).json({
       success: false,
-      message: 'Erreur lors de la récupération des simulations'
+      message: 'Erreur lors de la récupération des simulations',
+      error: error instanceof Error ? error.message : 'Erreur inconnue'
     });
   }
-}) as RequestHandler);
+});
 
-// Fonction pour déterminer les produits éligibles en fonction des réponses
-async function determinerProduitsEligibles(answers: any): Promise<string[]> {
+// Route pour exporter une simulation
+router.post('/:id/export', authenticateUser, async (req: Request, res: Response) => {
   try {
-    console.log('Analyse des réponses pour déterminer les produits éligibles:', answers);
-
-    // Vérification de sécurité pour s'assurer que answers est un objet
-    if (!answers || typeof answers !== 'object') {
-      console.warn('Format des réponses invalide, utilisation de la logique de secours');
-      answers = {};
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Non authentifié' });
     }
 
-    console.log('Appel à l\'API Python pour déterminer les produits éligibles');
+    const authUser = req.user as AuthUser;
+    const { id } = req.params;
+    const { format, products, answers } = req.body;
 
-    const response = await fetch(`${PYTHON_API_URL}/analyse`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ answers })
-    });
+    console.log('📤 Export de simulation:', { id, format, userId: authUser.id });
 
-    if (!response.ok) {
-      console.error('Erreur de l\'API Python:', response.statusText);
-      throw new Error('Échec de l\'analyse via l\'API Python');
+    // Récupérer la simulation
+    const { data: simulation, error: simulationError } = await supabase
+      .from('Simulation')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (simulationError || !simulation) {
+      return res.status(404).json({
+        success: false,
+        message: 'Simulation non trouvée'
+      });
     }
 
-    const result = await response.json() as PythonAnalyseResponse;
-    console.log('Résultat reçu de l\'API Python:', result);
-
-    // Correction du typage avec l'interface définie
-    const eligibleProduitIds = result && Array.isArray(result.eligibleProduitIds) 
-      ? result.eligibleProduitIds 
-      : [];
-      
-    if (eligibleProduitIds.length === 0) {
-      console.warn('Aucun produit éligible retourné par l\'API Python ou format invalide');
+    // Vérifier les permissions
+    if (authUser.type === 'client' && simulation.clientId !== authUser.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Vous ne pouvez exporter que vos propres simulations'
+      });
     }
 
-    return eligibleProduitIds;
+    let buffer: Buffer;
+    let filename: string;
+    let contentType: string;
+
+    switch (format) {
+      case 'xlsx':
+        buffer = await generateExcelExport(products, answers, simulation);
+        filename = `simulation_${id}.xlsx`;
+        contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+        break;
+      case 'pdf':
+        buffer = await generatePDFExport(products, answers, simulation);
+        filename = `simulation_${id}.pdf`;
+        contentType = 'application/pdf';
+        break;
+      case 'docx':
+        buffer = await generateWordExport(products, answers, simulation);
+        filename = `simulation_${id}.docx`;
+        contentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        break;
+      default:
+        return res.status(400).json({
+          success: false,
+          message: 'Format d\'export non supporté'
+        });
+    }
+
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(buffer);
+
   } catch (error) {
-    console.error('Erreur lors de la détermination des produits éligibles:', error);
-    // En cas d'erreur, renvoyer un tableau vide
-    return [];
-  }
-}
-
-// Fonction utilitaire pour extraire les réponses en tant qu'array
-function extractArrayOrString(value: any): string[] {
-  if (!value) return [];
-  if (Array.isArray(value)) return value;
-  if (typeof value === 'string') return [value];
-  return [];
-}
-
-// Récupérer la liste des questions pour le simulateur
-router.get('/questions', (async (req, res) => {
-  const typedReq = req as RequestWithUser;
-  try {
-    console.log('📩 GET /api/simulations/questions appelée');
-    
-    // Version simplifiée retournant des données statiques
-    const questionsStatiques = [
-      {
-        id: 1,
-        texte: 'Quel est le chiffre d\'affaires annuel de votre entreprise ?',
-        type: 'nombre',
-        ordre: 1,
-        categorie: 'finance',
-        options: {
-          min: 0,
-          max: 100000000,
-          unite: '€'
-        },
-        description: 'Indiquez le montant hors taxes du dernier exercice fiscal.',
-        importance: 3
-      },
-      {
-        id: 2,
-        texte: 'Combien d\'employés compte votre entreprise ?',
-        type: 'nombre',
-        ordre: 2,
-        categorie: 'rh',
-        options: {
-          min: 0,
-          max: 10000
-        },
-        description: 'Comptez tous les types de contrats (CDI, CDD, intérim...)',
-        importance: 2
-      },
-      {
-        id: 3,
-        texte: 'Quel est votre secteur d\'activité principal ?',
-        type: 'choix_unique',
-        ordre: 3,
-        categorie: 'general',
-        options: {
-          choix: [
-            'Agriculture',
-            'Industrie',
-            'Construction',
-            'Commerce',
-            'Services',
-            'Autre'
-          ]
-        },
-        importance: 3
-      },
-      {
-        id: 4,
-        texte: 'Quels types de véhicules utilisez-vous dans votre activité ?',
-        type: 'choix_multiple',
-        ordre: 4,
-        categorie: 'transport',
-        options: {
-          choix: [
-            'Véhicules légers',
-            'Utilitaires',
-            'Poids lourds',
-            'Engins de chantier',
-            'Aucun'
-          ]
-        },
-        description: 'Sélectionnez tous les types applicables.',
-        importance: 2
-      }
-    ];
-
-    console.log(`✅ ${questionsStatiques.length} questions statiques préparées`);
-    
-    // Renvoyer les données au client
-    return res.json({
-      success: true,
-      data: questionsStatiques
-    });
-  } catch (error) {
-    console.error('❌ Erreur lors de la récupération des questions:', error);
-    return res.status(500).json({
+    console.error('❌ Erreur lors de l\'export:', error);
+    res.status(500).json({
       success: false,
-      message: error instanceof Error ? error.message : 'Erreur inconnue lors de la récupération des questions'
+      message: 'Erreur lors de l\'export',
+      error: error instanceof Error ? error.message : 'Erreur inconnue'
     });
   }
-}) as RequestHandler);
+});
+
+// Fonction pour enregistrer les produits éligibles
+async function enregistrerProduitsEligibles(clientId: string, simulationId: number, produitIds: string[]) {
+  try {
+    console.log('💾 Enregistrement des produits éligibles:', { clientId, simulationId, produitIds });
+
+    const produitsEligibles = produitIds.map(produitId => ({
+      clientId,
+      produitId,
+      simulationId,
+      eligible: true,
+      createdAt: new Date().toISOString()
+    }));
+
+    const { error } = await supabase
+      .from('ClientProduitEligible')
+      .insert(produitsEligibles);
+
+    if (error) {
+      console.error('❌ Erreur lors de l\'enregistrement des produits éligibles:', error);
+      throw error;
+    }
+
+    console.log('✅ Produits éligibles enregistrés avec succès');
+  } catch (error) {
+    console.error('❌ Erreur lors de l\'enregistrement des produits éligibles:', error);
+    throw error;
+  }
+}
+
+// Fonction pour générer l'export Excel
+async function generateExcelExport(products: any[], answers: any, simulation: any): Promise<Buffer> {
+  // Implémentation simplifiée - retourner un buffer vide pour l'instant
+  return Buffer.from('Export Excel - À implémenter');
+}
+
+// Fonction pour générer l'export PDF
+async function generatePDFExport(products: any[], answers: any, simulation: any): Promise<Buffer> {
+  // Implémentation simplifiée - retourner un buffer vide pour l'instant
+  return Buffer.from('Export PDF - À implémenter');
+}
+
+// Fonction pour générer l'export Word
+async function generateWordExport(products: any[], answers: any, simulation: any): Promise<Buffer> {
+  // Implémentation simplifiée - retourner un buffer vide pour l'instant
+  return Buffer.from('Export Word - À implémenter');
+}
 
 export default router;

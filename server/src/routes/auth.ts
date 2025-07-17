@@ -6,8 +6,8 @@ import dotenv from 'dotenv';
 import supabase from '../config/supabase';
 import { v4 as uuidv4 } from 'uuid';
 import { createClient } from '@supabase/supabase-js';
-import { authMiddleware } from '../middleware/auth';
-import { RequestWithUser, AuthUser, BaseUser, UserMetadata, RequestHandlerWithUser } from '../types/auth';
+import { authenticateUser } from '../middleware/authenticate';
+import { AuthUser, BaseUser, UserMetadata } from '../types/auth';
 import { logger } from '../utils/logger';
 
 // Charger les variables d'environnement
@@ -38,19 +38,19 @@ interface AuthResponse {
 }
 
 // Route de vérification d'authentification
-const checkAuth: RequestHandler = async (req, res) => {
+const checkAuth = async (req: Request, res: express.Response) => {
   try {
-    const typedReq = req as RequestWithUser;
-    if (!typedReq.user) {
+    if (!req.user) {
       return res.status(401).json({
         success: false,
         message: 'Token invalide ou expiré'
       });
     }
 
-    const userId = typedReq.user.id;
-    const userEmail = typedReq.user.email;
-    const userType = typedReq.user.type;
+    const authUser = req.user as AuthUser;
+    const userId = authUser.id;
+    const userEmail = authUser.email;
+    const userType = authUser.type;
 
     // Récupérer les données de l'utilisateur selon son type
     let userData = null;
@@ -86,6 +86,16 @@ const checkAuth: RequestHandler = async (req, res) => {
         });
       }
       
+      // Vérifier le statut d'approbation de l'expert
+      if (expert.approval_status !== 'approved') {
+        console.log("❌ Expert non approuvé:", expert.approval_status);
+        return res.status(403).json({
+          success: false,
+          message: 'Votre compte est en cours d\'approbation par les équipes Profitum. Vous recevrez un email dès que votre compte sera validé.',
+          approval_status: expert.approval_status
+        });
+      }
+      
       userData = expert;
     }
 
@@ -114,7 +124,7 @@ const checkAuth: RequestHandler = async (req, res) => {
   }
 };
 
-router.get('/check', authMiddleware, checkAuth);
+router.get('/check', authenticateUser, checkAuth);
 
 // Route de connexion
 router.post('/login', async (req, res) => {
@@ -173,6 +183,16 @@ router.post('/login', async (req, res) => {
         return res.status(500).json({
           success: false,
           message: 'Erreur lors de la récupération des données utilisateur'
+        });
+      }
+      
+      // Vérifier le statut d'approbation de l'expert
+      if (expert.approval_status !== 'approved') {
+        console.log("❌ Expert non approuvé:", expert.approval_status);
+        return res.status(403).json({
+          success: false,
+          message: 'Votre compte est en cours d\'approbation par les équipes Profitum. Vous recevrez un email dès que votre compte sera validé.',
+          approval_status: expert.approval_status
         });
       }
       
@@ -523,20 +543,101 @@ router.post("/register", async (req: Request, res: Response) => {
   }
 });
 
-// Route de vérification du token
-const verifyToken: RequestHandler = async (req, res) => {
+// Route pour récupérer les informations de l'utilisateur connecté
+const getCurrentUser = async (req: Request, res: express.Response) => {
   try {
-    const typedReq = req as RequestWithUser;
-    if (!typedReq.user) {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur non authentifié'
+      });
+    }
+
+    const authUser = req.user as AuthUser;
+    const userId = authUser.id;
+    const userEmail = authUser.email;
+    const userType = authUser.type;
+    const userMetadata = authUser.user_metadata || {};
+
+    // Récupérer les données de l'utilisateur selon son type
+    let userData = null;
+    
+    if (userType === 'client') {
+      const { data: client, error: clientError } = await supabase
+        .from('Client')
+        .select('*')
+        .eq('id', userId)
+        .single();
+        
+      if (clientError) {
+        console.error('Erreur lors de la récupération des données client:', clientError);
+        return res.status(500).json({
+          success: false,
+          message: 'Erreur lors de la récupération des données utilisateur'
+        });
+      }
+      
+      userData = client;
+    } else if (userType === 'expert') {
+      const { data: expert, error: expertError } = await supabase
+        .from('Expert')
+        .select('*')
+        .eq('id', userId)
+        .single();
+        
+      if (expertError) {
+        console.error('Erreur lors de la récupération des données expert:', expertError);
+        return res.status(500).json({
+          success: false,
+          message: 'Erreur lors de la récupération des données utilisateur'
+        });
+      }
+      
+      userData = expert;
+    }
+
+    // Si l'utilisateur n'a pas de profil dans les tables spécifiques
+    if (!userData) {
+      userData = {
+        id: userId,
+        email: userEmail,
+        name: userMetadata.username || (userEmail ? userEmail.split('@')[0] : 'Utilisateur'),
+        type: userType
+      };
+    }
+
+    res.json({
+      success: true,
+      data: {
+        user: userData
+      }
+    });
+  } catch (error) {
+    console.error('Erreur lors de la récupération des données utilisateur:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des données utilisateur',
+      error: error instanceof Error ? error.message : 'Erreur inconnue'
+    });
+  }
+};
+
+router.get('/current-user', authenticateUser, getCurrentUser);
+
+// Route de vérification du token
+const verifyToken = async (req: Request, res: express.Response) => {
+  try {
+    if (!req.user) {
       return res.status(401).json({
         success: false,
         message: 'Token invalide ou expiré'
       });
     }
 
-    const userId = typedReq.user.id;
-    const userEmail = typedReq.user.email;
-    const userMetadata = typedReq.user.user_metadata || {};
+    const authUser = req.user as AuthUser;
+    const userId = authUser.id;
+    const userEmail = authUser.email;
+    const userMetadata = authUser.user_metadata || {};
 
     // Vérifier d'abord dans la table Client
     const { data: client, error: clientError } = await supabase
@@ -546,7 +647,7 @@ const verifyToken: RequestHandler = async (req, res) => {
       .single();
 
     // Si pas trouvé dans Client, vérifier dans Expert
-    let userType: 'client' | 'expert' | 'admin' = typedReq.user.type;
+    let userType: 'client' | 'expert' | 'admin' = authUser.type;
     let userDetails = client;
     
     if (!client && userType === 'expert') {
@@ -566,7 +667,7 @@ const verifyToken: RequestHandler = async (req, res) => {
       userDetails = {
         id: userId,
         email: userEmail,
-        name: userMetadata.username || userEmail.split('@')[0],
+        name: userMetadata.username || (userEmail ? userEmail.split('@')[0] : 'Utilisateur'),
         type: userType
       };
     }
@@ -598,26 +699,27 @@ const verifyToken: RequestHandler = async (req, res) => {
   }
 };
 
-router.get('/verify', authMiddleware, verifyToken);
+router.get('/verify', authenticateUser, verifyToken);
 
 // Route de vérification du token (alternative)
-const verifyTokenAlt: RequestHandler = async (req, res) => {
+const verifyTokenAlt = async (req: Request, res: express.Response) => {
   try {
-    const typedReq = req as RequestWithUser;
-    if (!typedReq.user) {
+    if (!req.user) {
       return res.status(401).json({
         success: false,
         message: 'Utilisateur non authentifié'
       });
     }
 
+    const authUser = req.user as AuthUser;
+
     return res.json({
       success: true,
       user: {
-        id: typedReq.user.id,
-        email: typedReq.user.email,
-        type: typedReq.user.type,
-        metadata: typedReq.user.user_metadata
+        id: authUser.id,
+        email: authUser.email,
+        type: authUser.type,
+        metadata: authUser.user_metadata
       }
     });
     
@@ -630,7 +732,7 @@ const verifyTokenAlt: RequestHandler = async (req, res) => {
   }
 };
 
-router.get('/verify-token', authMiddleware, verifyTokenAlt);
+router.get('/verify-token', authenticateUser, verifyTokenAlt);
 
 // Endpoint pour créer un token Supabase à partir d'un email
 router.post('/create-supabase-token', async (req, res) => {
@@ -776,12 +878,12 @@ router.post('/create-user', async (req, res) => {
         .insert({
           id: data.user.id, // Utiliser directement l'ID au lieu de auth_id
           email: email,
-          nom: user_metadata.nom || email.split('@')[0],
-          prenom: user_metadata.prenom || '',
-          telephone: user_metadata.telephone || '',
-          adresse: user_metadata.adresse || '',
-          ville: user_metadata.ville || '',
-          code_postal: user_metadata.code_postal || ''
+          nom: (user_metadata as any).nom || email.split('@')[0],
+          prenom: (user_metadata as any).prenom || '',
+          telephone: (user_metadata as any).telephone || '',
+          adresse: (user_metadata as any).adresse || '',
+          ville: (user_metadata as any).ville || '',
+          code_postal: (user_metadata as any).code_postal || ''
         })
         .select()
         .single();
@@ -798,11 +900,11 @@ router.post('/create-user', async (req, res) => {
         .insert({
           id: data.user.id, // Utiliser directement l'ID au lieu de auth_id
           email: email,
-          nom: user_metadata.nom || email.split('@')[0],
-          prenom: user_metadata.prenom || '',
-          telephone: user_metadata.telephone || '',
-          specialite: user_metadata.specialite || '',
-          numero_agrement: user_metadata.numero_agrement || ''
+          nom: (user_metadata as any).nom || email.split('@')[0],
+          prenom: (user_metadata as any).prenom || '',
+          telephone: (user_metadata as any).telephone || '',
+          specialite: (user_metadata as any).specialite || '',
+          numero_agrement: (user_metadata as any).numero_agrement || ''
         })
         .select()
         .single();

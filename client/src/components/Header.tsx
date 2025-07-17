@@ -1,8 +1,7 @@
 import { BarChart3, TrendingUp } from "lucide-react";
 import { Link } from "react-router-dom";
 
-export default function Header() {
-  return (
+export default function Header() { return (
     <>
       <div className="flex items-center justify-between w-full p-4 shadow-md bg-white">
         <Link to="/">
@@ -33,7 +32,7 @@ export default function Header() {
         </Link>
       </div>
 
-      {/* Espacement sous le header */}
+      {/* Espacement sous le header */ }
       <div className="h-8"></div>
     </>
   );

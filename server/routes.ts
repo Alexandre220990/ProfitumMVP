@@ -3,6 +3,9 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
+// Import des routes experts
+import expertRoutes from "./src/routes/experts/index.js";
+
 const router = express.Router();
 
 // ✅ Gestion de `__dirname` en ES Module
@@ -20,6 +23,9 @@ if (!fs.existsSync(simulationsDir)) {
 router.get("/api/health", (req: Request, res: Response) => {
   res.json({ success: true, message: "API en ligne" });
 });
+
+// ✅ Routes experts marketplace
+router.use("/api/experts", expertRoutes);
 
 // ✅ Route pour inscrire un utilisateur et créer son fichier JSON
 router.post("/api/register", async (req: Request, res: Response) => {

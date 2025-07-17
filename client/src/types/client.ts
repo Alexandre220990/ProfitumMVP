@@ -1,5 +1,4 @@
-export interface Client {
-  id: number;
+export interface Client { id: number;
   email: string;
   password: string;
   name: string;
@@ -17,11 +16,9 @@ export interface Client {
   createdAt: Date;
   updatedAt: Date;
   last_login: Date | null;
-  preferences: Record<string, any> | null;
-}
+  preferences: Record<string, any> | null; }
 
-export interface ClientFormData {
-  email: string;
+export interface ClientFormData { email: string;
   password: string;
   name: string;
   company: string;
@@ -32,5 +29,4 @@ export interface ClientFormData {
   nombreEmployes: number;
   ancienneteEntreprise: number;
   besoinFinancement: boolean;
-  typeProjet: string;
-} 
+  typeProjet: string; } 

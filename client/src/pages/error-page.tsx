@@ -1,32 +1,21 @@
-import { useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
+import { useEffect } from "react";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 
-interface ErrorPageProps {
-  error?: Error;
+interface ErrorPageProps { error?: Error;
   message?: string;
-  resetError?: () => void;
-}
+  resetError?: () => void; }
 
-export default function ErrorPage({ 
-  error, 
-  message = "Une erreur est survenue dans l'application", 
-  resetError 
-}: ErrorPageProps) {
-  // Enregistrer l'erreur dans les logs
+export default function ErrorPage({ error, message = "Une erreur est survenue dans l'application", resetError }: ErrorPageProps) { // Enregistrer l'erreur dans les logs
   useEffect(() => {
-    console.error('Page d\'erreur affichée:', error || message);
+    console.error('Page d\'erreur affichée: ', error || message);
     
     // Vous pouvez envoyer l'erreur à un service de monitoring ici
   }, [error, message]);
 
   // Fonction pour recharger l'application
-  const handleReload = () => {
-    if (resetError) {
-      resetError();
-    } else {
-      window.location.reload();
-    }
+  const handleReload = () => { if (resetError) {
+      resetError(); } else { window.location.reload(); }
   };
 
   return (
@@ -43,21 +32,21 @@ export default function ErrorPage({
               <path 
                 strokeLinecap="round" 
                 strokeLinejoin="round" 
-                strokeWidth={2} 
+                strokeWidth={ 2 } 
                 d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" 
               />
             </svg>
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Oups! Quelque chose s'est mal passé</h1>
-          <p className="text-gray-600 mb-4">{message}</p>
+          <p className="text-gray-600 mb-4">{ message }</p>
           
-          {error && (
+          { error && (
             <div className="mb-6 text-left">
               <details className="bg-gray-100 p-3 rounded-lg">
                 <summary className="cursor-pointer font-medium">Détails techniques</summary>
-                <p className="mt-2 text-sm text-gray-700">{error.message}</p>
+                <p className="mt-2 text-sm text-gray-700">{error.message }</p>
                 <pre className="mt-2 text-xs overflow-x-auto p-2 bg-gray-200 rounded">
-                  {error.stack}
+                  { error.stack }
                 </pre>
               </details>
             </div>
@@ -65,7 +54,7 @@ export default function ErrorPage({
           
           <div className="flex flex-col space-y-2">
             <Button 
-              onClick={handleReload}
+              onClick={ handleReload }
               className="w-full bg-blue-600 hover:bg-blue-700"
             >
               Recharger l'application

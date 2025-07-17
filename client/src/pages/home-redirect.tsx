@@ -1,41 +1,40 @@
-import { useNavigate } from 'react-router-dom';
-import { useEffect } from 'react';
-import { useAuth } from '@/hooks/use-auth';
+import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
+import { useAuth } from "@/hooks/use-auth";
 
 /**
  * Simple composant de redirection vers la page d'accueil
  */
-export default function HomeRedirect() {
-  const { user, isLoading } = useAuth();
+export default function HomeRedirect() { const { user, isLoading } = useAuth();
   const navigate = useNavigate();
 
   console.log('HomeRedirect - Montage du composant');
-  console.log('HomeRedirect - État de l\'authentification:', { user, isLoading });
+  console.log('HomeRedirect - État de l\'authentification: ', { user, isLoading });
 
-  useEffect(() => {
+  useEffect(() => { 
     console.log('HomeRedirect - useEffect déclenché', { user, isLoading });
     
-    if (!isLoading) {
+    if (!isLoading) { 
       console.log('HomeRedirect - Chargement terminé, décision de redirection');
       
       // Si l'utilisateur est authentifié, on dirige vers son tableau de bord
       if (user) {
         console.log('HomeRedirect - Utilisateur connecté:', user);
         
-        if (user.client?.type === 'client') {
+        if (user.type === 'client') {
           console.log('HomeRedirect - Redirection vers dashboard client');
-          navigate(`/dashboard/client/${user.client.id}`);
-        } else if (user.client?.type === 'expert') {
+          navigate(`/dashboard/client/${user.id}`);
+        } else if (user.type === 'expert') { 
           console.log('HomeRedirect - Redirection vers dashboard expert');
-          navigate('/dashboard/expert');
-        } else {
+          navigate('/dashboard/expert'); 
+        } else { 
           console.log('HomeRedirect - Type utilisateur inconnu, redirection vers home');
-          navigate('/home');
+          navigate('/home'); 
         }
-      } else {
+      } else { 
         // Sinon vers la page d'accueil
         console.log('HomeRedirect - Aucun utilisateur, redirection vers home');
-        navigate('/home');
+        navigate('/home'); 
       }
     }
   }, [isLoading, user, navigate]);

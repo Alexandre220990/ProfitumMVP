@@ -1,7 +1,6 @@
-import { Json } from './supabase';
+import { Json } from "./supabase";
 
-export interface SimulationResponse {
-  id: number;
+export interface SimulationResponse { id: number;
   clientId: string;
   dateCreation: string;
   statut: string;
@@ -11,5 +10,4 @@ export interface SimulationResponse {
   abandonA: string | null;
   createdAt: string;
   updatedAt: string;
-  CheminParcouru: Json | null;
-} 
+  CheminParcouru: Json | null; } 

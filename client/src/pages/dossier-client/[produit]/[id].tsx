@@ -1,10 +1,41 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
-import { API_URL } from "@/config";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, AlertTriangle, Loader2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
+
+import { 
+  ArrowLeft, 
+  AlertTriangle, 
+  Loader2, 
+  FileText, 
+  Calendar, 
+  Euro, 
+  TrendingUp, 
+  CheckCircle, 
+  Clock, 
+  User,
+  Phone,
+  Mail,
+  Download,
+  Share2,
+  Edit,
+  Trash2,
+  Eye,
+  Plus,
+  Star,
+  Target,
+  Zap,
+  Activity,
+  MessageSquare,
+  HelpCircle,
+  XCircle,
+} from "lucide-react";
+import { get, post } from "@/lib/api";
+import { useToast } from "@/components/ui/use-toast";
 import HeaderClient from "@/components/HeaderClient";
 
 interface ClientProduitEligible {
@@ -19,8 +50,81 @@ interface ClientProduitEligible {
   created_at: string;
   updated_at: string;
   produit: {
+    id: string;
     nom: string;
     description: string;
+    categorie: string;
+    type: string;
+    conditions: any;
+    avantages: string[];
+    documents_requis: string[];
+  };
+  client: {
+    id: string;
+    email: string;
+    name: string;
+    company_name: string;
+    phone: string;
+    city: string;
+    siren: string;
+  };
+  audit?: {
+    id: string;
+    status: string;
+    current_step: number;
+    total_steps: number;
+    progress: number;
+    potential_gain: number;
+    obtained_gain: number;
+    created_at: string;
+    updated_at: string;
+  };
+  documents?: Array<{
+    id: string;
+    nom: string;
+    type: string;
+    statut: string;
+    url?: string;
+    uploaded_at: string;
+  }>;
+  expert_assignment?: {
+    id: string;
+    expert_id: string;
+    statut: string;
+    assigned_at: string;
+    expert: {
+      id: string;
+      name: string;
+      company_name: string;
+      specializations: string[];
+      rating: number;
+      email: string;
+      phone: string;
+    };
+  };
+}
+
+interface ProductDetails {
+  id: string;
+  nom: string;
+  description: string;
+  categorie: string;
+  type: string;
+  conditions: any;
+  avantages: string[];
+  documents_requis: string[];
+  etapes_processus: Array<{
+    id: number;
+    titre: string;
+    description: string;
+    duree_estimee: string;
+    statut: 'pending' | 'in_progress' | 'completed' | 'failed';
+  }>;
+  statistiques: {
+    taux_reussite: number;
+    gain_moyen: number;
+    duree_moyenne: number;
+    nombre_clients: number;
   };
 }
 
@@ -28,118 +132,48 @@ export default function DossierClientProduit() {
   const { produit: produitNom, id: clientProduitId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [clientProduit, setClientProduit] = useState<ClientProduitEligible | null>(null);
+  const [productDetails, setProductDetails] = useState<ProductDetails | null>(null);
+  const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
-    const fetchClientProduit = async () => {
+    const fetchDossierData = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        console.log('🔍 Récupération du ClientProduitEligible:', clientProduitId);
-        console.log('📦 Nom du produit:', produitNom);
+        console.log('🔍 Récupération du dossier:', { clientProduitId, produitNom });
 
-        // Vérifier que l'utilisateur est connecté
         if (!user?.id) {
           throw new Error("Utilisateur non connecté");
         }
 
-        // Récupérer les détails du ClientProduitEligible
-        const response = await fetch(`${API_URL}/api/produits-eligibles/client/${user.id}`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error(`Erreur API: ${response.status}`);
-        }
-
-        const data = await response.json();
-
-        if (!data.success || !data.data) {
-          throw new Error("Aucun produit éligible trouvé");
-        }
-
-        // Filtrer pour trouver le ClientProduitEligible spécifique
-        const clientProduitData = data.data.find((item: any) => item.id === clientProduitId);
+        // Récupérer les détails du ClientProduitEligible avec toutes les relations
+        const response = await get(`/produits-eligibles/client/${user.id}/${clientProduitId}`);
         
-        if (!clientProduitData) {
-          throw new Error("ClientProduitEligible non trouvé");
+        if (!response.success || !response.data) {
+          throw new Error("Dossier non trouvé ou accès refusé");
         }
 
-        console.log('✅ ClientProduitEligible récupéré:', clientProduitData);
-
-        // Vérifier que l'utilisateur est le propriétaire
-        // Le client_id dans ClientProduitEligible est l'ancien ID client
-        // Nous devons vérifier que l'utilisateur connecté (ID Supabase Auth) correspond au client
-        // en utilisant la correspondance auth_id dans la table Client
+        const dossierData = response.data as ClientProduitEligible;
         
-        // Récupérer le client correspondant à l'utilisateur connecté
-        const clientResponse = await fetch(`${API_URL}/api/client/profile`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
-
-        if (!clientResponse.ok) {
-          throw new Error("Impossible de récupérer les informations du client");
-        }
-
-        const clientData = await clientResponse.json();
-        
-        if (!clientData.success || !clientData.data) {
-          throw new Error("Informations client non disponibles");
-        }
-
-        // Vérifier que le client_id du produit correspond à l'ID du client connecté
-        if (clientProduitData.client_id !== clientData.data.id) {
-          console.error('❌ Permission refusée: client_id ne correspond pas à l\'utilisateur connecté');
-          console.error('  - Utilisateur connecté (Supabase Auth):', user.id);
-          console.error('  - ID client dans la base:', clientData.data.id);
-          console.error('  - Propriétaire du produit:', clientProduitData.client_id);
+        // Vérifier les permissions
+        if (dossierData.client_id !== user.id) {
           throw new Error("Vous n'êtes pas autorisé à accéder à ce dossier");
         }
 
-        // Vérifier que le nom du produit correspond
-        if (clientProduitData.produit?.nom !== produitNom) {
-          console.error('❌ Incohérence: nom du produit ne correspond pas');
-          console.error('  - Nom dans l\'URL:', produitNom);
-          console.error('  - Nom dans la base:', clientProduitData.produit?.nom);
-          throw new Error("Incohérence dans les données du produit");
+        setClientProduit(dossierData);
+
+        // Récupérer les détails du produit
+        const productResponse = await get(`/produits/${dossierData.produit_id}`);
+        if (productResponse.success) {
+          setProductDetails(productResponse.data as ProductDetails);
         }
 
-        setClientProduit(clientProduitData);
-
-        // Rediriger vers la page statique appropriée
-        const produitRoutes: { [key: string]: string } = {
-          'TICPE': '/produits/ticpe',
-          'Foncier': '/produits/foncier',
-          'URSSAF': '/produits/urssaf',
-          'DFS': '/produits/dfs',
-          'Optimisation Énergie': '/produits/audit_energetique',
-          'MSA': '/produits/msa',
-          'CEE': '/produits/audit_energetique'
-        };
-
-        const route = produitRoutes[produitNom];
-        if (route) {
-          // Pour les routes qui nécessitent l'ID client, utiliser user.id
-          // Pour les routes qui nécessitent l'ID produit, utiliser clientProduitId
-          const routeId = route.includes('/social') ? user.id : clientProduitId;
-          console.log('🔄 Redirection vers:', `${route}/${routeId}`);
-          navigate(`${route}/${routeId}`, {
-            state: { 
-              clientProduit: clientProduitData,
-              fromDossier: true 
-            } 
-          });
-        } else {
-          console.error('❌ Route non trouvée pour le produit:', produitNom);
-          throw new Error(`Page non disponible pour le produit: ${produitNom}`);
-        }
+        console.log('✅ Dossier récupéré:', dossierData);
 
       } catch (err) {
         console.error('❌ Erreur lors de la récupération:', err);
@@ -149,10 +183,108 @@ export default function DossierClientProduit() {
       }
     };
 
-    if (clientProduitId && produitNom) {
-      fetchClientProduit();
+    if (clientProduitId && produitNom && user?.id) {
+      fetchDossierData();
     }
-  }, [clientProduitId, produitNom, user?.id, navigate]);
+  }, [clientProduitId, produitNom, user?.id]);
+
+  const handleStartAudit = async () => {
+    try {
+      const response = await post('/audits/start', {
+        client_produit_id: clientProduitId,
+        produit_id: clientProduit?.produit_id
+      });
+
+      if (response.success) {
+        toast({
+          title: "Audit lancé",
+          description: "Votre audit a été démarré avec succès.",
+        });
+        // Recharger les données
+        window.location.reload();
+      }
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de lancer l'audit. Veuillez réessayer.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleContactExpert = async () => {
+    if (clientProduit?.expert_assignment?.expert) {
+      navigate(`/messagerie-client/conversation/${clientProduit.expert_assignment.expert.id}`, {
+        state: { 
+          expert: clientProduit.expert_assignment.expert,
+          dossier: clientProduit
+        }
+      });
+    }
+  };
+
+  const handleDownloadDocument = async (documentId: string, documentName: string) => {
+    try {
+      const response = await get(`/documents/${documentId}/download`);
+      if (response.success) {
+        // Créer un lien de téléchargement
+        const downloadData = response.data as { url: string };
+        const link = document.createElement('a');
+        link.href = downloadData.url;
+        link.download = documentName;
+        link.click();
+      }
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de télécharger le document.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'eligible':
+        return <Badge className="bg-green-100 text-green-800">Éligible</Badge>;
+      case 'en_cours':
+        return <Badge className="bg-blue-100 text-blue-800">En cours</Badge>;
+      case 'termine':
+        return <Badge className="bg-purple-100 text-purple-800">Terminé</Badge>;
+      case 'rejete':
+        return <Badge className="bg-red-100 text-red-800">Rejeté</Badge>;
+      default:
+        return <Badge variant="secondary">{status}</Badge>;
+    }
+  };
+
+  const getStepStatusIcon = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return <CheckCircle className="h-5 w-5 text-green-500" />;
+      case 'in_progress':
+        return <Clock className="h-5 w-5 text-blue-500" />;
+      case 'failed':
+        return <XCircle className="h-5 w-5 text-red-500" />;
+      default:
+        return <Clock className="h-5 w-5 text-gray-400" />;
+    }
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('fr-FR', {
+      style: 'currency',
+      currency: 'EUR'
+    }).format(amount);
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  };
 
   // Page de chargement
   if (loading) {
@@ -221,6 +353,463 @@ export default function DossierClientProduit() {
     );
   }
 
-  // Cette partie ne devrait jamais être atteinte car on redirige
-  return null;
+  if (!clientProduit) {
+    return null;
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <HeaderClient />
+      
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Button
+                variant="outline"
+                onClick={() => navigate('/dashboard/client')}
+                className="flex items-center"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Retour
+              </Button>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">
+                  Dossier {clientProduit.produit.nom}
+                </h1>
+                <p className="text-gray-600">
+                  ID: {clientProduit.id} • Créé le {formatDate(clientProduit.created_at)}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              {getStatusBadge(clientProduit.statut)}
+              <Button variant="outline" size="sm">
+                <Share2 className="w-4 h-4 mr-2" />
+                Partager
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Statistiques rapides */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center">
+                <Euro className="h-8 w-8 text-green-600" />
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Gain potentiel</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {formatCurrency(clientProduit.montant_final)}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center">
+                <TrendingUp className="h-8 w-8 text-blue-600" />
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Taux final</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {clientProduit.taux_final}%
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center">
+                <Calendar className="h-8 w-8 text-purple-600" />
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Durée</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {clientProduit.duree_finale} mois
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center">
+                <Activity className="h-8 w-8 text-orange-600" />
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Progression</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {clientProduit.audit ? `${clientProduit.audit.progress}%` : '0%'}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Onglets principaux */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
+            <TabsTrigger value="audit">Audit</TabsTrigger>
+            <TabsTrigger value="documents">Documents</TabsTrigger>
+            <TabsTrigger value="expert">Expert</TabsTrigger>
+            <TabsTrigger value="settings">Paramètres</TabsTrigger>
+          </TabsList>
+
+          {/* Vue d'ensemble */}
+          <TabsContent value="overview" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Informations du produit */}
+              <Card className="lg:col-span-2">
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Target className="w-5 h-5 mr-2" />
+                    Informations du produit
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <h3 className="font-semibold text-lg">{clientProduit.produit.nom}</h3>
+                    <p className="text-gray-600">{clientProduit.produit.description}</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Catégorie</label>
+                      <p className="text-gray-900">{clientProduit.produit.categorie}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Type</label>
+                      <p className="text-gray-900">{clientProduit.produit.type}</p>
+                    </div>
+                  </div>
+
+                  {clientProduit.produit.avantages && (
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Avantages</label>
+                      <ul className="mt-2 space-y-1">
+                        {clientProduit.produit.avantages.map((avantage, index) => (
+                          <li key={index} className="flex items-center text-sm">
+                            <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
+                            {avantage}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Actions rapides */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Actions rapides</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {!clientProduit.audit && (
+                    <Button 
+                      onClick={handleStartAudit}
+                      className="w-full"
+                    >
+                      <Zap className="w-4 h-4 mr-2" />
+                      Démarrer l'audit
+                    </Button>
+                  )}
+                  
+                  {clientProduit.expert_assignment && (
+                    <Button 
+                      variant="outline"
+                      onClick={handleContactExpert}
+                      className="w-full"
+                    >
+                      <MessageSquare className="w-4 h-4 mr-2" />
+                      Contacter l'expert
+                    </Button>
+                  )}
+
+                  <Button variant="outline" className="w-full">
+                    <Download className="w-4 h-4 mr-2" />
+                    Exporter le dossier
+                  </Button>
+
+                  <Button variant="outline" className="w-full">
+                    <HelpCircle className="w-4 h-4 mr-2" />
+                    Aide et support
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Progression de l'audit */}
+            {clientProduit.audit && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Progression de l'audit</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium">Étape {clientProduit.audit.current_step} sur {clientProduit.audit.total_steps}</span>
+                      <span className="text-sm text-gray-500">{clientProduit.audit.progress}%</span>
+                    </div>
+                    <Progress value={clientProduit.audit.progress} className="w-full" />
+                    
+                    {productDetails?.etapes_processus && (
+                      <div className="mt-6 space-y-3">
+                        {productDetails.etapes_processus.map((etape) => (
+                          <div key={etape.id} className="flex items-center space-x-3">
+                            {getStepStatusIcon(etape.statut)}
+                            <div className="flex-1">
+                              <p className="font-medium">{etape.titre}</p>
+                              <p className="text-sm text-gray-500">{etape.description}</p>
+                            </div>
+                            <span className="text-sm text-gray-500">{etape.duree_estimee}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          {/* Audit */}
+          <TabsContent value="audit" className="space-y-6">
+            {clientProduit.audit ? (
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Détails de l'audit</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-4">
+                        <div>
+                          <label className="text-sm font-medium text-gray-500">Statut</label>
+                          <p className="text-gray-900">{clientProduit.audit.status}</p>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-gray-500">Gain potentiel</label>
+                          <p className="text-2xl font-bold text-green-600">
+                            {formatCurrency(clientProduit.audit.potential_gain)}
+                          </p>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-gray-500">Gain obtenu</label>
+                          <p className="text-2xl font-bold text-blue-600">
+                            {formatCurrency(clientProduit.audit.obtained_gain)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="text-sm font-medium text-gray-500">Démarré le</label>
+                          <p className="text-gray-900">{formatDate(clientProduit.audit.created_at)}</p>
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-gray-500">Dernière mise à jour</label>
+                          <p className="text-gray-900">{formatDate(clientProduit.audit.updated_at)}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <Target className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Aucun audit en cours</h3>
+                  <p className="text-gray-600 mb-4">
+                    Lancez un audit pour commencer le processus d'optimisation.
+                  </p>
+                  <Button onClick={handleStartAudit}>
+                    <Zap className="w-4 h-4 mr-2" />
+                    Démarrer l'audit
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          {/* Documents */}
+          <TabsContent value="documents" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span>Documents</span>
+                  <Button size="sm">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Ajouter un document
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {clientProduit.documents && clientProduit.documents.length > 0 ? (
+                  <div className="space-y-3">
+                    {clientProduit.documents.map((doc) => (
+                      <div key={doc.id} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <FileText className="w-5 h-5 text-blue-600" />
+                          <div>
+                            <p className="font-medium">{doc.nom}</p>
+                            <p className="text-sm text-gray-500">
+                              {doc.type} • {formatDate(doc.uploaded_at)}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Badge variant={doc.statut === 'valide' ? 'default' : 'secondary'}>
+                            {doc.statut}
+                          </Badge>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDownloadDocument(doc.id, doc.nom)}
+                          >
+                            <Download className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-600">Aucun document disponible</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Expert */}
+          <TabsContent value="expert" className="space-y-6">
+            {clientProduit.expert_assignment ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Expert assigné</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-6">
+                    <div className="flex items-start space-x-4">
+                      <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+                        <User className="w-8 h-8 text-blue-600" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-lg font-semibold">{clientProduit.expert_assignment.expert.name}</h3>
+                        <p className="text-gray-600">{clientProduit.expert_assignment.expert.company_name}</p>
+                        <div className="flex items-center space-x-4 mt-2">
+                          <div className="flex items-center">
+                            <Star className="w-4 h-4 text-yellow-500 mr-1" />
+                            <span className="text-sm">{clientProduit.expert_assignment.expert.rating}/5</span>
+                          </div>
+                          <Badge variant="outline">
+                            {clientProduit.expert_assignment.statut}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">Spécialisations</label>
+                        <div className="flex flex-wrap gap-2 mt-1">
+                          {clientProduit.expert_assignment.expert.specializations.map((spec, index) => (
+                            <Badge key={index} variant="secondary" className="text-xs">
+                              {spec}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">Contact</label>
+                        <div className="space-y-1 mt-1">
+                          <p className="text-sm flex items-center">
+                            <Mail className="w-4 h-4 mr-2" />
+                            {clientProduit.expert_assignment.expert.email}
+                          </p>
+                          <p className="text-sm flex items-center">
+                            <Phone className="w-4 h-4 mr-2" />
+                            {clientProduit.expert_assignment.expert.phone}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex space-x-3">
+                      <Button onClick={handleContactExpert} className="flex-1">
+                        <MessageSquare className="w-4 h-4 mr-2" />
+                        Contacter l'expert
+                      </Button>
+                      <Button variant="outline">
+                        <Eye className="w-4 h-4 mr-2" />
+                        Voir le profil
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <User className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Aucun expert assigné</h3>
+                  <p className="text-gray-600">
+                    Un expert sera automatiquement assigné lors du démarrage de l'audit.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          {/* Paramètres */}
+          <TabsContent value="settings" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Paramètres du dossier</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Notifications</label>
+                    <div className="space-y-2 mt-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm">Email</span>
+                        <Button variant="outline" size="sm">Activer</Button>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm">SMS</span>
+                        <Button variant="outline" size="sm">Activer</Button>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Actions</label>
+                    <div className="space-y-2 mt-2">
+                      <Button variant="outline" size="sm" className="w-full justify-start">
+                        <Edit className="w-4 h-4 mr-2" />
+                        Modifier le dossier
+                      </Button>
+                      <Button variant="outline" size="sm" className="w-full justify-start text-red-600">
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Supprimer le dossier
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
+  );
 } 

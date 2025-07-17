@@ -6,4 +6,7 @@ declare global {
       user?: AuthUser;
     }
   }
-} 
+}
+
+// Cette ligne est nécessaire pour que TypeScript reconnaisse ce fichier comme un module
+export {}; 

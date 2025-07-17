@@ -7,23 +7,18 @@ import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/hooks/use-auth";
 import { useNavigate } from "react-router-dom";
 
-const Settings = () => {
-  const { user } = useAuth();
+const Settings = () => { const { user } = useAuth();
   const navigate = useNavigate();
   const [notifications, setNotifications] = React.useState(true);
   const [email, setEmail] = React.useState(user?.email || '');
 
   // Rediriger si l'utilisateur n'est pas connecté
-  React.useEffect(() => {
-    if (!user) {
-      navigate('/auth');
-    }
+  React.useEffect(() => { if (!user) {
+      navigate('/auth'); }
   }, [user, navigate]);
 
-  const handleSave = () => {
-    // TODO: Implémenter la sauvegarde des paramètres
-    console.log('Sauvegarde des paramètres...');
-  };
+  const handleSave = () => { // TODO: Implémenter la sauvegarde des paramètres
+    console.log('Sauvegarde des paramètres...'); };
 
   return (
     <div className="container mx-auto p-6">
@@ -40,11 +35,11 @@ const Settings = () => {
               <Input
                 id="email"
                 type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={ email }
+                onChange={ (e) => setEmail(e.target.value) }
               />
             </div>
-            <Button onClick={handleSave}>Sauvegarder les modifications</Button>
+            <Button onClick={ handleSave }>Sauvegarder les modifications</Button>
           </CardContent>
         </Card>
 
@@ -57,8 +52,8 @@ const Settings = () => {
               <Label htmlFor="notifications">Activer les notifications</Label>
               <Switch
                 id="notifications"
-                checked={notifications}
-                onCheckedChange={setNotifications}
+                checked={ notifications }
+                onCheckedChange={ setNotifications }
               />
             </div>
           </CardContent>

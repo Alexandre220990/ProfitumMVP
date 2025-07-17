@@ -3,6 +3,8 @@ import cors from 'cors';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
+import { createServer } from 'http';
+import { WebSocketService } from './services/websocketService';
 import authRoutes from './routes/auth';
 import auditsRouter from './routes/audits';
 import simulationsRoutes from './routes/simulations';
@@ -10,6 +12,9 @@ import partnersRouter from './routes/partners';
 import produitsEligiblesRouter from './routes/produits-eligibles';
 import expertsRouter from './routes/experts';
 import specializationsRouter from './routes/specializations';
+import monitoringRoutes from './routes/monitoring';
+import testsRoutes from './routes/tests';
+import terminalTestsRoutes from './routes/terminal-tests';
 import checkNetworkInterfaces from './utils/ipcheck';
 import { addCorsTestRoute } from './utils/cors-test';
 import { logSupabaseRequest } from './middleware/supabase-logger';
@@ -24,23 +29,52 @@ import adminRoutes from './routes/admin';
 import auditRoutes from './routes/audit';
 import simulationRoute from './routes/simulation';
 import charteSignatureRoutes from './routes/charte-signature';
+import messagingRoutes from './routes/messaging';
+import unifiedMessagingRoutes from './routes/unified-messaging';
+import simulatorRoutes from './routes/simulator';
 import { createClient } from '@supabase/supabase-js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import morgan from 'morgan';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import compression from 'compression';
 import { errorHandler } from './middleware/error-handler';
-import { authMiddleware } from './middleware/auth';
+import { authenticateUser, requireUserType } from './middleware/authenticate';
 import { logger } from './utils/logger';
 import { Request, Response, NextFunction } from 'express';
 import { asyncHandler } from './utils/asyncHandler';
 
+// Import du nouveau middleware d'authentification renforcé
+import { 
+  enhancedAuthMiddleware, 
+  publicRouteLogger, 
+  requirePermission, 
+  Permission 
+} from './middleware/auth-enhanced';
+
+// Import des middlewares de performance
+import { 
+  performanceMiddleware, 
+  cacheMiddleware, 
+  compressionMiddleware, 
+  requestValidationMiddleware 
+} from './middleware/performance';
+
+import expertNotificationsRoutes from './routes/expert/notifications';
+import sessionMigrationRoutes from './routes/session-migration';
+import clientDocumentsRoutes from './routes/client-documents';
+import analyticsRoutes from './routes/analytics';
+
+import app from './app';
+import { initializeWebSocketServer } from './websocket-server';
+import { initializeUnifiedWebSocket } from './services/unified-websocket';
+import { monitoringSystem } from '../lib/monitoring-system';
+
 dotenv.config();
 
-const app = express();
 const PORT = Number(process.env.PORT) || 5001;
-const HOST = '0.0.0.0'; // Écouter sur toutes les interfaces
+const HOST = '::'; // Écouter sur toutes les interfaces IPv6
 
 // Configuration Supabase avec gestion d'erreur
 const supabaseUrl = process.env.SUPABASE_URL;
@@ -57,10 +91,10 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
     ? ['https://votre-domaine.com'] 
-    : ['http://localhost:3000', 'http://[::1]:3000'],
+    : ['http://[::1]:3000', 'http://localhost:3000', 'http://127.0.0.1:3000', 'http://[::1]:5173', 'http://localhost:5173'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'apikey']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
 // Middleware pour s'assurer que les headers CORS sont bien appliqués
@@ -89,12 +123,14 @@ app.use(express.json());
 app.use(helmet());
 app.use(morgan('dev'));
 
-// Rate limiting
+// Rate limiting renforcé
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limite chaque IP à 100 requêtes par fenêtre
+  max: 100, // limite chaque IP à 100 requêtes par fenêtre
+  message: 'Trop de requêtes depuis cette IP, veuillez réessayer plus tard.'
 });
-app.use(limiter);
+
+app.use('/api/', limiter);
 
 // Middleware pour logger les requêtes et origines (debug CORS)
 app.use((req, res, next) => {
@@ -134,84 +170,179 @@ app.use((req, res, next) => {
 // Ajouter la route de test CORS
 addCorsTestRoute(app);
 
-// Routes publiques (pas d'authentification requise)
-app.use('/api/auth', authRoutes);
-app.use('/api/audits', auditsRouter);
-app.use('/api/simulations', simulationsRoutes);
-app.use('/api/partners', partnersRouter);
-app.use('/api/produits-eligibles', produitsEligiblesRouter);
-app.use('/api/experts', expertsRouter);
-app.use('/api/specializations', specializationsRouter);
-app.use('/api/chatbot', chatbotRoutes);
-app.use('/api/simulations', simulationRoutes);
-app.use('/api/chatbot-test', chatbotTestRoutes);
+// ===== ROUTES PUBLIQUES (pas d'authentification requise) =====
+// Ces routes sont accessibles sans authentification mais sont loggées
+app.use('/api/auth', publicRouteLogger, authRoutes);
+app.use('/api/simulations', publicRouteLogger, simulationsRoutes);
+app.use('/api/partners', publicRouteLogger, partnersRouter);
+app.use('/api/chatbot', publicRouteLogger, chatbotRoutes);
+app.use('/api/simulations', publicRouteLogger, simulationRoutes);
+app.use('/api/chatbot-test', publicRouteLogger, chatbotTestRoutes);
 
-// Routes protégées (avec authentification)
-app.use('/api/client', addSupabaseAuth, authMiddleware, clientRoutes);
-app.use('/api/expert', addSupabaseAuth, authMiddleware, expertRoutes);
-app.use('/api/admin', addSupabaseAuth, authMiddleware, adminRoutes);
-app.use('/api/audit', addSupabaseAuth, authMiddleware, auditRoutes);
-app.use('/api/simulation', addSupabaseAuth, authMiddleware, simulationRoute);
-app.use('/api/chatbot', addSupabaseAuth, authMiddleware, chatbotRoutes);
-app.use('/api/chatbot-test', addSupabaseAuth, authMiddleware, chatbotTestRoutes);
+// 🚀 ROUTES DU SIMULATEUR - PUBLIQUES (pas d'authentification requise)
+app.use('/api/simulator', publicRouteLogger, simulatorRoutes);
 
-// Routes des signatures de charte (protégées par authentification)
-app.use('/api', addSupabaseAuth, authMiddleware, charteSignatureRoutes);
+// 🔄 ROUTES DE MIGRATION DES SESSIONS - PUBLIQUES (pas d'authentification requise)
+app.use('/api/session-migration', publicRouteLogger, sessionMigrationRoutes);
 
-// Route de santé
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', message: 'API is healthy', timestamp: new Date().toISOString() });
+// Route de santé (publique mais loggée) - PLACÉE AVANT LES ROUTES PROTÉGÉES
+app.get('/api/health', publicRouteLogger, (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    message: 'API is healthy', 
+    timestamp: new Date().toISOString(),
+    security: 'Enhanced authentication enabled'
+  });
 });
 
-// Route de test
-app.get('/api/test', (req, res) => {
-  res.json({ message: 'API is working' });
+// Route de test (publique mais loggée) - PLACÉE AVANT LES ROUTES PROTÉGÉES
+app.get('/api/test', publicRouteLogger, (req, res) => {
+  res.json({ 
+    message: 'API is working',
+    security: 'Enhanced authentication enabled'
+  });
 });
+
+// ===== ROUTES PROTÉGÉES (authentification renforcée requise) =====
+
+// APIs des experts - PROTÉGÉES
+app.use('/api/experts', enhancedAuthMiddleware, expertsRouter);
+
+// APIs des produits éligibles - PROTÉGÉES
+app.use('/api/produits-eligibles', enhancedAuthMiddleware, produitsEligiblesRouter);
+
+// APIs des spécialisations - PROTÉGÉES
+app.use('/api/specializations', enhancedAuthMiddleware, specializationsRouter);
+
+// APIs des audits - PROTÉGÉES
+app.use('/api/audits', enhancedAuthMiddleware, auditsRouter);
+
+// Routes client - PROTÉGÉES avec permissions spécifiques
+app.use('/api/client', enhancedAuthMiddleware, requireUserType('client'), clientRoutes);
+
+// Routes expert - PROTÉGÉES avec permissions spécifiques
+app.use('/api/expert', enhancedAuthMiddleware, requireUserType('expert'), expertRoutes);
+
+// Routes admin - PROTÉGÉES avec permissions spécifiques
+app.use('/api/admin', enhancedAuthMiddleware, requireUserType('admin'), adminRoutes);
+
+// Routes audit - PROTÉGÉES
+app.use('/api/audit', enhancedAuthMiddleware, auditRoutes);
+
+// Routes simulation - PROTÉGÉES
+app.use('/api/simulation', enhancedAuthMiddleware, simulationRoute);
+
+// Routes de messagerie - PROTÉGÉES
+app.use('/api/messaging', enhancedAuthMiddleware, messagingRoutes);
+app.use('/api/unified-messaging', enhancedAuthMiddleware, unifiedMessagingRoutes);
+
+// Routes des documents client - PROTÉGÉES
+app.use('/api/client-documents', enhancedAuthMiddleware, clientDocumentsRoutes);
+
+// Routes de monitoring - PROTÉGÉES avec permissions admin
+app.use('/api/monitoring', enhancedAuthMiddleware, requireUserType('admin'), monitoringRoutes);
+
+// Routes de tests - PROTÉGÉES avec permissions admin
+app.use('/api/tests', enhancedAuthMiddleware, requireUserType('admin'), testsRoutes);
+
+// Routes de tests terminaux - PROTÉGÉES avec permissions admin
+app.use('/api/terminal-tests', enhancedAuthMiddleware, requireUserType('admin'), terminalTestsRoutes);
+
+// Routes de notifications expert - PROTÉGÉES
+app.use('/api/expert/notifications', enhancedAuthMiddleware, expertNotificationsRoutes);
+
+// Routes analytics - PROTÉGÉES avec permissions admin et expert
+app.use('/api/analytics', enhancedAuthMiddleware, analyticsRoutes);
+
+// Routes de signature de charte - PROTÉGÉES (suppression du middleware global)
+app.use('/api/charte-signature', enhancedAuthMiddleware, charteSignatureRoutes);
 
 // Gestion des erreurs
 app.use(errorHandler);
 
-// Écouter sur toutes les interfaces IPv4 et IPv6
-async function initializeServer() {
+// Démarrer le serveur WebSocket
+console.log('🚀 Démarrage du serveur WebSocket...');
+const wsManager = initializeWebSocketServer();
+
+// Démarrer le serveur WebSocket unifié
+console.log('🔌 Démarrage du serveur WebSocket unifié...');
+// Note: Le service WebSocket unifié sera initialisé après le démarrage du serveur HTTP
+
+// Démarrer le serveur HTTP
+const server = app.listen(PORT, HOST, () => {
+  console.log(`🚀 Serveur démarré sur le port ${PORT}`);
+  console.log(`🔌 WebSocket classique sur le port 5002`);
+  console.log(`🔌 WebSocket unifié sur le port 5003`);
+  
+  // Initialiser le service WebSocket unifié avec le serveur HTTP
   try {
-    // Test de connexion à Supabase
-    const { data, error } = await supabase.from('Client').select('count').limit(1);
-    
-    if (error) {
-      logger.error('Erreur de connexion à Supabase:', error);
-      throw error;
-    }
-
-    logger.info('✅ Connexion à Supabase établie avec succès');
-    
-    app.listen(PORT, '::', () => {
-      console.log(`🚀 Serveur Express démarré sur http://localhost:${PORT} et http://[::1]:${PORT}`);
-      console.log(`📡 Support IPv6 activé`);
-      
-      // Afficher toutes les interfaces réseau disponibles
-      checkNetworkInterfaces();
-      
-      console.log(`\n🔐 Configuration CORS :`);
-      console.log(`   Origines autorisées: ${process.env.NODE_ENV === 'production' ? 'production' : 'développement'}`);
-      console.log(`   Credentials supportés: ${true}`);
-    });
+    const unifiedWsManager = initializeUnifiedWebSocket();
+    console.log('✅ Service WebSocket unifié initialisé (port 5003)');
   } catch (error) {
-    logger.error('❌ Erreur lors de l\'initialisation du serveur:', error);
-    process.exit(1);
+    console.error('❌ Erreur initialisation WebSocket unifié:', error);
   }
-}
+  
+  monitoringSystem.recordAuditLog({
+    message: 'Serveur démarré',
+    level: 'info',
+    category: 'system',
+    details: { 
+      httpPort: PORT, 
+      wsPort: PORT,
+      environment: process.env.NODE_ENV || 'development'
+    },
+    success: true
+  });
+});
 
-initializeServer().catch(error => {
-  console.error('❌ Erreur lors de l\'initialisation du serveur:', error);
-  process.exit(1);
+// Gestion propre de l'arrêt
+process.on('SIGINT', () => {
+  console.log('\n🔄 Arrêt du serveur...');
+  monitoringSystem.recordAuditLog({
+    message: 'Serveur arrêté',
+    level: 'info',
+    category: 'system',
+    details: { reason: 'SIGINT' },
+    success: true
+  });
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  console.log('\n🔄 Arrêt du serveur...');
+  monitoringSystem.recordAuditLog({
+    message: 'Serveur arrêté',
+    level: 'info',
+    category: 'system',
+    details: { reason: 'SIGTERM' },
+    success: true
+  });
+  process.exit(0);
 });
 
 // Gestion des erreurs non capturées
-process.on('unhandledRejection', (error) => {
-  logger.error('❌ Erreur non gérée:', error);
+process.on('uncaughtException', (error) => {
+  console.error('❌ Erreur non capturée:', error);
+  monitoringSystem.recordSecurityIncident({
+    incident_type: 'system_failure',
+    severity: 'high',
+    title: 'Erreur non capturée',
+    description: error.message,
+    affected_service: 'server',
+    impact_assessment: 'Serveur potentiellement instable',
+    mitigation_steps: 'Redémarrer le serveur et vérifier les logs'
+  });
 });
 
-process.on('uncaughtException', (error) => {
-  logger.error('❌ Exception non capturée:', error);
-  process.exit(1);
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Promesse rejetée non gérée:', reason);
+  monitoringSystem.recordSecurityIncident({
+    incident_type: 'system_failure',
+    severity: 'medium',
+    title: 'Promesse rejetée non gérée',
+    description: String(reason),
+    affected_service: 'server',
+    impact_assessment: 'Fonctionnalité potentiellement cassée',
+    mitigation_steps: 'Vérifier les promesses et ajouter la gestion d\'erreur'
+  });
 }); 

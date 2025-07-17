@@ -6,14 +6,13 @@ import { Link, useNavigate } from "react-router-dom";
 import { UserCircle, Mail, Lock, Building, MapPin, FileText, CreditCard, Calendar, Shield, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
-} from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/components/ui/use-toast";
 import { post } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
-import { RegisterResponse, RegisterCredentials } from "@/types/api";
+import { RegisterCredentials, UserType, AuthData } from "@/types/api";
 
+// Schéma de validation du formulaire
 const formSchema = z.object({
   name: z.string().min(2, "Le nom est requis"),
   email: z.string().email("Email invalide"),
@@ -29,14 +28,29 @@ const formSchema = z.object({
   card_expiry: z.string().min(5, "Format MM/AA requis").max(5),
   card_cvc: z.string().min(3, "Code CVC invalide").max(4),
   abonnement: z.enum(["mensuel", "annuel"], {
-    required_error: "Veuillez choisir un abonnement",
+    required_error: "Veuillez choisir un abonnement"
   }),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Les mots de passe ne correspondent pas",
-  path: ["confirmPassword"],
+  path: ["confirmPassword"]
 });
 
 type FormData = z.infer<typeof formSchema>;
+
+// Configuration des champs du formulaire
+const formFields = [
+  { name: "name", label: "Nom complet", icon: UserCircle, type: "text" },
+  { name: "email", label: "Email", icon: Mail, type: "email" },
+  { name: "password", label: "Mot de passe", icon: Lock, type: "password" },
+  { name: "confirmPassword", label: "Confirmer le mot de passe", icon: Lock, type: "password" },
+  { name: "company_name", label: "Nom de l'entreprise", icon: Building, type: "text" },
+  { name: "siren", label: "Numéro SIREN", icon: FileText, type: "text" },
+  { name: "specializations", label: "Spécialisations", icon: FileText, type: "text" },
+  { name: "experience", label: "Expérience", icon: FileText, type: "text" },
+  { name: "location", label: "Localisation", icon: MapPin, type: "text" },
+  { name: "description", label: "Description", icon: FileText, type: "text" },
+  { name: "card_number", label: "Numéro de carte", icon: CreditCard, type: "text" }
+] as const;
 
 export default function CreateAccountExpert() {
   const { toast } = useToast();
@@ -60,8 +74,14 @@ export default function CreateAccountExpert() {
       card_number: "",
       card_expiry: "",
       card_cvc: "",
-      abonnement: "mensuel",
+      abonnement: "mensuel"
     },
+  });
+
+  // Conversion d'AuthUser vers UserType
+  const convertAuthUserToUserType = (authUser: any): UserType => ({
+    ...authUser,
+    experience: authUser.experience?.toString()
   });
 
   const onSubmit = async (data: FormData) => {
@@ -76,7 +96,7 @@ export default function CreateAccountExpert() {
         name: data.name,
         company_name: data.company_name,
         siren: cleanSiren,
-        specializations: data.specializations?.split(",").map(s => s.trim()),
+        specializations: data.specializations?.split(", ").map(s => s.trim()),
         experience: data.experience,
         location: data.location,
         description: data.description,
@@ -84,41 +104,44 @@ export default function CreateAccountExpert() {
         card_expiry: data.card_expiry,
         card_cvc: data.card_cvc,
         abonnement: data.abonnement,
-        type: "expert",
+        type: "expert"
       };
 
-      const response = await post<RegisterResponse>("/api/auth/register", registerData);
+      const response = await post<AuthData>("/api/auth/register", registerData);
 
       if (!response.success || !response.data) {
         throw new Error(response.message || "Erreur lors de l'inscription");
       }
 
+      // response.data est maintenant de type AuthData (non-null)
       const { token, user } = response.data;
 
       if (!token || !user) {
         toast({
           title: "Erreur",
           description: "Données utilisateur incomplètes",
-          variant: "destructive",
+          variant: "destructive"
         });
         return;
       }
 
+      // Stocker le token et convertir l'utilisateur
       localStorage.setItem("token", token);
-      setUser(user);
+      const userType = convertAuthUserToUserType(user);
+      setUser(userType);
 
       toast({
         title: "Succès",
-        description: "Compte expert créé avec succès",
+        description: "Compte expert créé avec succès"
       });
 
       navigate("/dashboard");
     } catch (error) {
-      console.error("❌ Erreur d'inscription:", error);
+      console.error("❌ Erreur d'inscription: ", error);
       toast({
         title: "Erreur",
         description: error instanceof Error ? error.message : "Une erreur est survenue",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setIsLoading(false);
@@ -127,6 +150,7 @@ export default function CreateAccountExpert() {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
+      {/* Section de présentation */}
       <div className="hidden md:flex w-1/2 bg-gradient-to-r from-blue-600 to-blue-800 text-white p-12 flex-col justify-center">
         <h1 className="text-4xl font-extrabold">Rejoignez Profitum en tant qu'expert !</h1>
         <p className="mt-4 text-lg opacity-90">
@@ -138,31 +162,21 @@ export default function CreateAccountExpert() {
         </p>
       </div>
 
+      {/* Formulaire d'inscription */}
       <div className="w-full md:w-1/2 flex items-center justify-center px-6">
         <div className="max-w-lg w-full space-y-6 bg-white p-8 rounded-lg shadow-lg">
           <h2 className="text-3xl font-bold text-center text-gray-800">Créer un compte expert</h2>
           <p className="text-center text-gray-500">
             Déjà inscrit ?{" "}
-            <Link to="/connexion-partner" className="text-blue-600 font-medium hover:underline">
+            <Link to="/connexion-expert" className="text-blue-600 font-medium hover:underline">
               Connectez-vous
             </Link>
           </p>
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              {[
-                { name: "name", label: "Nom complet", icon: UserCircle },
-                { name: "email", label: "Email", icon: Mail, type: "email" },
-                { name: "password", label: "Mot de passe", icon: Lock, type: "password" },
-                { name: "confirmPassword", label: "Confirmer le mot de passe", icon: Lock, type: "password" },
-                { name: "company_name", label: "Nom de l'entreprise", icon: Building },
-                { name: "siren", label: "Numéro SIREN", icon: FileText },
-                { name: "specializations", label: "Spécialisations", icon: FileText },
-                { name: "experience", label: "Expérience", icon: FileText },
-                { name: "location", label: "Localisation", icon: MapPin },
-                { name: "description", label: "Description", icon: FileText },
-                { name: "card_number", label: "Numéro de carte", icon: CreditCard },
-              ].map(({ name, label, icon: Icon, type }) => (
+              {/* Champs principaux */}
+              {formFields.map(({ name, label, icon: Icon, type }) => (
                 <FormField
                   key={name}
                   control={form.control}
@@ -173,7 +187,7 @@ export default function CreateAccountExpert() {
                       <FormControl>
                         <div className="relative">
                           <Icon className="absolute left-3 top-3 text-gray-400 w-5 h-5" />
-                          <Input {...field} placeholder={label} type={type || "text"} className="pl-10" />
+                          <Input {...field} placeholder={label} type={type} className="pl-10" />
                         </div>
                       </FormControl>
                       <FormMessage />
@@ -182,6 +196,7 @@ export default function CreateAccountExpert() {
                 />
               ))}
 
+              {/* Champs de carte bancaire */}
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -217,6 +232,7 @@ export default function CreateAccountExpert() {
                 />
               </div>
 
+              {/* Sélection d'abonnement */}
               <FormField
                 control={form.control}
                 name="abonnement"
@@ -248,12 +264,17 @@ export default function CreateAccountExpert() {
                 )}
               />
 
+              {/* Bouton de soumission */}
               <Button
                 type="submit"
                 className="w-full py-3 text-lg bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-md transition-all"
                 disabled={isLoading}
               >
-                {isLoading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "Créer un compte expert"}
+                {isLoading ? (
+                  <Loader2 className="w-5 h-5 animate-spin mx-auto" />
+                ) : (
+                  "Créer un compte expert"
+                )}
               </Button>
             </form>
           </Form>

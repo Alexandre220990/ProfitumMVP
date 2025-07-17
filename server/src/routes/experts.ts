@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authMiddleware, requireExpert } from '../middleware/auth';
+import { authenticateUser, requireUserType } from '../middleware/authenticate';
 import { supabase } from '../lib/supabase';
 import { Audit, Client, Expert } from '../types/database';
 import { ApiResponse } from '../types/api';
@@ -30,8 +30,8 @@ const supabaseService = createClient(
 );
 
 // Appliquer le middleware d'authentification à toutes les routes (commenté pour permettre l'inscription publique)
-// router.use(authMiddleware);
-// router.use(requireExpert);
+// router.use(authenticateUser);
+// router.use(requireUserType);
 
 // Route publique pour l'inscription d'un expert (pas d'authentification requise)
 router.post('/register', async (req, res) => {
@@ -101,7 +101,8 @@ router.post('/register', async (req, res) => {
       rating: 0,
       compensation: 0,
       description: description || '',
-      status: 'active',
+      status: 'inactive', // Statut inactif par défaut
+      approval_status: 'pending', // Statut d'approbation en attente
       disponibilites: null,
       certifications: null,
       card_number: card_number || null,
@@ -164,7 +165,7 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// GET /api/experts
+// GET /api/experts - Récupérer tous les experts actifs pour la marketplace
 router.get('/', async (req, res) => {
   try {
     const { data: expertsData, error } = await supabase
@@ -188,7 +189,7 @@ router.get('/', async (req, res) => {
         updated_at
       `)
       .eq('status', 'active')
-      .order('name');
+      .order('rating', { ascending: false });
 
     if (error) throw error;
 
@@ -344,6 +345,205 @@ router.get('/:id/audits', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error fetching audits'
+    });
+  }
+});
+
+// PUT /api/client/produits-eligibles/:id/assign-expert - Attribuer un expert à un produit éligible
+router.put('/client/produits-eligibles/:id/assign-expert', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { expert_id } = req.body;
+    const token = req.headers.authorization?.replace('Bearer ', '');
+
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: 'Token d\'authentification requis'
+      });
+    }
+
+    // Vérifier l'authentification
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Token invalide'
+      });
+    }
+
+    // Vérifier que l'utilisateur est un client
+    const { data: clientData, error: clientError } = await supabase
+      .from('Client')
+      .select('id')
+      .eq('auth_id', user.id)
+      .single();
+
+    if (clientError || !clientData) {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux clients'
+      });
+    }
+
+    // Vérifier que le produit éligible appartient au client
+    const { data: produitData, error: produitError } = await supabase
+      .from('ClientProduitEligible')
+      .select('*')
+      .eq('id', id)
+      .eq('client_id', clientData.id)
+      .single();
+
+    if (produitError || !produitData) {
+      return res.status(404).json({
+        success: false,
+        message: 'Produit éligible non trouvé'
+      });
+    }
+
+    // Vérifier que l'expert existe et est actif
+    const { data: expertData, error: expertError } = await supabase
+      .from('Expert')
+      .select('id, name, specializations')
+      .eq('id', expert_id)
+      .eq('status', 'active')
+      .single();
+
+    if (expertError || !expertData) {
+      return res.status(404).json({
+        success: false,
+        message: 'Expert non trouvé ou inactif'
+      });
+    }
+
+    // Mettre à jour le produit éligible avec l'expert assigné
+    const { data: updatedProduit, error: updateError } = await supabase
+      .from('ClientProduitEligible')
+      .update({ 
+        expert_id: expert_id,
+        statut: 'en_cours',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select('*')
+      .single();
+
+    if (updateError) {
+      throw updateError;
+    }
+
+    // Créer un message automatique pour informer l'expert
+    const { data: messageData, error: messageError } = await supabase
+      .from('messages')
+      .insert({
+        sender_id: clientData.id,
+        receiver_id: expert_id,
+        subject: `Nouvelle attribution - ${produitData.ProduitEligible?.nom || 'Produit'}`,
+        content: `Bonjour ${expertData.name},\n\nVous avez été sélectionné pour accompagner ce client sur le produit "${produitData.ProduitEligible?.nom || 'Produit'}".\n\nMerci de prendre contact avec le client pour commencer l'accompagnement.\n\nCordialement,\nL'équipe Profitum`,
+        message_type: 'expert_assignment',
+        created_at: new Date().toISOString()
+      });
+
+    if (messageError) {
+      console.error('Erreur lors de la création du message:', messageError);
+    }
+
+    res.json({
+      success: true,
+      data: updatedProduit,
+      message: 'Expert assigné avec succès'
+    });
+
+  } catch (error) {
+    console.error('Error assigning expert:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error assigning expert'
+    });
+  }
+});
+
+// POST /api/experts/:id/contact - Contacter un expert
+router.post('/:id/contact', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { subject, message } = req.body;
+    const token = req.headers.authorization?.replace('Bearer ', '');
+
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: 'Token d\'authentification requis'
+      });
+    }
+
+    // Vérifier l'authentification
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Token invalide'
+      });
+    }
+
+    // Vérifier que l'utilisateur est un client
+    const { data: clientData, error: clientError } = await supabase
+      .from('Client')
+      .select('id, name')
+      .eq('auth_id', user.id)
+      .single();
+
+    if (clientError || !clientData) {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux clients'
+      });
+    }
+
+    // Vérifier que l'expert existe et est actif
+    const { data: expertData, error: expertError } = await supabase
+      .from('Expert')
+      .select('id, name, email')
+      .eq('id', id)
+      .eq('status', 'active')
+      .single();
+
+    if (expertError || !expertData) {
+      return res.status(404).json({
+        success: false,
+        message: 'Expert non trouvé ou inactif'
+      });
+    }
+
+    // Créer le message
+    const { data: messageData, error: messageError } = await supabase
+      .from('messages')
+      .insert({
+        sender_id: clientData.id,
+        receiver_id: expertData.id,
+        subject: subject,
+        content: message,
+        message_type: 'client_contact',
+        created_at: new Date().toISOString()
+      })
+      .select('*')
+      .single();
+
+    if (messageError) {
+      throw messageError;
+    }
+
+    res.json({
+      success: true,
+      data: messageData,
+      message: 'Message envoyé avec succès'
+    });
+
+  } catch (error) {
+    console.error('Error sending message:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error sending message'
     });
   }
 });

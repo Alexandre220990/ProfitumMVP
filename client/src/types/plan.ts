@@ -1,7 +1,6 @@
-import { Json } from './supabase';
+import { Json } from "./supabase";
 
-export interface Plan {
-  id: number;
+export interface Plan { id: number;
   name: string;
   description: string;
   price: number;
@@ -11,5 +10,4 @@ export interface Plan {
   type: string;
   limitations: Json | null;
   createdAt: Date;
-  updatedAt: Date;
-} 
+  updatedAt: Date; } 

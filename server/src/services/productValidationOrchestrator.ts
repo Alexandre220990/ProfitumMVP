@@ -12,8 +12,14 @@ const pool = new Pool({
   ssl: process.env.DATABASE_URL?.includes('supabase') ? { rejectUnauthorized: false } : undefined,
 });
 
-// Initialiser le client OpenAI
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// Initialiser le client OpenAI seulement si la clé est disponible
+let openai: OpenAI | null = null;
+if (process.env.OPENAI_API_KEY) {
+  openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  console.log('✅ Client OpenAI initialisé');
+} else {
+  console.log('⚠️  Clé OpenAI non trouvée - fonctionnalités IA désactivées');
+}
 
 // Instance du service d'analyse séquentielle
 const sequentialAnalyzer = new SequentialProductAnalyzer();
@@ -847,6 +853,10 @@ Pose la prochaine question pertinente pour collecter les informations manquantes
   // 🤖 Fonction pour interagir avec l'API OpenAI
   private async getOpenAIResponse(systemPrompt: string, conversationHistory: Array<{role: 'user' | 'assistant', content: string, timestamp: Date}> = []): Promise<string> {
     try {
+      if (!openai) {
+        return "Désolé, les fonctionnalités IA ne sont pas disponibles pour le moment.";
+      }
+
       const messages: Array<{role: 'system' | 'user' | 'assistant', content: string}> = [
         { role: 'system', content: systemPrompt },
         ...conversationHistory.slice(-10).map(msg => ({
@@ -862,7 +872,7 @@ Pose la prochaine question pertinente pour collecter les informations manquantes
         temperature: 0.7
       });
       
-      const messageContent = response.choices[0]?.message?.content;
+      const messageContent = response!.choices[0]?.message?.content;
       if (!messageContent) {
         console.warn("Réponse vide de l'API OpenAI.");
         return "Je suis désolé, je n'ai pas pu obtenir une réponse. Pouvez-vous reformuler votre question ?";

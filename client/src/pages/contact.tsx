@@ -4,32 +4,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { UserCircle, Mail, Phone, MapPin, MessageSquare } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
 
-export default function Contact() {
-  const { toast } = useToast();
+export default function Contact() { const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => { e.preventDefault();
     setIsSubmitting(true);
 
     // Simulation d'envoi
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     toast({
-      title: "Message envoyé !",
-      description: "Nous vous répondrons dans les plus brefs délais.",
-      variant: "default",
-    });
+      title: "Message envoyé !", description: "Nous vous répondrons dans les plus brefs délais.", variant: "default" });
 
     setIsSubmitting(false);
     (e.target as HTMLFormElement).reset();
@@ -37,7 +25,7 @@ export default function Contact() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Navigation */}
+      { /* Navigation */ }
       <div className="bg-blue-900 text-white py-3 px-6 rounded-lg flex justify-between items-center text-sm">
         <div className="flex items-center space-x-6">
           <Link to="/">
@@ -61,14 +49,14 @@ export default function Contact() {
               <Link to="/connexion-client">Client</Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link to="/connexion-partner">Partenaire</Link>
+              <Link to="/connexion-expert">Partenaire</Link>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
 
       <div className="max-w-6xl mx-auto py-12 px-4">
-        {/* En-tête */}
+        { /* En-tête */ }
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">Contactez-nous</h1>
           <p className="text-xl text-gray-600">
@@ -76,8 +64,8 @@ export default function Contact() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-          {/* Informations de contact */}
+        <div className="grid grid-cols-1 md: grid-cols-2 gap-12">
+          { /* Informations de contact */ }
           <div className="space-y-8">
             <h2 className="text-2xl font-semibold text-gray-900 mb-6">Nos coordonnées</h2>
             
@@ -116,11 +104,11 @@ export default function Contact() {
             </div>
           </div>
 
-          {/* Formulaire de contact */}
+          { /* Formulaire de contact */ }
           <div className="bg-white p-8 rounded-lg shadow-lg">
             <h2 className="text-2xl font-semibold text-gray-900 mb-6">Envoyez-nous un message</h2>
             
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={ handleSubmit } className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Nom</label>
@@ -145,19 +133,19 @@ export default function Contact() {
               <Button 
                 type="submit" 
                 className="w-full bg-blue-600 hover:bg-blue-700"
-                disabled={isSubmitting}
+                disabled={ isSubmitting }
               >
-                {isSubmitting ? "Envoi en cours..." : "Envoyer le message"}
+                { isSubmitting ? "Envoi en cours..." : "Envoyer le message" }
               </Button>
             </form>
           </div>
         </div>
       </div>
 
-      {/* Footer */}
+      { /* Footer */ }
       <footer className="bg-gray-800 text-white mt-16 py-6">
         <div className="container mx-auto text-center">
-          <p className="text-sm">© {new Date().getFullYear()} Profitum. Tous droits réservés.</p>
+          <p className="text-sm">© { new Date().getFullYear() } Profitum. Tous droits réservés.</p>
         </div>
       </footer>
     </div>

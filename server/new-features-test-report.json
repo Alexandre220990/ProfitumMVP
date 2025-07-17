@@ -1,0 +1,119 @@
+{
+  "timestamp": "2025-07-01T21:45:13.399Z",
+  "successRate": 95,
+  "total": 22,
+  "passed": 21,
+  "failed": 1,
+  "details": [
+    {
+      "name": "Module de formation",
+      "passed": true,
+      "description": "Système de formation sécurité"
+    },
+    {
+      "name": "Répertoire formation",
+      "passed": true,
+      "description": "Répertoire de formation créé"
+    },
+    {
+      "name": "Modules de formation",
+      "passed": true,
+      "description": "Modules de formation initialisés"
+    },
+    {
+      "name": "Module continuité",
+      "passed": true,
+      "description": "Système de continuité d'activité"
+    },
+    {
+      "name": "Répertoire continuité",
+      "passed": true,
+      "description": "Répertoire de continuité créé"
+    },
+    {
+      "name": "Processus métier",
+      "passed": true,
+      "description": "Processus métier définis"
+    },
+    {
+      "name": "Plans de reprise",
+      "passed": true,
+      "description": "Plans de reprise d'activité"
+    },
+    {
+      "name": "Documentation organisation",
+      "passed": true,
+      "description": "Documentation d'organisation de la sécurité"
+    },
+    {
+      "name": "Structure organisationnelle",
+      "passed": true,
+      "description": "Structure organisationnelle documentée"
+    },
+    {
+      "name": "Procédures d'escalade",
+      "passed": true,
+      "description": "Procédures d'escalade définies"
+    },
+    {
+      "name": "Contacts d'urgence",
+      "passed": true,
+      "description": "Contacts d'urgence documentés"
+    },
+    {
+      "name": "Module de chiffrement",
+      "passed": true,
+      "description": "Système de chiffrement AES-256-GCM"
+    },
+    {
+      "name": "Chiffrement AES-256-GCM",
+      "passed": true,
+      "description": "Algorithme AES-256-GCM implémenté"
+    },
+    {
+      "name": "Gestion des clés",
+      "passed": true,
+      "description": "Gestion sécurisée des clés"
+    },
+    {
+      "name": "Module de sauvegarde",
+      "passed": true,
+      "description": "Système de sauvegarde automatique"
+    },
+    {
+      "name": "Répertoire de sauvegarde",
+      "passed": true,
+      "description": "Répertoire de sauvegarde créé"
+    },
+    {
+      "name": "Sauvegarde automatisée",
+      "passed": false,
+      "description": "Sauvegarde automatisée configurée"
+    },
+    {
+      "name": "Chiffrement des sauvegardes",
+      "passed": true,
+      "description": "Sauvegardes chiffrées"
+    },
+    {
+      "name": "Module d'incidents",
+      "passed": true,
+      "description": "Système de gestion d'incidents"
+    },
+    {
+      "name": "Répertoire d'incidents",
+      "passed": true,
+      "description": "Répertoire d'incidents créé"
+    },
+    {
+      "name": "Niveaux de sévérité",
+      "passed": true,
+      "description": "Niveaux de sévérité définis"
+    },
+    {
+      "name": "Workflow d'incidents",
+      "passed": true,
+      "description": "Workflow de gestion d'incidents"
+    }
+  ]
+}

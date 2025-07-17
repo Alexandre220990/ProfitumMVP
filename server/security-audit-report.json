@@ -1,0 +1,28 @@
+{
+  "timestamp": "2025-07-01T21:40:28.511Z",
+  "score": 100,
+  "totalChecks": 18,
+  "passedChecks": 18,
+  "failedChecks": 0,
+  "warnings": [
+    "A.13.1: Headers de sécurité configurés",
+    "A.13.2: CORS et validation configurés",
+    "A.9.1: Authentification Supabase configurée",
+    "A.9.2: Rôles et permissions définis",
+    "A.9.3: Logs d'accès configurés",
+    "A.10.1: Module de chiffrement implémenté",
+    "A.12.3: Système de sauvegarde implémenté",
+    "A.8.1: Documentation des actifs créée",
+    "A.12.4: Logs et monitoring configurés",
+    "A.12.1: Procédures opérationnelles documentées",
+    "A.16.1: Système de gestion d'incidents implémenté",
+    "A.5.1: Politique de sécurité documentée",
+    "A.18.1: Mesures RGPD de base implémentées",
+    "A.7.1: Système de formation sécurité implémenté",
+    "A.6.1: Organisation de la sécurité documentée",
+    "A.17.1: Système de continuité d'activité implémenté",
+    "A.6.1: Organisation de la sécurité documentée",
+    "A.17.1: Système de continuité d'activité implémenté"
+  ],
+  "recommendations": []
+}

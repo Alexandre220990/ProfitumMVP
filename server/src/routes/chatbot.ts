@@ -3,7 +3,7 @@ import { Pool } from 'pg';
 import OpenAI from 'openai';
 import dotenv from 'dotenv';
 import ProductValidationOrchestrator from '../services/productValidationOrchestrator';
-import { authMiddleware } from '../middleware/auth';
+import { authenticateUser } from '../middleware/authenticate';
 import { supabase } from '../lib/supabase';
 
 dotenv.config();

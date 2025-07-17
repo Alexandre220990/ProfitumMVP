@@ -1,0 +1,1854 @@
+{
+  "timestamp": "2025-07-09T17:00:10.634Z",
+  "summary": {
+    "total": 270,
+    "obsolete": 102,
+    "normal": 168
+  },
+  "obsoleteFiles": [
+    {
+      "filePath": "src/pages/Growth.tsx",
+      "lineCount": 31,
+      "issues": [
+        "Petit fichier (31 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/pages/Paiement.tsx",
+      "lineCount": 499,
+      "issues": [
+        "Contient \"console.log\""
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/pages/admin/dashboard.tsx",
+      "lineCount": 20,
+      "issues": [
+        "Petit fichier (20 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/pages/admin/terminal-tests.tsx",
+      "lineCount": 511,
+      "issues": [
+        "Contient \"console.log\"",
+        "Nom suspect: \"test\""
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/pages/admin/tests.tsx",
+      "lineCount": 516,
+      "issues": [
+        "Nom suspect: \"test\""
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/pages/aide-client.tsx",
+      "lineCount": 106,
+      "issues": [
+        "Contient \"TODO\""
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/pages/aide-expert.tsx",
+      "lineCount": 106,
+      "issues": [
+        "Contient \"TODO\""
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/pages/api/simulate-ticpe.ts",
+      "lineCount": 1,
+      "issues": [
+        "Petit fichier (1 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/pages/auth-page.tsx",
+      "lineCount": 116,
+      "issues": [
+        "Contient \"console.log\""
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/pages/chatbot-simulateur.tsx",
+      "lineCount": 33,
+      "issues": [
+        "Petit fichier (33 lignes)",
+        "Contient \"console.log\""
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/pages/chatbotTest.tsx",
+      "lineCount": 80,
+      "issues": [
+        "Nom suspect: \"test\""
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/pages/conditions-utilisation.tsx",
+      "lineCount": 42,
+      "issues": [
+        "Petit fichier (42 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/pages/connexion-client.tsx",
+      "lineCount": 131,
+      "issues": [
+        "Contient \"console.log\""
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/pages/dashboard/client-demo.tsx",
+      "lineCount": 240,
+      "issues": [
+        "Nom suspect: \"demo\""
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/pages/demandes-en-attente.tsx",
+      "lineCount": 75,
+      "issues": [
+        "Contient \"console.log\"",
+        "Contient \"TODO\""
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/pages/dossier-client/1.tsx",
+      "lineCount": 171,
+      "issues": [
+        "Contient \"console.log\""
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/pages/dossier-client/[id].tsx",
+      "lineCount": 294,
+      "issues": [
+        "Contient \"console.log\""
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/pages/dossier-client/[produit]/[id].tsx",
+      "lineCount": 184,
+      "issues": [
+        "Contient \"console.log\""
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/pages/expert/dashboard.tsx",
+      "lineCount": 13,
+      "issues": [
+        "Petit fichier (13 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/pages/expert-pending-approval.tsx",
+      "lineCount": 225,
+      "issues": [
+        "Contient \"TODO\""
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/pages/home-page-test.tsx",
+      "lineCount": 329,
+      "issues": [
+        "Nom suspect: \"test\""
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/pages/home-page.tsx",
+      "lineCount": 195,
+      "issues": [
+        "Contient \"console.log\""
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/pages/home-redirect.tsx",
+      "lineCount": 40,
+      "issues": [
+        "Petit fichier (40 lignes)",
+        "Contient \"console.log\""
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/pages/messagerie-client/conversation/[id].tsx",
+      "lineCount": 18,
+      "issues": [
+        "Petit fichier (18 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/pages/messagerie-client-demo.tsx",
+      "lineCount": 87,
+      "issues": [
+        "Nom suspect: \"demo\""
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/pages/messagerie-expert-demo.tsx",
+      "lineCount": 240,
+      "issues": [
+        "Nom suspect: \"demo\""
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/pages/not-found.tsx",
+      "lineCount": 20,
+      "issues": [
+        "Petit fichier (20 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/pages/produits/audit_energetique.tsx",
+      "lineCount": 8,
+      "issues": [
+        "Petit fichier (8 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/pages/produits/cee-product.tsx",
+      "lineCount": 33,
+      "issues": [
+        "Petit fichier (33 lignes)",
+        "Contient \"console.log\""
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/pages/produits/cir-product.tsx",
+      "lineCount": 33,
+      "issues": [
+        "Petit fichier (33 lignes)",
+        "Contient \"console.log\""
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/pages/produits/comptable-product.tsx",
+      "lineCount": 33,
+      "issues": [
+        "Petit fichier (33 lignes)",
+        "Contient \"console.log\""
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/pages/produits/energie-product.tsx",
+      "lineCount": 34,
+      "issues": [
+        "Petit fichier (34 lignes)",
+        "Contient \"console.log\""
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/pages/produits/foncier-product.tsx",
+      "lineCount": 33,
+      "issues": [
+        "Petit fichier (33 lignes)",
+        "Contient \"console.log\""
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/pages/produits/juridique-product.tsx",
+      "lineCount": 24,
+      "issues": [
+        "Petit fichier (24 lignes)",
+        "Contient \"console.log\""
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/pages/produits/product-page.tsx",
+      "lineCount": 220,
+      "issues": [
+        "Contient \"console.log\""
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/pages/produits/social-product.tsx",
+      "lineCount": 24,
+      "issues": [
+        "Petit fichier (24 lignes)",
+        "Contient \"console.log\""
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/pages/produits/social.tsx",
+      "lineCount": 293,
+      "issues": [
+        "Contient \"console.log\""
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/pages/produits/ticpe.tsx",
+      "lineCount": 780,
+      "issues": [
+        "Contient \"console.log\""
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/pages/produits/urssaf-product.tsx",
+      "lineCount": 433,
+      "issues": [
+        "Contient \"console.log\""
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/pages/produits/urssaf.tsx",
+      "lineCount": 784,
+      "issues": [
+        "Contient \"console.log\""
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/pages/services-page.tsx",
+      "lineCount": 34,
+      "issues": [
+        "Petit fichier (34 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/pages/settings.tsx",
+      "lineCount": 77,
+      "issues": [
+        "Contient \"console.log\"",
+        "Contient \"TODO\""
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/pages/simulateur-eligibilite.tsx",
+      "lineCount": 879,
+      "issues": [
+        "Contient \"console.log\""
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/ChatConversation.tsx",
+      "lineCount": 26,
+      "issues": [
+        "Petit fichier (26 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/ChatInput.tsx",
+      "lineCount": 37,
+      "issues": [
+        "Petit fichier (37 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/ChatResults.tsx",
+      "lineCount": 232,
+      "issues": [
+        "Contient \"console.log\""
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/Header.tsx",
+      "lineCount": 40,
+      "issues": [
+        "Petit fichier (40 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/HeaderExpert.tsx",
+      "lineCount": 86,
+      "issues": [
+        "Contient \"console.log\""
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/NotificationBadge.tsx",
+      "lineCount": 30,
+      "issues": [
+        "Petit fichier (30 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/ProcessStepsTest.tsx",
+      "lineCount": 146,
+      "issues": [
+        "Nom suspect: \"test\""
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/ProgressBar.tsx",
+      "lineCount": 27,
+      "issues": [
+        "Petit fichier (27 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/ProtectedRoute.tsx",
+      "lineCount": 22,
+      "issues": [
+        "Petit fichier (22 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/Resultats.tsx",
+      "lineCount": 41,
+      "issues": [
+        "Petit fichier (41 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/ServiceCard.tsx",
+      "lineCount": 15,
+      "issues": [
+        "Petit fichier (15 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/ThemeProvider.tsx",
+      "lineCount": 29,
+      "issues": [
+        "Petit fichier (29 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/chatbot/ChatConversation.tsx",
+      "lineCount": 13,
+      "issues": [
+        "Petit fichier (13 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/chatbot/ChatInput.tsx",
+      "lineCount": 30,
+      "issues": [
+        "Petit fichier (30 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/chatbot/ChatLoader.tsx",
+      "lineCount": 20,
+      "issues": [
+        "Petit fichier (20 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/chatbot/ChatMessage.tsx",
+      "lineCount": 27,
+      "issues": [
+        "Petit fichier (27 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/chatbot/ChatSuggestions.tsx",
+      "lineCount": 21,
+      "issues": [
+        "Petit fichier (21 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/chatbot/ChatbotHeader.tsx",
+      "lineCount": 15,
+      "issues": [
+        "Petit fichier (15 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/dashboard/AuditTable.tsx",
+      "lineCount": 271,
+      "issues": [
+        "Contient \"console.log\""
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/dashboard/EmptyAuditState.tsx",
+      "lineCount": 47,
+      "issues": [
+        "Petit fichier (47 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/dashboard/KpiCard.tsx",
+      "lineCount": 16,
+      "issues": [
+        "Petit fichier (16 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/dashboard/SectionTitle.tsx",
+      "lineCount": 10,
+      "issues": [
+        "Petit fichier (10 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/empty-eligible-products-state.tsx",
+      "lineCount": 41,
+      "issues": [
+        "Petit fichier (41 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/messaging/ConversationView.tsx",
+      "lineCount": 257,
+      "issues": [
+        "Contient \"console.log\"",
+        "Contient \"TODO\""
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/messaging/DocumentAttachments.tsx",
+      "lineCount": 161,
+      "issues": [
+        "Contient \"TODO\""
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/messaging/MessagingLayout.tsx",
+      "lineCount": 14,
+      "issues": [
+        "Petit fichier (14 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/navigation/ClientNavigation.tsx",
+      "lineCount": 1,
+      "issues": [
+        "Petit fichier (1 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/ui/ab-testing.tsx",
+      "lineCount": 590,
+      "issues": [
+        "Contient \"console.log\"",
+        "Contient \"TODO\"",
+        "Nom suspect: \"test\""
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/ui/alert.tsx",
+      "lineCount": 48,
+      "issues": [
+        "Petit fichier (48 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/ui/analytics-dashboard.tsx",
+      "lineCount": 410,
+      "issues": [
+        "Contient \"TODO\""
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/ui/aspect-ratio.tsx",
+      "lineCount": 6,
+      "issues": [
+        "Petit fichier (6 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/ui/avatar.tsx",
+      "lineCount": 47,
+      "issues": [
+        "Petit fichier (47 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/ui/badge.tsx",
+      "lineCount": 27,
+      "issues": [
+        "Petit fichier (27 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/ui/button.tsx",
+      "lineCount": 36,
+      "issues": [
+        "Petit fichier (36 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/ui/checkbox.tsx",
+      "lineCount": 28,
+      "issues": [
+        "Petit fichier (28 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/ui/collaborative-workflow.tsx",
+      "lineCount": 345,
+      "issues": [
+        "Contient \"console.log\"",
+        "Contient \"TODO\""
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/ui/collapsible.tsx",
+      "lineCount": 10,
+      "issues": [
+        "Petit fichier (10 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/ui/export-pdf.tsx",
+      "lineCount": 772,
+      "issues": [
+        "Contient \"console.log\"",
+        "Contient \"TODO\""
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/ui/ged-export.tsx",
+      "lineCount": 436,
+      "issues": [
+        "Contient \"TODO\""
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/ui/hover-card.tsx",
+      "lineCount": 27,
+      "issues": [
+        "Petit fichier (27 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/ui/input.tsx",
+      "lineCount": 27,
+      "issues": [
+        "Petit fichier (27 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/ui/label.tsx",
+      "lineCount": 25,
+      "issues": [
+        "Petit fichier (25 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/ui/notifications.tsx",
+      "lineCount": 702,
+      "issues": [
+        "Contient \"console.log\"",
+        "Contient \"TODO\""
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/ui/popover.tsx",
+      "lineCount": 29,
+      "issues": [
+        "Petit fichier (29 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/ui/progress.tsx",
+      "lineCount": 26,
+      "issues": [
+        "Petit fichier (26 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/ui/radio-group.tsx",
+      "lineCount": 40,
+      "issues": [
+        "Petit fichier (40 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/ui/resizable.tsx",
+      "lineCount": 33,
+      "issues": [
+        "Petit fichier (33 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/ui/scroll-area.tsx",
+      "lineCount": 44,
+      "issues": [
+        "Petit fichier (44 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/ui/security-audit.tsx",
+      "lineCount": 743,
+      "issues": [
+        "Contient \"TODO\""
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/ui/separator.tsx",
+      "lineCount": 28,
+      "issues": [
+        "Petit fichier (28 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/ui/skeleton.tsx",
+      "lineCount": 12,
+      "issues": [
+        "Petit fichier (12 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/ui/slider.tsx",
+      "lineCount": 26,
+      "issues": [
+        "Petit fichier (26 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/ui/sonner.tsx",
+      "lineCount": 12,
+      "issues": [
+        "Petit fichier (12 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/ui/switch.tsx",
+      "lineCount": 27,
+      "issues": [
+        "Petit fichier (27 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/ui/textarea.tsx",
+      "lineCount": 23,
+      "issues": [
+        "Petit fichier (23 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/ui/theme-toggle.tsx",
+      "lineCount": 43,
+      "issues": [
+        "Petit fichier (43 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/ui/toaster.tsx",
+      "lineCount": 25,
+      "issues": [
+        "Petit fichier (25 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/ui/toggle.tsx",
+      "lineCount": 33,
+      "issues": [
+        "Petit fichier (33 lignes)"
+      ],
+      "isObsolete": true
+    },
+    {
+      "filePath": "src/components/ui/tooltip.tsx",
+      "lineCount": 28,
+      "issues": [
+        "Petit fichier (28 lignes)"
+      ],
+      "isObsolete": true
+    }
+  ],
+  "normalFiles": [
+    {
+      "filePath": "src/pages/DetailsDossier.tsx",
+      "lineCount": 120,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/Nos-Services.tsx",
+      "lineCount": 119,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/ProfilClient.tsx",
+      "lineCount": 75,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/ProfilExpert.tsx",
+      "lineCount": 114,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/Scale.tsx",
+      "lineCount": 115,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/Tarifs.tsx",
+      "lineCount": 155,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/admin/client-details.tsx",
+      "lineCount": 490,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/admin/documentation-new.tsx",
+      "lineCount": 562,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/admin/documentation.tsx",
+      "lineCount": 254,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/admin/formulaire-expert.tsx",
+      "lineCount": 434,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/admin/ged-management.tsx",
+      "lineCount": 771,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/admin/gestion-clients.tsx",
+      "lineCount": 368,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/admin/gestion-dossiers.tsx",
+      "lineCount": 1242,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/admin/gestion-experts.tsx",
+      "lineCount": 371,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/admin/monitoring.tsx",
+      "lineCount": 1132,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/admin/validation-dashboard.tsx",
+      "lineCount": 541,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/charte-signature.tsx",
+      "lineCount": 108,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/chatbot-fixed.tsx",
+      "lineCount": 143,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/chatbot.tsx",
+      "lineCount": 146,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/confirmation.tsx",
+      "lineCount": 140,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/connect-admin.tsx",
+      "lineCount": 174,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/connexion-partner.tsx",
+      "lineCount": 167,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/contact.tsx",
+      "lineCount": 155,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/create-account-client.tsx",
+      "lineCount": 131,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/create-account-expert.tsx",
+      "lineCount": 203,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/dashboard/KPI.tsx",
+      "lineCount": 63,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/dashboard/admin.tsx",
+      "lineCount": 285,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/dashboard/client-assignments.tsx",
+      "lineCount": 342,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/dashboard/client-audit.tsx",
+      "lineCount": 250,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/dashboard/client-documents.tsx",
+      "lineCount": 381,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/dashboard/client-home.tsx",
+      "lineCount": 163,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/dashboard/client.tsx",
+      "lineCount": 402,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/dashboard/expert-assignments.tsx",
+      "lineCount": 416,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/dashboard/expert.tsx",
+      "lineCount": 493,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/documents-client.tsx",
+      "lineCount": 95,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/documents-expert.tsx",
+      "lineCount": 95,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/dossier-client/10.tsx",
+      "lineCount": 71,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/dossier-client/11.tsx",
+      "lineCount": 169,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/dossier-client/12.tsx",
+      "lineCount": 122,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/dossier-client/13.tsx",
+      "lineCount": 71,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/dossier-client/14.tsx",
+      "lineCount": 71,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/dossier-client/15.tsx",
+      "lineCount": 105,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/dossier-client/16.tsx",
+      "lineCount": 71,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/dossier-client/17.tsx",
+      "lineCount": 71,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/dossier-client/2.tsx",
+      "lineCount": 74,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/dossier-client/3.tsx",
+      "lineCount": 74,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/dossier-client/4.tsx",
+      "lineCount": 74,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/dossier-client/5.tsx",
+      "lineCount": 74,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/dossier-client/6.tsx",
+      "lineCount": 148,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/dossier-client/7.tsx",
+      "lineCount": 146,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/dossier-client/8.tsx",
+      "lineCount": 71,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/dossier-client/9.tsx",
+      "lineCount": 71,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/dossier-details.tsx",
+      "lineCount": 126,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/economies-garanties.tsx",
+      "lineCount": 361,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/error-page.tsx",
+      "lineCount": 75,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/expert/[id].tsx",
+      "lineCount": 152,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/expert-dossier.tsx",
+      "lineCount": 119,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/expert-page.tsx",
+      "lineCount": 95,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/expert-profile.tsx",
+      "lineCount": 97,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/experts-verifies.tsx",
+      "lineCount": 384,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/experts.tsx",
+      "lineCount": 79,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/inscription-simulateur.tsx",
+      "lineCount": 514,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/marketplace/expert-detail.tsx",
+      "lineCount": 391,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/marketplace/experts.tsx",
+      "lineCount": 640,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/marketplace-experts.tsx",
+      "lineCount": 166,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/messagerie-client.tsx",
+      "lineCount": 137,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/messagerie-expert.tsx",
+      "lineCount": 241,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/produits/AuditProcess.tsx",
+      "lineCount": 141,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/produits/dfs-product.tsx",
+      "lineCount": 406,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/produits/dfs.tsx",
+      "lineCount": 682,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/produits/energetique.tsx",
+      "lineCount": 691,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/produits/energetique1.tsx",
+      "lineCount": 649,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/produits/foncier.tsx",
+      "lineCount": 668,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/produits/msa.tsx",
+      "lineCount": 168,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/produits/ticpe-product.tsx",
+      "lineCount": 409,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/profile/client.tsx",
+      "lineCount": 281,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/profile/expert.tsx",
+      "lineCount": 377,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/reports.tsx",
+      "lineCount": 121,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/resultats.tsx",
+      "lineCount": 153,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/services/assurance-flotte-professionnelle.tsx",
+      "lineCount": 112,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/services/chronotachygraphes-digitaux.tsx",
+      "lineCount": 112,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/services/controle-technique-poids-lourds.tsx",
+      "lineCount": 112,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/services/dashcam-securite.tsx",
+      "lineCount": 112,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/services/gestion-carburant-cartes-pro.tsx",
+      "lineCount": 112,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/services/gestion-flotte-automobile.tsx",
+      "lineCount": 112,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/simulateur.tsx",
+      "lineCount": 104,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/starter.tsx",
+      "lineCount": 81,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/pages/tarifs-negocies.tsx",
+      "lineCount": 374,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/ApprovalPendingModal.tsx",
+      "lineCount": 75,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/AuditTable.tsx",
+      "lineCount": 149,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/CharterDialog.tsx",
+      "lineCount": 104,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/ChatbotSimulator.tsx",
+      "lineCount": 420,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/DocumentUpload.tsx",
+      "lineCount": 77,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/DocumentationDialog.tsx",
+      "lineCount": 235,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/ExpertDetailModal.tsx",
+      "lineCount": 234,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/ExpertSelection.tsx",
+      "lineCount": 56,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/HeaderAdmin.tsx",
+      "lineCount": 74,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/HeaderClient.tsx",
+      "lineCount": 93,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/HeaderPartner.tsx",
+      "lineCount": 80,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/HelpDialog.tsx",
+      "lineCount": 50,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/IntelligentQuestionnaire.tsx",
+      "lineCount": 284,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/MarketplaceSimplified.tsx",
+      "lineCount": 269,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/NotificationCenter.tsx",
+      "lineCount": 215,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/PartnerRegistrationForm.tsx",
+      "lineCount": 127,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/ProcessSteps.tsx",
+      "lineCount": 64,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/ProcessWorkflow.tsx",
+      "lineCount": 150,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/ProductProcessWorkflow.tsx",
+      "lineCount": 284,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/ProduitEligibleCard.tsx",
+      "lineCount": 73,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/PublicHeader.tsx",
+      "lineCount": 72,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/Questionnaire.tsx",
+      "lineCount": 102,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/RemindersList.tsx",
+      "lineCount": 255,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/ScheduleMeeting.tsx",
+      "lineCount": 77,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/TutorialGuide.tsx",
+      "lineCount": 84,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/UnifiedSimulator.tsx",
+      "lineCount": 518,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/admin/ComplianceDashboard.tsx",
+      "lineCount": 583,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/admin/DocumentationManager.tsx",
+      "lineCount": 334,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/chatbot/ProductsSidebar.tsx",
+      "lineCount": 161,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/documents/DocumentGrid.tsx",
+      "lineCount": 231,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/documents/DocumentNavigation.tsx",
+      "lineCount": 249,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/documents/DocumentPagination.tsx",
+      "lineCount": 136,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/documents/DocumentSearch.tsx",
+      "lineCount": 122,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/documents/DocumentShareModal.tsx",
+      "lineCount": 103,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/documents/DocumentStats.tsx",
+      "lineCount": 442,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/documents/DocumentStorage.tsx",
+      "lineCount": 529,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/documents/DocumentTabs.tsx",
+      "lineCount": 63,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/documents/DocumentUploadModal.tsx",
+      "lineCount": 79,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/documents/DocumentValidationModal.tsx",
+      "lineCount": 102,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/documents/DocumentWorkflow.tsx",
+      "lineCount": 380,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/documents/DossierDocuments.tsx",
+      "lineCount": 528,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/ged/GEDMetrics.tsx",
+      "lineCount": 270,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/messaging/ConversationList.tsx",
+      "lineCount": 120,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/messaging/DocumentNotifications.tsx",
+      "lineCount": 222,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/messaging/DocumentUpload.tsx",
+      "lineCount": 268,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/messaging/MessageThread.tsx",
+      "lineCount": 264,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/messaging/MessagingHeader.tsx",
+      "lineCount": 64,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/messaging/RealTimeMessaging.tsx",
+      "lineCount": 204,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/messaging/UnifiedMessaging.tsx",
+      "lineCount": 289,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/ui/accordion.tsx",
+      "lineCount": 56,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/ui/admin-dashboard.tsx",
+      "lineCount": 548,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/ui/alert-dialog.tsx",
+      "lineCount": 118,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/ui/breadcrumb.tsx",
+      "lineCount": 85,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/ui/calendar.tsx",
+      "lineCount": 50,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/ui/card.tsx",
+      "lineCount": 66,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/ui/carousel.tsx",
+      "lineCount": 188,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/ui/chart.tsx",
+      "lineCount": 287,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/ui/command.tsx",
+      "lineCount": 134,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/ui/context-menu.tsx",
+      "lineCount": 162,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/ui/dialog.tsx",
+      "lineCount": 99,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/ui/drawer.tsx",
+      "lineCount": 95,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/ui/dropdown-menu.tsx",
+      "lineCount": 163,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/ui/expert-dashboard.tsx",
+      "lineCount": 698,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/ui/form.tsx",
+      "lineCount": 132,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/ui/input-otp.tsx",
+      "lineCount": 66,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/ui/instant-messaging.tsx",
+      "lineCount": 471,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/ui/loading-states.tsx",
+      "lineCount": 174,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/ui/menubar.tsx",
+      "lineCount": 195,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/ui/navigation-menu.tsx",
+      "lineCount": 114,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/ui/notification-system.tsx",
+      "lineCount": 258,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/ui/pagination.tsx",
+      "lineCount": 88,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/ui/select.tsx",
+      "lineCount": 141,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/ui/sheet.tsx",
+      "lineCount": 110,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/ui/sidebar.tsx",
+      "lineCount": 555,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/ui/table.tsx",
+      "lineCount": 90,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/ui/tabs.tsx",
+      "lineCount": 51,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/ui/theme-provider.tsx",
+      "lineCount": 57,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/ui/toast.tsx",
+      "lineCount": 108,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/ui/toggle-group.tsx",
+      "lineCount": 54,
+      "issues": [],
+      "isObsolete": false
+    },
+    {
+      "filePath": "src/components/ui/use-toast.ts",
+      "lineCount": 125,
+      "issues": [],
+      "isObsolete": false
+    }
+  ]
+}

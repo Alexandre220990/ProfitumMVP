@@ -8,7 +8,7 @@ import jwt from 'jsonwebtoken';
  * @returns Un objet AuthUser typé
  */
 export function createAuthUserFromSupabase(user: User): AuthUser {
-  const type = (user.user_metadata?.type as 'client' | 'expert') || 'client';
+  const type = (user.user_metadata?.type as 'client' | 'expert' | 'admin') || 'client';
 
   // ⚠️ Sécuriser le champ `username` avec fallback
   const username =
@@ -24,10 +24,12 @@ export function createAuthUserFromSupabase(user: User): AuthUser {
   };
 
   return {
-    id: user.id,
-    email: user.email || '',
+    ...user,
     type,
-    user_metadata: userMetadata
+    user_metadata: userMetadata,
+    app_metadata: user.app_metadata || {},
+    aud: user.aud || 'authenticated',
+    created_at: user.created_at || new Date().toISOString()
   };
 }
 
