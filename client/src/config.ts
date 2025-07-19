@@ -2,8 +2,8 @@
  * Configuration de l'application
  */
 export const API_URL = import.meta.env.VITE_USE_IPV6 === 'true'
-  ? import.meta.env.VITE_API_URL
-  : import.meta.env.VITE_API_URL_IPV4;
+  ? (import.meta.env.VITE_API_URL || 'http://[::1]:5001')
+  : (import.meta.env.VITE_API_URL_IPV4 || 'http://127.0.0.1:5001');
 
 /**
  * Configuration du chatbot
