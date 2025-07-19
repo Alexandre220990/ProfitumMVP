@@ -15,12 +15,12 @@ export default function MessageriePage() {
 
   // Rediriger si non authentifié
   React.useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/login');
+    if (!user) {
+      navigate('/login');
     }
-  }, [user, authLoading, router]);
+  }, [user, navigate]);
 
-  if (authLoading) {
+  if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -29,10 +29,6 @@ export default function MessageriePage() {
         </div>
       </div>
     );
-  }
-
-  if (!user) {
-    return null; // Redirection en cours
   }
 
   return (
@@ -45,7 +41,7 @@ export default function MessageriePage() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => router.back()}
+                onClick={() => navigate(-1)}
                 className="md:hidden"
               >
                 <ArrowLeft className="h-4 w-4" />

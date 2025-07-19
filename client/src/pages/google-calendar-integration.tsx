@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { useGoogleCalendar } from '@/hooks/use-google-calendar';
 import { GoogleCalendarConnect } from '@/components/google-calendar/GoogleCalendarConnect';
