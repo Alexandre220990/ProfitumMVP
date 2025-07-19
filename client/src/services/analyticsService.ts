@@ -197,10 +197,10 @@ class AnalyticsService {
         .gte('created_at', startDate)
         .lte('created_at', endDate);
 
-      const totalPotentialGain = auditsData?.reduce((sum, audit) => 
+      const totalPotentialGain = auditsData?.reduce((sum: number, audit: any) => 
         sum + (audit.potential_gain || 0), 0) || 0;
       
-      const totalObtainedGain = auditsData?.reduce((sum, audit) => 
+      const totalObtainedGain = auditsData?.reduce((sum: number, audit: any) => 
         sum + (audit.obtained_gain || 0), 0) || 0;
 
       // Calculer les taux de conversion
@@ -388,7 +388,7 @@ class AnalyticsService {
 
       const productStats: Record<string, { conversions: number; revenue: number; total: number }> = {};
 
-      productData?.forEach(item => {
+      productData?.forEach((item: any) => {
         const productName = (item.ProduitEligible as any)?.nom || 'Inconnu';
         if (!productStats[productName]) {
           productStats[productName] = { conversions: 0, revenue: 0, total: 0 };

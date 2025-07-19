@@ -674,7 +674,7 @@ class CalendarService {
         .order('name');
 
       if (error) throw error;
-      return (data || []).map(expert => ({
+      return (data || []).map((expert: any) => ({
         id: expert.id,
         email: expert.email,
         name: expert.name,
@@ -706,7 +706,7 @@ class CalendarService {
 
       if (error) throw error;
       
-      return (data || []).map(dossier => ({
+      return (data || []).map((dossier: any) => ({
         id: dossier.id,
         name: `Dossier ${dossier.id}`,
         product_type: `Produit ${dossier.produitId}`,
