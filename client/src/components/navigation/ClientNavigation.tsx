@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
+import { useMessagingBadge } from '@/hooks/use-messaging-badge';
 import { 
   Briefcase, 
   Calendar, 
@@ -12,7 +13,8 @@ import {
   ChevronDown,
   Home,
   BarChart3,
-  FolderOpen
+  FolderOpen,
+  Globe
 } from 'lucide-react';
 import Button from '@/components/ui/design-system/Button';
 import Badge from '@/components/ui/design-system/Badge';
@@ -30,6 +32,7 @@ export default function ClientNavigation() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { badgeText } = useMessagingBadge();
   const [isExpanded, setIsExpanded] = useState(false);
 
   const navigationItems: NavigationItem[] = [
@@ -55,13 +58,20 @@ export default function ClientNavigation() {
       description: 'Gérez vos rendez-vous',
       category: 'main'
     },
+    {
+      label: 'Google Calendar',
+      path: '/google-calendar-integration',
+      icon: Globe,
+      description: 'Synchronisez avec Google Calendar',
+      category: 'main'
+    },
     
     // Outils
     {
       label: 'Messagerie',
-      path: '/messagerie-client',
+      path: '/messagerie',
       icon: MessageSquare,
-      badge: '3', // Nombre de messages non lus
+      badge: badgeText || undefined, // Nombre de messages non lus dynamique
       description: 'Communiquez avec vos experts',
       category: 'tools'
     },

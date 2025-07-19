@@ -15,7 +15,7 @@ export default defineConfig({
     cors: true,
     proxy: {
       '/api': {
-        target: 'http://[::1]:5004', // ✅ CORRIGÉ : Port 5004 (Node.js) au lieu de 5001
+        target: 'http://[::1]:5001', // ✅ CORRIGÉ : Port 5001 (Node.js)
         changeOrigin: true,
         secure: false,
         ws: true,
