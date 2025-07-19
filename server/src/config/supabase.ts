@@ -10,8 +10,16 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabaseAnonKey = process.env.SUPABASE_KEY;
 
-if (!supabaseUrl || !supabaseServiceRoleKey || !supabaseAnonKey) {
-  throw new Error('Configuration Supabase manquante: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY et SUPABASE_KEY sont requis');
+// En production, on peut utiliser la service role key comme fallback pour la clé anonyme
+const isProduction = process.env.NODE_ENV === 'production';
+const effectiveAnonKey = supabaseAnonKey || (isProduction ? supabaseServiceRoleKey : null);
+
+if (!supabaseUrl || !supabaseServiceRoleKey) {
+  throw new Error('Configuration Supabase manquante: SUPABASE_URL et SUPABASE_SERVICE_ROLE_KEY sont requis');
+}
+
+if (!effectiveAnonKey) {
+  throw new Error('Configuration Supabase manquante: SUPABASE_KEY est requis en développement');
 }
 
 // Configuration HTTPS
@@ -52,7 +60,7 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
 });
 
 // Client Supabase avec clé anonyme pour les opérations client
-const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+const supabaseClient = createClient(supabaseUrl, effectiveAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true
@@ -68,8 +76,8 @@ const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
         ...init,
         headers: {
           ...init?.headers,
-          'apikey': supabaseAnonKey,
-          'Authorization': `Bearer ${supabaseAnonKey}`,
+          'apikey': effectiveAnonKey,
+          'Authorization': `Bearer ${effectiveAnonKey}`,
           'Accept': 'application/json',
           'Content-Type': 'application/json'
         }
