@@ -216,7 +216,7 @@ export const useGoogleCalendar = (): GoogleCalendarState & GoogleCalendarActions
     timeMax: Date
   ): Promise<FreeBusyInfo | null> => {
     try {
-      return await googleCalendarClientService.getFreeBusy(integrationId, calendarIds, );
+      return await googleCalendarClientService.getFreeBusy(integrationId, calendarIds, timeMin, timeMax);
     } catch (error) {
       console.error('❌ Erreur récupération disponibilité:', error);
       addToast({
@@ -312,7 +312,7 @@ export const useGoogleCalendarAvailability = (integrationId: string) => {
   ) => {
     try {
       setLoading(true);
-      const data = await getFreeBusy(integrationId, calendarIds, );
+      const data = await getFreeBusy(integrationId, calendarIds, timeMin, timeMax);
       setAvailability(data);
       return data;
     } catch (error) {
