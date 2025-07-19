@@ -436,7 +436,7 @@ class AnalyticsService {
 
       const expertStats: Record<string, { assignments: number; completed: number; revenue: number; completionTimes: number[] }> = {};
 
-      expertData?.forEach(item => {
+      expertData?.forEach((item: any) => {
         const expertName = (item.Expert as any)?.name || 'Inconnu';
         if (!expertStats[expertName]) {
           expertStats[expertName] = { assignments: 0, completed: 0, revenue: 0, completionTimes: [] };
@@ -484,7 +484,7 @@ class AnalyticsService {
         .not('city', 'is', null);
 
       const cityStats: Record<string, number> = {};
-      clientData?.forEach(client => {
+      clientData?.forEach((client: any) => {
         cityStats[client.city] = (cityStats[client.city] || 0) + 1;
       });
 

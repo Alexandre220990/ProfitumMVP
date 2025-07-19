@@ -686,7 +686,7 @@ const WelcomeExpert = () => {
                           <Checkbox
                             id={spec.value}
                             checked={selectedSpecializations.includes(spec.value)}
-                            onCheckedChange={(checked) => handleSpecializationChange(spec.value, checked as boolean)}
+                            onCheckedChange={(checked: boolean) => handleSpecializationChange(spec.value, checked)}
                             className="border-white/20"
                           />
                           <label htmlFor={spec.value} className="text-sm font-medium cursor-pointer flex-1 text-white">
@@ -823,7 +823,7 @@ const WelcomeExpert = () => {
                             <Checkbox
                               id={lang}
                               checked={selectedLanguages.includes(lang)}
-                              onCheckedChange={(checked) => handleLanguageChange(lang, checked as boolean)}
+                              onCheckedChange={(checked: boolean) => handleLanguageChange(lang, checked)}
                               className="border-white/20"
                             />
                             <label htmlFor={lang} className="text-sm text-white cursor-pointer">{lang}</label>
@@ -846,7 +846,7 @@ const WelcomeExpert = () => {
                             <Checkbox
                               id={cert}
                               checked={selectedCertifications.includes(cert)}
-                              onCheckedChange={(checked) => handleCertificationChange(cert, checked as boolean)}
+                              onCheckedChange={(checked: boolean) => handleCertificationChange(cert, checked)}
                               className="border-white/20"
                             />
                             <label htmlFor={cert} className="text-sm text-white cursor-pointer">{cert}</label>

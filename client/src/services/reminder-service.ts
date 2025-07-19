@@ -69,8 +69,7 @@ class ReminderService {
         'client',
         event.id,
         event.title,
-        'reminder',
-        Math.abs(reminder.time_minutes)
+        'reminder'
       );
 
       if (notificationId) {
@@ -104,8 +103,7 @@ class ReminderService {
           userType,
           eventId,
           eventTitle,
-          'reminder',
-          minutesBefore
+          'reminder'
         );
       }, minutesBefore * 60 * 1000);
 

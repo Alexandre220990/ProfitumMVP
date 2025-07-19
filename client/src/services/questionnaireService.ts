@@ -132,7 +132,7 @@ export class QuestionnaireService { /**
 
       // Convertir en format Record<string, any>
       const responses: Record<string, any> = {};
-      data?.forEach(response => {
+      data?.forEach((response: any) => {
         responses[response.question_id] = response.response_value;
       });
 
