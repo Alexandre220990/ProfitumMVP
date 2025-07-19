@@ -4,6 +4,8 @@ export interface Expert {
   id: string;
   username: string;
   email: string;
+  name?: string;
+  company_name?: string;
   specializations: string[];
   experience: number;
   location: string;
@@ -12,8 +14,25 @@ export interface Expert {
   completed_assignments: number;
   total_earnings: number;
   monthly_earnings: number;
+  status?: string;
+  phone_number?: string;
+  clients?: number;
+  description?: string;
+  siren?: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface PublicExpert {
+  id: string;
+  name: string;
+  company_name: string;
+  specializations: string[];
+  experience: number;
+  location: string;
+  rating: number;
+  status: string;
+  description: string;
 }
 
 export interface ExpertPreferences {

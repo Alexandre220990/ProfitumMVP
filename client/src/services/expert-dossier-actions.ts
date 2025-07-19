@@ -27,7 +27,7 @@ export class ExpertDossierActions {
    * Gère les actions d'étape du workflow
    */
   async handleStepAction(params: DossierActionParams): Promise<boolean> {
-    const { dossierId, stepId, action, data } = params;
+    const { dossierId, action, data } = params;
 
     try {
       switch (action) {
@@ -433,7 +433,7 @@ export class ExpertDossierActions {
   /**
    * Prévisualisation de rapport
    */
-  private async previewReport(dossierId: string, previewData: any): Promise<boolean> {
+  private async previewReport(_dossierId: string, _previewData: any): Promise<boolean> {
     try {
       // Logique de prévisualisation (peut ouvrir un modal, etc.)
       this.addToast({
@@ -487,7 +487,7 @@ export class ExpertDossierActions {
   /**
    * Suivi du remboursement
    */
-  private async trackReimbursement(dossierId: string, trackingData: any): Promise<boolean> {
+  private async trackReimbursement(_dossierId: string, _trackingData: any): Promise<boolean> {
     try {
       this.addToast({
         type: 'info',

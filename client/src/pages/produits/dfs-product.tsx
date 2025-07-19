@@ -361,7 +361,7 @@ const DFSProductPage = () => {
               <Checkbox 
                 id="charte-accept" 
                 checked={charteAccepted}
-                onCheckedChange={(checked) => setCharteAccepted(checked as boolean)}
+                onCheckedChange={(checked: boolean) => setCharteAccepted(checked)}
               />
               <label htmlFor="charte-accept" className="text-sm text-gray-700">
                 J'accepte les conditions d'engagement et autorise Profitum à procéder 
