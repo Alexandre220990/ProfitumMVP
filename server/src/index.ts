@@ -13,7 +13,7 @@ import partnersRouter from './routes/partners';
 import produitsEligiblesRouter from './routes/produits-eligibles';
 import expertsRouter from './routes/experts';
 import specializationsRouter from './routes/specializations';
-import monitoringRoutes from './routes/monitoring';
+// import monitoringRoutes from './routes/monitoring';
 import testsRoutes from './routes/tests';
 import terminalTestsRoutes from './routes/terminal-tests';
 import checkNetworkInterfaces from './utils/ipcheck';
@@ -69,7 +69,7 @@ import googleCalendarRoutes from './routes/google-calendar';
 import app from './app';
 import { initializeWebSocketServer } from './websocket-server';
 import { initializeUnifiedWebSocket } from './services/unified-websocket';
-import { monitoringSystem } from '../lib/monitoring-system';
+// import { monitoringSystem } from '../lib/monitoring-system';
 
 dotenv.config();
 
@@ -238,7 +238,7 @@ app.use('/api/unified-messaging', enhancedAuthMiddleware, unifiedMessagingRoutes
 app.use('/api/client-documents', enhancedAuthMiddleware, clientDocumentsRoutes);
 
 // Routes de monitoring - PROTÉGÉES avec permissions admin
-app.use('/api/monitoring', enhancedAuthMiddleware, requireUserType('admin'), monitoringRoutes);
+// app.use('/api/monitoring', enhancedAuthMiddleware, requireUserType('admin'), monitoringRoutes);
 
 // Routes de tests - PROTÉGÉES avec permissions admin
 app.use('/api/tests', enhancedAuthMiddleware, requireUserType('admin'), testsRoutes);
@@ -286,67 +286,67 @@ server.listen(PORT, HOST, () => {
     console.error('❌ Erreur initialisation WebSocket unifié:', error);
   }
   
-  monitoringSystem.recordAuditLog({
-    message: 'Serveur démarré',
-    level: 'info',
-    category: 'system',
-    details: { 
-      httpPort: PORT, 
-      wsPort: PORT,
-      environment: process.env.NODE_ENV || 'development'
-    },
-    success: true
-  });
+  // monitoringSystem.recordAuditLog({
+  //   message: 'Serveur démarré',
+  //   level: 'info',
+  //   category: 'system',
+  //   details: { 
+  //     httpPort: PORT, 
+  //     wsPort: PORT,
+  //     environment: process.env.NODE_ENV || 'development'
+  //   },
+  //   success: true
+  // });
 });
 
 // Gestion propre de l'arrêt
 process.on('SIGINT', () => {
   console.log('\n🔄 Arrêt du serveur...');
-  monitoringSystem.recordAuditLog({
-    message: 'Serveur arrêté',
-    level: 'info',
-    category: 'system',
-    details: { reason: 'SIGINT' },
-    success: true
-  });
+  // monitoringSystem.recordAuditLog({
+  //   message: 'Serveur arrêté',
+  //   level: 'info',
+  //   category: 'system',
+  //   details: { reason: 'SIGINT' },
+  //   success: true
+  // });
   process.exit(0);
 });
 
 process.on('SIGTERM', () => {
   console.log('\n🔄 Arrêt du serveur...');
-  monitoringSystem.recordAuditLog({
-    message: 'Serveur arrêté',
-    level: 'info',
-    category: 'system',
-    details: { reason: 'SIGTERM' },
-    success: true
-  });
+  // monitoringSystem.recordAuditLog({
+  //   message: 'Serveur arrêté',
+  //   level: 'info',
+  //   category: 'system',
+  //   details: { reason: 'SIGTERM' },
+  //   success: true
+  // });
   process.exit(0);
 });
 
 // Gestion des erreurs non capturées
 process.on('uncaughtException', (error) => {
   console.error('❌ Erreur non capturée:', error);
-  monitoringSystem.recordSecurityIncident({
-    incident_type: 'system_failure',
-    severity: 'high',
-    title: 'Erreur non capturée',
-    description: error.message,
-    affected_service: 'server',
-    impact_assessment: 'Serveur potentiellement instable',
-    mitigation_steps: 'Redémarrer le serveur et vérifier les logs'
-  });
+  // monitoringSystem.recordSecurityIncident({
+  //   incident_type: 'system_failure',
+  //   severity: 'high',
+  //   title: 'Erreur non capturée',
+  //   description: error.message,
+  //   affected_service: 'server',
+  //   impact_assessment: 'Serveur potentiellement instable',
+  //   mitigation_steps: 'Redémarrer le serveur et vérifier les logs'
+  // });
 });
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('❌ Promesse rejetée non gérée:', reason);
-  monitoringSystem.recordSecurityIncident({
-    incident_type: 'system_failure',
-    severity: 'medium',
-    title: 'Promesse rejetée non gérée',
-    description: String(reason),
-    affected_service: 'server',
-    impact_assessment: 'Fonctionnalité potentiellement cassée',
-    mitigation_steps: 'Vérifier les promesses et ajouter la gestion d\'erreur'
-  });
+  // monitoringSystem.recordSecurityIncident({
+  //   incident_type: 'system_failure',
+  //   severity: 'medium',
+  //   title: 'Promesse rejetée non gérée',
+  //   description: String(reason),
+  //   affected_service: 'server',
+  //   impact_assessment: 'Fonctionnalité potentiellement cassée',
+  //   mitigation_steps: 'Vérifier les promesses et ajouter la gestion d\'erreur'
+  // });
 }); 
