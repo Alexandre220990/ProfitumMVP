@@ -107,12 +107,8 @@ export class WorkflowConfigurationService {
   async initializeDefaultWorkflows(): Promise<void> {
     const defaultWorkflows = [
       this.createFiscalDocumentWorkflow(),
-      this.createComptableDocumentWorkflow(),
-      this.createJuridiqueDocumentWorkflow(),
       this.createCharteWorkflow(),
-      this.createRapportAuditWorkflow(),
-      this.createDocumentEligibiliteWorkflow(),
-      this.createFactureWorkflow()
+      this.createRapportAuditWorkflow()
     ];
 
     for (const workflow of defaultWorkflows) {
