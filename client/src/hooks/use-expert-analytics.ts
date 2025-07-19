@@ -260,11 +260,11 @@ export const useExpertAnalytics = (filters: ExpertAnalyticsFilters = { timeRange
   }, []);
 
   // Récupérer les performances par mois
-  const getPerformanceByMonth = useCallback(async (startDate: string, endDate: string, expertId?: string) => {
+  const getPerformanceByMonth = useCallback(async (_startDate: string, _endDate: string, _expertId?: string) => {
     try {
       // Simuler des données de performance par mois
       const months = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin'];
-      const performanceData: ExpertPerformanceData[] = months.map((month, index) => ({
+      const performanceData: ExpertPerformanceData[] = months.map((month, _index) => ({
         month,
         assignments: Math.floor(Math.random() * 20) + 10,
         revenue: Math.floor(Math.random() * 5000) + 2000,
@@ -280,7 +280,7 @@ export const useExpertAnalytics = (filters: ExpertAnalyticsFilters = { timeRange
   }, []);
 
   // Récupérer les produits les plus performants
-  const getTopProducts = useCallback(async (startDate: string, endDate: string, expertId?: string) => {
+  const getTopProducts = useCallback(async (_startDate: string, _endDate: string, _expertId?: string) => {
     try {
       // Simuler des données de produits
       const products: ProductPerformanceData[] = [
@@ -322,7 +322,7 @@ export const useExpertAnalytics = (filters: ExpertAnalyticsFilters = { timeRange
   }, []);
 
   // Récupérer la répartition des clients
-  const getClientDistribution = useCallback(async (startDate: string, endDate: string, expertId?: string) => {
+  const getClientDistribution = useCallback(async (_startDate: string, _endDate: string, _expertId?: string) => {
     try {
       // Simuler des données de répartition clients
       const distribution: ClientDistributionData[] = [

@@ -6,13 +6,13 @@ import { useMessaging } from './use-messaging';
 // ============================================================================
 
 export const useMessagingBadge = () => {
-  const { totalUnreadCount, conversations } = useMessaging();
+  const { getTotalUnreadCount } = useMessaging();
   const [badgeCount, setBadgeCount] = useState<number>(0);
 
   useEffect(() => {
     // Mettre à jour le badge avec le nombre total de messages non lus
-    setBadgeCount(totalUnreadCount);
-  }, [totalUnreadCount]);
+    setBadgeCount(getTotalUnreadCount());
+  }, [getTotalUnreadCount]);
 
   // Formater le badge pour l'affichage
   const getBadgeText = (): string | null => {

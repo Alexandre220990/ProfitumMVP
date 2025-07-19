@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import { createClient } from "@supabase/supabase-js";
+// import { createClient } from "@supabase/supabase-js";
 import { 
   ArrowLeft, Building, Mail, Phone, MapPin, Calendar, FileText, TrendingUp, 
   CheckCircle, AlertCircle, Download, Power, PowerOff, MessageSquare, 
@@ -376,7 +376,7 @@ const ClientDetails = () => {
         variant: 'destructive'
       });
     } finally {
-      setActionLoading(null);
+      setActionLoading("");
     }
   };
 

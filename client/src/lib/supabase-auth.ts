@@ -1,6 +1,6 @@
 import { supabase } from './supabase';
 import { AuthUser } from "@/types/auth";
-import { config } from '../config/env';
+// import { config } from '../config/env';
 
 /**
  * Interface pour les données de connexion

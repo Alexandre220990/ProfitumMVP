@@ -97,13 +97,13 @@ export function mapDossierToWorkflow(dossier: DossierData): DossierWorkflowStep[
     }
     
     // Actions contextuelles selon l'étape
-    const actions = getStepActions(stepNumber, dossier, status);
+    const actions = getStepActions(stepNumber, status);
     
     // Documents requis selon l'étape
     const documents = getStepDocuments(stepNumber, dossier);
     
     // Notifications selon l'étape
-    const notifications = getStepNotifications(stepNumber, dossier, status);
+    const notifications = getStepNotifications(stepNumber, status);
     
     // Notes et commentaires
     const notes = getStepNotes(stepNumber, dossier);
