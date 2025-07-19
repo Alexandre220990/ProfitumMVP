@@ -9,13 +9,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Calendar, 
   Settings, 
-  BarChart3, 
   Shield, 
-  RefreshCw, 
+  BarChart3, 
   CheckCircle, 
   AlertCircle,
   Clock,
-  Users,
   Globe,
   ExternalLink,
   RefreshCw

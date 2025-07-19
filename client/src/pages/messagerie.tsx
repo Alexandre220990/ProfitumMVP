@@ -1,18 +1,17 @@
 import React from 'react';
 import { MessagingApp } from '@/components/messaging/MessagingApp';
 import { useAuth } from '@/hooks/use-auth';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { MessageSquare, ArrowLeft } from 'lucide-react';
-import { useRouter } from 'next/router';
+import { useNavigate } from 'react-router-dom';
 
 // ============================================================================
 // PAGE PRINCIPALE DE MESSAGERIE
 // ============================================================================
 
 export default function MessageriePage() {
-  const { user, loading: authLoading } = useAuth();
-  const router = useRouter();
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
   // Rediriger si non authentifié
   React.useEffect(() => {

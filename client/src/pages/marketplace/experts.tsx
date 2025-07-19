@@ -415,7 +415,7 @@ export default function ExpertsMarketplace() {
                     <h4 className="font-semibold mb-4 text-slate-800">Expérience</h4>
                     <Select
                       value={filters.experience}
-                      onValueChange={(value) => handleFilterChange('experience', value)}
+                      onValueChange={(value: string) => handleFilterChange('experience', value)}
                     >
                       <SelectTrigger className="bg-slate-50 border-slate-200 focus:border-blue-400 focus:ring-blue-400">
                         <SelectValue placeholder="Toutes les expériences" />

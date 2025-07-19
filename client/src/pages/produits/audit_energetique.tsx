@@ -349,7 +349,7 @@ const AuditEnergetiquePage = () => {
               <Checkbox
                 id="charte-accept"
                 checked={charteAccepted}
-                onCheckedChange={(checked) => setCharteAccepted(checked as boolean)}
+                onCheckedChange={(checked: boolean) => setCharteAccepted(checked)}
               />
               <label htmlFor="charte-accept" className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                 J'accepte les termes de la charte et autorise l'équipe à procéder à l'audit énergétique de mon entreprise.

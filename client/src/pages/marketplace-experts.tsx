@@ -804,7 +804,7 @@ export default function MarketplaceExperts() {
                 <Checkbox 
                   id="charte-accepted" 
                   checked={charteAccepted}
-                  onCheckedChange={(checked) => setCharteAccepted(checked as boolean)}
+                  onCheckedChange={(checked: boolean) => setCharteAccepted(checked)}
                 />
                 <label htmlFor="charte-accepted" className="text-sm">
                   J'accepte les conditions de la charte et m'engage à les respecter
