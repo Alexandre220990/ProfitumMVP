@@ -1,7 +1,5 @@
-import { createClient } from "@supabase/supabase-js";
-import { config } from "../config/env";
-
-const supabase = createClient(config.SUPABASE_URL, config.SUPABASE_ANON_KEY);
+import { supabase } from '../lib/supabase';
+import { config } from '../config/env';
 
 export interface QuestionnaireQuestion {
   id: string;

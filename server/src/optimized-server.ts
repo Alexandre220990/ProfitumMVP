@@ -15,9 +15,7 @@ import partnersRouter from './routes/partners';
 import produitsEligiblesRouter from './routes/produits-eligibles';
 import expertsRouter from './routes/experts';
 import specializationsRouter from './routes/specializations';
-import chatbotRoutes from './routes/chatbot';
 import simulationRoutes from './routes/simulationRoutes';
-import chatbotTestRoutes from './routes/chatbot-test';
 import clientRoutes from './routes/client';
 import expertRoutes from './routes/expert';
 import adminRoutes from './routes/admin';
@@ -203,9 +201,7 @@ addCorsTestRoute(app);
 app.use('/api/auth', publicRouteLogger, cacheMiddleware(2 * 60 * 1000), authRoutes); // 2 min cache
 app.use('/api/simulations', publicRouteLogger, cacheMiddleware(5 * 60 * 1000), simulationsRoutes); // 5 min cache
 app.use('/api/partners', publicRouteLogger, cacheMiddleware(10 * 60 * 1000), partnersRouter); // 10 min cache
-app.use('/api/chatbot', publicRouteLogger, chatbotRoutes);
 app.use('/api/simulations', publicRouteLogger, simulationRoutes);
-app.use('/api/chatbot-test', publicRouteLogger, chatbotTestRoutes);
 
 // ===== ROUTES PROTÉGÉES (avec cache) =====
 

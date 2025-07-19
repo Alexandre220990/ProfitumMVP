@@ -4,7 +4,6 @@ import auditRoutes from "./audits";
 import simulationRoutes from "./simulations";
 import partnerRoutes from "./partners";
 import produitsEligiblesRoutes from "./produits-eligibles";
-import chatbotRoutes from "./chatbot";
 import charteSignatureRoutes from "./charte-signature";
 import specializationsRoutes from "./specializations";
 import expertsRoutes from "./experts";
@@ -40,9 +39,6 @@ router.use('/partners', partnerRoutes);
 
 // Routes des produits éligibles
 router.use('/produits-eligibles', produitsEligiblesRoutes);
-
-// Routes du chatbot
-router.use('/chatbot', chatbotRoutes);
 
 // Routes des signatures de charte
 router.use('/api', charteSignatureRoutes);

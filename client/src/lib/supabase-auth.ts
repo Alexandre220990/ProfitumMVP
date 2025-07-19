@@ -1,9 +1,6 @@
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from './supabase';
 import { AuthUser } from "@/types/auth";
-import { config } from "@/config/env";
-
-// Client Supabase pour l'authentification
-const supabase = createClient(config.SUPABASE_URL, config.SUPABASE_ANON_KEY);
+import { config } from '../config/env';
 
 /**
  * Interface pour les données de connexion

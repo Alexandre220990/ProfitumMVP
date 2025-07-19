@@ -1,43 +1,40 @@
-import { Json } from "./supabase";
+// Types pour l'interface expert
 
-/**
- * Interface pour les données publiques d'un expert
- */
-export interface PublicExpert { id: string;
-  name: string;
+export interface Expert {
+  id: string;
+  username: string;
   email: string;
-  phone_number?: string;
-  company_name?: string;
-  siren?: string;
-  specializations?: string[];
-  location?: string;
-  rating?: number;
-  status: string;
-  description?: string;
-  disponibilites?: Json;
-  certifications?: Json;
+  specializations: string[];
+  experience: number;
+  location: string;
+  rating: number;
+  total_assignments: number;
+  completed_assignments: number;
+  total_earnings: number;
+  monthly_earnings: number;
   created_at: string;
   updated_at: string;
-  clients?: number;
-  audits?: number;
-  category_id?: number; }
+}
 
-/**
- * Interface complète d'un expert (usage interne uniquement)
- */
-export interface Expert extends PublicExpert { password: string;
-  card_number?: string;
-  card_expiry?: string;
-  card_cvc?: string;
-  abonnement?: string; }
-
-export const SPECIALIZATIONS = [
-  "Audit TICPE",
-  "Audit Énergétique",
-  "Audit Social",
-  "Audit Foncier",
-  "Audit MSA",
-  "Audit DFS",
-  "Conseil Juridique",
-  "Conseil Fiscal"
-]; 
+export interface ExpertPreferences {
+  notifications: {
+    email: boolean;
+    push: boolean;
+    sms: boolean;
+    inApp: boolean;
+  };
+  availability: {
+    workingHours: {
+      start: string;
+      end: string;
+    };
+    maxAssignments: number;
+    preferredProducts: string[];
+    autoAccept: boolean;
+  };
+  compensation: {
+    minimumRate: number;
+    preferredRate: number;
+    autoNegotiate: boolean;
+  };
+} 

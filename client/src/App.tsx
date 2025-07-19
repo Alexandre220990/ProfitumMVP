@@ -11,6 +11,7 @@ import DashboardClient from './pages/dashboard/client';
 import ClientHome from './pages/dashboard/client-home';
 import ClientAssignments from './pages/dashboard/client-assignments';
 import AgendaClient from './pages/agenda-client';
+import GoogleCalendarIntegration from './pages/google-calendar-integration';
 import AideClient from './pages/aide-client';
 import AideExpert from './pages/aide-expert';
 import ProfileClient from './pages/profile/client';
@@ -66,6 +67,9 @@ import MessagerieAdmin from './pages/admin/messagerie-admin';
 // Expert pages
 import ExpertDashboard from './pages/expert/dashboard';
 import ExpertDetails from './pages/expert/[id]';
+import ExpertMesAffaires from './pages/expert/mes-affaires';
+import ExpertAgenda from './pages/expert/agenda';
+import ExpertDossier from './pages/expert/dossier/[id]';
 
 // Analytics page
 import AnalyticsPage from './pages/analytics';
@@ -111,6 +115,10 @@ function App() {
                 {/* Routes client directes (avec protection) */}
                 <Route path="/agenda-client" element={<ProtectedRoute requiredType="client" />}>
                   <Route index element={<AgendaClient />} />
+                </Route>
+                
+                <Route path="/google-calendar-integration" element={<ProtectedRoute requiredType="client" />}>
+                  <Route index element={<GoogleCalendarIntegration />} />
                 </Route>
                 
                 {/* Routes produits directes (avec protection) */}
@@ -184,9 +192,12 @@ function App() {
                   <Route path="dashboard" element={<ExpertDashboard />} />
                   <Route path="analytics" element={<AnalyticsPage />} />
                   <Route path=":id" element={<ExpertDetails />} />
+                  <Route path="dossier/:id" element={<ExpertDossier />} />
                   <Route path="aide-expert" element={<AideExpert />} />
                   <Route path="profile/expert" element={<ProfileExpert />} />
                   <Route path="messagerie-expert" element={<MessagerieExpert />} />
+                  <Route path="mes-affaires" element={<ExpertMesAffaires />} />
+                  <Route path="agenda" element={<ExpertAgenda />} />
                 </Route>
 
                 {/* Route dashboard/expert pour compatibilité */}

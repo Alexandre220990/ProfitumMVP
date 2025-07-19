@@ -5,7 +5,7 @@ export const config = {
   
   // Configuration Supabase (vraies valeurs)
   SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL || 'https://gvvlsgtubqfxdztldunj.supabase.co',
-  SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ2a3ZrcGZ0YWt5dHhwc2Jra2FwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDk0MDc0NjEsImV4cCI6MjAyNDk4MzQ2MX0.ckc2_CK5yDRBG5Z5yxYJgXGzGJGpMf-dHDMHk-8GHxs'
+  SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2dmxzZ3R1YnFmeGR6dGxkdW5qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE3Njk4NDksImV4cCI6MjA1NzM0NTg0OX0.2hahkZasfMfdFhQvP7rvPHzO1DBCl0FfsRVkxVZfdgk'
 };
 
 // Vérification de la configuration

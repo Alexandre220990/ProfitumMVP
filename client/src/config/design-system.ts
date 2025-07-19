@@ -266,7 +266,7 @@ export const CSS_CLASSES = {
 // ============================================================================
 // TYPES TYPESCRIPT
 // ============================================================================
-export type ColorScale = keyof typeof DESIGN_SYSTEM.colors.primary;
+export type ColorScale = '50' | '100' | '200' | '300' | '400' | '500' | '600' | '700' | '800' | '900' | '950';
 export type ColorName = keyof typeof DESIGN_SYSTEM.colors;
 export type GradientName = keyof typeof GRADIENTS;
 export type ButtonVariant = keyof typeof CSS_CLASSES.button;

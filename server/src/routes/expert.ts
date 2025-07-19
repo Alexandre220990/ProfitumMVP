@@ -387,79 +387,300 @@ router.put('/notifications/:notificationId/read', authenticateUser, async (req: 
   }
 });
 
-// Route pour obtenir les analytics de l'expert
+// Route pour les analytics expert
 router.get('/analytics', authenticateUser, async (req: Request, res: Response) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({ success: false, message: 'Non authentifié' });
-    }
-
-    const authUser = req.user as AuthUser;
+    const { timeRange = '30d', expertId } = req.query;
     
-    if (authUser.type !== 'expert') {
-      return res.status(403).json({ success: false, message: 'Accès non autorisé' });
+    if (!expertId) {
+      return res.status(400).json({ error: 'expertId requis' });
     }
 
-    // Calculer les analytics
-    const { data: assignments, error: assignmentsError } = await supabase
-      .from('expertassignment')
-      .select('*')
-      .eq('expert_id', authUser.id);
-
-    if (assignmentsError) {
-      console.error('Erreur lors de la récupération des assignations pour analytics:', assignmentsError);
-      return res.status(500).json({ success: false, message: 'Erreur serveur' });
+    // Calculer la date de début
+    const now = new Date();
+    let startDate: Date;
+    
+    switch (timeRange) {
+      case '7d':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case '30d':
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case '90d':
+        startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+        break;
+      case '1y':
+        startDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     }
 
-    // Calculer les métriques
-    const totalAssignments = assignments.length;
-    const completedAssignments = assignments.filter(a => a.status === 'completed').length;
-    const pendingAssignments = assignments.filter(a => a.status === 'pending').length;
-    const totalEarnings = assignments
-      .filter(a => a.status === 'completed')
-      .reduce((sum, a) => sum + (Number(a.compensation_amount) || 0), 0);
+    const startDateISO = startDate.toISOString();
+    const endDateISO = now.toISOString();
 
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
-    const monthlyEarnings = assignments
-      .filter(a => {
-        const completedDate = new Date(a.completed_date || '');
-        return a.status === 'completed' && 
-               completedDate.getMonth() === currentMonth && 
-               completedDate.getFullYear() === currentYear;
-      })
-      .reduce((sum, a) => sum + (Number(a.compensation_amount) || 0), 0);
-
-    const analytics = {
+    // Récupérer les données analytics
+    const [
       totalAssignments,
       completedAssignments,
       pendingAssignments,
-      totalEarnings,
-      monthlyEarnings,
-      clientSatisfaction: 4.8, // À calculer avec les vraies données
-      performanceScore: 95, // À calculer avec les vraies données
-      averageCompletionTime: 5.2, // En jours, à calculer avec les vraies données
-      topProducts: [
-        { name: 'TICPE', count: 12, revenue: 2400 },
-        { name: 'URSSAF', count: 8, revenue: 1600 },
-        { name: 'DFS', count: 5, revenue: 1000 }
-      ],
-              recentActivity: assignments
-          .slice(0, 10)
-          .map(a => ({
-            type: 'assignment',
-            description: `Dossier ${a.client_produit_eligible_id} ${a.status}`,
-            timestamp: a.updated_at
-          }))
+      totalRevenue,
+      monthlyRevenue,
+      avgCompletionTime,
+      topProducts,
+      clientDistribution
+    ] = await Promise.all([
+      // Total des assignations
+      supabase
+        .from('ExpertAssignment')
+        .select('*', { count: 'exact', head: true })
+        .eq('expert_id', expertId)
+        .gte('created_at', startDateISO)
+        .lte('created_at', endDateISO),
+
+      // Assignations terminées
+      supabase
+        .from('ExpertAssignment')
+        .select('*', { count: 'exact', head: true })
+        .eq('expert_id', expertId)
+        .eq('status', 'terminé')
+        .gte('created_at', startDateISO)
+        .lte('created_at', endDateISO),
+
+      // Assignations en cours
+      supabase
+        .from('ExpertAssignment')
+        .select('*', { count: 'exact', head: true })
+        .eq('expert_id', expertId)
+        .eq('status', 'en_cours')
+        .gte('created_at', startDateISO)
+        .lte('created_at', endDateISO),
+
+      // Revenus totaux
+      supabase
+        .from('ExpertAssignment')
+        .select('compensation_amount')
+        .eq('expert_id', expertId)
+        .eq('status', 'terminé')
+        .gte('created_at', startDateISO)
+        .lte('created_at', endDateISO),
+
+      // Revenus du mois
+      supabase
+        .from('ExpertAssignment')
+        .select('compensation_amount')
+        .eq('expert_id', expertId)
+        .eq('status', 'terminé')
+        .gte('created_at', new Date(now.getFullYear(), now.getMonth(), 1).toISOString())
+        .lte('created_at', endDateISO),
+
+      // Temps moyen de completion
+      supabase
+        .from('ExpertAssignment')
+        .select('created_at, completed_at')
+        .eq('expert_id', expertId)
+        .eq('status', 'terminé')
+        .gte('created_at', startDateISO)
+        .lte('created_at', endDateISO),
+
+      // Produits les plus performants
+      supabase
+        .from('ExpertAssignment')
+        .select(`
+          ClientProduitEligible (
+            ProduitEligible (
+              nom
+            )
+          ),
+          compensation_amount,
+          status
+        `)
+        .eq('expert_id', expertId)
+        .gte('created_at', startDateISO)
+        .lte('created_at', endDateISO),
+
+      // Répartition des clients
+      supabase
+        .from('ExpertAssignment')
+        .select(`
+          ClientProduitEligible (
+            Client (
+              type_entreprise
+            )
+          )
+        `)
+        .eq('expert_id', expertId)
+        .gte('created_at', startDateISO)
+        .lte('created_at', endDateISO)
+    ]);
+
+    // Calculer les métriques
+    const totalAssignmentsCount = totalAssignments.count || 0;
+    const completedAssignmentsCount = completedAssignments.count || 0;
+    const pendingAssignmentsCount = pendingAssignments.count || 0;
+    
+    const totalRevenueAmount = totalRevenue.data?.reduce((sum, item) => sum + (item.compensation_amount || 0), 0) || 0;
+    const monthlyRevenueAmount = monthlyRevenue.data?.reduce((sum, item) => sum + (item.compensation_amount || 0), 0) || 0;
+    
+    const conversionRateValue = totalAssignmentsCount > 0 ? (completedAssignmentsCount / totalAssignmentsCount) * 100 : 0;
+    
+    // Calculer le temps moyen de completion
+    let avgCompletionTimeValue = 0;
+    if (avgCompletionTime.data && avgCompletionTime.data.length > 0) {
+      const totalDays = avgCompletionTime.data.reduce((sum, item) => {
+        if (item.created_at && item.completed_at) {
+          const start = new Date(item.created_at);
+          const end = new Date(item.completed_at);
+          return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
+        }
+        return sum;
+      }, 0);
+      avgCompletionTimeValue = totalDays / avgCompletionTime.data.length;
+    }
+
+    // Analyser les produits les plus performants
+    const productStats = new Map<string, { count: number; revenue: number; completed: number }>();
+    
+    if (topProducts.data) {
+      topProducts.data.forEach((assignment: any) => {
+        const productName = assignment.ClientProduitEligible?.ProduitEligible?.nom || 'Inconnu';
+        const revenue = assignment.compensation_amount || 0;
+        const isCompleted = assignment.status === 'terminé';
+        
+        const current = productStats.get(productName) || { count: 0, revenue: 0, completed: 0 };
+        productStats.set(productName, {
+          count: current.count + 1,
+          revenue: current.revenue + revenue,
+          completed: current.completed + (isCompleted ? 1 : 0)
+        });
+      });
+    }
+
+    const topProductsData = Array.from(productStats.entries()).map(([name, stats]) => ({
+      name,
+      count: stats.count,
+      revenue: stats.revenue,
+      conversionRate: stats.count > 0 ? (stats.completed / stats.count) * 100 : 0,
+      avgRevenue: stats.count > 0 ? stats.revenue / stats.count : 0
+    })).sort((a, b) => b.revenue - a.revenue).slice(0, 5);
+
+    // Analyser la répartition des clients
+    const clientTypeStats = new Map<string, number>();
+    
+    if (clientDistribution.data) {
+      clientDistribution.data.forEach((assignment: any) => {
+        const clientType = assignment.ClientProduitEligible?.Client?.type_entreprise || 'Inconnu';
+        clientTypeStats.set(clientType, (clientTypeStats.get(clientType) || 0) + 1);
+      });
+    }
+
+    const totalClients = Array.from(clientTypeStats.values()).reduce((sum, count) => sum + count, 0);
+    const clientDistributionData = Array.from(clientTypeStats.entries()).map(([type, count]) => ({
+      clientType: type,
+      count,
+      percentage: totalClients > 0 ? (count / totalClients) * 100 : 0
+    }));
+
+    // Créer les métriques
+    const metrics = [
+      {
+        id: 'total-assignments',
+        name: 'Total Assignations',
+        value: totalAssignmentsCount,
+        change: 12.5, // Simulé
+        changeType: 'increase',
+        format: 'number',
+        icon: 'target',
+        color: 'bg-blue-100 text-blue-600',
+        trend: 'up'
+      },
+      {
+        id: 'completed-assignments',
+        name: 'Assignations Terminées',
+        value: completedAssignmentsCount,
+        change: 8.3,
+        changeType: 'increase',
+        format: 'number',
+        icon: 'check-circle',
+        color: 'bg-green-100 text-green-600',
+        trend: 'up'
+      },
+      {
+        id: 'monthly-revenue',
+        name: 'Revenus du Mois',
+        value: monthlyRevenueAmount,
+        change: 15.2,
+        changeType: 'increase',
+        format: 'currency',
+        icon: 'dollar-sign',
+        color: 'bg-purple-100 text-purple-600',
+        trend: 'up'
+      },
+      {
+        id: 'conversion-rate',
+        name: 'Taux de Conversion',
+        value: conversionRateValue,
+        change: 2.1,
+        changeType: 'increase',
+        format: 'percentage',
+        icon: 'trending-up',
+        color: 'bg-orange-100 text-orange-600',
+        trend: 'up'
+      },
+      {
+        id: 'avg-completion-time',
+        name: 'Temps Moyen',
+        value: avgCompletionTimeValue,
+        change: -5.8,
+        changeType: 'decrease',
+        format: 'duration',
+        icon: 'clock',
+        color: 'bg-indigo-100 text-indigo-600',
+        trend: 'down'
+      },
+      {
+        id: 'client-satisfaction',
+        name: 'Satisfaction Client',
+        value: 4.2, // Simulé
+        change: 0.3,
+        changeType: 'increase',
+        format: 'number',
+        icon: 'award',
+        color: 'bg-pink-100 text-pink-600',
+        trend: 'up'
+      }
+    ];
+
+    // Données de performance par mois (simulées pour l'instant)
+    const months = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin'];
+    const performanceByMonth = months.map((month, index) => ({
+      month,
+      assignments: Math.floor(Math.random() * 20) + 10,
+      revenue: Math.floor(Math.random() * 5000) + 2000,
+      completionRate: Math.random() * 30 + 70,
+      avgCompletionTime: Math.random() * 10 + 5
+    }));
+
+    // Analyse temporelle (simulée)
+    const timeAnalysis = {
+      averageResponseTime: 2.5,
+      averageProcessingTime: 8.3,
+      peakHours: ['9h-11h', '14h-16h'],
+      preferredDays: ['Mardi', 'Jeudi', 'Vendredi']
     };
 
     res.json({
-      success: true,
-      data: analytics
+      metrics,
+      performanceByMonth,
+      topProducts: topProductsData,
+      clientDistribution: clientDistributionData,
+      timeAnalysis
     });
+
   } catch (error) {
-    console.error('Erreur lors de la récupération des analytics:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    console.error('Erreur analytics expert:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération des analytics' });
   }
 });
 
@@ -498,6 +719,64 @@ router.get('/audits', authenticateUser, async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('Erreur lors de la récupération des audits:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// Route pour obtenir les ClientProduitEligible de l'expert
+router.get('/client-produits-eligibles', authenticateUser, async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Non authentifié' });
+    }
+
+    const authUser = req.user as AuthUser;
+    
+    if (authUser.type !== 'expert') {
+      return res.status(403).json({ success: false, message: 'Accès non autorisé' });
+    }
+
+    // Récupérer les ClientProduitEligible assignés à l'expert
+    const { data: clientProduits, error } = await supabase
+      .from('ClientProduitEligible')
+      .select(`
+        *,
+        Client (
+          id,
+          name,
+          email,
+          company_name,
+          phone_number,
+          city,
+          siren
+        ),
+        ProduitEligible (
+          id,
+          nom,
+          description,
+          category
+        ),
+        Expert (
+          id,
+          name,
+          company_name,
+          email
+        )
+      `)
+      .eq('expert_id', authUser.id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Erreur lors de la récupération des ClientProduitEligible:', error);
+      return res.status(500).json({ success: false, message: 'Erreur serveur' });
+    }
+
+    res.json({
+      success: true,
+      data: clientProduits
+    });
+  } catch (error) {
+    console.error('Erreur lors de la récupération des ClientProduitEligible:', error);
     res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });

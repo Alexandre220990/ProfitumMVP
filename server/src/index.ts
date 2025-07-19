@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import { createServer } from 'http';
 import { WebSocketService } from './services/websocketService';
+import { SocketService } from './services/socket-service';
 import authRoutes from './routes/auth';
 import auditsRouter from './routes/audits';
 import simulationsRoutes from './routes/simulations';
@@ -20,9 +21,7 @@ import { addCorsTestRoute } from './utils/cors-test';
 import { logSupabaseRequest } from './middleware/supabase-logger';
 import { addSupabaseAuth } from './middleware/supabase-auth';
 import { checkDatabaseConnection, checkRLSPolicies } from './utils/databaseCheck';
-import chatbotRoutes from './routes/chatbot';
 import simulationRoutes from './routes/simulationRoutes';
-import chatbotTestRoutes from './routes/chatbot-test';
 import clientRoutes from './routes/client';
 import expertRoutes from './routes/expert';
 import adminRoutes from './routes/admin';
@@ -65,6 +64,7 @@ import expertNotificationsRoutes from './routes/expert/notifications';
 import sessionMigrationRoutes from './routes/session-migration';
 import clientDocumentsRoutes from './routes/client-documents';
 import analyticsRoutes from './routes/analytics';
+import googleCalendarRoutes from './routes/google-calendar';
 
 import app from './app';
 import { initializeWebSocketServer } from './websocket-server';
@@ -175,9 +175,7 @@ addCorsTestRoute(app);
 app.use('/api/auth', publicRouteLogger, authRoutes);
 app.use('/api/simulations', publicRouteLogger, simulationsRoutes);
 app.use('/api/partners', publicRouteLogger, partnersRouter);
-app.use('/api/chatbot', publicRouteLogger, chatbotRoutes);
 app.use('/api/simulations', publicRouteLogger, simulationRoutes);
-app.use('/api/chatbot-test', publicRouteLogger, chatbotTestRoutes);
 
 // 🚀 ROUTES DU SIMULATEUR - PUBLIQUES (pas d'authentification requise)
 app.use('/api/simulator', publicRouteLogger, simulatorRoutes);
@@ -254,6 +252,9 @@ app.use('/api/expert/notifications', enhancedAuthMiddleware, expertNotifications
 // Routes analytics - PROTÉGÉES avec permissions admin et expert
 app.use('/api/analytics', enhancedAuthMiddleware, analyticsRoutes);
 
+// Routes Google Calendar - PROTÉGÉES
+app.use('/api/google-calendar', enhancedAuthMiddleware, googleCalendarRoutes);
+
 // Routes de signature de charte - PROTÉGÉES (suppression du middleware global)
 app.use('/api/charte-signature', enhancedAuthMiddleware, charteSignatureRoutes);
 
@@ -269,7 +270,10 @@ console.log('🔌 Démarrage du serveur WebSocket unifié...');
 // Note: Le service WebSocket unifié sera initialisé après le démarrage du serveur HTTP
 
 // Démarrer le serveur HTTP
-const server = app.listen(PORT, HOST, () => {
+const server = createServer(app);
+const socketService = new SocketService(server);
+
+server.listen(PORT, HOST, () => {
   console.log(`🚀 Serveur démarré sur le port ${PORT}`);
   console.log(`🔌 WebSocket classique sur le port 5002`);
   console.log(`🔌 WebSocket unifié sur le port 5003`);

@@ -1,456 +1,316 @@
-import express, { Router, Request, Response } from 'express';
-import { createClient } from '@supabase/supabase-js';
-import { asyncHandler } from '../utils/asyncHandler';
-import { authenticateUser, requireUserType } from '../middleware/authenticate';
-import { AuthUser } from '../types/auth';
+import { Router } from 'express';
+import { messagingService } from '../services/messaging-service';
+import { 
+  CreateConversationRequest,
+  SendMessageRequest,
+  GetConversationsRequest,
+  GetMessagesRequest
+} from '../types/messaging';
 
-const router = express.Router();
+const router = Router();
 
-// Configuration Supabase
-const supabaseClient = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// ============================================================================
+// ROUTES DE MESSAGERIE
+// ============================================================================
 
-// ========================================
-// ROUTES DE MESSAGERIE UNIFIÉES
-// ========================================
-
-// GET /api/messaging/conversations - Liste des conversations (assignations)
-router.get('/conversations', authenticateUser, asyncHandler(async (req, res) => {
+/**
+ * Créer une nouvelle conversation
+ * POST /api/messaging/conversations
+ */
+router.post('/conversations', async (req, res) => {
   try {
-    const authUser = req.user as AuthUser;
-    const { page = 1, limit = 20, status, search } = req.query;
-    const offset = (Number(page) - 1) * Number(limit);
-
-    let query = supabaseClient
-      .from('expertassignment')
-      .select(`
-        *,
-        Expert (
-          id,
-          name,
-          email,
-          company_name,
-          specializations,
-          rating
-        ),
-        ClientProduitEligible (
-          id,
-          statut,
-          montantFinal,
-          ProduitEligible (
-            id,
-            nom,
-            description,
-            categorie
-          ),
-          Client (
-            id,
-            email,
-            company_name,
-            name,
-            phone_number
-          )
-        )
-      `);
-
-    // Filtrer selon le type d'utilisateur
-    if (authUser.type === 'client') {
-      query = query.eq('ClientProduitEligible.Client.id', authUser.id);
-    } else if (authUser.type === 'expert') {
-      query = query.eq('expert_id', authUser.id);
-    }
-
-    // Filtres optionnels
-    if (status && status !== 'all') {
-      query = query.eq('status', String(status));
-    }
-
-    if (search) {
-      if (authUser.type === 'client') {
-        query = query.or(`Expert.name.ilike.%${search}%,Expert.company_name.ilike.%${search}%`);
-      } else {
-        query = query.or(`ClientProduitEligible.Client.name.ilike.%${search}%,ClientProduitEligible.Client.company_name.ilike.%${search}%`);
-      }
-    }
-
-    // Tri et pagination
-    query = query.order('assignment_date', { ascending: false })
-      .range(offset, offset + Number(limit) - 1);
-
-    const { data: assignments, error, count } = await query;
-
-    if (error) {
-      console.error('❌ Erreur récupération conversations:', error);
-      return res.status(500).json({ 
-        success: false, 
-        message: 'Erreur lors de la récupération des conversations' 
+    const request: CreateConversationRequest = req.body;
+    
+    // Validation des données
+    if (!request.participant1_id || !request.participant2_id) {
+      return res.status(400).json({
+        success: false,
+        error: 'Les IDs des participants sont requis'
       });
     }
 
-    // Transformer les données pour correspondre au frontend
-    const conversations = assignments?.map(assignment => ({
-      id: assignment.id,
-      assignment_id: assignment.id,
-      expert: assignment.Expert,
-      client: assignment.ClientProduitEligible?.Client,
-      produit: assignment.ClientProduitEligible?.ProduitEligible,
-      status: assignment.status,
-      assignment_date: assignment.assignment_date,
-      created_at: assignment.created_at,
-      updated_at: assignment.updated_at,
-      // Récupérer le dernier message
-      lastMessage: null, // Sera chargé séparément
-      unreadCount: 0 // Sera calculé séparément
-    })) || [];
+    const conversationId = await messagingService.createConversation(request);
+    
+    res.json({
+      success: true,
+      data: { conversation_id: conversationId }
+    });
+  } catch (error) {
+    console.error('❌ Erreur création conversation:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la création de la conversation'
+    });
+  }
+});
 
-    // Charger le dernier message et le nombre de messages non lus pour chaque conversation
-    for (const conversation of conversations) {
-      const { data: lastMessage } = await supabaseClient
-        .from('Message')
-        .select('*')
-        .eq('assignment_id', conversation.assignment_id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
+/**
+ * Récupérer les conversations d'un utilisateur
+ * GET /api/messaging/conversations?user_id=...&user_type=...&limit=...&offset=...
+ */
+router.get('/conversations', async (req, res) => {
+  try {
+    const request: GetConversationsRequest = {
+      user_id: req.query.user_id as string,
+      user_type: req.query.user_type as 'client' | 'expert' | 'admin',
+      limit: req.query.limit ? parseInt(req.query.limit as string) : 50,
+      offset: req.query.offset ? parseInt(req.query.offset as string) : 0,
+      include_archived: req.query.include_archived === 'true'
+    };
 
-      const { count: unreadCount } = await supabaseClient
-        .from('Message')
-        .select('*', { count: 'exact', head: true })
-        .eq('assignment_id', conversation.assignment_id)
-        .eq('recipient_type', authUser.type)
-        .eq('recipient_id', authUser.id)
-        .eq('is_read', false);
+    // Validation des données
+    if (!request.user_id || !request.user_type) {
+      return res.status(400).json({
+        success: false,
+        error: 'user_id et user_type sont requis'
+      });
+    }
 
-      conversation.lastMessage = lastMessage;
-      conversation.unreadCount = unreadCount || 0;
+    const conversations = await messagingService.getConversations(request);
+    
+    res.json({
+      success: true,
+      data: conversations
+    });
+  } catch (error) {
+    console.error('❌ Erreur récupération conversations:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la récupération des conversations'
+    });
+  }
+});
+
+/**
+ * Récupérer une conversation spécifique
+ * GET /api/messaging/conversations/:id
+ */
+router.get('/conversations/:id', async (req, res) => {
+  try {
+    const conversationId = req.params.id;
+    const conversation = await messagingService.getConversation(conversationId);
+    
+    if (!conversation) {
+      return res.status(404).json({
+        success: false,
+        error: 'Conversation non trouvée'
+      });
     }
 
     res.json({
       success: true,
-      data: {
-        conversations,
-        pagination: {
-          page: Number(page),
-          limit: Number(limit),
-          total: count || 0,
-          totalPages: Math.ceil((count || 0) / Number(limit))
-        }
-      }
+      data: conversation
     });
-
   } catch (error) {
-    console.error('❌ Erreur route conversations:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Erreur serveur' 
+    console.error('❌ Erreur récupération conversation:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la récupération de la conversation'
     });
   }
-}));
+});
 
-// GET /api/messaging/conversations/:id/messages - Messages d'une conversation
-router.get('/conversations/:id/messages', authenticateUser, asyncHandler(async (req, res) => {
+/**
+ * Archiver une conversation
+ * PUT /api/messaging/conversations/:id/archive
+ */
+router.put('/conversations/:id/archive', async (req, res) => {
   try {
-    const authUser = req.user as AuthUser;
-    const { id: assignmentId } = req.params;
-    const { page = 1, limit = 50 } = req.query;
-    const offset = (Number(page) - 1) * Number(limit);
+    const conversationId = req.params.id;
+    const userId = req.body.user_id;
 
-    // Vérifier l'accès à l'assignation
-    const { data: assignment, error: assignmentError } = await supabaseClient
-      .from('expertassignment')
-      .select(`
-        *,
-        Expert (id, name, email),
-        ClientProduitEligible (
-          Client (id, email, name)
-        )
-      `)
-      .eq('id', assignmentId)
-      .single();
-
-    if (assignmentError || !assignment) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Conversation non trouvée' 
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        error: 'user_id est requis'
       });
     }
 
-    // Vérifier les permissions
-    const clientId = assignment.ClientProduitEligible?.Client?.id;
-    const expertId = assignment.expert_id;
-
-    if (authUser.type === 'client' && authUser.id !== clientId) {
-      return res.status(403).json({ 
-        success: false, 
-        message: 'Accès non autorisé' 
-      });
-    }
-
-    if (authUser.type === 'expert' && authUser.id !== expertId) {
-      return res.status(403).json({ 
-        success: false, 
-        message: 'Accès non autorisé' 
-      });
-    }
-
-    // Récupérer les messages
-    const { data: messages, error, count } = await supabaseClient
-      .from('Message')
-      .select('*')
-      .eq('assignment_id', assignmentId)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + Number(limit) - 1);
-
-    if (error) {
-      console.error('❌ Erreur récupération messages:', error);
-      return res.status(500).json({ 
-        success: false, 
-        message: 'Erreur lors de la récupération des messages' 
-      });
-    }
-
-    // Marquer les messages comme lus si l'utilisateur est le destinataire
-    if (messages && messages.length > 0) {
-      const unreadMessages = messages.filter(msg => 
-        msg.recipient_type === authUser.type && 
-        msg.recipient_id === authUser.id && 
-        !msg.is_read
-      );
-
-      if (unreadMessages.length > 0) {
-        await supabaseClient
-          .from('Message')
-          .update({ 
-            is_read: true, 
-            read_at: new Date().toISOString() 
-          })
-          .in('id', unreadMessages.map(msg => msg.id));
-      }
-    }
-
+    await messagingService.archiveConversation(conversationId, userId);
+    
     res.json({
       success: true,
-      data: {
-        messages: messages?.reverse() || [], // Remettre dans l'ordre chronologique
-        assignment,
-        pagination: {
-          page: Number(page),
-          limit: Number(limit),
-          total: count || 0,
-          totalPages: Math.ceil((count || 0) / Number(limit))
-        }
-      }
+      message: 'Conversation archivée avec succès'
     });
-
   } catch (error) {
-    console.error('❌ Erreur route messages:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Erreur serveur' 
+    console.error('❌ Erreur archivage conversation:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de l\'archivage de la conversation'
     });
   }
-}));
+});
 
-// POST /api/messaging/conversations/:id/messages - Envoyer un message
-router.post('/conversations/:id/messages', authenticateUser, asyncHandler(async (req, res) => {
+/**
+ * Envoyer un message
+ * POST /api/messaging/messages
+ */
+router.post('/messages', async (req, res) => {
   try {
-    const authUser = req.user as AuthUser;
-    const { id: assignmentId } = req.params;
-    const { content, message_type = 'text', attachments = [] } = req.body;
-
-    if (!content || !content.trim()) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Le contenu du message est requis' 
+    const request: SendMessageRequest = req.body;
+    
+    // Validation des données
+    if (!request.conversation_id || !request.content) {
+      return res.status(400).json({
+        success: false,
+        error: 'conversation_id et content sont requis'
       });
     }
 
-    // Vérifier l'accès à l'assignation
-    const { data: assignment, error: assignmentError } = await supabaseClient
-      .from('expertassignment')
-      .select(`
-        *,
-        Expert (id, name, email),
-        ClientProduitEligible (
-          Client (id, email, name)
-        )
-      `)
-      .eq('id', assignmentId)
-      .single();
-
-    if (assignmentError || !assignment) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Conversation non trouvée' 
-      });
-    }
-
-    // Vérifier les permissions
-    const clientId = assignment.ClientProduitEligible?.Client?.id;
-    const expertId = assignment.expert_id;
-
-    if (authUser.type === 'client' && authUser.id !== clientId) {
-      return res.status(403).json({ 
-        success: false, 
-        message: 'Accès non autorisé' 
-      });
-    }
-
-    if (authUser.type === 'expert' && authUser.id !== expertId) {
-      return res.status(403).json({ 
-        success: false, 
-        message: 'Accès non autorisé' 
-      });
-    }
-
-    // Déterminer le destinataire
-    const recipientType = authUser.type === 'client' ? 'expert' : 'client';
-    const recipientId = authUser.type === 'client' ? expertId : clientId;
-
-    // Créer le message
-    const { data: message, error } = await supabaseClient
-      .from('Message')
-      .insert({
-        assignment_id: assignmentId,
-        sender_type: authUser.type,
-        sender_id: authUser.id,
-        recipient_type: recipientType,
-        recipient_id: recipientId,
-        content: content.trim(),
-        message_type,
-        attachments: attachments.length > 0 ? attachments : null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error('❌ Erreur création message:', error);
-      return res.status(500).json({ 
-        success: false, 
-        message: 'Erreur lors de l\'envoi du message' 
-      });
-    }
-
-    // Mettre à jour la date de l'assignation
-    await supabaseClient
-      .from('expertassignment')
-      .update({ 
-        updated_at: new Date().toISOString() 
-      })
-      .eq('id', assignmentId);
-
-    res.status(201).json({
+    const message = await messagingService.sendMessage(request);
+    
+    res.json({
       success: true,
       data: message
     });
-
   } catch (error) {
     console.error('❌ Erreur envoi message:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Erreur serveur' 
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de l\'envoi du message'
     });
   }
-}));
+});
 
-// PUT /api/messaging/messages/:id/read - Marquer un message comme lu
-router.put('/messages/:id/read', authenticateUser, asyncHandler(async (req, res) => {
+/**
+ * Récupérer les messages d'une conversation
+ * GET /api/messaging/conversations/:id/messages?limit=...&offset=...&before_date=...
+ */
+router.get('/conversations/:id/messages', async (req, res) => {
   try {
-    const authUser = req.user as AuthUser;
-    const { id: messageId } = req.params;
+    const conversationId = req.params.id;
+    const request: GetMessagesRequest = {
+      conversation_id: conversationId,
+      limit: req.query.limit ? parseInt(req.query.limit as string) : 50,
+      offset: req.query.offset ? parseInt(req.query.offset as string) : 0,
+      before_date: req.query.before_date as string
+    };
 
-    // Vérifier que l'utilisateur est le destinataire du message
-    const { data: message, error: messageError } = await supabaseClient
-      .from('Message')
-      .select('*')
-      .eq('id', messageId)
-      .single();
-
-    if (messageError || !message) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Message non trouvé' 
-      });
-    }
-
-    if (message.recipient_type !== authUser.type || message.recipient_id !== authUser.id) {
-      return res.status(403).json({ 
-        success: false, 
-        message: 'Accès non autorisé' 
-      });
-    }
-
-    // Marquer comme lu
-    const { data: updatedMessage, error } = await supabaseClient
-      .from('Message')
-      .update({ 
-        is_read: true, 
-        read_at: new Date().toISOString() 
-      })
-      .eq('id', messageId)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('❌ Erreur marquage message:', error);
-      return res.status(500).json({ 
-        success: false, 
-        message: 'Erreur lors du marquage du message' 
-      });
-    }
-
+    const messages = await messagingService.getMessages(request);
+    
     res.json({
       success: true,
-      data: updatedMessage
+      data: messages
     });
-
   } catch (error) {
-    console.error('❌ Erreur route marquage message:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Erreur serveur' 
+    console.error('❌ Erreur récupération messages:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la récupération des messages'
     });
   }
-}));
+});
 
-// GET /api/messaging/unread-count - Nombre de messages non lus
-router.get('/unread-count', authenticateUser, asyncHandler(async (req, res) => {
+/**
+ * Marquer les messages comme lus
+ * PUT /api/messaging/conversations/:id/read
+ */
+router.put('/conversations/:id/read', async (req, res) => {
   try {
-    const authUser = req.user as AuthUser;
+    const conversationId = req.params.id;
+    const userId = req.body.user_id;
 
-    const { count, error } = await supabaseClient
-      .from('Message')
-      .select('*', { count: 'exact', head: true })
-      .eq('recipient_type', authUser.type)
-      .eq('recipient_id', authUser.id)
-      .eq('is_read', false);
-
-    if (error) {
-      console.error('❌ Erreur comptage messages non lus:', error);
-      return res.status(500).json({ 
-        success: false, 
-        message: 'Erreur lors du comptage' 
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        error: 'user_id est requis'
       });
     }
 
+    await messagingService.markMessagesAsRead(conversationId, userId);
+    
     res.json({
       success: true,
-      data: {
-        unreadCount: count || 0
-      }
+      message: 'Messages marqués comme lus'
     });
-
   } catch (error) {
-    console.error('❌ Erreur route unread-count:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Erreur serveur' 
+    console.error('❌ Erreur marquage messages lus:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors du marquage des messages'
     });
   }
-}));
+});
+
+/**
+ * Récupérer les notifications d'un utilisateur
+ * GET /api/messaging/notifications?user_id=...&user_type=...&limit=...
+ */
+router.get('/notifications', async (req, res) => {
+  try {
+    const userId = req.query.user_id as string;
+    const userType = req.query.user_type as 'client' | 'expert' | 'admin';
+    const limit = req.query.limit ? parseInt(req.query.limit as string) : 20;
+
+    if (!userId || !userType) {
+      return res.status(400).json({
+        success: false,
+        error: 'user_id et user_type sont requis'
+      });
+    }
+
+    const notifications = await messagingService.getUserNotifications(userId, userType, limit);
+    
+    res.json({
+      success: true,
+      data: notifications
+    });
+  } catch (error) {
+    console.error('❌ Erreur récupération notifications:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la récupération des notifications'
+    });
+  }
+});
+
+/**
+ * Marquer une notification comme lue
+ * PUT /api/messaging/notifications/:id/read
+ */
+router.put('/notifications/:id/read', async (req, res) => {
+  try {
+    const notificationId = req.params.id;
+    await messagingService.markNotificationAsRead(notificationId);
+    
+    res.json({
+      success: true,
+      message: 'Notification marquée comme lue'
+    });
+  } catch (error) {
+    console.error('❌ Erreur marquage notification:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors du marquage de la notification'
+    });
+  }
+});
+
+/**
+ * Statistiques de messagerie
+ * GET /api/messaging/stats
+ */
+router.get('/stats', async (req, res) => {
+  try {
+    // TODO: Implémenter les statistiques de messagerie
+    const stats = {
+      total_conversations: 0,
+      total_messages: 0,
+      active_users: 0,
+      unread_messages: 0
+    };
+    
+    res.json({
+      success: true,
+      data: stats
+    });
+  } catch (error) {
+    console.error('❌ Erreur récupération statistiques:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la récupération des statistiques'
+    });
+  }
+});
 
 export default router; 

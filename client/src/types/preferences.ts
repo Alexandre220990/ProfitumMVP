@@ -560,3 +560,63 @@ export const TUTORIAL_CONFIG: Record<TutorialType, {
     required: false,
   },
 }; 
+
+// Types pour les préférences expert
+
+export interface ExpertPreferences {
+  notifications: {
+    email: boolean;
+    push: boolean;
+    sms: boolean;
+    inApp: boolean;
+  };
+  availability: {
+    workingHours: {
+      start: string;
+      end: string;
+    };
+    maxAssignments: number;
+    preferredProducts: string[];
+    autoAccept: boolean;
+    timezone: string;
+  };
+  compensation: {
+    minimumRate: number;
+    preferredRate: number;
+    autoNegotiate: boolean;
+    currency: string;
+  };
+  display: {
+    theme: 'light' | 'dark' | 'auto';
+    language: string;
+    dateFormat: string;
+    timeFormat: '12h' | '24h';
+  };
+  privacy: {
+    showProfile: boolean;
+    showEarnings: boolean;
+    showRating: boolean;
+    allowContact: boolean;
+  };
+}
+
+export interface PreferenceCategory {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  settings: PreferenceSetting[];
+}
+
+export interface PreferenceSetting {
+  id: string;
+  name: string;
+  description: string;
+  type: 'boolean' | 'number' | 'string' | 'select' | 'time' | 'currency';
+  value: any;
+  options?: Array<{ value: string; label: string }>;
+  min?: number;
+  max?: number;
+  step?: number;
+  required?: boolean;
+} 

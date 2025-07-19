@@ -1,754 +1,488 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "./card";
-import { Button } from "./button";
-import { Badge } from "./badge";
-import { Progress } from "./progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "./tabs";
-import { useExpert } from "@/contexts/ExpertContext";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Briefcase, 
-  Bell, 
-  Clock, 
-  AlertTriangle, 
   DollarSign, 
-  Plus, 
-  Settings, 
-  RefreshCw, 
-  Eye, 
-  Edit, 
-  Play, 
-  Activity, 
-  Download,
+  TrendingUp, 
+  Users, 
+  RefreshCw,
+  Eye,
   CheckCircle,
+  Clock,
+  Search,
+  ArrowUpRight,
+  ArrowDownRight,
+  AlertCircle,
+  Play,
+  AlertTriangle,
   Star,
-  Users
+  Target,
+  Zap,
+  Award,
+  Building2,
+  Phone,
+  Mail,
+  MapPin,
+  FileSignature,
+  CalendarDays,
+  Timer
 } from "lucide-react";
+import { useExpert } from "@/hooks/use-expert";
+import HeaderExpert from "@/components/HeaderExpert";
+import { useNavigate } from "react-router-dom";
 
+// Composant KPI Card ultra-optimisé
+const KPICard: React.FC<{
+  title: string;
+  value: string | number;
+  icon: React.ReactNode;
+  trend?: {
+    value: number;
+    isPositive: boolean;
+  };
+  color: string;
+  subtitle?: string;
+  onClick?: () => void;
+}> = ({ title, value, icon, trend, color, subtitle, onClick }) => (
+  <Card 
+    className={`hover:shadow-lg transition-all duration-200 ${onClick ? 'cursor-pointer hover:scale-105' : ''}`}
+    onClick={onClick}
+  >
+    <CardContent className="p-6">
+      <div className="flex items-center justify-between">
+        <div className="flex-1">
+          <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">
+            {title}
+          </p>
+          <div className="flex items-baseline space-x-2">
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">
+              {value}
+            </p>
+            {trend && (
+              <div className={`flex items-center text-xs font-medium ${
+                trend.isPositive ? 'text-green-600' : 'text-red-600'
+              }`}>
+                {trend.isPositive ? (
+                  <ArrowUpRight className="w-3 h-3 mr-1" />
+                ) : (
+                  <ArrowDownRight className="w-3 h-3 mr-1" />
+                )}
+                {Math.abs(trend.value)}%
+              </div>
+            )}
+          </div>
+          {subtitle && (
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              {subtitle}
+            </p>
+          )}
+        </div>
+        <div className={`p-3 rounded-lg ${color}`}>
+          {icon}
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+);
+
+// Composant Dossier Card ultra-détaillé
+const DossierCard: React.FC<{
+  dossier: any;
+  onView: (id: string) => void;
+  onAction: (id: string, action: string) => void;
+}> = ({ dossier, onView, onAction }) => {
+  const clientName = dossier.Client?.company_name || dossier.Client?.name || 'Client inconnu';
+  const productName = dossier.ProduitEligible?.nom || 'Produit inconnu';
+  const status = dossier.statut || 'en_cours';
+  const progress = dossier.progress || 0;
+  const montantFinal = dossier.montantFinal || 0;
+  const currentStep = dossier.current_step || 0;
+  const charteSigned = dossier.charte_signed || false;
+  const priorite = dossier.priorite || 1;
+  
+  // Calculer l'âge du dossier
+  const createdDate = new Date(dossier.created_at);
+  const now = new Date();
+  const daysDiff = Math.floor((now.getTime() - createdDate.getTime()) / (1000 * 3600 * 24));
+  const isOverdue = daysDiff > 30;
+  
+  const getStatusConfig = (status: string) => {
+    switch (status) {
+      case 'eligible':
+        return { label: 'Éligible', color: 'bg-green-100 text-green-800', icon: CheckCircle };
+      case 'en_cours':
+        return { label: 'En cours', color: 'bg-blue-100 text-blue-800', icon: Play };
+      case 'termine':
+        return { label: 'Terminé', color: 'bg-purple-100 text-purple-800', icon: Award };
+      case 'annule':
+        return { label: 'Annulé', color: 'bg-gray-100 text-gray-800', icon: AlertTriangle };
+      default:
+        return { label: 'En attente', color: 'bg-yellow-100 text-yellow-800', icon: Clock };
+    }
+  };
+
+  const statusConfig = getStatusConfig(status);
+  const StatusIcon = statusConfig.icon;
+
+  return (
+    <Card className="hover:shadow-lg transition-all duration-200 group">
+      <CardContent className="p-6">
+        {/* Header avec priorité et statut */}
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex items-start space-x-4">
+            <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+              <Building2 className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <h4 className="font-semibold text-gray-900 dark:text-white mb-1 group-hover:text-blue-600 transition-colors">
+                {clientName}
+              </h4>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                {productName}
+              </p>
+              <div className="flex items-center space-x-2">
+                <Badge className={statusConfig.color}>
+                  <StatusIcon className="w-3 h-3 mr-1" />
+                  {statusConfig.label}
+                </Badge>
+                {priorite > 2 && (
+                  <Badge variant="destructive" className="text-xs">
+                    <Star className="w-3 h-3 mr-1" />
+                    Priorité {priorite}
+                  </Badge>
+                )}
+                {isOverdue && (
+                  <Badge variant="destructive" className="text-xs">
+                    <AlertTriangle className="w-3 h-3 mr-1" />
+                    En retard
+                  </Badge>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-lg font-bold text-gray-900 dark:text-white">
+              €{montantFinal.toLocaleString()}
+            </p>
+            <p className="text-sm text-gray-500">
+              Gain potentiel
+            </p>
+          </div>
+        </div>
+
+        {/* Informations détaillées */}
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div className="space-y-2">
+            <div className="flex items-center space-x-2 text-sm text-gray-600">
+              <Phone className="w-4 h-4" />
+              <span>{dossier.Client?.phone || 'Non renseigné'}</span>
+            </div>
+            <div className="flex items-center space-x-2 text-sm text-gray-600">
+              <Mail className="w-4 h-4" />
+              <span>{dossier.Client?.email}</span>
+            </div>
+            <div className="flex items-center space-x-2 text-sm text-gray-600">
+              <MapPin className="w-4 h-4" />
+              <span>{dossier.Client?.city || 'Non renseigné'}</span>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center space-x-2 text-sm text-gray-600">
+              <CalendarDays className="w-4 h-4" />
+              <span>Créé il y a {daysDiff} jours</span>
+            </div>
+            <div className="flex items-center space-x-2 text-sm text-gray-600">
+              <FileSignature className="w-4 h-4" />
+              <span>Charte {charteSigned ? 'signée' : 'non signée'}</span>
+            </div>
+            <div className="flex items-center space-x-2 text-sm text-gray-600">
+              <Target className="w-4 h-4" />
+              <span>Étape {currentStep}/5</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Progression */}
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-gray-600 dark:text-gray-400">Progression</span>
+            <span className="text-sm font-medium text-gray-900 dark:text-white">
+              {progress}%
+            </span>
+          </div>
+          <Progress value={progress} className="h-2" />
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2 text-sm text-gray-500">
+            <Timer className="w-4 h-4" />
+            <span>Durée: {dossier.dureeFinale || 0} jours</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button variant="outline" size="sm" onClick={() => onView(dossier.id)}>
+              <Eye className="w-4 h-4 mr-2" />
+              Détails
+            </Button>
+            {status === 'en_cours' && (
+              <Button size="sm" onClick={() => onAction(dossier.id, 'continue')}>
+                <Play className="w-4 h-4 mr-2" />
+                Continuer
+              </Button>
+            )}
+            {status === 'eligible' && (
+              <Button size="sm" onClick={() => onAction(dossier.id, 'start')}>
+                <Zap className="w-4 h-4 mr-2" />
+                Démarrer
+              </Button>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+// Composant principal du Dashboard Expert Ultra-Optimisé
 export const ExpertDashboard: React.FC = () => {
+  const navigate = useNavigate();
   const {
-    assignments,
-    notifications,
-    workflows,
+    clientProduitsEligibles,
     analytics,
     loading,
     error,
-    acceptAssignment,
-    completeAssignment,
-    markNotificationAsRead,
-    markAllNotificationsAsRead,
-    deleteNotification,
-    completeWorkflowStep
+    getQuickMetrics,
+    getPriorityDossiers,
+    getOverdueDossiers,
+    refreshData
   } = useExpert();
 
-  const [selectedTab, setSelectedTab] = useState('overview');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400';
-      case 'in_progress':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400';
-      default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400';
-    }
+  // Calculer les métriques rapides
+  const metrics = getQuickMetrics();
+
+  // Obtenir les dossiers prioritaires et en retard
+  const priorityDossiers = getPriorityDossiers();
+  const overdueDossiers = getOverdueDossiers();
+
+  // Filtrage des dossiers
+  const filteredDossiers = (clientProduitsEligibles ?? []).filter(dossier => {
+    const clientName = dossier.Client?.company_name || dossier.Client?.name || 'Client inconnu';
+    const productName = dossier.ProduitEligible?.nom || 'Produit inconnu';
+    
+    const matchesSearch = clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         productName.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = filterStatus === 'all' || dossier.statut === filterStatus;
+    return matchesSearch && matchesStatus;
+  });
+
+  // Actions sur les dossiers
+  const handleViewDossier = (id: string) => {
+    navigate(`/expert/dossier/${id}`);
   };
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'critical':
-        return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400';
-      case 'high':
-        return 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400';
-      case 'medium':
-        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400';
-      default:
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400';
-    }
-  };
-
-  const getNotificationIcon = (type: string) => {
-    switch (type) {
-      case 'assignment':
-        return <Briefcase className="w-4 h-4" />;
-      case 'deadline':
-        return <Clock className="w-4 h-4" />;
-      case 'payment':
-        return <DollarSign className="w-4 h-4" />;
-      default:
-        return <Bell className="w-4 h-4" />;
-    }
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: 'EUR'
-    }).format(amount);
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('fr-FR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
-  };
-
-  const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString('fr-FR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+  const handleDossierAction = (id: string, action: string) => {
+    console.log(`Action ${action} sur le dossier ${id}`);
+    // Ici on peut implémenter les actions spécifiques
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <RefreshCw className="w-8 h-8 animate-spin text-gray-400" />
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <HeaderExpert />
+        <div className="flex items-center justify-center h-64 pt-24">
+          <div className="text-center">
+            <RefreshCw className="w-8 h-8 animate-spin text-blue-500 mx-auto mb-4" />
+            <p className="text-gray-600 dark:text-gray-400">Chargement du dashboard...</p>
+          </div>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <AlertTriangle className="w-12 h-12 mx-auto text-red-500 mb-4" />
-          <p className="text-red-600">{error}</p>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <HeaderExpert />
+        <div className="flex items-center justify-center h-64 pt-24">
+          <div className="text-center">
+            <AlertCircle className="w-12 h-12 mx-auto text-red-500 mb-4" />
+            <p className="text-red-600 mb-2">Erreur lors du chargement</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">{error}</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-            Dashboard Expert
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Gérez vos assignations et suivez vos performances
-          </p>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <HeaderExpert />
+      
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24">
+        {/* KPIs Principaux Ultra-Optimisés */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <KPICard
+            title="Dossiers actifs"
+            value={metrics.inProgress}
+            icon={<Briefcase className="w-6 h-6 text-blue-600" />}
+            color="bg-blue-100 dark:bg-blue-900/20"
+            trend={{ value: 12, isPositive: true }}
+            subtitle="+2 ce mois"
+            onClick={() => setFilterStatus('en_cours')}
+          />
+          <KPICard
+            title="Gains du mois"
+            value={`€${metrics.totalRevenue.toLocaleString()}`}
+            icon={<DollarSign className="w-6 h-6 text-green-600" />}
+            color="bg-green-100 dark:bg-green-900/20"
+            trend={{ value: 8, isPositive: true }}
+            subtitle="vs mois dernier"
+            onClick={() => navigate('/expert/analytics')}
+          />
+          <KPICard
+            title="Taux de réussite"
+            value={analytics?.conversionRate ? `${analytics.conversionRate}%` : '0%'}
+            icon={<TrendingUp className="w-6 h-6 text-purple-600" />}
+            color="bg-purple-100 dark:bg-purple-900/20"
+            trend={{ value: 5, isPositive: true }}
+            subtitle="+5% ce mois"
+          />
+          <KPICard
+            title="Opportunités"
+            value={metrics.opportunities}
+            icon={<Users className="w-6 h-6 text-orange-600" />}
+            color="bg-orange-100 dark:bg-orange-900/20"
+            trend={{ value: 3, isPositive: true }}
+            subtitle="+3 ce mois"
+            onClick={() => setFilterStatus('eligible')}
+          />
         </div>
-        
-        <div className="flex items-center space-x-4">
-          <Button variant="outline" size="sm">
-            <Settings className="w-4 h-4 mr-2" />
-            Préférences
-          </Button>
-          
-          <Button variant="outline" size="sm">
-            <Download className="w-4 h-4 mr-2" />
-            Exporter
-          </Button>
-        </div>
-      </div>
 
-      {/* Statistiques rapides */}
-      {analytics && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-4">
-                <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
-                  <Briefcase className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                    Assignations actives
-                  </p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                    {assignments.filter(a => a.status === 'in_progress').length}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-4">
-                <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
-                  <DollarSign className="w-6 h-6 text-green-600 dark:text-green-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                    Gains du mois
-                  </p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                    {formatCurrency(analytics.monthlyEarnings)}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-4">
-                <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
-                  <Star className="w-6 h-6 text-purple-600 dark:text-purple-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                    Score performance
-                  </p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                    {analytics.performanceScore}/100
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-4">
-                <div className="p-2 bg-orange-100 dark:bg-orange-900/20 rounded-lg">
-                  <Users className="w-6 h-6 text-orange-600 dark:text-orange-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                    Satisfaction client
-                  </p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                    {analytics.clientSatisfaction}/5
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Onglets principaux */}
-      <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
-          <TabsTrigger value="assignments">Assignations</TabsTrigger>
-          <TabsTrigger value="workflows">Workflows</TabsTrigger>
-          <TabsTrigger value="notifications">Notifications</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
-        </TabsList>
-
-        {/* Vue d'ensemble */}
-        <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Assignations récentes */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span>Assignations récentes</span>
-                  <Button variant="outline" size="sm">
-                    <Eye className="w-4 h-4 mr-2" />
-                    Voir tout
-                  </Button>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {assignments.slice(0, 3).map((assignment) => (
-                    <div key={assignment.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
-                          <Briefcase className="w-4 h-4 text-blue-600" />
-                        </div>
-                        <div>
-                          <p className="font-medium text-gray-900 dark:text-gray-100">
-                            {assignment.clientName}
-                          </p>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            {assignment.productType}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <Badge className={getStatusColor(assignment.status)}>
-                          {assignment.status === 'in_progress' ? 'En cours' : 
-                           assignment.status === 'pending' ? 'En attente' :
-                           assignment.status === 'completed' ? 'Terminé' : 'Annulé'}
-                        </Badge>
-                        <p className="text-sm text-gray-600 mt-1">
-                          {assignment.progress}%
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Notifications récentes */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span>Notifications récentes</span>
-                  <Button variant="outline" size="sm">
-                    <Bell className="w-4 h-4 mr-2" />
-                    Voir tout
-                  </Button>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {notifications.slice(0, 3).map((notification) => (
-                    <div key={notification.id} className="flex items-start space-x-3 p-3 border rounded-lg">
-                      <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded-lg">
-                        {getNotificationIcon(notification.type)}
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-medium text-gray-900 dark:text-gray-100">
-                          {notification.title}
-                        </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {notification.message}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {formatDateTime(notification.timestamp)}
-                        </p>
-                      </div>
-                      {!notification.read && (
-                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Workflows en cours */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Workflows en cours</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {workflows.map((workflow) => (
-                  <div key={workflow.id} className="p-4 border rounded-lg">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-medium text-gray-900 dark:text-gray-100">
-                        Dossier {workflow.dossierId}
-                      </h4>
-                      <Badge variant="outline">
-                        Étape {workflow.step}/{workflow.totalSteps}
-                      </Badge>
-                    </div>
-                    
-                    <div className="mb-3">
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                        {workflow.currentStep.name}
-                      </p>
-                      <Progress value={(workflow.step / workflow.totalSteps) * 100} className="h-2" />
-                    </div>
-                    
-                    <div className="flex items-center space-x-2">
-                      <Button size="sm" variant="outline">
-                        <Eye className="w-4 h-4 mr-2" />
-                        Détails
-                      </Button>
-                      <Button size="sm">
-                        <Play className="w-4 h-4 mr-2" />
-                        Continuer
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Assignations */}
-        <TabsContent value="assignments" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span>Mes Assignations</span>
-                <div className="flex items-center space-x-2">
-                  <Button variant="outline" size="sm">
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                    Actualiser
-                  </Button>
-                  <Button size="sm">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Nouvelle
-                  </Button>
-                </div>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {assignments.map((assignment) => (
-                  <div key={assignment.id} className="p-4 border rounded-lg">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center space-x-3">
-                        <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
-                          <Briefcase className="w-4 h-4 text-blue-600" />
-                        </div>
-                        <div>
-                          <h4 className="font-medium text-gray-900 dark:text-gray-100">
-                            {assignment.clientName}
-                          </h4>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            {assignment.productType} • {assignment.dossierId}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Badge className={getStatusColor(assignment.status)}>
-                          {assignment.status === 'in_progress' ? 'En cours' : 
-                           assignment.status === 'pending' ? 'En attente' :
-                           assignment.status === 'completed' ? 'Terminé' : 'Annulé'}
-                        </Badge>
-                        <Badge className={getPriorityColor(assignment.priority)}>
-                          {assignment.priority}
-                        </Badge>
-                      </div>
-                    </div>
-                    
-                    <div className="mb-3">
-                      <div className="flex items-center justify-between text-sm mb-1">
-                        <span>Progression</span>
-                        <span>{assignment.progress}%</span>
-                      </div>
-                      <Progress value={assignment.progress} className="h-2" />
-                    </div>
-                    
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      <div>
-                        <span className="text-gray-600 dark:text-gray-400">Assigné le:</span>
-                        <p>{formatDate(assignment.assignedAt)}</p>
-                      </div>
-                      {assignment.deadline && (
-                        <div>
-                          <span className="text-gray-600 dark:text-gray-400">Échéance:</span>
-                          <p>{formatDate(assignment.deadline)}</p>
-                        </div>
-                      )}
-                      {assignment.compensation && (
-                        <div>
-                          <span className="text-gray-600 dark:text-gray-400">Compensation:</span>
-                          <p className="font-medium">{formatCurrency(assignment.compensation)}</p>
-                        </div>
-                      )}
-                      {assignment.estimatedDuration && (
-                        <div>
-                          <span className="text-gray-600 dark:text-gray-400">Durée estimée:</span>
-                          <p>{assignment.estimatedDuration}h</p>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="flex items-center space-x-2 mt-4">
-                      {assignment.status === 'pending' && (
-                        <>
-                          <Button size="sm" onClick={() => acceptAssignment(assignment.id)}>
-                            <CheckCircle className="w-4 h-4 mr-2" />
-                            Accepter
-                          </Button>
-                          <Button size="sm" variant="outline">
-                            <AlertTriangle className="w-4 h-4 mr-2" />
-                            Rejeter
-                          </Button>
-                        </>
-                      )}
-                      
-                      {assignment.status === 'in_progress' && (
-                        <>
-                          <Button size="sm" variant="outline">
-                            <Edit className="w-4 h-4 mr-2" />
-                            Mettre à jour
-                          </Button>
-                          <Button size="sm" onClick={() => completeAssignment(assignment.id)}>
-                            <CheckCircle className="w-4 h-4 mr-2" />
-                            Terminer
-                          </Button>
-                        </>
-                      )}
-                      
-                      <Button size="sm" variant="outline">
-                        <Eye className="w-4 h-4 mr-2" />
-                        Détails
-                      </Button>
-                      
-                      <Button size="sm" variant="outline">
-                        <Download className="w-4 h-4 mr-2" />
-                        Rapport
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Workflows */}
-        <TabsContent value="workflows" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Workflows en cours</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                {workflows.map((workflow) => (
-                  <div key={workflow.id} className="p-6 border rounded-lg">
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <h4 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                          Dossier {workflow.dossierId}
-                        </h4>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          Étape {workflow.step} sur {workflow.totalSteps}
-                        </p>
-                      </div>
-                      <Badge variant="outline">
-                        {workflow.currentStep.status === 'in_progress' ? 'En cours' :
-                         workflow.currentStep.status === 'pending' ? 'En attente' :
-                         workflow.currentStep.status === 'completed' ? 'Terminé' : 'Bloqué'}
-                      </Badge>
-                    </div>
-                    
-                    <div className="mb-4">
-                      <Progress value={(workflow.step / workflow.totalSteps) * 100} className="h-3" />
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <h5 className="font-medium text-gray-900 dark:text-gray-100 mb-2">
-                          Étape actuelle
-                        </h5>
-                        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                          <p className="font-medium">{workflow.currentStep.name}</p>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            {workflow.currentStep.description}
-                          </p>
-                          {workflow.currentStep.deadline && (
-                            <p className="text-sm text-gray-500 mt-1">
-                              Échéance: {formatDate(workflow.currentStep.deadline)}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      
-                      {workflow.nextStep && (
-                        <div>
-                          <h5 className="font-medium text-gray-900 dark:text-gray-100 mb-2">
-                            Prochaine étape
-                          </h5>
-                          <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                            <p className="font-medium">{workflow.nextStep.name}</p>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
-                              {workflow.nextStep.description}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="flex items-center space-x-2 mt-4">
-                      <Button onClick={() => completeWorkflowStep(workflow.id)}>
-                        <CheckCircle className="w-4 h-4 mr-2" />
-                        Terminer l'étape
-                      </Button>
-                      <Button variant="outline">
-                        <Eye className="w-4 h-4 mr-2" />
-                        Voir l'historique
-                      </Button>
-                      <Button variant="outline">
-                        <Download className="w-4 h-4 mr-2" />
-                        Rapport
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Notifications */}
-        <TabsContent value="notifications" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span>Notifications</span>
-                <Button variant="outline" size="sm" onClick={markAllNotificationsAsRead}>
-                  <CheckCircle className="w-4 h-4 mr-2" />
-                  Tout marquer comme lu
-                </Button>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {notifications.map((notification) => (
-                  <div key={notification.id} className="flex items-start space-x-3 p-4 border rounded-lg">
-                    <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded-lg">
-                      {getNotificationIcon(notification.type)}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="font-medium text-gray-900 dark:text-gray-100">
-                          {notification.title}
-                        </p>
-                        <div className="flex items-center space-x-2">
-                          {!notification.read && (
-                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                          )}
-                          <Badge className={getPriorityColor(notification.priority)}>
-                            {notification.priority}
-                          </Badge>
-                        </div>
-                      </div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                        {notification.message}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {formatDateTime(notification.timestamp)}
-                      </p>
-                      {notification.action && (
-                        <Button size="sm" variant="outline" className="mt-2">
-                          {notification.action.label}
-                        </Button>
-                      )}
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      {!notification.read && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => markNotificationAsRead(notification.id)}
-                        >
-                          <CheckCircle className="w-4 h-4" />
-                        </Button>
-                      )}
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => deleteNotification(notification.id)}
-                      >
-                        <AlertTriangle className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Analytics */}
-        <TabsContent value="analytics" className="space-y-6">
-          {analytics && (
-            <>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Produits les plus demandés</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {analytics.topProducts.map((product) => (
-                        <div key={product.name} className="flex items-center justify-between">
-                          <span className="text-sm font-medium">{product.name}</span>
-                          <div className="flex items-center space-x-2">
-                            <span className="text-sm text-gray-600">{product.count} dossiers</span>
-                            <span className="text-sm font-medium">{formatCurrency(product.revenue)}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Activité récente</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {analytics.recentActivity.map((activity, index) => (
-                        <div key={index} className="flex items-start space-x-3">
-                          <div className="p-1 bg-blue-100 dark:bg-blue-900/20 rounded">
-                            <Activity className="w-3 h-3 text-blue-600" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-sm text-gray-900 dark:text-gray-100">
-                              {activity.description}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              {formatDateTime(activity.timestamp)}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    <span>Statistiques détaillées</span>
-                    <Button variant="outline" size="sm">
-                      <Download className="w-4 h-4 mr-2" />
-                      Exporter rapport
+        {/* Alertes et priorités */}
+        {(overdueDossiers.length > 0 || priorityDossiers.length > 0) && (
+          <div className="mb-8 space-y-4">
+            {overdueDossiers.length > 0 && (
+              <Card className="border-red-200 bg-red-50">
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-2">
+                    <AlertTriangle className="w-5 h-5 text-red-600" />
+                    <span className="font-medium text-red-800">
+                      {overdueDossiers.length} dossier(s) en retard
+                    </span>
+                    <Button variant="outline" size="sm" onClick={() => setFilterStatus('en_cours')}>
+                      Voir les dossiers
                     </Button>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                    <div className="text-center">
-                      <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                        {analytics.totalAssignments}
-                      </p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Total assignations
-                      </p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                        {analytics.completedAssignments}
-                      </p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Assignations terminées
-                      </p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                        {analytics.averageCompletionTime}j
-                      </p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Temps moyen
-                      </p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                        {formatCurrency(analytics.totalEarnings)}
-                      </p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Gains totaux
-                      </p>
-                    </div>
                   </div>
                 </CardContent>
               </Card>
-            </>
-          
-)}
-        </TabsContent>
-      </Tabs>
+            )}
+            
+            {priorityDossiers.length > 0 && (
+              <Card className="border-orange-200 bg-orange-50">
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-2">
+                    <Star className="w-5 h-5 text-orange-600" />
+                    <span className="font-medium text-orange-800">
+                      {priorityDossiers.length} dossier(s) prioritaire(s)
+                    </span>
+                    <Button variant="outline" size="sm" onClick={() => setFilterStatus('en_cours')}>
+                      Voir les priorités
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )}
+
+        {/* Tableau des dossiers avec 3 onglets */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <span>Mes Dossiers</span>
+              <div className="flex items-center space-x-2">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <input
+                    type="text"
+                    placeholder="Rechercher un dossier..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64"
+                  />
+                </div>
+                <Button variant="outline" size="sm" onClick={refreshData}>
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Actualiser
+                </Button>
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Tabs value={filterStatus} onValueChange={setFilterStatus} className="space-y-6">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="eligible">
+                  <Target className="h-4 w-4 mr-2" />
+                  Opportunités ({clientProduitsEligibles.filter(cpe => cpe.statut === 'eligible').length})
+                </TabsTrigger>
+                <TabsTrigger value="en_cours">
+                  <Play className="h-4 w-4 mr-2" />
+                  En cours ({clientProduitsEligibles.filter(cpe => cpe.statut === 'en_cours').length})
+                </TabsTrigger>
+                <TabsTrigger value="termine">
+                  <Award className="h-4 w-4 mr-2" />
+                  Terminés ({clientProduitsEligibles.filter(cpe => cpe.statut === 'termine').length})
+                </TabsTrigger>
+              </TabsList>
+
+              {/* Contenu des onglets */}
+              <div className="space-y-4">
+                {filteredDossiers.length > 0 ? (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {filteredDossiers.map((dossier) => (
+                      <DossierCard
+                        key={dossier.id}
+                        dossier={dossier}
+                        onView={handleViewDossier}
+                        onAction={handleDossierAction}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-16">
+                    <div className="text-gray-400 mb-4">
+                      {filterStatus === "eligible" && <Target className="h-16 w-16 mx-auto" />}
+                      {filterStatus === "en_cours" && <Play className="h-16 w-16 mx-auto" />}
+                      {filterStatus === "termine" && <Award className="h-16 w-16 mx-auto" />}
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      {searchTerm 
+                        ? 'Aucun dossier trouvé'
+                        : filterStatus === 'eligible' ? 'Aucune opportunité disponible'
+                        : filterStatus === 'en_cours' ? 'Aucun dossier en cours'
+                        : 'Aucun dossier terminé'
+                      }
+                    </h3>
+                    <p className="text-gray-500">
+                      {searchTerm 
+                        ? 'Essayez de modifier vos critères de recherche'
+                        : 'Les nouveaux dossiers apparaîtront ici'
+                      }
+                    </p>
+                  </div>
+                )}
+              </div>
+            </Tabs>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }; 
