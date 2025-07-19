@@ -307,7 +307,7 @@ export class ExternalIntegrationsService {
     
     return {
       request_id: requestId,
-      status: this.mapDocuSignStatus(envelope.status),
+      status: this.mapDocuSignStatus(envelope.status) as 'pending' | 'sent' | 'signed' | 'completed' | 'expired' | 'cancelled',
       signed_at: envelope.completedDateTime,
       signed_by: envelope.signerEmail,
       signature_url: envelope.recipients?.signers?.[0]?.signatureUrl
@@ -330,7 +330,7 @@ export class ExternalIntegrationsService {
     
     return {
       request_id: requestId,
-      status: this.mapHelloSignStatus(signatureRequest.is_complete),
+      status: this.mapHelloSignStatus(signatureRequest.is_complete) as 'pending' | 'sent' | 'signed' | 'completed' | 'expired' | 'cancelled',
       signed_at: signatureRequest.signed_at,
       signed_by: signatureRequest.signatures?.[0]?.signer_email_address
     };
@@ -464,7 +464,7 @@ export class ExternalIntegrationsService {
     
     return {
       payment_id: paymentId,
-      status: this.mapStripeStatus(paymentIntent.status),
+      status: this.mapStripeStatus(paymentIntent.status) as 'pending' | 'processing' | 'completed' | 'failed' | 'refunded',
       transaction_id: paymentIntent.latest_charge,
       amount_paid: paymentIntent.amount / 100,
       paid_at: paymentIntent.created ? new Date(paymentIntent.created * 1000).toISOString() : undefined
@@ -500,7 +500,7 @@ export class ExternalIntegrationsService {
     
     return {
       payment_id: paymentId,
-      status: this.mapPayPalStatus(order.status),
+      status: this.mapPayPalStatus(order.status) as 'pending' | 'processing' | 'completed' | 'failed' | 'refunded',
       transaction_id: order.purchase_units?.[0]?.payments?.captures?.[0]?.id,
       amount_paid: parseFloat(order.purchase_units?.[0]?.amount?.value || '0'),
       paid_at: order.update_time

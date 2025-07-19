@@ -122,30 +122,36 @@ export class DocumentWorkflowService {
   }
 
   /**
-   * Créer une demande de document
+   * Créer une demande de document (utilise WorkflowStep existant)
    */
   async createDocumentRequest(request: DocumentRequest): Promise<string> {
     try {
-      const { data, error } = await supabase
-        .from('DocumentRequest')
-        .insert({
-          client_id: request.clientId,
-          category: request.category,
-          description: request.description,
-          required: request.required,
-          deadline: request.deadline?.toISOString(),
-          expert_id: request.expertId,
-          workflow: request.workflow,
-          status: 'pending',
-          created_at: new Date().toISOString()
-        })
-        .select()
-        .single();
+      // Créer directement les étapes du workflow dans WorkflowStep
+      const workflowSteps = this.createWorkflowStepsData(request.workflow, request.expertId);
+      
+      const stepIds: string[] = [];
+      
+      for (const step of workflowSteps) {
+        const { data, error } = await supabase
+          .from('WorkflowStep')
+          .insert({
+            workflow_type: request.category,
+            description: request.description,
+            assigned_to: step.assignedTo,
+            assigned_to_id: step.assignedToId,
+            required: step.required,
+            deadline: request.deadline?.toISOString(),
+            status: 'pending',
+            client_id: request.clientId,
+            expert_id: request.expertId,
+            created_at: new Date().toISOString()
+          })
+          .select('id')
+          .single();
 
-      if (error) throw error;
-
-      // Créer les étapes du workflow
-      await this.createWorkflowSteps(data.id, request.workflow, request.expertId);
+        if (error) throw error;
+        stepIds.push(data.id);
+      }
 
       // Envoyer notification
       await this.sendNotification(request.clientId, 'document_request_created', {
@@ -153,7 +159,7 @@ export class DocumentWorkflowService {
         description: request.description
       });
 
-      return data.id;
+      return stepIds[0]; // Retourner l'ID de la première étape
     } catch (error) {
       console.error('Erreur création demande document:', error);
       throw error;
@@ -161,7 +167,82 @@ export class DocumentWorkflowService {
   }
 
   /**
-   * Créer les étapes du workflow
+   * Créer les données des étapes du workflow (pour WorkflowStep existant)
+   */
+  private createWorkflowStepsData(
+    workflow: DocumentWorkflow, 
+    expertId?: string
+  ): Array<{assignedTo: UserRole; assignedToId?: string; required: boolean}> {
+    const steps: Array<{assignedTo: UserRole; assignedToId?: string; required: boolean}> = [];
+
+    switch (workflow) {
+      case DocumentWorkflow.UPLOADED:
+        steps.push({
+          assignedTo: UserRole.CLIENT,
+          required: true
+        });
+        break;
+
+      case DocumentWorkflow.PROFITUM_REVIEW:
+        steps.push(
+          {
+            assignedTo: UserRole.CLIENT,
+            required: true
+          },
+          {
+            assignedTo: UserRole.PROFITUM,
+            required: true
+          }
+        );
+        break;
+
+      case DocumentWorkflow.EXPERT_REVIEW:
+        steps.push(
+          {
+            assignedTo: UserRole.CLIENT,
+            required: true
+          },
+          {
+            assignedTo: UserRole.PROFITUM,
+            required: true
+          },
+          {
+            assignedTo: UserRole.EXPERT,
+            assignedToId: expertId,
+            required: true
+          }
+        );
+        break;
+
+      case DocumentWorkflow.FINAL_REPORT:
+        steps.push(
+          {
+            assignedTo: UserRole.CLIENT,
+            required: true
+          },
+          {
+            assignedTo: UserRole.PROFITUM,
+            required: true
+          },
+          {
+            assignedTo: UserRole.EXPERT,
+            assignedToId: expertId,
+            required: true
+          },
+          {
+            assignedTo: UserRole.EXPERT,
+            assignedToId: expertId,
+            required: true
+          }
+        );
+        break;
+    }
+
+    return steps;
+  }
+
+  /**
+   * Créer les étapes du workflow (ancienne méthode - gardée pour compatibilité)
    */
   private async createWorkflowSteps(
     documentRequestId: string, 
@@ -302,18 +383,13 @@ export class DocumentWorkflowService {
         expertId
       });
 
-      // 3. Lier le fichier à la demande
-      await supabase
-        .from('DocumentFile')
-        .update({
-          document_request_id: requestId
-        })
-        .eq('id', uploadResult.fileId);
+      // 3. Lier le fichier à l'étape de workflow (pas de document_request_id dans DocumentFile)
+      // On utilise le workflow_id dans WorkflowStep à la place
 
       // 4. Marquer l'étape comme complétée
-      await this.completeWorkflowStep(requestId, DocumentWorkflow.UPLOADED);
+      await this.completeWorkflowStep(requestId, DocumentWorkflow.UPLOADED, clientId);
 
-      return { success: true, fileId: uploadResult.fileId };
+      return { success: true, fileId: uploadResult.file_id };
 
     } catch (error) {
       console.error('Erreur upload avec workflow:', error);
@@ -325,7 +401,7 @@ export class DocumentWorkflowService {
    * Valider une étape du workflow
    */
   async completeWorkflowStep(
-    documentRequestId: string, 
+    workflowStepId: string, 
     workflow: DocumentWorkflow,
     userId: string,
     comments?: string
@@ -335,22 +411,21 @@ export class DocumentWorkflowService {
       const { error } = await supabase
         .from('WorkflowStep')
         .update({
-          completed: true,
+          status: 'completed',
           completed_at: new Date().toISOString(),
           comments
         })
-        .eq('document_request_id', documentRequestId)
-        .eq('workflow', workflow);
+        .eq('id', workflowStepId);
 
       if (error) throw error;
 
       // Vérifier si toutes les étapes sont complétées
-      await this.checkWorkflowCompletion(documentRequestId);
+      await this.checkWorkflowCompletion(workflowStepId);
 
       // Envoyer notification
       await this.sendNotification(userId, 'workflow_step_completed', {
         workflow,
-        documentRequestId
+        workflowStepId
       });
 
       return true;
@@ -363,43 +438,37 @@ export class DocumentWorkflowService {
   /**
    * Vérifier la complétion du workflow
    */
-  private async checkWorkflowCompletion(documentRequestId: string): Promise<void> {
+  private async checkWorkflowCompletion(workflowStepId: string): Promise<void> {
+    // Récupérer l'étape pour obtenir le client_id et expert_id
+    const { data: currentStep } = await supabase
+      .from('WorkflowStep')
+      .select('client_id, expert_id, workflow_type')
+      .eq('id', workflowStepId)
+      .single();
+
+    if (!currentStep) return;
+
+    // Vérifier toutes les étapes du même workflow pour ce client
     const { data: steps } = await supabase
       .from('WorkflowStep')
       .select('*')
-      .eq('document_request_id', documentRequestId);
+      .eq('client_id', currentStep.client_id)
+      .eq('workflow_type', currentStep.workflow_type);
 
     if (!steps) return;
 
-    const allCompleted = steps.every(step => step.completed);
+    const allCompleted = steps.every(step => step.status === 'completed');
 
     if (allCompleted) {
-      // Marquer la demande comme complétée
-      await supabase
-        .from('DocumentRequest')
-        .update({
-          status: 'completed',
-          completed_at: new Date().toISOString()
-        })
-        .eq('id', documentRequestId);
-
       // Envoyer notification de complétion
-      const { data: request } = await supabase
-        .from('DocumentRequest')
-        .select('client_id, expert_id')
-        .eq('id', documentRequestId)
-        .single();
+      await this.sendNotification(currentStep.client_id, 'workflow_completed', {
+        workflowType: currentStep.workflow_type
+      });
 
-      if (request) {
-        await this.sendNotification(request.client_id, 'workflow_completed', {
-          documentRequestId
+      if (currentStep.expert_id) {
+        await this.sendNotification(currentStep.expert_id, 'workflow_completed', {
+          workflowType: currentStep.workflow_type
         });
-
-        if (request.expert_id) {
-          await this.sendNotification(request.expert_id, 'workflow_completed', {
-            documentRequestId
-          });
-        }
       }
     }
   }
@@ -450,18 +519,18 @@ export class DocumentWorkflowService {
   /**
    * Mapper la catégorie vers le stockage
    */
-  private mapCategoryToStorage(category: DocumentCategory): string {
-    const mapping: { [key in DocumentCategory]: string } = {
+  private mapCategoryToStorage(category: DocumentCategory): 'charte' | 'rapport' | 'audit' | 'simulation' | 'guide' | 'facture' | 'contrat' | 'certificat' | 'formulaire' | 'autre' {
+    const mapping: { [key in DocumentCategory]: 'charte' | 'rapport' | 'audit' | 'simulation' | 'guide' | 'facture' | 'contrat' | 'certificat' | 'formulaire' | 'autre' } = {
       [DocumentCategory.CHARTE_PROFITUM]: 'charte',
       [DocumentCategory.CHARTE_PRODUIT]: 'charte',
       [DocumentCategory.FACTURE]: 'facture',
-      [DocumentCategory.DOCUMENT_ADMINISTRATIF]: 'document_administratif',
-      [DocumentCategory.DOCUMENT_ELIGIBILITE]: 'document_eligibilite',
-      [DocumentCategory.RAPPORT_AUDIT]: 'rapport_audit',
-      [DocumentCategory.RAPPORT_SIMULATION]: 'rapport_simulation',
-      [DocumentCategory.DOCUMENT_COMPTABLE]: 'document_comptable',
-      [DocumentCategory.DOCUMENT_FISCAL]: 'document_fiscal',
-      [DocumentCategory.DOCUMENT_LEGAL]: 'document_legal',
+      [DocumentCategory.DOCUMENT_ADMINISTRATIF]: 'autre',
+      [DocumentCategory.DOCUMENT_ELIGIBILITE]: 'autre',
+      [DocumentCategory.RAPPORT_AUDIT]: 'rapport',
+      [DocumentCategory.RAPPORT_SIMULATION]: 'rapport',
+      [DocumentCategory.DOCUMENT_COMPTABLE]: 'autre',
+      [DocumentCategory.DOCUMENT_FISCAL]: 'autre',
+      [DocumentCategory.DOCUMENT_LEGAL]: 'contrat',
       [DocumentCategory.AUTRE]: 'autre'
     };
 

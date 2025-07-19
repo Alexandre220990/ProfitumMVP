@@ -114,6 +114,7 @@ export class BillingService {
       quantity: number;
       unit_price: number;
       tax_rate?: number;
+      metadata?: any;
     }>;
     due_date?: string;
     notes?: string;
@@ -170,7 +171,7 @@ export class BillingService {
             unit_price: item.unit_price,
             tax_rate: item.tax_rate,
             total: item.total,
-            metadata: item.metadata
+            metadata: item.metadata || null
           });
       }
 

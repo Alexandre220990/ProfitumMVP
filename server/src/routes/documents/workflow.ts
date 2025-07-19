@@ -278,7 +278,7 @@ router.get('/pending',
     }
 
     try {
-      const pendingDocuments = await workflowService.getPendingDocuments(userId, userRole);
+      const pendingDocuments = await workflowService.getPendingDocuments(userId, userRole as any);
       
       res.json({
         success: true,
