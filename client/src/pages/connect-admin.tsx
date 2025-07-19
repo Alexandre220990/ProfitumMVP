@@ -16,7 +16,7 @@ export default function ConnectAdmin() {
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   
   const { login } = useAuth();
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
   const { addToast } = useToast();
 
   const validateForm = () => {

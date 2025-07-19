@@ -336,15 +336,15 @@ export default function DashboardClient() {
                   console.log('🔗 Redirection vers:', productUrl, 'pour le produit:', produitNom);
                   handleNavigation(productUrl);
                 }}
-                onViewAudit={(id) => {
-                  console.log('🔍 Voir audit:', id);
-                  // Pour l'instant, rediriger vers la même page que onViewDossier
-                  const audit = filteredAudits.find(a => a.id.toString() === id);
-                  if (audit) {
-                    const productUrl = auditTypeToProductUrl(audit.audit_type, id);
-                    handleNavigation(productUrl);
-                  }
-                }}
+                // onViewAudit={(id) => {
+                //   console.log('🔍 Voir audit:', id);
+                //   // Pour l'instant, rediriger vers la même page que onViewDossier
+                //   const audit = filteredAudits.find(a => a.id.toString() === id);
+                //   if (audit) {
+                //     const productUrl = auditTypeToProductUrl(audit.audit_type, id);
+                //     handleNavigation(productUrl);
+                //   }
+                // }}
               />
             </CardContent>
           </Card>

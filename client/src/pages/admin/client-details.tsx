@@ -322,7 +322,7 @@ const ClientDetails = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const response = await fetch(`http://localhost:5001/api/admin/clients/${client.id}/messages`, {
+      const response = await fetch(`http://localhost:5001/api/admin/clients/${client?.id}/messages`, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json'
@@ -335,6 +335,48 @@ const ClientDetails = () => {
       }
     } catch (err) {
       console.error('Erreur chargement messages: ', err);
+    }
+  };
+
+  // Envoyer un message au client
+  const handleSendMessage = async () => {
+    if (!newMessage.trim() || !client?.id) return;
+
+    try {
+      setActionLoading('send-message');
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const response = await fetch(`http://localhost:5001/api/admin/clients/${client.id}/messages`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+          message: newMessage,
+          expediteur_type: 'admin'
+        })
+      });
+
+      if (response.ok) {
+        setNewMessage('');
+        loadMessages(); // Recharger les messages
+        toast({
+          title: 'Message envoyé',
+          description: 'Le message a été envoyé au client',
+          variant: 'default'
+        });
+      }
+    } catch (err) {
+      console.error('Erreur envoi message: ', err);
+      toast({
+        title: 'Erreur',
+        description: 'Erreur lors de l\'envoi du message',
+        variant: 'destructive'
+      });
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -376,7 +418,7 @@ const ClientDetails = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const response = await fetch(`http://localhost:5001/api/admin/clients/${client.id}/request-document`, {
+      const response = await fetch(`http://localhost:5001/api/admin/clients/${client?.id}/request-document`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -408,7 +450,7 @@ const ClientDetails = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const response = await fetch(`http://localhost:5001/api/admin/clients/${client.id}/status`, {
+      const response = await fetch(`http://localhost:5001/api/admin/clients/${client?.id}/status`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -441,7 +483,7 @@ const ClientDetails = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const response = await fetch(`http://localhost:5001/api/admin/clients/${client.id}/export`, {
+      const response = await fetch(`http://localhost:5001/api/admin/clients/${client?.id}/export`, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json'
@@ -453,7 +495,7 @@ const ClientDetails = () => {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `client-${client.id}-${new Date().toISOString().split('T')[0]}.json`;
+        a.download = `client-${client?.id}-${new Date().toISOString().split('T')[0]}.json`;
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
@@ -481,7 +523,7 @@ const ClientDetails = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const response = await fetch(`http://localhost:5001/api/admin/clients/${client.id}/notify`, {
+      const response = await fetch(`http://localhost:5001/api/admin/clients/${client?.id}/notify`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -649,7 +691,7 @@ const ClientDetails = () => {
             <div className="flex space-x-3">
               <Button 
                 variant="outline"
-                onClick={notifyClient}
+                onClick={() => notifyClient("Message par défaut")}
                 disabled={actionLoading === 'notification'}
               >
                 <MessageSquare className="h-4 w-4 mr-2" />
@@ -665,7 +707,7 @@ const ClientDetails = () => {
               </Button>
               <Button 
                 variant={client.statut === 'actif' ? 'destructive' : 'default'}
-                onClick={updateClientStatus}
+                onClick={() => updateClientStatus("actif")}
                 disabled={actionLoading === 'status'}
               >
                 {client.statut === 'actif' ? (

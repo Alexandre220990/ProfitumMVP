@@ -604,7 +604,7 @@ export class ExpertDossierActions {
       if (error || !document) throw error;
 
       // Générer l'URL de téléchargement
-      const { data: urlData } = supabase.storage
+      const { data: urlData } = await supabase.storage
         .from('documents')
         .createSignedUrl(document.filename, 3600);
 
@@ -642,7 +642,7 @@ export class ExpertDossierActions {
 
       if (error || !document) throw error;
 
-      const { data: urlData } = supabase.storage
+      const { data: urlData } = await supabase.storage
         .from('documents')
         .createSignedUrl(document.filename, 3600);
 
