@@ -2,21 +2,18 @@ import express from 'express';
 import { authenticateToken } from '../middleware/authenticate';
 import { checkRole } from '../middleware/check-role';
 import ComplianceService from '../services/compliance-service';
-import WorkflowConfigurationService from '../services/workflow-configuration-service';
+// import WorkflowConfigurationService from '../services/workflow-configuration-service';
 import ExternalIntegrationsService from '../services/external-integrations-service';
 
 const router = express.Router();
 const complianceService = new ComplianceService();
-const workflowService = new WorkflowConfigurationService();
+// const workflowService = new WorkflowConfigurationService();
 const integrationsService = new ExternalIntegrationsService();
 
 // ===== ROUTES WORKFLOW PERSONNALISABLE =====
+// COMMENTÉ - Service workflow supprimé temporairement
 
-/**
- * @route GET /api/workflow/templates
- * @desc Obtenir tous les templates de workflow
- * @access Admin, Expert
- */
+/*
 router.get('/workflow/templates', 
   authenticateToken, 
   checkRole(['admin', 'expert']),
@@ -46,6 +43,7 @@ router.get('/workflow/templates',
     }
   }
 );
+*/
 
 /**
  * @route GET /api/workflow/templates/:id
@@ -58,18 +56,18 @@ router.get('/workflow/templates/:id',
   async (req, res) => {
     try {
       const { id } = req.params;
-      const template = await workflowService.getWorkflowTemplate(id);
+      // const template = await workflowService.getWorkflowTemplate(id);
 
-      if (!template) {
-        return res.status(404).json({
-          success: false,
-          error: 'Template de workflow non trouvé'
-        });
-      }
+      // if (!template) {
+      //   return res.status(404).json({
+      //     success: false,
+      //     error: 'Template de workflow non trouvé'
+      //   });
+      // }
 
       res.json({
         success: true,
-        data: template
+        data: { message: 'Workflow templates are currently disabled.' }
       });
     } catch (error) {
       console.error('Erreur récupération template workflow:', error);
@@ -92,11 +90,11 @@ router.post('/workflow/templates',
   async (req, res) => {
     try {
       const templateData = req.body;
-      const templateId = await workflowService.createWorkflowTemplate(templateData);
+      // const templateId = await workflowService.createWorkflowTemplate(templateData);
 
       res.status(201).json({
         success: true,
-        data: { id: templateId },
+        data: { message: 'Workflow templates are currently disabled.' },
         message: 'Template de workflow créé avec succès'
       });
     } catch (error) {
@@ -120,16 +118,16 @@ router.post('/workflow/instances',
   async (req, res) => {
     try {
       const { template_id, document_id, client_id, expert_id } = req.body;
-      const instanceId = await workflowService.createWorkflowInstance(
-        template_id,
-        document_id,
-        client_id,
-        expert_id
-      );
+      // const instanceId = await workflowService.createWorkflowInstance(
+      //   template_id,
+      //   document_id,
+      //   client_id,
+      //   expert_id
+      // );
 
       res.status(201).json({
         success: true,
-        data: { id: instanceId },
+        data: { message: 'Workflow instances are currently disabled.' },
         message: 'Instance de workflow créée avec succès'
       });
     } catch (error) {
@@ -156,24 +154,24 @@ router.post('/workflow/instances/:id/execute-step',
       const { step_number, result } = req.body;
       const userId = req.user?.id;
 
-      const success = await workflowService.executeWorkflowStep(
-        id,
-        step_number,
-        userId,
-        result
-      );
+      // const success = await workflowService.executeWorkflowStep(
+      //   id,
+      //   step_number,
+      //   userId,
+      //   result
+      // );
 
-      if (success) {
+      // if (success) {
         res.json({
           success: true,
           message: 'Étape de workflow exécutée avec succès'
         });
-      } else {
-        res.status(400).json({
-          success: false,
-          error: 'Échec de l\'exécution de l\'étape'
-        });
-      }
+      // } else {
+      //   res.status(400).json({
+      //     success: false,
+      //     error: 'Échec de l\'exécution de l\'étape'
+      //   });
+      // }
     } catch (error) {
       console.error('Erreur exécution étape workflow:', error);
       res.status(500).json({
@@ -681,7 +679,7 @@ router.post('/workflow/initialize',
   checkRole(['admin']),
   async (req, res) => {
     try {
-      await workflowService.initializeDefaultWorkflows();
+      // await workflowService.initializeDefaultWorkflows();
 
       res.json({
         success: true,
