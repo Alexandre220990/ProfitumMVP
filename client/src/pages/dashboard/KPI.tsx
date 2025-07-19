@@ -1,4 +1,4 @@
-// import React from 'react';
+import React from 'react';
 import HeaderClient from '@/components/HeaderClient';
 import { Card } from "@/components/ui/card";
 import { Bar, Pie } from "react-chartjs-2";

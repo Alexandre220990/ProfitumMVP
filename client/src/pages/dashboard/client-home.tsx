@@ -1,4 +1,4 @@
-// import React from 'react';
+import React from 'react';
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
