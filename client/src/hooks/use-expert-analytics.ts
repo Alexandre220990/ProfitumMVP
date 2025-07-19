@@ -86,8 +86,8 @@ export const useExpertAnalytics = (filters: ExpertAnalyticsFilters = { timeRange
       const [
         totalAssignments,
         completedAssignments,
-        pendingAssignments,
-        totalRevenue,
+        
+        
         monthlyRevenue,
         
         avgCompletionTime,
@@ -171,7 +171,7 @@ export const useExpertAnalytics = (filters: ExpertAnalyticsFilters = { timeRange
       // Calculer le temps moyen de completion
       let avgCompletionTimeValue = 0;
       if (avgCompletionTime.data && avgCompletionTime.data.length > 0) {
-        const totalDays = avgCompletionTime.data.reduce((sum, item) => {
+        const totalDays = avgCompletionTime.data.reduce((sum, item: any) => {
           if (item.created_at && item.completed_at) {
             const start = new Date(item.created_at);
             const end = new Date(item.completed_at);
