@@ -611,7 +611,7 @@ export const NotificationsSystem: React.FC = React.memo(() => {
                   <Switch
                     id="email"
                     checked={preferences.email}
-                    onCheckedChange={(checked) => updatePreferences({ email: checked })}
+                    onCheckedChange={(checked: boolean) => updatePreferences({ email: checked })}
                   />
                 </div>
                 <div className="flex items-center justify-between">
@@ -619,7 +619,7 @@ export const NotificationsSystem: React.FC = React.memo(() => {
                   <Switch
                     id="push"
                     checked={preferences.push}
-                    onCheckedChange={(checked) => updatePreferences({ push: checked })}
+                    onCheckedChange={(checked: boolean) => updatePreferences({ push: checked })}
                   />
                 </div>
                 <div className="flex items-center justify-between">
@@ -627,7 +627,7 @@ export const NotificationsSystem: React.FC = React.memo(() => {
                   <Switch
                     id="sms"
                     checked={preferences.sms}
-                    onCheckedChange={(checked) => updatePreferences({ sms: checked })}
+                    onCheckedChange={(checked: boolean) => updatePreferences({ sms: checked })}
                   />
                 </div>
                 <div className="flex items-center justify-between">
@@ -635,7 +635,7 @@ export const NotificationsSystem: React.FC = React.memo(() => {
                   <Switch
                     id="inApp"
                     checked={preferences.inApp}
-                    onCheckedChange={(checked) => updatePreferences({ inApp: checked })}
+                    onCheckedChange={(checked: boolean) => updatePreferences({ inApp: checked })}
                   />
                 </div>
               </div>
@@ -652,7 +652,7 @@ export const NotificationsSystem: React.FC = React.memo(() => {
                     <Switch
                       id={category}
                       checked={enabled}
-                      onCheckedChange={(checked) => 
+                      onCheckedChange={(checked: boolean) => 
                         updatePreferences({ 
                           categories: { 
                             ...preferences.categories, 

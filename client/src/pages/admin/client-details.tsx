@@ -1041,7 +1041,7 @@ const ClientDetails = () => {
                                 <DialogTitle>Modifier l'audit</DialogTitle>
                               </DialogHeader>
                               <div className="space-y-4">
-                                <Select onValueChange={(value) => updateAuditStatus(audit.id, value)}>
+                                <Select onValueChange={(value: string) => updateAuditStatus(audit.id, value)}>
                                   <SelectTrigger>
                                     <SelectValue placeholder="Nouveau statut" />
                                   </SelectTrigger>

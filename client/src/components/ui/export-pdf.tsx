@@ -582,7 +582,7 @@ export const ExportPDF: React.FC = () => {
               <Label htmlFor="template">Template</Label>
               <Select
                 value={selectedTemplate?.id || ''}
-                onValueChange={(value) => setSelectedTemplate(templates.find(t => t.id === value) || null)}
+                onValueChange={(value: string) => setSelectedTemplate(templates.find(t => t.id === value) || null)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Sélectionner un template" />

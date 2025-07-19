@@ -323,7 +323,7 @@ export function AdvancedNotificationCenter({
                           </div>
                           <Switch
                             checked={preferences?.inApp ?? true}
-                            onCheckedChange={(checked) => 
+                            onCheckedChange={(checked: boolean) => 
                               updatePreferences({ inApp: checked })
                             }
                           />
@@ -336,7 +336,7 @@ export function AdvancedNotificationCenter({
                           </div>
                           <Switch
                             checked={preferences?.push ?? false}
-                            onCheckedChange={(checked) => 
+                            onCheckedChange={(checked: boolean) => 
                               updatePreferences({ push: checked })
                             }
                             disabled={!isEnabled}
@@ -348,7 +348,7 @@ export function AdvancedNotificationCenter({
                           <span>Email</span>
                           <Switch
                             checked={preferences?.email ?? false}
-                            onCheckedChange={(checked) => 
+                            onCheckedChange={(checked: boolean) => 
                               updatePreferences({ email: checked })
                             }
                           />
@@ -359,7 +359,7 @@ export function AdvancedNotificationCenter({
                           <span>SMS</span>
                           <Switch
                             checked={preferences?.sms ?? false}
-                            onCheckedChange={(checked) => 
+                            onCheckedChange={(checked: boolean) => 
                               updatePreferences({ sms: checked })
                             }
                           />
@@ -375,7 +375,7 @@ export function AdvancedNotificationCenter({
                           <span>Activer</span>
                           <Switch
                             checked={preferences?.quietHours?.enabled ?? false}
-                            onCheckedChange={(checked) => 
+                            onCheckedChange={(checked: boolean) => 
                                                         updatePreferences({ 
                             quietHours: { 
                               enabled: checked,
@@ -435,7 +435,7 @@ export function AdvancedNotificationCenter({
                             <span className="capitalize">{category}</span>
                             <Switch
                               checked={enabled}
-                              onCheckedChange={(checked) => 
+                              onCheckedChange={(checked: boolean) => 
                                 updatePreferences({ 
                                   categories: { 
                                     ...preferences?.categories, 

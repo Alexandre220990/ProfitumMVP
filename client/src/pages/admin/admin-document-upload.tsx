@@ -676,7 +676,7 @@ export default function AdminDocumentUploadPage() {
                             <Label htmlFor={`category-${idx}`}>Catégorie *</Label>
                             <Select 
                               value={fileMetadata[idx]?.category || 'guide'} 
-                              onValueChange={(value) => updateFileMetadata(idx, 'category', value)}
+                              onValueChange={(value: string) => updateFileMetadata(idx, 'category', value)}
                             >
                               <SelectTrigger>
                                 <SelectValue />
@@ -707,7 +707,7 @@ export default function AdminDocumentUploadPage() {
                           <Label htmlFor={`access-${idx}`}>Niveau d'accès</Label>
                           <Select 
                             value={fileMetadata[idx]?.access_level || 'private'} 
-                            onValueChange={(value) => updateFileMetadata(idx, 'access_level', value)}
+                            onValueChange={(value: string) => updateFileMetadata(idx, 'access_level', value)}
                           >
                             <SelectTrigger>
                               <SelectValue />

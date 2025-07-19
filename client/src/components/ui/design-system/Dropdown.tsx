@@ -292,7 +292,7 @@ export const FilterDropdown = React.forwardRef<HTMLDivElement, DropdownProps & {
           <Dropdown
             key={filter.key}
             value={activeFilters[filter.key]}
-            onValueChange={(value) => onFilterChange(filter.key, value)}
+            onValueChange={(value: string) => onFilterChange(filter.key, value)}
             placeholder={filter.label}
             size="sm"
             variant="secondary"

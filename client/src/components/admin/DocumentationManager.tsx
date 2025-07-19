@@ -415,7 +415,7 @@ const DocumentationManager: React.FC = () => {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="category">Catégorie</Label>
-                <Select value={formData.category} onValueChange={(value) => setFormData({...formData, category: value})}>
+                <Select value={formData.category} onValueChange={(value: string) => setFormData({...formData, category: value})}>
                   <SelectTrigger>
                     <SelectValue placeholder="Sélectionner une catégorie" />
                   </SelectTrigger>
@@ -429,7 +429,7 @@ const DocumentationManager: React.FC = () => {
               
               <div className="space-y-2">
                 <Label htmlFor="status">Statut</Label>
-                <Select value={formData.status} onValueChange={(value) => setFormData({...formData, status: value as 'draft' | 'published' | 'archived'})}>
+                <Select value={formData.status} onValueChange={(value: string) => setFormData({...formData, status: value as 'draft' | 'published' | 'archived'})}>
                   <SelectTrigger>
                     <SelectValue placeholder="Sélectionner un statut" />
                   </SelectTrigger>

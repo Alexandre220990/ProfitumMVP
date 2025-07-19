@@ -791,7 +791,7 @@ const AdvancedCalendar: React.FC<AdvancedCalendarProps> = ({ className }) => {
             {/* Sélecteur de vue */}
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-gray-600">Vue :</span>
-              <Select value={view.type} onValueChange={(value) => setView(prev => ({ ...prev, type: value as any }))}>
+              <Select value={view.type} onValueChange={(value: string) => setView(prev => ({ ...prev, type: value as any }))}>
                 <SelectTrigger className="w-28 bg-white border-gray-200 hover:border-gray-300 transition-colors">
                   <SelectValue />
                 </SelectTrigger>
@@ -1170,7 +1170,7 @@ const EventForm: React.FC<EventFormProps> = ({ event, onSubmit, onCancel }) => {
         </div>
         <div>
           <Label htmlFor="type">Type</Label>
-          <Select value={formData.type} onValueChange={(value) => setFormData(prev => ({ ...prev, type: value as any }))}>
+          <Select value={formData.type} onValueChange={(value: string) => setFormData(prev => ({ ...prev, type: value as any }))}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
@@ -1223,7 +1223,7 @@ const EventForm: React.FC<EventFormProps> = ({ event, onSubmit, onCancel }) => {
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label htmlFor="priority">Priorité</Label>
-          <Select value={formData.priority} onValueChange={(value) => setFormData(prev => ({ ...prev, priority: value as any }))}>
+          <Select value={formData.priority} onValueChange={(value: string) => setFormData(prev => ({ ...prev, priority: value as any }))}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
@@ -1237,7 +1237,7 @@ const EventForm: React.FC<EventFormProps> = ({ event, onSubmit, onCancel }) => {
         </div>
         <div>
           <Label htmlFor="category">Catégorie</Label>
-          <Select value={formData.category} onValueChange={(value) => setFormData(prev => ({ ...prev, category: value as any }))}>
+          <Select value={formData.category} onValueChange={(value: string) => setFormData(prev => ({ ...prev, category: value as any }))}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
@@ -1257,7 +1257,7 @@ const EventForm: React.FC<EventFormProps> = ({ event, onSubmit, onCancel }) => {
           <Label htmlFor="expert">Expert (optionnel)</Label>
           <Select 
             value={formData.expertId} 
-            onValueChange={(value) => {
+            onValueChange={(value: string) => {
               const expert = experts.find(e => e.id === value);
               setFormData(prev => ({ 
                 ...prev, 
@@ -1288,7 +1288,7 @@ const EventForm: React.FC<EventFormProps> = ({ event, onSubmit, onCancel }) => {
           <Label htmlFor="dossier">Dossier (optionnel)</Label>
           <Select 
             value={formData.dossierId} 
-            onValueChange={(value) => {
+            onValueChange={(value: string) => {
               const dossier = dossiers.find(d => d.id === value);
               setFormData(prev => ({ 
                 ...prev, 
@@ -1342,7 +1342,7 @@ const EventForm: React.FC<EventFormProps> = ({ event, onSubmit, onCancel }) => {
         <Switch
           id="isOnline"
           checked={formData.isOnline}
-          onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isOnline: checked }))}
+          onCheckedChange={(checked: boolean) => setFormData(prev => ({ ...prev, isOnline: checked }))}
         />
         <Label htmlFor="isOnline">Rendez-vous en ligne</Label>
       </div>
@@ -1424,7 +1424,7 @@ const StepForm: React.FC<StepFormProps> = ({ step, onSubmit, onCancel }) => {
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label htmlFor="stepType">Type d'étape</Label>
-          <Select value={formData.stepType} onValueChange={(value) => setFormData(prev => ({ ...prev, stepType: value as any }))}>
+          <Select value={formData.stepType} onValueChange={(value: string) => setFormData(prev => ({ ...prev, stepType: value as any }))}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
@@ -1452,7 +1452,7 @@ const StepForm: React.FC<StepFormProps> = ({ step, onSubmit, onCancel }) => {
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label htmlFor="priority">Priorité</Label>
-          <Select value={formData.priority} onValueChange={(value) => setFormData(prev => ({ ...prev, priority: value as any }))}>
+          <Select value={formData.priority} onValueChange={(value: string) => setFormData(prev => ({ ...prev, priority: value as any }))}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>

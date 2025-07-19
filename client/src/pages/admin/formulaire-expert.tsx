@@ -592,7 +592,7 @@ const FormulaireExpert = () => {
                             <Checkbox
                               id={spec.value}
                               checked={form.specializations.includes(spec.value)}
-                              onCheckedChange={(checked) => handleSpecializationChange(spec.value, checked as boolean)}
+                              onCheckedChange={(checked: boolean) => handleSpecializationChange(spec.value, checked as boolean)}
                             />
                             <Label htmlFor={spec.value} className="text-sm font-medium cursor-pointer flex-1">
                               {spec.label}
@@ -625,7 +625,7 @@ const FormulaireExpert = () => {
                           <Checkbox
                             id={cert}
                             checked={form.certifications?.includes(cert) || false}
-                            onCheckedChange={(checked) => handleCertificationChange(cert, checked as boolean)}
+                            onCheckedChange={(checked: boolean) => handleCertificationChange(cert, checked as boolean)}
                           />
                           <Label htmlFor={cert} className="text-sm">{cert}</Label>
                         </div>
@@ -644,7 +644,7 @@ const FormulaireExpert = () => {
                           <Checkbox
                             id={lang}
                             checked={form.languages?.includes(lang) || false}
-                            onCheckedChange={(checked) => handleLanguageChange(lang, checked as boolean)}
+                            onCheckedChange={(checked: boolean) => handleLanguageChange(lang, checked as boolean)}
                           />
                           <Label htmlFor={lang} className="text-sm">{lang}</Label>
                         </div>
@@ -734,7 +734,7 @@ const FormulaireExpert = () => {
                         <Calendar className="w-4 h-4 mr-2" />
                         Expérience
                       </Label>
-                      <Select value={form.experience} onValueChange={(value) => handleInputChange('experience', value)}>
+                      <Select value={form.experience} onValueChange={(value: string) => handleInputChange('experience', value)}>
                         <SelectTrigger>
                           <SelectValue placeholder="Sélectionner" />
                         </SelectTrigger>
@@ -748,7 +748,7 @@ const FormulaireExpert = () => {
 
                     <div className="space-y-2">
                       <Label htmlFor="availability">Disponibilité</Label>
-                      <Select value={form.availability} onValueChange={(value) => handleInputChange('availability', value)}>
+                      <Select value={form.availability} onValueChange={(value: string) => handleInputChange('availability', value)}>
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
@@ -773,7 +773,7 @@ const FormulaireExpert = () => {
                       <Label htmlFor="status" className="flex items-center">
                         Statut
                       </Label>
-                      <Select value={form.status} onValueChange={(value) => handleInputChange('status', value)}>
+                      <Select value={form.status} onValueChange={(value: string) => handleInputChange('status', value)}>
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
@@ -798,7 +798,7 @@ const FormulaireExpert = () => {
                       <Label htmlFor="approval_status" className="flex items-center">
                         Statut d'approbation
                       </Label>
-                      <Select value={form.approval_status} onValueChange={(value) => handleInputChange('approval_status', value)}>
+                      <Select value={form.approval_status} onValueChange={(value: string) => handleInputChange('approval_status', value)}>
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
@@ -827,7 +827,7 @@ const FormulaireExpert = () => {
 
                     <div className="space-y-2">
                       <Label htmlFor="abonnement">Abonnement</Label>
-                      <Select value={form.abonnement} onValueChange={(value) => handleInputChange('abonnement', value)}>
+                      <Select value={form.abonnement} onValueChange={(value: string) => handleInputChange('abonnement', value)}>
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>

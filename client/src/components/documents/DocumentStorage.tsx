@@ -269,7 +269,7 @@ export default function DocumentStorage({
             
             <div>
               <Label htmlFor="category">Catégorie</Label>
-              <Select value={filters.category} onValueChange={(value) => setFilters(prev => ({ ...prev, category: value }))}>
+              <Select value={filters.category} onValueChange={(value: string) => setFilters(prev => ({ ...prev, category: value }))}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -291,7 +291,7 @@ export default function DocumentStorage({
 
             <div>
               <Label htmlFor="status">Statut</Label>
-              <Select value={filters.status} onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}>
+              <Select value={filters.status} onValueChange={(value: string) => setFilters(prev => ({ ...prev, status: value }))}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -307,7 +307,7 @@ export default function DocumentStorage({
 
             <div>
               <Label htmlFor="sort">Tri</Label>
-              <Select value={`${sortBy}-${sortOrder}`} onValueChange={(value) => {
+              <Select value={`${sortBy}-${sortOrder}`} onValueChange={(value: string) => {
                 const [field, order] = value.split('-');
                 setSortBy(field);
                 setSortOrder(order as 'asc' | 'desc');
@@ -456,7 +456,7 @@ export default function DocumentStorage({
 
             <div>
               <Label htmlFor="category">Catégorie</Label>
-              <Select value={uploadData.category} onValueChange={(value) => setUploadData(prev => ({ ...prev, category: value }))}>
+              <Select value={uploadData.category} onValueChange={(value: string) => setUploadData(prev => ({ ...prev, category: value }))}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -487,7 +487,7 @@ export default function DocumentStorage({
 
             <div>
               <Label htmlFor="accessLevel">Niveau d'accès</Label>
-              <Select value={uploadData.accessLevel} onValueChange={(value) => setUploadData(prev => ({ ...prev, accessLevel: value }))}>
+              <Select value={uploadData.accessLevel} onValueChange={(value: string) => setUploadData(prev => ({ ...prev, accessLevel: value }))}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -535,7 +535,7 @@ export default function DocumentStorage({
                 <Switch
                   id="view"
                   checked={shareData.view}
-                  onCheckedChange={(checked) => setShareData(prev => ({ ...prev, view: checked }))}
+                  onCheckedChange={(checked: boolean) => setShareData(prev => ({ ...prev, view: checked }))}
                 />
                 <Label htmlFor="view">Autoriser la visualisation</Label>
               </div>
@@ -544,7 +544,7 @@ export default function DocumentStorage({
                 <Switch
                   id="download"
                   checked={shareData.download}
-                  onCheckedChange={(checked) => setShareData(prev => ({ ...prev, download: checked }))}
+                  onCheckedChange={(checked: boolean) => setShareData(prev => ({ ...prev, download: checked }))}
                 />
                 <Label htmlFor="download">Autoriser le téléchargement</Label>
               </div>
@@ -572,7 +572,7 @@ export default function DocumentStorage({
           <div className="space-y-4">
             <div>
               <Label htmlFor="validationStatus">Statut</Label>
-              <Select value={validationData.status} onValueChange={(value) => setValidationData(prev => ({ ...prev, status: value }))}>
+              <Select value={validationData.status} onValueChange={(value: string) => setValidationData(prev => ({ ...prev, status: value }))}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

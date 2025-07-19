@@ -243,7 +243,7 @@ const GestionExperts = () => {
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-700 mb-2 block">Statut</label>
-                <Select value={filters.status} onValueChange={(value) => setFilters({ ...filters, status: value })}>
+                <Select value={filters.status} onValueChange={(value: string) => setFilters({ ...filters, status: value })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Tous les statuts" />
                   </SelectTrigger>
@@ -256,7 +256,7 @@ const GestionExperts = () => {
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-700 mb-2 block">Approbation</label>
-                <Select value={filters.approval_status} onValueChange={(value) => setFilters({ ...filters, approval_status: value })}>
+                <Select value={filters.approval_status} onValueChange={(value: string) => setFilters({ ...filters, approval_status: value })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Tous les statuts" />
                   </SelectTrigger>
@@ -270,7 +270,7 @@ const GestionExperts = () => {
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-700 mb-2 block">Tri</label>
-                <Select value={filters.sortBy} onValueChange={(value) => setFilters({ ...filters, sortBy: value })}>
+                <Select value={filters.sortBy} onValueChange={(value: string) => setFilters({ ...filters, sortBy: value })}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>

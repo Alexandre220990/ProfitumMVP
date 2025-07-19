@@ -1,4 +1,4 @@
-import React from 'react';
+// import React from 'react';
 import { ProduitEligible } from "../types/database";
 
 interface ProduitEligibleCardProps { produit: ProduitEligible; }

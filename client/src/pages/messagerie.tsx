@@ -1,4 +1,4 @@
-import React from 'react';
+// import React from 'react';
 import { MessagingApp } from '@/components/messaging/MessagingApp';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';

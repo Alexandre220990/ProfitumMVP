@@ -1,4 +1,4 @@
-import React from "react";
+// import React from "react";
 
 // ✅ Définition du type des props
 interface ProgressBarProps { current: number;

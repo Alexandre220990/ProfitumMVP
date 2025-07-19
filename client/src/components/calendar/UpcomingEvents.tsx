@@ -1,4 +1,4 @@
-import React from 'react';
+// import React from 'react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Calendar, Clock, Users, MapPin, Video, AlertTriangle, FileText } from 'lucide-react';

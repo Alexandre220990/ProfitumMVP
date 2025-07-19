@@ -251,7 +251,7 @@ export default function AdvancedTargetSelector({
           </div>
 
           {/* Onglets */}
-          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)}>
+          <Tabs value={activeTab} onValueChange={(value: string) => setActiveTab(value as any)}>
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="clients" className="flex items-center gap-2">
                 <User className="w-4 h-4" />
