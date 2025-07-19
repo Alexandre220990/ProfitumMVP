@@ -28,12 +28,6 @@
   ],
   "exclude": [
     "node_modules",
-    "dist",
-    "src/routes/compliance.ts",
-    "src/routes/documents/workflow.ts",
-    "src/routes/monitoring.ts",
-    "src/services/billing-service.ts",
-    "src/services/document-workflow-service.ts",
-    "src/services/external-integrations-service.ts"
+    "dist"
   ]
 } 

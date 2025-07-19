@@ -1,6 +1,6 @@
 import express from 'express';
 import { asyncHandler } from '../utils/asyncHandler';
-import { monitoringSystem } from '../../lib/monitoring-system';
+import { monitoringSystem } from '../lib/monitoring-system';
 import { createClient } from '@supabase/supabase-js';
 import { spawn, execSync } from 'child_process';
 import path from 'path';
