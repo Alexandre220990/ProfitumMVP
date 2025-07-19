@@ -161,9 +161,9 @@ export const useExpertAnalytics = (filters: ExpertAnalyticsFilters = { timeRange
       // Calculer les métriques
       const totalAssignmentsCount = totalAssignments.count || 0;
       const completedAssignmentsCount = completedAssignments.count || 0;
-      const  = pendingAssignments.count || 0;
+      // const pendingAssignmentsCount = pendingAssignments.count || 0;
       
-      const  = totalRevenue.data?.reduce((sum, item) => sum + (item.compensation_amount || 0), 0) || 0;
+      // const totalRevenueAmount = totalRevenue.data?.reduce((sum, item) => sum + (item.compensation_amount || 0), 0) || 0;
       const monthlyRevenueAmount = monthlyRevenue.data?.reduce((sum, item) => sum + (item.compensation_amount || 0), 0) || 0;
       
       const conversionRateValue = totalAssignmentsCount > 0 ? (completedAssignmentsCount / totalAssignmentsCount) * 100 : 0;
