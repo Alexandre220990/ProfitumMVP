@@ -13,19 +13,14 @@ import {
   BarChart3, 
   Users, 
   Target, 
-  Calendar,
   Activity,
   Award,
   TrendingUpIcon,
   TrendingDownIcon,
   Minus,
-  Download,
   RefreshCw,
-  Filter,
-  Eye,
   CheckCircle,
-  AlertCircle,
-  Clock as ClockIcon
+  AlertCircle
 } from 'lucide-react';
 import { useAnalytics } from '@/hooks/use-analytics';
 import { useExpertAnalytics } from '@/hooks/use-expert-analytics';
@@ -485,12 +480,12 @@ const AnalyticsPage: React.FC = () => {
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
                         outerRadius={80}
                         fill="#8884d8"
                         dataKey="revenue"
                       >
-                        {topProducts.map((entry, index) => (
+                        {topProducts.map((_entry, index) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
