@@ -22,12 +22,7 @@ import {
   Plus,
   Minus,
   Info,
-  AlertTriangle,
-  TrendingUp,
-  BarChart3,
-  PieChart,
-  Activity,
-  Zap
+  AlertTriangle
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/design-system/Card';
 import Button from '@/components/ui/design-system/Button';
@@ -41,7 +36,6 @@ interface ExpertDossierWorkflowProps {
   dossier: DossierData;
   onStepAction?: (stepId: number, action: string) => void;
   onDocumentAction?: (documentName: string, action: string) => void;
-  onNoteAdd?: (stepId: number, note: string) => void;
   className?: string;
 }
 
@@ -50,7 +44,6 @@ const ExpertDossierWorkflow: React.FC<ExpertDossierWorkflowProps> = ({
   dossier,
   onStepAction,
   onDocumentAction,
-  onNoteAdd,
   className = ''
 }) => {
   const [expandedStep, setExpandedStep] = useState<number | null>(null);
@@ -197,7 +190,7 @@ const ExpertDossierWorkflow: React.FC<ExpertDossierWorkflowProps> = ({
                         <h3 className="text-lg font-semibold text-neutral-900 dark:text-white">
                           {step.name}
                         </h3>
-                        <Badge variant={step.status === 'completed' ? 'success' : step.status === 'active' ? 'primary' : 'secondary'}>
+                        <Badge variant={step.status === 'completed' ? 'success' : step.status === 'active' ? 'primary' : 'warning'}>
                           <div className="flex items-center space-x-1">
                             {getStatusIcon(step.status)}
                             <span className="capitalize">{step.status}</span>
@@ -245,7 +238,7 @@ const ExpertDossierWorkflow: React.FC<ExpertDossierWorkflowProps> = ({
                         {step.actions.map((action, actionIndex) => (
                           <Button
                             key={actionIndex}
-                            variant={action.variant}
+                            variant={action.variant === 'outline' ? 'ghost' : action.variant}
                             size="sm"
                             onClick={() => handleStepAction(step.id, action.action)}
                             disabled={action.disabled}
@@ -307,7 +300,7 @@ const ExpertDossierWorkflow: React.FC<ExpertDossierWorkflowProps> = ({
                                         variant={
                                           doc.status === 'validated' ? 'success' : 
                                           doc.status === 'uploaded' ? 'primary' : 
-                                          doc.status === 'rejected' ? 'error' : 'secondary'
+                                          doc.status === 'rejected' ? 'error' : 'warning'
                                         }
                                         size="sm"
                                       >
@@ -345,7 +338,7 @@ const ExpertDossierWorkflow: React.FC<ExpertDossierWorkflowProps> = ({
                                   )}>
                                     <div className="flex items-start space-x-2">
                                       {notification.type === 'success' && <CheckCircle className="w-4 h-4 text-success-600 mt-0.5" />}
-                                      {notification.type === 'warning' && <Warning className="w-4 h-4 text-warning-600 mt-0.5" />}
+                                      {notification.type === 'warning' && <AlertTriangle className="w-4 h-4 text-warning-600 mt-0.5" />}
                                       {notification.type === 'error' && <AlertTriangle className="w-4 h-4 text-error-600 mt-0.5" />}
                                       {notification.type === 'info' && <Info className="w-4 h-4 text-primary-600 mt-0.5" />}
                                       <div className="flex-1">
