@@ -13,8 +13,8 @@ import {
   Plus, 
   MoreVertical,
   Clock,
-  Check,
-  CheckCheck
+  
+  
 } from 'lucide-react';
 import {
   DropdownMenu,
