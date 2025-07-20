@@ -1,42 +1,25 @@
-import React, { useState } from 'react';
-import { useMessaging } from '@/hooks/use-messaging';
-import { Conversation } from '@/types/messaging';
-import { ConversationList } from './ConversationList';
-import { ConversationView } from './ConversationView';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { ConversationList } from './ConversationList';
+import { ConversationView } from './ConversationView';
+import { useMessaging } from '@/hooks/use-messaging';
+import { Conversation } from '@/types/messaging';
 import { 
   MessageSquare, 
   Plus,
-  Settings,
-  Bell
+  Settings
 } from 'lucide-react';
 
 // ============================================================================
-// COMPOSANT PRINCIPAL DE MESSAGERIE
+// HOOK PERSONNALISÉ POUR LA LOGIQUE MOBILE/DESKTOP
 // ============================================================================
 
-interface MessagingAppProps {
-  className?: string;
-}
-
-export const MessagingApp: React.FC<MessagingAppProps> = ({
-  className = ""
-}) => {
-  const {
-    conversations,
-    totalUnreadCount,
-    loading,
-    error,
-    refreshData
-  } = useMessaging();
-
-  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
+const useResponsiveView = () => {
   const [isMobileView, setIsMobileView] = useState(false);
 
-  // Détecter la vue mobile
-  React.useEffect(() => {
+  useEffect(() => {
     const checkMobile = () => {
       setIsMobileView(window.innerWidth < 768);
     };
@@ -47,31 +30,47 @@ export const MessagingApp: React.FC<MessagingAppProps> = ({
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Gérer la sélection d'une conversation
-  const handleSelectConversation = (conversation: Conversation) => {
+  return isMobileView;
+};
+
+// ============================================================================
+// COMPOSANT PRINCIPAL DE MESSAGERIE - REFACTORISÉ
+// ============================================================================
+
+interface MessagingAppProps {
+  className?: string;
+}
+
+export const MessagingApp: React.FC<MessagingAppProps> = ({
+  className = ""
+}) => {
+  // Hooks personnalisés
+  const isMobileView = useResponsiveView();
+  
+  // Hook de messagerie avec interface correcte
+  const {
+    loading,
+    error,
+    refreshData,
+    getTotalUnreadCount
+  } = useMessaging();
+
+  // État local optimisé
+  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
+
+  // Callbacks optimisés avec useCallback
+  const handleSelectConversation = useCallback((conversation: Conversation) => {
     setSelectedConversation(conversation);
-    if (isMobileView) {
-      // En mobile, on peut ajouter une logique pour masquer la liste
-    }
-  };
+  }, []);
 
-  // Retourner à la liste des conversations (mobile)
-  const handleBackToList = () => {
+  const handleBackToList = useCallback(() => {
     setSelectedConversation(null);
-  };
+  }, []);
 
-  // Créer une nouvelle conversation
-  // const handleNewConversation = () => {
-    // TODO: Implémenter la création de conversation
-    console.log('Créer une nouvelle conversation');
-  };
+  // Valeurs mémorisées pour éviter les re-renders
+  const totalUnreadCount = useMemo(() => getTotalUnreadCount(), [getTotalUnreadCount]);
 
-  // Gérer les paramètres
-  // const handleSettings = () => {
-    // TODO: Ouvrir les paramètres de messagerie
-    console.log('Ouvrir les paramètres');
-  };
-
+  // État de chargement optimisé
   if (loading) {
     return (
       <Card className={className}>
@@ -79,6 +78,11 @@ export const MessagingApp: React.FC<MessagingAppProps> = ({
           <CardTitle className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5" />
             Messagerie
+            {totalUnreadCount > 0 && (
+              <Badge variant="destructive" className="text-xs">
+                {totalUnreadCount}
+              </Badge>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -95,6 +99,7 @@ export const MessagingApp: React.FC<MessagingAppProps> = ({
     );
   }
 
+  // État d'erreur optimisé
   if (error) {
     return (
       <Card className={className}>
@@ -116,10 +121,11 @@ export const MessagingApp: React.FC<MessagingAppProps> = ({
     );
   }
 
+  // Rendu principal optimisé
   return (
     <div className={`flex h-full ${className}`}>
-      {/* Vue mobile - afficher soit la liste soit la conversation */}
       {isMobileView ? (
+        // Vue mobile simplifiée
         <div className="w-full">
           {selectedConversation ? (
             <ConversationView
@@ -135,9 +141,8 @@ export const MessagingApp: React.FC<MessagingAppProps> = ({
           )}
         </div>
       ) : (
-        /* Vue desktop - afficher les deux côte à côte */
+        // Vue desktop optimisée
         <>
-          {/* Liste des conversations */}
           <div className="w-80 border-r">
             <ConversationList
               onSelectConversation={handleSelectConversation}
@@ -145,8 +150,6 @@ export const MessagingApp: React.FC<MessagingAppProps> = ({
               className="h-full border-0 rounded-none"
             />
           </div>
-
-          {/* Vue de la conversation */}
           <div className="flex-1">
             <ConversationView
               conversation={selectedConversation}
@@ -160,7 +163,7 @@ export const MessagingApp: React.FC<MessagingAppProps> = ({
 };
 
 // ============================================================================
-// COMPOSANT EN-TÊTE DE MESSAGERIE
+// COMPOSANT EN-TÊTE DE MESSAGERIE - SÉPARÉ
 // ============================================================================
 
 interface MessagingHeaderProps {
@@ -199,7 +202,7 @@ export const MessagingHeader: React.FC<MessagingHeaderProps> = ({
 };
 
 // ============================================================================
-// COMPOSANT NOTIFICATION DE MESSAGERIE
+// COMPOSANT NOTIFICATION DE MESSAGERIE - SÉPARÉ
 // ============================================================================
 
 interface MessagingNotificationProps {
