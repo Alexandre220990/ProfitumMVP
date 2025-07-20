@@ -61,13 +61,13 @@ export const MessagingApp: React.FC<MessagingAppProps> = ({
   };
 
   // Créer une nouvelle conversation
-  // const handleNewConversation = () => {
+  const handleNewConversation = () => {
     // TODO: Implémenter la création de conversation
     console.log('Créer une nouvelle conversation');
   };
 
   // Gérer les paramètres
-  // const handleSettings = () => {
+  const handleSettings = () => {
     // TODO: Ouvrir les paramètres de messagerie
     console.log('Ouvrir les paramètres');
   };
