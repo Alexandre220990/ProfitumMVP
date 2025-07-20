@@ -194,49 +194,7 @@ const ExpertDossierPage = () => {
     }
   };
 
-  const handleNoteAdd = async (stepId: number, note: string) => {
-    if (!dossier) return;
-    
-    try {
-      // Ajouter une note au dossier
-      const { error } = await supabase
-        .from('ClientProduitEligible')
-        .update({
-          notes: note,
-          updated_at: new Date().toISOString(),
-          metadata: {
-            ...dossier.metadata,
-            notes: [...(dossier.metadata?.notes || []), {
-              stepId,
-              note,
-              timestamp: new Date().toISOString(),
-              author: 'expert'
-            }]
-          }
-        })
-        .eq('id', id);
 
-      if (error) throw error;
-
-      addToast({
-        type: 'success',
-        title: 'Note ajoutée',
-        message: 'La note a été ajoutée avec succès',
-        duration: 3000
-      });
-
-      // Recharger les données
-      await fetchDossier();
-    } catch (error) {
-      console.error('Erreur ajout note:', error);
-      addToast({
-        type: 'error',
-        title: 'Erreur',
-        message: 'Erreur lors de l\'ajout de la note',
-        duration: 5000
-      });
-    }
-  };
 
   const closeModal = () => {
     setModalState({
@@ -313,7 +271,6 @@ const ExpertDossierPage = () => {
               dossier={dossier}
               onStepAction={handleStepActionCallback}
               onDocumentAction={handleDocumentActionCallback}
-              onNoteAdd={handleNoteAdd}
             />
           </Card>
 
