@@ -12,12 +12,10 @@ import {
   Mail, 
   Plus, 
   Users,
-  Filter,
   X,
   Loader2
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import api from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 

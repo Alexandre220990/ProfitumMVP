@@ -1,20 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import React, { useState } from 'react';
 import { Card } from '@/components/ui/design-system/Card';
 import Button from '@/components/ui/design-system/Button';
-import { Badge } from '@/components/ui/design-system/Badge';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Upload, FileText, Send, Phone, Clock, CheckCircle, AlertCircle } from 'lucide-react';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
-import { cn } from '@/lib/utils';
-import { supabase } from '@/lib/supabase';
-import { useToast } from '@/components/ui/toast-notifications';
+import { Upload, FileText, Send, CheckCircle, MessageSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { useExpertDossierActions } from '@/hooks/use-expert-dossier-actions';
@@ -320,7 +308,7 @@ const DossierActionModal: React.FC<DossierActionModalProps> = ({
                 <div className="flex items-center justify-end space-x-3 mt-6 pt-4 border-t border-neutral-200 dark:border-neutral-700">
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="ghost"
                     onClick={onClose}
                     disabled={loading}
                   >

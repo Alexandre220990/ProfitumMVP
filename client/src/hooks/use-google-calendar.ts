@@ -29,7 +29,7 @@ export interface GoogleCalendarActions {
   updateIntegration: (integrationId: string, data: UpdateIntegrationData) => Promise<void>;
   syncCalendar: (integrationId: string, syncType?: string) => Promise<SyncResult | null>;
   getCalendars: (integrationId: string) => Promise<GoogleCalendar[]>;
-  getFreeBusy: (integrationId: string, calendarIds: string[], timeMin: Date, timeMax: Date) => Promise<FreeBusyInfo | null>;
+  getFreeBusy: (integrationId: string, calendarIds: string[],  timeMax: Date) => Promise<FreeBusyInfo | null>;
   refreshIntegrations: () => Promise<void>;
   generateAuthUrl: (state?: string) => Promise<{ authUrl: string; state: string }>;
 }
@@ -212,11 +212,11 @@ export const useGoogleCalendar = (): GoogleCalendarState & GoogleCalendarActions
   const getFreeBusy = useCallback(async (
     integrationId: string, 
     calendarIds: string[], 
-    timeMin: Date, 
+     
     timeMax: Date
   ): Promise<FreeBusyInfo | null> => {
     try {
-      return await googleCalendarClientService.getFreeBusy(integrationId, calendarIds, );
+      return await googleCalendarClientService.getFreeBusy(integrationId, calendarIds, timeMin, timeMax);
     } catch (error) {
       console.error('❌ Erreur récupération disponibilité:', error);
       addToast({
@@ -307,12 +307,12 @@ export const useGoogleCalendarAvailability = (integrationId: string) => {
 
   const fetchAvailability = useCallback(async (
     calendarIds: string[],
-    timeMin: Date,
+    
     timeMax: Date
   ) => {
     try {
       setLoading(true);
-      const data = await getFreeBusy(integrationId, calendarIds, );
+      const data = await getFreeBusy(integrationId, calendarIds, timeMin, timeMax);
       setAvailability(data);
       return data;
     } catch (error) {
@@ -353,7 +353,7 @@ export const useGoogleCalendarEvents = (integrationId: string) => {
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const fetchEvents = useCallback(async (timeMin: Date, timeMax: Date) => {
+  const fetchEvents = useCallback(async ( timeMax: Date) => {
     if (!integration) return;
 
     try {

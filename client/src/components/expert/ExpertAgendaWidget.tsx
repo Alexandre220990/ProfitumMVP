@@ -57,20 +57,6 @@ export const ExpertAgendaWidget = ({ events, className = "" }: ExpertAgendaWidge
     }
   };
 
-  const getEventTypeLabel = (type: string) => {
-    switch (type) {
-      case 'meeting':
-        return 'Rendez-vous';
-      case 'call':
-        return 'Appel';
-      case 'deadline':
-        return 'Échéance';
-      case 'task':
-        return 'Tâche';
-      default:
-        return 'Événement';
-    }
-  };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {

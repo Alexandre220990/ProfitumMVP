@@ -43,7 +43,7 @@ client/src/
 │   ├── Badge.tsx                  # Composant Badge
 │   └── index.ts                   # Exports
 └── components/examples/
-    └── DesignSystemDemo.tsx       # Démonstration
+    
 ```
 
 ### 2. Import automatique
@@ -481,23 +481,12 @@ export function Dashboard() {
 }
 ```
 
-## 🎨 Démonstration
-
-Pour voir le design system en action, consultez le composant de démonstration :
-```tsx
-import DesignSystemDemo from '@/components/examples/DesignSystemDemo';
-
-// Dans votre route
-<Route path="/design-system-demo" element={<DesignSystemDemo />} />
-```
-
 ## 📞 Support
 
 Pour toute question sur l'utilisation du design system :
 1. Consultez ce guide
-2. Regardez les exemples dans `DesignSystemDemo.tsx`
-3. Vérifiez la configuration dans `design-system.ts`
-4. Consultez les styles dans `design-system.css`
+2. Vérifiez la configuration dans `design-system.ts`
+3. Consultez les styles dans `design-system.css`
 
 ---
 

@@ -97,13 +97,13 @@ export function mapDossierToWorkflow(dossier: DossierData): DossierWorkflowStep[
     }
     
     // Actions contextuelles selon l'étape
-    const actions = getStepActions(stepNumber, status);
+    const actions = getStepActions(stepNumber, dossier, status);
     
     // Documents requis selon l'étape
-    const documents = getStepDocuments(stepNumber, dossier);
+    const documents = getStepDocuments(stepNumber);
     
     // Notifications selon l'étape
-    const notifications = getStepNotifications(stepNumber, status);
+    const notifications = getStepNotifications(stepNumber, dossier, status);
     
     // Notes et commentaires
     const notes = getStepNotes(stepNumber, dossier);
@@ -116,7 +116,7 @@ export function mapDossierToWorkflow(dossier: DossierData): DossierWorkflowStep[
       progress: stepProgress,
       estimatedDuration: getStepDuration(stepNumber),
       actions,
-      requirements: getStepRequirements(stepNumber, dossier),
+      requirements: getStepRequirements(stepNumber),
       documents,
       notes,
       notifications
@@ -248,7 +248,7 @@ function getStepActions(stepNumber: number, dossier: DossierData, status: string
 /**
  * Détermine les documents requis pour une étape
  */
-function getStepDocuments(stepNumber: number, dossier: DossierData): DossierWorkflowStep['documents'] {
+function getStepDocuments(stepNumber: number): DossierWorkflowStep['documents'] {
   switch (stepNumber) {
     case 4: // Vérification de l'éligibilité
       return [
@@ -394,7 +394,7 @@ function getStepNotes(stepNumber: number, dossier: DossierData): string[] {
 /**
  * Détermine les prérequis pour une étape
  */
-function getStepRequirements(stepNumber: number, dossier: DossierData): string[] {
+function getStepRequirements(stepNumber: number): string[] {
   switch (stepNumber) {
     case 2: // Signature de la charte
       return ['Simulation validée'];
