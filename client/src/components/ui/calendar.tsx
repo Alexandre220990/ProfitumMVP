@@ -650,7 +650,6 @@ const AdvancedCalendar: React.FC<AdvancedCalendarProps> = ({ className }) => {
   const {
     events,
     dossierSteps,
-    loading,
     addEvent,
     updateEvent,
     deleteEvent,
