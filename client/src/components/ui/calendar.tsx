@@ -112,7 +112,7 @@ const useCalendarEvents = () => {
   const { addToast } = useToast();
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [dossierSteps, setDossierSteps] = useState<DossierStep[]>([]);
-  const [loading, setLoading] = useState(false);
+  // SUPPRIMER : const [loading, setLoading] = useState(false);
 
   // ===============================
   // API UTILS (à brancher sur backend réel)
@@ -129,7 +129,7 @@ const useCalendarEvents = () => {
   const loadEvents = useCallback(async () => {
     if (!user?.id) return;
     
-    setLoading(true);
+    // setLoading(true); // SUPPRIMER
     try {
       const res = await fetch(`${apiBase}/events?client_id=${user.id}`);
       if (!res.ok) throw new Error('Erreur API chargement événements');
@@ -139,7 +139,7 @@ const useCalendarEvents = () => {
       addToast({ type: 'error', title: 'Erreur', message: 'Erreur lors du chargement des événements', duration: 4000 });
       console.error('Erreur chargement événements:', error);
     } finally {
-      setLoading(false);
+      // setLoading(false); // SUPPRIMER
     }
   }, [user?.id, addToast]);
 
@@ -171,7 +171,7 @@ const useCalendarEvents = () => {
   // Ajout d'un événement au calendrier
   const addEvent = useCallback(async (eventData: Omit<CalendarEvent, 'id'>) => {
     if (!user?.id) return null;
-    setLoading(true);
+    // setLoading(true); // SUPPRIMER
     try {
       const res = await fetch(`${apiBase}/events`, {
         method: 'POST',
@@ -194,13 +194,13 @@ const useCalendarEvents = () => {
       console.error('Erreur création événement:', error);
       return null;
     } finally {
-      setLoading(false);
+      // setLoading(false); // SUPPRIMER
     }
   }, [user?.id, addToast]);
 
   // Mise à jour d'un événement existant
   const updateEvent = useCallback(async (id: string, updates: Partial<CalendarEvent>) => {
-    setLoading(true);
+    // setLoading(true); // SUPPRIMER
     try {
       const res = await fetch(`${apiBase}/events/${id}`, {
         method: 'PUT',
@@ -218,13 +218,13 @@ const useCalendarEvents = () => {
       console.error('Erreur mise à jour événement:', error);
       return null;
     } finally {
-      setLoading(false);
+      // setLoading(false); // SUPPRIMER
     }
   }, [addToast]);
 
   // Suppression d'un événement
   const deleteEvent = useCallback(async (id: string) => {
-    setLoading(true);
+    // setLoading(true); // SUPPRIMER
     try {
       const res = await fetch(`${apiBase}/events/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Erreur API suppression événement');
@@ -235,13 +235,13 @@ const useCalendarEvents = () => {
       addToast({ type: 'error', title: 'Erreur', message: 'Erreur lors de la suppression', duration: 4000 });
       console.error('Erreur suppression événement:', error);
     } finally {
-      setLoading(false);
+      // setLoading(false); // SUPPRIMER
     }
   }, [addToast]);
 
   // Ajout d'une étape de dossier
   const addDossierStep = useCallback(async (stepData: Omit<DossierStep, 'id'>) => {
-    setLoading(true);
+    // setLoading(true); // SUPPRIMER
     try {
       const res = await fetch(`${apiBase}/steps`, {
         method: 'POST',
@@ -262,13 +262,13 @@ const useCalendarEvents = () => {
       console.error('Erreur ajout étape:', error);
       return null;
     } finally {
-      setLoading(false);
+      // setLoading(false); // SUPPRIMER
     }
   }, [addToast]);
 
   // Mise à jour d'une étape de dossier
   const updateDossierStep = useCallback(async (id: string, updates: Partial<DossierStep>) => {
-    setLoading(true);
+    // setLoading(true); // SUPPRIMER
     try {
       const res = await fetch(`${apiBase}/steps/${id}`, {
         method: 'PUT',
@@ -285,13 +285,13 @@ const useCalendarEvents = () => {
       console.error('Erreur mise à jour étape:', error);
       return null;
     } finally {
-      setLoading(false);
+      // setLoading(false); // SUPPRIMER
     }
   }, [addToast]);
 
   // Suppression d'une étape de dossier
   const deleteDossierStep = useCallback(async (id: string) => {
-    setLoading(true);
+    // setLoading(true); // SUPPRIMER
     try {
       const res = await fetch(`${apiBase}/steps/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Erreur API suppression étape');
@@ -301,7 +301,7 @@ const useCalendarEvents = () => {
       addToast({ type: 'error', title: 'Erreur', message: 'Erreur lors de la suppression d\'étape', duration: 4000 });
       console.error('Erreur suppression étape:', error);
     } finally {
-      setLoading(false);
+      // setLoading(false); // SUPPRIMER
     }
   }, [addToast]);
 
@@ -312,7 +312,7 @@ const useCalendarEvents = () => {
   return {
     events,
     dossierSteps,
-    loading,
+    // loading, // SUPPRIMER
     addEvent,
     updateEvent,
     deleteEvent,

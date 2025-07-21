@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
-import jsPDF from "jspdf";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { X, List, BookOpen, Tag, Download, Calendar } from "lucide-react";
+import { X, List, BookOpen, Tag, Calendar } from "lucide-react";
 
 interface DocumentationDialogProps {
   open: boolean;
@@ -59,53 +58,7 @@ export default function DocumentationDialog({ open, onClose, document }: Documen
     });
   };
 
-  const handleExportPDF = () => {
-    if (!document) return;
-    try {
-      const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-      doc.setFont('helvetica');
-      doc.setFontSize(20);
-      doc.text(document.title, 40, 60);
-      doc.setFontSize(12);
-      doc.text(document.description, 40, 90);
-      doc.setLineWidth(0.5);
-      doc.line(40, 100, 555, 100);
-      // Convertir le contenu HTML en texte brut (simple)
-      const tempDiv = window.document.createElement('div');
-      tempDiv.innerHTML = document.content;
-      const textContent = tempDiv.innerText || tempDiv.textContent || '';
-      doc.text(textContent, 40, 120, { maxWidth: 515 });
-      doc.save(`${document.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`);
-    } catch (error) {
-      console.error('Erreur lors de l\'export PDF: ', error);
-      // Fallback impression navigateur
-      const printWindow = window.open('', '_blank');
-      if (printWindow) {
-        printWindow.document.write(`
-          <html>
-            <head>
-              <title>${document.title}</title>
-              <style>
-                body { font-family: Arial, sans-serif; padding: 20px }
-                h1 { color: #333; border-bottom: 2px solid #007bff }
-                h2, h3 { color: #555 }
-                ul { margin: 10px 0 }
-                li { margin: 5px 0 }
-              </style>
-            </head>
-            <body>
-              <h1>${document.title}</h1>
-              <p><em>${document.description}</em></p>
-              <hr>
-              ${document.content}
-            </body>
-          </html>
-        `);
-        printWindow.document.close();
-        printWindow.print();
-      }
-    }
-  };
+  // SUPPRIMER handleExportPDF
 
   const scrollToSection = (id: string) => {
     const element = window.document.getElementById(id);
@@ -152,15 +105,7 @@ export default function DocumentationDialog({ open, onClose, document }: Documen
                 <span>Sommaire</span>
               </Button>
             )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExportPDF}
-              className="flex items-center space-x-1"
-            >
-              <Download className="w-4 h-4" />
-              <span>PDF</span>
-            </Button>
+            {/* SUPPRIMER le bouton PDF */}
             <Button
               variant="ghost"
               size="icon"
