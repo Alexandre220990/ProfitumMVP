@@ -146,104 +146,98 @@ const ADVANTAGES = [
 
 
 const HeroSection = ({ navigate }: { navigate: (path: string) => void }) => (
-  <section className="relative min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 overflow-hidden">
-    {/* Background subtle elements */}
-    <div className="absolute inset-0">
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-100/30 rounded-full blur-3xl"></div>
-      <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-indigo-100/30 rounded-full blur-3xl"></div>
+  <section className="relative min-h-screen bg-white overflow-hidden">
+    {/* Subtle background pattern */}
+    <div className="absolute inset-0 opacity-[0.02]">
+      <div className="absolute inset-0" style={{
+        backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='1'%3E%3Ccircle cx='30' cy='30' r='1'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+      }}></div>
     </div>
 
-    <div className="relative z-10 max-w-7xl mx-auto px-6 py-20 lg:py-32">
-      <div className="flex items-center justify-between gap-12">
+    <div className="relative z-10 max-w-7xl mx-auto px-6 py-24 lg:py-32">
+      <div className="flex items-center justify-between gap-16">
         {/* Content Section */}
-        <div className="flex-1 max-w-2xl">
-          {/* Main headline with professional typography */}
-          <div className="mb-8">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-semibold text-slate-900 mb-6 leading-tight tracking-tight">
-              <span className="block">
+        <div className="flex-1 max-w-3xl">
+          {/* Main headline - Clean and professional */}
+          <div className="mb-12">
+            <h1 className="text-5xl md:text-6xl lg:text-7xl font-light text-slate-900 mb-8 leading-[0.95] tracking-tight">
+              <span className="block font-light">
                 Profitum connecte les entreprises aux
               </span>
-              <span className="block bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent font-bold">
+              <span className="block font-bold text-blue-600 mt-2">
                 meilleurs experts
               </span>
-              <span className="block mt-2">
+              <span className="block font-light mt-4">
                 pour transformer contraintes en
               </span>
-              <span className="block bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent font-bold">
+              <span className="block font-bold text-blue-600 mt-2">
                 opportunités financières
               </span>
             </h1>
           </div>
 
-          {/* CTA Section */}
-          <div className="flex flex-col lg:flex-row gap-6">
+          {/* CTA Section - Clean and focused */}
+          <div className="flex flex-col lg:flex-row gap-8 mb-12">
             {/* Client CTA */}
             <div className="flex-1">
-              <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wide mb-3">Client</h3>
+              <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4">Client</h3>
               <button 
                 onClick={() => navigate('/simulateur')}
-                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-4 px-8 rounded-lg transition-all duration-200 transform hover:-translate-y-0.5"
               >
                 Accéder au simulateur
               </button>
-              <p className="text-sm text-slate-600 mt-2 text-center">
+              <p className="text-sm text-slate-500 mt-3 text-center">
                 Calculez vos gains immédiatement
               </p>
             </div>
 
             {/* Expert CTA */}
             <div className="flex-1">
-              <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wide mb-3">Expert</h3>
+              <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4">Expert</h3>
               <button 
                 onClick={() => navigate('/welcome-expert')}
-                className="w-full bg-white border-2 border-slate-200 hover:border-slate-300 text-slate-700 font-semibold py-4 px-6 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 transform hover:-translate-y-1"
+                className="w-full bg-white border border-slate-300 hover:border-slate-400 text-slate-700 font-medium py-4 px-8 rounded-lg transition-all duration-200 transform hover:-translate-y-0.5"
               >
                 Rejoignez notre écosystème
               </button>
-              <p className="text-sm text-slate-600 mt-2 text-center">
+              <p className="text-sm text-slate-500 mt-3 text-center">
                 Pour booster votre croissance
               </p>
             </div>
           </div>
 
-          {/* Trust indicators */}
-          <div className="flex items-center gap-6 mt-8 text-sm text-slate-500">
+          {/* Trust indicators - Minimal */}
+          <div className="flex items-center gap-8 text-sm text-slate-400">
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
               <span>500+ experts vérifiés</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+              <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
               <span>+15% d'économies moyennes</span>
             </div>
           </div>
         </div>
 
-        {/* Visual Section */}
-        <div className="hidden lg:flex flex-shrink-0 w-96 h-96">
-          <div className="w-full h-full bg-gradient-to-br from-blue-50 to-indigo-50 rounded-3xl shadow-xl flex items-center justify-center relative overflow-hidden">
-            {/* Abstract visual */}
-            <svg width="300" height="300" viewBox="0 0 300 300" fill="none" className="opacity-80">
-              <defs>
-                <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" style={{stopColor: '#3b82f6', stopOpacity: 0.1}} />
-                  <stop offset="100%" style={{stopColor: '#6366f1', stopOpacity: 0.05}} />
-                </linearGradient>
-              </defs>
-              
-              {/* Main circle */}
-              <circle cx="150" cy="150" r="120" fill="url(#grad1)" />
-              
-              {/* Abstract lines */}
-              <path d="M60 180 Q120 120 180 150 T300 120" stroke="#3b82f6" strokeWidth="2" fill="none" opacity="0.3"/>
-              <path d="M45 210 Q105 150 165 180 T285 150" stroke="#6366f1" strokeWidth="1.5" fill="none" opacity="0.2"/>
-              
-              {/* Data points */}
-              <circle cx="120" cy="135" r="4" fill="#3b82f6" opacity="0.6"/>
-              <circle cx="180" cy="165" r="4" fill="#6366f1" opacity="0.6"/>
-              <circle cx="210" cy="120" r="4" fill="#3b82f6" opacity="0.6"/>
-              <circle cx="90" cy="195" r="4" fill="#6366f1" opacity="0.6"/>
-            </svg>
+        {/* Right Section - Professional metrics */}
+        <div className="hidden lg:flex flex-shrink-0 w-80">
+          <div className="w-full space-y-6">
+            {/* Key metrics in clean cards */}
+            <div className="bg-slate-50 rounded-xl p-6 border border-slate-100">
+              <div className="text-3xl font-bold text-slate-900 mb-2">€2.5M</div>
+              <div className="text-sm text-slate-600">Économies générées</div>
+            </div>
+            
+            <div className="bg-slate-50 rounded-xl p-6 border border-slate-100">
+              <div className="text-3xl font-bold text-slate-900 mb-2">98%</div>
+              <div className="text-sm text-slate-600">Taux de satisfaction</div>
+            </div>
+            
+            <div className="bg-slate-50 rounded-xl p-6 border border-slate-100">
+              <div className="text-3xl font-bold text-slate-900 mb-2">24h</div>
+              <div className="text-sm text-slate-600">Délai de réponse</div>
+            </div>
           </div>
         </div>
       </div>
