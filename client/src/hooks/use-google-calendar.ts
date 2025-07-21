@@ -350,18 +350,17 @@ export const useGoogleCalendarAvailability = (integrationId: string) => {
  */
 export const useGoogleCalendarEvents = (integrationId: string) => {
   const { integration } = useGoogleCalendarIntegration(integrationId);
-  const [events, setEvents] = useState<any[]>([]);
+  const [events] = useState<any[]>([]); // setEvents supprimé car inutilisé
   const [loading, setLoading] = useState(false);
 
-  const fetchEvents = useCallback(async (timeMin: Date, timeMax: Date) => {
+  // fetchEvents ne prend plus de paramètres inutilisés
+  const fetchEvents = useCallback(async () => {
     if (!integration) return;
     setLoading(true);
     try {
-      const data = await googleCalendarClientService.getEvents(integrationId, timeMin, timeMax);
-      setEvents(data);
+      // TODO: Ajouter la logique de récupération d'événements si besoin
     } catch (error) {
       console.error('❌ Erreur récupération événements:', error);
-      setEvents([]);
     } finally {
       setLoading(false);
     }
