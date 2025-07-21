@@ -11,7 +11,11 @@ const app = express();
 // ✅ Configuration CORS dynamique
 const allowedOrigins = [
   'http://[::1]:3000',
-  'http://[::1]:3000'
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  'http://[::1]:5173',
+  'http://localhost:5173',
+  'https://profitum-mvp.vercel.app'
 ];
 
 app.use(cors({
