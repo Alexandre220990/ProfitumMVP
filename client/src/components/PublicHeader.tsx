@@ -3,13 +3,14 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { UserCircle } from "lucide-react";
 
-export default function PublicHeader() { const navigate = useNavigate();
+export default function PublicHeader() { 
+  const navigate = useNavigate();
 
   return (
     <div className="bg-white border-b border-slate-200/60 shadow-sm backdrop-blur-sm">
       <div className="max-w-7xl mx-auto flex justify-between items-center py-4 px-6">
         <div className="flex items-center space-x-8">
-          <Link to="/home" className="flex items-center space-x-3 hover: opacity-80 transition-opacity">
+          <Link to="/home" className="flex items-center space-x-3 hover:opacity-80 transition-opacity">
             <span className="text-xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-blue-600 bg-clip-text text-transparent">
               Profitum
             </span>
@@ -53,14 +54,14 @@ export default function PublicHeader() { const navigate = useNavigate();
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
             <DropdownMenuItem 
-              onClick={() => navigate("/connexion-client") }
-              className="cursor-pointer hover: bg-blue-50"
+              onClick={() => navigate("/connexion-client")}
+              className="cursor-pointer hover:bg-blue-50"
             >
               Client
             </DropdownMenuItem>
             <DropdownMenuItem 
-              onClick={ () => navigate("/connexion-expert") }
-              className="cursor-pointer hover: bg-blue-50"
+              onClick={() => navigate("/connexion-expert")}
+              className="cursor-pointer hover:bg-blue-50"
             >
               Partenaire
             </DropdownMenuItem>
