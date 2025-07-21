@@ -69,7 +69,7 @@ app.use(async (req, res, next) => {
 });
 
 // Préfixe pour toutes les routes API
-// app.use('/api', routes); // COMMENTÉ pour éviter le conflit avec index.ts
+app.use('/api', routes); // DÉCOMMENTÉ pour exposer toutes les routes sous /api
 
 // Gestion des erreurs globale
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

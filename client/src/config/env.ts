@@ -1,7 +1,7 @@
 // Configuration des variables d'environnement
 export const config = {
   // Configuration API
-  API_URL: import.meta.env.VITE_API_URL || 'http://[::1]:5001',
+  API_URL: import.meta.env.VITE_API_URL || 'https://www.profitum.app',
   
   // Configuration Supabase (vraies valeurs)
   SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL || 'https://gvvlsgtubqfxdztldunj.supabase.co',
