@@ -357,7 +357,6 @@ export const useGoogleCalendarEvents = (integrationId: string) => {
     if (!integration) return;
     try {
       setLoading(true);
-      // Appel réel à l'API Google Calendar
       const data = await googleCalendarClientService.getEvents(integrationId, timeMin, timeMax);
       setEvents(data);
     } catch (error) {
