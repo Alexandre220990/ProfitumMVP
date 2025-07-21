@@ -95,7 +95,7 @@ export const useExpertAnalytics = (filters: ExpertAnalyticsFilters = { timeRange
       ] = await Promise.all([
         // Total des assignations
         supabase
-          .from('ExpertAssignment')
+          .from('expertassignment')
           .select('*', { count: 'exact', head: true })
           .eq('expert_id', expertId)
           .gte('created_at', startDate)
@@ -103,7 +103,7 @@ export const useExpertAnalytics = (filters: ExpertAnalyticsFilters = { timeRange
 
         // Assignations terminées
         supabase
-          .from('ExpertAssignment')
+          .from('expertassignment')
           .select('*', { count: 'exact', head: true })
           .eq('expert_id', expertId)
           .eq('status', 'terminé')
@@ -112,7 +112,7 @@ export const useExpertAnalytics = (filters: ExpertAnalyticsFilters = { timeRange
 
         // Assignations en cours
         supabase
-          .from('ExpertAssignment')
+          .from('expertassignment')
           .select('*', { count: 'exact', head: true })
           .eq('expert_id', expertId)
           .eq('status', 'en_cours')
@@ -121,7 +121,7 @@ export const useExpertAnalytics = (filters: ExpertAnalyticsFilters = { timeRange
 
         // Revenus totaux
         supabase
-          .from('ExpertAssignment')
+          .from('expertassignment')
           .select('compensation_amount')
           .eq('expert_id', expertId)
           .eq('status', 'terminé')
@@ -130,7 +130,7 @@ export const useExpertAnalytics = (filters: ExpertAnalyticsFilters = { timeRange
 
         // Revenus du mois
         supabase
-          .from('ExpertAssignment')
+          .from('expertassignment')
           .select('compensation_amount')
           .eq('expert_id', expertId)
           .eq('status', 'terminé')
@@ -139,7 +139,7 @@ export const useExpertAnalytics = (filters: ExpertAnalyticsFilters = { timeRange
 
         // Taux de conversion (assignations terminées / total)
         supabase
-          .from('ExpertAssignment')
+          .from('expertassignment')
           .select('status')
           .eq('expert_id', expertId)
           .gte('created_at', startDate)
@@ -147,7 +147,7 @@ export const useExpertAnalytics = (filters: ExpertAnalyticsFilters = { timeRange
 
         // Temps moyen de completion
         supabase
-          .from('ExpertAssignment')
+          .from('expertassignment')
           .select('created_at, completed_at')
           .eq('expert_id', expertId)
           .eq('status', 'terminé')

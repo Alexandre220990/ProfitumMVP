@@ -433,7 +433,7 @@ router.get('/analytics', authenticateUser, async (req: Request, res: Response) =
     ] = await Promise.all([
       // Total des assignations
       supabase
-        .from('ExpertAssignment')
+        .from('expertassignment')
         .select('*', { count: 'exact', head: true })
         .eq('expert_id', expertId)
         .gte('created_at', startDateISO)
@@ -441,7 +441,7 @@ router.get('/analytics', authenticateUser, async (req: Request, res: Response) =
 
       // Assignations terminées
       supabase
-        .from('ExpertAssignment')
+        .from('expertassignment')
         .select('*', { count: 'exact', head: true })
         .eq('expert_id', expertId)
         .eq('status', 'terminé')
@@ -450,7 +450,7 @@ router.get('/analytics', authenticateUser, async (req: Request, res: Response) =
 
       // Assignations en cours
       supabase
-        .from('ExpertAssignment')
+        .from('expertassignment')
         .select('*', { count: 'exact', head: true })
         .eq('expert_id', expertId)
         .eq('status', 'en_cours')
@@ -459,7 +459,7 @@ router.get('/analytics', authenticateUser, async (req: Request, res: Response) =
 
       // Revenus totaux
       supabase
-        .from('ExpertAssignment')
+        .from('expertassignment')
         .select('compensation_amount')
         .eq('expert_id', expertId)
         .eq('status', 'terminé')
@@ -468,7 +468,7 @@ router.get('/analytics', authenticateUser, async (req: Request, res: Response) =
 
       // Revenus du mois
       supabase
-        .from('ExpertAssignment')
+        .from('expertassignment')
         .select('compensation_amount')
         .eq('expert_id', expertId)
         .eq('status', 'terminé')
@@ -477,7 +477,7 @@ router.get('/analytics', authenticateUser, async (req: Request, res: Response) =
 
       // Temps moyen de completion
       supabase
-        .from('ExpertAssignment')
+        .from('expertassignment')
         .select('created_at, completed_at')
         .eq('expert_id', expertId)
         .eq('status', 'terminé')
@@ -486,7 +486,7 @@ router.get('/analytics', authenticateUser, async (req: Request, res: Response) =
 
       // Produits les plus performants
       supabase
-        .from('ExpertAssignment')
+        .from('expertassignment')
         .select(`
           ClientProduitEligible (
             ProduitEligible (
@@ -502,7 +502,7 @@ router.get('/analytics', authenticateUser, async (req: Request, res: Response) =
 
       // Répartition des clients
       supabase
-        .from('ExpertAssignment')
+        .from('expertassignment')
         .select(`
           ClientProduitEligible (
             Client (
