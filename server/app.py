@@ -46,7 +46,10 @@ CORS(app, resources={
             "http://[::1]:4000",
             "http://localhost:5001",
             "http://127.0.0.1:5001",
-            "http://[::1]:5001"
+            "http://[::1]:5001",
+            "https://profitum.app",
+            "https://www.profitum.app",
+            "https://profitum-mvp.vercel.app"
         ],
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         "allow_headers": ["Content-Type", "Authorization", "X-CSRF-Token", "Accept", "Origin"],
@@ -80,7 +83,10 @@ ALLOWED_ORIGINS = [
     "http://[::1]:4000",
     "http://localhost:5001",
     "http://127.0.0.1:5001",
-    "http://[::1]:5001"
+    "http://[::1]:5001",
+    "https://profitum.app",
+    "https://www.profitum.app",
+    "https://profitum-mvp.vercel.app"
 ]
 
 # Middleware pour gérer les requêtes CORS
@@ -112,6 +118,144 @@ app.register_blueprint(preferences, url_prefix='/api')
 app.register_blueprint(auth_bp, url_prefix='/api')
 app.register_blueprint(audit_progress_bp, url_prefix='/api')
 app.register_blueprint(api, url_prefix='/api')
+
+# ============================================================================
+# ROUTES DU SIMULATEUR - FLASK
+# ============================================================================
+
+@app.route('/api/simulator/session', methods=['POST'])
+def create_simulator_session():
+    """Créer une nouvelle session de simulation"""
+    try:
+        import uuid
+        session_token = str(uuid.uuid4())
+        
+        # Ici tu peux ajouter la logique pour sauvegarder la session en base
+        # Pour l'instant, on retourne juste le token
+        
+        return jsonify({
+            "success": True,
+            "session_token": session_token,
+            "session_id": session_token
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+@app.route('/api/simulator/response', methods=['POST'])
+def save_simulator_response():
+    """Sauvegarder une réponse du simulateur"""
+    try:
+        data = request.get_json()
+        session_id = data.get('session_id')
+        question_id = data.get('question_id')
+        response_value = data.get('response_value')
+        
+        # Ici tu peux ajouter la logique pour sauvegarder la réponse en base
+        
+        return jsonify({
+            "success": True,
+            "message": "Réponse sauvegardée"
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+@app.route('/api/simulator/calculate-eligibility', methods=['POST'])
+def calculate_eligibility():
+    """Calculer l'éligibilité pour tous les produits"""
+    try:
+        data = request.get_json()
+        session_id = data.get('session_id')
+        
+        if not session_id:
+            return jsonify({
+                "success": False,
+                "error": "session_id requis"
+            }), 400
+        
+        # Calcul d'éligibilité simplifié pour l'instant
+        # Tu peux implémenter la logique complète ici
+        eligibility_results = [
+            {
+                "produit_id": "TICPE",
+                "eligibility_score": 75,
+                "estimated_savings": 15000,
+                "confidence_level": "élevé",
+                "recommendations": [
+                    "✅ Éligible à la récupération TICPE",
+                    "💡 Optimisation possible avec documents complémentaires",
+                    "📋 Contactez un expert pour finaliser le dossier"
+                ]
+            },
+            {
+                "produit_id": "URSSAF",
+                "eligibility_score": 60,
+                "estimated_savings": 8000,
+                "confidence_level": "moyen",
+                "recommendations": [
+                    "✅ Éligible partiellement",
+                    "💡 Amélioration possible avec plus de données",
+                    "📋 Analyse approfondie recommandée"
+                ]
+            },
+            {
+                "produit_id": "DFS",
+                "eligibility_score": 45,
+                "estimated_savings": 5000,
+                "confidence_level": "faible",
+                "recommendations": [
+                    "⚠️ Éligibilité limitée",
+                    "💡 Optimisation possible avec documents supplémentaires",
+                    "📋 Contactez un expert pour évaluation complète"
+                ]
+            },
+            {
+                "produit_id": "FONCIER",
+                "eligibility_score": 30,
+                "estimated_savings": 3000,
+                "confidence_level": "faible",
+                "recommendations": [
+                    "❌ Éligibilité faible",
+                    "💡 Optimisation possible avec plus d'informations",
+                    "📋 Consultation spécialisée recommandée"
+                ]
+            }
+        ]
+        
+        return jsonify({
+            "success": True,
+            "eligibility_results": eligibility_results,
+            "total_savings": sum(r["estimated_savings"] for r in eligibility_results),
+            "session_id": session_id
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+@app.route('/api/simulator/track', methods=['POST'])
+def track_simulator_event():
+    """Tracker un événement du simulateur"""
+    try:
+        data = request.get_json()
+        # Ici tu peux ajouter la logique de tracking
+        
+        return jsonify({
+            "success": True,
+            "message": "Événement tracké"
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
 
 # Fonction d'aide pour la connexion à la base de données
 def get_db_connection():
