@@ -1,23 +1,22 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './use-auth';
-import { calendarService, CalendarEvent, DossierStep, CalendarStats, CalendarFilters } from '@/services/calendar-service';
 
 export const useCalendar = () => {
   const { user } = useAuth();
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [dossierSteps, setDossierSteps] = useState<DossierStep[]>([]);
-  const [stats, setStats] = useState<CalendarStats>({
+  const [events, setEvents] = useState<any[]>([]);
+  const [dossierSteps, setDossierSteps] = useState<any[]>([]);
+  const [stats, setStats] = useState<any>({
     eventsToday: 0,
     meetingsThisWeek: 0,
     overdueDeadlines: 0,
     documentsToValidate: 0
   });
-  const [upcomingEvents, setUpcomingEvents] = useState<CalendarEvent[]>([]);
+  const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Charger les événements
-  const loadEvents = useCallback(async (filters: CalendarFilters = {}) => {
+  const loadEvents = useCallback(async (filters: any = {}) => {
     if (!user?.id) return;
 
     setLoading(true);
@@ -95,7 +94,7 @@ export const useCalendar = () => {
   }, [user?.id]);
 
   // Créer un événement
-  const createEvent = useCallback(async (eventData: Omit<CalendarEvent, 'id' | 'created_at' | 'updated_at'>) => {
+  const createEvent = useCallback(async (eventData: Omit<any, 'id' | 'created_at' | 'updated_at'>) => {
     if (!user?.id) return;
 
     setLoading(true);
@@ -106,7 +105,7 @@ export const useCalendar = () => {
       const newEvent = await calendarService.createEvent(eventData);
 
       if (newEvent) {
-        setEvents(prev => [...prev, newEvent].filter((e): e is CalendarEvent => !!e && typeof e === 'object'));
+        setEvents(prev => [...prev, newEvent].filter((e): e is any => !!e && typeof e === 'object'));
       }
       return newEvent;
     } catch (err) {
@@ -119,13 +118,13 @@ export const useCalendar = () => {
   }, [user?.id]);
 
   // Mettre à jour un événement
-  const updateEvent = useCallback(async (id: string, updates: Partial<CalendarEvent>) => {
+  const updateEvent = useCallback(async (id: string, updates: Partial<any>) => {
     setLoading(true);
     setError(null);
 
     try {
       const updatedEvent = await calendarService.updateEvent(id, updates);
-      setEvents(prev => prev.map(event => event.id === id ? updatedEvent : event).filter((e): e is CalendarEvent => !!e && typeof e === 'object'));
+      setEvents(prev => prev.map(event => event.id === id ? updatedEvent : event).filter((e): e is any => !!e && typeof e === 'object'));
       return updatedEvent;
     } catch (err) {
       console.error('Erreur mise à jour événement:', err);
@@ -154,7 +153,7 @@ export const useCalendar = () => {
   }, []);
 
   // Créer une étape de dossier
-  const createDossierStep = useCallback(async (stepData: Omit<DossierStep, 'id' | 'created_at' | 'updated_at'>) => {
+  const createDossierStep = useCallback(async (stepData: Omit<any, 'id' | 'created_at' | 'updated_at'>) => {
     setLoading(true);
     setError(null);
 
@@ -174,7 +173,7 @@ export const useCalendar = () => {
   }, []);
 
   // Mettre à jour une étape de dossier
-  const updateDossierStep = useCallback(async (id: string, updates: Partial<DossierStep>) => {
+  const updateDossierStep = useCallback(async (id: string, updates: Partial<any>) => {
     setLoading(true);
     setError(null);
 

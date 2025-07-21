@@ -4,13 +4,12 @@ import { fr } from 'date-fns/locale';
 import { Calendar, Clock, Users, MapPin, Video, AlertTriangle, FileText } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { CalendarEvent, DossierStep } from '@/services/calendar-service';
 
 interface UpcomingEventsProps {
-  events: CalendarEvent[];
-  dossierSteps: DossierStep[];
-  onEventClick?: (event: CalendarEvent) => void;
-  onStepClick?: (step: DossierStep) => void;
+  events: any[]; // Google Calendar Event
+  dossierSteps: any[]; // DossierStep (assuming it's passed as is)
+  onEventClick?: (event: any) => void;
+  onStepClick?: (step: any) => void;
   className?: string;
 }
 
@@ -38,8 +37,8 @@ const STEP_TYPE_COLORS = {
 } as const;
 
 type CalendarItem = 
-  | { itemType: 'event'; data: CalendarEvent }
-  | { itemType: 'step'; data: DossierStep };
+  | { itemType: 'event'; data: any }
+  | { itemType: 'step'; data: any };
 
 export const UpcomingEvents: React.FC<UpcomingEventsProps> = ({
   events,
@@ -59,15 +58,15 @@ export const UpcomingEvents: React.FC<UpcomingEventsProps> = ({
       data: step
     }))
   ].sort((a, b) => {
-    const dateA = new Date(a.itemType === 'event' ? a.data.start_date : a.data.due_date);
-    const dateB = new Date(b.itemType === 'event' ? b.data.start_date : b.data.due_date);
+    const dateA = new Date(a.itemType === 'event' ? a.data.start.dateTime : a.data.due_date);
+    const dateB = new Date(b.itemType === 'event' ? b.data.start.dateTime : b.data.due_date);
     return dateA.getTime() - dateB.getTime();
   });
 
   // Grouper par date
   const groupedItems = allItems.reduce((groups, item) => {
     const dateKey = format(
-      new Date(item.itemType === 'event' ? item.data.start_date : item.data.due_date), 
+      new Date(item.itemType === 'event' ? item.data.start.dateTime : item.data.due_date), 
       'yyyy-MM-dd'
     );
     if (!groups[dateKey]) {
@@ -134,7 +133,7 @@ export const UpcomingEvents: React.FC<UpcomingEventsProps> = ({
                       if (item.itemType === 'event') {
                         const event = item.data;
                         const IconComponent = EVENT_TYPE_ICONS[event.type];
-                        const isOverdueEvent = isOverdue(event.start_date);
+                        const isOverdueEvent = isOverdue(event.start.dateTime);
 
                         return (
                           <div
@@ -148,14 +147,14 @@ export const UpcomingEvents: React.FC<UpcomingEventsProps> = ({
                               <div className="flex items-center gap-2">
                                 <IconComponent className="w-4 h-4 text-gray-600" />
                                 <h4 className="font-medium text-sm truncate flex-1">
-                                  {event.title}
+                                  {event.summary}
                                 </h4>
                               </div>
                               <div className="flex items-center gap-1">
                                 <Badge className={PRIORITY_COLORS[event.priority]} variant="outline">
                                   {event.priority}
                                 </Badge>
-                                {event.is_online && (
+                                {event.hangoutLink && (
                                   <Badge variant="outline" className="bg-purple-100 text-purple-800">
                                     <Video className="w-3 h-3 mr-1" />
                                     En ligne
@@ -167,7 +166,7 @@ export const UpcomingEvents: React.FC<UpcomingEventsProps> = ({
                             <div className="flex items-center gap-4 text-xs text-gray-500 mb-2">
                               <div className="flex items-center gap-1">
                                 <Clock className="w-3 h-3" />
-                                <span>{formatTime(event.start_date)}</span>
+                                <span>{formatTime(event.start.dateTime)}</span>
                               </div>
                               {event.location && (
                                 <div className="flex items-center gap-1">
@@ -177,10 +176,10 @@ export const UpcomingEvents: React.FC<UpcomingEventsProps> = ({
                               )}
                             </div>
 
-                            {event.dossier_name && (
+                            {event.description && (
                               <div className="flex items-center gap-1 text-xs text-gray-500">
                                 <FileText className="w-3 h-3" />
-                                <span className="truncate">{event.dossier_name}</span>
+                                <span className="truncate">{event.description}</span>
                               </div>
                             )}
                           </div>

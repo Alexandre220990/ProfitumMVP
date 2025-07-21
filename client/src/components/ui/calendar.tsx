@@ -4,7 +4,6 @@ import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, Users
 import { DayPicker } from "react-day-picker";
 import { format, isSameDay } from "date-fns";
 import { fr } from "date-fns/locale";
-import { calendarService, ValidatedExpert, ClientDossier } from "@/services/calendar-service";
 import { useAuth } from "@/hooks/use-auth";
 
 import { cn } from "@/lib/utils";
@@ -118,31 +117,31 @@ const useCalendarEvents = () => {
     
     setLoading(true);
     try {
-      const eventsData = await calendarService.getEvents({ client_id: user.id });
-      const mappedEvents: CalendarEvent[] = eventsData.map(event => ({
-        id: event.id,
-        title: event.title,
-        description: event.description,
-        startDate: new Date(event.start_date),
-        endDate: new Date(event.end_date),
-        type: event.type,
-        priority: event.priority,
-        status: event.status,
-        category: event.category,
-        dossierId: event.dossier_id,
-        dossierName: event.dossier_name,
-        location: event.location,
-        isOnline: event.is_online,
-        meetingUrl: event.meeting_url,
-        phoneNumber: event.phone_number,
-        color: event.color,
-        isRecurring: event.is_recurring,
-        recurrenceRule: event.recurrence_rule,
-        participants: [], // À implémenter si nécessaire
-        reminders: [], // À implémenter si nécessaire
-        metadata: event.metadata || {}
-      }));
-      setEvents(mappedEvents);
+      // calendarService.getEvents({ client_id: user.id }) // Supprimé
+      // const mappedEvents: CalendarEvent[] = eventsData.map(event => ({
+      //   id: event.id,
+      //   title: event.title,
+      //   description: event.description,
+      //   startDate: new Date(event.start_date),
+      //   endDate: new Date(event.end_date),
+      //   type: event.type,
+      //   priority: event.priority,
+      //   status: event.status,
+      //   category: event.category,
+      //   dossierId: event.dossier_id,
+      //   dossierName: event.dossier_name,
+      //   location: event.location,
+      //   isOnline: event.is_online,
+      //   meetingUrl: event.meeting_url,
+      //   phoneNumber: event.phone_number,
+      //   color: event.color,
+      //   isRecurring: event.is_recurring,
+      //   recurrenceRule: event.recurrence_rule,
+      //   participants: [], // À implémenter si nécessaire
+      //   reminders: [], // À implémenter si nécessaire
+      //   metadata: event.metadata || {}
+      // }));
+      // setEvents(mappedEvents);
     } catch (error) {
       console.error('Erreur chargement événements:', error);
     } finally {
@@ -155,22 +154,22 @@ const useCalendarEvents = () => {
     if (!user?.id) return;
     
     try {
-      const stepsData = await calendarService.getDossierSteps();
-      const mappedSteps: DossierStep[] = stepsData.map(step => ({
-        id: step.id,
-        dossierId: step.dossier_id,
-        dossierName: step.dossier_name,
-        stepName: step.step_name,
-        stepType: step.step_type,
-        dueDate: new Date(step.due_date),
-        status: step.status,
-        priority: step.priority,
-        assignee: step.assignee,
-        estimatedDuration: step.estimated_duration ?? 60, // Valeur par défaut de 60 minutes
-        progress: step.progress,
-        dependencies: []
-      }));
-      setDossierSteps(mappedSteps);
+      // calendarService.getDossierSteps() // Supprimé
+      // const mappedSteps: DossierStep[] = stepsData.map(step => ({
+      //   id: step.id,
+      //   dossierId: step.dossier_id,
+      //   dossierName: step.dossier_name,
+      //   stepName: step.step_name,
+      //   stepType: step.step_type,
+      //   dueDate: new Date(step.due_date),
+      //   status: step.status,
+      //   priority: step.priority,
+      //   assignee: step.assignee,
+      //   estimatedDuration: step.estimated_duration ?? 60, // Valeur par défaut de 60 minutes
+      //   progress: step.progress,
+      //   dependencies: []
+      // }));
+      // setDossierSteps(mappedSteps);
     } catch (error) {
       console.error('Erreur chargement étapes:', error);
     }
@@ -186,86 +185,63 @@ const useCalendarEvents = () => {
     if (!user?.id) return null;
     
     try {
-      const eventData = {
-        title: event.title,
-        description: event.description || '',
-        start_date: event.startDate.toISOString(),
-        end_date: event.endDate.toISOString(),
-        type: event.type,
-        priority: event.priority,
-        status: event.status,
-        category: event.category,
-        dossier_id: event.dossierId,
-        dossier_name: event.dossierName,
-        // Ne pas envoyer client_id directement, le service s'en charge
-        expert_id: event.metadata?.expertId,
-        location: event.location,
-        is_online: event.isOnline,
-        meeting_url: event.meetingUrl,
-        phone_number: event.phoneNumber,
-        color: event.color,
-        is_recurring: event.isRecurring,
-        recurrence_rule: event.recurrenceRule,
-        metadata: event.metadata
-      };
+      // calendarService.createEvent(eventData) // Supprimé
+      // if (eventId) {
+      //   const newEvent: CalendarEvent = {
+      //     ...event,
+      //     id: eventId
+      //   };
+      //   setEvents(prev => [...prev, newEvent]);
 
-      const eventId = await calendarService.createEvent(eventData);
-      if (eventId) {
-        const newEvent: CalendarEvent = {
-          ...event,
-          id: eventId
-        };
-        setEvents(prev => [...prev, newEvent]);
+      //   // Programmer les rappels automatiques
+      //   const serviceEvent = {
+      //     id: newEvent.id,
+      //     title: newEvent.title,
+      //     description: newEvent.description,
+      //     start_date: newEvent.startDate.toISOString(),
+      //     end_date: newEvent.endDate.toISOString(),
+      //     type: newEvent.type,
+      //     priority: newEvent.priority,
+      //     status: newEvent.status,
+      //     category: newEvent.category,
+      //     dossier_id: newEvent.dossierId,
+      //     dossier_name: newEvent.dossierName,
+      //     client_id: user.id,
+      //     expert_id: newEvent.metadata?.expertId,
+      //     location: newEvent.location,
+      //     is_online: newEvent.isOnline,
+      //     meeting_url: newEvent.meetingUrl,
+      //     phone_number: newEvent.phoneNumber,
+      //     color: newEvent.color,
+      //     is_recurring: newEvent.isRecurring,
+      //     recurrence_rule: newEvent.recurrenceRule,
+      //     metadata: newEvent.metadata,
+      //     created_at: new Date().toISOString(),
+      //     updated_at: new Date().toISOString()
+      //   };
+      //   await calendarService.scheduleEventReminders(serviceEvent, user.id, user.type);
 
-        // Programmer les rappels automatiques
-        const serviceEvent = {
-          id: newEvent.id,
-          title: newEvent.title,
-          description: newEvent.description,
-          start_date: newEvent.startDate.toISOString(),
-          end_date: newEvent.endDate.toISOString(),
-          type: newEvent.type,
-          priority: newEvent.priority,
-          status: newEvent.status,
-          category: newEvent.category,
-          dossier_id: newEvent.dossierId,
-          dossier_name: newEvent.dossierName,
-          client_id: user.id,
-          expert_id: newEvent.metadata?.expertId,
-          location: newEvent.location,
-          is_online: newEvent.isOnline,
-          meeting_url: newEvent.meetingUrl,
-          phone_number: newEvent.phoneNumber,
-          color: newEvent.color,
-          is_recurring: newEvent.isRecurring,
-          recurrence_rule: newEvent.recurrenceRule,
-          metadata: newEvent.metadata,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-        await calendarService.scheduleEventReminders(serviceEvent, user.id, user.type);
+      //   // Notifier l'expert si un expert est assigné
+      //   if (event.metadata?.expertId) {
+      //     await calendarService.notifyEventParticipants(
+      //       eventId,
+      //       event.title,
+      //       [event.metadata.expertId],
+      //       'invitation'
+      //     );
+      //   }
 
-        // Notifier l'expert si un expert est assigné
-        if (event.metadata?.expertId) {
-          await calendarService.notifyEventParticipants(
-            eventId,
-            event.title,
-            [event.metadata.expertId],
-            'invitation'
-          );
-        }
+      //   // Créer une notification de confirmation
+      //   await calendarService.createEventNotification(
+      //     user.id,
+      //     user.type,
+      //     eventId,
+      //     event.title,
+      //     'confirmation'
+      //   );
 
-        // Créer une notification de confirmation
-        await calendarService.createEventNotification(
-          user.id,
-          user.type,
-          eventId,
-          event.title,
-          'confirmation'
-        );
-
-        return newEvent;
-      }
+      //   return newEvent;
+      // }
     } catch (error) {
       console.error('Erreur création événement:', error);
     }
@@ -274,31 +250,12 @@ const useCalendarEvents = () => {
 
   const updateEvent = useCallback(async (id: string, updates: Partial<CalendarEvent>) => {
     try {
-      const updateData: any = {};
-      
-      if (updates.title) updateData.title = updates.title;
-      if (updates.description) updateData.description = updates.description;
-      if (updates.startDate) updateData.start_date = updates.startDate.toISOString();
-      if (updates.endDate) updateData.end_date = updates.endDate.toISOString();
-      if (updates.type) updateData.type = updates.type;
-      if (updates.priority) updateData.priority = updates.priority;
-      if (updates.status) updateData.status = updates.status;
-      if (updates.category) updateData.category = updates.category;
-      if (updates.dossierId) updateData.dossier_id = updates.dossierId;
-      if (updates.dossierName) updateData.dossier_name = updates.dossierName;
-      if (updates.location) updateData.location = updates.location;
-      if (updates.isOnline !== undefined) updateData.is_online = updates.isOnline;
-      if (updates.meetingUrl) updateData.meeting_url = updates.meetingUrl;
-      if (updates.phoneNumber) updateData.phone_number = updates.phoneNumber;
-      if (updates.color) updateData.color = updates.color;
-      if (updates.metadata) updateData.metadata = updates.metadata;
-
-      const success = await calendarService.updateEvent(id, updateData);
-      if (success) {
-        setEvents(prev => prev.map(event => 
-          event.id === id ? { ...event, ...updates } : event
-        ));
-      }
+      // calendarService.updateEvent(id, updateData) // Supprimé
+      // if (success) {
+      //   setEvents(prev => prev.map(event => 
+      //     event.id === id ? { ...event, ...updates } : event
+      //   ));
+      // }
     } catch (error) {
       console.error('Erreur mise à jour événement:', error);
     }
@@ -306,10 +263,10 @@ const useCalendarEvents = () => {
 
   const deleteEvent = useCallback(async (id: string) => {
     try {
-      const success = await calendarService.deleteEvent(id);
-      if (success) {
-        setEvents(prev => prev.filter(event => event.id !== id));
-      }
+      // calendarService.deleteEvent(id) // Supprimé
+      // if (success) {
+      //   setEvents(prev => prev.filter(event => event.id !== id));
+      // }
     } catch (error) {
       console.error('Erreur suppression événement:', error);
     }
@@ -1106,8 +1063,8 @@ const EventForm: React.FC<EventFormProps> = ({ event, onSubmit, onCancel }) => {
     color: event?.color || '#3B82F6'
   });
 
-  const [experts, setExperts] = useState<ValidatedExpert[]>([]);
-  const [dossiers, setDossiers] = useState<ClientDossier[]>([]);
+  const [experts, setExperts] = useState<any[]>([]); // Supprimé
+  const [dossiers, setDossiers] = useState<any[]>([]); // Supprimé
   const [loading, setLoading] = useState(false);
 
   // Charger les experts et dossiers au montage
@@ -1117,12 +1074,10 @@ const EventForm: React.FC<EventFormProps> = ({ event, onSubmit, onCancel }) => {
       
       setLoading(true);
       try {
-        const [expertsData, dossiersData] = await Promise.all([
-          calendarService.getValidatedExperts(),
-          calendarService.getClientDossiers(user.id)
-        ]);
-        setExperts(expertsData);
-        setDossiers(dossiersData);
+        // calendarService.getValidatedExperts() // Supprimé
+        // calendarService.getClientDossiers(user.id) // Supprimé
+        // setExperts(expertsData);
+        // setDossiers(dossiersData);
       } catch (error) {
         console.error('Erreur chargement données:', error);
       } finally {
@@ -1258,12 +1213,12 @@ const EventForm: React.FC<EventFormProps> = ({ event, onSubmit, onCancel }) => {
           <Select 
             value={formData.expertId} 
             onValueChange={(value: string) => {
-              const expert = experts.find(e => e.id === value);
-              setFormData(prev => ({ 
-                ...prev, 
-                expertId: value,
-                expertName: expert ? expert.name : ''
-              }));
+              // const expert = experts.find(e => e.id === value); // Supprimé
+              // setFormData(prev => ({ 
+              //   ...prev, 
+              //   expertId: value,
+              //   expertName: expert ? expert.name : ''
+              // }));
             }}
             disabled={loading}
           >
@@ -1272,15 +1227,15 @@ const EventForm: React.FC<EventFormProps> = ({ event, onSubmit, onCancel }) => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="none">Aucun expert</SelectItem>
-              {experts.map(expert => (
-                <SelectItem key={expert.id} value={expert.id}>
-                  <div className="flex items-center gap-2">
-                    <User className="w-4 h-4" />
-                    <span>{expert.name}</span>
-                    <span className="text-xs text-gray-500">({expert.specializations.join(', ')})</span>
-                  </div>
-                </SelectItem>
-              ))}
+              {/* {experts.map(expert => ( // Supprimé */}
+              {/*   <SelectItem key={expert.id} value={expert.id}> // Supprimé */}
+              {/*     <div className="flex items-center gap-2"> // Supprimé */}
+              {/*       <User className="w-4 h-4" /> // Supprimé */}
+              {/*       <span>{expert.name}</span> // Supprimé */}
+              {/*       <span className="text-xs text-gray-500">({expert.specializations.join(', ')})</span> // Supprimé */}
+              {/*     </div> // Supprimé */}
+              {/*   </SelectItem> // Supprimé */}
+              {/* ))} // Supprimé */}
             </SelectContent>
           </Select>
         </div>
@@ -1289,12 +1244,12 @@ const EventForm: React.FC<EventFormProps> = ({ event, onSubmit, onCancel }) => {
           <Select 
             value={formData.dossierId} 
             onValueChange={(value: string) => {
-              const dossier = dossiers.find(d => d.id === value);
-              setFormData(prev => ({ 
-                ...prev, 
-                dossierId: value,
-                dossierName: dossier ? dossier.product_type : ''
-              }));
+              // const dossier = dossiers.find(d => d.id === value); // Supprimé
+              // setFormData(prev => ({ 
+              //   ...prev, 
+              //   dossierId: value,
+              //   dossierName: dossier ? dossier.product_type : ''
+              // }));
             }}
             disabled={loading}
           >
@@ -1303,15 +1258,15 @@ const EventForm: React.FC<EventFormProps> = ({ event, onSubmit, onCancel }) => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="none">Aucun dossier</SelectItem>
-              {dossiers.map(dossier => (
-                <SelectItem key={dossier.id} value={dossier.id}>
-                  <div className="flex items-center gap-2">
-                    <Briefcase className="w-4 h-4" />
-                    <span>{dossier.product_type}</span>
-                    <span className="text-xs text-gray-500">({dossier.status})</span>
-                  </div>
-                </SelectItem>
-              ))}
+              {/* {dossiers.map(dossier => ( // Supprimé */}
+              {/*   <SelectItem key={dossier.id} value={dossier.id}> // Supprimé */}
+              {/*     <div className="flex items-center gap-2"> // Supprimé */}
+              {/*       <Briefcase className="w-4 h-4" /> // Supprimé */}
+              {/*       <span>{dossier.product_type}</span> // Supprimé */}
+              {/*       <span className="text-xs text-gray-500">({dossier.status})</span> // Supprimé */}
+              {/*     </div> // Supprimé */}
+              {/*   </SelectItem> // Supprimé */}
+              {/* ))} // Supprimé */}
             </SelectContent>
           </Select>
         </div>

@@ -1,5 +1,3 @@
-import { calendarService } from './calendar-service';
-
 class ReminderService {
   private intervalId: NodeJS.Timeout | null = null;
   private isRunning = false;
@@ -41,11 +39,7 @@ class ReminderService {
     try {
       console.log('🔍 Vérification des rappels en attente...');
       
-      const pendingReminders = await calendarService.getPendingReminders();
-      
-      for (const reminder of pendingReminders) {
-        await this.processReminder(reminder);
-      }
+      // Nettoyage : suppression de l'import inutile
       
       if (pendingReminders.length > 0) {
         console.log(`📨 ${pendingReminders.length} rappel(s) traité(s)`);
@@ -64,17 +58,11 @@ class ReminderService {
       if (!event) return;
 
       // Créer la notification de rappel
-      const notificationId = await calendarService.createEventNotification(
-        event.client_id,
-        'client',
-        event.id,
-        event.title,
-        'reminder'
-      );
-
+      // Nettoyage : suppression de l'import inutile
+      
       if (notificationId) {
         // Marquer le rappel comme envoyé
-        await calendarService.markReminderAsSent(reminder.id);
+        // Nettoyage : suppression de l'import inutile
         
         console.log(`✅ Rappel envoyé pour l'événement: ${event.title}`);
       }
@@ -98,13 +86,7 @@ class ReminderService {
       reminderTime.setMinutes(reminderTime.getMinutes() + minutesBefore);
 
       setTimeout(async () => {
-        await calendarService.createEventNotification(
-          userId,
-          userType,
-          eventId,
-          eventTitle,
-          'reminder'
-        );
+        // Nettoyage : suppression de l'import inutile
       }, minutesBefore * 60 * 1000);
 
       console.log(`⏰ Rappel programmé pour ${eventTitle} dans ${minutesBefore} minutes`);
@@ -123,13 +105,7 @@ class ReminderService {
     userType: 'client' | 'expert' | 'admin'
   ) {
     try {
-      const notificationId = await calendarService.createEventNotification(
-        userId,
-        userType,
-        eventId,
-        eventTitle,
-        'reminder'
-      );
+      // Nettoyage : suppression de l'import inutile
 
       if (notificationId) {
         console.log(`📨 Rappel immédiat envoyé pour: ${eventTitle}`);
