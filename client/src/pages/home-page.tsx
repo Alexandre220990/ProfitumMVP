@@ -6,6 +6,12 @@ import {
   ShieldCheck, 
   Handshake,
   Clock,
+  Mail,
+  Phone,
+  Facebook,
+  Twitter,
+  Linkedin,
+  Instagram,
 } from "lucide-react";
 import ProcessSteps from "@/components/ProcessSteps";
 import PublicHeader from '@/components/PublicHeader';
@@ -147,50 +153,62 @@ const ADVANTAGES = [
 
 
 const HeroSection = ({ navigate }: { navigate: (path: string) => void }) => (
-  <section className="relative min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 overflow-hidden">
+  <section className="relative min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 overflow-hidden">
     {/* Premium geometric pattern - Ecosystem 360 */}
-    <div className="absolute inset-0 opacity-10">
+    <div className="absolute inset-0 opacity-8">
       <div className="absolute inset-0" style={{
         backgroundImage: `url("data:image/svg+xml,%3Csvg width='120' height='120' viewBox='0 0 120 120' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cpattern id='hexagons' width='60' height='60' patternUnits='userSpaceOnUse'%3E%3Cpath d='M30 0l30 17.32v34.64L30 69.28 0 51.96V17.32L30 0z' fill='none' stroke='%23ffffff' stroke-width='0.5'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='120' height='120' fill='url(%23hexagons)'/%3E%3C/svg%3E")`,
       }}></div>
     </div>
 
     {/* Subtle gradient overlays */}
-    <div className="absolute inset-0 bg-gradient-to-r from-blue-600/5 via-transparent to-indigo-600/5"></div>
-    <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-slate-900/50 to-transparent"></div>
+    <div className="absolute inset-0 bg-gradient-to-r from-blue-600/8 via-transparent to-indigo-600/8"></div>
+    <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-slate-900/60 to-transparent"></div>
 
     <div className="relative z-10 max-w-7xl mx-auto px-6 py-16 lg:py-20">
+      {/* Premium badges */}
+      <div className="flex justify-center gap-4 mb-8">
+        <div className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600/20 to-indigo-600/20 backdrop-blur-xl border border-blue-500/30 text-blue-100 px-4 py-2 rounded-full text-sm font-medium shadow-xl">
+          <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+          <span>Écosystème 360</span>
+        </div>
+        <div className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-600/20 to-teal-600/20 backdrop-blur-xl border border-emerald-500/30 text-emerald-100 px-4 py-2 rounded-full text-sm font-medium shadow-xl">
+          <ShieldCheck className="w-3 h-3" />
+          <span>Plateforme certifiée</span>
+        </div>
+      </div>
+
       <div className="flex items-center justify-between gap-16">
         {/* Content Section */}
         <div className="flex-1 max-w-3xl">
-          {/* Main headline - Premium and modest */}
-          <div className="mb-10">
+          {/* Main headline - Ultra premium and compact */}
+          <div className="mb-8">
             <h1 className="text-3xl md:text-4xl lg:text-5xl font-light text-white mb-6 leading-tight tracking-tight">
               <span className="block font-light opacity-90">
                 Profitum connecte les entreprises aux
               </span>
-              <span className="block font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent mt-2">
+              <span className="block font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent mt-1">
                 meilleurs experts
               </span>
-              <span className="block font-light opacity-90 mt-3">
+              <span className="block font-light opacity-90 mt-2">
                 pour transformer contraintes en
               </span>
-              <span className="block font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent mt-2">
+              <span className="block font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent mt-1">
                 opportunités financières
               </span>
             </h1>
           </div>
 
-          {/* CTA Section - Premium buttons */}
-          <div className="flex flex-col lg:flex-row gap-6 mb-10">
+          {/* CTA Section - Ultra premium buttons */}
+          <div className="flex flex-col lg:flex-row gap-6 mb-8">
             {/* Client CTA */}
             <div className="flex-1">
-              <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-3">Client</h3>
+              <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-3 text-center">Client</h3>
               <button 
                 onClick={() => navigate('/simulateur')}
-                className="group relative w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium py-4 px-8 rounded-xl shadow-2xl hover:shadow-blue-500/25 transition-all duration-300 transform hover:-translate-y-1 overflow-hidden"
+                className="group relative w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-4 px-8 rounded-xl shadow-2xl hover:shadow-blue-500/30 transition-all duration-300 transform hover:-translate-y-1 overflow-hidden"
               >
-                <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
+                <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/15 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
                 <span className="relative">Accéder au simulateur</span>
               </button>
               <p className="text-sm text-slate-400 mt-3 text-center">
@@ -200,12 +218,12 @@ const HeroSection = ({ navigate }: { navigate: (path: string) => void }) => (
 
             {/* Expert CTA */}
             <div className="flex-1">
-              <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-3">Expert</h3>
+              <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-3 text-center">Expert</h3>
               <button 
                 onClick={() => navigate('/welcome-expert')}
-                className="group relative w-full bg-white/10 backdrop-blur-sm border border-white/20 hover:border-white/30 text-white font-medium py-4 px-8 rounded-xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden"
+                className="group relative w-full bg-white/10 backdrop-blur-sm border border-white/25 hover:border-white/40 text-white font-semibold py-4 px-8 rounded-xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden"
               >
-                <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/5 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
+                <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/8 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
                 <span className="relative">Rejoignez notre écosystème</span>
               </button>
               <p className="text-sm text-slate-400 mt-3 text-center">
@@ -214,8 +232,8 @@ const HeroSection = ({ navigate }: { navigate: (path: string) => void }) => (
             </div>
           </div>
 
-          {/* Trust indicators - Premium */}
-          <div className="flex items-center gap-8 text-sm text-slate-300">
+          {/* Trust indicators - Ultra premium */}
+          <div className="flex items-center justify-center gap-8 text-sm text-slate-300">
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></div>
               <span>500+ experts vérifiés</span>
@@ -227,35 +245,35 @@ const HeroSection = ({ navigate }: { navigate: (path: string) => void }) => (
           </div>
         </div>
 
-        {/* Right Section - Premium KPI tiles */}
+        {/* Right Section - Ultra premium KPI tiles */}
         <div className="hidden lg:flex flex-shrink-0 w-80">
-          <div className="w-full space-y-6">
-            {/* Premium KPI cards with glassmorphism */}
-            <div className="group bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20 hover:border-white/30 transition-all duration-300 transform hover:-translate-y-1 hover:shadow-2xl hover:shadow-blue-500/10">
+          <div className="w-full space-y-5">
+            {/* Ultra premium KPI cards with glassmorphism */}
+            <div className="group bg-white/12 backdrop-blur-xl rounded-2xl p-6 border border-white/25 hover:border-white/40 transition-all duration-300 transform hover:-translate-y-1 hover:shadow-2xl hover:shadow-blue-500/15">
               <div className="flex items-center justify-between mb-3">
                 <div className="text-3xl font-bold text-white">€2.5M</div>
-                <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg flex items-center justify-center opacity-80 group-hover:opacity-100 transition-opacity">
-                  <TrendingUp className="w-4 h-4 text-white" />
+                <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center opacity-90 group-hover:opacity-100 transition-opacity shadow-lg">
+                  <TrendingUp className="w-5 h-5 text-white" />
                 </div>
               </div>
               <div className="text-sm text-slate-300">Économies générées</div>
             </div>
             
-            <div className="group bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20 hover:border-white/30 transition-all duration-300 transform hover:-translate-y-1 hover:shadow-2xl hover:shadow-green-500/10">
+            <div className="group bg-white/12 backdrop-blur-xl rounded-2xl p-6 border border-white/25 hover:border-white/40 transition-all duration-300 transform hover:-translate-y-1 hover:shadow-2xl hover:shadow-green-500/15">
               <div className="flex items-center justify-between mb-3">
                 <div className="text-3xl font-bold text-white">98%</div>
-                <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg flex items-center justify-center opacity-80 group-hover:opacity-100 transition-opacity">
-                  <ShieldCheck className="w-4 h-4 text-white" />
+                <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl flex items-center justify-center opacity-90 group-hover:opacity-100 transition-opacity shadow-lg">
+                  <ShieldCheck className="w-5 h-5 text-white" />
                 </div>
               </div>
               <div className="text-sm text-slate-300">Taux de satisfaction</div>
             </div>
             
-            <div className="group bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20 hover:border-white/30 transition-all duration-300 transform hover:-translate-y-1 hover:shadow-2xl hover:shadow-purple-500/10">
+            <div className="group bg-white/12 backdrop-blur-xl rounded-2xl p-6 border border-white/25 hover:border-white/40 transition-all duration-300 transform hover:-translate-y-1 hover:shadow-2xl hover:shadow-purple-500/15">
               <div className="flex items-center justify-between mb-3">
                 <div className="text-3xl font-bold text-white">24h</div>
-                <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center opacity-80 group-hover:opacity-100 transition-opacity">
-                  <Clock className="w-4 h-4 text-white" />
+                <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl flex items-center justify-center opacity-90 group-hover:opacity-100 transition-opacity shadow-lg">
+                  <Clock className="w-5 h-5 text-white" />
                 </div>
               </div>
               <div className="text-sm text-slate-300">Délai de réponse</div>
@@ -268,23 +286,23 @@ const HeroSection = ({ navigate }: { navigate: (path: string) => void }) => (
 );
 
 const ValuePropositionSection = () => (
-  <section className="py-20 bg-gradient-to-br from-slate-50 via-white to-slate-100 relative overflow-hidden">
+  <section className="py-20 bg-gradient-to-br from-blue-50 via-blue-100 to-blue-200 relative overflow-hidden">
     {/* Background decorative elements */}
-    <div className="absolute inset-0 opacity-5">
-      <div className="absolute top-1/4 right-1/4 w-64 h-64 bg-blue-200 rounded-full blur-3xl"></div>
-      <div className="absolute bottom-1/4 left-1/4 w-96 h-96 bg-indigo-200 rounded-full blur-3xl"></div>
+    <div className="absolute inset-0 opacity-10">
+      <div className="absolute top-1/4 right-1/4 w-64 h-64 bg-blue-300 rounded-full blur-3xl"></div>
+      <div className="absolute bottom-1/4 left-1/4 w-96 h-96 bg-indigo-300 rounded-full blur-3xl"></div>
     </div>
     
     <div className="relative z-10 max-w-7xl mx-auto px-6">
       <div className="text-center mb-16">
-        <div className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 text-blue-800 px-6 py-3 rounded-full text-sm font-semibold mb-6">
+        <div className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600/10 to-indigo-600/10 border border-blue-300/50 text-blue-800 px-6 py-3 rounded-full text-sm font-semibold mb-6 backdrop-blur-sm">
           <ShieldCheck className="w-4 h-4" />
           Pourquoi choisir Profitum ?
         </div>
         <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-6">
           L'excellence au service de votre <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">performance</span>
         </h2>
-        <p className="text-xl text-slate-600 max-w-3xl mx-auto">
+        <p className="text-xl text-slate-700 max-w-3xl mx-auto">
           Découvrez les avantages qui font de Profitum la référence en optimisation financière
         </p>
       </div>
@@ -294,17 +312,17 @@ const ValuePropositionSection = () => (
           <Link key={index} to={advantage.link || "#"}>
             <div className="group relative">
               <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl blur-lg opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
-              <div className="relative bg-white/80 backdrop-blur-sm border border-slate-200/50 rounded-2xl p-8 hover:border-blue-300 transition-all duration-300 hover-lift">
+              <div className="relative bg-white/90 backdrop-blur-sm border border-blue-200/50 rounded-2xl p-8 hover:border-blue-400 transition-all duration-300 transform hover:-translate-y-2 hover:shadow-2xl hover:shadow-blue-500/20">
                 <div className="flex items-center justify-center mb-6">
                   <div className="relative">
                     <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full blur-lg opacity-30 group-hover:opacity-50 transition-opacity duration-300"></div>
                     <div className="relative bg-gradient-to-br from-blue-500 to-indigo-600 p-4 rounded-full shadow-lg group-hover:shadow-xl transition-all duration-300">
-                      <advantage.icon className="w-8 h-8 text-white" />
+                      <advantage.icon className="w-8 h-8 text-white fill-current" />
                     </div>
                   </div>
                 </div>
                 <h3 className="text-xl font-bold mb-4 text-slate-900 text-center">{advantage.title}</h3>
-                <p className="text-slate-600 text-center leading-relaxed">{advantage.desc}</p>
+                <p className="text-slate-700 text-center leading-relaxed">{advantage.desc}</p>
                 
                 {/* Hover effect indicator */}
                 <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
@@ -320,20 +338,22 @@ const ValuePropositionSection = () => (
 );
 
 const RevolutionSection = () => (
-  <section className="w-full max-w-7xl px-4 mx-auto bg-gradient-to-br from-blue-50 via-white to-blue-100 rounded-2xl shadow-lg py-10 mb-12 border border-blue-100">
-    <h2 className="text-3xl font-bold text-center mb-2 text-blue-900">
+  <section className="w-full max-w-7xl px-4 mx-auto bg-gradient-to-br from-blue-800 via-blue-900 to-slate-900 rounded-3xl shadow-2xl py-12 mb-12 border border-blue-700/50 backdrop-blur-sm">
+    <h2 className="text-3xl font-bold text-center mb-3 text-white">
       🚀 Révolutionnez votre gestion avec Profitum !
     </h2>
-    <p className="text-center text-lg text-blue-700 mb-8 font-medium">
+    <p className="text-center text-lg text-blue-100 mb-10 font-medium">
       L'expertise simplifiée, la transparence garantie et l'efficacité au bout des doigts.
     </p>
     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
       {PROFITUM_HIGHLIGHTS.map((item, idx) => (
-        <div key={idx} className="flex items-start gap-4 bg-white rounded-xl p-6 shadow border border-blue-100 hover:shadow-md transition">
-          <div className="text-3xl md:text-4xl mt-1 text-blue-500">{item.icon}</div>
-          <div>
-            <div className="font-bold text-lg mb-1 text-blue-800">{item.title}</div>
-            <div className="text-gray-600 text-sm leading-snug">{item.desc}</div>
+        <div key={idx} className="group bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20 hover:border-white/30 transition-all duration-300 transform hover:-translate-y-1 hover:shadow-2xl hover:shadow-blue-500/10">
+          <div className="flex items-start gap-4">
+            <div className="text-3xl md:text-4xl mt-1 text-blue-300 group-hover:text-blue-200 transition-colors">{item.icon}</div>
+            <div>
+              <div className="font-bold text-lg mb-2 text-white">{item.title}</div>
+              <div className="text-blue-100 text-sm leading-relaxed">{item.desc}</div>
+            </div>
           </div>
         </div>
       ))}
@@ -342,57 +362,232 @@ const RevolutionSection = () => (
 );
 
 const ServicesSection = () => (
-  <section className="container mx-auto p-4">
-    <h1 className="text-3xl font-bold mb-6 text-center">Nos Services</h1>
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-      {SERVICES.map((service) => (
-        <div
-          key={service.id}
-          className="bg-white rounded-xl shadow p-6 flex flex-col items-center text-center transition-transform duration-200 hover:scale-105 hover:shadow-lg cursor-pointer min-h-[370px] border-2 border-blue-200 hover:border-blue-400"
-        >
-          <img
-            src={service.image}
-            alt={service.title}
-            className="w-20 h-20 object-cover rounded-full mb-4 border-2 border-blue-100 shadow-sm bg-gray-50"
-            loading="lazy"
-          />
-          <div className="text-xl font-bold mb-2">{service.title}</div>
-          <div className="text-gray-600 text-sm leading-snug flex-1 flex items-start justify-center">
-            {service.description}
+  <section className="py-20 bg-gradient-to-br from-blue-25 via-blue-50 to-blue-100 relative overflow-hidden">
+    {/* Background decorative elements */}
+    <div className="absolute inset-0 opacity-5">
+      <div className="absolute top-1/3 right-1/4 w-80 h-80 bg-blue-200 rounded-full blur-3xl"></div>
+      <div className="absolute bottom-1/3 left-1/4 w-96 h-96 bg-indigo-200 rounded-full blur-3xl"></div>
+    </div>
+    
+    <div className="relative z-10 max-w-7xl mx-auto px-6">
+      <div className="text-center mb-16">
+        <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-6">
+          Nos <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Services</span>
+        </h2>
+        <p className="text-xl text-slate-700 max-w-3xl mx-auto">
+          Une gamme complète de solutions d'optimisation financière
+        </p>
+      </div>
+      
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+        {SERVICES.map((service, index) => (
+          <div
+            key={service.id}
+            className="group relative bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6 flex flex-col items-center text-center transition-all duration-300 transform hover:-translate-y-2 hover:shadow-2xl cursor-pointer min-h-[370px] border border-blue-200/50 hover:border-blue-400"
+          >
+            {/* Accent color based on index */}
+            <div className={`absolute top-0 left-0 w-full h-1 rounded-t-2xl ${
+              index % 4 === 0 ? 'bg-gradient-to-r from-blue-500 to-indigo-500' :
+              index % 4 === 1 ? 'bg-gradient-to-r from-green-500 to-emerald-500' :
+              index % 4 === 2 ? 'bg-gradient-to-r from-purple-500 to-pink-500' :
+              'bg-gradient-to-r from-yellow-500 to-orange-500'
+            }`}></div>
+            
+            <img
+              src={service.image}
+              alt={service.title}
+              className="w-20 h-20 object-cover rounded-full mb-4 border-2 border-blue-100 shadow-sm bg-gray-50 group-hover:scale-110 transition-transform duration-300"
+              loading="lazy"
+            />
+            <div className="text-xl font-bold mb-3 text-slate-900">{service.title}</div>
+            <div className="text-slate-700 text-sm leading-relaxed flex-1 flex items-start justify-center">
+              {service.description}
+            </div>
+            
+            {/* Hover effect indicator */}
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              <div className={`w-8 h-1 rounded-full ${
+                index % 4 === 0 ? 'bg-gradient-to-r from-blue-500 to-indigo-500' :
+                index % 4 === 1 ? 'bg-gradient-to-r from-green-500 to-emerald-500' :
+                index % 4 === 2 ? 'bg-gradient-to-r from-purple-500 to-pink-500' :
+                'bg-gradient-to-r from-yellow-500 to-orange-500'
+              }`}></div>
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   </section>
 );
 
 const TestimonialsSection = () => (
-  <section className="py-12 bg-gray-50 rounded-lg">
-    <h2 className="text-3xl font-bold text-center mb-8">Ce que disent nos clients</h2>
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 px-6">
-      {TESTIMONIALS.map((testimonial, index) => (
-        <div key={index} className="bg-white p-6 rounded-lg shadow-md">
-          <p className="text-gray-600 mb-4">"{testimonial.text}"</p>
-          <div className="font-semibold">{testimonial.author}</div>
-          <div className="text-sm text-gray-500">{testimonial.position}</div>
-        </div>
-      ))}
+  <section className="py-20 bg-gradient-to-br from-slate-100 via-blue-50 to-slate-100 relative overflow-hidden">
+    {/* Background decorative elements */}
+    <div className="absolute inset-0 opacity-5">
+      <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-blue-200 rounded-full blur-3xl"></div>
+      <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-indigo-200 rounded-full blur-3xl"></div>
+    </div>
+    
+    <div className="relative z-10 max-w-7xl mx-auto px-6">
+      <div className="text-center mb-16">
+        <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-6">
+          Ce que disent nos <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">clients</span>
+        </h2>
+        <p className="text-xl text-slate-700 max-w-3xl mx-auto">
+          Découvrez les témoignages de nos clients satisfaits
+        </p>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        {TESTIMONIALS.map((testimonial, index) => (
+          <div key={index} className="group bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-blue-200/50 hover:border-blue-400 transition-all duration-300 transform hover:-translate-y-2 hover:shadow-2xl">
+            <div className="flex items-center justify-center mb-4">
+              <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center shadow-lg">
+                <span className="text-white font-bold text-lg">"</span>
+              </div>
+            </div>
+            <p className="text-slate-700 mb-6 leading-relaxed text-center">"{testimonial.text}"</p>
+            <div className="text-center">
+              <div className="font-semibold text-slate-900">{testimonial.author}</div>
+              <div className="text-sm text-slate-600">{testimonial.position}</div>
+            </div>
+            
+            {/* Hover effect indicator */}
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              <div className="w-8 h-1 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full"></div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   </section>
 );
 
 const CallToActionSection = () => (
-  <section className="py-12 text-center">
-    <h2 className="text-3xl font-bold mb-4">Prêt à optimiser vos finances ?</h2>
-    <p className="text-gray-600 mb-8">
-      Rejoignez Profitum et commencez à économiser dès aujourd'hui.
-    </p>
-    <Link to="/create-account-client">
-      <Button className="bg-blue-600 text-white font-bold px-8 py-4 rounded-lg hover:bg-blue-700">
-        Créer mon compte gratuitement
-      </Button>
-    </Link>
+  <section className="py-20 bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 relative overflow-hidden">
+    {/* Background decorative elements */}
+    <div className="absolute inset-0 opacity-10">
+      <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-white/10 rounded-full blur-3xl"></div>
+      <div className="absolute bottom-1/4 left-1/4 w-80 h-80 bg-white/10 rounded-full blur-3xl"></div>
+    </div>
+    
+    <div className="relative z-10 max-w-4xl mx-auto px-6 text-center">
+      <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+        Prêt à optimiser vos <span className="bg-gradient-to-r from-blue-200 to-indigo-200 bg-clip-text text-transparent">finances</span> ?
+      </h2>
+      <p className="text-xl text-blue-100 mb-10 max-w-2xl mx-auto">
+        Rejoignez Profitum et commencez à économiser dès aujourd'hui.
+      </p>
+      <Link to="/create-account-client">
+        <Button className="group relative bg-gradient-to-r from-white to-blue-50 text-blue-900 font-bold px-10 py-4 rounded-xl shadow-2xl hover:shadow-blue-500/25 transition-all duration-300 transform hover:-translate-y-1 overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
+          <span className="relative">Créer mon compte gratuitement</span>
+        </Button>
+      </Link>
+    </div>
   </section>
+);
+
+const FooterSection = () => (
+  <footer className="bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 relative overflow-hidden">
+    {/* Background decorative elements */}
+    <div className="absolute inset-0 opacity-5">
+      <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-blue-500/20 rounded-full blur-3xl"></div>
+      <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-indigo-500/20 rounded-full blur-3xl"></div>
+    </div>
+    
+    <div className="relative z-10 max-w-7xl mx-auto px-6 py-16">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
+        {/* Company Info */}
+        <div className="lg:col-span-2">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg flex items-center justify-center">
+              <ShieldCheck className="w-6 h-6 text-white" />
+            </div>
+            <h3 className="text-2xl font-bold text-white">Profitum</h3>
+          </div>
+          <p className="text-blue-200 mb-6 max-w-md leading-relaxed">
+            La plateforme d'optimisation financière qui connecte les entreprises aux meilleurs experts pour transformer les contraintes en opportunités.
+          </p>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 text-blue-200">
+              <Mail className="w-4 h-4" />
+              <span className="text-sm">contact@profitum.app</span>
+            </div>
+            <div className="flex items-center gap-2 text-blue-200">
+              <Phone className="w-4 h-4" />
+              <span className="text-sm">+33 1 23 45 67 89</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Links */}
+        <div>
+          <h4 className="text-lg font-semibold text-white mb-6">Liens rapides</h4>
+          <ul className="space-y-3">
+            <li><a href="#" className="text-blue-200 hover:text-white transition-colors">Accueil</a></li>
+            <li><a href="#" className="text-blue-200 hover:text-white transition-colors">Services</a></li>
+            <li><a href="#" className="text-blue-200 hover:text-white transition-colors">Experts</a></li>
+            <li><a href="#" className="text-blue-200 hover:text-white transition-colors">Simulateur</a></li>
+            <li><a href="#" className="text-blue-200 hover:text-white transition-colors">Contact</a></li>
+          </ul>
+        </div>
+
+        {/* Services */}
+        <div>
+          <h4 className="text-lg font-semibold text-white mb-6">Services</h4>
+          <ul className="space-y-3">
+            <li><a href="#" className="text-blue-200 hover:text-white transition-colors">TICPE</a></li>
+            <li><a href="#" className="text-blue-200 hover:text-white transition-colors">URSSAF</a></li>
+            <li><a href="#" className="text-blue-200 hover:text-white transition-colors">DFS</a></li>
+            <li><a href="#" className="text-blue-200 hover:text-white transition-colors">CIR</a></li>
+            <li><a href="#" className="text-blue-200 hover:text-white transition-colors">CEE</a></li>
+          </ul>
+        </div>
+      </div>
+
+      {/* Newsletter */}
+      <div className="border-t border-blue-700/50 pt-8 mb-8">
+        <div className="max-w-md mx-auto text-center">
+          <h4 className="text-lg font-semibold text-white mb-4">Restez informé</h4>
+          <p className="text-blue-200 mb-6">Recevez nos dernières actualités et conseils d'optimisation</p>
+          <div className="flex gap-3">
+            <input 
+              type="email" 
+              placeholder="Votre email" 
+              className="flex-1 px-4 py-3 bg-white/10 border border-blue-600/30 rounded-lg text-white placeholder-blue-300 focus:outline-none focus:border-blue-400"
+            />
+            <button className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-300">
+              S'abonner
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Footer */}
+      <div className="border-t border-blue-700/50 pt-8">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+          <div className="text-blue-200 text-sm">
+            © 2024 Profitum. Tous droits réservés.
+          </div>
+          <div className="flex items-center gap-4">
+            <a href="#" className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center text-blue-200 hover:text-white hover:bg-white/20 transition-all duration-300">
+              <Facebook className="w-5 h-5" />
+            </a>
+            <a href="#" className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center text-blue-200 hover:text-white hover:bg-white/20 transition-all duration-300">
+              <Twitter className="w-5 h-5" />
+            </a>
+            <a href="#" className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center text-blue-200 hover:text-white hover:bg-white/20 transition-all duration-300">
+              <Linkedin className="w-5 h-5" />
+            </a>
+            <a href="#" className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center text-blue-200 hover:text-white hover:bg-white/20 transition-all duration-300">
+              <Instagram className="w-5 h-5" />
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </footer>
 );
 
 // ============================================================================
@@ -436,6 +631,7 @@ export default function HomePage() {
       <ServicesSection />
       <TestimonialsSection />
       <CallToActionSection />
+      <FooterSection />
     </div>
   );
 }
