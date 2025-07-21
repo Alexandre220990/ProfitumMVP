@@ -80,6 +80,18 @@
   }
 }
 
+@layer utilities {
+  .bg-background {
+    background-color: hsl(var(--background));
+  }
+  .text-foreground {
+    color: hsl(var(--foreground));
+  }
+  .border-border {
+    border-color: hsl(var(--border));
+  }
+}
+
 /* Animations modernes pour la section hero */
 @keyframes float {
   0%, 100% {
