@@ -5,6 +5,7 @@ import {
   TrendingUp, 
   ShieldCheck, 
   Handshake,
+  Clock,
 } from "lucide-react";
 import ProcessSteps from "@/components/ProcessSteps";
 import PublicHeader from '@/components/PublicHeader';
@@ -146,97 +147,118 @@ const ADVANTAGES = [
 
 
 const HeroSection = ({ navigate }: { navigate: (path: string) => void }) => (
-  <section className="relative min-h-screen bg-white overflow-hidden">
-    {/* Subtle background pattern */}
-    <div className="absolute inset-0 opacity-[0.02]">
+  <section className="relative min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 overflow-hidden">
+    {/* Premium geometric pattern - Ecosystem 360 */}
+    <div className="absolute inset-0 opacity-10">
       <div className="absolute inset-0" style={{
-        backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='1'%3E%3Ccircle cx='30' cy='30' r='1'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+        backgroundImage: `url("data:image/svg+xml,%3Csvg width='120' height='120' viewBox='0 0 120 120' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cpattern id='hexagons' width='60' height='60' patternUnits='userSpaceOnUse'%3E%3Cpath d='M30 0l30 17.32v34.64L30 69.28 0 51.96V17.32L30 0z' fill='none' stroke='%23ffffff' stroke-width='0.5'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='120' height='120' fill='url(%23hexagons)'/%3E%3C/svg%3E")`,
       }}></div>
     </div>
 
-    <div className="relative z-10 max-w-7xl mx-auto px-6 py-24 lg:py-32">
+    {/* Subtle gradient overlays */}
+    <div className="absolute inset-0 bg-gradient-to-r from-blue-600/5 via-transparent to-indigo-600/5"></div>
+    <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-slate-900/50 to-transparent"></div>
+
+    <div className="relative z-10 max-w-7xl mx-auto px-6 py-16 lg:py-20">
       <div className="flex items-center justify-between gap-16">
         {/* Content Section */}
         <div className="flex-1 max-w-3xl">
-          {/* Main headline - Clean and professional */}
-          <div className="mb-12">
-            <h1 className="text-5xl md:text-6xl lg:text-7xl font-light text-slate-900 mb-8 leading-[0.95] tracking-tight">
-              <span className="block font-light">
+          {/* Main headline - Premium and modest */}
+          <div className="mb-10">
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-light text-white mb-6 leading-tight tracking-tight">
+              <span className="block font-light opacity-90">
                 Profitum connecte les entreprises aux
               </span>
-              <span className="block font-bold text-blue-600 mt-2">
+              <span className="block font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent mt-2">
                 meilleurs experts
               </span>
-              <span className="block font-light mt-4">
+              <span className="block font-light opacity-90 mt-3">
                 pour transformer contraintes en
               </span>
-              <span className="block font-bold text-blue-600 mt-2">
+              <span className="block font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent mt-2">
                 opportunités financières
               </span>
             </h1>
           </div>
 
-          {/* CTA Section - Clean and focused */}
-          <div className="flex flex-col lg:flex-row gap-8 mb-12">
+          {/* CTA Section - Premium buttons */}
+          <div className="flex flex-col lg:flex-row gap-6 mb-10">
             {/* Client CTA */}
             <div className="flex-1">
-              <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4">Client</h3>
+              <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-3">Client</h3>
               <button 
                 onClick={() => navigate('/simulateur')}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-4 px-8 rounded-lg transition-all duration-200 transform hover:-translate-y-0.5"
+                className="group relative w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium py-4 px-8 rounded-xl shadow-2xl hover:shadow-blue-500/25 transition-all duration-300 transform hover:-translate-y-1 overflow-hidden"
               >
-                Accéder au simulateur
+                <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
+                <span className="relative">Accéder au simulateur</span>
               </button>
-              <p className="text-sm text-slate-500 mt-3 text-center">
+              <p className="text-sm text-slate-400 mt-3 text-center">
                 Calculez vos gains immédiatement
               </p>
             </div>
 
             {/* Expert CTA */}
             <div className="flex-1">
-              <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4">Expert</h3>
+              <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-3">Expert</h3>
               <button 
                 onClick={() => navigate('/welcome-expert')}
-                className="w-full bg-white border border-slate-300 hover:border-slate-400 text-slate-700 font-medium py-4 px-8 rounded-lg transition-all duration-200 transform hover:-translate-y-0.5"
+                className="group relative w-full bg-white/10 backdrop-blur-sm border border-white/20 hover:border-white/30 text-white font-medium py-4 px-8 rounded-xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden"
               >
-                Rejoignez notre écosystème
+                <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/5 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
+                <span className="relative">Rejoignez notre écosystème</span>
               </button>
-              <p className="text-sm text-slate-500 mt-3 text-center">
+              <p className="text-sm text-slate-400 mt-3 text-center">
                 Pour booster votre croissance
               </p>
             </div>
           </div>
 
-          {/* Trust indicators - Minimal */}
-          <div className="flex items-center gap-8 text-sm text-slate-400">
+          {/* Trust indicators - Premium */}
+          <div className="flex items-center gap-8 text-sm text-slate-300">
             <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+              <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></div>
               <span>500+ experts vérifiés</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
+              <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-pulse delay-300"></div>
               <span>+15% d'économies moyennes</span>
             </div>
           </div>
         </div>
 
-        {/* Right Section - Professional metrics */}
+        {/* Right Section - Premium KPI tiles */}
         <div className="hidden lg:flex flex-shrink-0 w-80">
           <div className="w-full space-y-6">
-            {/* Key metrics in clean cards */}
-            <div className="bg-slate-50 rounded-xl p-6 border border-slate-100">
-              <div className="text-3xl font-bold text-slate-900 mb-2">€2.5M</div>
-              <div className="text-sm text-slate-600">Économies générées</div>
+            {/* Premium KPI cards with glassmorphism */}
+            <div className="group bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20 hover:border-white/30 transition-all duration-300 transform hover:-translate-y-1 hover:shadow-2xl hover:shadow-blue-500/10">
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-3xl font-bold text-white">€2.5M</div>
+                <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg flex items-center justify-center opacity-80 group-hover:opacity-100 transition-opacity">
+                  <TrendingUp className="w-4 h-4 text-white" />
+                </div>
+              </div>
+              <div className="text-sm text-slate-300">Économies générées</div>
             </div>
             
-            <div className="bg-slate-50 rounded-xl p-6 border border-slate-100">
-              <div className="text-3xl font-bold text-slate-900 mb-2">98%</div>
-              <div className="text-sm text-slate-600">Taux de satisfaction</div>
+            <div className="group bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20 hover:border-white/30 transition-all duration-300 transform hover:-translate-y-1 hover:shadow-2xl hover:shadow-green-500/10">
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-3xl font-bold text-white">98%</div>
+                <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg flex items-center justify-center opacity-80 group-hover:opacity-100 transition-opacity">
+                  <ShieldCheck className="w-4 h-4 text-white" />
+                </div>
+              </div>
+              <div className="text-sm text-slate-300">Taux de satisfaction</div>
             </div>
             
-            <div className="bg-slate-50 rounded-xl p-6 border border-slate-100">
-              <div className="text-3xl font-bold text-slate-900 mb-2">24h</div>
-              <div className="text-sm text-slate-600">Délai de réponse</div>
+            <div className="group bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20 hover:border-white/30 transition-all duration-300 transform hover:-translate-y-1 hover:shadow-2xl hover:shadow-purple-500/10">
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-3xl font-bold text-white">24h</div>
+                <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center opacity-80 group-hover:opacity-100 transition-opacity">
+                  <Clock className="w-4 h-4 text-white" />
+                </div>
+              </div>
+              <div className="text-sm text-slate-300">Délai de réponse</div>
             </div>
           </div>
         </div>
