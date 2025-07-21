@@ -29,7 +29,7 @@ export interface GoogleCalendarActions {
   updateIntegration: (integrationId: string, data: UpdateIntegrationData) => Promise<void>;
   syncCalendar: (integrationId: string, syncType?: string) => Promise<SyncResult | null>;
   getCalendars: (integrationId: string) => Promise<GoogleCalendar[]>;
-  getFreeBusy: (integrationId: string, calendarIds: string[],  timeMax: Date) => Promise<FreeBusyInfo | null>;
+  getFreeBusy: (integrationId: string, calendarIds: string[], timeMin: Date, timeMax: Date) => Promise<FreeBusyInfo | null>;
   refreshIntegrations: () => Promise<void>;
   generateAuthUrl: (state?: string) => Promise<{ authUrl: string; state: string }>;
 }
@@ -212,7 +212,7 @@ export const useGoogleCalendar = (): GoogleCalendarState & GoogleCalendarActions
   const getFreeBusy = useCallback(async (
     integrationId: string, 
     calendarIds: string[], 
-     
+    timeMin: Date,
     timeMax: Date
   ): Promise<FreeBusyInfo | null> => {
     try {
@@ -307,7 +307,7 @@ export const useGoogleCalendarAvailability = (integrationId: string) => {
 
   const fetchAvailability = useCallback(async (
     calendarIds: string[],
-    
+    timeMin: Date,
     timeMax: Date
   ) => {
     try {
@@ -353,13 +353,12 @@ export const useGoogleCalendarEvents = (integrationId: string) => {
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const fetchEvents = useCallback(async ( timeMax: Date) => {
+  const fetchEvents = useCallback(async (timeMin: Date, timeMax: Date) => {
     if (!integration) return;
-
     try {
       setLoading(true);
       // TODO: Implémenter la récupération d'événements depuis l'API
-      // const data = await googleCalendarClientService.getEvents(integrationId, );
+      // const data = await googleCalendarClientService.getEvents(integrationId, timeMin, timeMax);
       // setEvents(data);
     } catch (error) {
       console.error('❌ Erreur récupération événements:', error);

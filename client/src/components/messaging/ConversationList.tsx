@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useMessaging } from '@/hooks/use-messaging';
 import { useAuth } from '@/hooks/use-auth';
-import { Conversation, Message } from '@/types/messaging';
+import { Conversation } from '@/types/messaging';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

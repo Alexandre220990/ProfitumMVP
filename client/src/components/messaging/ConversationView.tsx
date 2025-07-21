@@ -51,7 +51,6 @@ export const ConversationView: React.FC<ConversationViewProps> = ({
     startTyping,
     stopTyping,
     selectConversation,
-    leaveConversation
   } = useMessaging();
 
   const [newMessage, setNewMessage] = useState('');
