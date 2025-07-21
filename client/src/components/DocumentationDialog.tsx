@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import jsPDF from "jspdf";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -58,37 +59,26 @@ export default function DocumentationDialog({ open, onClose, document }: Documen
     });
   };
 
-  const handleExportPDF = async () => {
+  const handleExportPDF = () => {
     if (!document) return;
-    
     try {
-      // Utiliser html2pdf.js pour l'export PDF
-      const html2pdf = (await import('html2pdf.js')).default;
-      
-      const element = window.document.createElement('div');
-      element.innerHTML = `
-        <div style="font-family: Arial, sans-serif; padding: 20px;">
-          <h1 style="color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px;">
-            ${document.title}
-          </h1>
-          <p style="color: #666; font-style: italic;">${document.description}</p>
-          <hr style="margin: 20px 0;">
-          ${document.content}
-        </div>
-      `;
-      
-      const opt = {
-        margin: 1,
-        filename: `${document.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
-      };
-      
-      html2pdf().set(opt).from(element).save();
+      const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+      doc.setFont('helvetica');
+      doc.setFontSize(20);
+      doc.text(document.title, 40, 60);
+      doc.setFontSize(12);
+      doc.text(document.description, 40, 90);
+      doc.setLineWidth(0.5);
+      doc.line(40, 100, 555, 100);
+      // Convertir le contenu HTML en texte brut (simple)
+      const tempDiv = window.document.createElement('div');
+      tempDiv.innerHTML = document.content;
+      const textContent = tempDiv.innerText || tempDiv.textContent || '';
+      doc.text(textContent, 40, 120, { maxWidth: 515 });
+      doc.save(`${document.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`);
     } catch (error) {
       console.error('Erreur lors de l\'export PDF: ', error);
-      // Fallback : ouvrir dans une nouvelle fenêtre pour impression
+      // Fallback impression navigateur
       const printWindow = window.open('', '_blank');
       if (printWindow) {
         printWindow.document.write(`
