@@ -346,7 +346,7 @@ export const useGoogleCalendarAvailability = (integrationId: string) => {
 };
 
 /**
- * Hook pour gérer les événements synchronisés
+ * Hook pour gérer les événements synchronisés Google Calendar
  */
 export const useGoogleCalendarEvents = (integrationId: string) => {
   const { integration } = useGoogleCalendarIntegration(integrationId);
@@ -355,8 +355,8 @@ export const useGoogleCalendarEvents = (integrationId: string) => {
 
   const fetchEvents = useCallback(async (timeMin: Date, timeMax: Date) => {
     if (!integration) return;
+    setLoading(true);
     try {
-      setLoading(true);
       const data = await googleCalendarClientService.getEvents(integrationId, timeMin, timeMax);
       setEvents(data);
     } catch (error) {

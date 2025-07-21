@@ -1,10 +1,12 @@
 import * as React from "react";
 import { useState, useCallback, useMemo, useEffect } from "react";
-import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, Users, FileText, AlertTriangle, Edit, Trash2, Bell, MapPin, Video, User, Briefcase } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, Users, FileText, AlertTriangle, Edit, Trash2, Bell, MapPin, Video, User } from "lucide-react";
 import { DayPicker } from "react-day-picker";
 import { format, isSameDay } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from '@/components/ui/toast-notifications';
+import { useGoogleCalendar } from '@/hooks/use-google-calendar';
 
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
@@ -107,9 +109,21 @@ const PRIORITY_COLORS = {
 
 const useCalendarEvents = () => {
   const { user } = useAuth();
+  const { addToast } = useToast();
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [dossierSteps, setDossierSteps] = useState<DossierStep[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // ===============================
+  // API UTILS (à brancher sur backend réel)
+  // ===============================
+  const apiBase = '/api/calendar';
+
+  // --- Synchronisation Google Calendar (point d'extension) ---
+  const syncWithGoogleCalendar = async () => {
+    // TODO: Appeler ici le service de synchronisation Google Calendar
+    addToast({ type: 'info', title: 'Synchronisation', message: 'Synchronisation Google Calendar à venir', duration: 3000 });
+  };
 
   // Charger les événements
   const loadEvents = useCallback(async () => {
@@ -117,63 +131,32 @@ const useCalendarEvents = () => {
     
     setLoading(true);
     try {
-      // calendarService.getEvents({ client_id: user.id }) // Supprimé
-      // const mappedEvents: CalendarEvent[] = eventsData.map(event => ({
-      //   id: event.id,
-      //   title: event.title,
-      //   description: event.description,
-      //   startDate: new Date(event.start_date),
-      //   endDate: new Date(event.end_date),
-      //   type: event.type,
-      //   priority: event.priority,
-      //   status: event.status,
-      //   category: event.category,
-      //   dossierId: event.dossier_id,
-      //   dossierName: event.dossier_name,
-      //   location: event.location,
-      //   isOnline: event.is_online,
-      //   meetingUrl: event.meeting_url,
-      //   phoneNumber: event.phone_number,
-      //   color: event.color,
-      //   isRecurring: event.is_recurring,
-      //   recurrenceRule: event.recurrence_rule,
-      //   participants: [], // À implémenter si nécessaire
-      //   reminders: [], // À implémenter si nécessaire
-      //   metadata: event.metadata || {}
-      // }));
-      // setEvents(mappedEvents);
+      const res = await fetch(`${apiBase}/events?client_id=${user.id}`);
+      if (!res.ok) throw new Error('Erreur API chargement événements');
+      const eventsData: CalendarEvent[] = await res.json();
+      setEvents(eventsData);
     } catch (error) {
+      addToast({ type: 'error', title: 'Erreur', message: 'Erreur lors du chargement des événements', duration: 4000 });
       console.error('Erreur chargement événements:', error);
     } finally {
       setLoading(false);
     }
-  }, [user?.id]);
+  }, [user?.id, addToast]);
 
   // Charger les étapes de dossier
   const loadDossierSteps = useCallback(async () => {
     if (!user?.id) return;
     
     try {
-      // calendarService.getDossierSteps() // Supprimé
-      // const mappedSteps: DossierStep[] = stepsData.map(step => ({
-      //   id: step.id,
-      //   dossierId: step.dossier_id,
-      //   dossierName: step.dossier_name,
-      //   stepName: step.step_name,
-      //   stepType: step.step_type,
-      //   dueDate: new Date(step.due_date),
-      //   status: step.status,
-      //   priority: step.priority,
-      //   assignee: step.assignee,
-      //   estimatedDuration: step.estimated_duration ?? 60, // Valeur par défaut de 60 minutes
-      //   progress: step.progress,
-      //   dependencies: []
-      // }));
-      // setDossierSteps(mappedSteps);
+      const res = await fetch(`${apiBase}/steps?dossier_id=${user.id}`);
+      if (!res.ok) throw new Error('Erreur API chargement étapes');
+      const stepsData: DossierStep[] = await res.json();
+      setDossierSteps(stepsData);
     } catch (error) {
+      addToast({ type: 'error', title: 'Erreur', message: 'Erreur lors du chargement des étapes', duration: 4000 });
       console.error('Erreur chargement étapes:', error);
     }
-  }, [user?.id]);
+  }, [user?.id, addToast]);
 
   // Charger les données au montage
   useEffect(() => {
@@ -181,115 +164,150 @@ const useCalendarEvents = () => {
     loadDossierSteps();
   }, [loadEvents, loadDossierSteps]);
 
-  const addEvent = useCallback(async (event: Omit<CalendarEvent, 'id'>) => {
+  // ===============================
+  // FONCTIONS OPÉRATIONNELLES
+  // ===============================
+
+  // Ajout d'un événement au calendrier
+  const addEvent = useCallback(async (eventData: Omit<CalendarEvent, 'id'>) => {
     if (!user?.id) return null;
-    
+    setLoading(true);
     try {
-      // calendarService.createEvent(eventData) // Supprimé
-      // if (eventId) {
-      //   const newEvent: CalendarEvent = {
-      //     ...event,
-      //     id: eventId
-      //   };
-      //   setEvents(prev => [...prev, newEvent]);
-
-      //   // Programmer les rappels automatiques
-      //   const serviceEvent = {
-      //     id: newEvent.id,
-      //     title: newEvent.title,
-      //     description: newEvent.description,
-      //     start_date: newEvent.startDate.toISOString(),
-      //     end_date: newEvent.endDate.toISOString(),
-      //     type: newEvent.type,
-      //     priority: newEvent.priority,
-      //     status: newEvent.status,
-      //     category: newEvent.category,
-      //     dossier_id: newEvent.dossierId,
-      //     dossier_name: newEvent.dossierName,
-      //     client_id: user.id,
-      //     expert_id: newEvent.metadata?.expertId,
-      //     location: newEvent.location,
-      //     is_online: newEvent.isOnline,
-      //     meeting_url: newEvent.meetingUrl,
-      //     phone_number: newEvent.phoneNumber,
-      //     color: newEvent.color,
-      //     is_recurring: newEvent.isRecurring,
-      //     recurrence_rule: newEvent.recurrenceRule,
-      //     metadata: newEvent.metadata,
-      //     created_at: new Date().toISOString(),
-      //     updated_at: new Date().toISOString()
-      //   };
-      //   await calendarService.scheduleEventReminders(serviceEvent, user.id, user.type);
-
-      //   // Notifier l'expert si un expert est assigné
-      //   if (event.metadata?.expertId) {
-      //     await calendarService.notifyEventParticipants(
-      //       eventId,
-      //       event.title,
-      //       [event.metadata.expertId],
-      //       'invitation'
-      //     );
-      //   }
-
-      //   // Créer une notification de confirmation
-      //   await calendarService.createEventNotification(
-      //     user.id,
-      //     user.type,
-      //     eventId,
-      //     event.title,
-      //     'confirmation'
-      //   );
-
-      //   return newEvent;
-      // }
+      const res = await fetch(`${apiBase}/events`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(eventData)
+      });
+      if (!res.ok) throw new Error('Erreur API création événement');
+      const newEvent = await res.json();
+      setEvents(prev => [...prev, newEvent]);
+      addToast({ type: 'success', title: 'Événement créé', message: newEvent.title, duration: 3000 });
+      // Simuler la programmation d'un rappel (à remplacer par un vrai service)
+      setTimeout(() => {
+        addToast({ type: 'info', title: 'Rappel', message: `Rappel pour ${newEvent.title}`, duration: 3000 });
+      }, 10000); // 10s après création
+      // Point d'appel pour la synchronisation
+      await syncWithGoogleCalendar();
+      return newEvent;
     } catch (error) {
+      addToast({ type: 'error', title: 'Erreur', message: 'Erreur lors de la création de l\'événement', duration: 4000 });
       console.error('Erreur création événement:', error);
+      return null;
+    } finally {
+      setLoading(false);
     }
-    return null;
-  }, [user?.id, user?.type]);
+  }, [user?.id, addToast]);
 
+  // Mise à jour d'un événement existant
   const updateEvent = useCallback(async (id: string, updates: Partial<CalendarEvent>) => {
+    setLoading(true);
     try {
-      // calendarService.updateEvent(id, updateData) // Supprimé
-      // if (success) {
-      //   setEvents(prev => prev.map(event => 
-      //     event.id === id ? { ...event, ...updates } : event
-      //   ));
-      // }
+      const res = await fetch(`${apiBase}/events/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+      if (!res.ok) throw new Error('Erreur API mise à jour événement');
+      const updatedEvent = await res.json();
+      setEvents(prev => prev.map(event => event.id === id ? updatedEvent : event));
+      addToast({ type: 'success', title: 'Événement mis à jour', message: updatedEvent.title, duration: 3000 });
+      await syncWithGoogleCalendar();
+      return updatedEvent;
     } catch (error) {
+      addToast({ type: 'error', title: 'Erreur', message: 'Erreur lors de la mise à jour', duration: 4000 });
       console.error('Erreur mise à jour événement:', error);
+      return null;
+    } finally {
+      setLoading(false);
     }
-  }, []);
+  }, [addToast]);
 
+  // Suppression d'un événement
   const deleteEvent = useCallback(async (id: string) => {
+    setLoading(true);
     try {
-      // calendarService.deleteEvent(id) // Supprimé
-      // if (success) {
-      //   setEvents(prev => prev.filter(event => event.id !== id));
-      // }
+      const res = await fetch(`${apiBase}/events/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Erreur API suppression événement');
+      setEvents(prev => prev.filter(event => event.id !== id));
+      addToast({ type: 'success', title: 'Événement supprimé', message: `ID: ${id}`, duration: 3000 });
+      await syncWithGoogleCalendar();
     } catch (error) {
+      addToast({ type: 'error', title: 'Erreur', message: 'Erreur lors de la suppression', duration: 4000 });
       console.error('Erreur suppression événement:', error);
+    } finally {
+      setLoading(false);
     }
-  }, []);
+  }, [addToast]);
 
-  const addDossierStep = useCallback((step: Omit<DossierStep, 'id'>) => {
-    const newStep: DossierStep = {
-      ...step,
-      id: Date.now().toString()
-    };
-    setDossierSteps(prev => [...prev, newStep]);
-    return newStep;
-  }, []);
+  // Ajout d'une étape de dossier
+  const addDossierStep = useCallback(async (stepData: Omit<DossierStep, 'id'>) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${apiBase}/steps`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(stepData)
+      });
+      if (!res.ok) throw new Error('Erreur API création étape');
+      const newStep = await res.json();
+      setDossierSteps(prev => [...prev, newStep]);
+      addToast({ type: 'success', title: 'Étape ajoutée', message: newStep.stepName, duration: 3000 });
+      // Simuler la programmation d'un rappel
+      setTimeout(() => {
+        addToast({ type: 'info', title: 'Rappel', message: `Rappel pour l'étape ${newStep.stepName}`, duration: 3000 });
+      }, 10000);
+      return newStep;
+    } catch (error) {
+      addToast({ type: 'error', title: 'Erreur', message: 'Erreur lors de l\'ajout d\'étape', duration: 4000 });
+      console.error('Erreur ajout étape:', error);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, [addToast]);
 
-  const updateDossierStep = useCallback((id: string, updates: Partial<DossierStep>) => {
-    setDossierSteps(prev => prev.map(step => 
-      step.id === id ? { ...step, ...updates } : step
-    ));
-  }, []);
+  // Mise à jour d'une étape de dossier
+  const updateDossierStep = useCallback(async (id: string, updates: Partial<DossierStep>) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${apiBase}/steps/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+      if (!res.ok) throw new Error('Erreur API mise à jour étape');
+      const updatedStep = await res.json();
+      setDossierSteps(prev => prev.map(step => step.id === id ? updatedStep : step));
+      addToast({ type: 'success', title: 'Étape mise à jour', message: updatedStep.stepName, duration: 3000 });
+      return updatedStep;
+    } catch (error) {
+      addToast({ type: 'error', title: 'Erreur', message: 'Erreur lors de la mise à jour d\'étape', duration: 4000 });
+      console.error('Erreur mise à jour étape:', error);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, [addToast]);
 
-  const deleteDossierStep = useCallback((id: string) => {
-    setDossierSteps(prev => prev.filter(step => step.id !== id));
-  }, []);
+  // Suppression d'une étape de dossier
+  const deleteDossierStep = useCallback(async (id: string) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${apiBase}/steps/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Erreur API suppression étape');
+      setDossierSteps(prev => prev.filter(step => step.id !== id));
+      addToast({ type: 'success', title: 'Étape supprimée', message: `ID: ${id}`, duration: 3000 });
+    } catch (error) {
+      addToast({ type: 'error', title: 'Erreur', message: 'Erreur lors de la suppression d\'étape', duration: 4000 });
+      console.error('Erreur suppression étape:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [addToast]);
+
+  // ===============================
+  // FIN FONCTIONS OPÉRATIONNELLES
+  // ===============================
 
   return {
     events,
@@ -302,7 +320,8 @@ const useCalendarEvents = () => {
     updateDossierStep,
     deleteDossierStep,
     loadEvents,
-    loadDossierSteps
+    loadDossierSteps,
+    syncWithGoogleCalendar, // exposé pour usage manuel
   };
 };
 
@@ -620,9 +639,18 @@ interface AdvancedCalendarProps {
 }
 
 const AdvancedCalendar: React.FC<AdvancedCalendarProps> = ({ className }) => {
+  const { addToast } = useToast();
+  const {
+    primaryIntegration,
+    syncing,
+    syncCalendar,
+    refreshIntegrations
+  } = useGoogleCalendar();
+
   const {
     events,
     dossierSteps,
+    loading,
     addEvent,
     updateEvent,
     deleteEvent,
@@ -702,6 +730,20 @@ const AdvancedCalendar: React.FC<AdvancedCalendarProps> = ({ className }) => {
     setShowStepDialog(true);
   }, []);
 
+  // Fonction de synchronisation Google Calendar réellement opérationnelle
+  const handleSyncGoogleCalendar = async () => {
+    if (!primaryIntegration) {
+      addToast({ type: 'error', title: 'Erreur', message: 'Aucune intégration Google Calendar trouvée', duration: 4000 });
+      return;
+    }
+    try {
+      await syncCalendar(primaryIntegration.id, 'full');
+      await refreshIntegrations();
+    } catch (error) {
+      addToast({ type: 'error', title: 'Erreur', message: 'Erreur lors de la synchronisation Google Calendar', duration: 4000 });
+    }
+  };
+
   return (
     <div className={cn("min-h-screen bg-gray-50", className)}>
       {/* BARRE DE NAVIGATION CALENDRIER - Design aéré et moderne */}
@@ -745,10 +787,15 @@ const AdvancedCalendar: React.FC<AdvancedCalendarProps> = ({ className }) => {
 
           {/* Contrôles droite - Mieux organisés */}
           <div className="flex items-center gap-4">
+            {/* Bouton de synchronisation Google Calendar */}
+            <Button onClick={handleSyncGoogleCalendar} variant="outline" disabled={syncing || !primaryIntegration}>
+              <CalendarIcon className="w-4 h-4 mr-2" />
+              {syncing ? 'Synchronisation...' : 'Synchroniser Google Calendar'}
+            </Button>
             {/* Sélecteur de vue */}
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-gray-600">Vue :</span>
-              <Select value={view.type} onValueChange={(value: string) => setView(prev => ({ ...prev, type: value as any }))}>
+              <Select value={view.type} onValueChange={(v) => setView(prev => ({ ...prev, type: v as any }))}>
                 <SelectTrigger className="w-28 bg-white border-gray-200 hover:border-gray-300 transition-colors">
                   <SelectValue />
                 </SelectTrigger>
@@ -760,7 +807,6 @@ const AdvancedCalendar: React.FC<AdvancedCalendarProps> = ({ className }) => {
                 </SelectContent>
               </Select>
             </div>
-
             {/* Filtre des événements */}
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-gray-600">Filtre :</span>
@@ -1063,8 +1109,6 @@ const EventForm: React.FC<EventFormProps> = ({ event, onSubmit, onCancel }) => {
     color: event?.color || '#3B82F6'
   });
 
-  const [experts, setExperts] = useState<any[]>([]); // Supprimé
-  const [dossiers, setDossiers] = useState<any[]>([]); // Supprimé
   const [loading, setLoading] = useState(false);
 
   // Charger les experts et dossiers au montage
@@ -1212,13 +1256,13 @@ const EventForm: React.FC<EventFormProps> = ({ event, onSubmit, onCancel }) => {
           <Label htmlFor="expert">Expert (optionnel)</Label>
           <Select 
             value={formData.expertId} 
-            onValueChange={(value: string) => {
-              // const expert = experts.find(e => e.id === value); // Supprimé
-              // setFormData(prev => ({ 
-              //   ...prev, 
-              //   expertId: value,
-              //   expertName: expert ? expert.name : ''
-              // }));
+            onValueChange={(v: string) => {
+              // TODO: Associer l'expert sélectionné à l'événement
+              setFormData(prev => ({ 
+                ...prev, 
+                expertId: v,
+                expertName: '' // Placeholder, actual expert name will be fetched
+              }));
             }}
             disabled={loading}
           >
@@ -1243,13 +1287,13 @@ const EventForm: React.FC<EventFormProps> = ({ event, onSubmit, onCancel }) => {
           <Label htmlFor="dossier">Dossier (optionnel)</Label>
           <Select 
             value={formData.dossierId} 
-            onValueChange={(value: string) => {
-              // const dossier = dossiers.find(d => d.id === value); // Supprimé
-              // setFormData(prev => ({ 
-              //   ...prev, 
-              //   dossierId: value,
-              //   dossierName: dossier ? dossier.product_type : ''
-              // }));
+            onValueChange={(v: string) => {
+              // TODO: Associer le dossier sélectionné à l'événement
+              setFormData(prev => ({ 
+                ...prev, 
+                dossierId: v,
+                dossierName: '' // Placeholder, actual dossier name will be fetched
+              }));
             }}
             disabled={loading}
           >
