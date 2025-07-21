@@ -40,6 +40,19 @@ type CalendarItem =
   | { itemType: 'event'; data: any }
   | { itemType: 'step'; data: any };
 
+// Fonction utilitaire pour sécuriser l'accès aux mappings
+type PriorityColor = (typeof PRIORITY_COLORS)[keyof typeof PRIORITY_COLORS] | 'bg-gray-100 text-gray-800';
+type StepTypeColor = (typeof STEP_TYPE_COLORS)[keyof typeof STEP_TYPE_COLORS] | 'bg-gray-100 text-gray-800';
+function getSafeIcon(obj: typeof EVENT_TYPE_ICONS, key: string): React.ElementType {
+  return (key in obj ? obj[key as keyof typeof obj] : Calendar);
+}
+function getSafePriorityColor(key: string): PriorityColor {
+  return (key in PRIORITY_COLORS ? PRIORITY_COLORS[key as keyof typeof PRIORITY_COLORS] : 'bg-gray-100 text-gray-800');
+}
+function getSafeStepTypeColor(key: string): StepTypeColor {
+  return (key in STEP_TYPE_COLORS ? STEP_TYPE_COLORS[key as keyof typeof STEP_TYPE_COLORS] : 'bg-gray-100 text-gray-800');
+}
+
 export const UpcomingEvents: React.FC<UpcomingEventsProps> = ({
   events,
   dossierSteps,
@@ -132,7 +145,7 @@ export const UpcomingEvents: React.FC<UpcomingEventsProps> = ({
                     {items.map((item) => {
                       if (item.itemType === 'event') {
                         const event = item.data;
-                        const IconComponent = EVENT_TYPE_ICONS[event.type];
+                        const IconComponent = getSafeIcon(EVENT_TYPE_ICONS, event.type);
                         const isOverdueEvent = isOverdue(event.start.dateTime);
 
                         return (
@@ -151,7 +164,7 @@ export const UpcomingEvents: React.FC<UpcomingEventsProps> = ({
                                 </h4>
                               </div>
                               <div className="flex items-center gap-1">
-                                <Badge className={PRIORITY_COLORS[event.priority]} variant="outline">
+                                <Badge className={getSafePriorityColor(event.priority)} variant="outline">
                                   {event.priority}
                                 </Badge>
                                 {event.hangoutLink && (
@@ -204,10 +217,10 @@ export const UpcomingEvents: React.FC<UpcomingEventsProps> = ({
                                 </h4>
                               </div>
                               <div className="flex items-center gap-1">
-                                <Badge className={STEP_TYPE_COLORS[step.step_type]} variant="outline">
+                                <Badge className={getSafeStepTypeColor(step.step_type)} variant="outline">
                                   {step.step_type}
                                 </Badge>
-                                <Badge className={PRIORITY_COLORS[step.priority]} variant="outline">
+                                <Badge className={getSafePriorityColor(step.priority)} variant="outline">
                                   {step.priority}
                                 </Badge>
                               </div>

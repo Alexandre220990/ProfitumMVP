@@ -9,16 +9,12 @@ import { X } from 'lucide-react';
 interface DossierActionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  dossierId: string;
-  stepId: number;
   action: string;
 }
 
 const DossierActionModal: React.FC<DossierActionModalProps> = ({
   isOpen,
   onClose,
-  dossierId,
-  stepId,
   action,
 }) => {
   const [loading, setLoading] = useState(false);

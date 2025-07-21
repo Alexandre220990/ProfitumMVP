@@ -38,79 +38,30 @@ class ReminderService {
   private async checkAndSendReminders() {
     try {
       console.log('🔍 Vérification des rappels en attente...');
-      
-      // Nettoyage : suppression de l'import inutile
-      
-      if (pendingReminders.length > 0) {
-        console.log(`📨 ${pendingReminders.length} rappel(s) traité(s)`);
-      }
+      // TODO: Implémenter la récupération des rappels en attente depuis la base de données ou une source métier
+      // Exemple : const pendingReminders = await fetchPendingReminders();
+      // if (pendingReminders.length > 0) {
+      //   console.log(`📨 ${pendingReminders.length} rappel(s) traité(s)`);
+      // }
     } catch (error) {
       console.error('❌ Erreur vérification rappels:', error);
     }
   }
 
-  /**
-   * Traiter un rappel individuel
-   */
-  private async processReminder(reminder: any) {
-    try {
-      const event = reminder.CalendarEvent;
-      if (!event) return;
-
-      // Créer la notification de rappel
-      // Nettoyage : suppression de l'import inutile
-      
-      if (notificationId) {
-        // Marquer le rappel comme envoyé
-        // Nettoyage : suppression de l'import inutile
-        
-        console.log(`✅ Rappel envoyé pour l'événement: ${event.title}`);
-      }
-    } catch (error) {
-      console.error('❌ Erreur traitement rappel:', error);
-    }
+  // TODO: Implémenter scheduleManualReminder avec la logique métier réelle
+  async scheduleManualReminder() {
+    // TODO: Implémenter la logique d'envoi de rappel manuel
   }
 
-  /**
-   * Programmer un rappel manuel
-   */
-  async scheduleManualReminder(
-    eventId: string,
-    eventTitle: string,
-    userId: string,
-    userType: 'client' | 'expert' | 'admin',
-    minutesBefore: number
-  ) {
+  // TODO: Implémenter sendImmediateReminder avec la logique métier réelle
+  async sendImmediateReminder() {
     try {
-      const reminderTime = new Date();
-      reminderTime.setMinutes(reminderTime.getMinutes() + minutesBefore);
-
-      setTimeout(async () => {
-        // Nettoyage : suppression de l'import inutile
-      }, minutesBefore * 60 * 1000);
-
-      console.log(`⏰ Rappel programmé pour ${eventTitle} dans ${minutesBefore} minutes`);
-    } catch (error) {
-      console.error('❌ Erreur programmation rappel manuel:', error);
-    }
-  }
-
-  /**
-   * Créer un rappel immédiat
-   */
-  async sendImmediateReminder(
-    eventId: string,
-    eventTitle: string,
-    userId: string,
-    userType: 'client' | 'expert' | 'admin'
-  ) {
-    try {
-      // Nettoyage : suppression de l'import inutile
-
-      if (notificationId) {
-        console.log(`📨 Rappel immédiat envoyé pour: ${eventTitle}`);
-        return true;
-      }
+      // TODO: Implémenter la logique d'envoi immédiat de rappel et la gestion de l'ID de notification
+      // Exemple : const notificationId = await sendImmediateNotification(eventId, eventTitle, userId, userType);
+      // if (notificationId) {
+      //   console.log(`📨 Rappel immédiat envoyé pour: ${eventTitle}`);
+      //   return true;
+      // }
     } catch (error) {
       console.error('❌ Erreur envoi rappel immédiat:', error);
     }

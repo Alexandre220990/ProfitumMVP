@@ -5,7 +5,14 @@ import { useAuth } from '@/hooks/use-auth';
 import { mapDossierToWorkflow } from '@/lib/workflow-mapper';
 import ExpertDossierWorkflow from '@/components/expert/ExpertDossierWorkflow';
 import DossierActionModal from '@/components/expert/DossierActionModal';
-import { useExpertDossierActions } from '@/hooks/use-expert-dossier-actions';
+// TODO: Implémenter le hook useExpertDossierActions avec la logique métier réelle
+
+function useExpertDossierActions() {
+  return {
+    handleStepAction: async () => { throw new Error('handleStepAction non implémenté'); },
+    handleDocumentAction: async () => { throw new Error('handleDocumentAction non implémenté'); }
+  };
+}
 import { Loader2, ArrowLeft, RefreshCw } from 'lucide-react';
 import { Card } from '@/components/ui/design-system/Card';
 import Button from '@/components/ui/design-system/Button';
@@ -172,7 +179,8 @@ const ExpertDossierPage = () => {
 
     // Actions directes
     try {
-      const success = await handleStepAction(id!, stepId, action);
+      // TODO: Réimplémenter handleStepAction avec les bons arguments
+      const success = await handleStepAction();
       if (success) {
         // Recharger les données après une action réussie
         await fetchDossier();
@@ -182,9 +190,10 @@ const ExpertDossierPage = () => {
     }
   };
 
-  const handleDocumentActionCallback = async (documentName: string, action: string, file?: File, metadata?: any) => {
+  const handleDocumentActionCallback = async () => {
     try {
-      const success = await handleDocumentAction(id!, documentName, action, file, metadata);
+      // TODO: Réimplémenter handleDocumentAction avec les bons arguments
+      const success = await handleDocumentAction();
       if (success) {
         // Recharger les données après une action réussie
         await fetchDossier();
@@ -341,8 +350,6 @@ const ExpertDossierPage = () => {
       <DossierActionModal
         isOpen={modalState.isOpen}
         onClose={closeModal}
-        dossierId={id!}
-        stepId={modalState.stepId}
         action={modalState.action}
       />
     </div>
