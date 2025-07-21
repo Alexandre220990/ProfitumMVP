@@ -1091,11 +1091,11 @@ const EventForm: React.FC<EventFormProps> = ({ event, onSubmit, onCancel }) => {
   const [formData, setFormData] = useState({
     title: event?.title || '',
     description: event?.description || '',
-    startDate: event?.startDate || new Date(),
-    endDate: event?.endDate || getDefaultEndDate(new Date()),
-    type: event?.type || 'appointment' as CalendarEvent['type'],
-    priority: event?.priority || 'medium' as CalendarEvent['priority'],
-    category: event?.category || 'client' as CalendarEvent['category'],
+    startDate: event?.startDate ? new Date(event.startDate) : new Date(),
+    endDate: event?.endDate ? new Date(event.endDate) : new Date(),
+    type: event?.type || 'appointment',
+    priority: event?.priority || 'medium',
+    category: event?.category || 'client',
     dossierId: event?.dossierId || '',
     dossierName: event?.dossierName || '',
     expertId: event?.metadata?.expertId || '',
@@ -1108,24 +1108,11 @@ const EventForm: React.FC<EventFormProps> = ({ event, onSubmit, onCancel }) => {
     color: event?.color || '#3B82F6'
   });
 
-  const [loading, setLoading] = useState(false);
-
   // Charger les experts et dossiers au montage
   useEffect(() => {
     const loadData = async () => {
       if (!user?.id) return;
-      
-      setLoading(true);
-      try {
-        // calendarService.getValidatedExperts() // Supprimé
-        // calendarService.getClientDossiers(user.id) // Supprimé
-        // setExperts(expertsData);
-        // setDossiers(dossiersData);
-      } catch (error) {
-        console.error('Erreur chargement données:', error);
-      } finally {
-        setLoading(false);
-      }
+      // (chargement désactivé, tout est commenté)
     };
     loadData();
   }, [user?.id]);
@@ -1263,10 +1250,9 @@ const EventForm: React.FC<EventFormProps> = ({ event, onSubmit, onCancel }) => {
                 expertName: '' // Placeholder, actual expert name will be fetched
               }));
             }}
-            disabled={loading}
           >
             <SelectTrigger>
-              <SelectValue placeholder={loading ? "Chargement..." : "Sélectionner un expert"} />
+              <SelectValue placeholder={"Sélectionner un expert"} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="none">Aucun expert</SelectItem>
@@ -1294,10 +1280,9 @@ const EventForm: React.FC<EventFormProps> = ({ event, onSubmit, onCancel }) => {
                 dossierName: '' // Placeholder, actual dossier name will be fetched
               }));
             }}
-            disabled={loading}
           >
             <SelectTrigger>
-              <SelectValue placeholder={loading ? "Chargement..." : "Sélectionner un dossier"} />
+              <SelectValue placeholder={"Sélectionner un dossier"} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="none">Aucun dossier</SelectItem>

@@ -51,7 +51,6 @@
     "date-fns": "^4.1.0",
     "embla-carousel-react": "^8.6.0",
     "framer-motion": "^12.23.6",
-    "html2pdf.js": "^0.10.3",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.323.0",
     "node-fetch": "^3.3.2",
