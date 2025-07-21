@@ -402,6 +402,39 @@ class GoogleCalendarClientService {
     }
   }
 
+  /**
+   * Récupérer les événements Google Calendar pour une intégration et une plage de dates
+   */
+  async getEvents(
+    integrationId: string,
+    timeMin: Date,
+    timeMax: Date
+  ): Promise<GoogleEvent[]> {
+    try {
+      const token = await this.getAuthToken();
+      const params = new URLSearchParams({
+        integration_id: integrationId,
+        time_min: timeMin.toISOString(),
+        time_max: timeMax.toISOString()
+      });
+      const response = await fetch(`${API_BASE_URL}/google-calendar/events?${params}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const result = await response.json();
+      return result.data || [];
+    } catch (error) {
+      console.error('❌ Erreur récupération événements Google Calendar:', error);
+      return [];
+    }
+  }
+
   // ===== UTILITAIRES =====
 
   /**

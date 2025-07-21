@@ -357,15 +357,16 @@ export const useGoogleCalendarEvents = (integrationId: string) => {
     if (!integration) return;
     try {
       setLoading(true);
-      // TODO: Implémenter la récupération d'événements depuis l'API
-      // const data = await googleCalendarClientService.getEvents(integrationId, timeMin, timeMax);
-      // setEvents(data);
+      // Appel réel à l'API Google Calendar
+      const data = await googleCalendarClientService.getEvents(integrationId, timeMin, timeMax);
+      setEvents(data);
     } catch (error) {
       console.error('❌ Erreur récupération événements:', error);
+      setEvents([]);
     } finally {
       setLoading(false);
     }
-  }, [integration]);
+  }, [integration, integrationId]);
 
   return {
     events,
