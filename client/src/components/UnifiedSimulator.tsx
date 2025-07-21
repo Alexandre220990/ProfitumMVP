@@ -9,6 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Calculator, FileSpreadsheet, FileType, Save, RefreshCw, TrendingUp, Euro, Clock, AlertCircle, CheckCircle, ArrowRight, FileText } from "lucide-react";
+import { checkRecentSimulation } from "@/api/simulations";
 
 // Types
 interface Question { 
@@ -56,16 +57,6 @@ interface ApiResponse<T> {
   message?: string 
 }
 
-interface CheckRecentResponse {
-  hasRecentSimulation: boolean;
-  data: {
-    simulation?: {
-      id: string;
-      Answers?: Record<number, string[]>;
-    };
-  };
-}
-
 interface AnalyseResponse {
   products: ClientProduitEligible[];
 }
@@ -95,20 +86,18 @@ export const UnifiedSimulator: React.FC = () => {
     const initSimulation = async () => {
       try {
         // Vérifier s'il y a une simulation récente
-        const response = await get<ApiResponse<CheckRecentResponse>>(
-          `/api/simulations/check-recent/${user.id}`
-        );
-        
-        const checkRecentData = extractData(response) as CheckRecentResponse | null;
-        if (
-          checkRecentData &&
-          checkRecentData.hasRecentSimulation &&
-          checkRecentData.data &&
-          checkRecentData.data.simulation
-        ) {
-          setSimulationId(checkRecentData.data.simulation.id);
-          if (checkRecentData.data.simulation.Answers) {
-            setAnswers(checkRecentData.data.simulation.Answers);
+        const result = await checkRecentSimulation(user.id);
+        if (result.exists && result.simulationId) {
+          setSimulationId(String(result.simulationId));
+          // Charger les réponses si besoin
+          if (result.answers && result.answers.length > 0) {
+            // Conversion de StoredAnswer[] en Record<number, string[]>
+            const answersRecord: Record<number, string[]> = {};
+            result.answers.forEach(ans => {
+              if (!answersRecord[ans.questionId]) answersRecord[ans.questionId] = [];
+              answersRecord[ans.questionId].push(ans.answer);
+            });
+            setAnswers(answersRecord);
           }
         } else {
           // Créer une nouvelle simulation
@@ -116,7 +105,6 @@ export const UnifiedSimulator: React.FC = () => {
             clientId: user.id,
             statut: "en_cours"
           });
-
           const newSimData = extractData(newSimResponse) as Simulation | null;
           if (newSimData && newSimData.id) {
             setSimulationId(newSimData.id);
