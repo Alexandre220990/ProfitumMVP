@@ -64,8 +64,8 @@ import clientDocumentsRoutes from './routes/client-documents';
 import analyticsRoutes from './routes/analytics';
 import googleCalendarRoutes from './routes/google-calendar';
 
-import app from './app';
-
+// Créer l'application Express
+const app = express();
 
 dotenv.config();
 
