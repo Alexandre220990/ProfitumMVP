@@ -107,6 +107,12 @@ router.get('/produits-eligibles', authenticateUser, async (req: Request, res: Re
       return res.status(403).json({ success: false, message: 'Accès non autorisé' });
     }
 
+    // Pagination
+    const page = parseInt(req.query.page as string) || 1;
+    const pageSize = parseInt(req.query.pageSize as string) || 20;
+    const offset = (page - 1) * pageSize;
+    const limit = offset + pageSize - 1;
+
     // Récupérer d'abord le client par email pour obtenir l'ID de la table Client
     const { data: client, error: clientError } = await supabase
       .from('Client')
@@ -119,8 +125,8 @@ router.get('/produits-eligibles', authenticateUser, async (req: Request, res: Re
       return res.status(500).json({ success: false, message: 'Client non trouvé' });
     }
 
-    // Récupérer les produits éligibles du client avec les détails des produits
-    const { data: produitsData, error: produitsError } = await supabase
+    // Récupérer les produits éligibles du client avec les détails des produits (pagination)
+    const { data: produitsData, error: produitsError, count } = await supabase
       .from('ClientProduitEligible')
       .select(`
         id,
@@ -138,9 +144,10 @@ router.get('/produits-eligibles', authenticateUser, async (req: Request, res: Re
           description,
           category
         )
-      `)
-      .eq('clientId', client.id) // Utiliser l'ID de la table Client
-      .order('created_at', { ascending: false });
+      `, { count: 'exact' })
+      .eq('clientId', client.id)
+      .order('created_at', { ascending: false })
+      .range(offset, limit);
 
     if (produitsError) {
       throw produitsError;
@@ -148,7 +155,13 @@ router.get('/produits-eligibles', authenticateUser, async (req: Request, res: Re
 
     res.json({
       success: true,
-      data: produitsData
+      data: produitsData,
+      pagination: {
+        page,
+        pageSize,
+        total: count || 0,
+        totalPages: count ? Math.ceil(count / pageSize) : 1
+      }
     });
 
   } catch (error) {
@@ -474,8 +487,14 @@ router.get('/:clientId/assignments', authenticateUser, async (req: Request, res:
       return res.status(403).json({ success: false, message: 'Accès non autorisé' });
     }
 
-    // Récupérer les assignations du client
-    const { data: assignments, error } = await supabase
+    // Pagination
+    const page = parseInt(req.query.page as string) || 1;
+    const pageSize = parseInt(req.query.pageSize as string) || 20;
+    const offset = (page - 1) * pageSize;
+    const limit = offset + pageSize - 1;
+
+    // Récupérer les assignations du client (pagination)
+    const { data: assignments, error, count } = await supabase
       .from('ExpertAssignment')
       .select(`
         *,
@@ -491,9 +510,10 @@ router.get('/:clientId/assignments', authenticateUser, async (req: Request, res:
           nom,
           description
         )
-      `)
+      `, { count: 'exact' })
       .eq('client_id', clientId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .range(offset, limit);
 
     if (error) {
       console.error('Erreur lors de la récupération des assignations:', error);
@@ -504,6 +524,12 @@ router.get('/:clientId/assignments', authenticateUser, async (req: Request, res:
       success: true,
       data: {
         assignments: assignments || []
+      },
+      pagination: {
+        page,
+        pageSize,
+        total: count || 0,
+        totalPages: count ? Math.ceil(count / pageSize) : 1
       }
     });
   } catch (error) {

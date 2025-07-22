@@ -98,8 +98,14 @@ router.get('/assignments', authenticateUser, async (req: Request, res: Response)
       return res.status(403).json({ success: false, message: 'Accès non autorisé' });
     }
 
-    // Récupérer les assignations de l'expert
-    const { data: assignments, error } = await supabase
+    // Pagination
+    const page = parseInt(req.query.page as string) || 1;
+    const pageSize = parseInt(req.query.pageSize as string) || 20;
+    const offset = (page - 1) * pageSize;
+    const limit = offset + pageSize - 1;
+
+    // Récupérer les assignations de l'expert (pagination)
+    const { data: assignments, error, count } = await supabase
       .from('expertassignment')
       .select(`
         *,
@@ -115,9 +121,10 @@ router.get('/assignments', authenticateUser, async (req: Request, res: Response)
           nom,
           description
         )
-      `)
+      `, { count: 'exact' })
       .eq('expert_id', authUser.id)
-      .order('assignment_date', { ascending: false });
+      .order('assignment_date', { ascending: false })
+      .range(offset, limit);
 
     if (error) {
       console.error('Erreur lors de la récupération des assignations:', error);
@@ -126,7 +133,13 @@ router.get('/assignments', authenticateUser, async (req: Request, res: Response)
 
     res.json({
       success: true,
-      data: assignments
+      data: assignments,
+      pagination: {
+        page,
+        pageSize,
+        total: count || 0,
+        totalPages: count ? Math.ceil(count / pageSize) : 1
+      }
     });
   } catch (error) {
     console.error('Erreur lors de la récupération des assignations:', error);

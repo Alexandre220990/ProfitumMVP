@@ -290,7 +290,7 @@ export class DocumentStorageService {
     try {
       let query = supabase
         .from('DocumentFile')
-        .select('*')
+        .select('*', { count: 'exact' })
         .eq('client_id', clientId)
         .is('deleted_at', null);
 
@@ -302,13 +302,10 @@ export class DocumentStorageService {
         query = query.eq('status', filters.status);
       }
 
-      if (filters?.limit) {
-        query = query.limit(filters.limit);
-      }
-
-      if (filters?.offset) {
-        query = query.range(filters.offset, (filters.offset + (filters.limit || 10)) - 1);
-      }
+      // Pagination stricte
+      const limit = filters?.limit ?? 20;
+      const offset = filters?.offset ?? 0;
+      query = query.range(offset, offset + limit - 1);
 
       const { data, error, count } = await query.order('created_at', { ascending: false });
 

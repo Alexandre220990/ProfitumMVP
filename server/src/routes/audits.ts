@@ -21,15 +21,22 @@ router.get('/client/:clientId', authenticateUser, (async (req, res) => {
       return res.status(403).json({ message: 'Accès non autorisé' });
     }
 
-    // Récupérer les audits du client
-    const { data: audits, error } = await supabase
+    // Pagination
+    const page = parseInt(req.query.page as string) || 1;
+    const pageSize = parseInt(req.query.pageSize as string) || 20;
+    const offset = (page - 1) * pageSize;
+    const limit = offset + pageSize - 1;
+
+    // Récupérer les audits du client (pagination)
+    const { data: audits, error, count } = await supabase
       .from('Audit')
       .select(`
         *,
         Expert (id, name, email)
-      `)
+      `, { count: 'exact' })
       .eq('clientId', clientId)
-      .order('createdAt', { ascending: false });
+      .order('createdAt', { ascending: false })
+      .range(offset, limit);
     
     if (error) {
       console.error('Erreur lors de la récupération des audits:', error);
@@ -53,7 +60,13 @@ router.get('/client/:clientId', authenticateUser, (async (req, res) => {
 
     res.json({
       success: true,
-      data: formattedAudits
+      data: formattedAudits,
+      pagination: {
+        page,
+        pageSize,
+        total: count || 0,
+        totalPages: count ? Math.ceil(count / pageSize) : 1
+      }
     });
   } catch (error) {
     console.error('Erreur lors de la récupération des audits:', error);
