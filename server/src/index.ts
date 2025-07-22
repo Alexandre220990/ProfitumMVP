@@ -70,7 +70,7 @@ import app from './app';
 dotenv.config();
 
 const PORT = Number(process.env.PORT) || 5001;
-const HOST = '::'; // Écouter sur toutes les interfaces IPv6
+const HOST = process.env.NODE_ENV === 'production' ? '0.0.0.0' : '::'; // En production, écouter sur toutes les interfaces
 
 // Configuration Supabase avec gestion d'erreur
 const supabaseUrl = process.env.SUPABASE_URL;

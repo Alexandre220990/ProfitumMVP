@@ -274,7 +274,7 @@ async function initializeServer() {
 
     logger.info('✅ Connexion à Supabase établie avec succès');
     
-    app.listen(PORT, '::', () => {
+    app.listen(PORT, process.env.NODE_ENV === 'production' ? '0.0.0.0' : '::', () => {
       console.log(`🚀 Serveur Express optimisé démarré sur http://[::1]:${PORT}`);
       console.log(`🔌 WebSocket classique sur le port 5002`);
       console.log(`🔌 WebSocket unifié sur le port 5003`);
