@@ -89,17 +89,37 @@ app.use(cors({
     ? ['https://profitum.app', 'https://www.profitum.app', 'https://profitum-mvp.vercel.app', 'https://profitummvp-production.up.railway.app'] 
     : ['http://[::1]:3000', 'http://localhost:3000', 'http://127.0.0.1:3000', 'http://[::1]:5173', 'http://localhost:5173'],
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-CSRF-Token', 'Accept', 'Origin'],
+  exposedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
+  maxAge: 86400 // 24 heures
 }));
+
+// Middleware pour gérer les requêtes OPTIONS (preflight)
+app.options('*', (req, res) => {
+  const origin = req.headers.origin;
+  if (origin) {
+    res.header('Access-Control-Allow-Origin', origin);
+  }
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-CSRF-Token, Accept, Origin');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Max-Age', '86400');
+  res.sendStatus(200);
+});
 
 // Middleware pour s'assurer que les headers CORS sont bien appliqués
 app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin) {
+    res.header('Access-Control-Allow-Origin', origin);
+  }
   res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-CSRF-Token, Accept, Origin');
   
   // Force l'origine pour la route spécifique qui pose problème
   if (req.path === '/api/client/login') {
-    const origin = req.headers.origin;
     if (origin) {
       res.header('Access-Control-Allow-Origin', origin);
       console.log(`🔑 Force CORS pour /api/client/login - Origine: ${origin}`);
@@ -169,9 +189,7 @@ addCorsTestRoute(app);
 // ===== ROUTES PUBLIQUES (pas d'authentification requise) =====
 // Ces routes sont accessibles sans authentification mais sont loggées
 app.use('/api/auth', publicRouteLogger, authRoutes);
-app.use('/api/simulations', publicRouteLogger, simulationsRoutes);
 app.use('/api/partners', publicRouteLogger, partnersRouter);
-app.use('/api/simulations', publicRouteLogger, simulationRoutes);
 
 // 🚀 ROUTES DU SIMULATEUR - PUBLIQUES (pas d'authentification requise)
 app.use('/api/simulator', publicRouteLogger, simulatorRoutes);
@@ -210,6 +228,10 @@ app.use('/api/specializations', enhancedAuthMiddleware, specializationsRouter);
 
 // APIs des audits - PROTÉGÉES
 app.use('/api/audits', enhancedAuthMiddleware, auditsRouter);
+
+// APIs des simulations - PROTÉGÉES
+app.use('/api/simulations', enhancedAuthMiddleware, simulationsRoutes);
+app.use('/api/simulation', enhancedAuthMiddleware, simulationRoutes);
 
 // Routes client - PROTÉGÉES avec permissions spécifiques
 app.use('/api/client', enhancedAuthMiddleware, requireUserType('client'), clientRoutes);

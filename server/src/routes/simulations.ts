@@ -126,11 +126,35 @@ router.get('/test-tables', async (req: Request, res: Response) => {
   }
 });
 
-// Vérifier s'il existe une simulation récente pour le client (SANS AUTHENTIFICATION)
-router.get('/check-recent/:clientId', async (req: Request, res: Response) => {
+// Vérifier s'il existe une simulation récente pour le client (AVEC AUTHENTIFICATION)
+router.get('/check-recent/:clientId', authenticateUser, async (req: Request, res: Response) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Non authentifié' });
+    }
+
+    const authUser = req.user as AuthUser;
     const { clientId } = req.params;
-    console.log('🔍 Vérification simulation récente pour le client:', clientId);
+    
+    console.log('🔍 Vérification simulation récente pour le client:', clientId, 'par utilisateur:', authUser.email);
+    
+    // Vérifier que l'utilisateur a accès à ce client
+    if (authUser.type === 'client') {
+      // Récupérer le client par email pour vérifier l'accès
+      const { data: client, error: clientError } = await supabase
+        .from('Client')
+        .select('id')
+        .eq('email', authUser.email)
+        .single();
+
+      if (clientError || !client || client.id !== clientId) {
+        console.log('❌ Accès refusé: client ne peut accéder qu\'à ses propres données');
+        return res.status(403).json({ 
+          success: false, 
+          message: 'Accès non autorisé à ce client' 
+        });
+      }
+    }
     
     // Rechercher les simulations des 24 dernières heures
     const yesterday = new Date();
