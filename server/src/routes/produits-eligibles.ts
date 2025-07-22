@@ -77,6 +77,15 @@ router.get("/produits-eligibles", async (req, res) => {
   }
 });
 
+// Route OPTIONS pour gérer le preflight CORS sur /client/:clientId
+router.options('/client/:clientId', (req, res) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.sendStatus(204);
+});
+
 // Route pour obtenir les produits éligibles d'un client
 router.get("/client/:clientId", authenticateUser, async (req: Request, res: Response) => {
   try {
