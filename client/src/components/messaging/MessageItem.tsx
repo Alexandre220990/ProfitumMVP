@@ -96,7 +96,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
           "text-xs font-medium",
           message.sender_type === 'admin' && "bg-blue-100 text-blue-600"
         )}>
-          {message.sender_type === 'admin' ? 'A' : message.sender_name?.charAt(0)?.toUpperCase() || 'U'}
+          {message.sender_type === 'admin' ? 'A' : (typeof message.sender_name === 'string' && message.sender_name.length > 0 ? message.sender_name.charAt(0).toUpperCase() : 'U')}
         </AvatarFallback>
       </Avatar>
 

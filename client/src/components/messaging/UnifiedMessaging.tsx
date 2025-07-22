@@ -341,7 +341,7 @@ export default function UnifiedMessaging({ assignmentId }: UnifiedMessagingProps
           <div className="flex items-center space-x-3">
             <Avatar>
               <AvatarImage src={otherUserAvatar} />
-              <AvatarFallback>{otherUserName.charAt(0)}</AvatarFallback>
+              <AvatarFallback>{typeof otherUserName === 'string' && otherUserName.length > 0 ? otherUserName.charAt(0) : '?'}</AvatarFallback>
             </Avatar>
             <div>
               <CardTitle className="text-lg">{otherUserName}</CardTitle>

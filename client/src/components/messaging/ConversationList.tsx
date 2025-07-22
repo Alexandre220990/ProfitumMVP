@@ -234,7 +234,7 @@ export const ConversationList: React.FC<ConversationListProps> = ({
                         {isAdminConversation(conversation) ? (
                           <Shield className="w-4 h-4" />
                         ) : (
-                          otherParticipantName.charAt(0).toUpperCase()
+                          typeof otherParticipantName === 'string' && otherParticipantName.length > 0 ? otherParticipantName.charAt(0).toUpperCase() : '?'
                         )}
                       </AvatarFallback>
                     </Avatar>
