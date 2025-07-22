@@ -14,6 +14,8 @@ const DashboardClient = React.lazy(() => import('./pages/dashboard/client'));
 const ClientHome = React.lazy(() => import('./pages/dashboard/client-home'));
 const ClientAssignments = React.lazy(() => import('./pages/dashboard/client-assignments'));
 const AgendaClient = React.lazy(() => import('./pages/agenda-client'));
+const AgendaExpert = React.lazy(() => import('./pages/agenda-expert'));
+const AgendaAdmin = React.lazy(() => import('./pages/agenda-admin'));
 const GoogleCalendarIntegration = React.lazy(() => import('./pages/google-calendar-integration'));
 const AideClient = React.lazy(() => import('./pages/aide-client'));
 const AideExpert = React.lazy(() => import('./pages/aide-expert'));
@@ -125,9 +127,17 @@ function App() {
                       <Route path="/experts-verifies" element={<ExpertsVerifies />} />
                       <Route path="/unauthorized" element={<UnauthorizedPage />} />
                       
-                      {/* Routes client directes (avec protection) */}
+                      {/* Routes agenda directes (avec protection) */}
                       <Route path="/agenda-client" element={<ProtectedRoute requiredType="client" />}>
                         <Route index element={<AgendaClient />} />
+                      </Route>
+                      
+                      <Route path="/agenda-expert" element={<ProtectedRoute requiredType="expert" />}>
+                        <Route index element={<AgendaExpert />} />
+                      </Route>
+                      
+                      <Route path="/agenda-admin" element={<ProtectedRoute requiredType="admin" />}>
+                        <Route index element={<AgendaAdmin />} />
                       </Route>
                       
                       <Route path="/google-calendar-integration" element={<ProtectedRoute requiredType="client" />}>
@@ -210,6 +220,7 @@ function App() {
                         <Route path="profile/expert" element={<ProfileExpert />} />
                         <Route path="mes-affaires" element={<ExpertMesAffaires />} />
                         <Route path="agenda" element={<ExpertAgenda />} />
+                        <Route path="agenda-expert" element={<AgendaExpert />} />
                       </Route>
 
                       {/* Route dashboard/expert pour compatibilité */}
@@ -236,6 +247,8 @@ function App() {
                         <Route path="admin-document-upload" element={<AdminDocumentUpload />} />
                         <Route path="terminal-tests" element={<AdminTerminalTests />} />
                         <Route path="tests" element={<AdminTests />} />
+                        <Route path="agenda" element={<AgendaAdmin />} />
+                        <Route path="agenda-admin" element={<AgendaAdmin />} />
                         {/* Routes avec paramètres */}
                         <Route path="expert/:id" element={<AdminFormulaireExpert />} />
                         <Route path="expert/:id/edit" element={<AdminFormulaireExpert />} />

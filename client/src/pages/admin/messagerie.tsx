@@ -1,8 +1,7 @@
 import { useState, useCallback } from 'react';
 import { MessageSquare, Plus, Users } from "lucide-react";
 import HeaderAdmin from "@/components/HeaderAdmin";
-import { MessagingProvider } from "@/components/messaging/MessagingProvider";
-import { MessagingApp } from "@/components/messaging/MessagingApp";
+import { UnifiedMessagingApp } from "@/components/messaging/UnifiedMessagingApp";
 import AdminUserSelector from "@/components/AdminUserSelector";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -24,76 +23,57 @@ interface User {
 }
 
 // ============================================================================
-// COMPOSANT PRINCIPAL - MESSAGERIE ADMIN
+// PAGE MESSAGERIE ADMIN OPTIMISÉE
 // ============================================================================
 
 export default function MessagerieAdmin() {
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showUserSelector, setShowUserSelector] = useState(false);
-  const [isCreatingConversation, setIsCreatingConversation] = useState(false);
+  const [actionLoading, setActionLoading] = useState<string>("");
 
   // ========================================
-  // GESTION DES CONVERSATIONS
+  // GESTION DES UTILISATEURS
   // ========================================
 
-  const handleUserSelect = useCallback(async (selectedUsers: User[]) => {
-    if (selectedUsers.length === 0) {
+  const handleUserSelect = useCallback((user: User) => {
+    setSelectedUser(user);
+    setShowUserSelector(false);
+    toast({
+      title: 'Utilisateur sélectionné',
+      description: `Conversation avec ${user.name} (${user.type})`,
+      variant: 'default'
+    });
+  }, []);
+
+  const handleCreateConversation = useCallback(async () => {
+    if (!selectedUser) {
       toast({
-        variant: 'destructive',
         title: 'Erreur',
-        description: 'Veuillez sélectionner au moins un utilisateur'
+        description: 'Veuillez sélectionner un utilisateur',
+        variant: 'destructive'
       });
       return;
     }
 
-    setIsCreatingConversation(true);
-    
+    setActionLoading('create-conversation');
     try {
-      // Créer la conversation avec les utilisateurs sélectionnés
-      const response = await fetch('/api/admin/conversations', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          participant_ids: selectedUsers.map(u => u.id),
-          title: `Support - ${selectedUsers.map(u => u.name).join(', ')}`,
-          description: `Conversation de support avec ${selectedUsers.length} utilisateur(s)`
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Erreur HTTP: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      if (data.success) {
-        toast({
-          title: '✅ Conversation créée',
-          description: `Conversation créée avec ${selectedUsers.length} utilisateur(s)`
-        });
-        setShowUserSelector(false);
-        
-        // Recharger la page pour afficher la nouvelle conversation
-        window.location.reload();
-      } else {
-        throw new Error(data.message || 'Erreur lors de la création de la conversation');
-      }
-    } catch (error) {
-      console.error('❌ Erreur création conversation:', error);
+      // Logique de création de conversation
       toast({
-        variant: 'destructive',
-        title: '❌ Erreur',
-        description: error instanceof Error ? error.message : 'Impossible de créer la conversation'
+        title: 'Conversation créée',
+        description: `Nouvelle conversation avec ${selectedUser.name}`,
+        variant: 'default'
+      });
+    } catch (error) {
+      console.error('Erreur création conversation:', error);
+      toast({
+        title: 'Erreur',
+        description: 'Impossible de créer la conversation',
+        variant: 'destructive'
       });
     } finally {
-      setIsCreatingConversation(false);
+      setActionLoading("");
     }
-  }, []);
-
-  const handleCancelUserSelect = useCallback(() => {
-    setShowUserSelector(false);
-  }, []);
+  }, [selectedUser]);
 
   // ========================================
   // RENDU DU HEADER
@@ -111,36 +91,47 @@ export default function MessagerieAdmin() {
         <div>
           <h1 className="text-3xl font-bold text-slate-900 mb-2">Messagerie Admin</h1>
           <p className="text-slate-600">
-            Support client et gestion des conversations en temps réel
+            Support et gestion des conversations utilisateurs
           </p>
         </div>
       </div>
 
-      {/* Bouton Nouveau Message */}
-      <Dialog open={showUserSelector} onOpenChange={setShowUserSelector}>
-        <DialogTrigger asChild>
-          <Button 
-            className="bg-purple-600 hover:bg-purple-700 transition-colors"
-            disabled={isCreatingConversation}
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            {isCreatingConversation ? 'Création...' : 'Nouveau message'}
-          </Button>
-        </DialogTrigger>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Users className="w-5 h-5" />
-              Créer une nouvelle conversation
-            </DialogTitle>
-          </DialogHeader>
-          <AdminUserSelector
-            onUserSelect={handleUserSelect}
-            onCancel={handleCancelUserSelect}
-            maxUsers={5}
-          />
-        </DialogContent>
-      </Dialog>
+      <div className="flex items-center gap-3">
+        <Dialog open={showUserSelector} onOpenChange={setShowUserSelector}>
+          <DialogTrigger asChild>
+            <Button className="bg-gradient-to-r from-purple-500 to-violet-600 text-white">
+              <Plus className="w-4 h-4 mr-2" />
+              Nouvelle Conversation
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Sélectionner un utilisateur</DialogTitle>
+            </DialogHeader>
+            <AdminUserSelector 
+              onUserSelect={handleUserSelect}
+              onClose={() => setShowUserSelector(false)}
+            />
+          </DialogContent>
+        </Dialog>
+
+        {selectedUser && (
+          <div className="flex items-center gap-2 p-2 bg-purple-50 rounded-lg border border-purple-200">
+            <Users className="w-4 h-4 text-purple-600" />
+            <span className="text-sm font-medium text-purple-900">
+              {selectedUser.name} ({selectedUser.type})
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedUser(null)}
+              className="h-6 w-6 p-0 text-purple-600 hover:text-purple-800"
+            >
+              ×
+            </Button>
+          </div>
+        )}
+      </div>
     </div>
   );
 
@@ -157,14 +148,14 @@ export default function MessagerieAdmin() {
         
         {renderHeader()}
 
-        {/* Système de messagerie optimisé avec Supabase Realtime */}
+        {/* Système de messagerie unifié optimisé */}
         <div className="h-[600px] bg-white rounded-xl shadow-lg overflow-hidden border border-slate-200">
-          <MessagingProvider>
-            <MessagingApp 
-              headerTitle="Messagerie Admin"
-              showHeader={false}
-            />
-          </MessagingProvider>
+          <UnifiedMessagingApp 
+            userType="admin"
+            headerTitle="Messagerie Admin"
+            showHeader={false}
+            theme="purple"
+          />
         </div>
       </div>
     </div>

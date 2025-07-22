@@ -1,7 +1,6 @@
 import { MessageSquare } from "lucide-react";
 import HeaderExpert from "@/components/HeaderExpert";
-import { MessagingProvider } from "@/components/messaging/MessagingProvider";
-import { MessagingApp } from "@/components/messaging/MessagingApp";
+import { UnifiedMessagingApp } from "@/components/messaging/UnifiedMessagingApp";
 
 export default function MessagerieExpert() {
   return (
@@ -28,14 +27,14 @@ export default function MessagerieExpert() {
           </div>
         </div>
 
-        {/* Système de messagerie optimisé avec Supabase Realtime */}
-        <div className="h-[600px] bg-white rounded-xl shadow-lg overflow-hidden">
-          <MessagingProvider>
-            <MessagingApp 
-              headerTitle="Messagerie Expert"
-              showHeader={false}
-            />
-          </MessagingProvider>
+        {/* Système de messagerie unifié optimisé */}
+        <div className="h-[600px] bg-white rounded-xl shadow-lg overflow-hidden border border-slate-200">
+          <UnifiedMessagingApp 
+            userType="expert"
+            headerTitle="Messagerie Expert"
+            showHeader={false}
+            theme="green"
+          />
         </div>
       </div>
     </div>

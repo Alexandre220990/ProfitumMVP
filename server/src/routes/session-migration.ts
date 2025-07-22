@@ -1,363 +1,228 @@
-import express from 'express';
-import { SessionMigrationService, MigrationData } from '../services/sessionMigrationService';
+import express, { Router, Request, Response } from 'express';
+import { SimulationSessionService } from '../services/SimulationSessionService';
 import { supabase } from '../lib/supabase';
 
 const router = express.Router();
 
 /**
- * Routes de migration des sessions temporaires vers des comptes clients
- * ====================================================================
- * 
- * Ces routes permettent de transformer les utilisateurs du simulateur
- * en véritables clients avec leurs produits éligibles.
+ * Route pour créer une session temporaire
+ * POST /api/session-migration/create-session
  */
-
-// Route pour vérifier si une session peut être migrée
-router.get('/can-migrate/:sessionId', async (req, res) => {
+router.post('/create-session', async (req: Request, res: Response) => {
   try {
-    const { sessionId } = req.params;
-
-    if (!sessionId) {
+    const { simulationData } = req.body;
+    
+    if (!simulationData) {
       return res.status(400).json({
         success: false,
-        error: 'Session ID requis'
+        error: 'Données de simulation requises'
       });
     }
-
-    const canMigrate = await SessionMigrationService.canMigrateSession(sessionId);
-
+    
+    console.log('🔄 Création session temporaire pour simulation');
+    
+    // Créer la session temporaire
+    const sessionResult = await SimulationSessionService.createTemporarySession(simulationData);
+    
     res.json({
       success: true,
-      can_migrate: canMigrate,
-      session_id: sessionId
+      data: sessionResult,
+      message: 'Session temporaire créée avec succès'
     });
-
+    
   } catch (error) {
-    console.error('Erreur vérification migration:', error);
+    console.error('❌ Erreur création session temporaire:', error);
     res.status(500).json({
       success: false,
-      error: 'Erreur lors de la vérification de migration'
+      error: 'Erreur lors de la création de la session temporaire'
     });
   }
 });
 
-// Route pour récupérer les données de session pour migration
-router.get('/session-data/:sessionId', async (req, res) => {
+/**
+ * Route pour valider une session temporaire
+ * GET /api/session-migration/validate/:sessionToken
+ */
+router.get('/validate/:sessionToken', async (req: Request, res: Response) => {
   try {
-    const { sessionId } = req.params;
-
-    if (!sessionId) {
+    const { sessionToken } = req.params;
+    
+    if (!sessionToken) {
       return res.status(400).json({
         success: false,
-        error: 'Session ID requis'
+        error: 'Token de session requis'
       });
     }
-
-    // Vérifier que la session peut être migrée
-    const canMigrate = await SessionMigrationService.canMigrateSession(sessionId);
-    if (!canMigrate) {
-      return res.status(400).json({
+    
+    // Valider la session
+    const isValid = await SimulationSessionService.validateSession(sessionToken);
+    
+    if (!isValid) {
+      return res.status(401).json({
         success: false,
-        error: 'Cette session ne peut pas être migrée'
+        error: 'Session expirée ou invalide'
       });
     }
-
+    
     // Récupérer les données de session
-    const { data: sessionData, error: sessionError } = await supabase
-      .from('TemporarySession')
-      .select('*')
-      .eq('id', sessionId)
-      .single();
-
-    if (sessionError || !sessionData) {
-      return res.status(404).json({
-        success: false,
-        error: 'Session non trouvée'
-      });
-    }
-
-    // Récupérer les réponses
-    const { data: responses, error: responsesError } = await supabase
-      .from('TemporaryResponse')
-      .select(`
-        *,
-        QuestionnaireQuestion (
-          question_text,
-          question_type,
-          produits_cibles
-        )
-      `)
-      .eq('session_id', sessionId);
-
-    if (responsesError) {
-      console.error('Erreur récupération réponses:', responsesError);
-    }
-
-    // Récupérer les résultats d'éligibilité
-    const { data: eligibilityResults, error: eligibilityError } = await supabase
-      .from('TemporaryEligibility')
-      .select('*')
-      .eq('session_id', sessionId);
-
-    if (eligibilityError) {
-      console.error('Erreur récupération éligibilité:', eligibilityError);
-    }
-
-    // Extraire les données client des réponses
-    const extractedData = SessionMigrationService.extractClientDataFromResponses(responses || []);
-
+    const sessionData = await SimulationSessionService.getSessionData(sessionToken);
+    const products = await SimulationSessionService.getSessionProducts(sessionData.sessionId);
+    
     res.json({
       success: true,
       data: {
         session: sessionData,
-        responses: responses || [],
-        eligibility_results: eligibilityResults || [],
-        extracted_client_data: extractedData,
-        total_potential_savings: (eligibilityResults || []).reduce((sum: number, r: any) => sum + (r.estimated_savings || 0), 0),
-        high_eligibility_count: (eligibilityResults || []).filter((r: any) => r.eligibility_score >= 70).length
-      }
+        products: products
+      },
+      message: 'Session valide'
     });
-
+    
   } catch (error) {
-    console.error('Erreur récupération données session:', error);
+    console.error('❌ Erreur validation session:', error);
     res.status(500).json({
       success: false,
-      error: 'Erreur lors de la récupération des données de session'
+      error: 'Erreur lors de la validation de la session'
     });
   }
 });
 
-// Route pour migrer une session vers un compte client
-router.post('/migrate', async (req, res) => {
+/**
+ * Route pour migrer une session vers un compte client permanent
+ * POST /api/session-migration/migrate
+ */
+router.post('/migrate', async (req: Request, res: Response) => {
   try {
-    const migrationData: MigrationData = req.body;
-
-    // Validation des données requises
-    if (!migrationData.sessionToken || !migrationData.sessionId || !migrationData.clientData) {
+    const { sessionToken, clientData } = req.body;
+    
+    // Validation des données
+    if (!sessionToken || !clientData) {
       return res.status(400).json({
         success: false,
-        error: 'Données de migration incomplètes'
+        error: 'Token de session et données client requis'
       });
     }
-
-    const { email, password, username, company_name, phone_number, address, city, postal_code, siren } = migrationData.clientData;
-
-    if (!email || !password || !username || !company_name || !phone_number || !address || !city || !postal_code || !siren) {
+    
+    // Validation des champs obligatoires
+    const requiredFields = [
+      'email', 'password', 'username', 'company_name', 
+      'phone_number', 'address', 'city', 'postal_code', 'siren'
+    ];
+    
+    const missingFields = requiredFields.filter(field => !clientData[field]);
+    if (missingFields.length > 0) {
       return res.status(400).json({
         success: false,
-        error: 'Tous les champs client sont requis'
+        error: `Champs requis manquants: ${missingFields.join(', ')}`
       });
     }
-
-    // Vérifier que la session peut être migrée
-    const canMigrate = await SessionMigrationService.canMigrateSession(migrationData.sessionId);
-    if (!canMigrate) {
-      return res.status(400).json({
+    
+    console.log('🔄 Début migration session vers client');
+    
+    // Vérifier la validité de la session
+    const isValid = await SimulationSessionService.validateSession(sessionToken);
+    if (!isValid) {
+      return res.status(401).json({
         success: false,
-        error: 'Cette session ne peut pas être migrée'
+        error: 'Session expirée ou invalide'
       });
     }
-
+    
     // Effectuer la migration
-    const migrationResult = await SessionMigrationService.migrateSessionToClient(migrationData);
-
+    const migrationResult = await SimulationSessionService.migrateSessionToClient(
+      sessionToken,
+      clientData
+    );
+    
     if (!migrationResult.success) {
       return res.status(500).json({
         success: false,
         error: migrationResult.error || 'Erreur lors de la migration'
       });
     }
-
-    // Retourner le résultat avec les informations du client créé
+    
     res.json({
       success: true,
-      message: 'Migration réussie',
-      data: {
-        client_id: migrationResult.clientId,
-        client_produit_eligibles: migrationResult.clientProduitEligibles,
-        migration_details: migrationResult.details
-      }
+      data: migrationResult,
+      message: 'Migration réussie'
     });
-
+    
   } catch (error) {
-    console.error('Erreur migration session:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Erreur lors de la migration de la session'
-    });
-  }
-});
-
-// Route pour récupérer les statistiques de migration
-router.get('/stats', async (req, res) => {
-  try {
-    const stats = await SessionMigrationService.getMigrationStats();
-
-    if (!stats) {
-      return res.status(500).json({
-        success: false,
-        error: 'Erreur lors de la récupération des statistiques'
-      });
-    }
-
-    res.json({
-      success: true,
-      data: stats
-    });
-
-  } catch (error) {
-    console.error('Erreur récupération stats migration:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Erreur lors de la récupération des statistiques'
-    });
-  }
-});
-
-// Route pour récupérer les sessions migrées d'un client
-router.get('/client/:clientId/migrations', async (req, res) => {
-  try {
-    const { clientId } = req.params;
-
-    if (!clientId) {
-      return res.status(400).json({
-        success: false,
-        error: 'Client ID requis'
-      });
-    }
-
-    // Récupérer les sessions migrées pour ce client
-    const { data: sessions, error: sessionsError } = await supabase
-      .from('TemporarySession')
-      .select(`
-        *,
-        TemporaryResponse (count),
-        TemporaryEligibility (count)
-      `)
-      .eq('client_id', clientId)
-      .eq('migrated_to_account', true);
-
-    if (sessionsError) {
-      console.error('Erreur récupération sessions migrées:', sessionsError);
-      return res.status(500).json({
-        success: false,
-        error: 'Erreur lors de la récupération des sessions migrées'
-      });
-    }
-
-    res.json({
-      success: true,
-      data: {
-        client_id: clientId,
-        migrated_sessions: sessions || [],
-        total_migrations: sessions?.length || 0
-      }
-    });
-
-  } catch (error) {
-    console.error('Erreur récupération migrations client:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Erreur lors de la récupération des migrations'
-    });
-  }
-});
-
-// Route pour annuler une migration (en cas d'erreur)
-router.post('/rollback/:sessionId', async (req, res) => {
-  try {
-    const { sessionId } = req.params;
-
-    if (!sessionId) {
-      return res.status(400).json({
-        success: false,
-        error: 'Session ID requis'
-      });
-    }
-
-    // Marquer la session comme non migrée
-    const { error: updateError } = await supabase
-      .from('TemporarySession')
-      .update({
-        migrated_to_account: false,
-        migrated_at: null,
-        client_id: null
-      })
-      .eq('id', sessionId);
-
-    if (updateError) {
-      console.error('Erreur rollback migration:', updateError);
-      return res.status(500).json({
-        success: false,
-        error: 'Erreur lors du rollback'
-      });
-    }
-
-    res.json({
-      success: true,
-      message: 'Rollback effectué avec succès',
-      session_id: sessionId
-    });
-
-  } catch (error) {
-    console.error('Erreur rollback migration:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Erreur lors du rollback de la migration'
-    });
-  }
-});
-
-// Route de migration simplifiée (sans dépendance au simulateur)
-router.post('/migrate-simple', async (req, res) => {
-  try {
-    const { clientData, eligibilityResults } = req.body;
-
-    if (!clientData || !eligibilityResults) {
-      return res.status(400).json({
-        success: false,
-        error: 'Données client et résultats d\'éligibilité requis'
-      });
-    }
-
-    console.log('🔄 Migration simplifiée - Création client direct');
-
-    // 1. Créer directement le compte client
-    const clientId = await SessionMigrationService.createClientAccountDirect(clientData);
-
-    if (!clientId) {
-      return res.status(500).json({
-        success: false,
-        error: 'Échec de la création du compte client'
-      });
-    }
-
-    // 2. Créer les ClientProduitEligible
-    const clientProduitEligibles = await SessionMigrationService.createClientProduitEligiblesDirect(
-      clientId,
-      eligibilityResults
-    );
-
-    // 3. Sauvegarder les données de simulation
-    await SessionMigrationService.saveSimulationDataDirect(
-      clientId,
-      eligibilityResults
-    );
-
-    res.json({
-      success: true,
-      data: {
-        clientId,
-        client_produit_eligibles: clientProduitEligibles || [],
-        message: 'Client créé avec succès'
-      }
-    });
-
-  } catch (error) {
-    console.error('Erreur migration simplifiée:', error);
+    console.error('❌ Erreur migration session:', error);
     res.status(500).json({
       success: false,
       error: 'Erreur lors de la migration'
+    });
+  }
+});
+
+/**
+ * Route pour récupérer les produits d'une session temporaire
+ * GET /api/session-migration/products/:sessionId
+ */
+router.get('/products/:sessionId', async (req: Request, res: Response) => {
+  try {
+    const { sessionId } = req.params;
+    
+    if (!sessionId) {
+      return res.status(400).json({
+        success: false,
+        error: 'ID de session requis'
+      });
+    }
+    
+    // Récupérer les produits de la session
+    const products = await SimulationSessionService.getSessionProducts(sessionId);
+    
+    res.json({
+      success: true,
+      data: products,
+      message: 'Produits récupérés avec succès'
+    });
+    
+  } catch (error) {
+    console.error('❌ Erreur récupération produits session:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la récupération des produits'
+    });
+  }
+});
+
+/**
+ * Route pour nettoyer les sessions expirées (admin seulement)
+ * POST /api/session-migration/cleanup
+ */
+router.post('/cleanup', async (req: Request, res: Response) => {
+  try {
+    // Vérifier les permissions admin (à implémenter selon votre système)
+    // const isAdmin = await checkAdminPermissions(req);
+    // if (!isAdmin) {
+    //   return res.status(403).json({
+    //     success: false,
+    //     error: 'Accès non autorisé'
+    //   });
+    // }
+    
+    console.log('🧹 Nettoyage des sessions expirées');
+    
+    // Appeler la fonction de nettoyage de la base de données
+    // Cette fonction est définie dans la migration SQL
+    const { data, error } = await supabase.rpc('cleanup_expired_sessions');
+    
+    if (error) {
+      throw error;
+    }
+    
+    res.json({
+      success: true,
+      message: 'Nettoyage des sessions expirées terminé'
+    });
+    
+  } catch (error) {
+    console.error('❌ Erreur nettoyage sessions:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors du nettoyage des sessions'
     });
   }
 });

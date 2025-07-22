@@ -1,11 +1,9 @@
 
-import HeaderClient from "@/components/HeaderClient";
-import { MessagingProvider } from "@/components/messaging/MessagingProvider";
-import { MessagingApp } from "@/components/messaging/MessagingApp";
 import { MessageSquare } from "lucide-react";
+import HeaderClient from "@/components/HeaderClient";
+import { UnifiedMessagingApp } from "@/components/messaging/UnifiedMessagingApp";
 
 export default function MessagerieClient() {
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
       <HeaderClient />
@@ -30,14 +28,14 @@ export default function MessagerieClient() {
           </div>
         </div>
 
-        {/* Système de messagerie optimisé avec Supabase Realtime */}
-        <div className="h-[600px] bg-white rounded-xl shadow-lg overflow-hidden">
-          <MessagingProvider>
-            <MessagingApp 
-              headerTitle="Messagerie Client"
-              showHeader={false}
-            />
-          </MessagingProvider>
+        {/* Système de messagerie unifié optimisé */}
+        <div className="h-[600px] bg-white rounded-xl shadow-lg overflow-hidden border border-slate-200">
+          <UnifiedMessagingApp 
+            userType="client"
+            headerTitle="Messagerie Client"
+            showHeader={false}
+            theme="blue"
+          />
         </div>
       </div>
     </div>

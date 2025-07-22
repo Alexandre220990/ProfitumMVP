@@ -54,7 +54,7 @@ const Scale = () => { const navigate = useNavigate();
       { /* Pourquoi choisir l'offre Growth ? */ }
       <section className="py-16 px-6 container mx-auto text-center">
         <h2 className="text-3xl font-bold mb-8">Pourquoi choisir l'offre Growth ?</h2>
-        <div className="grid grid-cols-1 md: grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           { [{ icon: <Users />, text: "Accès illimité à la base de prospects qualifiés" },
             { icon: <Folder />, text: "Gestion avancée des dossiers et contacts" },
             { icon: <RefreshCw />, text: "Automatisation complète des relances" },
@@ -83,7 +83,7 @@ const Scale = () => { const navigate = useNavigate();
       { /* FAQ */ }
       <section className="py-16 px-6 container mx-auto text-center">
         <h2 className="text-3xl font-bold mb-8">❓ Questions Fréquentes</h2>
-        <div className="grid grid-cols-1 md: grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           { [{ question: "Quelle est la différence entre Starter et Growth ?", answer: "Growth offre plus de prospects et des outils avancés." },
             { question: "Puis-je changer d'abonnement plus tard ?", answer: "Oui, vous pouvez passer à une offre supérieure à tout moment." },
             { question: "Quel est le niveau de support inclus ?", answer: "Un support premium dédié est inclus avec l'offre Growth." }].map((faq, index) => (

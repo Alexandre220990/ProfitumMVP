@@ -118,7 +118,7 @@ export default function CreateAccountClient() { const { toast } = useToast();
 
               <Button
                 type="submit"
-                className="w-full py-3 text-lg bg-blue-600 hover: bg-blue-700 text-white font-bold rounded-md transition-all"
+                className="w-full py-3 text-lg bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-md transition-all"
                 disabled={ isLoading }
               >
                 { isLoading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "Créer un compte" }
