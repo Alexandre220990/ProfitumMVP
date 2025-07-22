@@ -1,5 +1,36 @@
 import { createClient } from '@supabase/supabase-js';
-import { EventEmitter } from 'events';
+
+// ============================================================================
+// EVENT EMITTER COMPATIBLE FRONTEND
+// ============================================================================
+class FrontendEventEmitter {
+  private events: { [key: string]: Function[] } = {};
+
+  on(event: string, listener: Function): this {
+    if (!this.events[event]) {
+      this.events[event] = [];
+    }
+    this.events[event].push(listener);
+    return this;
+  }
+
+  emit(event: string, ...args: any[]): boolean {
+    if (!this.events[event]) {
+      return false;
+    }
+    this.events[event].forEach(listener => listener(...args));
+    return true;
+  }
+
+  removeAllListeners(event?: string): this {
+    if (event) {
+      delete this.events[event];
+    } else {
+      this.events = {};
+    }
+    return this;
+  }
+}
 
 // ============================================================================
 // SERVICE ANALYTICS ADMIN RÉVOLUTIONNAIRE
@@ -63,20 +94,20 @@ interface AlertRule {
   enabled: boolean;
 }
 
-export class AdminAnalyticsService extends EventEmitter {
+export class AdminAnalyticsService extends FrontendEventEmitter {
   private static instance: AdminAnalyticsService;
   private supabase: any;
   private metrics: RealTimeMetrics;
   private insights: PredictiveInsights;
   private alertRules: AlertRule[];
-  private updateInterval: NodeJS.Timeout | null = null;
+  private updateInterval: number | null = null;
   private isInitialized = false;
 
   private constructor() {
     super();
     this.supabase = createClient(
-      process.env.REACT_APP_SUPABASE_URL!,
-      process.env.REACT_APP_SUPABASE_ANON_KEY!
+      import.meta.env.VITE_SUPABASE_URL!,
+      import.meta.env.VITE_SUPABASE_ANON_KEY!
     );
     this.metrics = this.getDefaultMetrics();
     this.insights = this.getDefaultInsights();
@@ -116,7 +147,7 @@ export class AdminAnalyticsService extends EventEmitter {
   // ===== COLLECTE TEMPS RÉEL =====
   
   private startRealTimeCollection(): void {
-    this.updateInterval = setInterval(async () => {
+    this.updateInterval = window.setInterval(async () => {
       await this.updateMetrics();
       await this.generatePredictions();
       this.checkAlerts();
@@ -159,10 +190,17 @@ export class AdminAnalyticsService extends EventEmitter {
     const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
     
     // Utilisateurs actifs (sessions des 5 dernières minutes)
-    const { data: activeSessions } = await this.supabase
-      .from('user_sessions')
-      .select('*')
-      .gte('last_activity', fiveMinutesAgo.toISOString());
+    let activeSessions = [];
+    try {
+      const { data } = await this.supabase
+        .from('user_sessions')
+        .select('*')
+        .gte('last_activity', fiveMinutesAgo.toISOString());
+      activeSessions = data || [];
+    } catch (error) {
+      console.warn('Table user_sessions non disponible, utilisation de données simulées');
+      activeSessions = []; // Simulation
+    }
     
     // Calculer l'engagement
     const engagement = await this.calculateUserEngagement();
@@ -185,20 +223,34 @@ export class AdminAnalyticsService extends EventEmitter {
     const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
     
     // Revenus par minute
-    const { data: recentTransactions } = await this.supabase
-      .from('transactions')
-      .select('amount')
-      .gte('created_at', oneHourAgo.toISOString());
+    let recentTransactions = [];
+    try {
+      const { data } = await this.supabase
+        .from('transactions')
+        .select('amount')
+        .gte('created_at', oneHourAgo.toISOString());
+      recentTransactions = data || [];
+    } catch (error) {
+      console.warn('Table transactions non disponible, utilisation de données simulées');
+      recentTransactions = []; // Simulation
+    }
     
-          const totalRevenue = recentTransactions?.reduce((sum: number, t: any) => sum + t.amount, 0) || 0;
+    const totalRevenue = recentTransactions?.reduce((sum: number, t: any) => sum + t.amount, 0) || 0;
     const revenuePerMinute = totalRevenue / 60;
     
     // Dossiers complétés
-    const { data: completedDossiers } = await this.supabase
-      .from('dossiers')
-      .select('*')
-      .eq('status', 'completed')
-      .gte('updated_at', oneHourAgo.toISOString());
+    let completedDossiers = [];
+    try {
+      const { data } = await this.supabase
+        .from('dossiers')
+        .select('*')
+        .eq('status', 'completed')
+        .gte('updated_at', oneHourAgo.toISOString());
+      completedDossiers = data || [];
+    } catch (error) {
+      console.warn('Table dossiers non disponible, utilisation de données simulées');
+      completedDossiers = []; // Simulation
+    }
     
     // Utilisation des experts
     const expertUtilization = await this.calculateExpertUtilization();
@@ -220,9 +272,13 @@ export class AdminAnalyticsService extends EventEmitter {
     // Performance système (simulation)
     const systemPerformance = Math.random() * 20 + 80; // 80-100%
     
-    // Latence base de données
+    // Latence base de données (simulation pour éviter les erreurs de table inexistante)
     const startTime = Date.now();
-    await this.supabase.from('system_metrics').select('*').limit(1);
+    try {
+      await this.supabase.from('clients').select('id').limit(1);
+    } catch (error) {
+      console.warn('Table system_metrics non disponible, utilisation de clients comme fallback');
+    }
     const databaseLatency = Date.now() - startTime;
     
     // Taux d'erreur
@@ -528,7 +584,7 @@ export class AdminAnalyticsService extends EventEmitter {
   
   public destroy(): void {
     if (this.updateInterval) {
-      clearInterval(this.updateInterval);
+      window.clearInterval(this.updateInterval);
     }
     this.removeAllListeners();
   }

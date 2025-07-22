@@ -2,6 +2,15 @@
 // TYPES ET INTERFACES POUR LE SYSTÈME DE MESSAGERIE (FRONTEND)
 // ============================================================================
 
+export interface FileAttachment {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  url: string;
+  uploaded_at: string;
+}
+
 export interface Message {
   id: string;
   conversation_id: string;
@@ -17,7 +26,9 @@ export interface Message {
     event_id?: string;
     audit_id?: string;
     reminder_type?: string;
+    attachments?: FileAttachment[];
   };
+  avatar?: string;
   is_read: boolean;
   created_at: string;
   updated_at: string;
@@ -30,7 +41,10 @@ export interface Conversation {
   participant2_id: string;
   participant2_type: 'client' | 'expert' | 'admin';
   conversation_type: 'private' | 'support' | 'system';
+  type?: 'expert_client' | 'admin_support' | 'internal';
   title?: string;
+  description?: string;
+  avatar?: string;
   last_message_at?: string;
   unread_count: number;
   is_archived: boolean;
@@ -82,6 +96,7 @@ export interface CreateConversationRequest {
   participant2_type: 'client' | 'expert' | 'admin';
   conversation_type: 'private' | 'support';
   title?: string;
+  description?: string;
 }
 
 export interface SendMessageRequest {
@@ -89,6 +104,7 @@ export interface SendMessageRequest {
   content: string;
   message_type?: 'text' | 'file' | 'event_link' | 'audit_notification' | 'reminder';
   metadata?: any;
+  sender_name?: string;
 }
 
 export interface GetConversationsRequest {
@@ -106,7 +122,6 @@ export interface GetMessagesRequest {
   before_date?: string;
 }
 
-// Types pour l'état local
 export interface MessagingState {
   conversations: Conversation[];
   currentConversation: Conversation | null;
