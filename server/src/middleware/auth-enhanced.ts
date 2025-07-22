@@ -94,6 +94,17 @@ const USER_PERMISSIONS = {
   ]
 };
 
+// Fonction utilitaire pour ajouter les headers CORS
+const addCorsHeaders = (req: Request, res: Response) => {
+  const origin = req.headers.origin;
+  if (origin) {
+    res.header('Access-Control-Allow-Origin', origin);
+  }
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-CSRF-Token, Accept, Origin');
+};
+
 // Interface pour les logs d'accès
 interface AccessLog {
   timestamp: Date;
@@ -155,6 +166,9 @@ export const enhancedAuthMiddleware = async (
         errorMessage: 'Token manquant'
       });
       
+      // S'assurer que les headers CORS sont présents avant d'envoyer la réponse
+      addCorsHeaders(req, res);
+      
       return res.status(401).json({
         success: false,
         message: 'Token d\'authentification requis'
@@ -205,6 +219,9 @@ export const enhancedAuthMiddleware = async (
         errorMessage: `Token invalide: ${authError instanceof Error ? authError.message : 'Token non reconnu'}`
       });
       
+      // S'assurer que les headers CORS sont présents avant d'envoyer la réponse
+      addCorsHeaders(req, res);
+      
       return res.status(401).json({
         success: false,
         message: 'Token invalide ou expiré'
@@ -251,6 +268,9 @@ export const enhancedAuthMiddleware = async (
             errorMessage: 'Expert non approuvé'
           });
           
+          // S'assurer que les headers CORS sont présents avant d'envoyer la réponse
+          addCorsHeaders(req, res);
+          
           return res.status(403).json({
             success: false,
             message: 'Votre compte est en cours d\'approbation par les équipes Profitum. Vous recevrez un email dès que votre compte sera validé.',
@@ -281,6 +301,9 @@ export const enhancedAuthMiddleware = async (
             success: false,
             errorMessage: 'Utilisateur non trouvé en base'
           });
+          
+          // S'assurer que les headers CORS sont présents avant d'envoyer la réponse
+          addCorsHeaders(req, res);
           
           return res.status(403).json({
             success: false,
@@ -349,6 +372,9 @@ export const enhancedAuthMiddleware = async (
     
     logger.error('❌ Erreur middleware d\'authentification:', error);
     
+    // S'assurer que les headers CORS sont présents avant d'envoyer la réponse
+    addCorsHeaders(req, res);
+    
     return res.status(500).json({
       success: false,
       message: 'Erreur d\'authentification'
@@ -362,6 +388,9 @@ export const requirePermission = (requiredPermission: Permission) => {
     const authReq = req as unknown as AuthenticatedRequest;
     
     if (!authReq.user) {
+      // S'assurer que les headers CORS sont présents avant d'envoyer la réponse
+      addCorsHeaders(req, res);
+      
       return res.status(401).json({
         success: false,
         message: 'Authentification requise'
@@ -370,6 +399,9 @@ export const requirePermission = (requiredPermission: Permission) => {
 
     if (!authReq.user.permissions.includes(requiredPermission)) {
       logger.warn(`🚫 Permission refusée - ${authReq.user.email} - ${requiredPermission} - ${req.method} ${req.path}`);
+      
+      // S'assurer que les headers CORS sont présents avant d'envoyer la réponse
+      addCorsHeaders(req, res);
       
       return res.status(403).json({
         success: false,
@@ -387,6 +419,9 @@ export const requireUserType = (requiredType: 'client' | 'expert' | 'admin') => 
     const authReq = req as unknown as AuthenticatedRequest;
     
     if (!authReq.user) {
+      // S'assurer que les headers CORS sont présents avant d'envoyer la réponse
+      addCorsHeaders(req, res);
+      
       return res.status(401).json({
         success: false,
         message: 'Authentification requise'
@@ -395,6 +430,9 @@ export const requireUserType = (requiredType: 'client' | 'expert' | 'admin') => 
 
     if (authReq.user.type !== requiredType) {
       logger.warn(`🚫 Type utilisateur refusé - ${authReq.user.email} - attendu: ${requiredType}, reçu: ${authReq.user.type}`);
+      
+      // S'assurer que les headers CORS sont présents avant d'envoyer la réponse
+      addCorsHeaders(req, res);
       
       return res.status(403).json({
         success: false,

@@ -108,7 +108,7 @@ app.options('*', (req, res) => {
   res.sendStatus(200);
 });
 
-// Middleware pour s'assurer que les headers CORS sont bien appliqués
+// Middleware GLOBAL pour s'assurer que les headers CORS sont bien appliqués sur TOUTES les réponses
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   if (origin) {
@@ -118,13 +118,43 @@ app.use((req, res, next) => {
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-CSRF-Token, Accept, Origin');
   
-  // Force l'origine pour la route spécifique qui pose problème
-  if (req.path === '/api/client/login') {
+  // Intercepter toutes les réponses pour s'assurer que les headers CORS sont présents
+  const originalSend = res.send;
+  const originalJson = res.json;
+  const originalStatus = res.status;
+  
+  // Override res.send pour ajouter les headers CORS
+  res.send = function(body) {
     if (origin) {
-      res.header('Access-Control-Allow-Origin', origin);
-      console.log(`🔑 Force CORS pour /api/client/login - Origine: ${origin}`);
+      this.header('Access-Control-Allow-Origin', origin);
     }
-  }
+    this.header('Access-Control-Allow-Credentials', 'true');
+    this.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+    this.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-CSRF-Token, Accept, Origin');
+    return originalSend.call(this, body);
+  };
+  
+  // Override res.json pour ajouter les headers CORS
+  res.json = function(body) {
+    if (origin) {
+      this.header('Access-Control-Allow-Origin', origin);
+    }
+    this.header('Access-Control-Allow-Credentials', 'true');
+    this.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+    this.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-CSRF-Token, Accept, Origin');
+    return originalJson.call(this, body);
+  };
+  
+  // Override res.status pour s'assurer que les headers CORS sont ajoutés même sur les erreurs
+  res.status = function(code) {
+    if (origin) {
+      this.header('Access-Control-Allow-Origin', origin);
+    }
+    this.header('Access-Control-Allow-Credentials', 'true');
+    this.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+    this.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-CSRF-Token, Accept, Origin');
+    return originalStatus.call(this, code);
+  };
   
   next();
 });
