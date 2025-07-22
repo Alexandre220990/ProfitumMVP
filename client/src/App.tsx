@@ -17,7 +17,6 @@ import AideExpert from './pages/aide-expert';
 import ProfileClient from './pages/profile/client';
 import ProfileExpert from './pages/profile/expert';
 import MessagerieClient from './pages/messagerie-client';
-import MessagerieExpert from './pages/messagerie-expert';
 import ClientDocuments from './pages/dashboard/client-documents';
 import Settings from './pages/settings';
 import Experts from './pages/marketplace/experts';
@@ -66,7 +65,6 @@ import AdminFormulaireExpert from './pages/admin/formulaire-expert';
 import AdminDocumentUpload from './pages/admin/admin-document-upload';
 import AdminTerminalTests from './pages/admin/terminal-tests';
 import AdminTests from './pages/admin/tests';
-import MessagerieAdmin from './pages/admin/messagerie-admin';
 
 // Expert pages
 import ExpertDashboard from './pages/expert/dashboard';
@@ -201,7 +199,6 @@ function App() {
                   <Route path="dossier/:id" element={<ExpertDossier />} />
                   <Route path="aide-expert" element={<AideExpert />} />
                   <Route path="profile/expert" element={<ProfileExpert />} />
-                  <Route path="messagerie-expert" element={<MessagerieExpert />} />
                   <Route path="mes-affaires" element={<ExpertMesAffaires />} />
                   <Route path="agenda" element={<ExpertAgenda />} />
                 </Route>
@@ -230,7 +227,6 @@ function App() {
                   <Route path="admin-document-upload" element={<AdminDocumentUpload />} />
                   <Route path="terminal-tests" element={<AdminTerminalTests />} />
                   <Route path="tests" element={<AdminTests />} />
-                  <Route path="messagerie-admin" element={<MessagerieAdmin />} />
                   {/* Routes avec paramètres */}
                   <Route path="expert/:id" element={<AdminFormulaireExpert />} />
                   <Route path="expert/:id/edit" element={<AdminFormulaireExpert />} />

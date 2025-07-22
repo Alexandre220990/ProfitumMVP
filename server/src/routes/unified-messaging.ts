@@ -5,7 +5,6 @@ import { AuthUser } from '../types/auth';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
-import { getUnifiedWebSocket } from '../services/unified-websocket';
 
 // Interfaces TypeScript
 interface Conversation {
@@ -465,22 +464,22 @@ router.post('/conversations/:id/messages', authenticateUser, upload.array('files
 
     // Broadcast du message via WebSocket
     try {
-      const wsService = getUnifiedWebSocket();
+      // SUPPRIMER : const wsService = getUnifiedWebSocket();
       
       // Envoyer le message aux participants de la conversation
       conversation.participant_ids.forEach((participantId: string) => {
         if (participantId !== authUser.id) {
           // Utiliser la méthode publique du service unifié
-          wsService.broadcastNewMessage(conversationId, {
-            ...message,
-            attachments: files ? files.map(f => ({
-              id: f.filename,
-              filename: f.filename,
-              original_name: f.originalname,
-              file_size: f.size,
-              mime_type: f.mimetype
-            })) : []
-          });
+          // SUPPRIMER : wsService.broadcastNewMessage(conversationId, {
+          // SUPPRIMER :   ...message,
+          // SUPPRIMER :   attachments: files ? files.map(f => ({
+          // SUPPRIMER :     id: f.filename,
+          // SUPPRIMER :     filename: f.filename,
+          // SUPPRIMER :     original_name: f.originalname,
+          // SUPPRIMER :     file_size: f.size,
+          // SUPPRIMER :     mime_type: f.mimetype
+          // SUPPRIMER :   })) : []
+          // SUPPRIMER : });
         }
       });
     } catch (wsError) {
@@ -876,9 +875,9 @@ router.post('/admin/conversations', authenticateUser, requireUserType('admin'), 
 
     // Ajouter les participants au WebSocket
     try {
-      const wsService = getUnifiedWebSocket();
+      // SUPPRIMER : const wsService = getUnifiedWebSocket();
       participant_ids.forEach((participantId: string) => {
-        wsService.addUserToConversation(participantId, conversation.id);
+        // SUPPRIMER : wsService.addUserToConversation(participantId, conversation.id);
       });
     } catch (wsError) {
       console.error('❌ Erreur WebSocket ajout participants:', wsError);

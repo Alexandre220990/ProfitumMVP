@@ -3,7 +3,6 @@ import cors from "cors";
 import { createServer } from "http";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { WebSocketService } from "./src/services/websocketService";
 
 const app = express();
 const server = createServer(app);
@@ -66,10 +65,6 @@ app.use((req, res, next) => {
       console.error("❌ Erreur serveur:", err);
       res.status(status).json({ success: false, message });
     });
-
-    // ✅ Initialisation du service WebSocket
-    const webSocketService = new WebSocketService(server);
-    log("🔌 Service WebSocket initialisé");
 
     // ✅ Lancement du serveur
     const PORT = parseInt(process.env.PORT || "3001", 10);

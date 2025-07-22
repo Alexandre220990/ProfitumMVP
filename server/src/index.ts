@@ -4,8 +4,6 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import { createServer } from 'http';
-import { WebSocketService } from './services/websocketService';
-import { SocketService } from './services/socket-service';
 import authRoutes from './routes/auth';
 import auditsRouter from './routes/audits';
 import simulationsRoutes from './routes/simulations';
@@ -67,9 +65,7 @@ import analyticsRoutes from './routes/analytics';
 import googleCalendarRoutes from './routes/google-calendar';
 
 import app from './app';
-import { initializeWebSocketServer } from './websocket-server';
-import { initializeUnifiedWebSocket } from './services/unified-websocket';
-// import { monitoringSystem } from '../lib/monitoring-system';
+
 
 dotenv.config();
 
@@ -261,17 +257,8 @@ app.use('/api/charte-signature', enhancedAuthMiddleware, charteSignatureRoutes);
 // Gestion des erreurs
 app.use(errorHandler);
 
-// Démarrer le serveur WebSocket
-console.log('🚀 Démarrage du serveur WebSocket...');
-const wsManager = initializeWebSocketServer();
-
-// Démarrer le serveur WebSocket unifié
-console.log('🔌 Démarrage du serveur WebSocket unifié...');
-// Note: Le service WebSocket unifié sera initialisé après le démarrage du serveur HTTP
-
 // Démarrer le serveur HTTP
 const server = createServer(app);
-const socketService = new SocketService(server);
 
 server.listen(PORT, HOST, () => {
   console.log(`🚀 Serveur démarré sur le port ${PORT}`);
@@ -280,7 +267,7 @@ server.listen(PORT, HOST, () => {
   
   // Initialiser le service WebSocket unifié avec le serveur HTTP
   try {
-    const unifiedWsManager = initializeUnifiedWebSocket();
+    // const unifiedWsManager = initializeUnifiedWebSocket(); // This line is removed as per the edit hint
     console.log('✅ Service WebSocket unifié initialisé (port 5003)');
   } catch (error) {
     console.error('❌ Erreur initialisation WebSocket unifié:', error);

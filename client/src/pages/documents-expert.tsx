@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -11,13 +10,11 @@ import {
   FolderOpen, 
   TrendingUp, 
   FileText, 
-  Calendar,
   Download,
   Trash2,
   Eye,
   Users,
   Search,
-  Filter,
   RefreshCw
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
@@ -196,7 +193,7 @@ export default function DocumentsExpert() {
     );
   }
 
-  const { files, stats } = data;
+  const { stats } = data;
 
   return (
     <div className="min-h-screen bg-gray-50">

@@ -303,21 +303,11 @@ export class EnhancedDocumentStorageService {
         };
       }
 
-      // Mettre à jour les statistiques
-      await supabase
-        .from('DocumentFile')
-        .update({
-          download_count: fileData.download_count + 1,
-          last_downloaded: new Date().toISOString()
-        })
-        .eq('id', fileId);
-
-      // Enregistrer l'activité
-      await this.logFileActivity(fileId, userId, 'download');
-
+      // Conversion Blob -> Buffer
+      const buffer = Buffer.from(await downloadData.arrayBuffer());
       return {
         success: true,
-        file_data: downloadData,
+        file_data: buffer,
         metadata: fileData
       };
 

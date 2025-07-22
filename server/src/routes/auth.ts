@@ -10,7 +10,6 @@ import { authenticateUser } from '../middleware/authenticate';
 import { AuthUser, BaseUser, UserMetadata } from '../types/auth';
 import { logger } from '../utils/logger';
 import { googleCalendarService } from '../services/google-calendar-service';
-import { supabase } from '../lib/supabase';
 
 // Charger les variables d'environnement
 dotenv.config();
@@ -1068,7 +1067,8 @@ router.post('/google/callback', async (req, res) => {
       access_token: tokens.access_token,
       refresh_token: tokens.refresh_token,
       expiry_date: tokens.expiry_date,
-      scope: tokens.scope
+      scope: tokens.scope,
+      token_type: tokens.token_type
     });
 
     res.json({
