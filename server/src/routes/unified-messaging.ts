@@ -4,7 +4,10 @@ import { authenticateUser, requireUserType } from '../middleware/authenticate';
 import { AuthUser } from '../types/auth';
 import multer from 'multer';
 import path from 'path';
-import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Interfaces TypeScript
 interface Conversation {
