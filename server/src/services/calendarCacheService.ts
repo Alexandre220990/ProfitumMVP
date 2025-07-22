@@ -57,7 +57,7 @@ class CalendarCacheService {
   public async delCache(...keys: any[]) {
     const safeKeys: string[] = keys.filter((k): k is string => typeof k === 'string');
     if (safeKeys.length > 0) {
-      await this.redis.del(...(safeKeys as string[]));
+      await this.redis.del(safeKeys);
     }
   }
 
