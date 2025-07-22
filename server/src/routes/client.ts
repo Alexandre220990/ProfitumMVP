@@ -107,6 +107,18 @@ router.get('/produits-eligibles', authenticateUser, async (req: Request, res: Re
       return res.status(403).json({ success: false, message: 'Accès non autorisé' });
     }
 
+    // Récupérer d'abord le client par email pour obtenir l'ID de la table Client
+    const { data: client, error: clientError } = await supabase
+      .from('Client')
+      .select('id')
+      .eq('email', authUser.email)
+      .single();
+
+    if (clientError || !client) {
+      console.error('Erreur lors de la récupération du client:', clientError);
+      return res.status(500).json({ success: false, message: 'Client non trouvé' });
+    }
+
     // Récupérer les produits éligibles du client avec les détails des produits
     const { data: produitsData, error: produitsError } = await supabase
       .from('ClientProduitEligible')
@@ -127,7 +139,7 @@ router.get('/produits-eligibles', authenticateUser, async (req: Request, res: Re
           category
         )
       `)
-      .eq('clientId', authUser.id)
+      .eq('clientId', client.id) // Utiliser l'ID de la table Client
       .order('created_at', { ascending: false });
 
     if (produitsError) {
@@ -175,7 +187,7 @@ router.put('/produits-eligibles/:id/assign-expert', async (req, res) => {
     const { data: clientData, error: clientError } = await supabase
       .from('Client')
       .select('id, company_name')
-      .eq('auth_id', user.id)
+      .eq('email', user.email)
       .single();
 
     if (clientError || !clientData) {

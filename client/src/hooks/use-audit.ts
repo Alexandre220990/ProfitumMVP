@@ -39,8 +39,12 @@ export function useAudits(clientId?: string) {
   const [lastRefresh, setLastRefresh] = useState<number>(Date.now());
   const [hasRecentSimulation, setHasRecentSimulation] = useState<boolean>(false);
 
-  // Calcul optimisé du clientId effectif
-  const effectiveClientId = useMemo(() => clientId || user?.id, [clientId, user?.id]);
+  // Calcul optimisé du clientId effectif - utiliser l'email pour faire le lien
+  const effectiveClientId = useMemo(() => {
+    if (clientId) return clientId;
+    if (user?.email) return user.email; // Utiliser l'email comme identifiant
+    return null;
+  }, [clientId, user?.email]);
 
   const fetchAuditsData = useCallback(async (): Promise<Audit[]> => {
     if (!effectiveClientId) {
@@ -52,9 +56,12 @@ export function useAudits(clientId?: string) {
     console.log('🔍 Récupération des audits pour le client: ', effectiveClientId);
     
     try {
-      const response = await get<ApiResponse<ClientProduitEligible[]>>(
-        `/api/produits-eligibles/client/${effectiveClientId}`
-      );
+      // Si on a un email, utiliser la route qui gère la correspondance
+      const endpoint = user?.email ? 
+        `/api/client/produits-eligibles` : 
+        `/api/produits-eligibles/client/${effectiveClientId}`;
+      
+      const response = await get<ApiResponse<ClientProduitEligible[]>>(endpoint);
       console.log('✅ Réponse API produits éligibles: ', response);
 
       if (response.success && response.data !== null && Array.isArray(response.data)) {
@@ -120,7 +127,7 @@ export function useAudits(clientId?: string) {
       setIsLoading(false);
       setLastRefresh(Date.now());
     }
-  }, [effectiveClientId]);
+  }, [effectiveClientId, user?.email]);
 
   const checkRecentSimulationStatus = useCallback(async (): Promise<boolean> => {
     if (!effectiveClientId) return false;

@@ -32,18 +32,30 @@ const authenticateUser = async (req: Request, res: Response, next: Function) => 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default_secret');
     
-    // Vérifier l'existence de l'utilisateur dans Supabase
+    // Vérifier l'existence de l'utilisateur dans Supabase par email
     const { data: user, error } = await supabase
-      .from('User')
+      .from('Client')
       .select('*')
-      .eq('id', (decoded as any).id)
+      .eq('email', (decoded as any).email)
       .single();
       
     if (error || !user) {
-      return res.status(403).json({ message: 'Utilisateur non trouvé' });
+      // Essayer dans la table Expert
+      const { data: expert, error: expertError } = await supabase
+        .from('Expert')
+        .select('*')
+        .eq('email', (decoded as any).email)
+        .single();
+        
+      if (expertError || !expert) {
+        return res.status(403).json({ message: 'Utilisateur non trouvé' });
+      }
+      
+      (req as any).user = expert;
+    } else {
+      (req as any).user = user;
     }
     
-    (req as any).user = user;
     next();
   } catch (error) {
     return res.status(401).json({ message: 'Token invalide' });

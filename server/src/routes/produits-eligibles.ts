@@ -96,8 +96,21 @@ router.get("/client/:clientId", authenticateUser, async (req: Request, res: Resp
     const authUser = req.user as AuthUser;
     const { clientId } = req.params;
 
-    // Vérifier l'accès
-    if (authUser.type !== 'expert' && authUser.id !== clientId) {
+    // Vérifier l'accès : expert ou client propriétaire
+    if (authUser.type === 'expert') {
+      // Les experts peuvent accéder à tous les clients
+    } else if (authUser.type === 'client') {
+      // Vérifier que le client est bien le propriétaire
+      const { data: client, error: clientError } = await supabase
+        .from('Client')
+        .select('id')
+        .eq('email', authUser.email)
+        .single();
+
+      if (clientError || !client || client.id !== clientId) {
+        return res.status(403).json({ success: false, message: 'Accès non autorisé' });
+      }
+    } else {
       return res.status(403).json({ success: false, message: 'Accès non autorisé' });
     }
 

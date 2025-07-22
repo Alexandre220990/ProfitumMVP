@@ -191,22 +191,22 @@ export const authenticateUser = async (
     let userData: any = null;
     let userType: 'client' | 'expert' | 'admin' = 'client';
 
-    // Vérifier si c'est un client
+    // Vérifier si c'est un client par email
     const { data: clientData } = await supabase
       .from('Client')
-      .select('id, email, company_name, auth_id')
-      .eq('auth_id', user.id)
+      .select('id, email, company_name, name')
+      .eq('email', user.email)
       .single();
 
     if (clientData) {
       userData = clientData;
       userType = 'client';
     } else {
-      // Vérifier si c'est un expert
+      // Vérifier si c'est un expert par email
       const { data: expertData } = await supabase
         .from('Expert')
-        .select('id, email, name, auth_id, approval_status')
-        .eq('auth_id', user.id)
+        .select('id, email, name, approval_status')
+        .eq('email', user.email)
         .single();
 
       if (expertData) {
@@ -234,11 +234,11 @@ export const authenticateUser = async (
           });
         }
       } else {
-        // Vérifier si c'est un admin
+        // Vérifier si c'est un admin par email
         const { data: adminData } = await supabase
           .from('Admin')
           .select('id, email, name')
-          .eq('id', user.id)
+          .eq('email', user.email)
           .single();
 
         if (adminData) {

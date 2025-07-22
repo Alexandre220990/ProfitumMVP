@@ -57,10 +57,11 @@ const checkAuth = async (req: Request, res: express.Response) => {
     let userData = null;
     
     if (userType === 'client') {
+      // Rechercher le client par email au lieu de l'ID Supabase Auth
       const { data: client, error: clientError } = await supabase
         .from('Client')
         .select('*')
-        .eq('id', userId)
+        .eq('email', userEmail)
         .single();
         
       if (clientError) {
@@ -73,10 +74,11 @@ const checkAuth = async (req: Request, res: express.Response) => {
       
       userData = client;
     } else if (userType === 'expert') {
+      // Rechercher l'expert par email au lieu de l'ID Supabase Auth
       const { data: expert, error: expertError } = await supabase
         .from('Expert')
         .select('*')
-        .eq('id', userId)
+        .eq('email', userEmail)
         .single();
         
       if (expertError) {
@@ -157,10 +159,11 @@ router.post('/login', async (req, res) => {
     
     // Récupérer les détails de l'utilisateur selon son type
     if (userType === 'client') {
+      // Rechercher le client par email au lieu de l'ID Supabase Auth
       const { data: client, error: clientError } = await supabase
         .from('Client')
         .select('*')
-        .eq('id', userId)
+        .eq('email', userEmail)
         .single();
         
       if (clientError) {
@@ -209,10 +212,10 @@ router.post('/login', async (req, res) => {
       };
     }
 
-    // Générer le token JWT
+    // Générer le token JWT avec l'ID de la table spécifique
     const token = jwt.sign(
       { 
-        id: userId, 
+        id: userDetails?.id || userId, // Utiliser l'ID de la table Client/Expert si disponible
         email: userEmail, 
         type: userType 
       },
@@ -231,108 +234,6 @@ router.post('/login', async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Erreur lors de la connexion:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Erreur lors de la connexion',
-      error: error instanceof Error ? error.message : 'Erreur inconnue'
-    });
-  }
-});
-
-// Route de connexion des clients
-router.options('/client/login', (req, res) => {
-  const origin = req.headers.origin;
-  
-  // Accepter explicitement l'origine de la requête pour les requêtes preflight OPTIONS
-  if (origin) {
-    res.header('Access-Control-Allow-Origin', origin);
-    res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    res.header('Access-Control-Allow-Credentials', 'true');
-    console.log(`🔑 OPTIONS preflight pour /client/login - Origine acceptée: ${origin}`);
-  }
-  
-  res.status(204).end();
-});
-
-router.post('/client/login', async (req, res) => {
-  // Traiter les headers CORS manuellement pour cette route spécifique
-  const origin = req.headers.origin;
-  if (origin) {
-    res.header('Access-Control-Allow-Origin', origin);
-    res.header('Access-Control-Allow-Credentials', 'true');
-    console.log(`🔑 POST /client/login - Origine acceptée: ${origin}`);
-  }
-
-  try {
-    console.log('Tentative de connexion client avec:', { email: req.body.email });
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      console.log('Email ou mot de passe manquant');
-      return res.status(400).json({
-        success: false,
-        message: 'Email et mot de passe requis'
-      });
-    }
-
-    console.log('Recherche du client dans la base de données...');
-    const { data: client, error } = await supabase
-      .from('Client')
-      .select('*')
-      .eq('email', email)
-      .single();
-
-    if (error || !client) {
-      console.log('Client non trouvé:', email);
-      return res.status(401).json({
-        success: false,
-        message: 'Email ou mot de passe incorrect'
-      });
-    }
-
-    console.log('Client trouvé, vérification du mot de passe...');
-    const validPassword = await bcrypt.compare(password, client.password);
-    
-    if (!validPassword) {
-      console.log('Mot de passe incorrect pour:', email);
-      return res.status(401).json({
-        success: false,
-        message: 'Email ou mot de passe incorrect'
-      });
-    }
-
-    console.log('Mot de passe valide, génération du token...');
-    const token = jwt.sign(
-      { id: client.id, email: client.email, role: 'client' },
-      process.env.JWT_SECRET || 'votre_secret_jwt_super_securise',
-      { expiresIn: '24h' }
-    );
-
-    console.log('Connexion réussie pour:', email);
-    res.json({
-      success: true,
-      data: {
-        client: {
-          id: client.id,
-          name: client.name,
-          email: client.email,
-          type: 'client',
-          company: client.company,
-          phone: client.phone,
-          revenuAnnuel: client.revenuAnnuel,
-          secteurActivite: client.secteurActivite,
-          nombreEmployes: client.nombreEmployes,
-          ancienneteEntreprise: client.ancienneteEntreprise,
-          besoinFinancement: client.besoinFinancement,
-          typeProjet: client.typeProjet,
-          simulationId: client.simulationId
-        },
-        token
-      }
-    });
-  } catch (error) {
-    console.error('Erreur détaillée lors de la connexion:', error);
     res.status(500).json({
       success: false,
       message: 'Erreur lors de la connexion',
@@ -564,10 +465,11 @@ const getCurrentUser = async (req: Request, res: express.Response) => {
     let userData = null;
     
     if (userType === 'client') {
+      // Rechercher le client par email au lieu de l'ID Supabase Auth
       const { data: client, error: clientError } = await supabase
         .from('Client')
         .select('*')
-        .eq('id', userId)
+        .eq('email', userEmail)
         .single();
         
       if (clientError) {
@@ -580,10 +482,11 @@ const getCurrentUser = async (req: Request, res: express.Response) => {
       
       userData = client;
     } else if (userType === 'expert') {
+      // Rechercher l'expert par email au lieu de l'ID Supabase Auth
       const { data: expert, error: expertError } = await supabase
         .from('Expert')
         .select('*')
-        .eq('id', userId)
+        .eq('email', userEmail)
         .single();
         
       if (expertError) {
@@ -640,14 +543,14 @@ const verifyToken = async (req: Request, res: express.Response) => {
     const userEmail = authUser.email;
     const userMetadata = authUser.user_metadata || {};
 
-    // Vérifier d'abord dans la table Client
+    // Vérifier d'abord dans la table Client par email
     const { data: client, error: clientError } = await supabase
       .from('Client')
       .select('*')
-      .eq('id', userId)
+      .eq('email', userEmail)
       .single();
 
-    // Si pas trouvé dans Client, vérifier dans Expert
+    // Si pas trouvé dans Client, vérifier dans Expert par email
     let userType: 'client' | 'expert' | 'admin' = authUser.type;
     let userDetails = client;
     
@@ -655,7 +558,7 @@ const verifyToken = async (req: Request, res: express.Response) => {
       const { data: expert, error: expertError } = await supabase
         .from('Expert')
         .select('*')
-        .eq('id', userId)
+        .eq('email', userEmail)
         .single();
 
       if (expert) {
@@ -677,7 +580,7 @@ const verifyToken = async (req: Request, res: express.Response) => {
       success: true,
       data: {
         user: {
-          id: userId,
+          id: userDetails.id,
           email: userEmail,
           username: userDetails.name,
           type: userType,
@@ -734,102 +637,6 @@ const verifyTokenAlt = async (req: Request, res: express.Response) => {
 };
 
 router.get('/verify-token', authenticateUser, verifyTokenAlt);
-
-// Endpoint pour créer un token Supabase à partir d'un email
-router.post('/create-supabase-token', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: 'Email et mot de passe requis'
-      });
-    }
-
-    // Tentative de connexion avec Supabase
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
-
-    if (error) {
-      logger.error('Erreur de connexion Supabase:', error);
-      return res.status(401).json({
-        success: false,
-        message: 'Identifiants invalides'
-      });
-    }
-
-    if (!data.user || !data.session) {
-      return res.status(401).json({
-        success: false,
-        message: 'Connexion échouée'
-      });
-    }
-
-    // Retourner le token d'accès Supabase
-    return res.json({
-      success: true,
-      data: {
-        token: data.session.access_token,
-        user: {
-          id: data.user.id,
-          email: data.user.email,
-          type: data.user.user_metadata?.type || 'client'
-        }
-      }
-    });
-
-  } catch (error) {
-    logger.error('Erreur lors de la création du token Supabase:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Erreur interne du serveur'
-    });
-  }
-});
-
-// Endpoint pour vérifier un token Supabase
-router.post('/verify-token', async (req, res) => {
-  try {
-    const { token } = req.body;
-
-    if (!token) {
-      return res.status(400).json({
-        success: false,
-        message: 'Token requis'
-      });
-    }
-
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-
-    if (error || !user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Token invalide ou expiré'
-      });
-    }
-
-    return res.json({
-      success: true,
-      data: {
-        user: {
-          id: user.id,
-          email: user.email,
-          type: user.user_metadata?.type || 'client'
-        }
-      }
-    });
-
-  } catch (error) {
-    logger.error('Erreur lors de la vérification du token:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Erreur interne du serveur'
-    });
-  }
-});
 
 // Endpoint pour créer un utilisateur dans Supabase
 router.post('/create-user', async (req, res) => {

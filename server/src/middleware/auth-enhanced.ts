@@ -211,106 +211,81 @@ export const enhancedAuthMiddleware = async (
       });
     }
 
-    // 3. Récupération des informations utilisateur en base
+    // 3. Vérification du type d'utilisateur en base de données
     let userData: any = null;
     let userType: 'client' | 'expert' | 'admin' = 'client';
-    
-    // Si on a des données JWT, les utiliser directement
-    if (jwtUserData) {
-      userData = jwtUserData;
-      userType = jwtUserData.type || 'client';
+
+    // Vérifier si c'est un client par email
+    const { data: clientData } = await supabase
+      .from('Client')
+      .select('id, email, company_name, name')
+      .eq('email', user.email)
+      .single();
+
+    if (clientData) {
+      userData = clientData;
+      userType = 'client';
     } else {
-      // Vérifier dans la table Client
-      const { data: clientData } = await supabase
-        .from('Client')
-        .select('id, email, auth_id')
-        .eq('auth_id', user.id)
+      // Vérifier si c'est un expert par email
+      const { data: expertData } = await supabase
+        .from('Expert')
+        .select('id, email, name, approval_status')
+        .eq('email', user.email)
         .single();
-      
-      if (clientData) {
-        userData = clientData;
-        userType = 'client';
+
+      if (expertData) {
+        userData = expertData;
+        userType = 'expert';
+        
+        // Vérifier le statut d'approbation de l'expert
+        if (expertData.approval_status !== 'approved') {
+          await logAccess({
+            timestamp: new Date(),
+            userId: user.id,
+            userType: 'expert',
+            action: req.method,
+            resource: req.path,
+            ipAddress: ipAddress as string,
+            userAgent,
+            success: false,
+            errorMessage: 'Expert non approuvé'
+          });
+          
+          return res.status(403).json({
+            success: false,
+            message: 'Votre compte est en cours d\'approbation par les équipes Profitum. Vous recevrez un email dès que votre compte sera validé.',
+            approval_status: expertData.approval_status
+          });
+        }
       } else {
-        // Vérifier dans la table Expert
-        const { data: expertData } = await supabase
-          .from('Expert')
-          .select('id, email, auth_id, status, approval_status')
-          .eq('auth_id', user.id)
+        // Vérifier si c'est un admin par email
+        const { data: adminData } = await supabase
+          .from('Admin')
+          .select('id, email, name')
+          .eq('email', user.email)
           .single();
         
-        if (expertData) {
-          // Vérifier le statut d'approbation de l'expert
-          if (expertData.approval_status !== 'approved') {
-            await logAccess({
-              timestamp: new Date(),
-              userId: user.id,
-              userType: 'expert',
-              action: req.method,
-              resource: req.path,
-              ipAddress: ipAddress as string,
-              userAgent,
-              success: false,
-              errorMessage: 'Expert non approuvé'
-            });
-            
-            return res.status(403).json({
-              success: false,
-              message: 'Votre compte est en cours d\'approbation par les équipes Profitum. Vous recevrez un email dès que votre compte sera validé.',
-              approval_status: expertData.approval_status
-            });
-          }
-          
-          if (expertData.status !== 'active') {
-            await logAccess({
-              timestamp: new Date(),
-              userId: user.id,
-              userType: 'expert',
-              action: req.method,
-              resource: req.path,
-              ipAddress: ipAddress as string,
-              userAgent,
-              success: false,
-              errorMessage: 'Expert inactif'
-            });
-            
-            return res.status(403).json({
-              success: false,
-              message: 'Compte expert inactif'
-            });
-          }
-          
-          userData = expertData;
-          userType = 'expert';
+        if (adminData) {
+          userData = adminData;
+          userType = 'admin';
         } else {
-          // Vérifier dans la table Admin
-          const { data: adminData } = await supabase
-            .from('Admin')
-            .select('id, email, role')
-            .eq('id', user.id)
-            .single();
+          // Utilisateur non trouvé dans aucune table
+          await logAccess({
+            timestamp: new Date(),
+            userId: user.id,
+            userType: 'unknown',
+            action: req.method,
+            resource: req.path,
+            ipAddress: ipAddress as string,
+            userAgent,
+            success: false,
+            errorMessage: 'Utilisateur non trouvé en base'
+          });
           
-          if (adminData) {
-            userData = adminData;
-            userType = 'admin';
-          } else {
-            // Utilisateur non trouvé dans aucune table
-            await logAccess({
-              timestamp: new Date(),
-              userId: user.id,
-              userType: 'unknown',
-              action: req.method,
-              resource: req.path,
-              ipAddress: ipAddress as string,
-              userAgent,
-              success: false,
-              errorMessage: 'Utilisateur non trouvé en base'
-            });
-            
-            return res.status(403).json({
-              success: false,
-              message: 'Utilisateur non autorisé'
-            });
-          }
+          return res.status(403).json({
+            success: false,
+            message: 'Utilisateur non autorisé'
+          });
         }
       }
     }
