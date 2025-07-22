@@ -107,7 +107,7 @@ export class UnifiedDocumentService extends EventEmitter {
   private setupEventHandlers() {
     this.on(DocumentEvents.FILE_UPLOADED, (file: DocumentFile) => {
       console.log(`📁 Fichier uploadé: ${file.original_filename}`);
-      this.updateStats(file.userId || '');
+      this.updateStats(file.uploaded_by || '');
     });
 
     this.on(DocumentEvents.FILE_DELETED, (fileId: string) => {
