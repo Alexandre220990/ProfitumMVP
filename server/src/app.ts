@@ -17,7 +17,8 @@ const allowedOrigins = [
   'http://localhost:5173',
   'https://profitum-mvp.vercel.app',
   'https://profitum.app',
-  'https://www.profitum.app'
+  'https://www.profitum.app',
+  'https://profitummvp-production.up.railway.app'
 ];
 
 app.use(cors({
