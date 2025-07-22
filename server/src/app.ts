@@ -4,7 +4,7 @@ import routes from './routes';
 // import { monitoringSystem } from '../lib/monitoring-system';
 
 // Routes pour les documents clients
-import clientDocumentsRouter from './routes/client-documents';
+import clientDocumentsRouter from './routes/enhanced-client-documents';
 
 const app = express();
 

@@ -178,7 +178,7 @@ const AdminDashboardPage: React.FC = () => {
         description: 'Gestion Électronique Documentaire',
         icon: FileText,
         color: 'from-slate-500 to-gray-500',
-        path: '/admin/admin-document-upload',
+        path: '/admin/enhanced-admin-documents',
         stats: { documents: 1234, categories: 8 }
       },
       {
@@ -187,7 +187,7 @@ const AdminDashboardPage: React.FC = () => {
         description: 'Upload et gestion des guides prêts',
         icon: BookOpen,
         color: 'from-amber-500 to-orange-500',
-        path: '/admin/admin-document-upload',
+        path: '/admin/enhanced-admin-documents',
         stats: { uploaded: 89, templates: 15 }
       },
       {

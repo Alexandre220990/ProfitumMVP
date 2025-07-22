@@ -1,10 +1,11 @@
+import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useNavigate } from "react-router-dom";
 import { Briefcase, Calendar, MessageSquare, FileText, User, LogOut, Bell, Settings, ChevronDown, Users } from "lucide-react";
 import Button from "@/components/ui/design-system/Button";
 import Badge from "@/components/ui/design-system/Badge";
-import { useToast } from "@/components/ui/toast-notifications";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import UnifiedNotificationCenter from "./UnifiedNotificationCenter";
 
 interface HeaderClientProps {
   onLogout?: () => void;
@@ -13,31 +14,17 @@ interface HeaderClientProps {
 export default function HeaderClient({ onLogout }: HeaderClientProps) { 
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const { addToast } = useToast();
-  
+  const [notifOpen, setNotifOpen] = useState(false);
+
   const handleLogout = async () => { 
     try {
       await logout();
-      addToast({
-        type: 'success',
-        title: 'Déconnexion réussie',
-        message: 'Vous avez été déconnecté avec succès',
-        duration: 3000
-      });
-      
       if (onLogout) {
         onLogout(); 
       } else { 
         navigate("/"); 
       }
-    } catch (error) {
-      addToast({
-        type: 'error',
-        title: 'Erreur de déconnexion',
-        message: 'Une erreur est survenue lors de la déconnexion',
-        duration: 5000
-      });
-    }
+    } catch (error) {}
   };
 
   const handleNavigation = (path: string) => {
@@ -47,7 +34,6 @@ export default function HeaderClient({ onLogout }: HeaderClientProps) {
   return (
     <header className="bg-white/90 backdrop-blur-md border-b border-slate-200/60 shadow-sm sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-        
         {/* LOGO */}
         <div className="flex items-center">
           <div 
@@ -61,7 +47,6 @@ export default function HeaderClient({ onLogout }: HeaderClientProps) {
             />
           </div>
         </div>
-
         {/* NAVIGATION PRINCIPALE - CENTRÉE */}
         <nav className="hidden md:flex items-center justify-center space-x-1 flex-1 max-w-2xl mx-8">
           <Button
@@ -73,7 +58,6 @@ export default function HeaderClient({ onLogout }: HeaderClientProps) {
             <Briefcase className="h-4 w-4" />
             <span>Dashboard</span>
           </Button>
-
           <Button
             variant="ghost"
             size="sm"
@@ -83,7 +67,6 @@ export default function HeaderClient({ onLogout }: HeaderClientProps) {
             <Calendar className="h-4 w-4" />
             <span>Agenda</span>
           </Button>
-
           <Button
             variant="ghost"
             size="sm"
@@ -96,7 +79,6 @@ export default function HeaderClient({ onLogout }: HeaderClientProps) {
               3
             </Badge>
           </Button>
-
           <Button
             variant="ghost"
             size="sm"
@@ -106,7 +88,6 @@ export default function HeaderClient({ onLogout }: HeaderClientProps) {
             <FileText className="h-4 w-4" />
             <span>Documents</span>
           </Button>
-
           <Button
             variant="ghost"
             size="sm"
@@ -117,29 +98,22 @@ export default function HeaderClient({ onLogout }: HeaderClientProps) {
             <span>Marketplace</span>
           </Button>
         </nav>
-
         {/* ACTIONS UTILISATEUR - Compactes */}
         <div className="flex items-center space-x-2">
           {/* Notifications */}
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => {
-              addToast({
-                type: 'info',
-                title: 'Notifications',
-                message: 'Aucune nouvelle notification',
-                duration: 3000
-              });
-            }}
+            onClick={() => setNotifOpen(true)}
             className="relative p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200"
+            aria-label="Ouvrir le centre de notifications"
           >
             <Bell className="h-5 w-5" />
             <Badge variant="primary" className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-xs">
               2
             </Badge>
           </Button>
-
+          {notifOpen && <UnifiedNotificationCenter />}
           {/* Menu utilisateur */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -182,6 +156,9 @@ export default function HeaderClient({ onLogout }: HeaderClientProps) {
           </DropdownMenu>
         </div>
       </div>
+      {notifOpen && (
+        <div className="fixed inset-0 z-50" onClick={() => setNotifOpen(false)} aria-label="Fermer le centre de notifications" tabIndex={-1} />
+      )}
     </header>
   );
 }

@@ -1,29 +1,10 @@
 
 import HeaderClient from "@/components/HeaderClient";
-import UnifiedMessaging from "@/components/UnifiedMessaging";
-import { useAuth } from "@/hooks/use-auth";
+import { MessagingProvider } from "@/components/messaging/MessagingProvider";
+import { MessagingApp } from "@/components/messaging/MessagingApp";
 import { MessageSquare } from "lucide-react";
 
 export default function MessagerieClient() {
-  const { user } = useAuth();
-
-  // Participants pour la conversation admin
-  const adminParticipants = [
-    {
-      id: '00000000-0000-0000-0000-000000000000',
-      name: 'Support Administratif',
-      type: 'admin',
-      company: 'Plateforme',
-      avatar: null
-    },
-    {
-      id: user?.id || '',
-      name: user?.name || 'Client',
-      type: 'client',
-      company: user?.company_name || '',
-      avatar: null
-    }
-  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
@@ -49,24 +30,15 @@ export default function MessagerieClient() {
           </div>
         </div>
 
-        {/* Système de messagerie unifié */}
-        <UnifiedMessaging
-          conversationType="expert_client"
-          participants={adminParticipants}
-          features={{
-            fileUpload: true,
-            realTime: true,
-            search: true,
-            notifications: true,
-            typing: true
-          }}
-          onMessageSent={(message) => {
-            console.log('Message envoyé:', message);
-          }}
-          onConversationSelect={(conversation) => {
-            console.log('Conversation sélectionnée:', conversation);
-          }}
-        />
+        {/* Système de messagerie optimisé avec Supabase Realtime */}
+        <div className="h-[600px] bg-white rounded-xl shadow-lg overflow-hidden">
+          <MessagingProvider>
+            <MessagingApp 
+              headerTitle="Messagerie Client"
+              showHeader={false}
+            />
+          </MessagingProvider>
+        </div>
       </div>
     </div>
   );

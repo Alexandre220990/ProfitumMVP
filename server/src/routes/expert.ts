@@ -323,7 +323,7 @@ router.get('/notifications', authenticateUser, async (req: Request, res: Respons
 
     // Récupérer les notifications de l'expert
     const { data: notifications, error } = await supabase
-      .from('notification_final')
+      .from('Notification')
       .select('*')
       .eq('user_id', authUser.id)
       .eq('user_type', 'expert')
@@ -361,7 +361,7 @@ router.put('/notifications/:notificationId/read', authenticateUser, async (req: 
 
     // Marquer comme lue
     const { data: notification, error } = await supabase
-      .from('notification_final')
+      .from('Notification')
       .update({
         is_read: true,
         read_at: new Date().toISOString()

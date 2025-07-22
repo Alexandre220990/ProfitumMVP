@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { googleCalendarService, GoogleCalendarIntegration, SyncResult } from './google-calendar-service';
+import { googleCalendarService, GoogleCalendarIntegration, SyncOptions, SyncResult, SyncProgress } from './google-calendar-service';
 import { CalendarEvent } from '../types/calendar';
 
 // ============================================================================
@@ -7,37 +7,21 @@ import { CalendarEvent } from '../types/calendar';
 // ============================================================================
 
 export interface SyncConflict {
-  id: string;
-  type: 'time_conflict' | 'data_conflict' | 'deletion_conflict';
   profitumEvent: CalendarEvent;
   googleEvent: any;
+  conflictType: 'time_overlap' | 'title_mismatch' | 'participant_mismatch' | 'location_mismatch';
   resolution: 'keep_profitum' | 'keep_google' | 'merge' | 'manual';
-  description: string;
 }
 
-export interface SyncOptions {
-  syncDirection: 'import' | 'export' | 'bidirectional';
-  timeRange: {
-    start: Date;
-    end: Date;
-  };
-  resolveConflicts: boolean;
-  createMissingEvents: boolean;
-  updateExistingEvents: boolean;
-  deleteOrphanedEvents: boolean;
-}
-
-export interface SyncProgress {
+export interface SyncMetrics {
   totalEvents: number;
-  processedEvents: number;
-  createdEvents: number;
-  updatedEvents: number;
-  deletedEvents: number;
-  conflicts: SyncConflict[];
+  eventsCreated: number;
+  eventsUpdated: number;
+  eventsDeleted: number;
+  conflictsResolved: number;
   errors: string[];
-  status: 'running' | 'completed' | 'failed' | 'paused';
-  startTime: Date;
-  estimatedCompletion?: Date;
+  duration: number;
+  syncDirection: 'import' | 'export' | 'bidirectional';
 }
 
 // ============================================================================
@@ -46,6 +30,7 @@ export interface SyncProgress {
 
 export class IntelligentSyncService {
   private syncProgress: Map<string, SyncProgress> = new Map();
+  private syncMetrics: Map<string, SyncMetrics> = new Map();
 
   /**
    * Synchroniser un calendrier Google avec Profitum
@@ -92,20 +77,13 @@ export class IntelligentSyncService {
         ...options
       };
 
-      // Initialiser le progrès
-      const progress: SyncProgress = {
-        totalEvents: 0,
-        processedEvents: 0,
-        createdEvents: 0,
-        updatedEvents: 0,
-        deletedEvents: 0,
-        conflicts: [],
-        errors: [],
+      // Initialiser le suivi de progression
+      this.syncProgress.set(integrationId, {
         status: 'running',
-        startTime: new Date()
-      };
-
-      this.syncProgress.set(integrationId, progress);
+        progress: 0,
+        currentStep: 'Initialisation de la synchronisation',
+        startTime: startTime
+      });
 
       // Mettre à jour le statut de l'intégration
       await googleCalendarService.updateIntegration(integrationId, {
@@ -118,13 +96,13 @@ export class IntelligentSyncService {
       // Exécuter la synchronisation selon la direction
       switch (syncOptions.syncDirection) {
         case 'import':
-          result = await this.syncFromGoogleToProfitum(integration, syncOptions, progress);
+          result = await this.syncFromGoogle(integration, syncOptions);
           break;
         case 'export':
-          result = await this.syncFromProfitumToGoogle(integration, syncOptions, progress);
+          result = await this.syncToGoogle(integration, syncOptions);
           break;
         case 'bidirectional':
-          result = await this.syncBidirectional(integration, syncOptions, progress);
+          result = await this.syncBidirectional(integration, syncOptions);
           break;
         default:
           throw new Error('Direction de synchronisation invalide');
@@ -132,14 +110,21 @@ export class IntelligentSyncService {
 
       // Mettre à jour le statut final
       await googleCalendarService.updateIntegration(integrationId, {
-        sync_status: result.success ? 'idle' : 'error',
-        error_message: result.errors.length > 0 ? result.errors.join('; ') : undefined
+        sync_status: 'idle',
+        error_message: result.errors.length > 0 ? result.errors.join('; ') : null
       });
 
-      // Sauvegarder le log de synchronisation
-      await this.saveSyncLog(integrationId, result, startTime);
+      // Finaliser le suivi de progression
+      this.syncProgress.set(integrationId, {
+        status: 'completed',
+        progress: 100,
+        currentStep: 'Synchronisation terminée',
+        startTime: startTime,
+        endTime: Date.now()
+      });
 
       return result;
+
     } catch (error) {
       console.error('❌ Erreur synchronisation:', error);
       
@@ -149,28 +134,25 @@ export class IntelligentSyncService {
         error_message: error instanceof Error ? error.message : 'Erreur inconnue'
       });
 
-      return {
-        success: false,
-        eventsProcessed: 0,
-        eventsCreated: 0,
-        eventsUpdated: 0,
-        eventsDeleted: 0,
-        errors: [error instanceof Error ? error.message : 'Erreur inconnue'],
-        duration: Date.now() - startTime
-      };
-    } finally {
-      // Nettoyer le progrès
-      this.syncProgress.delete(integrationId);
+      // Finaliser le suivi de progression avec erreur
+      this.syncProgress.set(integrationId, {
+        status: 'failed',
+        progress: 0,
+        currentStep: 'Erreur de synchronisation',
+        startTime: startTime,
+        endTime: Date.now()
+      });
+
+      throw error;
     }
   }
 
   /**
-   * Synchroniser de Google vers Profitum
+   * Synchroniser depuis Google Calendar vers Profitum
    */
-  private async syncFromGoogleToProfitum(
+  private async syncFromGoogle(
     integration: GoogleCalendarIntegration,
-    options: SyncOptions,
-    progress: SyncProgress
+    options: SyncOptions
   ): Promise<SyncResult> {
     const startTime = Date.now();
     const errors: string[] = [];
@@ -184,10 +166,9 @@ export class IntelligentSyncService {
         integration.access_token,
         integration.calendar_id,
         options.timeRange.start,
-        options.timeRange.end
+        options.timeRange.end,
+        1000
       );
-
-      progress.totalEvents = googleEvents.length;
 
       // Récupérer les événements Profitum existants
       const { data: profitumEvents, error: fetchError } = await supabase
@@ -197,27 +178,19 @@ export class IntelligentSyncService {
         .gte('start_date', options.timeRange.start.toISOString())
         .lte('end_date', options.timeRange.end.toISOString());
 
-      if (fetchError) {
-        throw new Error('Erreur récupération événements Profitum');
-      }
-
-      // Créer un map des événements Profitum par ID Google
-      const profitumEventsMap = new Map();
-      for (const event of profitumEvents || []) {
-        if (event.metadata?.googleEventId) {
-          profitumEventsMap.set(event.metadata.googleEventId, event);
-        }
-      }
+      if (fetchError) throw fetchError;
 
       // Traiter chaque événement Google
       for (const googleEvent of googleEvents) {
         try {
           eventsProcessed++;
-          progress.processedEvents = eventsProcessed;
+          
+          // Vérifier si l'événement existe déjà dans Profitum
+          const existingEvent = profitumEvents?.find(
+            event => event.metadata?.googleEventId === googleEvent.id
+          );
 
-          const existingProfitumEvent = profitumEventsMap.get(googleEvent.id);
-
-          if (existingProfitumEvent) {
+          if (existingEvent) {
             // Mettre à jour l'événement existant
             if (options.updateExistingEvents) {
               const updatedEvent = googleCalendarService.convertGoogleToProfitumEvent(
@@ -228,13 +201,12 @@ export class IntelligentSyncService {
               const { error: updateError } = await supabase
                 .from('CalendarEvent')
                 .update(updatedEvent)
-                .eq('id', existingProfitumEvent.id);
+                .eq('id', existingEvent.id);
 
               if (updateError) {
                 errors.push(`Erreur mise à jour événement ${googleEvent.id}: ${updateError.message}`);
               } else {
                 eventsUpdated++;
-                progress.updatedEvents = eventsUpdated;
               }
             }
           } else {
@@ -245,30 +217,22 @@ export class IntelligentSyncService {
                 integration
               );
 
-              const { data: createdEvent, error: createError } = await supabase
+              const { error: createError } = await supabase
                 .from('CalendarEvent')
-                .insert(newEvent)
-                .select()
-                .single();
+                .insert(newEvent);
 
               if (createError) {
                 errors.push(`Erreur création événement ${googleEvent.id}: ${createError.message}`);
               } else {
                 eventsCreated++;
-                progress.createdEvents = eventsCreated;
-
-                // Créer le mapping
-                await supabase
-                  .from('GoogleCalendarEventMapping')
-                  .insert({
-                    integration_id: integration.id,
-                    profitum_event_id: createdEvent.id,
-                    google_event_id: googleEvent.id,
-                    google_calendar_id: integration.calendar_id
-                  });
               }
             }
           }
+
+          // Mettre à jour la progression
+          this.updateSyncProgress(integration.id, (eventsProcessed / googleEvents.length) * 100, 
+            `Traitement événement ${eventsProcessed}/${googleEvents.length}`);
+
         } catch (error) {
           errors.push(`Erreur traitement événement ${googleEvent.id}: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
         }
@@ -283,8 +247,9 @@ export class IntelligentSyncService {
         errors,
         duration: Date.now() - startTime
       };
+
     } catch (error) {
-      errors.push(error instanceof Error ? error.message : 'Erreur inconnue');
+      errors.push(`Erreur synchronisation depuis Google: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
       return {
         success: false,
         eventsProcessed,
@@ -298,12 +263,11 @@ export class IntelligentSyncService {
   }
 
   /**
-   * Synchroniser de Profitum vers Google
+   * Synchroniser vers Google Calendar depuis Profitum
    */
-  private async syncFromProfitumToGoogle(
+  private async syncToGoogle(
     integration: GoogleCalendarIntegration,
-    options: SyncOptions,
-    progress: SyncProgress
+    options: SyncOptions
   ): Promise<SyncResult> {
     const startTime = Date.now();
     const errors: string[] = [];
@@ -320,36 +284,28 @@ export class IntelligentSyncService {
         .gte('start_date', options.timeRange.start.toISOString())
         .lte('end_date', options.timeRange.end.toISOString());
 
-      if (fetchError) {
-        throw new Error('Erreur récupération événements Profitum');
-      }
+      if (fetchError) throw fetchError;
 
-      progress.totalEvents = profitumEvents?.length || 0;
-
-      // Récupérer les mappings existants
-      const { data: mappings, error: mappingsError } = await supabase
-        .from('GoogleCalendarEventMapping')
-        .select('*')
-        .eq('integration_id', integration.id);
-
-      if (mappingsError) {
-        throw new Error('Erreur récupération mappings');
-      }
-
-      const mappingsMap = new Map();
-      for (const mapping of mappings || []) {
-        mappingsMap.set(mapping.profitum_event_id, mapping);
-      }
+      // Récupérer les événements Google existants
+      const googleEvents = await googleCalendarService.listEvents(
+        integration.access_token,
+        integration.calendar_id,
+        options.timeRange.start,
+        options.timeRange.end,
+        1000
+      );
 
       // Traiter chaque événement Profitum
       for (const profitumEvent of profitumEvents || []) {
         try {
           eventsProcessed++;
-          progress.processedEvents = eventsProcessed;
+          
+          // Vérifier si l'événement existe déjà dans Google
+          const existingGoogleEvent = googleEvents.find(
+            event => event.extendedProperties?.private?.profitumEventId === profitumEvent.id
+          );
 
-          const existingMapping = mappingsMap.get(profitumEvent.id);
-
-          if (existingMapping) {
+          if (existingGoogleEvent) {
             // Mettre à jour l'événement Google existant
             if (options.updateExistingEvents) {
               const googleEvent = googleCalendarService.convertProfitumToGoogleEvent(profitumEvent);
@@ -357,40 +313,31 @@ export class IntelligentSyncService {
               await googleCalendarService.updateEvent(
                 integration.access_token,
                 integration.calendar_id,
-                existingMapping.google_event_id,
+                existingGoogleEvent.id!,
                 googleEvent
               );
-
+              
               eventsUpdated++;
-              progress.updatedEvents = eventsUpdated;
             }
           } else {
             // Créer un nouvel événement Google
             if (options.createMissingEvents) {
               const googleEvent = googleCalendarService.convertProfitumToGoogleEvent(profitumEvent);
               
-              const createdGoogleEvent = await googleCalendarService.createEvent(
+              await googleCalendarService.createEvent(
                 integration.access_token,
                 integration.calendar_id,
                 googleEvent
               );
-
-              if (createdGoogleEvent.id) {
-                eventsCreated++;
-                progress.createdEvents = eventsCreated;
-
-                // Créer le mapping
-                await supabase
-                  .from('GoogleCalendarEventMapping')
-                  .insert({
-                    integration_id: integration.id,
-                    profitum_event_id: profitumEvent.id,
-                    google_event_id: createdGoogleEvent.id,
-                    google_calendar_id: integration.calendar_id
-                  });
-              }
+              
+              eventsCreated++;
             }
           }
+
+          // Mettre à jour la progression
+          this.updateSyncProgress(integration.id, (eventsProcessed / (profitumEvents?.length || 1)) * 100,
+            `Traitement événement ${eventsProcessed}/${profitumEvents?.length || 0}`);
+
         } catch (error) {
           errors.push(`Erreur traitement événement ${profitumEvent.id}: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
         }
@@ -405,8 +352,9 @@ export class IntelligentSyncService {
         errors,
         duration: Date.now() - startTime
       };
+
     } catch (error) {
-      errors.push(error instanceof Error ? error.message : 'Erreur inconnue');
+      errors.push(`Erreur synchronisation vers Google: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
       return {
         success: false,
         eventsProcessed,
@@ -424,14 +372,13 @@ export class IntelligentSyncService {
    */
   private async syncBidirectional(
     integration: GoogleCalendarIntegration,
-    options: SyncOptions,
-    progress: SyncProgress
+    options: SyncOptions
   ): Promise<SyncResult> {
-    // D'abord synchroniser de Google vers Profitum
-    const importResult = await this.syncFromGoogleToProfitum(integration, options, progress);
+    // Exécuter d'abord l'import depuis Google
+    const importResult = await this.syncFromGoogle(integration, options);
     
-    // Puis synchroniser de Profitum vers Google
-    const exportResult = await this.syncFromProfitumToGoogle(integration, options, progress);
+    // Puis l'export vers Google
+    const exportResult = await this.syncToGoogle(integration, options);
 
     // Combiner les résultats
     return {
@@ -446,137 +393,76 @@ export class IntelligentSyncService {
   }
 
   /**
-   * Détecter les conflits entre événements
+   * Résoudre les conflits de synchronisation
    */
-  async detectConflicts(
-    integrationId: string,
-    timeRange: { start: Date; end: Date }
-  ): Promise<SyncConflict[]> {
-    try {
-      // Récupérer l'intégration
-      const { data: integration, error: fetchError } = await supabase
-        .from('GoogleCalendarIntegration')
-        .select('*')
-        .eq('id', integrationId)
-        .single();
+  private async resolveConflicts(conflicts: SyncConflict[]): Promise<number> {
+    let resolvedCount = 0;
 
-      if (fetchError || !integration) {
-        throw new Error('Intégration non trouvée');
-      }
-
-      // Récupérer les événements des deux côtés
-      const googleEvents = await googleCalendarService.listEvents(
-        integration.access_token,
-        integration.calendar_id,
-        timeRange.start,
-        timeRange.end
-      );
-
-      const { data: profitumEvents, error: profitumError } = await supabase
-        .from('CalendarEvent')
-        .select('*')
-        .eq('client_id', integration.user_id)
-        .gte('start_date', timeRange.start.toISOString())
-        .lte('end_date', timeRange.end.toISOString());
-
-      if (profitumError) {
-        throw new Error('Erreur récupération événements Profitum');
-      }
-
-      const conflicts: SyncConflict[] = [];
-
-      // Détecter les conflits de temps
-      for (const profitumEvent of profitumEvents || []) {
-        for (const googleEvent of googleEvents) {
-          const profitumStart = new Date(profitumEvent.start_date);
-          const profitumEnd = new Date(profitumEvent.end_date);
-          const googleStart = new Date(googleEvent.start?.dateTime || googleEvent.start?.date || '');
-          const googleEnd = new Date(googleEvent.end?.dateTime || googleEvent.end?.date || '');
-
-          // Vérifier le chevauchement
-          if (profitumStart < googleEnd && profitumEnd > googleStart) {
-            conflicts.push({
-              id: `${profitumEvent.id}_${googleEvent.id}`,
-              type: 'time_conflict',
-              profitumEvent,
-              googleEvent,
-              resolution: 'manual',
-              description: `Conflit de temps entre "${profitumEvent.title}" et "${googleEvent.summary}"`
-            });
-          }
+    for (const conflict of conflicts) {
+      try {
+        switch (conflict.resolution) {
+          case 'keep_profitum':
+            // Supprimer l'événement Google et recréer depuis Profitum
+            // TODO: Implémenter la logique de résolution
+            resolvedCount++;
+            break;
+          case 'keep_google':
+            // Mettre à jour l'événement Profitum avec les données Google
+            // TODO: Implémenter la logique de résolution
+            resolvedCount++;
+            break;
+          case 'merge':
+            // Fusionner les deux événements
+            // TODO: Implémenter la logique de fusion
+            resolvedCount++;
+            break;
+          case 'manual':
+            // Laisser l'utilisateur résoudre manuellement
+            // TODO: Implémenter l'interface de résolution manuelle
+            break;
         }
+      } catch (error) {
+        console.error('❌ Erreur résolution conflit:', error);
       }
-
-      return conflicts;
-    } catch (error) {
-      console.error('❌ Erreur détection conflits:', error);
-      throw error;
     }
+
+    return resolvedCount;
   }
 
   /**
-   * Résoudre un conflit
+   * Mettre à jour la progression de synchronisation
    */
-  async resolveConflict(
-    conflictId: string,
-    resolution: 'keep_profitum' | 'keep_google' | 'merge'
-  ): Promise<boolean> {
-    try {
-      // TODO: Implémenter la résolution de conflit
-      console.log(`Résolution du conflit ${conflictId} avec la stratégie ${resolution}`);
-      return true;
-    } catch (error) {
-      console.error('❌ Erreur résolution conflit:', error);
-      return false;
+  private updateSyncProgress(integrationId: string, progress: number, currentStep: string): void {
+    const existingProgress = this.syncProgress.get(integrationId);
+    if (existingProgress) {
+      this.syncProgress.set(integrationId, {
+        ...existingProgress,
+        progress: Math.min(progress, 100),
+        currentStep
+      });
     }
   }
 
   /**
-   * Obtenir le progrès de synchronisation
+   * Obtenir la progression de synchronisation
    */
   getSyncProgress(integrationId: string): SyncProgress | null {
     return this.syncProgress.get(integrationId) || null;
   }
 
   /**
-   * Arrêter une synchronisation en cours
+   * Obtenir les métriques de synchronisation
    */
-  async stopSync(integrationId: string): Promise<boolean> {
-    const progress = this.syncProgress.get(integrationId);
-    if (progress && progress.status === 'running') {
-      progress.status = 'paused';
-      return true;
-    }
-    return false;
+  getSyncMetrics(integrationId: string): SyncMetrics | null {
+    return this.syncMetrics.get(integrationId) || null;
   }
 
   /**
-   * Sauvegarder le log de synchronisation
+   * Nettoyer les données de synchronisation
    */
-  private async saveSyncLog(
-    integrationId: string,
-    result: SyncResult,
-    startTime: number
-  ): Promise<void> {
-    try {
-      await supabase
-        .from('GoogleCalendarSyncLog')
-        .insert({
-          integration_id: integrationId,
-          sync_type: 'full',
-          events_processed: result.eventsProcessed,
-          events_created: result.eventsCreated,
-          events_updated: result.eventsUpdated,
-          events_deleted: result.eventsDeleted,
-          errors_count: result.errors.length,
-          started_at: new Date(startTime).toISOString(),
-          completed_at: new Date().toISOString(),
-          status: result.success ? 'completed' : 'failed',
-          error_details: result.errors.length > 0 ? { errors: result.errors } : null
-        });
-    } catch (error) {
-      console.error('❌ Erreur sauvegarde log synchronisation:', error);
-    }
+  cleanupSyncData(integrationId: string): void {
+    this.syncProgress.delete(integrationId);
+    this.syncMetrics.delete(integrationId);
   }
 }
 

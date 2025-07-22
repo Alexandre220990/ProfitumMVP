@@ -74,7 +74,7 @@ router.post('/', authenticateUser, asyncHandler(async (req, res) => {
 
     // Créer la notification
     const { data: notification, error } = await supabaseClient
-      .from('notification')
+      .from('Notification')
       .insert({
         user_id,
         user_type,
@@ -118,7 +118,7 @@ router.get('/', authenticateUser, asyncHandler(async (req, res) => {
     const offset = (Number(page) - 1) * Number(limit);
 
     let query = supabaseClient
-      .from('notification')
+      .from('Notification')
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });

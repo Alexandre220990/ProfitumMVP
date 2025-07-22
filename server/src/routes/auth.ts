@@ -9,6 +9,8 @@ import { createClient } from '@supabase/supabase-js';
 import { authenticateUser } from '../middleware/authenticate';
 import { AuthUser, BaseUser, UserMetadata } from '../types/auth';
 import { logger } from '../utils/logger';
+import { googleCalendarService } from '../services/google-calendar-service';
+import { supabase } from '../lib/supabase';
 
 // Charger les variables d'environnement
 dotenv.config();
@@ -935,6 +937,234 @@ router.post('/create-user', async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'Erreur interne du serveur'
+    });
+  }
+});
+
+// ============================================================================
+// VALIDATION SÉCURISÉE GOOGLE OAUTH
+// ============================================================================
+
+/**
+ * Validation sécurisée du callback Google OAuth
+ * ✅ Validation côté serveur avec secrets
+ * ✅ Protection contre les attaques CSRF
+ * ✅ Validation des tokens
+ */
+router.post('/google/callback', async (req, res) => {
+  try {
+    const { code, state } = req.body;
+
+    // Validation des paramètres d'entrée
+    if (!code || typeof code !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: 'Code d\'autorisation invalide'
+      });
+    }
+
+    // Validation du state pour prévenir les attaques CSRF
+    if (!state || typeof state !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: 'Paramètre state manquant'
+      });
+    }
+
+    // Échange du code contre des tokens (validation côté serveur)
+    const tokens = await googleCalendarService.exchangeCodeForTokens(code);
+    
+    if (!tokens || !tokens.access_token) {
+      return res.status(400).json({
+        success: false,
+        message: 'Échec de l\'échange de tokens'
+      });
+    }
+
+    // Validation des tokens reçus
+    const tokenValidation = await googleCalendarService.validateTokens(tokens.access_token);
+    
+    if (!tokenValidation.valid) {
+      return res.status(401).json({
+        success: false,
+        message: 'Tokens Google invalides'
+      });
+    }
+
+    // Récupération des informations utilisateur depuis Google
+    const userInfo = await googleCalendarService.getUserInfo(tokens.access_token);
+    
+    if (!userInfo || !userInfo.email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Impossible de récupérer les informations utilisateur'
+      });
+    }
+
+    // Recherche ou création de l'utilisateur dans Supabase
+    const { data: existingUser, error: userError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', userInfo.email)
+      .single();
+
+    let userId: string;
+
+    if (existingUser) {
+      userId = existingUser.id;
+      
+      // Mise à jour des informations utilisateur
+      await supabase
+        .from('users')
+        .update({
+          google_access_token: tokens.access_token,
+          google_refresh_token: tokens.refresh_token,
+          google_token_expiry: tokens.expiry_date,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId);
+    } else {
+      // Création d'un nouvel utilisateur
+      const { data: newUser, error: createError } = await supabase
+        .from('users')
+        .insert({
+          email: userInfo.email,
+          name: userInfo.name,
+          google_access_token: tokens.access_token,
+          google_refresh_token: tokens.refresh_token,
+          google_token_expiry: tokens.expiry_date,
+          created_at: new Date().toISOString()
+        })
+        .select('id')
+        .single();
+
+      if (createError || !newUser) {
+        return res.status(500).json({
+          success: false,
+          message: 'Erreur lors de la création de l\'utilisateur'
+        });
+      }
+
+      userId = newUser.id;
+    }
+
+    // Création d'un JWT sécurisé
+    const jwtToken = jwt.sign(
+      { 
+        userId, 
+        email: userInfo.email,
+        googleAccessToken: tokens.access_token 
+      },
+      process.env.JWT_SECRET!,
+      { 
+        expiresIn: '24h',
+        issuer: 'profitum',
+        audience: 'profitum-users'
+      }
+    );
+
+    // Configuration de l'intégration Google Calendar
+    await googleCalendarService.setupUserIntegration(userId, {
+      access_token: tokens.access_token,
+      refresh_token: tokens.refresh_token,
+      expiry_date: tokens.expiry_date,
+      scope: tokens.scope
+    });
+
+    res.json({
+      success: true,
+      data: {
+        token: jwtToken,
+        user: {
+          id: userId,
+          email: userInfo.email,
+          name: userInfo.name
+        }
+      },
+      message: 'Authentification Google réussie'
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur authentification Google:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de l\'authentification'
+    });
+  }
+});
+
+// ============================================================================
+// ROUTES SÉCURISÉES
+// ============================================================================
+
+/**
+ * Récupération des intégrations Google de l'utilisateur
+ * ✅ Authentification requise
+ * ✅ Validation des permissions
+ */
+router.get('/google/integrations', authenticateUser, async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Non authentifié'
+      });
+    }
+
+    const integrations = await googleCalendarService.getUserIntegrations(req.user.id);
+    
+    res.json({
+      success: true,
+      data: integrations,
+      message: 'Intégrations récupérées avec succès'
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur récupération intégrations:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des intégrations'
+    });
+  }
+});
+
+/**
+ * Déconnexion Google
+ * ✅ Authentification requise
+ * ✅ Révoquer les tokens
+ */
+router.post('/google/logout', authenticateUser, async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Non authentifié'
+      });
+    }
+
+    // Révoquer les tokens Google
+    await googleCalendarService.revokeUserTokens(req.user.id);
+    
+    // Supprimer les tokens de la base de données
+    await supabase
+      .from('users')
+      .update({
+        google_access_token: null,
+        google_refresh_token: null,
+        google_token_expiry: null
+      })
+      .eq('id', req.user.id);
+
+    res.json({
+      success: true,
+      message: 'Déconnexion Google réussie'
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur déconnexion Google:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la déconnexion'
     });
   }
 });

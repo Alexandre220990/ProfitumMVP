@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useMessaging } from '@/hooks/use-messaging';
+import React, { useState, useEffect } from 'react';
+import { useMessagingState, useMessagingActions, useMessagingUtils } from './MessagingProvider';
 import { useAuth } from '@/hooks/use-auth';
 import { Conversation } from '@/types/messaging';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,8 +13,7 @@ import {
   Plus, 
   MoreVertical,
   Clock,
-  
-  
+  Shield
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -22,6 +21,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { cn } from '@/lib/utils';
 
 // ============================================================================
 // COMPOSANT LISTE DES CONVERSATIONS
@@ -39,28 +39,27 @@ export const ConversationList: React.FC<ConversationListProps> = ({
   className = ""
 }) => {
   const { user } = useAuth();
-  const {
-    conversations,
-    loading,
-    error,
-    isUserOnline,
-    getUnreadCount,
-    archiveConversation,
-    refreshData
-  } = useMessaging();
+  const { conversations, loading, error, isConnected } = useMessagingState();
+  const { ensureAdminConversation } = useMessagingActions();
+  const { getUnreadCount, isAdminConversation } = useMessagingUtils();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [showArchived, setShowArchived] = useState(false);
 
+  // S'assurer qu'une conversation admin existe
+  useEffect(() => {
+    if (isConnected && conversations.length === 0) {
+      ensureAdminConversation();
+    }
+  }, [isConnected, conversations.length, ensureAdminConversation]);
+
   // Filtrer les conversations
-  const filteredConversations = conversations.filter(conv => {
+  const filteredConversations = conversations.filter((conv: Conversation) => {
     const matchesSearch = conv.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          conv.participant1_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          conv.participant2_id.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesArchive = showArchived ? conv.is_archived : !conv.is_archived;
-    
-    return matchesSearch && matchesArchive;
+    return matchesSearch;
   });
 
   // Obtenir le nom de l'autre participant
@@ -98,13 +97,10 @@ export const ConversationList: React.FC<ConversationListProps> = ({
     }
   };
 
-  // Gérer l'archivage d'une conversation
+  // Gérer l'archivage d'une conversation (placeholder pour l'instant)
   const handleArchive = async (conversationId: string) => {
-    try {
-      await archiveConversation(conversationId);
-    } catch (error) {
-      console.error('❌ Erreur archivage:', error);
-    }
+    console.log('Archivage conversation:', conversationId);
+    // TODO: Implémenter l'archivage
   };
 
   if (loading) {
@@ -145,7 +141,7 @@ export const ConversationList: React.FC<ConversationListProps> = ({
         <CardContent>
           <div className="text-center py-8">
             <p className="text-red-600 mb-4">Erreur lors du chargement des conversations</p>
-            <Button onClick={refreshData} variant="outline">
+            <Button onClick={() => window.location.reload()} variant="outline">
               Réessayer
             </Button>
           </div>
@@ -210,7 +206,7 @@ export const ConversationList: React.FC<ConversationListProps> = ({
             {filteredConversations.map((conversation) => {
               const otherParticipantName = getOtherParticipantName(conversation);
               const otherParticipantType = getOtherParticipantType(conversation);
-              const isOnline = isUserOnline(otherParticipantName);
+              const isOnline = false; // TODO: Implémenter le statut en ligne
               const unreadCount = getUnreadCount(conversation.id);
               const isSelected = selectedConversationId === conversation.id;
 
@@ -226,10 +222,20 @@ export const ConversationList: React.FC<ConversationListProps> = ({
                 >
                   {/* Avatar */}
                   <div className="relative">
-                    <Avatar className="h-10 w-10">
+                    <Avatar className={cn(
+                      "h-10 w-10",
+                      isAdminConversation(conversation) && "ring-2 ring-blue-500"
+                    )}>
                       <AvatarImage src="" />
-                      <AvatarFallback className="text-sm">
-                        {otherParticipantName.charAt(0).toUpperCase()}
+                      <AvatarFallback className={cn(
+                        "text-sm",
+                        isAdminConversation(conversation) && "bg-blue-100 text-blue-600"
+                      )}>
+                        {isAdminConversation(conversation) ? (
+                          <Shield className="w-4 h-4" />
+                        ) : (
+                          otherParticipantName.charAt(0).toUpperCase()
+                        )}
                       </AvatarFallback>
                     </Avatar>
                     {isOnline && (
@@ -241,9 +247,14 @@ export const ConversationList: React.FC<ConversationListProps> = ({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <h4 className="text-sm font-medium truncate">
-                        {conversation.title || otherParticipantName}
+                        {isAdminConversation(conversation) ? 'Support Administratif' : (conversation.title || otherParticipantName)}
                       </h4>
                       <div className="flex items-center space-x-1">
+                        {isAdminConversation(conversation) && (
+                          <Badge variant="secondary" className="text-xs">
+                            Support
+                          </Badge>
+                        )}
                         {unreadCount > 0 && (
                           <Badge variant="destructive" className="text-xs">
                             {unreadCount}

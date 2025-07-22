@@ -59,7 +59,7 @@ interface GuideTemplate {
   status: 'ready' | 'needs_update' | 'outdated';
 }
 
-export default function AdminDocumentUploadPage() {
+export default function AdminEnhancedDocumentUploadPage() {
   const { user } = useAuth();
   const [documents, setDocuments] = useState<AdminDocument[]>([]);
   const [uploading, setUploading] = useState(false);

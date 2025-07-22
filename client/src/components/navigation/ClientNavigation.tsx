@@ -1,21 +1,20 @@
 import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
 import { useMessagingBadge } from '@/hooks/use-messaging-badge';
 import { 
-  Briefcase, 
-  Calendar, 
-  MessageSquare, 
+  Home, 
   FileText, 
-  User, 
+  MessageSquare, 
+  Calendar, 
   Settings, 
   LogOut,
-  ChevronDown,
-  Home,
+  User,
   BarChart3,
+  Globe,
   FolderOpen,
-  Globe
-} from 'lucide-react';
+  ChevronDown
+} from "lucide-react";
 import Button from '@/components/ui/design-system/Button';
 import Badge from '@/components/ui/design-system/Badge';
 
@@ -171,9 +170,11 @@ export default function ClientNavigation() {
       {/* Header */}
       <div className="p-6 border-b border-slate-200">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-            <Briefcase className="w-6 h-6 text-blue-600" />
-          </div>
+          <Link to="/home" className="flex items-center space-x-3 hover:opacity-80 transition-opacity">
+            <span className="text-xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-blue-600 bg-clip-text text-transparent">
+              Profitum
+            </span>
+          </Link>
           <div>
             <h2 className="font-semibold text-slate-900">Espace Client</h2>
             <p className="text-sm text-slate-500">Bienvenue, {user?.username}</p>

@@ -3,16 +3,16 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Audit, AuditType, AuditStatus } from "@/types/audit";
 import { TOTAL_WORKFLOW_STEPS, calculateCurrentStep, formatStepDisplay } from "@/lib/workflow-constants";
+import { checkRecentSimulation } from "@/api/simulations";
 
-interface ApiResponse<T> { success: boolean;
+interface ApiResponse<T> {
+  success: boolean;
   data: T | null;
-  message?: string; }
+  message?: string;
+}
 
-interface SimulationCheckResponse { hasRecentSimulation: boolean; }
-
-
-
-interface ClientProduitEligible { id: string;
+interface ClientProduitEligible {
+  id: string;
   clientId: string;
   produitId: string;
   simulation_id?: number;
@@ -28,7 +28,8 @@ interface ClientProduitEligible { id: string;
     category?: string;
   };
   current_step?: number;
-  progress?: number; }
+  progress?: number;
+}
 
 export function useAudits(clientId?: string) {
   const { user } = useAuth();
@@ -41,19 +42,22 @@ export function useAudits(clientId?: string) {
   // Calcul optimisé du clientId effectif
   const effectiveClientId = useMemo(() => clientId || user?.id, [clientId, user?.id]);
 
-  const fetchAuditsData = useCallback(async (): Promise<Audit[]> => { if (!effectiveClientId) {
+  const fetchAuditsData = useCallback(async (): Promise<Audit[]> => {
+    if (!effectiveClientId) {
       console.log('⚠️ Pas de clientId disponible, retour tableau vide');
       setIsLoading(false);
-      return []; }
+      return [];
+    }
 
     console.log('🔍 Récupération des audits pour le client: ', effectiveClientId);
     
-    try { const response = await get<ApiResponse<ClientProduitEligible[]>>(
-        `/api/produits-eligibles/client/${effectiveClientId }`
+    try {
+      const response = await get<ApiResponse<ClientProduitEligible[]>>(
+        `/api/produits-eligibles/client/${effectiveClientId}`
       );
       console.log('✅ Réponse API produits éligibles: ', response);
 
-      if (response.success && response.data !== null && Array.isArray(response.data)) { 
+      if (response.success && response.data !== null && Array.isArray(response.data)) {
         // Mapping optimisé avec validation
         const auditsMapped: Audit[] = response.data
           .filter(item => {
@@ -64,26 +68,26 @@ export function useAudits(clientId?: string) {
             return true;
           })
           .map(item => ({
-            id: item.id, 
-            client_id: item.clientId, 
-            expert_id: null, 
-            audit_type: item.ProduitEligible!.nom as AuditType, 
-            status: item.current_step > 0 ? "en_cours" as AuditStatus : "non_démarré" as AuditStatus, 
-            current_step: item.current_step || 0, 
-            progress: item.progress || 0, 
-            potential_gain: item.montant_final || 0, 
-            obtained_gain: 0, 
-            reliability: 0, 
-            charter_signed: item.current_step >= 1, 
-            created_at: item.created_at, 
-            updated_at: item.updated_at, 
-            description: item.ProduitEligible!.description || '', 
-            is_eligible_product: true, 
-            tauxFinal: item.taux_final || 0, 
-            dureeFinale: item.duree_finale || 0 
+            id: item.id,
+            client_id: item.clientId,
+            expert_id: null,
+            audit_type: item.ProduitEligible!.nom as AuditType,
+            status: item.current_step > 0 ? "en_cours" as AuditStatus : "non_démarré" as AuditStatus,
+            current_step: item.current_step || 0,
+            progress: item.progress || 0,
+            potential_gain: item.montant_final || 0,
+            obtained_gain: 0,
+            reliability: 0,
+            charter_signed: item.current_step >= 1,
+            created_at: item.created_at,
+            updated_at: item.updated_at,
+            description: item.ProduitEligible!.description || '',
+            is_eligible_product: true,
+            tauxFinal: item.taux_final || 0,
+            dureeFinale: item.duree_finale || 0
           }));
 
-        console.log(`✅ ${ auditsMapped.length } audits mappés avec succès`);
+        console.log(`✅ ${auditsMapped.length} audits mappés avec succès`);
         console.log('📊 Détails des audits: ', auditsMapped.map(a => ({ id: a.id, audit_type: a.audit_type, current_step: a.current_step, progress: a.progress, charter_signed: a.charter_signed })));
         
         // Améliorer le calcul des étapes pour correspondre au ProductProcessWorkflow
@@ -102,53 +106,56 @@ export function useAudits(clientId?: string) {
         setAudits(auditsWithEnhancedSteps);
         setError(null);
         return auditsWithEnhancedSteps;
-      } else { console.log('ℹ️ Aucun produit éligible trouvé - état normal');
+      } else {
+        console.log('ℹ️ Aucun produit éligible trouvé - état normal');
         setAudits([]);
         setError(null);
-        return []; }
-    } catch (err) { console.error("❌ Erreur lors du chargement des audits: ", err);
+        return [];
+      }
+    } catch (err) {
+      console.error("❌ Erreur lors du chargement des audits: ", err);
       setError(err instanceof Error ? err.message : "Une erreur est survenue");
-      return []; } finally { setIsLoading(false);
-      setLastRefresh(Date.now()); }
+      return [];
+    } finally {
+      setIsLoading(false);
+      setLastRefresh(Date.now());
+    }
   }, [effectiveClientId]);
 
-  const checkRecentSimulation = useCallback(async (): Promise<boolean> => { if (!effectiveClientId) return false;
-
+  const checkRecentSimulationStatus = useCallback(async (): Promise<boolean> => {
+    if (!effectiveClientId) return false;
     try {
-      const response = await get<ApiResponse<SimulationCheckResponse>>(
-        `/api/simulations/check-recent/${effectiveClientId }`
-      );
-
-      const isSimulationCheckResponse = (data: unknown): data is SimulationCheckResponse => { return typeof data === 'object' && 
-               data !== null && 
-               'hasRecentSimulation' in data && 
-               typeof (data as SimulationCheckResponse).hasRecentSimulation === 'boolean'; };
-
-      const hasRecent = response.success && 
-                       response.data !== null && 
-                       isSimulationCheckResponse(response.data) && 
-                       response.data.hasRecentSimulation;
-      
-      setHasRecentSimulation(hasRecent);
-      return hasRecent;
-    } catch (error) { console.error('Erreur dans checkRecentSimulation: ', error);
-      return false; }
+      const result = await checkRecentSimulation(effectiveClientId);
+      setHasRecentSimulation(result.exists);
+      return result.exists;
+    } catch (error) {
+      console.error('Erreur dans checkRecentSimulation: ', error);
+      return false;
+    }
   }, [effectiveClientId]);
 
-  const fetchAuditsDataAndCheckSimulation = useCallback(async (): Promise<void> => { try {
+  const fetchAuditsDataAndCheckSimulation = useCallback(async (): Promise<void> => {
+    try {
       const [auditsData, hasRecent] = await Promise.all([
-        fetchAuditsData(), checkRecentSimulation()
+        fetchAuditsData(),
+        checkRecentSimulationStatus()
       ]);
 
       setAudits(auditsData);
-      setHasRecentSimulation(hasRecent); } catch (error) { console.error('Erreur lors de la récupération des données: ', error); }
-  }, [fetchAuditsData, checkRecentSimulation]);
+      setHasRecentSimulation(hasRecent);
+    } catch (error) {
+      console.error('Erreur lors de la récupération des données: ', error);
+    }
+  }, [fetchAuditsData, checkRecentSimulationStatus]);
 
-  useEffect(() => { if (user) {
-      fetchAuditsDataAndCheckSimulation(); }
+  useEffect(() => {
+    if (user) {
+      fetchAuditsDataAndCheckSimulation();
+    }
   }, [user, fetchAuditsDataAndCheckSimulation]);
 
-  const signCharter = useCallback(async (auditId: string): Promise<boolean> => { const audit = audits.find(a => a.id === auditId);
+  const signCharter = useCallback(async (auditId: string): Promise<boolean> => {
+    const audit = audits.find(a => a.id === auditId);
     if (!audit) return false;
 
     const response = await post<ApiResponse<{ audit_id: string }>>(
@@ -156,7 +163,8 @@ export function useAudits(clientId?: string) {
       { auditId, auditType: audit.audit_type }
     );
 
-    if (response.success && response.data !== null) { setAudits(prev =>
+    if (response.success && response.data !== null) {
+      setAudits(prev =>
         prev.map(a =>
           a.id === auditId
             ? { ...a, charter_signed: true, status: "en_cours" as AuditStatus, current_step: 2 }
@@ -180,7 +188,7 @@ export function useAudit(id: string) {
   useEffect(() => {
     const fetchAudit = async () => {
       try {
-        const response = await get<ApiResponse<Audit>>(`/api/audits/${id }`);
+        const response = await get<ApiResponse<Audit>>(`/api/audits/${id}`);
         
         // Validation optimisée avec useMemo pour éviter les recalculs
         const requiredFields: (keyof Audit)[] = useMemo(() => [
@@ -194,12 +202,22 @@ export function useAudit(id: string) {
           return requiredFields.every(field => field in data);
         };
 
-        if (response.success && response.data !== null && isAudit(response.data)) { const validAudit: Audit = response.data;
-          setAudit(validAudit); } else { setError(response.message || "Erreur lors de la récupération de l'audit"); }
-      } catch (err) { setError(err instanceof Error ? err.message : "Une erreur est survenue"); } finally { setLoading(false); }
+        if (response.success && response.data !== null && isAudit(response.data)) {
+          const validAudit: Audit = response.data;
+          setAudit(validAudit);
+        } else {
+          setError(response.message || "Erreur lors de la récupération de l'audit");
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Une erreur est survenue");
+      } finally {
+        setLoading(false);
+      }
     };
 
-    if (id) { fetchAudit(); }
+    if (id) {
+      fetchAudit();
+    }
   }, [id]);
 
   return { audit, loading, error };

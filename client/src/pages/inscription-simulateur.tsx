@@ -180,6 +180,11 @@ const InscriptionSimulateur = () => {
         localStorage.setItem('token', loginResult.data.token);
         setUser(loginResult.data.user);
 
+        // Nettoyage des données temporaires
+        localStorage.removeItem('sessionToken');
+        localStorage.removeItem('eligibilityResults');
+        sessionStorage.clear();
+
         toast({
           title: "🎉 Inscription réussie !", 
           description: `Bienvenue ${data.username} ! Votre compte a été créé avec ${result.data.client_produit_eligibles?.length || 0} produits éligibles.`,

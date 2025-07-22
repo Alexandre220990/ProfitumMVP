@@ -311,7 +311,7 @@ const SimulateurEligibilite = () => {
           'Content-Type': 'application/json' 
         },
         body: JSON.stringify({ 
-          session_token: sessionToken 
+          session_id: sessionToken 
         })
       });
 

@@ -175,6 +175,7 @@ export default function ConnexionClient() {
                       : 'focus:border-blue-500 focus:ring-blue-500 hover:border-blue-300'
                   }`}
                   disabled={isLoading}
+                  autoComplete="username"
                 />
                 {errors.email && (
                   <div className="flex items-center gap-1 mt-1 text-red-600 text-sm animate-fade-in">

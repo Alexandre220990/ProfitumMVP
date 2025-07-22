@@ -49,6 +49,10 @@ import HomePage from './pages/home-page';
 import SimulateurEligibilite from './pages/simulateur-eligibilite';
 import UnauthorizedPage from './pages/unauthorized';
 
+// Pages légales
+import PrivacyPage from './pages/privacy';
+import TermsPage from './pages/terms';
+
 // Admin pages
 import AdminDashboard from './pages/admin/dashboard';
 import AdminClientDetails from './pages/admin/client-details';
@@ -98,6 +102,8 @@ function App() {
               <Routes>
                 {/* Routes publiques */}
                 <Route path="/" element={<HomePage />} />
+                <Route path="/privacy" element={<PrivacyPage />} />
+                <Route path="/terms" element={<TermsPage />} />
                 <Route path="/home" element={<HomePage />} />
                 <Route path="/simulateur" element={<SimulateurEligibilite />} />
                 <Route path="/experts" element={<Experts />} />

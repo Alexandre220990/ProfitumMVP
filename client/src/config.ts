@@ -1,16 +1,22 @@
 /**
  * Configuration de l'application
+ * @deprecated Utilisez config depuis '@/config/env' à la place
  */
-export const API_URL = import.meta.env.VITE_USE_IPV6 === 'true'
-  ? (import.meta.env.VITE_API_URL || 'http://[::1]:5001')
-  : (import.meta.env.VITE_API_URL_IPV4 || 'http://127.0.0.1:5001');
+import { config, getApiUrl } from './config/env';
+
+// Export de compatibilité pour l'ancien système
+export const API_URL = getApiUrl();
 
 /**
  * Configuration du chatbot
+ * @deprecated Utilisez config depuis '@/config/env' à la place
  */
 export const CHATBOT_CONFIG = { 
-  SESSION_DURATION: 24 * 60 * 60 * 1000, // 24 heures en millisecondes
-  RETRY_ATTEMPTS: 3, 
-  RETRY_DELAY: 1000, // 1 seconde
+  SESSION_DURATION: config.SESSION_DURATION,
+  RETRY_ATTEMPTS: config.MAX_RETRY_ATTEMPTS, 
+  RETRY_DELAY: config.RETRY_DELAY,
   MAX_RETRY_DELAY: 30000 // 30 secondes 
 };
+
+// Export de la configuration principale
+export { config } from './config/env';

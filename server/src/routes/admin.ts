@@ -1848,7 +1848,7 @@ router.get('/notifications', authenticateUser, requireUserType('admin'), asyncHa
     const offset = (Number(page) - 1) * Number(limit);
 
     let query = supabaseClient
-      .from('notification_final')
+      .from('Notification')
       .select('*')
       .eq('user_type', 'admin');
 
@@ -1891,7 +1891,7 @@ router.post('/notifications', authenticateUser, requireUserType('admin'), asyncH
     const { title, message, notification_type, priority, user_id, user_type } = req.body;
 
     const { data: notification, error } = await supabaseClient
-      .from('notification_final')
+      .from('Notification')
       .insert({
         title,
         message,

@@ -1,25 +1,46 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import React, { useState, useCallback, useMemo } from 'react';
+import { useMessagingState, useMessagingActions } from './MessagingProvider';
+import { Conversation } from '@/types/messaging';
 import { ConversationList } from './ConversationList';
 import { ConversationView } from './ConversationView';
-import { useMessaging } from '@/hooks/use-messaging';
-import { Conversation } from '@/types/messaging';
+// import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { 
   MessageSquare, 
+  ArrowLeft,
+  Loader2,
   Plus,
   Settings
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 // ============================================================================
-// HOOK PERSONNALISÉ POUR LA LOGIQUE MOBILE/DESKTOP
+// COMPOSANT PRINCIPAL DE MESSAGERIE
 // ============================================================================
 
-const useResponsiveView = () => {
+interface MessagingAppProps {
+  className?: string;
+  showHeader?: boolean;
+  headerTitle?: string;
+}
+
+export const MessagingApp: React.FC<MessagingAppProps> = ({
+  className = "",
+  showHeader = true,
+  headerTitle = "Messagerie"
+}) => {
+  const { conversations, currentConversation, loading, error } = useMessagingState();
+  const { selectConversation } = useMessagingActions();
+  
+  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [isMobileView, setIsMobileView] = useState(false);
 
-  useEffect(() => {
+  // ========================================
+  // DÉTECTION MOBILE
+  // ========================================
+
+  React.useEffect(() => {
     const checkMobile = () => {
       setIsMobileView(window.innerWidth < 768);
     };
@@ -30,134 +51,141 @@ const useResponsiveView = () => {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  return isMobileView;
-};
+  // ========================================
+  // GESTION DE LA SÉLECTION
+  // ========================================
 
-// ============================================================================
-// COMPOSANT PRINCIPAL DE MESSAGERIE - REFACTORISÉ
-// ============================================================================
-
-interface MessagingAppProps {
-  className?: string;
-}
-
-export const MessagingApp: React.FC<MessagingAppProps> = ({
-  className = ""
-}) => {
-  // Hooks personnalisés
-  const isMobileView = useResponsiveView();
-  
-  // Hook de messagerie avec interface correcte
-  const {
-    loading,
-    error,
-    refreshData,
-    getTotalUnreadCount
-  } = useMessaging();
-
-  // État local optimisé
-  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
-
-  // Callbacks optimisés avec useCallback
   const handleSelectConversation = useCallback((conversation: Conversation) => {
     setSelectedConversation(conversation);
-  }, []);
+    selectConversation(conversation);
+  }, [selectConversation]);
 
   const handleBackToList = useCallback(() => {
     setSelectedConversation(null);
-  }, []);
+    selectConversation(null);
+  }, [selectConversation]);
 
-  // Valeurs mémorisées pour éviter les re-renders
-  const totalUnreadCount = useMemo(() => getTotalUnreadCount(), [getTotalUnreadCount]);
+  // ========================================
+  // ÉTAT COMPUTÉ
+  // ========================================
 
-  // État de chargement optimisé
-  if (loading) {
+  const totalUnreadCount = useMemo(() => {
+    return conversations.reduce((total: number, conv: Conversation) => {
+      return total + (conv.unread_count || 0);
+    }, 0);
+  }, [conversations]);
+  const currentConv = selectedConversation || currentConversation;
+
+  // ========================================
+  // RENDU DU HEADER
+  // ========================================
+
+  const renderHeader = () => {
+    if (!showHeader) return null;
+
     return (
-      <Card className={className}>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5" />
-            Messagerie
+      <div className="flex items-center justify-between p-4 border-b bg-white">
+        <div className="flex items-center gap-3">
+          {isMobileView && currentConv && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleBackToList}
+              className="h-8 w-8"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          )}
+          
+          <div className="flex items-center gap-2">
+            <MessageSquare className="h-5 w-5 text-blue-600" />
+            <h1 className="text-lg font-semibold text-gray-900">{headerTitle}</h1>
             {totalUnreadCount > 0 && (
               <Badge variant="destructive" className="text-xs">
                 {totalUnreadCount}
               </Badge>
             )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="animate-pulse">
-                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-              </div>
-            ))}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
-  }
+  };
 
-  // État d'erreur optimisé
-  if (error) {
-    return (
-      <Card className={className}>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5" />
-            Messagerie
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8">
-            <p className="text-red-600 mb-4">Erreur lors du chargement de la messagerie</p>
-            <Button onClick={refreshData} variant="outline">
+  // ========================================
+  // RENDU DU CONTENU PRINCIPAL
+  // ========================================
+
+  const renderContent = () => {
+    if (loading) {
+      return (
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <Loader2 className="w-8 h-8 animate-spin text-gray-400 mx-auto mb-2" />
+            <p className="text-sm text-gray-500">Chargement de la messagerie...</p>
+          </div>
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <p className="text-sm text-red-600 mb-2">Erreur lors du chargement</p>
+            <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
               Réessayer
             </Button>
           </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  // Rendu principal optimisé
-  return (
-    <div className={`flex h-full ${className}`}>
-      {isMobileView ? (
-        // Vue mobile simplifiée
-        <div className="w-full">
-          {selectedConversation ? (
-            <ConversationView
-              conversation={selectedConversation}
-              onBack={handleBackToList}
-              className="h-full"
-            />
-          ) : (
-            <ConversationList
-              onSelectConversation={handleSelectConversation}
-              className="h-full"
-            />
-          )}
         </div>
+      );
+    }
+
+    if (isMobileView) {
+      // Vue mobile : une conversation à la fois
+      return currentConv ? (
+        <ConversationView
+          conversation={currentConv}
+          onBack={handleBackToList}
+          className="h-full"
+        />
       ) : (
-        // Vue desktop optimisée
-        <>
-          <div className="w-80 border-r">
-            <ConversationList
-              onSelectConversation={handleSelectConversation}
-              selectedConversationId={selectedConversation?.id}
-              className="h-full border-0 rounded-none"
-            />
-          </div>
-          <div className="flex-1">
-            <ConversationView
-              conversation={selectedConversation}
-              className="h-full border-0 rounded-none"
-            />
-          </div>
-        </>
-      )}
+        <ConversationList
+          onSelectConversation={handleSelectConversation}
+          className="h-full"
+        />
+      );
+    }
+
+    // Vue desktop : sidebar + conversation
+    return (
+      <div className="flex h-full">
+        <div className="w-80 border-r">
+          <ConversationList
+            onSelectConversation={handleSelectConversation}
+            selectedConversationId={currentConv?.id}
+            className="h-full border-0 rounded-none"
+          />
+        </div>
+        <div className="flex-1">
+          <ConversationView
+            conversation={currentConv}
+            className="h-full border-0 rounded-none"
+          />
+        </div>
+      </div>
+    );
+  };
+
+  // ========================================
+  // RENDU PRINCIPAL
+  // ========================================
+
+  return (
+    <div className={cn("h-full flex flex-col bg-gray-50", className)}>
+      {renderHeader()}
+      <div className="flex-1 overflow-hidden">
+        {renderContent()}
+      </div>
     </div>
   );
 };
