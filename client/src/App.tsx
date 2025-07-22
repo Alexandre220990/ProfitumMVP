@@ -79,6 +79,7 @@ import AnalyticsPage from './pages/analytics';
 // Components
 import ProtectedRoute from './components/ProtectedRoute';
 import { ToastProvider } from "./components/ui/toast-notifications";
+import { Analytics } from "@vercel/analytics/react";
 
 function App() {
   // Démarrer le service de rappels automatiques
@@ -236,6 +237,7 @@ function App() {
               </Routes>
             </div>
             <Toaster position="top-right" />
+            <Analytics />
           </ToastProvider>
         </AdminProvider>
       </ClientProvider>
