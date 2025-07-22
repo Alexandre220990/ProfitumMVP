@@ -1,4 +1,4 @@
-import Redis from 'ioredis';
+import { createClient, RedisClientType } from 'redis';
 
 // Configuration Redis
 const redisConfig = {
@@ -12,36 +12,64 @@ const redisConfig = {
 };
 
 class CalendarCacheService {
-  private redis: Redis;
+  private redis: RedisClientType<any, any>;
   private isConnected: boolean = false;
 
-  constructor() {
-    this.redis = new Redis(redisConfig);
+  constructor(redisConfig: any) {
+    this.redis = createClient(redisConfig);
     this.setupEventHandlers();
+    this.redis.connect();
   }
 
   private setupEventHandlers() {
     this.redis.on('connect', () => {
-      console.log('✅ Redis connecté pour le cache calendrier');
       this.isConnected = true;
     });
-
-    this.redis.on('error', (error) => {
-      console.error('❌ Erreur Redis calendrier:', error);
+    this.redis.on('end', () => {
       this.isConnected = false;
     });
-
-    this.redis.on('disconnect', () => {
-      console.log('⚠️ Redis déconnecté pour le cache calendrier');
+    this.redis.on('error', (err) => {
       this.isConnected = false;
+      console.error('Redis error:', err);
     });
   }
 
-  /**
-   * Vérifier si Redis est connecté
-   */
-  private isRedisAvailable(): boolean {
-    return this.isConnected && this.redis.status === 'ready';
+  public isReady(): boolean {
+    return this.isConnected && this.redis.isOpen;
+  }
+
+  public async setCache(key: string, value: any, ttl: number) {
+    const safeKey = typeof key === 'string' ? key : String(key);
+    await this.redis.setEx(safeKey, ttl, JSON.stringify(value));
+  }
+
+  public async getCache<T = any>(key: string): Promise<T | null> {
+    const safeKey = typeof key === 'string' ? key : String(key);
+    const cached = await this.redis.get(safeKey);
+    if (!cached || typeof cached !== 'string') return null;
+    try {
+      return JSON.parse(cached) as T;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  public async delCache(...keys: any[]) {
+    const safeKeys: string[] = keys.filter((k): k is string => typeof k === 'string');
+    if (safeKeys.length > 0) {
+      await this.redis.del(...(safeKeys as string[]));
+    }
+  }
+
+  public async getMemoryUsage(key: string): Promise<number | null> {
+    const safeKey = typeof key === 'string' ? key : String(key);
+    try {
+      const result = await this.redis.sendCommand(['MEMORY', 'USAGE', safeKey]);
+      const strResult = result as unknown as string;
+      return strResult ? parseInt(strResult, 10) : null;
+    } catch (e) {
+      return null;
+    }
   }
 
   /**
@@ -71,15 +99,10 @@ class CalendarCacheService {
    * Mettre en cache les événements
    */
   async cacheEvents(userId: string, filters: any, events: any[], ttl: number = 300): Promise<void> {
-    if (!this.isRedisAvailable()) return;
-
+    if (!this.isReady()) return;
     try {
       const key = this.getEventsCacheKey(userId, filters);
-      await this.redis.setex(key, ttl, JSON.stringify({
-        data: events,
-        timestamp: Date.now(),
-        ttl
-      }));
+      await this.setCache(key, { data: events, timestamp: Date.now(), ttl }, ttl);
     } catch (error) {
       console.error('Erreur cache événements:', error);
     }
@@ -89,22 +112,15 @@ class CalendarCacheService {
    * Récupérer les événements du cache
    */
   async getCachedEvents(userId: string, filters: any = {}): Promise<any[] | null> {
-    if (!this.isRedisAvailable()) return null;
-
+    if (!this.isReady()) return null;
     try {
       const key = this.getEventsCacheKey(userId, filters);
-      const cached = await this.redis.get(key);
-      
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        // Vérifier si le cache n'est pas expiré
-        if (Date.now() - parsed.timestamp < parsed.ttl * 1000) {
-          return parsed.data;
-        }
+      const cached = await this.getCache<{ data: any[]; timestamp: number; ttl: number }>(key);
+      if (cached && Date.now() - cached.timestamp < cached.ttl * 1000) {
+        return cached.data;
       }
       return null;
     } catch (error) {
-      console.error('Erreur récupération cache événements:', error);
       return null;
     }
   }
@@ -113,15 +129,10 @@ class CalendarCacheService {
    * Mettre en cache les étapes
    */
   async cacheSteps(userId: string, filters: any, steps: any[], ttl: number = 300): Promise<void> {
-    if (!this.isRedisAvailable()) return;
-
+    if (!this.isReady()) return;
     try {
       const key = this.getStepsCacheKey(userId, filters);
-      await this.redis.setex(key, ttl, JSON.stringify({
-        data: steps,
-        timestamp: Date.now(),
-        ttl
-      }));
+      await this.setCache(key, { data: steps, timestamp: Date.now(), ttl }, ttl);
     } catch (error) {
       console.error('Erreur cache étapes:', error);
     }
@@ -131,21 +142,15 @@ class CalendarCacheService {
    * Récupérer les étapes du cache
    */
   async getCachedSteps(userId: string, filters: any = {}): Promise<any[] | null> {
-    if (!this.isRedisAvailable()) return null;
-
+    if (!this.isReady()) return null;
     try {
       const key = this.getStepsCacheKey(userId, filters);
-      const cached = await this.redis.get(key);
-      
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Date.now() - parsed.timestamp < parsed.ttl * 1000) {
-          return parsed.data;
-        }
+      const cached = await this.getCache<{ data: any[]; timestamp: number; ttl: number }>(key);
+      if (cached && Date.now() - cached.timestamp < cached.ttl * 1000) {
+        return cached.data;
       }
       return null;
     } catch (error) {
-      console.error('Erreur récupération cache étapes:', error);
       return null;
     }
   }
@@ -154,15 +159,10 @@ class CalendarCacheService {
    * Mettre en cache les statistiques
    */
   async cacheStats(userId: string, stats: any, ttl: number = 600): Promise<void> {
-    if (!this.isRedisAvailable()) return;
-
+    if (!this.isReady()) return;
     try {
       const key = this.getStatsCacheKey(userId);
-      await this.redis.setex(key, ttl, JSON.stringify({
-        data: stats,
-        timestamp: Date.now(),
-        ttl
-      }));
+      await this.setCache(key, { data: stats, timestamp: Date.now(), ttl }, ttl);
     } catch (error) {
       console.error('Erreur cache statistiques:', error);
     }
@@ -172,21 +172,15 @@ class CalendarCacheService {
    * Récupérer les statistiques du cache
    */
   async getCachedStats(userId: string): Promise<any | null> {
-    if (!this.isRedisAvailable()) return null;
-
+    if (!this.isReady()) return null;
     try {
       const key = this.getStatsCacheKey(userId);
-      const cached = await this.redis.get(key);
-      
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Date.now() - parsed.timestamp < parsed.ttl * 1000) {
-          return parsed.data;
-        }
+      const cached = await this.getCache<{ data: any; timestamp: number; ttl: number }>(key);
+      if (cached && Date.now() - cached.timestamp < cached.ttl * 1000) {
+        return cached.data;
       }
       return null;
     } catch (error) {
-      console.error('Erreur récupération cache statistiques:', error);
       return null;
     }
   }
@@ -195,14 +189,14 @@ class CalendarCacheService {
    * Invalider le cache pour un utilisateur
    */
   async invalidateUserCache(userId: string): Promise<void> {
-    if (!this.isRedisAvailable()) return;
+    if (!this.isReady()) return;
 
     try {
       const pattern = `calendar:*:${userId}:*`;
       const keys = await this.redis.keys(pattern);
       
       if (keys.length > 0) {
-        await this.redis.del(...keys);
+        await this.delCache(...keys);
         console.log(`Cache invalidé pour l'utilisateur ${userId}: ${keys.length} clés supprimées`);
       }
     } catch (error) {
@@ -214,19 +208,18 @@ class CalendarCacheService {
    * Invalider le cache pour un événement spécifique
    */
   async invalidateEventCache(eventId: string): Promise<void> {
-    if (!this.isRedisAvailable()) return;
+    if (!this.isReady()) return;
 
     try {
       const pattern = `calendar:events:*`;
       const keys = await this.redis.keys(pattern);
       
       for (const key of keys) {
-        const cached = await this.redis.get(key);
+        const cached = await this.getCache(key);
         if (cached) {
-          const parsed = JSON.parse(cached);
-          const hasEvent = parsed.data?.some((event: any) => event.id === eventId);
+          const hasEvent = cached.data?.some((event: any) => event.id === eventId);
           if (hasEvent) {
-            await this.redis.del(key);
+            await this.delCache(key);
           }
         }
       }
@@ -239,19 +232,18 @@ class CalendarCacheService {
    * Invalider le cache pour une étape spécifique
    */
   async invalidateStepCache(stepId: string): Promise<void> {
-    if (!this.isRedisAvailable()) return;
+    if (!this.isReady()) return;
 
     try {
       const pattern = `calendar:steps:*`;
       const keys = await this.redis.keys(pattern);
       
       for (const key of keys) {
-        const cached = await this.redis.get(key);
+        const cached = await this.getCache(key);
         if (cached) {
-          const parsed = JSON.parse(cached);
-          const hasStep = parsed.data?.some((step: any) => step.id === stepId);
+          const hasStep = cached.data?.some((step: any) => step.id === stepId);
           if (hasStep) {
-            await this.redis.del(key);
+            await this.delCache(key);
           }
         }
       }
@@ -264,7 +256,7 @@ class CalendarCacheService {
    * Nettoyer le cache expiré
    */
   async cleanupExpiredCache(): Promise<void> {
-    if (!this.isRedisAvailable()) return;
+    if (!this.isReady()) return;
 
     try {
       const pattern = `calendar:*`;
@@ -272,11 +264,10 @@ class CalendarCacheService {
       let cleanedCount = 0;
 
       for (const key of keys) {
-        const cached = await this.redis.get(key);
+        const cached = await this.getCache(key);
         if (cached) {
-          const parsed = JSON.parse(cached);
-          if (Date.now() - parsed.timestamp >= parsed.ttl * 1000) {
-            await this.redis.del(key);
+          if (Date.now() - cached.timestamp >= cached.ttl * 1000) {
+            await this.delCache(key);
             cleanedCount++;
           }
         }
@@ -294,7 +285,7 @@ class CalendarCacheService {
    * Obtenir les statistiques du cache
    */
   async getCacheStats(): Promise<any> {
-    if (!this.isRedisAvailable()) return null;
+    if (!this.isReady()) return null;
 
     try {
       const pattern = `calendar:*`;
@@ -313,7 +304,7 @@ class CalendarCacheService {
         else if (key.includes(':steps:')) stats.stepsKeys++;
         else if (key.includes(':stats:')) stats.statsKeys++;
 
-        const size = await this.redis.memory('USAGE', key);
+        const size = await this.getMemoryUsage(key);
         stats.totalSize += size || 0;
       }
 
@@ -334,7 +325,7 @@ class CalendarCacheService {
   }
 }
 
-export const calendarCacheService = new CalendarCacheService();
+export const calendarCacheService = new CalendarCacheService(redisConfig);
 
 // Nettoyage automatique du cache toutes les heures
 setInterval(() => {
