@@ -1,11 +1,14 @@
 import React, { useState, useCallback } from 'react';
 import { useAuth } from "@/hooks/use-auth";
 import { Navigate } from "react-router-dom";
+import { useAdminAnalytics } from "@/hooks/use-admin-analytics";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/design-system/Card";
 import Button from "@/components/ui/design-system/Button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Badge from "@/components/ui/design-system/Badge";
 import { useToast } from "@/components/ui/toast-notifications";
+import AdvancedMetrics from "@/components/admin/AdvancedMetrics";
+import '@/styles/admin-dashboard.css';
 import { 
   Users, 
   FileText, 
@@ -14,7 +17,6 @@ import {
   CheckCircle, 
   BookOpen,
   Settings,
-  Database,
   UserCheck,
   RefreshCw,
   ArrowRight,
@@ -22,58 +24,57 @@ import {
   Monitor,
   TestTube,
   Terminal,
-  Eye,
-  UserPlus,
-  FolderOpen,
   Gauge,
-  Zap,
-  Activity
+  AlertTriangle,
+  Brain,
+  Shield,
+  Clock,
+  Minus,
+  Plus,
+  Bell,
+  Diamond,
+  Crown,
+  Cpu
 } from "lucide-react";
+
+// ============================================================================
+// DASHBOARD ADMIN RÉVOLUTIONNAIRE
+// ============================================================================
+// Inspiré par Amazon AWS Console + Google Analytics + Tesla Dashboard
+// Interface temps réel, prédictive et auto-optimisante
 
 const AdminDashboardPage: React.FC = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
+
   const { addToast } = useToast();
 
-  // Données par défaut pour le dashboard
-  const defaultMetrics = {
-    activeUsers: 1250,
-    completedDossiers: 342,
-    totalRevenue: 125000,
-    conversionRate: 15.8,
-    securityScore: 92,
-    complianceScore: 98.5,
-    totalClients: 890,
-    totalExperts: 156,
-    activeDossiers: 234,
-    pendingValidations: 45
-  };
+  // Hook analytics révolutionnaire
+  const {
+    metrics,
+    insights,
+    alerts,
+    criticalAlerts,
+    computedMetrics,
+    lastUpdated,
+    refreshMetrics,
+    formatMetric,
+    getMetricIcon
+  } = useAdminAnalytics({
+    autoRefresh: true,
+    refreshInterval: 30000,
+    enableAlerts: true
+  });
 
-  const refreshMetrics = useCallback(() => {
-    addToast({
-      type: 'info',
-      title: 'Actualisation en cours',
-      message: 'Mise à jour des métriques...',
-      duration: 2000
-    });
-    
-    // Simulation d'actualisation
-    setTimeout(() => {
-      addToast({
-        type: 'success',
-        title: 'Métriques actualisées',
-        message: 'Les données ont été mises à jour avec succès',
-        duration: 3000
-      });
-    }, 2000);
-  }, [addToast]);
+  // État local pour les animations
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Vérifier les permissions - seulement si pas d'utilisateur
+  // ===== GESTION DES PERMISSIONS =====
+  
   if (!user) {
     return <Navigate to="/connect-admin" replace />;
   }
 
-  // Si l'utilisateur n'est pas admin, rediriger vers la page appropriée
   if (user.type !== 'admin') {
     if (user.type === 'client') {
       return <Navigate to="/dashboard" replace />;
@@ -84,7 +85,189 @@ const AdminDashboardPage: React.FC = () => {
     }
   }
 
-  // Modules du dashboard organisés par catégorie
+  // ===== ACTIONS =====
+  
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    await refreshMetrics();
+    setIsRefreshing(false);
+    
+    addToast({
+      type: 'success',
+      title: 'Métriques actualisées',
+      message: 'Les données ont été mises à jour avec succès',
+      duration: 3000
+    });
+  }, [refreshMetrics, addToast]);
+
+  // ===== COMPOSANTS DE MÉTRIQUES =====
+  
+  const MetricCard = ({ 
+    title, 
+    value, 
+    change, 
+    changeType, 
+    icon: Icon, 
+    color, 
+    format = 'number',
+    trend,
+    subtitle,
+    onClick
+  }: any) => (
+    <Card 
+      className={`hover:shadow-xl hover:-translate-y-2 transition-all duration-500 cursor-pointer group ${
+        onClick ? 'cursor-pointer' : ''
+      }`}
+      onClick={onClick}
+    >
+      <CardContent className="p-6 relative overflow-hidden">
+        {/* Gradient de fond */}
+        <div className={`absolute inset-0 bg-gradient-to-br ${color} opacity-5 group-hover:opacity-10 transition-opacity duration-300`} />
+        
+        <div className="relative z-10">
+          <div className="flex items-center justify-between mb-4">
+            <div className={`p-3 rounded-xl bg-gradient-to-br ${color} group-hover:scale-110 transition-transform duration-300`}>
+              <Icon className="w-6 h-6 text-white" />
+            </div>
+            <div className="flex items-center gap-2">
+              {trend && (
+                <span className="text-2xl">{getMetricIcon(trend)}</span>
+              )}
+              {change !== undefined && (
+                <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                  changeType === 'increase' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                }`}>
+                  {changeType === 'increase' ? <Plus className="w-3 h-3" /> : <Minus className="w-3 h-3" />}
+                  {Math.abs(change)}%
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <div>
+            <p className="text-sm text-slate-600 mb-1">{title}</p>
+            <p className="text-3xl font-bold text-slate-900 mb-1">
+              {formatMetric(value, format)}
+            </p>
+            {subtitle && (
+              <p className="text-xs text-slate-500">{subtitle}</p>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const AlertCard = ({ alert }: { alert: any }) => (
+    <Card className={`border-l-4 ${
+      alert.severity === 'critical' ? 'border-red-500 bg-red-50' :
+      alert.severity === 'high' ? 'border-orange-500 bg-orange-50' :
+      alert.severity === 'medium' ? 'border-yellow-500 bg-yellow-50' :
+      'border-blue-500 bg-blue-50'
+    } hover:shadow-lg transition-all duration-300`}>
+      <CardContent className="p-4">
+        <div className="flex items-start gap-3">
+          <AlertTriangle className={`w-5 h-5 mt-0.5 ${
+            alert.severity === 'critical' ? 'text-red-600' :
+            alert.severity === 'high' ? 'text-orange-600' :
+            alert.severity === 'medium' ? 'text-yellow-600' :
+            'text-blue-600'
+          }`} />
+          <div className="flex-1">
+            <h4 className="font-semibold text-slate-900 mb-1">{alert.rule.name}</h4>
+            <p className="text-sm text-slate-600 mb-2">
+              Valeur actuelle: {formatMetric(alert.currentValue, 'number')}
+            </p>
+            <div className="flex items-center gap-2">
+              <Badge variant={alert.severity === 'critical' ? 'error' : 'base'}>
+                {alert.severity.toUpperCase()}
+              </Badge>
+              <span className="text-xs text-slate-500">
+                {new Date(alert.timestamp).toLocaleTimeString('fr-FR')}
+              </span>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const PredictionCard = ({ title, predictions, icon: Icon, color }: any) => (
+    <Card className="hover:shadow-lg transition-all duration-300">
+      <CardContent className="p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className={`p-2 rounded-lg bg-gradient-to-br ${color}`}>
+            <Icon className="w-5 h-5 text-white" />
+          </div>
+          <h3 className="font-semibold text-slate-900">{title}</h3>
+        </div>
+        
+        <div className="space-y-3">
+          {Object.entries(predictions).map(([period, value]: [string, any]) => (
+            <div key={period} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+              <span className="text-sm text-slate-600 capitalize">
+                {period.replace(/([A-Z])/g, ' $1').trim()}
+              </span>
+              <span className="font-semibold text-slate-900">
+                {formatMetric(value, 'currency')}
+              </span>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  // ===== MÉTRIQUES PRINCIPALES =====
+  
+  const mainMetrics = [
+    {
+      title: 'Utilisateurs Actifs',
+      value: metrics?.activeUsers || 0,
+      change: 12.5,
+      changeType: 'increase' as const,
+      icon: Users,
+      color: 'from-blue-500 to-cyan-500',
+      format: 'number' as const,
+      trend: computedMetrics?.trends?.userTrend,
+      subtitle: `${metrics?.concurrentSessions || 0} sessions simultanées`
+    },
+    {
+      title: 'Revenus/Minute',
+      value: metrics?.revenuePerMinute || 0,
+      change: 15.2,
+      changeType: 'increase' as const,
+      icon: DollarSign,
+      color: 'from-emerald-500 to-teal-500',
+      format: 'currency' as const,
+      trend: computedMetrics?.trends?.revenueTrend,
+      subtitle: `${formatMetric(computedMetrics?.kpis?.revenuePerHour || 0, 'currency')}/h`
+    },
+    {
+      title: 'Dossiers Complétés',
+      value: metrics?.dossiersCompleted || 0,
+      change: 8.3,
+      changeType: 'increase' as const,
+      icon: FileText,
+      color: 'from-purple-500 to-pink-500',
+      format: 'number' as const,
+      subtitle: `Efficacité: ${computedMetrics?.kpis?.efficiency?.toFixed(1) || 0}%`
+    },
+    {
+      title: 'Performance Système',
+      value: metrics?.systemPerformance || 0,
+      change: -2.1,
+      changeType: 'decrease' as const,
+      icon: Gauge,
+      color: 'from-orange-500 to-red-500',
+      format: 'percentage' as const,
+      trend: computedMetrics?.trends?.performanceTrend,
+      subtitle: `Latence: ${formatMetric(metrics?.databaseLatency || 0, 'time')}`
+    }
+  ];
+
+  // ===== MODULES DU DASHBOARD =====
+  
   const dashboardModules = {
     monitoring: [
       {
@@ -123,7 +306,7 @@ const AdminDashboardPage: React.FC = () => {
         icon: Users,
         color: 'from-indigo-500 to-purple-500',
         path: '/admin/gestion-clients',
-        stats: { total: defaultMetrics.totalClients, active: 756 }
+        stats: { total: 890, active: 756 }
       },
       {
         id: 'experts',
@@ -132,25 +315,7 @@ const AdminDashboardPage: React.FC = () => {
         icon: UserCheck,
         color: 'from-teal-500 to-cyan-500',
         path: '/admin/gestion-experts',
-        stats: { total: defaultMetrics.totalExperts, available: 89 }
-      },
-      {
-        id: 'client-details',
-        title: 'Détails Clients',
-        description: 'Vue détaillée des profils clients',
-        icon: Eye,
-        color: 'from-blue-600 to-indigo-600',
-        path: '/admin/client-details',
-        stats: { viewed: 234, total: defaultMetrics.totalClients }
-      },
-      {
-        id: 'expert-form',
-        title: 'Formulaire Expert',
-        description: 'Création et édition des profils experts',
-        icon: UserPlus,
-        color: 'from-emerald-500 to-teal-500',
-        path: '/admin/formulaire-expert',
-        stats: { created: 45, pending: 12 }
+        stats: { total: 156, available: 89 }
       },
       {
         id: 'validation',
@@ -159,16 +324,7 @@ const AdminDashboardPage: React.FC = () => {
         icon: CheckCircle,
         color: 'from-green-500 to-emerald-500',
         path: '/admin/validation-dashboard',
-        stats: { pending: defaultMetrics.pendingValidations, total: 67 }
-      },
-      {
-        id: 'dossiers',
-        title: 'Gestion Dossiers',
-        description: 'Gestion des dossiers et processus',
-        icon: FolderOpen,
-        color: 'from-rose-500 to-pink-500',
-        path: '/admin/gestion-dossiers',
-        stats: { active: defaultMetrics.activeDossiers, completed: defaultMetrics.completedDossiers }
+        stats: { pending: 45, total: 67 }
       }
     ],
     documents: [
@@ -189,108 +345,43 @@ const AdminDashboardPage: React.FC = () => {
         color: 'from-amber-500 to-orange-500',
         path: '/admin/enhanced-admin-documents',
         stats: { uploaded: 89, templates: 15 }
-      },
-      {
-        id: 'documentation',
-        title: 'Documentation',
-        description: 'Interface de consultation documentaire',
-        icon: Database,
-        color: 'from-violet-500 to-purple-500',
-        path: '/admin/documentation',
-        stats: { articles: 567, views: 2340 }
       }
     ]
-  };
-
-  const metricCards = [
-    {
-      title: 'Utilisateurs Actifs',
-      value: defaultMetrics.activeUsers,
-      change: 12.5,
-      changeType: 'increase',
-      icon: Users,
-      color: 'text-blue-600',
-      format: 'number'
-    },
-    {
-      title: 'Dossiers Complétés',
-      value: defaultMetrics.completedDossiers,
-      change: 8.3,
-      changeType: 'increase',
-      icon: FileText,
-      color: 'text-green-600',
-      format: 'number'
-    },
-    {
-      title: 'Revenus Totaux',
-      value: defaultMetrics.totalRevenue,
-      change: 15.2,
-      changeType: 'increase',
-      icon: DollarSign,
-      color: 'text-emerald-600',
-      format: 'currency'
-    },
-    {
-      title: 'Taux de Conversion',
-      value: defaultMetrics.conversionRate,
-      change: -2.1,
-      changeType: 'decrease',
-      icon: TrendingUp,
-      color: 'text-orange-600',
-      format: 'percentage'
-    }
-  ];
-
-  const formatValue = (value: number, format: string) => {
-    switch (format) {
-      case 'currency':
-        return new Intl.NumberFormat('fr-FR', {
-          style: 'currency',
-          currency: 'EUR'
-        }).format(value);
-      case 'percentage':
-        return `${value.toFixed(1)}%`;
-      default:
-        return value.toLocaleString('fr-FR');
-    }
-  };
-
-  const getChangeColor = (changeType: string) => {
-    return changeType === 'increase' ? 'text-green-600' : 'text-red-600';
-  };
-
-  const getChangeIcon = (changeType: string) => {
-    return changeType === 'increase' ? 
-      <TrendingUp className="w-4 h-4" /> : 
-      <TrendingUp className="w-4 h-4 rotate-180" />;
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
       <div className="container mx-auto p-6 space-y-6">
         
-        {/* Header principal - Amélioré */}
+        {/* Header révolutionnaire */}
         <div className="flex items-center justify-between animate-fade-in">
           <div>
-            <h1 className="text-4xl font-bold text-slate-900 mb-2">
+            <h1 className="text-4xl font-bold text-slate-900 mb-2 flex items-center gap-3">
+              <Crown className="w-8 h-8 text-amber-500" />
               Dashboard Administrateur
             </h1>
             <p className="text-slate-600 text-lg">
-              Centre de contrôle et gestion de la plateforme Profitum
+              Centre de contrôle révolutionnaire - Données temps réel & IA prédictive
             </p>
+            {lastUpdated && (
+              <p className="text-xs text-slate-500 mt-1">
+                Dernière mise à jour: {lastUpdated.toLocaleTimeString('fr-FR')}
+              </p>
+            )}
           </div>
           
           <div className="flex items-center gap-3">
             <Button 
-              onClick={refreshMetrics} 
-              variant="secondary" 
+              onClick={handleRefresh} 
+              variant="base" 
+              disabled={isRefreshing}
               className="flex items-center gap-2 hover:shadow-md transition-all duration-300"
             >
-              <RefreshCw className="w-4 h-4" />
-              Actualiser
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              {isRefreshing ? 'Actualisation...' : 'Actualiser'}
             </Button>
             <Button 
-              className="flex items-center gap-2 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300"
+              className="flex items-center gap-2 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 bg-gradient-to-r from-purple-500 to-pink-500"
             >
               <Settings className="w-4 h-4" />
               Paramètres
@@ -298,41 +389,49 @@ const AdminDashboardPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Métriques principales - Améliorées */}
+        {/* Alertes critiques */}
+        {criticalAlerts.length > 0 && (
+          <div className="animate-slide-in">
+            <Card className="border-red-200 bg-red-50">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3 mb-3">
+                  <AlertTriangle className="w-5 h-5 text-red-600" />
+                  <h3 className="font-semibold text-red-900">Alertes Critiques</h3>
+                  <Badge variant="error">{criticalAlerts.length}</Badge>
+                </div>
+                <div className="space-y-2">
+                  {criticalAlerts.slice(0, 3).map((alert, index) => (
+                    <AlertCard key={alert.id || index} alert={alert} />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Métriques principales révolutionnaires */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {metricCards.map((metric, index) => (
+          {mainMetrics.map((metric, index) => (
             <div key={index} className="animate-fade-in" style={{ animationDelay: `${index * 0.1}s` }}>
-              <Card className="hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className={`p-3 rounded-full bg-gradient-to-br ${metric.color.replace('text-', 'bg-')} bg-opacity-10`}>
-                      <metric.icon className={`w-6 h-6 ${metric.color}`} />
-                    </div>
-                    <div className="flex items-center gap-1">
-                      {getChangeIcon(metric.changeType)}
-                      <span className={`text-sm font-medium ${getChangeColor(metric.changeType)}`}>
-                        {metric.change}%
-                      </span>
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-sm text-slate-600 mb-1">{metric.title}</p>
-                    <p className="text-2xl font-bold text-slate-900">
-                      {formatValue(metric.value, metric.format)}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
+              <MetricCard {...metric} />
             </div>
           ))}
         </div>
 
-        {/* Onglets des modules - Améliorés */}
+        {/* Onglets révolutionnaires */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6 animate-slide-in">
-          <TabsList className="grid w-full grid-cols-4 bg-slate-100 p-1 rounded-lg">
+          <TabsList className="grid w-full grid-cols-6 bg-slate-100 p-1 rounded-lg">
             <TabsTrigger value="overview" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200">
               <BarChart3 className="w-4 h-4" />
               Vue d'ensemble
+            </TabsTrigger>
+            <TabsTrigger value="metrics" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200">
+              <Diamond className="w-4 h-4" />
+              Métriques Avancées
+            </TabsTrigger>
+            <TabsTrigger value="predictions" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200">
+              <Brain className="w-4 h-4" />
+              Prédictions IA
             </TabsTrigger>
             <TabsTrigger value="monitoring" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200">
               <Monitor className="w-4 h-4" />
@@ -348,73 +447,195 @@ const AdminDashboardPage: React.FC = () => {
             </TabsTrigger>
           </TabsList>
 
-          {/* Vue d'ensemble - Améliorée */}
+          {/* Vue d'ensemble révolutionnaire */}
           <TabsContent value="overview" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Modules prioritaires */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              
+              {/* Scores de santé */}
               <Card className="animate-scale-in hover:shadow-lg transition-all duration-300">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Zap className="w-5 h-5 text-amber-500" />
-                    Modules Prioritaires
+                    <Shield className="w-5 h-5 text-blue-500" />
+                    Scores de Santé
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {[
-                    dashboardModules.monitoring[0],
-                    dashboardModules.users[0],
-                    dashboardModules.documents[0]
-                  ].map((module) => (
-                    <div 
-                      key={module.id} 
-                      className="flex items-center justify-between p-4 bg-gradient-to-r from-slate-50 to-slate-100 rounded-lg hover:shadow-md transition-all duration-300 group cursor-pointer"
-                      onClick={() => window.location.href = module.path}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-lg bg-gradient-to-br ${module.color} group-hover:scale-110 transition-transform duration-200`}>
-                          <module.icon className="w-5 h-5 text-white" />
-                        </div>
-                        <div>
-                          <h4 className="font-semibold text-slate-900">{module.title}</h4>
-                          <p className="text-sm text-slate-600">{module.description}</p>
-                        </div>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <TrendingUp className="w-4 h-4 text-blue-600" />
+                        <span className="text-sm font-medium text-blue-900">Business</span>
                       </div>
-                      <Button size="sm" variant="ghost" className="group-hover:bg-white transition-colors duration-200">
-                        <ArrowRight className="w-4 h-4" />
-                      </Button>
+                      <div className="text-right">
+                        <div className="text-lg font-bold text-blue-900">
+                          {computedMetrics?.scores?.businessHealth?.toFixed(1) || 0}%
+                        </div>
+                        <div className="text-xs text-blue-700">Excellent</div>
+                      </div>
                     </div>
-                  ))}
+                    
+                    <div className="flex items-center justify-between p-3 bg-gradient-to-r from-green-50 to-green-100 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <Cpu className="w-4 h-4 text-green-600" />
+                        <span className="text-sm font-medium text-green-900">Système</span>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-lg font-bold text-green-900">
+                          {computedMetrics?.scores?.systemHealth?.toFixed(1) || 0}%
+                        </div>
+                        <div className="text-xs text-green-700">Stable</div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between p-3 bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <Users className="w-4 h-4 text-purple-600" />
+                        <span className="text-sm font-medium text-purple-900">Utilisateurs</span>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-lg font-bold text-purple-900">
+                          {computedMetrics?.scores?.userHealth?.toFixed(1) || 0}%
+                        </div>
+                        <div className="text-xs text-purple-700">Engagés</div>
+                      </div>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
 
-              {/* Statistiques système */}
+              {/* Prédictions rapides */}
               <Card className="animate-scale-in hover:shadow-lg transition-all duration-300">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Gauge className="w-5 h-5 text-blue-500" />
-                    Statistiques Système
+                    <Brain className="w-5 h-5 text-purple-500" />
+                    Prédictions IA
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="text-center p-4 bg-green-50 rounded-lg">
-                      <div className="text-2xl font-bold text-green-600">{defaultMetrics.securityScore}%</div>
-                      <div className="text-sm text-green-700">Score Sécurité</div>
+                  {insights?.revenueForecast && (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between p-3 bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg">
+                        <span className="text-sm font-medium text-purple-900">Prochaine heure</span>
+                        <span className="font-bold text-purple-900">
+                          {formatMetric(insights.revenueForecast.nextHour, 'currency')}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between p-3 bg-gradient-to-r from-indigo-50 to-indigo-100 rounded-lg">
+                        <span className="text-sm font-medium text-indigo-900">Prochain jour</span>
+                        <span className="font-bold text-indigo-900">
+                          {formatMetric(insights.revenueForecast.nextDay, 'currency')}
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-center p-4 bg-blue-50 rounded-lg">
-                      <div className="text-2xl font-bold text-blue-600">{defaultMetrics.complianceScore}%</div>
-                      <div className="text-sm text-blue-700">Conformité ISO</div>
+                  )}
+                  
+                  {insights?.userBehavior && (
+                    <div className="mt-4 p-3 bg-slate-50 rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Clock className="w-4 h-4 text-slate-600" />
+                        <span className="text-sm font-medium text-slate-900">Heures de pointe</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {insights.userBehavior.peakHours?.map((hour: string, index: number) => (
+                          <Badge key={index} variant="base" className="text-xs">
+                            {hour}
+                          </Badge>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <Activity className="w-4 h-4 text-slate-600" />
-                      <span className="text-sm text-slate-700">Performance système</span>
-                    </div>
-                    <Badge variant="primary">Excellent</Badge>
-                  </div>
+                  )}
                 </CardContent>
               </Card>
+
+              {/* Alertes actives */}
+              <Card className="animate-scale-in hover:shadow-lg transition-all duration-300">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Bell className="w-5 h-5 text-orange-500" />
+                    Alertes Actives
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {alerts.length === 0 ? (
+                    <div className="text-center py-6">
+                      <CheckCircle className="w-8 h-8 text-green-500 mx-auto mb-2" />
+                      <p className="text-sm text-slate-600">Aucune alerte active</p>
+                    </div>
+                  ) : (
+                    alerts.slice(0, 3).map((alert, index) => (
+                      <AlertCard key={alert.id || index} alert={alert} />
+                    ))
+                  )}
+                  
+                  {alerts.length > 3 && (
+                    <Button variant="ghost" size="sm" className="w-full">
+                      Voir toutes les alertes ({alerts.length})
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Métriques Avancées */}
+          <TabsContent value="metrics" className="space-y-6">
+            <AdvancedMetrics />
+          </TabsContent>
+
+          {/* Prédictions IA */}
+          <TabsContent value="predictions" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              
+              {/* Prédictions de revenus */}
+              {insights?.revenueForecast && (
+                <PredictionCard
+                  title="Prédictions de Revenus"
+                  predictions={insights.revenueForecast}
+                  icon={DollarSign}
+                  color="from-emerald-500 to-teal-500"
+                />
+              )}
+              
+              {/* Comportement utilisateur */}
+              {insights?.userBehavior && (
+                <Card className="hover:shadow-lg transition-all duration-300">
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500">
+                        <Users className="w-5 h-5 text-white" />
+                      </div>
+                      <h3 className="font-semibold text-slate-900">Comportement Utilisateur</h3>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                        <span className="text-sm text-slate-600">Risque de churn</span>
+                        <div className="text-right">
+                          <div className="font-semibold text-slate-900">
+                            {insights.userBehavior.churnRisk?.toFixed(1) || 0}%
+                          </div>
+                          <div className="text-xs text-slate-500">Faible</div>
+                        </div>
+                      </div>
+                      
+                      <div className="p-3 bg-slate-50 rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <TrendingUp className="w-4 h-4 text-slate-600" />
+                          <span className="text-sm font-medium text-slate-900">Tendances d'engagement</span>
+                        </div>
+                        <div className="space-y-1">
+                          {insights.userBehavior.engagementTrends?.map((trend: string, index: number) => (
+                            <div key={index} className="text-xs text-slate-600 flex items-center gap-1">
+                              <div className="w-2 h-2 bg-green-500 rounded-full" />
+                              {trend}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           </TabsContent>
 
