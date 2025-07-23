@@ -74,11 +74,40 @@ app.use(async (req, res, next) => {
 app.use('/api', routes); // DÉCOMMENTÉ pour exposer toutes les routes sous /api
 
 // ✅ SERVIR LES FICHIERS STATIQUES DU CLIENT REACT
-// Chemin vers le dossier de build du client
-const clientBuildPath = path.join(__dirname, '../client/dist');
+// Chemin vers le dossier de build du client - essayer plusieurs chemins possibles
+const possiblePaths = [
+  path.join(__dirname, '../client/dist'),
+  path.join(__dirname, '../../client/dist'),
+  path.join(__dirname, '../../../client/dist'),
+  path.join(process.cwd(), 'client/dist'),
+  path.join(process.cwd(), '../client/dist')
+];
 
-// Servir les fichiers statiques (CSS, JS, images, etc.)
-app.use(express.static(clientBuildPath));
+let clientBuildPath = null;
+for (const possiblePath of possiblePaths) {
+  try {
+    const indexPath = path.join(possiblePath, 'index.html');
+    require('fs').accessSync(indexPath, require('fs').constants.F_OK);
+    clientBuildPath = possiblePath;
+    console.log(`✅ Fichiers client trouvés dans: ${clientBuildPath}`);
+    break;
+  } catch (error) {
+    console.log(`❌ Chemin non trouvé: ${possiblePath}`);
+  }
+}
+
+if (!clientBuildPath) {
+  console.error('❌ Aucun dossier client/dist trouvé !');
+  console.log('Chemins testés:', possiblePaths);
+  console.log('Dossier courant:', process.cwd());
+  console.log('__dirname:', __dirname);
+}
+
+// Servir les fichiers statiques (CSS, JS, images, etc.) seulement si trouvés
+if (clientBuildPath) {
+  app.use(express.static(clientBuildPath));
+  console.log(`📁 Fichiers statiques servis depuis: ${clientBuildPath}`);
+}
 
 // ✅ ROUTING CÔTÉ CLIENT POUR LES ROUTES REACT
 // Toutes les routes qui ne commencent pas par /api doivent être servies par l'app React
@@ -88,8 +117,27 @@ app.get('*', (req, res) => {
     return res.status(404).json({ error: 'API route not found' });
   }
   
+  // Si les fichiers client ne sont pas trouvés, retourner une erreur
+  if (!clientBuildPath) {
+    console.error(`❌ Tentative d'accès à ${req.path} mais fichiers client non trouvés`);
+    return res.status(500).json({ 
+      error: 'Client files not found',
+      message: 'Les fichiers du client React ne sont pas disponibles'
+    });
+  }
+  
   // Servir index.html pour toutes les autres routes (routing côté client)
-  res.sendFile(path.join(clientBuildPath, 'index.html'));
+  const indexPath = path.join(clientBuildPath, 'index.html');
+  console.log(`📄 Servir index.html pour la route: ${req.path}`);
+  res.sendFile(indexPath, (err) => {
+    if (err) {
+      console.error(`❌ Erreur lors du service de index.html:`, err);
+      res.status(500).json({ 
+        error: 'Failed to serve client',
+        message: 'Impossible de servir l\'application client'
+      });
+    }
+  });
 });
 
 // Gestion des erreurs globale
