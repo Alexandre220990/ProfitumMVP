@@ -48,7 +48,8 @@ export const useDocumentWorkflow = () => {
   // Fonction pour faire des appels API
   const apiCall = useCallback(async (endpoint: string, options: RequestInit = {}) => { 
     try {
-      const response = await fetch(`/api/documents/workflow${endpoint}`, { 
+      const baseUrl = import.meta.env.VITE_API_URL || 'https://www.profitum.app';
+      const response = await fetch(`${baseUrl}/api/documents/workflow${endpoint}`, { 
         ...options, 
         headers: {
           'Content-Type': 'application/json', 

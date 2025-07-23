@@ -138,7 +138,8 @@ export const useUnifiedDocuments = () => {
         sortOrder
       });
 
-      const response = await fetch(`/api/unified-documents/list?${params}`, {
+      const baseUrl = import.meta.env.VITE_API_URL || 'https://www.profitum.app';
+      const response = await fetch(`${baseUrl}/api/unified-documents/list?${params}`, {
         credentials: 'include',
         signal: abortControllerRef.current?.signal
       });

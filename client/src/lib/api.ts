@@ -9,13 +9,13 @@ const getBaseUrl = () => {
     return import.meta.env.VITE_API_URL;
   }
   
-  // En développement, essayer IPv6 d'abord, puis IPv4
+  // En développement, utiliser localhost standard
   if (import.meta.env.DEV) {
-    return 'http://[::1]:5001'; // IPv6 localhost
+    return 'http://localhost:5001';
   }
   
-  // En production, utiliser localhost standard
-  return 'http://localhost:5001';
+  // En production, utiliser l'URL par défaut
+  return 'https://www.profitum.app';
 };
 
 const BASE_URL = getBaseUrl();

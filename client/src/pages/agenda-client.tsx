@@ -712,12 +712,13 @@ export default function AgendaClientPage() {
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Vue du calendrier */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-              <div className="p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                  Événements à venir
-                </h2>
+            {/* Vue du calendrier selon le type sélectionné */}
+            {view.type === 'agenda' && (
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                <div className="p-6">
+                  <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                    Vue Agenda - Événements à venir
+                  </h2>
                 
                 {filteredEvents.length === 0 ? (
                   <div className="text-center py-12">
@@ -758,6 +759,85 @@ export default function AgendaClientPage() {
                 )}
               </div>
             </div>
+            )}
+
+            {/* Vue Jour */}
+            {view.type === 'day' && (
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                <div className="p-6">
+                  <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                    Vue Jour - {currentDate.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                  </h2>
+                  <div className="text-center py-12">
+                    <Sun className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      Vue Jour en cours de développement
+                    </h3>
+                    <p className="text-gray-500 mb-4">
+                      Cette vue sera bientôt disponible pour afficher les événements par jour
+                    </p>
+                    <Button 
+                      onClick={() => setView({ type: 'agenda', label: 'Agenda', icon: List })}
+                      variant="outline"
+                    >
+                      Retour à la vue Agenda
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Vue Semaine */}
+            {view.type === 'week' && (
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                <div className="p-6">
+                  <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                    Vue Semaine - Semaine du {currentDate.toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}
+                  </h2>
+                  <div className="text-center py-12">
+                    <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      Vue Semaine en cours de développement
+                    </h3>
+                    <p className="text-gray-500 mb-4">
+                      Cette vue sera bientôt disponible pour afficher les événements par semaine
+                    </p>
+                    <Button 
+                      onClick={() => setView({ type: 'agenda', label: 'Agenda', icon: List })}
+                      variant="outline"
+                    >
+                      Retour à la vue Agenda
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Vue Mois */}
+            {view.type === 'month' && (
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                <div className="p-6">
+                  <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                    Vue Mois - {currentDate.toLocaleDateString('fr-FR', { year: 'numeric', month: 'long' })}
+                  </h2>
+                  <div className="text-center py-12">
+                    <Grid className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      Vue Mois en cours de développement
+                    </h3>
+                    <p className="text-gray-500 mb-4">
+                      Cette vue sera bientôt disponible pour afficher les événements par mois
+                    </p>
+                    <Button 
+                      onClick={() => setView({ type: 'agenda', label: 'Agenda', icon: List })}
+                      variant="outline"
+                    >
+                      Retour à la vue Agenda
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
