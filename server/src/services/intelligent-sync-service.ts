@@ -111,7 +111,7 @@ export class IntelligentSyncService {
       // Mettre à jour le statut final
       await googleCalendarService.updateIntegration(integrationId, {
         sync_status: 'idle',
-        error_message: result.errors.length > 0 ? result.errors.join('; ') : null
+        error_message: result.errors.length > 0 ? result.errors.join('; ') : undefined
       });
 
       // Finaliser le suivi de progression

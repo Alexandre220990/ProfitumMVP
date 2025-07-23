@@ -67,7 +67,7 @@ const downloadLimiter = rateLimit({
 });
 
 // Middleware de validation des données
-const validateUploadRequest = (req: Request, res: Response, next: Function) => {
+const validateUploadRequest = (req: Request, res: Response, next: Function): void => {
   const { category, accessLevel } = req.body;
   
   // Validation de la catégorie
@@ -77,26 +77,28 @@ const validateUploadRequest = (req: Request, res: Response, next: Function) => {
   ];
   
   if (!category || !allowedCategories.includes(category)) {
-    return res.status(400).json({
+    res.status(400).json({
       success: false,
       message: 'Catégorie invalide'
     });
+    return;
   }
 
   // Validation du niveau d'accès
   const allowedAccessLevels = ['public', 'private', 'restricted', 'confidential'];
   if (accessLevel && !allowedAccessLevels.includes(accessLevel)) {
-    return res.status(400).json({
+    res.status(400).json({
       success: false,
       message: 'Niveau d\'accès invalide'
     });
+    return;
   }
 
   next();
 };
 
 // Middleware de chiffrement des données sensibles
-const encryptSensitiveData = (req: Request, res: Response, next: Function) => {
+const encryptSensitiveData = (req: Request, res: Response, next: Function): void => {
   // Chiffrement AES-256-GCM pour les données sensibles
   if (req.body.description && req.body.accessLevel === 'confidential') {
     const algorithm = 'aes-256-gcm';
@@ -188,7 +190,7 @@ router.post('/upload',
       // Audit log
       console.log(`🔒 AUDIT: Upload fichier ${uploadResponse.fileId} par ${user.id} (${user.type})`);
 
-      res.json({
+      return res.json({
         success: true,
         message: 'Fichier uploadé avec succès',
         data: uploadResponse.metadata
@@ -196,7 +198,7 @@ router.post('/upload',
 
     } catch (error) {
       console.error('Erreur upload:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         message: 'Erreur lors de l\'upload du fichier'
       });
@@ -225,14 +227,14 @@ router.get('/list',
       // Audit log
       console.log(`🔒 AUDIT: Liste fichiers consultée par ${user.id} (${user.type})`);
 
-      res.json({
+      return res.json({
         success: true,
         data: files
       });
 
     } catch (error) {
       console.error('Erreur listage:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         message: 'Erreur lors du listage des fichiers'
       });
@@ -268,14 +270,14 @@ router.get('/download/:fileId',
       // Audit log
       console.log(`🔒 AUDIT: Téléchargement fichier ${fileId} par ${user.id} (${user.type})`);
 
-      res.json({
+      return res.json({
         success: true,
         url: downloadResponse.url
       });
 
     } catch (error) {
       console.error('Erreur téléchargement:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         message: 'Erreur lors du téléchargement'
       });
@@ -310,14 +312,14 @@ router.delete('/delete/:fileId',
       // Audit log
       console.log(`🔒 AUDIT: Suppression fichier ${fileId} par ${user.id} (${user.type})`);
 
-      res.json({
+      return res.json({
         success: true,
         message: 'Fichier supprimé avec succès'
       });
 
     } catch (error) {
       console.error('Erreur suppression:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         message: 'Erreur lors de la suppression'
       });
@@ -362,7 +364,7 @@ router.post('/share/:fileId',
       // Audit log
       console.log(`🔒 AUDIT: Partage fichier ${fileId} avec ${email} par ${user.id} (${user.type})`);
 
-      res.json({
+      return res.json({
         success: true,
         message: 'Fichier partagé avec succès',
         data: {
@@ -372,7 +374,7 @@ router.post('/share/:fileId',
 
     } catch (error) {
       console.error('Erreur partage:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         message: 'Erreur lors du partage'
       });
@@ -425,14 +427,14 @@ router.post('/validate/:fileId',
       // Audit log
       console.log(`🔒 AUDIT: Validation fichier ${fileId} par ${user.id} (${user.type}) - ${status}`);
 
-      res.json({
+      return res.json({
         success: true,
         message: 'Fichier validé avec succès'
       });
 
     } catch (error) {
       console.error('Erreur validation:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         message: 'Erreur lors de la validation'
       });
@@ -464,14 +466,14 @@ router.get('/stats/:userId',
       // Audit log
       console.log(`🔒 AUDIT: Statistiques consultées pour ${userId} par ${user.id} (${user.type})`);
 
-      res.json({
+      return res.json({
         success: true,
         data: stats
       });
 
     } catch (error) {
       console.error('Erreur statistiques:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         message: 'Erreur lors de la récupération des statistiques'
       });

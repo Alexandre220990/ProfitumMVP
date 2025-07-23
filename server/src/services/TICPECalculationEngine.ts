@@ -230,14 +230,14 @@ export class TICPECalculationEngine {
     let score = 0;
 
     // Secteur d'activité (30 points)
-    const sectorScores = {
+    const sectorScores: Record<string, number> = {
       'Transport routier de marchandises': 30,
       'Transport routier de voyageurs': 30,
       'Taxi / VTC': 25,
       'BTP / Travaux publics': 20,
       'Secteur Agricole': 15
     };
-    score += sectorScores[data.secteur] || 0;
+    score += sectorScores[data.secteur as string] || 0;
 
     // Véhicules professionnels (25 points)
     if (data.vehiculesProfessionnels) {
@@ -340,7 +340,7 @@ export class TICPECalculationEngine {
   private async getFuelRate(typesCarburant: string[], secteur: string): Promise<number> {
     if (!typesCarburant || typesCarburant.length === 0) {
       // Taux par défaut selon le secteur
-      const defaultRates = {
+      const defaultRates: Record<string, number> = {
         'Transport routier de marchandises': 0.177,
         'Transport routier de voyageurs': 0.177,
         'Taxi / VTC': 0.213,
@@ -373,7 +373,7 @@ export class TICPECalculationEngine {
     }
 
     // Estimation basée sur le secteur et la taille
-    const estimationsSecteur = {
+    const estimationsSecteur: Record<string, number> = {
       'Transport routier de marchandises': 25000,
       'Transport routier de voyageurs': 20000,
       'Taxi / VTC': 8000,
@@ -381,7 +381,7 @@ export class TICPECalculationEngine {
       'Secteur Agricole': 12000
     };
 
-    return estimationsSecteur[data.secteur] || 10000;
+    return estimationsSecteur[data.secteur as string] || 10000;
   }
 
   /**

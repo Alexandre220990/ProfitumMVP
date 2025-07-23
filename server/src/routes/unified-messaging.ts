@@ -184,7 +184,7 @@ router.get('/conversations', authenticateUser, async (req, res) => {
       }) || []
     );
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         conversations: enrichedConversations,
@@ -199,7 +199,7 @@ router.get('/conversations', authenticateUser, async (req, res) => {
 
   } catch (error) {
     console.error('❌ Erreur route conversations:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur serveur'
     });
@@ -247,14 +247,14 @@ router.post('/conversations', authenticateUser, async (req, res) => {
       });
     }
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       data: conversation
     });
 
   } catch (error) {
     console.error('❌ Erreur création conversation:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur serveur'
     });
@@ -338,7 +338,7 @@ router.get('/conversations/:id/messages', authenticateUser, async (req, res) => 
       }
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         messages: messages?.reverse() || [], // Remettre dans l'ordre chronologique
@@ -354,7 +354,7 @@ router.get('/conversations/:id/messages', authenticateUser, async (req, res) => 
 
   } catch (error) {
     console.error('❌ Erreur route messages:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur serveur'
     });
@@ -488,14 +488,14 @@ router.post('/conversations/:id/messages', authenticateUser, upload.array('files
       // Ne pas faire échouer la requête si WebSocket échoue
     }
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       data: message
     });
 
   } catch (error) {
     console.error('❌ Erreur envoi message:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur serveur'
     });
@@ -558,11 +558,11 @@ router.get('/files/:id/download', authenticateUser, async (req, res) => {
       .eq('id', fileId);
 
     // Envoyer le fichier
-    res.download(file.file_path, file.original_name);
+    return res.download(file.file_path, file.original_name);
 
   } catch (error) {
     console.error('❌ Erreur téléchargement fichier:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur serveur'
     });
@@ -608,7 +608,7 @@ router.get('/notifications', authenticateUser, async (req, res) => {
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         notifications: notifications || [],
@@ -623,7 +623,7 @@ router.get('/notifications', authenticateUser, async (req, res) => {
 
   } catch (error) {
     console.error('❌ Erreur route notifications:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur serveur'
     });
@@ -655,14 +655,14 @@ router.put('/notifications/:id/read', authenticateUser, async (req, res) => {
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: notification
     });
 
   } catch (error) {
     console.error('❌ Erreur route notification:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur serveur'
     });
@@ -678,7 +678,7 @@ router.get('/ws-test', authenticateUser, async (req, res) => {
   try {
     const authUser = req.user as AuthUser;
     
-    res.json({
+    return res.json({
       success: true,
       data: {
         message: 'WebSocket test endpoint',
@@ -706,7 +706,7 @@ router.get('/ws-test', authenticateUser, async (req, res) => {
 
   } catch (error) {
     console.error('❌ Erreur test WebSocket:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur serveur'
     });
@@ -716,7 +716,7 @@ router.get('/ws-test', authenticateUser, async (req, res) => {
 // GET /api/unified-messaging/status - Statut de l'API
 router.get('/status', (req, res) => {
   try {
-    res.json({
+    return res.json({
       success: true,
       data: {
         message: 'API Unified Messaging opérationnelle',
@@ -733,7 +733,7 @@ router.get('/status', (req, res) => {
     });
   } catch (error) {
     console.error('❌ Erreur route status:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur serveur'
     });
@@ -811,7 +811,7 @@ router.get('/admin/users', authenticateUser, requireUserType('admin'), async (re
     // Combiner et trier les résultats
     const allUsers = [...clients, ...experts].sort((a, b) => a.name.localeCompare(b.name));
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         users: allUsers,
@@ -830,7 +830,7 @@ router.get('/admin/users', authenticateUser, requireUserType('admin'), async (re
 
   } catch (error) {
     console.error('❌ Erreur récupération utilisateurs admin:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération des utilisateurs'
     });
@@ -884,14 +884,14 @@ router.post('/admin/conversations', authenticateUser, requireUserType('admin'), 
       console.error('❌ Erreur WebSocket ajout participants:', wsError);
     }
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       data: conversation
     });
 
   } catch (error) {
     console.error('❌ Erreur création conversation admin:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur serveur'
     });
