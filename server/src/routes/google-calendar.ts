@@ -89,7 +89,7 @@ router.get('/auth/url', authenticateUser, googleCalendarLimiter, asyncHandler(as
       state ? `${state}_${authUser.id}` : authUser.id
     );
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         authUrl,
@@ -99,7 +99,7 @@ router.get('/auth/url', authenticateUser, googleCalendarLimiter, asyncHandler(as
     });
   } catch (error) {
     console.error('❌ Erreur génération URL auth:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 }));
 
@@ -143,10 +143,10 @@ router.get('/auth/callback', asyncHandler(async (req: Request, res: Response) =>
       `google_account_email=${encodeURIComponent(googleAccountEmail)}&` +
       `user_id=${encodeURIComponent(userId)}`;
 
-    res.redirect(redirectUrl);
+    return res.redirect(redirectUrl);
   } catch (error) {
     console.error('❌ Erreur callback OAuth2:', error);
-    res.redirect(`${process.env.CLIENT_URL}/google-calendar/error?error=token_exchange_failed`);
+    return res.redirect(`${process.env.CLIENT_URL}/google-calendar/error?error=token_exchange_failed`);
   }
 }));
 
@@ -239,14 +239,14 @@ router.post('/connect', authenticateUser, googleCalendarLimiter, validateConnect
       { googleAccountEmail: google_account_email }
     );
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       data: { integrationId },
       message: 'Compte Google Calendar connecté avec succès'
     });
   } catch (error) {
     console.error('❌ Erreur connexion Google Calendar:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 }));
 
@@ -263,14 +263,14 @@ router.get('/integrations', authenticateUser, googleCalendarLimiter, asyncHandle
   try {
     const integrations = await googleCalendarService.getUserIntegrations(authUser.id);
 
-    res.json({
+    return res.json({
       success: true,
       data: integrations,
       message: 'Intégrations récupérées avec succès'
     });
   } catch (error) {
     console.error('❌ Erreur récupération intégrations:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 }));
 
@@ -304,7 +304,7 @@ router.get('/integrations/:id', authenticateUser, googleCalendarLimiter, asyncHa
     });
   } catch (error) {
     console.error('❌ Erreur récupération intégration:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 }));
 
@@ -364,13 +364,13 @@ router.put('/integrations/:id', authenticateUser, googleCalendarLimiter, validat
       updates
     );
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Intégration mise à jour avec succès'
     });
   } catch (error) {
     console.error('❌ Erreur mise à jour intégration:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 }));
 
@@ -415,13 +415,13 @@ router.delete('/integrations/:id', authenticateUser, googleCalendarLimiter, asyn
       { googleAccountEmail: existingIntegration.google_account_email }
     );
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Intégration supprimée avec succès'
     });
   } catch (error) {
     console.error('❌ Erreur suppression intégration:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 }));
 
@@ -471,14 +471,14 @@ router.get('/calendars', authenticateUser, googleCalendarLimiter, asyncHandler(a
     // Lister les calendriers
     const calendars = await googleCalendarService.listCalendars(integration.access_token);
 
-    res.json({
+    return res.json({
       success: true,
       data: calendars,
       message: 'Calendriers récupérés avec succès'
     });
   } catch (error) {
     console.error('❌ Erreur récupération calendriers:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 }));
 
@@ -535,14 +535,14 @@ router.get('/free-busy', authenticateUser, googleCalendarLimiter, asyncHandler(a
       timeMax
     );
 
-    res.json({
+    return res.json({
       success: true,
       data: freeBusy,
       message: 'Disponibilité récupérée avec succès'
     });
   } catch (error) {
     console.error('❌ Erreur récupération disponibilité:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 }));
 
@@ -597,13 +597,13 @@ router.post('/sync', authenticateUser, googleCalendarLimiter, asyncHandler(async
       });
     }, 2000);
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Synchronisation démarrée avec succès'
     });
   } catch (error) {
     console.error('❌ Erreur synchronisation:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 }));
 

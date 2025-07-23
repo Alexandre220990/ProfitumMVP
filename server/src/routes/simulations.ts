@@ -198,7 +198,7 @@ router.get('/check-recent/:clientId', authenticateUser, async (req: Request, res
       processedFound: Array.isArray(recentProcessed) && recentProcessed.length > 0
     });
 
-    res.json({
+    return res.json({
       success: true,
       hasRecentSimulation,
       data: {
@@ -208,7 +208,7 @@ router.get('/check-recent/:clientId', authenticateUser, async (req: Request, res
     });
   } catch (error) {
     console.error('❌ Erreur lors de la vérification des simulations récentes:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la vérification des simulations récentes',
       error: error instanceof Error ? error.message : 'Erreur inconnue'
@@ -302,7 +302,7 @@ router.post('/', authenticateUser, async (req: Request, res: Response) => {
         await enregistrerProduitsEligibles(clientId, simulation.id, pythonResponse.eligibleProduitIds);
       }
 
-      res.json({
+      return res.json({
         success: true,
         data: {
           simulation: {
@@ -373,7 +373,7 @@ router.get('/client/:clientId', authenticateUser, async (req: Request, res: Resp
       throw error;
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         simulations: simulations || []
@@ -382,7 +382,7 @@ router.get('/client/:clientId', authenticateUser, async (req: Request, res: Resp
 
   } catch (error) {
     console.error('❌ Erreur lors de la récupération des simulations:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération des simulations',
       error: error instanceof Error ? error.message : 'Erreur inconnue'
@@ -454,11 +454,11 @@ router.post('/:id/export', authenticateUser, async (req: Request, res: Response)
 
     res.setHeader('Content-Type', contentType);
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.send(buffer);
+    return res.send(buffer);
 
   } catch (error) {
     console.error('❌ Erreur lors de l\'export:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de l\'export',
       error: error instanceof Error ? error.message : 'Erreur inconnue'

@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { asyncHandler } from '../utils/asyncHandler';
 import { authenticateUser, requireUserType } from '../middleware/authenticate';
 
-import webpush from 'web-push';
+import * as webpush from 'web-push';
 
 const router = express.Router();
 
@@ -93,7 +93,7 @@ router.post('/', authenticateUser, asyncHandler(async (req, res) => {
       throw error;
     }
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       data: {
         id: notification.id,
@@ -103,7 +103,7 @@ router.post('/', authenticateUser, asyncHandler(async (req, res) => {
 
   } catch (error) {
     console.error('Erreur création notification:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la création de la notification'
     });
@@ -143,7 +143,7 @@ router.get('/', authenticateUser, asyncHandler(async (req, res) => {
       throw error;
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         notifications: notifications || [],
@@ -158,7 +158,7 @@ router.get('/', authenticateUser, asyncHandler(async (req, res) => {
 
   } catch (error) {
     console.error('Erreur récupération notifications:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération des notifications'
     });
@@ -213,14 +213,14 @@ router.post('/push/subscribe', authenticateUser, asyncHandler(async (req, res) =
       if (error) throw error;
     }
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Abonnement push créé avec succès'
     });
 
   } catch (error) {
     console.error('Erreur abonnement push:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de l\'abonnement'
     });
@@ -244,14 +244,14 @@ router.post('/push/unsubscribe', authenticateUser, asyncHandler(async (req, res)
 
     if (error) throw error;
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Désabonnement réussi'
     });
 
   } catch (error) {
     console.error('Erreur désabonnement push:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors du désabonnement'
     });
@@ -328,7 +328,7 @@ router.post('/push/send', authenticateUser, requireUserType('admin'), asyncHandl
       }
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         sent: results.length,
@@ -343,7 +343,7 @@ router.post('/push/send', authenticateUser, requireUserType('admin'), asyncHandl
 
   } catch (error) {
     console.error('Erreur envoi notification push:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de l\'envoi de la notification'
     });
@@ -357,7 +357,7 @@ router.put('/:id/read', authenticateUser, asyncHandler(async (req, res) => {
     const { id } = req.params;
 
     const { error } = await supabaseClient
-      .from('notification')
+      .from('Notification')
       .update({
         is_read: true,
         read_at: new Date().toISOString(),
@@ -390,7 +390,7 @@ router.put('/:id/star', authenticateUser, asyncHandler(async (req, res) => {
     const { starred } = req.body;
 
     const { error } = await supabaseClient
-      .from('notification')
+      .from('Notification')
       .update({
         starred: starred,
         updated_at: new Date().toISOString()
@@ -421,7 +421,7 @@ router.delete('/:id', authenticateUser, asyncHandler(async (req, res) => {
     const { id } = req.params;
 
     const { error } = await supabaseClient
-      .from('notification')
+      .from('Notification')
       .delete()
       .eq('id', id)
       .eq('user_id', userId);

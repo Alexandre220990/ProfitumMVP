@@ -89,7 +89,7 @@ router.get('/status/:sessionId', asyncHandler(async (req, res) => {
     duration = session.endTime.getTime() - session.startTime.getTime();
   }
 
-  res.json({
+  return res.json({
     success: true,
     data: {
       ...session,
@@ -162,7 +162,7 @@ router.delete('/kill/:sessionId', asyncHandler(async (req, res) => {
     });
   }
 
-  res.json({
+  return res.json({
     success: true,
     message: `Session ${sessionId} arrêtée avec succès`
   });
@@ -233,7 +233,7 @@ router.get('/logs/:sessionId', asyncHandler(async (req, res) => {
       break;
   }
 
-  res.json({
+  return res.json({
     success: true,
     data: {
       sessionId,
@@ -276,7 +276,7 @@ router.post('/execute-all', asyncHandler(async (req, res) => {
       }
     }
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Tous les tests lancés',
       data: {
@@ -290,7 +290,7 @@ router.post('/execute-all', asyncHandler(async (req, res) => {
     });
   } catch (error: any) {
     console.error('❌ Erreur lors du lancement de tous les tests:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: error.message || 'Erreur lors du lancement de tous les tests',
       error: error.message

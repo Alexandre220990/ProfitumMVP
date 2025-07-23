@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { createClient } from '@supabase/supabase-js';
 import { traiterSimulation } from '../services/simulationProcessor';
 import { Database } from '../types/supabase';
-import dotenv from 'dotenv';
+import * as dotenv from 'dotenv';
 import jwt from 'jsonwebtoken';
 import { RealTimeProcessor } from '../services/realTimeProcessor';
 
@@ -57,6 +57,7 @@ const authenticateUser = async (req: Request, res: Response, next: Function) => 
     }
     
     next();
+    return;
   } catch (error) {
     return res.status(401).json({ message: 'Token invalide' });
   }
