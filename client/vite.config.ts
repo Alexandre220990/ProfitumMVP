@@ -10,6 +10,11 @@ export default defineConfig({
       "@shared": path.resolve(__dirname, "../shared"),
     },
   },
+  // Configuration spécifique pour Vercel
+  server: {
+    port: 3000,
+    host: true
+  },
   build: {
     outDir: "dist",
     emptyOutDir: true,

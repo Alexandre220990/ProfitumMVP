@@ -1,6 +1,7 @@
 # Redirections explicites pour Vercel
 /connect-admin    /index.html   200
 /homepage-test    /index.html   200
+/admin            /index.html   200
 /admin/*          /index.html   200
 /dashboard/*      /index.html   200
 /expert/*         /index.html   200

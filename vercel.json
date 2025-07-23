@@ -1,18 +1,99 @@
 {
-  "version": 2,
-  "builds": [
+  "rewrites": [
     {
-      "src": "client/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
+      "source": "/connect-admin",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/admin/(.*)",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/dashboard/(.*)",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/expert/(.*)",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/agenda-(.*)",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/messagerie-(.*)",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/profile/(.*)",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/settings",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/simulateur",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/experts/(.*)",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/register-(.*)",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/connexion-(.*)",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/welcome-(.*)",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/demo-(.*)",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/unauthorized",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/privacy",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/terms",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/produits/(.*)",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/dossier-(.*)",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/aide-(.*)",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/google-calendar-(.*)",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/client/$1"
-    }
-  ]
+  "buildCommand": "cd client && npm run build",
+  "outputDirectory": "client/dist",
+  "installCommand": "cd client && npm install"
 } 
