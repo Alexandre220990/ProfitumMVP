@@ -38,13 +38,13 @@ router.post('/', authenticateUser, async (req: Request, res: Response) => {
       return res.status(500).json({ success: false, message: 'Erreur serveur' });
     }
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       data: simulation
     });
   } catch (error) {
     console.error('Erreur lors de la création de la simulation:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });
 

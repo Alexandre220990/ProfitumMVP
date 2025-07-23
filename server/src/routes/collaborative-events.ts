@@ -118,40 +118,43 @@ const respondToInvitationSchema = Joi.object({
 // MIDDLEWARE DE VALIDATION
 // ============================================================================
 
-const validateCreateEvent = (req: Request, res: Response, next: Function) => {
+const validateCreateEvent = (req: Request, res: Response, next: Function): void => {
   const { error, value } = createEventSchema.validate(req.body);
   if (error) {
-    return res.status(400).json({
+    res.status(400).json({
       success: false,
       message: 'Données invalides pour la création d\'événement collaboratif',
       errors: error.details.map(detail => detail.message)
     });
+    return;
   }
   req.body = value;
   next();
 };
 
-const validateUpdateEvent = (req: Request, res: Response, next: Function) => {
+const validateUpdateEvent = (req: Request, res: Response, next: Function): void => {
   const { error, value } = updateEventSchema.validate(req.body);
   if (error) {
-    return res.status(400).json({
+    res.status(400).json({
       success: false,
       message: 'Données invalides pour la mise à jour d\'événement',
       errors: error.details.map(detail => detail.message)
     });
+    return;
   }
   req.body = value;
   next();
 };
 
-const validateRespondToInvitation = (req: Request, res: Response, next: Function) => {
+const validateRespondToInvitation = (req: Request, res: Response, next: Function): void => {
   const { error, value } = respondToInvitationSchema.validate(req.body);
   if (error) {
-    return res.status(400).json({
+    res.status(400).json({
       success: false,
       message: 'Données invalides pour la réponse à l\'invitation',
       errors: error.details.map(detail => detail.message)
     });
+    return;
   }
   req.body = value;
   next();
@@ -187,14 +190,14 @@ router.post('/',
 
       const eventId = await collaborativeEventsService.createCollaborativeEvent(eventData);
 
-      res.status(201).json({
+      return res.status(201).json({
         success: true,
         data: { eventId },
         message: 'Événement collaboratif créé avec succès'
       });
     } catch (error) {
       console.error('❌ Erreur création événement collaboratif:', error);
-      res.status(500).json({ 
+      return res.status(500).json({ 
         success: false, 
         message: error instanceof Error ? error.message : 'Erreur serveur' 
       });
@@ -221,14 +224,14 @@ router.get('/',
         authUser.type
       );
 
-      res.json({
+      return res.json({
         success: true,
         data: events,
         message: 'Événements collaboratifs récupérés avec succès'
       });
     } catch (error) {
       console.error('❌ Erreur récupération événements:', error);
-      res.status(500).json({ 
+      return res.status(500).json({ 
         success: false, 
         message: error instanceof Error ? error.message : 'Erreur serveur' 
       });
@@ -252,14 +255,14 @@ router.get('/stats',
     try {
       const stats = await collaborativeEventsService.getCollaborativeEventStats(authUser.id);
 
-      res.json({
+      return res.json({
         success: true,
         data: stats,
         message: 'Statistiques récupérées avec succès'
       });
     } catch (error) {
       console.error('❌ Erreur récupération statistiques:', error);
-      res.status(500).json({ 
+      return res.status(500).json({ 
         success: false, 
         message: error instanceof Error ? error.message : 'Erreur serveur' 
       });
@@ -286,13 +289,13 @@ router.put('/:id',
     try {
       await collaborativeEventsService.updateCollaborativeEvent(eventId, updates, authUser.id);
 
-      res.json({
+      return res.json({
         success: true,
         message: 'Événement mis à jour avec succès'
       });
     } catch (error) {
       console.error('❌ Erreur mise à jour événement:', error);
-      res.status(500).json({ 
+      return res.status(500).json({ 
         success: false, 
         message: error instanceof Error ? error.message : 'Erreur serveur' 
       });
@@ -317,13 +320,13 @@ router.delete('/:id',
     try {
       await collaborativeEventsService.cancelCollaborativeEvent(eventId, authUser.id);
 
-      res.json({
+      return res.json({
         success: true,
         message: 'Événement annulé avec succès'
       });
     } catch (error) {
       console.error('❌ Erreur annulation événement:', error);
-      res.status(500).json({ 
+      return res.status(500).json({ 
         success: false, 
         message: error instanceof Error ? error.message : 'Erreur serveur' 
       });
@@ -354,13 +357,13 @@ router.post('/invitations/:id/respond',
     try {
       await collaborativeEventsService.respondToInvitation(invitationId, authUser.id, response, notes);
 
-      res.json({
+      return res.json({
         success: true,
         message: 'Réponse enregistrée avec succès'
       });
     } catch (error) {
       console.error('❌ Erreur réponse invitation:', error);
-      res.status(500).json({ 
+      return res.status(500).json({ 
         success: false, 
         message: error instanceof Error ? error.message : 'Erreur serveur' 
       });
@@ -403,14 +406,14 @@ router.get('/invitations',
 
       if (error) throw error;
 
-      res.json({
+      return res.json({
         success: true,
         data: invitations || [],
         message: 'Invitations récupérées avec succès'
       });
     } catch (error) {
       console.error('❌ Erreur récupération invitations:', error);
-      res.status(500).json({ 
+      return res.status(500).json({ 
         success: false, 
         message: error instanceof Error ? error.message : 'Erreur serveur' 
       });
@@ -471,14 +474,14 @@ router.get('/search',
 
       if (error) throw error;
 
-      res.json({
+      return res.json({
         success: true,
         data: events || [],
         message: 'Recherche effectuée avec succès'
       });
     } catch (error) {
       console.error('❌ Erreur recherche événements:', error);
-      res.status(500).json({ 
+      return res.status(500).json({ 
         success: false, 
         message: error instanceof Error ? error.message : 'Erreur serveur' 
       });

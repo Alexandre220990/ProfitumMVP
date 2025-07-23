@@ -218,10 +218,10 @@ router.get('/', async (req, res) => {
       data: experts
     };
 
-    res.json(response);
+    return res.json(response);
   } catch (error) {
     console.error('Error fetching experts:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Error fetching experts'
     });
@@ -290,10 +290,10 @@ router.get('/:id', async (req, res) => {
       data: expert
     };
 
-    res.json(response);
+    return res.json(response);
   } catch (error) {
     console.error('Erreur:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération de l\'expert'
     });
@@ -339,10 +339,10 @@ router.get('/:id/audits', async (req, res) => {
       data: audits
     };
 
-    res.json(response);
+    return res.json(response);
   } catch (error) {
     console.error('Error fetching audits:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Error fetching audits'
     });
@@ -448,7 +448,7 @@ router.put('/client/produits-eligibles/:id/assign-expert', async (req, res) => {
       console.error('Erreur lors de la création du message:', messageError);
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: updatedProduit,
       message: 'Expert assigné avec succès'
@@ -456,7 +456,7 @@ router.put('/client/produits-eligibles/:id/assign-expert', async (req, res) => {
 
   } catch (error) {
     console.error('Error assigning expert:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Error assigning expert'
     });
@@ -533,7 +533,7 @@ router.post('/:id/contact', async (req, res) => {
       throw messageError;
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: messageData,
       message: 'Message envoyé avec succès'
@@ -541,7 +541,7 @@ router.post('/:id/contact', async (req, res) => {
 
   } catch (error) {
     console.error('Error sending message:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Error sending message'
     });

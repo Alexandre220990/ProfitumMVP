@@ -266,14 +266,14 @@ router.get('/dashboard', authenticateUser, requireUserType('admin'), asyncHandle
       }
     };
 
-    res.json({
+    return res.json({
       success: true,
       data: dashboardData
     });
 
   } catch (error) {
     console.error('Erreur dashboard admin:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération des données du dashboard'
     });
@@ -322,7 +322,7 @@ router.get('/stats/experts', asyncHandler(async (req, res) => {
       stats.avgCompensation = stats.count > 0 ? stats.totalCompensation / stats.count : 0;
     });
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         experts,
@@ -332,7 +332,7 @@ router.get('/stats/experts', asyncHandler(async (req, res) => {
 
   } catch (error) {
     console.error('Erreur stats experts:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération des statistiques experts'
     });
@@ -367,7 +367,7 @@ router.get('/stats/clients', asyncHandler(async (req, res) => {
       }).length || 0
     };
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         clients,
@@ -377,7 +377,7 @@ router.get('/stats/clients', asyncHandler(async (req, res) => {
 
   } catch (error) {
     console.error('Erreur stats clients:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération des statistiques clients'
     });
@@ -448,7 +448,7 @@ router.get('/experts', asyncHandler(async (req, res) => {
       .from('Expert')
       .select('*', { count: 'exact', head: true });
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         experts,
@@ -463,7 +463,7 @@ router.get('/experts', asyncHandler(async (req, res) => {
 
   } catch (error) {
     console.error('Erreur récupération experts:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération des experts'
     });
@@ -506,7 +506,7 @@ router.get('/experts/:id', asyncHandler(async (req, res) => {
         (audits.filter(a => a.status === 'terminé').length || 0) / audits.length * 100 : 0
     };
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         expert,
@@ -516,7 +516,7 @@ router.get('/experts/:id', asyncHandler(async (req, res) => {
 
   } catch (error) {
     console.error('Erreur récupération expert:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération de l\'expert'
     });
@@ -579,7 +579,7 @@ router.put('/experts/:id/approve', asyncHandler(async (req, res) => {
         user_agent: req.get('User-Agent')
       });
 
-    res.json({
+    return res.json({
       success: true,
       data,
       message: 'Expert approuvé avec succès'
@@ -587,7 +587,7 @@ router.put('/experts/:id/approve', asyncHandler(async (req, res) => {
 
   } catch (error) {
     console.error('Erreur approbation expert:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de l\'approbation de l\'expert'
     });
@@ -642,7 +642,7 @@ router.put('/experts/:id/reject', asyncHandler(async (req, res) => {
         user_agent: req.get('User-Agent')
       });
 
-    res.json({
+    return res.json({
       success: true,
       data,
       message: 'Expert rejeté avec succès'
@@ -650,7 +650,7 @@ router.put('/experts/:id/reject', asyncHandler(async (req, res) => {
 
   } catch (error) {
     console.error('Erreur rejet expert:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors du rejet de l\'expert'
     });
@@ -715,7 +715,7 @@ router.put('/experts/:id', asyncHandler(async (req, res) => {
         user_agent: req.get('User-Agent')
       });
 
-    res.json({
+    return res.json({
       success: true,
       data,
       message: 'Expert modifié avec succès'
@@ -723,7 +723,7 @@ router.put('/experts/:id', asyncHandler(async (req, res) => {
 
   } catch (error) {
     console.error('Erreur modification expert:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la modification de l\'expert'
     });
@@ -831,7 +831,7 @@ router.post('/experts', asyncHandler(async (req, res) => {
         user_agent: req.get('User-Agent')
       });
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       data: newExpert,
       message: 'Expert créé avec succès'
@@ -839,7 +839,7 @@ router.post('/experts', asyncHandler(async (req, res) => {
 
   } catch (error) {
     console.error('Erreur création expert:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la création de l\'expert'
     });
@@ -901,7 +901,7 @@ router.get('/clients', asyncHandler(async (req, res) => {
       .from('Client')
       .select('*', { count: 'exact', head: true });
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         clients,
@@ -916,7 +916,7 @@ router.get('/clients', asyncHandler(async (req, res) => {
 
   } catch (error) {
     console.error('Erreur récupération clients:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération des clients'
     });
@@ -993,7 +993,7 @@ router.post('/clients', authenticateUser, requireUserType('admin'), asyncHandler
         user_agent: req.get('User-Agent')
       });
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       data: newClient,
       message: 'Client créé avec succès'
@@ -1001,7 +1001,7 @@ router.post('/clients', authenticateUser, requireUserType('admin'), asyncHandler
 
   } catch (error) {
     console.error('Erreur création client:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la création du client'
     });
@@ -1080,7 +1080,7 @@ router.get('/clients/:id', asyncHandler(async (req, res) => {
       charteSignee: !!charteSignature
     };
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         client,
@@ -1093,7 +1093,7 @@ router.get('/clients/:id', asyncHandler(async (req, res) => {
 
   } catch (error) {
     console.error('Erreur récupération client:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération du client'
     });
@@ -1336,7 +1336,7 @@ router.get('/dossiers', authenticateUser, requireUserType('admin'), async (req, 
       priorite: dossier.priorite
     })) || [];
 
-    res.json({
+    return res.json({
       dossiers: dossiersTransformes,
       pagination: {
         page: parseInt(page as string),
@@ -1348,21 +1348,21 @@ router.get('/dossiers', authenticateUser, requireUserType('admin'), async (req, 
 
   } catch (error) {
     console.error('❌ Erreur route dossiers:', error);
-    res.status(500).json({ error: 'Erreur serveur' });
+    return res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
 // Route de test pour vérifier l'authentification admin
 router.get('/test', authenticateUser, requireUserType('admin'), async (req, res) => {
   try {
-    res.json({
+    return res.json({
       success: true,
       message: 'Admin authentifié avec succès',
       admin: (req as any).admin
     });
   } catch (error) {
     console.error('❌ Erreur route test admin:', error);
-    res.status(500).json({ error: 'Erreur serveur' });
+    return res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -1434,7 +1434,7 @@ router.get('/dossiers/stats', authenticateUser, requireUserType('admin'), async 
 
     console.log('✅ Statistiques calculées avec succès');
 
-    res.json({
+    return res.json({
       totalDossiers: statusStats?.length || 0,
       dossiersAvecExpert: dossiersWithExperts?.length || 0,
       dossiersSansExpert: (statusStats?.length || 0) - (dossiersWithExperts?.length || 0),
@@ -1446,7 +1446,7 @@ router.get('/dossiers/stats', authenticateUser, requireUserType('admin'), async 
 
   } catch (error) {
     console.error('❌ Erreur récupération statistiques dossiers:', error);
-    res.status(500).json({ error: 'Erreur lors de la récupération des statistiques des dossiers' });
+    return res.status(500).json({ error: 'Erreur lors de la récupération des statistiques des dossiers' });
   }
 });
 
@@ -1467,13 +1467,13 @@ router.get('/produits', authenticateUser, requireUserType('admin'), async (req, 
 
     console.log('✅ Produits récupérés:', produits?.length || 0);
 
-    res.json({
+    return res.json({
       produits: produits || []
     });
 
   } catch (error) {
     console.error('❌ Erreur route produits:', error);
-    res.status(500).json({ error: 'Erreur serveur' });
+    return res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -1517,14 +1517,14 @@ router.post('/produits', authenticateUser, requireUserType('admin'), async (req,
 
     console.log('✅ Produit ajouté avec succès:', produit.id);
 
-    res.json({
+    return res.json({
       success: true,
       produit
     });
 
   } catch (error) {
     console.error('❌ Erreur route ajout produit:', error);
-    res.status(500).json({ error: 'Erreur serveur' });
+    return res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -1575,14 +1575,14 @@ router.put('/produits/:id', authenticateUser, requireUserType('admin'), async (r
 
     console.log('✅ Produit modifié avec succès:', produit.id);
 
-    res.json({
+    return res.json({
       success: true,
       produit
     });
 
   } catch (error) {
     console.error('❌ Erreur route modification produit:', error);
-    res.status(500).json({ error: 'Erreur serveur' });
+    return res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -1622,14 +1622,14 @@ router.delete('/produits/:id', authenticateUser, requireUserType('admin'), async
 
     console.log('✅ Produit supprimé avec succès:', id);
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Produit supprimé avec succès'
     });
 
   } catch (error) {
     console.error('❌ Erreur route suppression produit:', error);
-    res.status(500).json({ error: 'Erreur serveur' });
+    return res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -1670,14 +1670,14 @@ router.post('/dossiers', authenticateUser, requireUserType('admin'), async (req,
 
     console.log('✅ Dossier ajouté avec succès:', dossier.id);
 
-    res.json({
+    return res.json({
       success: true,
       dossier
     });
 
   } catch (error) {
     console.error('❌ Erreur route ajout dossier:', error);
-    res.status(500).json({ error: 'Erreur serveur' });
+    return res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -1753,7 +1753,7 @@ router.get('/users', authenticateUser, requireUserType('admin'), asyncHandler(as
     }
   } catch (error) {
     console.error('Erreur lors de la récupération des utilisateurs:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 }));
 
@@ -1791,7 +1791,7 @@ router.get('/assignments', authenticateUser, requireUserType('admin'), asyncHand
       return res.status(500).json({ success: false, message: 'Erreur lors de la récupération des assignations' });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         assignments: assignments || [],
@@ -1804,7 +1804,7 @@ router.get('/assignments', authenticateUser, requireUserType('admin'), asyncHand
     });
   } catch (error) {
     console.error('Erreur lors de la récupération des assignations:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 }));
 
@@ -1831,13 +1831,13 @@ router.post('/assignments/:id/assign', authenticateUser, requireUserType('admin'
       return res.status(500).json({ success: false, message: 'Erreur lors de l\'assignation' });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: assignment
     });
   } catch (error) {
     console.error('Erreur lors de l\'assignation:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 }));
 
@@ -1868,7 +1868,7 @@ router.get('/notifications', authenticateUser, requireUserType('admin'), asyncHa
       return res.status(500).json({ success: false, message: 'Erreur lors de la récupération des notifications' });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         notifications: notifications || [],
@@ -1881,7 +1881,7 @@ router.get('/notifications', authenticateUser, requireUserType('admin'), asyncHa
     });
   } catch (error) {
     console.error('Erreur lors de la récupération des notifications:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 }));
 
@@ -1909,13 +1909,13 @@ router.post('/notifications', authenticateUser, requireUserType('admin'), asyncH
       return res.status(500).json({ success: false, message: 'Erreur lors de la création de la notification' });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: notification
     });
   } catch (error) {
     console.error('Erreur lors de la création de la notification:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 }));
 
@@ -2037,13 +2037,13 @@ router.get('/analytics/detailed', authenticateUser, requireUserType('admin'), as
       }
     };
 
-    res.json({
+    return res.json({
       success: true,
       data: analytics
     });
   } catch (error) {
     console.error('Erreur lors du calcul des analytics:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 }));
 
@@ -2091,7 +2091,7 @@ router.get('/security/alerts', authenticateUser, requireUserType('admin'), async
 
     const paginatedAlerts = filteredAlerts.slice(offset, offset + Number(limit));
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         alerts: paginatedAlerts,
@@ -2104,7 +2104,7 @@ router.get('/security/alerts', authenticateUser, requireUserType('admin'), async
     });
   } catch (error) {
     console.error('Erreur lors de la récupération des alertes:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 }));
 
@@ -2117,13 +2117,13 @@ router.post('/security/alerts/:id/resolve', authenticateUser, requireUserType('a
     // TODO: Implémenter la résolution d'alertes dans la base de données
     console.log(`Alerte ${id} résolue avec les notes: ${resolution_notes}`);
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Alerte résolue avec succès'
     });
   } catch (error) {
     console.error('Erreur lors de la résolution de l\'alerte:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 }));
 
@@ -2159,7 +2159,7 @@ router.get('/stats', authenticateUser, async (req: Request, res: Response) => {
       return res.status(500).json({ success: false, message: 'Erreur serveur' });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         totalClients: clients?.length || 0,
@@ -2169,7 +2169,7 @@ router.get('/stats', authenticateUser, async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('Erreur lors de la récupération des statistiques:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });
 

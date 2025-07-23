@@ -81,7 +81,7 @@ const validateEvent = (req: Request, res: Response, next: Function) => {
     });
   }
   req.body = value;
-  next();
+  return next();
 };
 
 const validateDossierStep = (req: Request, res: Response, next: Function) => {
@@ -94,7 +94,7 @@ const validateDossierStep = (req: Request, res: Response, next: Function) => {
     });
   }
   req.body = value;
-  next();
+  return next();
 };
 
 // ============================================================================
@@ -226,7 +226,7 @@ router.get('/events', authenticateUser, calendarLimiter, asyncHandler(async (req
       { filters: req.query }
     );
 
-    res.json({
+    return res.json({
       success: true,
       data: events || [],
       count: count || 0,
@@ -238,7 +238,7 @@ router.get('/events', authenticateUser, calendarLimiter, asyncHandler(async (req
     });
   } catch (error) {
     console.error('❌ Erreur route événements:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 }));
 
@@ -303,14 +303,14 @@ router.post('/events', authenticateUser, calendarLimiter, validateEvent, asyncHa
       }
     }
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       data: event,
       message: 'Événement créé avec succès'
     });
   } catch (error) {
     console.error('❌ Erreur création événement:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 }));
 
@@ -372,14 +372,14 @@ router.put('/events/:id', authenticateUser, calendarLimiter, validateEvent, asyn
       { eventTitle: updatedEvent.title }
     );
 
-    res.json({
+    return res.json({
       success: true,
       data: updatedEvent,
       message: 'Événement mis à jour avec succès'
     });
   } catch (error) {
     console.error('❌ Erreur mise à jour événement:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 }));
 
@@ -435,13 +435,13 @@ router.delete('/events/:id', authenticateUser, calendarLimiter, asyncHandler(asy
       { eventTitle: existingEvent.title }
     );
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Événement supprimé avec succès'
     });
   } catch (error) {
     console.error('❌ Erreur suppression événement:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 }));
 
@@ -509,7 +509,7 @@ router.get('/steps', authenticateUser, calendarLimiter, asyncHandler(async (req:
       { filters: req.query }
     );
 
-    res.json({
+    return res.json({
       success: true,
       data: steps || [],
       count: count || 0,
@@ -521,7 +521,7 @@ router.get('/steps', authenticateUser, calendarLimiter, asyncHandler(async (req:
     });
   } catch (error) {
     console.error('❌ Erreur route étapes:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 }));
 
@@ -579,14 +579,14 @@ router.post('/steps', authenticateUser, calendarLimiter, validateDossierStep, as
       { stepName: step.step_name, dossierId: step.dossier_id }
     );
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       data: step,
       message: 'Étape créée avec succès'
     });
   } catch (error) {
     console.error('❌ Erreur création étape:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 }));
 
@@ -654,14 +654,14 @@ router.put('/steps/:id', authenticateUser, calendarLimiter, validateDossierStep,
       { stepName: updatedStep.step_name }
     );
 
-    res.json({
+    return res.json({
       success: true,
       data: updatedStep,
       message: 'Étape mise à jour avec succès'
     });
   } catch (error) {
     console.error('❌ Erreur mise à jour étape:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 }));
 
@@ -723,13 +723,13 @@ router.delete('/steps/:id', authenticateUser, calendarLimiter, asyncHandler(asyn
       { stepName: existingStep.step_name }
     );
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Étape supprimée avec succès'
     });
   } catch (error) {
     console.error('❌ Erreur suppression étape:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 }));
 
@@ -840,13 +840,13 @@ router.get('/stats', authenticateUser, calendarLimiter, asyncHandler(async (req:
       documentsToValidate: documentsToValidateResult.count || 0
     };
 
-    res.json({
+    return res.json({
       success: true,
       data: stats
     });
   } catch (error) {
     console.error('❌ Erreur statistiques calendrier:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 }));
 
@@ -920,14 +920,14 @@ router.post('/events/:id/participants', authenticateUser, calendarLimiter, async
       { participantCount: participants.length }
     );
 
-    res.json({
+    return res.json({
       success: true,
       data: addedParticipants,
       message: 'Participants ajoutés avec succès'
     });
   } catch (error) {
     console.error('❌ Erreur ajout participants:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 }));
 
@@ -978,13 +978,13 @@ router.get('/events/:id/reminders', authenticateUser, calendarLimiter, asyncHand
       return res.status(500).json({ success: false, message: 'Erreur serveur' });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: reminders || []
     });
   } catch (error) {
     console.error('❌ Erreur route rappels:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 }));
 
@@ -1055,14 +1055,14 @@ router.post('/reminders', authenticateUser, calendarLimiter, asyncHandler(async 
       { eventTitle: event.title, reminderType: type }
     );
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       data: reminder,
       message: 'Rappel créé avec succès'
     });
   } catch (error) {
     console.error('❌ Erreur création rappel:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 }));
 

@@ -65,7 +65,7 @@ router.get('/', authenticateUser, async (req: Request, res: Response) => {
       console.error('❌ Erreur comptage notifications non lues:', countError);
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         notifications: notifications || [],
@@ -75,7 +75,7 @@ router.get('/', authenticateUser, async (req: Request, res: Response) => {
 
   } catch (error) {
     console.error('❌ Erreur route notifications:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur interne du serveur'
     });
@@ -130,14 +130,14 @@ router.post('/:id/read', authenticateUser, async (req: Request, res: Response) =
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Notification marquée comme lue'
     });
 
   } catch (error) {
     console.error('❌ Erreur marquage notification:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur interne du serveur'
     });
@@ -176,14 +176,14 @@ router.post('/mark-all-read', authenticateUser, async (req: Request, res: Respon
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Toutes les notifications ont été marquées comme lues'
     });
 
   } catch (error) {
     console.error('❌ Erreur marquage toutes notifications:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur interne du serveur'
     });
@@ -235,14 +235,14 @@ router.delete('/:id', authenticateUser, async (req: Request, res: Response) => {
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Notification supprimée'
     });
 
   } catch (error) {
     console.error('❌ Erreur suppression notification:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur interne du serveur'
     });
@@ -278,7 +278,7 @@ router.get('/unread-count', authenticateUser, async (req: Request, res: Response
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         unread_count: count || 0
@@ -287,7 +287,7 @@ router.get('/unread-count', authenticateUser, async (req: Request, res: Response
 
   } catch (error) {
     console.error('❌ Erreur comptage notifications:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur interne du serveur'
     });

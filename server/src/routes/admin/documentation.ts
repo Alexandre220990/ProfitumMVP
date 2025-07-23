@@ -33,10 +33,10 @@ router.get('/documents', async (req, res) => {
       return res.status(500).json({ error: 'Erreur serveur' });
     }
 
-    res.json({ documents: data || [] });
+    return res.json({ documents: data || [] });
   } catch (error) {
     console.error('Erreur route documents:', error);
-    res.status(500).json({ error: 'Erreur serveur' });
+    return res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -56,10 +56,10 @@ router.get('/documents/:id', async (req, res) => {
       return res.status(404).json({ error: 'Document non trouvé' });
     }
 
-    res.json({ document: data });
+    return res.json({ document: data });
   } catch (error) {
     console.error('Erreur route document:', error);
-    res.status(500).json({ error: 'Erreur serveur' });
+    return res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -92,10 +92,10 @@ router.post('/documents', async (req, res) => {
       return res.status(500).json({ error: 'Erreur création document' });
     }
 
-    res.status(201).json({ document: data });
+    return res.status(201).json({ document: data });
   } catch (error) {
     console.error('Erreur route création:', error);
-    res.status(500).json({ error: 'Erreur serveur' });
+    return res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -126,10 +126,10 @@ router.put('/documents/:id', async (req, res) => {
       return res.status(500).json({ error: 'Erreur mise à jour' });
     }
 
-    res.json({ document: data });
+    return res.json({ document: data });
   } catch (error) {
     console.error('Erreur route mise à jour:', error);
-    res.status(500).json({ error: 'Erreur serveur' });
+    return res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -148,10 +148,10 @@ router.delete('/documents/:id', async (req, res) => {
       return res.status(500).json({ error: 'Erreur suppression' });
     }
 
-    res.json({ message: 'Document supprimé avec succès' });
+    return res.json({ message: 'Document supprimé avec succès' });
   } catch (error) {
     console.error('Erreur route suppression:', error);
-    res.status(500).json({ error: 'Erreur serveur' });
+    return res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -171,10 +171,10 @@ router.get('/documents/category/:category', async (req, res) => {
       return res.status(500).json({ error: 'Erreur serveur' });
     }
 
-    res.json({ documents: data || [] });
+    return res.json({ documents: data || [] });
   } catch (error) {
     console.error('Erreur route catégorie:', error);
-    res.status(500).json({ error: 'Erreur serveur' });
+    return res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -194,10 +194,10 @@ router.get('/documents/search/:query', async (req, res) => {
       return res.status(500).json({ error: 'Erreur serveur' });
     }
 
-    res.json({ documents: data || [] });
+    return res.json({ documents: data || [] });
   } catch (error) {
     console.error('Erreur route recherche:', error);
-    res.status(500).json({ error: 'Erreur serveur' });
+    return res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -227,10 +227,10 @@ router.get('/documents/stats', async (req, res) => {
       stats.byStatus[doc.status] = (stats.byStatus[doc.status] || 0) + 1;
     });
 
-    res.json({ stats });
+    return res.json({ stats });
   } catch (error) {
     console.error('Erreur route stats:', error);
-    res.status(500).json({ error: 'Erreur serveur' });
+    return res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 

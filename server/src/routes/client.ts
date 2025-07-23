@@ -37,13 +37,13 @@ router.get('/profile', authenticateUser, async (req: Request, res: Response) => 
       return res.status(500).json({ success: false, message: 'Erreur serveur' });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: client
     });
   } catch (error) {
     console.error('Erreur lors de la récupération du profil client:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });
 
@@ -83,13 +83,13 @@ router.put('/profile', authenticateUser, async (req: Request, res: Response) => 
       return res.status(500).json({ success: false, message: 'Erreur serveur' });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: client
     });
   } catch (error) {
     console.error('Erreur lors de la mise à jour du profil client:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });
 
@@ -158,7 +158,7 @@ router.get('/produits-eligibles', authenticateUser, async (req: Request, res: Re
       throw produitsError;
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: produitsData,
       pagination: {
@@ -171,7 +171,7 @@ router.get('/produits-eligibles', authenticateUser, async (req: Request, res: Re
 
   } catch (error) {
     console.error('Error fetching client products:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Error fetching client products'
     });
@@ -274,7 +274,7 @@ router.put('/produits-eligibles/:id/assign-expert', async (req, res) => {
       // Ne pas faire échouer la requête si la notification échoue
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: updatedProduit,
       message: 'Expert assigné avec succès'
@@ -282,7 +282,7 @@ router.put('/produits-eligibles/:id/assign-expert', async (req, res) => {
 
   } catch (error) {
     console.error('Error assigning expert:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Error assigning expert'
     });
@@ -365,7 +365,7 @@ router.post('/produits-eligibles/:id/sign-charte', async (req, res) => {
     // Log de l'activité
     console.log(`Charte signée pour le produit ${id} par le client ${clientData.id}`);
 
-    res.json({ 
+    return res.json({ 
       success: true, 
       message: 'Charte signée avec succès',
       data: updatedProduit
@@ -373,7 +373,7 @@ router.post('/produits-eligibles/:id/sign-charte', async (req, res) => {
 
   } catch (error) {
     console.error('Erreur lors de la signature de la charte:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });
 
@@ -465,7 +465,7 @@ router.put('/produits-eligibles/:id/workflow', async (req, res) => {
     // Log de l'activité
     console.log(`Workflow mis à jour pour le produit ${id}: étape ${current_step}, progression ${progress}%`);
 
-    res.json({ 
+    return res.json({ 
       success: true, 
       message: 'Workflow mis à jour avec succès',
       data: updatedProduit
@@ -473,7 +473,7 @@ router.put('/produits-eligibles/:id/workflow', async (req, res) => {
 
   } catch (error) {
     console.error('Erreur lors de la mise à jour du workflow:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });
 
@@ -525,7 +525,7 @@ router.get('/:clientId/assignments', authenticateUser, async (req: Request, res:
       return res.status(500).json({ success: false, message: 'Erreur serveur' });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         assignments: assignments || []
@@ -539,7 +539,7 @@ router.get('/:clientId/assignments', authenticateUser, async (req: Request, res:
     });
   } catch (error) {
     console.error('Erreur lors de la récupération des assignations:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });
 

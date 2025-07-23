@@ -20,10 +20,10 @@ export const checkRole = (allowedRoles: string[]) => {
         });
       }
 
-      next();
+      return next();
     } catch (error) {
       console.error('Erreur middleware check-role:', error);
-      res.status(500).json({ 
+      return res.status(500).json({ 
         success: false, 
         message: 'Erreur serveur' 
       });

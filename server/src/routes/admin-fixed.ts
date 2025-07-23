@@ -306,7 +306,7 @@ router.get('/dossiers', authenticateUser, async (req: Request, res) => {
       return res.status(500).json({ error: 'Erreur lors de la récupération des dossiers' });
     }
 
-    res.json({
+    return res.json({
       dossiers,
       pagination: {
         page: parseInt(page as string),
@@ -318,7 +318,7 @@ router.get('/dossiers', authenticateUser, async (req: Request, res) => {
 
   } catch (error) {
     console.error('Erreur route dossiers:', error);
-    res.status(500).json({ error: 'Erreur serveur' });
+    return res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -381,7 +381,7 @@ router.get('/dossiers/stats', authenticateUser, async (req: Request, res) => {
       return res.status(500).json({ error: 'Erreur lors de la récupération des statistiques experts' });
     }
 
-    res.json({
+    return res.json({
       totalDossiers: statusStats?.length || 0,
       dossiersAvecExpert: dossiersWithExperts?.length || 0,
       dossiersSansExpert: (statusStats?.length || 0) - (dossiersWithExperts?.length || 0),
@@ -391,7 +391,7 @@ router.get('/dossiers/stats', authenticateUser, async (req: Request, res) => {
 
   } catch (error) {
     console.error('Erreur route stats dossiers:', error);
-    res.status(500).json({ error: 'Erreur serveur' });
+    return res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -431,11 +431,11 @@ router.get('/dossiers/:id', authenticateUser, async (req: Request, res) => {
       return res.status(404).json({ error: 'Dossier non trouvé' });
     }
 
-    res.json(dossier);
+    return res.json(dossier);
 
   } catch (error) {
     console.error('Erreur route dossier details:', error);
-    res.status(500).json({ error: 'Erreur serveur' });
+    return res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -476,11 +476,11 @@ router.put('/dossiers/:id', authenticateUser, async (req: Request, res) => {
       return res.status(500).json({ error: 'Erreur lors de la mise à jour du dossier' });
     }
 
-    res.json(dossier);
+    return res.json(dossier);
 
   } catch (error) {
     console.error('Erreur route mise à jour dossier:', error);
-    res.status(500).json({ error: 'Erreur serveur' });
+    return res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 

@@ -123,7 +123,7 @@ router.get('/', authenticateUser, asyncHandler(async (req: Request, res: Respons
     labels: doc.GEDDocumentLabelRelation?.map((rel: any) => rel.GEDDocumentLabel) || []
   })) || [];
 
-  res.json({
+  return res.json({
     success: true,
     data: {
       documents: formattedDocuments,
@@ -187,7 +187,7 @@ router.get('/:id', authenticateUser, asyncHandler(async (req: Request, res: Resp
     labels: document.GEDDocumentLabelRelation?.map((rel: any) => rel.GEDDocumentLabel) || []
   };
 
-  res.json({
+  return res.json({
     success: true,
     data: formattedDocument
   });
@@ -285,7 +285,7 @@ router.post('/', authenticateUser, asyncHandler(async (req: Request, res: Respon
     console.error('Erreur lors de la création des permissions:', permError);
   }
 
-  res.status(201).json({
+  return res.status(201).json({
     success: true,
     data: document
   });
@@ -407,7 +407,7 @@ router.put('/:id', authenticateUser, asyncHandler(async (req: Request, res: Resp
     }
   }
 
-  res.json({
+  return res.json({
     success: true,
     data: document
   });
@@ -443,7 +443,7 @@ router.delete('/:id', authenticateUser, asyncHandler(async (req: Request, res: R
     });
   }
 
-  res.json({
+  return res.json({
     success: true,
     message: 'Document supprimé avec succès'
   });
@@ -466,7 +466,7 @@ router.get('/labels', authenticateUser, asyncHandler(async (req: Request, res: R
     });
   }
 
-  res.json({
+  return res.json({
     success: true,
     data: labels
   });
@@ -515,7 +515,7 @@ router.post('/labels', authenticateUser, asyncHandler(async (req: Request, res: 
     });
   }
 
-  res.status(201).json({
+  return res.status(201).json({
     success: true,
     data: label
   });
@@ -547,7 +547,7 @@ router.post('/:id/favorite', authenticateUser, asyncHandler(async (req: Request,
     });
   }
 
-  res.json({
+  return res.json({
     success: true,
     message: 'Document ajouté aux favoris'
   });
@@ -576,7 +576,7 @@ router.delete('/:id/favorite', authenticateUser, asyncHandler(async (req: Reques
     });
   }
 
-  res.json({
+  return res.json({
     success: true,
     message: 'Document retiré des favoris'
   });
@@ -616,7 +616,7 @@ router.get('/favorites', authenticateUser, asyncHandler(async (req: Request, res
     labels: (fav.GEDDocument as any)?.GEDDocumentLabelRelation?.map((rel: any) => rel.GEDDocumentLabel) || []
   })) || [];
 
-  res.json({
+  return res.json({
     success: true,
     data: formattedFavorites
   });
@@ -712,14 +712,14 @@ router.get('/metrics', async (req, res) => {
       }
     };
     
-    res.json({
+    return res.json({
       success: true,
       data: metrics
     });
     
   } catch (error) {
     console.error('❌ Erreur lors de la récupération des métriques:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Erreur lors de la récupération des métriques'
     });

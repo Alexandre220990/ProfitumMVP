@@ -37,7 +37,7 @@ router.post('/', async (req, res) => {
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         message
@@ -46,7 +46,7 @@ router.post('/', async (req, res) => {
 
   } catch (error) {
     console.error('❌ Erreur route messages admin:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur serveur'
     });
@@ -72,7 +72,7 @@ router.get('/conversation/:conversationId', async (req, res) => {
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         messages: messages || []
@@ -81,7 +81,7 @@ router.get('/conversation/:conversationId', async (req, res) => {
 
   } catch (error) {
     console.error('❌ Erreur route messages admin:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur serveur'
     });
@@ -106,14 +106,14 @@ router.put('/:messageId/read', async (req, res) => {
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Message marqué comme lu'
     });
 
   } catch (error) {
     console.error('❌ Erreur route messages admin:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur serveur'
     });

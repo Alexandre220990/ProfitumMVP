@@ -129,7 +129,7 @@ app.get('*', (req, res) => {
   // Servir index.html pour toutes les autres routes (routing côté client)
   const indexPath = path.join(clientBuildPath, 'index.html');
   console.log(`📄 Servir index.html pour la route: ${req.path}`);
-  res.sendFile(indexPath, (err) => {
+  return res.sendFile(indexPath, (err) => {
     if (err) {
       console.error(`❌ Erreur lors du service de index.html:`, err);
       res.status(500).json({ 

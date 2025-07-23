@@ -58,7 +58,7 @@ router.get('/client/:clientId', authenticateUser, (async (req, res) => {
       notes: audit.notes
     })) || [];
 
-    res.json({
+    return res.json({
       success: true,
       data: formattedAudits,
       pagination: {
@@ -109,13 +109,13 @@ router.get('/:auditId', authenticateUser, (async (req, res) => {
       return res.status(403).json({ message: 'Accès non autorisé' });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: audit
     });
   } catch (error) {
     console.error('Erreur lors de la récupération de l\'audit:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération de l\'audit'
     });
@@ -202,7 +202,7 @@ router.post('/', authenticateUser, (async (req, res) => {
       }
     }
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       data: {
         audit,
@@ -212,7 +212,7 @@ router.post('/', authenticateUser, (async (req, res) => {
     });
   } catch (error) {
     console.error('Erreur lors de la création de l\'audit:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la création de l\'audit'
     });
@@ -274,14 +274,14 @@ router.post('/sign-charter', authenticateUser, (async (req, res) => {
       throw updateError;
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: { audit_id: auditId },
       message: 'Charte signée avec succès'
     });
   } catch (error) {
     console.error('Erreur lors de la signature de la charte:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la signature de la charte'
     });
@@ -332,14 +332,14 @@ router.put('/:auditId/status', authenticateUser, (async (req, res) => {
       throw updateError;
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: updatedAudit,
       message: 'Statut de l\'audit mis à jour avec succès'
     });
   } catch (error) {
     console.error('Erreur lors de la mise à jour du statut de l\'audit:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la mise à jour du statut de l\'audit'
     });
@@ -394,14 +394,14 @@ router.post('/:auditId/documents', authenticateUser, (async (req, res) => {
       throw docError;
     }
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       data: document,
       message: 'Document ajouté avec succès'
     });
   } catch (error) {
     console.error('Erreur lors de l\'ajout du document:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de l\'ajout du document'
     });
@@ -454,13 +454,13 @@ router.delete('/documents/:documentId', authenticateUser, (async (req, res) => {
       throw deleteError;
     }
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Document supprimé avec succès'
     });
   } catch (error) {
     console.error('Erreur lors de la suppression du document:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la suppression du document'
     });

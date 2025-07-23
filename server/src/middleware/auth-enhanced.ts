@@ -354,7 +354,7 @@ export const enhancedAuthMiddleware = async (
     const duration = Date.now() - startTime;
     logger.info(`🔐 Auth réussie - ${userType} ${userData.email} - ${req.method} ${req.path} - ${duration}ms`);
 
-    next();
+    return next();
     
   } catch (error) {
     // Log d'erreur
@@ -409,7 +409,7 @@ export const requirePermission = (requiredPermission: Permission) => {
       });
     }
 
-    next();
+    return next();
   };
 };
 
@@ -440,7 +440,7 @@ export const requireUserType = (requiredType: 'client' | 'expert' | 'admin') => 
       });
     }
 
-    next();
+    return next();
   };
 };
 
@@ -464,5 +464,5 @@ export const publicRouteLogger = async (
     success: true
   });
   
-  next();
+  return next();
 }; 

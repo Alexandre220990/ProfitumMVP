@@ -54,7 +54,7 @@ router.post('/:id/sign-charte', authenticateUser, async (req, res) => {
     // Log de l'activité
     console.log(`Charte signée pour le produit ${id} par le client ${clientId}`);
 
-    res.json({ 
+    return res.json({ 
       success: true, 
       message: 'Charte signée avec succès',
       data: updatedProduit
@@ -62,7 +62,7 @@ router.post('/:id/sign-charte', authenticateUser, async (req, res) => {
 
   } catch (error) {
     console.error('Erreur lors de la signature de la charte:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });
 

@@ -49,7 +49,7 @@ router.get('/', authenticateUser, async (req: Request, res: Response) => {
       userData = expert;
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         id: authUser.id,
@@ -61,7 +61,7 @@ router.get('/', authenticateUser, async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('Erreur lors de la récupération des informations utilisateur:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });
 

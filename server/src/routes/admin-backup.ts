@@ -242,14 +242,14 @@ router.get('/dashboard', asyncHandler(async (req, res) => {
       }
     };
 
-    res.json({
+    return res.json({
       success: true,
       data: dashboardData
     });
 
   } catch (error) {
     console.error('Erreur dashboard admin:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération des données du dashboard'
     });
@@ -298,7 +298,7 @@ router.get('/stats/experts', asyncHandler(async (req, res) => {
       stats.avgCompensation = stats.count > 0 ? stats.totalCompensation / stats.count : 0;
     });
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         experts,
@@ -308,7 +308,7 @@ router.get('/stats/experts', asyncHandler(async (req, res) => {
 
   } catch (error) {
     console.error('Erreur stats experts:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération des statistiques experts'
     });
@@ -343,7 +343,7 @@ router.get('/stats/clients', asyncHandler(async (req, res) => {
       }).length || 0
     };
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         clients,
@@ -353,7 +353,7 @@ router.get('/stats/clients', asyncHandler(async (req, res) => {
 
   } catch (error) {
     console.error('Erreur stats clients:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération des statistiques clients'
     });
@@ -424,7 +424,7 @@ router.get('/experts', asyncHandler(async (req, res) => {
       .from('Expert')
       .select('*', { count: 'exact', head: true });
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         experts,
@@ -439,7 +439,7 @@ router.get('/experts', asyncHandler(async (req, res) => {
 
   } catch (error) {
     console.error('Erreur récupération experts:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération des experts'
     });
@@ -482,7 +482,7 @@ router.get('/experts/:id', asyncHandler(async (req, res) => {
         (audits.filter(a => a.status === 'terminé').length || 0) / audits.length * 100 : 0
     };
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         expert,
@@ -492,7 +492,7 @@ router.get('/experts/:id', asyncHandler(async (req, res) => {
 
   } catch (error) {
     console.error('Erreur récupération expert:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération de l\'expert'
     });
@@ -555,7 +555,7 @@ router.put('/experts/:id/approve', asyncHandler(async (req, res) => {
         user_agent: req.get('User-Agent')
       });
 
-    res.json({
+    return res.json({
       success: true,
       data,
       message: 'Expert approuvé avec succès'
@@ -563,7 +563,7 @@ router.put('/experts/:id/approve', asyncHandler(async (req, res) => {
 
   } catch (error) {
     console.error('Erreur approbation expert:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de l\'approbation de l\'expert'
     });
@@ -618,7 +618,7 @@ router.put('/experts/:id/reject', asyncHandler(async (req, res) => {
         user_agent: req.get('User-Agent')
       });
 
-    res.json({
+    return res.json({
       success: true,
       data,
       message: 'Expert rejeté avec succès'
@@ -626,7 +626,7 @@ router.put('/experts/:id/reject', asyncHandler(async (req, res) => {
 
   } catch (error) {
     console.error('Erreur rejet expert:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors du rejet de l\'expert'
     });
@@ -675,7 +675,7 @@ router.put('/experts/:id', asyncHandler(async (req, res) => {
         user_agent: req.get('User-Agent')
       });
 
-    res.json({
+    return res.json({
       success: true,
       data,
       message: 'Expert modifié avec succès'
@@ -683,7 +683,7 @@ router.put('/experts/:id', asyncHandler(async (req, res) => {
 
   } catch (error) {
     console.error('Erreur modification expert:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la modification de l\'expert'
     });
@@ -778,7 +778,7 @@ router.post('/experts', asyncHandler(async (req, res) => {
         user_agent: req.get('User-Agent')
       });
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       data: newExpert,
       message: 'Expert créé avec succès'
@@ -786,7 +786,7 @@ router.post('/experts', asyncHandler(async (req, res) => {
 
   } catch (error) {
     console.error('Erreur création expert:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la création de l\'expert'
     });
@@ -848,7 +848,7 @@ router.get('/clients', asyncHandler(async (req, res) => {
       .from('Client')
       .select('*', { count: 'exact', head: true });
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         clients,
@@ -863,7 +863,7 @@ router.get('/clients', asyncHandler(async (req, res) => {
 
   } catch (error) {
     console.error('Erreur récupération clients:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération des clients'
     });
@@ -931,7 +931,7 @@ router.get('/clients/:id', asyncHandler(async (req, res) => {
       charteSignee: !!charteSignature
     };
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         client,
@@ -944,7 +944,7 @@ router.get('/clients/:id', asyncHandler(async (req, res) => {
 
   } catch (error) {
     console.error('Erreur récupération client:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération du client'
     });
@@ -993,7 +993,7 @@ router.put('/clients/:id/status', asyncHandler(async (req, res) => {
         user_agent: req.get('User-Agent')
       });
 
-    res.json({
+    return res.json({
       success: true,
       data,
       message: 'Statut du client modifié avec succès'
@@ -1001,7 +1001,7 @@ router.put('/clients/:id/status', asyncHandler(async (req, res) => {
 
   } catch (error) {
     console.error('Erreur modification statut client:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la modification du statut'
     });
@@ -1060,14 +1060,14 @@ router.delete('/clients/:id', asyncHandler(async (req, res) => {
         user_agent: req.get('User-Agent')
       });
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Client supprimé avec succès'
     });
 
   } catch (error) {
     console.error('Erreur suppression client:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la suppression du client'
     });
@@ -1136,7 +1136,7 @@ router.get('/dossiers', authenticateUser, async (req, res) => {
       return res.status(500).json({ error: 'Erreur lors de la récupération des dossiers' });
     }
 
-    res.json({
+    return res.json({
       dossiers,
       pagination: {
         page: parseInt(page as string),
@@ -1148,7 +1148,7 @@ router.get('/dossiers', authenticateUser, async (req, res) => {
 
   } catch (error) {
     console.error('Erreur route dossiers:', error);
-    res.status(500).json({ error: 'Erreur serveur' });
+    return res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -1211,7 +1211,7 @@ router.get('/dossiers/stats', authenticateUser, async (req, res) => {
       return res.status(500).json({ error: 'Erreur lors de la récupération des statistiques experts' });
     }
 
-    res.json({
+    return res.json({
       totalDossiers: statusStats?.length || 0,
       dossiersAvecExpert: dossiersWithExperts?.length || 0,
       dossiersSansExpert: (statusStats?.length || 0) - (dossiersWithExperts?.length || 0),
@@ -1221,7 +1221,7 @@ router.get('/dossiers/stats', authenticateUser, async (req, res) => {
 
   } catch (error) {
     console.error('Erreur route stats dossiers:', error);
-    res.status(500).json({ error: 'Erreur serveur' });
+    return res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -1261,11 +1261,11 @@ router.get('/dossiers/:id', authenticateUser, async (req, res) => {
       return res.status(404).json({ error: 'Dossier non trouvé' });
     }
 
-    res.json(dossier);
+    return res.json(dossier);
 
   } catch (error) {
     console.error('Erreur route dossier details:', error);
-    res.status(500).json({ error: 'Erreur serveur' });
+    return res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -1306,11 +1306,11 @@ router.put('/dossiers/:id', authenticateUser, async (req, res) => {
       return res.status(500).json({ error: 'Erreur lors de la mise à jour du dossier' });
     }
 
-    res.json(dossier);
+    return res.json(dossier);
 
   } catch (error) {
     console.error('Erreur route mise à jour dossier:', error);
-    res.status(500).json({ error: 'Erreur serveur' });
+    return res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 

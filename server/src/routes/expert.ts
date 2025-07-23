@@ -31,13 +31,13 @@ router.get('/profile', authenticateUser, async (req: Request, res: Response) => 
       return res.status(500).json({ success: false, message: 'Erreur serveur' });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: expert
     });
   } catch (error) {
     console.error('Erreur lors de la récupération du profil expert:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });
 
@@ -75,13 +75,13 @@ router.put('/profile', authenticateUser, async (req: Request, res: Response) => 
       return res.status(500).json({ success: false, message: 'Erreur serveur' });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: expert
     });
   } catch (error) {
     console.error('Erreur lors de la mise à jour du profil expert:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });
 
@@ -131,7 +131,7 @@ router.get('/assignments', authenticateUser, async (req: Request, res: Response)
       return res.status(500).json({ success: false, message: 'Erreur serveur' });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: assignments,
       pagination: {
@@ -143,7 +143,7 @@ router.get('/assignments', authenticateUser, async (req: Request, res: Response)
     });
   } catch (error) {
     console.error('Erreur lors de la récupération des assignations:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });
 
@@ -179,13 +179,13 @@ router.post('/assignments/:assignmentId/accept', authenticateUser, async (req: R
       return res.status(500).json({ success: false, message: 'Erreur serveur' });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: assignment
     });
   } catch (error) {
     console.error('Erreur lors de l\'acceptation de l\'assignation:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });
 
@@ -223,13 +223,13 @@ router.post('/assignments/:assignmentId/reject', authenticateUser, async (req: R
       return res.status(500).json({ success: false, message: 'Erreur serveur' });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: assignment
     });
   } catch (error) {
     console.error('Erreur lors du rejet de l\'assignation:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });
 
@@ -266,13 +266,13 @@ router.put('/assignments/:assignmentId/progress', authenticateUser, async (req: 
       return res.status(500).json({ success: false, message: 'Erreur serveur' });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: assignment
     });
   } catch (error) {
     console.error('Erreur lors de la mise à jour de la progression:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });
 
@@ -311,13 +311,13 @@ router.post('/assignments/:assignmentId/complete', authenticateUser, async (req:
       return res.status(500).json({ success: false, message: 'Erreur serveur' });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: assignment
     });
   } catch (error) {
     console.error('Erreur lors de la finalisation de l\'assignation:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });
 
@@ -348,13 +348,13 @@ router.get('/notifications', authenticateUser, async (req: Request, res: Respons
       return res.status(500).json({ success: false, message: 'Erreur serveur' });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: notifications
     });
   } catch (error) {
     console.error('Erreur lors de la récupération des notifications:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });
 
@@ -390,13 +390,13 @@ router.put('/notifications/:notificationId/read', authenticateUser, async (req: 
       return res.status(500).json({ success: false, message: 'Erreur serveur' });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: notification
     });
   } catch (error) {
     console.error('Erreur lors du marquage de la notification:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });
 
@@ -683,7 +683,7 @@ router.get('/analytics', authenticateUser, async (req: Request, res: Response) =
       preferredDays: ['Mardi', 'Jeudi', 'Vendredi']
     };
 
-    res.json({
+    return res.json({
       metrics,
       performanceByMonth,
       topProducts: topProductsData,
@@ -693,7 +693,7 @@ router.get('/analytics', authenticateUser, async (req: Request, res: Response) =
 
   } catch (error) {
     console.error('Erreur analytics expert:', error);
-    res.status(500).json({ error: 'Erreur lors de la récupération des analytics' });
+    return res.status(500).json({ error: 'Erreur lors de la récupération des analytics' });
   }
 });
 
@@ -726,13 +726,13 @@ router.get('/audits', authenticateUser, async (req: Request, res: Response) => {
       return res.status(500).json({ success: false, message: 'Erreur serveur' });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: audits
     });
   } catch (error) {
     console.error('Erreur lors de la récupération des audits:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });
 
@@ -784,13 +784,13 @@ router.get('/client-produits-eligibles', authenticateUser, async (req: Request, 
       return res.status(500).json({ success: false, message: 'Erreur serveur' });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: clientProduits
     });
   } catch (error) {
     console.error('Erreur lors de la récupération des ClientProduitEligible:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });
 

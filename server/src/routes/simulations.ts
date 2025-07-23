@@ -111,14 +111,14 @@ router.get('/test-tables', async (req: Request, res: Response) => {
       keyPresent: !!process.env.SUPABASE_KEY
     };
     
-    res.json({
+    return res.json({
       success: true,
       data: results,
       message: 'Test des tables terminé'
     });
   } catch (error) {
     console.error('Erreur lors du test des tables:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors du test des tables',
       error: error instanceof Error ? error.message : 'Erreur inconnue'
@@ -325,7 +325,7 @@ router.post('/', authenticateUser, async (req: Request, res: Response) => {
         })
         .eq('id', simulation.id);
 
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         message: 'Erreur lors de l\'analyse de la simulation',
         error: pythonError instanceof Error ? pythonError.message : 'Erreur inconnue'
@@ -334,7 +334,7 @@ router.post('/', authenticateUser, async (req: Request, res: Response) => {
 
   } catch (error) {
     console.error('❌ Erreur lors de la création de la simulation:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la création de la simulation',
       error: error instanceof Error ? error.message : 'Erreur inconnue'
@@ -380,7 +380,7 @@ router.get('/client/:clientId', authenticateUser, async (req: Request, res: Resp
       }
     });
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Erreur lors de la récupération des simulations:', error);
     return res.status(500).json({
       success: false,
@@ -456,7 +456,7 @@ router.post('/:id/export', authenticateUser, async (req: Request, res: Response)
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     return res.send(buffer);
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Erreur lors de l\'export:', error);
     return res.status(500).json({
       success: false,

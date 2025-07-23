@@ -2,48 +2,13 @@ import express from 'express';
 import { authenticateToken } from '../middleware/authenticate';
 import { checkRole } from '../middleware/check-role';
 import ComplianceService from '../services/compliance-service';
-// import WorkflowConfigurationService from '../services/workflow-configuration-service';
 import ExternalIntegrationsService from '../services/external-integrations-service';
 
 const router = express.Router();
 const complianceService = new ComplianceService();
-// const workflowService = new WorkflowConfigurationService();
 const integrationsService = new ExternalIntegrationsService();
 
-// ===== ROUTES WORKFLOW PERSONNALISABLE =====
-// COMMENTÉ - Service workflow supprimé temporairement
-
-/*
-router.get('/workflow/templates', 
-  authenticateToken, 
-  checkRole(['admin', 'expert']),
-  async (req, res) => {
-    try {
-      const { category } = req.query;
-      let templates;
-
-      if (category) {
-        templates = await workflowService.getWorkflowTemplatesByCategory(category as string);
-      } else {
-        // Récupérer tous les templates actifs
-        templates = await workflowService.getAllActiveTemplates();
-      }
-
-      res.json({
-        success: true,
-        data: templates,
-        count: templates.length
-      });
-    } catch (error) {
-      console.error('Erreur récupération templates workflow:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Erreur serveur lors de la récupération des templates'
-      });
-    }
-  }
-);
-*/
+// ===== ROUTES WORKFLOW (DÉSACTIVÉES TEMPORAIREMENT) =====
 
 /**
  * @route GET /api/workflow/templates/:id
@@ -55,23 +20,13 @@ router.get('/workflow/templates/:id',
   checkRole(['admin', 'expert']),
   async (req, res) => {
     try {
-      const { id } = req.params;
-      // const template = await workflowService.getWorkflowTemplate(id);
-
-      // if (!template) {
-      //   return res.status(404).json({
-      //     success: false,
-      //     error: 'Template de workflow non trouvé'
-      //   });
-      // }
-
-      res.json({
+      return res.json({
         success: true,
         data: { message: 'Workflow templates are currently disabled.' }
       });
     } catch (error) {
       console.error('Erreur récupération template workflow:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: 'Erreur serveur lors de la récupération du template'
       });
@@ -89,17 +44,14 @@ router.post('/workflow/templates',
   checkRole(['admin']),
   async (req, res) => {
     try {
-      const templateData = req.body;
-      // const templateId = await workflowService.createWorkflowTemplate(templateData);
-
-      res.status(201).json({
+      return res.status(201).json({
         success: true,
         data: { message: 'Workflow templates are currently disabled.' },
         message: 'Template de workflow créé avec succès'
       });
     } catch (error) {
       console.error('Erreur création template workflow:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: 'Erreur serveur lors de la création du template'
       });
@@ -117,22 +69,14 @@ router.post('/workflow/instances',
   checkRole(['admin', 'expert']),
   async (req, res) => {
     try {
-      const { template_id, document_id, client_id, expert_id } = req.body;
-      // const instanceId = await workflowService.createWorkflowInstance(
-      //   template_id,
-      //   document_id,
-      //   client_id,
-      //   expert_id
-      // );
-
-      res.status(201).json({
+      return res.status(201).json({
         success: true,
         data: { message: 'Workflow instances are currently disabled.' },
         message: 'Instance de workflow créée avec succès'
       });
     } catch (error) {
       console.error('Erreur création instance workflow:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: 'Erreur serveur lors de la création de l\'instance'
       });
@@ -150,31 +94,13 @@ router.post('/workflow/instances/:id/execute-step',
   checkRole(['admin', 'expert']),
   async (req, res) => {
     try {
-      const { id } = req.params;
-      const { step_number, result } = req.body;
-      const userId = req.user?.id;
-
-      // const success = await workflowService.executeWorkflowStep(
-      //   id,
-      //   step_number,
-      //   userId,
-      //   result
-      // );
-
-      // if (success) {
-        res.json({
-          success: true,
-          message: 'Étape de workflow exécutée avec succès'
-        });
-      // } else {
-      //   res.status(400).json({
-      //     success: false,
-      //     error: 'Échec de l\'exécution de l\'étape'
-      //   });
-      // }
+      return res.json({
+        success: true,
+        message: 'Étape de workflow exécutée avec succès'
+      });
     } catch (error) {
       console.error('Erreur exécution étape workflow:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: 'Erreur serveur lors de l\'exécution de l\'étape'
       });
@@ -211,14 +137,14 @@ router.post('/integrations/signature/request',
           });
       }
 
-      res.status(201).json({
+      return res.status(201).json({
         success: true,
         data: { external_id: externalId },
         message: 'Demande de signature créée avec succès'
       });
     } catch (error) {
       console.error('Erreur création demande signature:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: 'Erreur serveur lors de la création de la demande de signature'
       });
@@ -248,13 +174,13 @@ router.get('/integrations/signature/:id/status',
 
       const status = await integrationsService.checkSignatureStatus(id, provider as any);
 
-      res.json({
+      return res.json({
         success: true,
         data: status
       });
     } catch (error) {
       console.error('Erreur vérification statut signature:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: 'Erreur serveur lors de la vérification du statut'
       });
@@ -289,14 +215,14 @@ router.post('/integrations/payment/request',
           });
       }
 
-      res.status(201).json({
+      return res.status(201).json({
         success: true,
         data: { external_id: externalId },
         message: 'Demande de paiement créée avec succès'
       });
     } catch (error) {
       console.error('Erreur création demande paiement:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: 'Erreur serveur lors de la création de la demande de paiement'
       });
@@ -326,13 +252,13 @@ router.get('/integrations/payment/:id/status',
 
       const status = await integrationsService.checkPaymentStatus(id, provider as any);
 
-      res.json({
+      return res.json({
         success: true,
         data: status
       });
     } catch (error) {
       console.error('Erreur vérification statut paiement:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: 'Erreur serveur lors de la vérification du statut'
       });
@@ -367,14 +293,14 @@ router.post('/integrations/push/send',
           });
       }
 
-      res.status(201).json({
+      return res.status(201).json({
         success: true,
         data: { external_id: externalId },
         message: 'Notification push envoyée avec succès'
       });
     } catch (error) {
       console.error('Erreur envoi notification push:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: 'Erreur serveur lors de l\'envoi de la notification'
       });
@@ -400,18 +326,17 @@ router.get('/compliance/controls',
       if (standard) {
         controls = await complianceService.getComplianceControls(standard as any);
       } else {
-        // Récupérer tous les contrôles
         controls = await complianceService.getComplianceControls('all' as any);
       }
 
-      res.json({
+      return res.json({
         success: true,
         data: controls,
         count: controls.length
       });
     } catch (error) {
       console.error('Erreur récupération contrôles conformité:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: 'Erreur serveur lors de la récupération des contrôles'
       });
@@ -432,14 +357,14 @@ router.post('/compliance/controls',
       const controlData = req.body;
       const controlId = await complianceService.createComplianceControl(controlData);
 
-      res.status(201).json({
+      return res.status(201).json({
         success: true,
         data: { id: controlId },
         message: 'Contrôle de conformité créé avec succès'
       });
     } catch (error) {
       console.error('Erreur création contrôle conformité:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: 'Erreur serveur lors de la création du contrôle'
       });
@@ -462,13 +387,13 @@ router.put('/compliance/controls/:id',
 
       await complianceService.updateComplianceControl(id, updates);
 
-      res.json({
+      return res.json({
         success: true,
         message: 'Contrôle de conformité mis à jour avec succès'
       });
     } catch (error) {
       console.error('Erreur mise à jour contrôle conformité:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: 'Erreur serveur lors de la mise à jour du contrôle'
       });
@@ -493,14 +418,14 @@ router.post('/compliance/reports/generate',
         period_end
       );
 
-      res.status(201).json({
+      return res.status(201).json({
         success: true,
         data: report,
         message: 'Rapport de conformité généré avec succès'
       });
     } catch (error) {
       console.error('Erreur génération rapport conformité:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: 'Erreur serveur lors de la génération du rapport'
       });
@@ -520,13 +445,13 @@ router.get('/compliance/stats',
     try {
       const stats = await complianceService.getComplianceStats();
 
-      res.json({
+      return res.json({
         success: true,
         data: stats
       });
     } catch (error) {
       console.error('Erreur récupération statistiques conformité:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: 'Erreur serveur lors de la récupération des statistiques'
       });
@@ -547,14 +472,14 @@ router.post('/compliance/incidents',
       const incidentData = req.body;
       const incidentId = await complianceService.recordSecurityIncident(incidentData);
 
-      res.status(201).json({
+      return res.status(201).json({
         success: true,
         data: { id: incidentId },
         message: 'Incident de sécurité enregistré avec succès'
       });
     } catch (error) {
       console.error('Erreur enregistrement incident sécurité:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: 'Erreur serveur lors de l\'enregistrement de l\'incident'
       });
@@ -575,49 +500,20 @@ router.post('/compliance/data-subject-requests',
       const requestData = req.body;
       const requestId = await complianceService.processDataSubjectRequest(requestData);
 
-      res.status(201).json({
+      return res.status(201).json({
         success: true,
         data: { id: requestId },
         message: 'Demande RGPD traitée avec succès'
       });
     } catch (error) {
       console.error('Erreur traitement demande RGPD:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: 'Erreur serveur lors du traitement de la demande'
       });
     }
   }
 );
-
-/**
- * @route GET /api/compliance/audit-logs
- * @desc Obtenir les logs d'audit
- * @access Admin, CISO
- */
-// router.get('/compliance/audit-logs',
-//   authenticateToken,
-//   checkRole(['admin', 'ciso']),
-//   async (req, res) => {
-//     try {
-//       const { user_id, action, resource_type, resource_id, start_date, end_date, limit = 100 } = req.query;
-
-//       const logs = await complianceService.getComplianceControls('audit' as any);
-
-//       res.json({
-//         success: true,
-//         data: logs,
-//         count: logs.length
-//       });
-//     } catch (error) {
-//       console.error('Erreur récupération logs audit:', error);
-//       res.status(500).json({
-//         success: false,
-//         error: 'Erreur serveur lors de la récupération des logs'
-//       });
-//     }
-//   }
-// );
 
 // ===== ROUTES D'INITIALISATION =====
 
@@ -647,13 +543,13 @@ router.post('/compliance/initialize',
         }
       }
 
-      res.json({
+      return res.json({
         success: true,
         message: 'Contrôles de conformité initialisés avec succès'
       });
     } catch (error) {
       console.error('Erreur initialisation contrôles conformité:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: 'Erreur serveur lors de l\'initialisation'
       });
@@ -671,15 +567,13 @@ router.post('/workflow/initialize',
   checkRole(['admin']),
   async (req, res) => {
     try {
-      // await workflowService.initializeDefaultWorkflows();
-
-      res.json({
+      return res.json({
         success: true,
         message: 'Workflows par défaut initialisés avec succès'
       });
     } catch (error) {
       console.error('Erreur initialisation workflows:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: 'Erreur serveur lors de l\'initialisation'
       });

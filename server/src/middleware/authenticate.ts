@@ -301,7 +301,7 @@ export const authenticateUser = async (
     const responseTime = Date.now() - startTime;
     logger.info(`✅ Authentification réussie pour ${userType}: ${authUser.email} (${responseTime}ms)`);
     
-    next();
+    return next();
     
   } catch (error) {
     logger.error('Erreur dans le middleware d\'authentification:', error);
@@ -343,7 +343,7 @@ export const requireUserType = (requiredType: 'client' | 'expert' | 'admin') => 
       });
     }
 
-    next();
+    return next();
   };
 };
 
@@ -367,7 +367,7 @@ export const requirePermission = (requiredPermission: Permission) => {
       });
     }
 
-    next();
+    return next();
   };
 };
 

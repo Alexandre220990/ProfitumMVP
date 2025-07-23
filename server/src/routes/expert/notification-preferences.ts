@@ -58,7 +58,7 @@ router.get('/', authenticateUser, async (req: Request, res: Response) => {
       updated_at: new Date().toISOString()
     };
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         preferences: preferences || defaultPreferences
@@ -67,7 +67,7 @@ router.get('/', authenticateUser, async (req: Request, res: Response) => {
 
   } catch (error) {
     console.error('❌ Erreur route préférences:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur interne du serveur'
     });
@@ -160,7 +160,7 @@ router.put('/', authenticateUser, async (req: Request, res: Response) => {
       result = newPreferences;
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         preferences: result
@@ -170,7 +170,7 @@ router.put('/', authenticateUser, async (req: Request, res: Response) => {
 
   } catch (error) {
     console.error('❌ Erreur mise à jour préférences:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur interne du serveur'
     });
@@ -256,7 +256,7 @@ router.post('/reset', authenticateUser, async (req: Request, res: Response) => {
       result = newPreferences;
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         preferences: result
@@ -266,7 +266,7 @@ router.post('/reset', authenticateUser, async (req: Request, res: Response) => {
 
   } catch (error) {
     console.error('❌ Erreur réinitialisation préférences:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur interne du serveur'
     });
@@ -332,7 +332,7 @@ router.get('/test', authenticateUser, async (req: Request, res: Response) => {
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         notification,
@@ -343,7 +343,7 @@ router.get('/test', authenticateUser, async (req: Request, res: Response) => {
 
   } catch (error) {
     console.error('❌ Erreur test notifications:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur interne du serveur'
     });

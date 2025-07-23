@@ -1,6 +1,7 @@
 import { Router } from 'express';
-import marketplaceRoutes from './marketplace';
-import searchRoutes from './search';
+// Import des routes supprimées - commentées car les fichiers n'existent plus
+// import marketplaceRoutes from './marketplace';
+// import searchRoutes from './search';
 import assignmentRoutes from './assignments';
 import notificationsRouter from '../expert/notifications';
 import notificationPreferencesRouter from '../expert/notification-preferences';
@@ -37,25 +38,25 @@ router.get('/', asyncHandler(async (req, res) => {
       throw error;
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: experts || []
     });
 
   } catch (error) {
     console.error('Erreur récupération experts marketplace:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération des experts'
     });
   }
 }));
 
-// Routes de la marketplace
-router.use('/marketplace', marketplaceRoutes);
+// Routes de la marketplace - commentées car les fichiers n'existent plus
+// router.use('/marketplace', marketplaceRoutes);
 
-// Routes de recherche
-router.use('/search', searchRoutes);
+// Routes de recherche - commentées car les fichiers n'existent plus
+// router.use('/search', searchRoutes);
 
 // Routes des assignations
 router.use('/assignments', assignmentRoutes);

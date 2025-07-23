@@ -368,14 +368,14 @@ router.put('/:id/read', authenticateUser, asyncHandler(async (req, res) => {
 
     if (error) throw error;
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Notification marquée comme lue'
     });
 
   } catch (error) {
     console.error('Erreur marquage lu:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors du marquage'
     });
@@ -400,14 +400,14 @@ router.put('/:id/star', authenticateUser, asyncHandler(async (req, res) => {
 
     if (error) throw error;
 
-    res.json({
+    return res.json({
       success: true,
       message: `Notification ${starred ? 'ajoutée aux' : 'retirée des'} favoris`
     });
 
   } catch (error) {
     console.error('Erreur toggle favori:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la modification'
     });
@@ -428,14 +428,14 @@ router.delete('/:id', authenticateUser, asyncHandler(async (req, res) => {
 
     if (error) throw error;
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Notification supprimée'
     });
 
   } catch (error) {
     console.error('Erreur suppression notification:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la suppression'
     });
@@ -471,7 +471,7 @@ router.get('/preferences', authenticateUser, asyncHandler(async (req, res) => {
       type_filter: []
     };
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         preferences: preferences || defaultPreferences
@@ -480,7 +480,7 @@ router.get('/preferences', authenticateUser, asyncHandler(async (req, res) => {
 
   } catch (error) {
     console.error('Erreur récupération préférences:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération des préférences'
     });
@@ -530,7 +530,7 @@ router.put('/preferences', authenticateUser, asyncHandler(async (req, res) => {
       preferences = data;
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         preferences
@@ -540,7 +540,7 @@ router.put('/preferences', authenticateUser, asyncHandler(async (req, res) => {
 
   } catch (error) {
     console.error('Erreur mise à jour préférences:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la mise à jour des préférences'
     });
@@ -549,7 +549,7 @@ router.put('/preferences', authenticateUser, asyncHandler(async (req, res) => {
 
 // GET /api/notifications/vapid-public-key - Obtenir la clé publique VAPID
 router.get('/vapid-public-key', (req, res) => {
-  res.json({
+  return res.json({
     success: true,
     data: {
       publicKey: vapidKeys.publicKey
