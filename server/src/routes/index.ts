@@ -1,7 +1,7 @@
 import { Router } from "express";
 import authRoutes from "./auth";
 import auditRoutes from "./audits";
-import simulationRoutes from "./simulations";
+import simulationRoutes from "./simulationRoutes";
 import partnerRoutes from "./partners";
 import produitsEligiblesRoutes from "./produits-eligibles";
 import charteSignatureRoutes from "./charte-signature";
@@ -14,7 +14,7 @@ import testsRoutes from "./tests";
 import terminalTestsRoutes from "./terminal-tests";
 import documentsRoutes from "./documents";
 import clientDocumentsRoutes from "./client-documents";
-import workflowRoutes from "./workflow";
+import workflowRoutes from "./documents/workflow";
 import remindersRoutes from "./reminders";
 import simulatorRoutes from "./simulator";
 import notificationsRoutes from "./notifications";
@@ -153,7 +153,7 @@ router.get('/documentation/categories', (req, res) => {
     }
   ];
 
-  res.json({
+  return res.json({
     success: true,
     data: categories
   });
@@ -162,7 +162,7 @@ router.get('/documentation/categories', (req, res) => {
 router.get('/documentation/stats', (req, res) => {
   console.log('📊 Route /documentation/stats appelée');
   
-  res.json({
+  return res.json({
     success: true,
     data: {
       totalDocuments: 3,
@@ -225,7 +225,7 @@ router.get('/documentation/document/:id', (req, res) => {
     });
   }
 
-  res.json({
+  return res.json({
     success: true,
     data: document
   });
@@ -278,7 +278,7 @@ router.get('/documentation/search', (req, res) => {
     doc.tags.some(tag => tag.toLowerCase().includes(lowerQuery))
   );
 
-  res.json({
+  return res.json({
     success: true,
     data: results
   });
@@ -286,7 +286,7 @@ router.get('/documentation/search', (req, res) => {
 
 // Route de healthcheck pour Railway
 router.get('/health', (req, res) => {
-  res.json({
+  return res.json({
     success: true,
     message: 'API Profitum opérationnelle',
     timestamp: new Date().toISOString(),

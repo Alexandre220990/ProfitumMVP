@@ -66,7 +66,7 @@ router.post('/register', async (req, res) => {
       { expiresIn: '24h' }
     );
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       data: {
         token,
@@ -79,7 +79,7 @@ router.post('/register', async (req, res) => {
     });
   } catch (error) {
     console.error('Erreur lors de la création de l\'expert:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la création de l\'expert',
       error: error instanceof Error ? error.message : 'Erreur inconnue'

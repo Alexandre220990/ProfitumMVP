@@ -31,13 +31,13 @@ router.post('/conversations', async (req, res) => {
 
     const conversationId = await messagingService.createConversation(request);
     
-    res.json({
+    return res.json({
       success: true,
       data: { conversation_id: conversationId }
     });
   } catch (error) {
     console.error('❌ Erreur création conversation:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Erreur lors de la création de la conversation'
     });
@@ -68,13 +68,13 @@ router.get('/conversations', async (req, res) => {
 
     const conversations = await messagingService.getConversations(request);
     
-    res.json({
+    return res.json({
       success: true,
       data: conversations
     });
   } catch (error) {
     console.error('❌ Erreur récupération conversations:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Erreur lors de la récupération des conversations'
     });
@@ -97,13 +97,13 @@ router.get('/conversations/:id', async (req, res) => {
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: conversation
     });
   } catch (error) {
     console.error('❌ Erreur récupération conversation:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Erreur lors de la récupération de la conversation'
     });
@@ -128,13 +128,13 @@ router.put('/conversations/:id/archive', async (req, res) => {
 
     await messagingService.archiveConversation(conversationId, userId);
     
-    res.json({
+    return res.json({
       success: true,
       message: 'Conversation archivée avec succès'
     });
   } catch (error) {
     console.error('❌ Erreur archivage conversation:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Erreur lors de l\'archivage de la conversation'
     });
@@ -159,13 +159,13 @@ router.post('/messages', async (req, res) => {
 
     const message = await messagingService.sendMessage(request);
     
-    res.json({
+    return res.json({
       success: true,
       data: message
     });
   } catch (error) {
     console.error('❌ Erreur envoi message:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Erreur lors de l\'envoi du message'
     });
@@ -219,13 +219,13 @@ router.put('/conversations/:id/read', async (req, res) => {
 
     await messagingService.markMessagesAsRead(conversationId, userId);
     
-    res.json({
+    return res.json({
       success: true,
       message: 'Messages marqués comme lus'
     });
   } catch (error) {
     console.error('❌ Erreur marquage messages lus:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Erreur lors du marquage des messages'
     });
@@ -251,13 +251,13 @@ router.get('/notifications', async (req, res) => {
 
     const notifications = await messagingService.getUserNotifications(userId, userType, limit);
     
-    res.json({
+    return res.json({
       success: true,
       data: notifications
     });
   } catch (error) {
     console.error('❌ Erreur récupération notifications:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Erreur lors de la récupération des notifications'
     });
@@ -273,13 +273,13 @@ router.put('/notifications/:id/read', async (req, res) => {
     const notificationId = req.params.id;
     await messagingService.markNotificationAsRead(notificationId);
     
-    res.json({
+    return res.json({
       success: true,
       message: 'Notification marquée comme lue'
     });
   } catch (error) {
     console.error('❌ Erreur marquage notification:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Erreur lors du marquage de la notification'
     });
@@ -300,13 +300,13 @@ router.get('/stats', async (req, res) => {
       unread_messages: 0
     };
     
-    res.json({
+    return res.json({
       success: true,
       data: stats
     });
   } catch (error) {
     console.error('❌ Erreur récupération statistiques:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Erreur lors de la récupération des statistiques'
     });

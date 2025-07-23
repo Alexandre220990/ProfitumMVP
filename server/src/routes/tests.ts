@@ -102,14 +102,14 @@ router.post('/run-all', asyncHandler(async (req, res) => {
     try {
         const result = await executeTestScript(scriptPath);
         
-        res.json({
+        return res.json({
             success: true,
             message: 'Tous les tests ont été lancés avec succès',
             data: result
         });
     } catch (error: any) {
         console.error('❌ Erreur lors du lancement des tests:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             message: 'Erreur lors du lancement des tests',
             error: error?.message || 'Erreur inconnue'
@@ -139,14 +139,14 @@ router.post('/run-category/:category', asyncHandler(async (req, res) => {
     try {
         const result = await executeTestScript(scriptPath, [category]);
         
-        res.json({
+        return res.json({
             success: true,
             message: `Tests de la catégorie ${category} lancés avec succès`,
             data: result
         });
     } catch (error: any) {
         console.error(`❌ Erreur lors des tests ${category}:`, error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             message: `Erreur lors des tests ${category}`,
             error: error?.message || 'Erreur inconnue'
@@ -186,14 +186,14 @@ router.post('/run-specific/:category/:test', asyncHandler(async (req, res) => {
     try {
         const result = await executeTestScript(scriptPath, [category, test]);
         
-        res.json({
+        return res.json({
             success: true,
             message: `Test ${test} de la catégorie ${category} lancé avec succès`,
             data: result
         });
     } catch (error: any) {
         console.error(`❌ Erreur lors du test ${test}:`, error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             message: `Erreur lors du test ${test}`,
             error: error?.message || 'Erreur inconnue'
@@ -229,7 +229,7 @@ router.get('/results', asyncHandler(async (req, res) => {
             throw error;
         }
 
-        res.json({
+        return res.json({
             success: true,
             data: {
                 reports: reports || [],
@@ -241,7 +241,7 @@ router.get('/results', asyncHandler(async (req, res) => {
         });
     } catch (error: any) {
         console.error('❌ Erreur lors de la récupération des résultats:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             message: 'Erreur lors de la récupération des résultats',
             error: error?.message || 'Erreur inconnue'
@@ -286,7 +286,7 @@ router.get('/categories', asyncHandler(async (req, res) => {
         }
     ];
 
-    res.json({
+    return res.json({
         success: true,
         data: categories
     });
@@ -320,7 +320,7 @@ router.get('/status', asyncHandler(async (req, res) => {
         const allScriptsExist = scriptsStatus.every(script => script.exists);
         const readyScripts = scriptsStatus.filter(script => script.exists).length;
 
-        res.json({
+        return res.json({
             success: true,
             data: {
                 status: allScriptsExist ? 'ready' : 'incomplete',
@@ -335,7 +335,7 @@ router.get('/status', asyncHandler(async (req, res) => {
         });
     } catch (error: any) {
         console.error('❌ Erreur lors de la vérification du statut:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             message: 'Erreur lors de la vérification du statut',
             error: error?.message || 'Erreur inconnue'

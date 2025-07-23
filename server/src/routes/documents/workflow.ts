@@ -1,5 +1,5 @@
 import express from 'express';
-import { DocumentWorkflowService, DocumentWorkflow, DocumentCategory, UserRole } from '../../services/document-workflow-service';
+import DocumentWorkflowService, { DocumentWorkflow, DocumentCategory, UserRole } from '../../services/document-workflow-service';
 import { authenticateToken } from '../../middleware/authenticate';
 import { asyncHandler } from '../../utils/asyncHandler';
 
@@ -27,12 +27,12 @@ router.post('/initialize-client',
     const success = await workflowService.initializeClientWorkflow(clientId);
     
     if (success) {
-      res.json({ 
+      return res.json({ 
         success: true, 
         message: 'Workflow client initialisé avec succès' 
       });
     } else {
-      res.status(500).json({ 
+      return res.status(500).json({ 
         success: false, 
         error: 'Erreur lors de l\'initialisation du workflow' 
       });
@@ -92,14 +92,14 @@ router.post('/request',
         workflow
       });
 
-      res.json({
+      return res.json({
         success: true,
         requestId,
         message: 'Demande de document créée avec succès'
       });
     } catch (error) {
       console.error('Erreur création demande document:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: 'Erreur lors de la création de la demande'
       });
@@ -150,20 +150,20 @@ router.post('/upload',
       );
 
       if (result.success) {
-        res.json({
+        return res.json({
           success: true,
           fileId: result.fileId,
           message: 'Document uploadé avec succès'
         });
       } else {
-        res.status(500).json({
+        return res.status(500).json({
           success: false,
           error: result.error || 'Erreur lors de l\'upload'
         });
       }
     } catch (error) {
       console.error('Erreur upload document:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: 'Erreur lors de l\'upload du document'
       });
@@ -202,19 +202,19 @@ router.post('/complete-step',
       );
 
       if (success) {
-        res.json({
+        return res.json({
           success: true,
           message: 'Étape du workflow complétée avec succès'
         });
       } else {
-        res.status(500).json({
+        return res.status(500).json({
           success: false,
           error: 'Erreur lors de la complétion de l\'étape'
         });
       }
     } catch (error) {
       console.error('Erreur complétion étape:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: 'Erreur lors de la complétion de l\'étape'
       });
@@ -245,14 +245,14 @@ router.get('/client/:clientId',
     try {
       const workflow = await workflowService.getClientWorkflow(clientId);
       
-      res.json({
+      return res.json({
         success: true,
         workflow,
         count: workflow.length
       });
     } catch (error) {
       console.error('Erreur récupération workflow client:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: 'Erreur lors de la récupération du workflow'
       });
@@ -280,14 +280,14 @@ router.get('/pending',
     try {
       const pendingDocuments = await workflowService.getPendingDocuments(userId, userRole as any);
       
-      res.json({
+      return res.json({
         success: true,
         pendingDocuments,
         count: pendingDocuments.length
       });
     } catch (error) {
       console.error('Erreur récupération documents en attente:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: 'Erreur lors de la récupération des documents en attente'
       });
@@ -362,7 +362,7 @@ router.get('/stats',
         .lt('deadline', new Date().toISOString())
         .eq('status', 'pending');
 
-      res.json({
+      return res.json({
         success: true,
         stats: {
           byStatus: statusStats,
@@ -374,7 +374,7 @@ router.get('/stats',
       });
     } catch (error) {
       console.error('Erreur récupération stats:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: 'Erreur lors de la récupération des statistiques'
       });
@@ -430,14 +430,14 @@ router.post('/validate',
 
       if (error) throw error;
 
-      res.json({
+      return res.json({
         success: true,
         validationId: data.id,
         message: 'Validation enregistrée avec succès'
       });
     } catch (error) {
       console.error('Erreur validation document:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: 'Erreur lors de la validation'
       });
@@ -468,13 +468,13 @@ router.get('/validations/:documentFileId',
 
       if (error) throw error;
 
-      res.json({
+      return res.json({
         success: true,
         validations: data || []
       });
     } catch (error) {
       console.error('Erreur récupération validations:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: 'Erreur lors de la récupération des validations'
       });
@@ -529,14 +529,14 @@ router.post('/share',
 
       if (error) throw error;
 
-      res.json({
+      return res.json({
         success: true,
         shareId: data.id,
         message: 'Document partagé avec succès'
       });
     } catch (error) {
       console.error('Erreur partage document:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: 'Erreur lors du partage'
       });
@@ -570,13 +570,13 @@ router.get('/shares/:documentFileId',
 
       if (error) throw error;
 
-      res.json({
+      return res.json({
         success: true,
         shares: data || []
       });
     } catch (error) {
       console.error('Erreur récupération partages:', error);
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: 'Erreur lors de la récupération des partages'
       });
