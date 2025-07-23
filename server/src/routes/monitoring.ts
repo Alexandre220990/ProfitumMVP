@@ -38,7 +38,7 @@ router.get('/health', asyncHandler(async (req, res) => {
     
     const overallStatus = healthChecks.every(check => check.status === 'pass') ? 'healthy' : 'unhealthy';
     
-    res.json({
+    return res.json({
         status: overallStatus,
         timestamp: new Date().toISOString(),
         checks: healthChecks,
@@ -78,7 +78,7 @@ router.get('/metrics', asyncHandler(async (req, res) => {
         };
     });
     
-    res.json({
+    return res.json({
         metrics: groupedMetrics,
         averages,
         summary: {
@@ -95,7 +95,7 @@ router.get('/metrics', asyncHandler(async (req, res) => {
 router.get('/alerts', asyncHandler(async (req, res) => {
     const alerts = await monitoringSystem.getActiveAlerts();
     
-    res.json({
+    return res.json({
         alerts,
         summary: {
             total: alerts.length,
@@ -150,7 +150,7 @@ router.get('/dashboard', asyncHandler(async (req, res) => {
     
     const overallStatus = criticalAlerts > 0 || openIncidents > 0 || criticalVulnerabilities > 0 ? 'critical' : 'healthy';
     
-    res.json({
+    return res.json({
         overall_status: overallStatus,
         system_metrics: systemStatus,
         alerts: {
@@ -219,7 +219,7 @@ router.post('/logs/refresh', asyncHandler(async (req, res) => {
         monitoringSystem.getTerminalLogs(24)
     ]);
 
-    res.json({
+    return res.json({
         success: true,
         audit_logs: {
             system_logs: systemLogs || [],
@@ -233,7 +233,7 @@ router.post('/logs/refresh', asyncHandler(async (req, res) => {
 router.get('/network-server/status', (req, res) => {
     const isRunning = !!sharedServerProcess && !sharedServerProcess.killed;
     const ip = isRunning ? getLocalIP() + ':4000' : ''; // Adresse IP du serveur partagé
-    res.json({
+    return res.json({
         on: isRunning,
         ip: ip,
         message: isRunning ? 'Serveur partagé actif' : 'Serveur partagé arrêté'
@@ -255,7 +255,7 @@ router.post('/network-server/on', (req, res) => {
         stdio: 'ignore'
     });
     sharedServerProcess.unref();
-    res.json({ 
+    return res.json({ 
         on: true, 
         ip: getLocalIP() + ':4000',
         message: 'Serveur partagé démarré' 
@@ -268,16 +268,16 @@ router.post('/network-server/off', (req, res) => {
         try {
             process.kill(sharedServerProcess.pid, 'SIGTERM');
             sharedServerProcess = null;
-            res.json({ on: false, ip: '', message: 'Serveur partagé arrêté' });
+    return res.json({ on: false, ip: '', message: 'Serveur partagé arrêté' });
         } catch (e) {
-            res.status(500).json({ on: true, ip: getLocalIP() + ':4000', message: 'Erreur lors de l\'arrêt du serveur partagé' });
+            return res.status(500).json({ on: true, ip: getLocalIP() + ':4000', message: 'Erreur lors de l\'arrêt du serveur partagé' });
         }
     } else {
         // Tentative d'arrêt d'un éventuel process zombie
         try {
             execSync("pkill -f shared-network-server.js");
         } catch {}
-        res.json({ on: false, ip: '', message: 'Serveur déjà arrêté' });
+    return res.json({ on: false, ip: '', message: 'Serveur déjà arrêté' });
     }
 });
 

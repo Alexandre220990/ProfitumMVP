@@ -97,13 +97,13 @@ router.post('/charte-signature', authenticateUser, async (req: Request, res: Res
 
     console.log('✅ Signature enregistrée avec succès:', data);
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       data
     });
   } catch (error) {
     console.error('Erreur lors de la signature:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });
 
@@ -129,7 +129,7 @@ router.get('/charte-signature/:clientProduitEligibleId', authenticateUser, async
       return res.status(500).json({ success: false, message: 'Erreur serveur' });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         signed: !!data,
@@ -138,7 +138,7 @@ router.get('/charte-signature/:clientProduitEligibleId', authenticateUser, async
     });
   } catch (error) {
     console.error('Erreur lors de la vérification:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });
 
@@ -175,13 +175,13 @@ router.post('/sign', authenticateUser, async (req: Request, res: Response) => {
       return res.status(500).json({ success: false, message: 'Erreur serveur' });
     }
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       data
     });
   } catch (error) {
     console.error('Erreur lors de la signature:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });
 
@@ -213,7 +213,7 @@ router.get('/verify/:clientId/:produitId', authenticateUser, async (req: Request
       return res.status(500).json({ success: false, message: 'Erreur serveur' });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         signed: !!data,
@@ -222,7 +222,7 @@ router.get('/verify/:clientId/:produitId', authenticateUser, async (req: Request
     });
   } catch (error) {
     console.error('Erreur lors de la vérification:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });
 

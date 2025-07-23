@@ -148,5 +148,5 @@ export const requestValidationMiddleware = (req: Request, res: Response, next: N
     }
   }
 
-  next();
+  return next();
 }; 

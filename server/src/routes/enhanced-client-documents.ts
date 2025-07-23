@@ -109,7 +109,7 @@ router.post('/upload', async (req, res) => {
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Fichier uploadé avec succès',
       data: {
@@ -121,7 +121,7 @@ router.post('/upload', async (req, res) => {
 
   } catch (error) {
     console.error('Erreur upload fichier:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de l\'upload du fichier'
     });
@@ -155,11 +155,11 @@ router.get('/download/:fileId', async (req, res) => {
     // Envoyer le fichier
     res.setHeader('Content-Type', downloadResponse.metadata?.mime_type || 'application/octet-stream');
     res.setHeader('Content-Disposition', `attachment; filename="${downloadResponse.metadata?.original_filename || 'download'}"`);
-    res.send(downloadResponse.file_data);
+    return res.send(downloadResponse.file_data);
 
   } catch (error) {
     console.error('Erreur téléchargement:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors du téléchargement'
     });
@@ -205,7 +205,7 @@ router.get('/client/:clientId', async (req, res) => {
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         files: listResponse.files,
@@ -215,7 +215,7 @@ router.get('/client/:clientId', async (req, res) => {
 
   } catch (error) {
     console.error('Erreur listage fichiers:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors du listage des fichiers'
     });
@@ -259,7 +259,7 @@ router.get('/expert/:expertId', async (req, res) => {
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         files: listResponse.files,
@@ -269,7 +269,7 @@ router.get('/expert/:expertId', async (req, res) => {
 
   } catch (error) {
     console.error('Erreur listage fichiers expert:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors du listage des fichiers'
     });
@@ -318,14 +318,14 @@ router.post('/validate/:fileId', async (req, res) => {
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Document validé avec succès'
     });
 
   } catch (error) {
     console.error('Erreur validation:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la validation'
     });
@@ -356,14 +356,14 @@ router.delete('/:fileId', async (req, res) => {
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Fichier supprimé avec succès'
     });
 
   } catch (error) {
     console.error('Erreur suppression:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la suppression'
     });
@@ -404,7 +404,7 @@ router.post('/share/:fileId', async (req, res) => {
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Fichier partagé avec succès',
       data: {
@@ -414,7 +414,7 @@ router.post('/share/:fileId', async (req, res) => {
 
   } catch (error) {
     console.error('Erreur partage:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors du partage'
     });
@@ -449,14 +449,14 @@ router.get('/stats/:clientId', async (req, res) => {
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: statsResponse.stats
     });
 
   } catch (error) {
     console.error('Erreur statistiques:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors du calcul des statistiques'
     });

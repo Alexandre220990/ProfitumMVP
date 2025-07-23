@@ -111,7 +111,7 @@ const checkAuth = async (req: Request, res: express.Response) => {
       };
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         user: userData
@@ -119,7 +119,7 @@ const checkAuth = async (req: Request, res: express.Response) => {
     });
   } catch (error) {
     console.error('Erreur lors de la vérification du token:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la vérification du token',
       error: error instanceof Error ? error.message : 'Erreur inconnue'
@@ -225,7 +225,7 @@ router.post('/login', async (req, res) => {
 
     console.log("✅ Connexion réussie:", { userId, email: userEmail, type: userType });
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         token,
@@ -234,7 +234,7 @@ router.post('/login', async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Erreur lors de la connexion:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la connexion',
       error: error instanceof Error ? error.message : 'Erreur inconnue'
@@ -510,7 +510,7 @@ const getCurrentUser = async (req: Request, res: express.Response) => {
       };
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         user: userData
@@ -518,7 +518,7 @@ const getCurrentUser = async (req: Request, res: express.Response) => {
     });
   } catch (error) {
     console.error('Erreur lors de la récupération des données utilisateur:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération des données utilisateur',
       error: error instanceof Error ? error.message : 'Erreur inconnue'
@@ -576,7 +576,7 @@ const verifyToken = async (req: Request, res: express.Response) => {
       };
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         user: {
@@ -595,7 +595,7 @@ const verifyToken = async (req: Request, res: express.Response) => {
     });
   } catch (error) {
     console.error('Erreur lors de la vérification du token:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la vérification du token',
       error: error instanceof Error ? error.message : 'Erreur inconnue'
@@ -878,7 +878,7 @@ router.post('/google/callback', async (req, res) => {
       token_type: tokens.token_type
     });
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         token: jwtToken,
@@ -893,7 +893,7 @@ router.post('/google/callback', async (req, res) => {
 
   } catch (error) {
     console.error('❌ Erreur authentification Google:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de l\'authentification'
     });
@@ -920,7 +920,7 @@ router.get('/google/integrations', authenticateUser, async (req, res) => {
 
     const integrations = await googleCalendarService.getUserIntegrations(req.user.id);
     
-    res.json({
+    return res.json({
       success: true,
       data: integrations,
       message: 'Intégrations récupérées avec succès'
@@ -928,7 +928,7 @@ router.get('/google/integrations', authenticateUser, async (req, res) => {
 
   } catch (error) {
     console.error('❌ Erreur récupération intégrations:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération des intégrations'
     });
@@ -962,14 +962,14 @@ router.post('/google/logout', authenticateUser, async (req, res) => {
       })
       .eq('id', req.user.id);
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Déconnexion Google réussie'
     });
 
   } catch (error) {
     console.error('❌ Erreur déconnexion Google:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la déconnexion'
     });

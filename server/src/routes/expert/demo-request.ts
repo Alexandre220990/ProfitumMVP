@@ -226,7 +226,7 @@ router.post('/', async (req: Request, res: Response) => {
 
     console.log('✅ Demande de démo traitée avec succès');
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: 'Demande de démo envoyée avec succès',
       data: {
@@ -239,7 +239,7 @@ router.post('/', async (req: Request, res: Response) => {
 
   } catch (error) {
     console.error('❌ Erreur traitement demande de démo:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur interne du serveur'
     });
@@ -269,14 +269,14 @@ router.get('/:id', async (req: Request, res: Response) => {
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: expert
     });
 
   } catch (error) {
     console.error('❌ Erreur récupération demande de démo:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur interne du serveur'
     });
@@ -317,7 +317,7 @@ router.put('/:id', async (req: Request, res: Response) => {
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Demande de démo mise à jour avec succès',
       data: expert
@@ -325,7 +325,7 @@ router.put('/:id', async (req: Request, res: Response) => {
 
   } catch (error) {
     console.error('❌ Erreur mise à jour demande de démo:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur interne du serveur'
     });
@@ -350,14 +350,14 @@ router.delete('/:id', async (req: Request, res: Response) => {
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Demande de démo supprimée avec succès'
     });
 
   } catch (error) {
     console.error('❌ Erreur suppression demande de démo:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur interne du serveur'
     });

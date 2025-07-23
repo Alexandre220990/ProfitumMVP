@@ -131,7 +131,7 @@ router.post('/step-action', async (req, res) => {
     if (success) {
       console.log(`✅ Action ${action} exécutée avec succès, passage à l'étape ${nextStep}`);
       
-      res.json({
+    return res.json({
         success: true,
         message: 'Action exécutée avec succès',
         data: {
@@ -140,7 +140,7 @@ router.post('/step-action', async (req, res) => {
         }
       });
     } else {
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         message: 'Erreur lors de l\'exécution de l\'action'
       });
@@ -148,7 +148,7 @@ router.post('/step-action', async (req, res) => {
 
   } catch (error) {
     console.error('❌ Erreur lors de l\'exécution de l\'action d\'étape:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur serveur'
     });

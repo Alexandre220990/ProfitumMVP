@@ -188,13 +188,13 @@ router.get('/conversations/:id/messages', async (req, res) => {
 
     const messages = await messagingService.getMessages(request);
     
-    res.json({
+    return res.json({
       success: true,
       data: messages
     });
   } catch (error) {
     console.error('❌ Erreur récupération messages:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Erreur lors de la récupération des messages'
     });

@@ -184,13 +184,13 @@ router.get('/dashboard', authenticateUser, asyncHandler(async (req, res) => {
       funnel
     };
 
-    res.json({
+    return res.json({
       success: true,
       data: analyticsData
     });
   } catch (error) {
     console.error('Erreur lors de la récupération des analytics:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération des analytics'
     });
@@ -207,13 +207,13 @@ router.get('/metrics', authenticateUser, asyncHandler(async (req, res) => {
 
     const metrics = await getMetrics(startDateCalculated, endDateCalculated, filters);
 
-    res.json({
+    return res.json({
       success: true,
       data: metrics
     });
   } catch (error) {
     console.error('Erreur lors de la récupération des métriques:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération des métriques'
     });
@@ -233,7 +233,7 @@ router.get('/conversion', authenticateUser, asyncHandler(async (req, res) => {
       getAbandonmentPoints(startDateCalculated, endDateCalculated, filters)
     ]);
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         conversionData,
@@ -242,7 +242,7 @@ router.get('/conversion', authenticateUser, asyncHandler(async (req, res) => {
     });
   } catch (error) {
     console.error('Erreur lors de la récupération des données de conversion:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération des données de conversion'
     });
@@ -259,13 +259,13 @@ router.get('/products', authenticateUser, asyncHandler(async (req, res) => {
 
     const topProducts = await getTopProducts(startDateCalculated, endDateCalculated, filters);
 
-    res.json({
+    return res.json({
       success: true,
       data: topProducts
     });
   } catch (error) {
     console.error('Erreur lors de la récupération des produits:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération des produits'
     });
@@ -282,13 +282,13 @@ router.get('/experts', authenticateUser, asyncHandler(async (req, res) => {
 
     const expertPerformance = await getExpertPerformance(startDateCalculated, endDateCalculated, filters);
 
-    res.json({
+    return res.json({
       success: true,
       data: expertPerformance
     });
   } catch (error) {
     console.error('Erreur lors de la récupération des experts:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération des experts'
     });
@@ -305,13 +305,13 @@ router.get('/geographic', authenticateUser, asyncHandler(async (req, res) => {
 
     const geographicData = await getGeographicData(startDateCalculated, endDateCalculated, filters);
 
-    res.json({
+    return res.json({
       success: true,
       data: geographicData
     });
   } catch (error) {
     console.error('Erreur lors de la récupération des données géographiques:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération des données géographiques'
     });
@@ -323,13 +323,13 @@ router.get('/realtime', authenticateUser, asyncHandler(async (req, res) => {
   try {
     const realTimeMetrics = await getRealTimeMetrics();
 
-    res.json({
+    return res.json({
       success: true,
       data: realTimeMetrics
     });
   } catch (error) {
     console.error('Erreur lors de la récupération des métriques temps réel:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération des métriques temps réel'
     });
@@ -352,10 +352,10 @@ router.get('/export', authenticateUser, asyncHandler(async (req, res) => {
     
     res.setHeader('Content-Type', format === 'json' ? 'application/json' : 'text/csv');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.send(exportData);
+    return res.send(exportData);
   } catch (error) {
     console.error('Erreur lors de l\'export:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de l\'export'
     });

@@ -108,7 +108,7 @@ router.get('/', authenticateUser, asyncHandler(async (req, res) => {
 
         const totalPages = Math.ceil((totalCount || 0) / parseInt(limit as string));
 
-        res.json({
+    return res.json({
             success: true,
             data: {
                 assignments: assignments || [],
@@ -124,7 +124,7 @@ router.get('/', authenticateUser, asyncHandler(async (req, res) => {
 
     } catch (error) {
         console.error('Erreur assignations:', error);
-        res.status(500).json({ 
+        return res.status(500).json({ 
             success: false, 
             message: 'Erreur interne du serveur' 
         });
@@ -192,7 +192,7 @@ router.get('/:id', authenticateUser, asyncHandler(async (req, res) => {
             });
         }
 
-        res.json({
+    return res.json({
             success: true,
             data: {
                 assignment,
@@ -202,7 +202,7 @@ router.get('/:id', authenticateUser, asyncHandler(async (req, res) => {
 
     } catch (error) {
         console.error('Erreur assignation details:', error);
-        res.status(500).json({ 
+        return res.status(500).json({ 
             success: false, 
             message: 'Erreur interne du serveur' 
         });
@@ -299,7 +299,7 @@ router.put('/:id/status', authenticateUser, asyncHandler(async (req, res) => {
             return res.status(500).json({ 
                 success: false, 
                 message: 'Erreur lors de la mise à jour',
-                error: updateError.message 
+                error: updateError?.message || 'Erreur inconnue'
             });
         }
 
@@ -318,7 +318,7 @@ router.put('/:id/status', authenticateUser, asyncHandler(async (req, res) => {
             .from('notification')
             .insert(notificationData);
 
-        res.json({
+        return res.json({
             success: true,
             data: updatedAssignment,
             message: 'Statut mis à jour avec succès'
@@ -326,7 +326,7 @@ router.put('/:id/status', authenticateUser, asyncHandler(async (req, res) => {
 
     } catch (error) {
         console.error('Erreur mise à jour statut:', error);
-        res.status(500).json({ 
+        return res.status(500).json({ 
             success: false, 
             message: 'Erreur interne du serveur' 
         });
@@ -405,7 +405,7 @@ router.post('/:id/complete', authenticateUser, asyncHandler(async (req, res) => 
             return res.status(500).json({ 
                 success: false, 
                 message: 'Erreur lors de la mise à jour',
-                error: updateError.message 
+                error: updateError?.message || 'Erreur inconnue'
             });
         }
 
@@ -426,7 +426,7 @@ router.post('/:id/complete', authenticateUser, asyncHandler(async (req, res) => 
                 .eq('id', assignment.Expert.id);
         }
 
-        res.json({
+        return res.json({
             success: true,
             data: updatedAssignment,
             message: 'Assignation terminée avec succès'
@@ -434,7 +434,7 @@ router.post('/:id/complete', authenticateUser, asyncHandler(async (req, res) => 
 
     } catch (error) {
         console.error('Erreur completion assignation:', error);
-        res.status(500).json({ 
+        return res.status(500).json({ 
             success: false, 
             message: 'Erreur interne du serveur' 
         });

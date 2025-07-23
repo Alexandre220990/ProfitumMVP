@@ -53,7 +53,7 @@ const validateConnectIntegration = (req: Request, res: Response, next: Function)
       errors: error.details.map(detail => detail.message)
     });
   }
-  next();
+  return next();
 };
 
 const validateUpdateIntegration = (req: Request, res: Response, next: Function) => {
@@ -65,7 +65,7 @@ const validateUpdateIntegration = (req: Request, res: Response, next: Function) 
       errors: error.details.map(detail => detail.message)
     });
   }
-  next();
+  return next();
 };
 
 // ============================================================================
@@ -297,7 +297,7 @@ router.get('/integrations/:id', authenticateUser, googleCalendarLimiter, asyncHa
       return res.status(404).json({ success: false, message: 'Intégration non trouvée' });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: integration,
       message: 'Intégration récupérée avec succès'

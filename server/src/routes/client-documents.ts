@@ -59,7 +59,7 @@ const documentStorageService = new DocumentStorageService();
  */
 router.get('/test', (req: Request, res: Response) => {
   console.log('🧪 Endpoint de test client-documents appelé');
-  res.json({
+  return res.json({
     success: true,
     message: 'Endpoint client-documents fonctionne',
     timestamp: new Date().toISOString()
@@ -200,11 +200,11 @@ router.get('/client/:clientId', authenticateUser, asyncHandler(async (req: Reque
       totalChartes,
       gainsPotentiels
     });
-    res.json(realData);
+    return res.json(realData);
 
   } catch (error) {
     console.error('❌ Erreur récupération documents client:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération des documents'
     });
@@ -262,7 +262,7 @@ router.post('/upload', authenticateUser, upload.single('file'), asyncHandler(asy
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Fichier uploadé avec succès',
       data: uploadResponse.metadata
@@ -270,7 +270,7 @@ router.post('/upload', authenticateUser, upload.single('file'), asyncHandler(asy
 
   } catch (error) {
     console.error('Erreur upload fichier:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de l\'upload du fichier'
     });
@@ -296,11 +296,11 @@ router.get('/download/:fileId', authenticateUser, asyncHandler(async (req: Reque
     }
 
     // Rediriger vers l'URL signée
-    res.redirect(downloadResponse.file_url!);
+    return res.redirect(downloadResponse.file_url!);
 
   } catch (error) {
     console.error('Erreur téléchargement:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors du téléchargement'
     });
@@ -341,14 +341,14 @@ router.put('/validate/:fileId', authenticateUser, asyncHandler(async (req: Reque
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Fichier validé avec succès'
     });
 
   } catch (error) {
     console.error('Erreur validation:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la validation'
     });
@@ -373,14 +373,14 @@ router.delete('/:fileId', authenticateUser, asyncHandler(async (req: Request, re
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Fichier supprimé avec succès'
     });
 
   } catch (error) {
     console.error('Erreur suppression:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la suppression'
     });
@@ -419,7 +419,7 @@ router.post('/share/:fileId', authenticateUser, asyncHandler(async (req: Request
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Fichier partagé avec succès',
       data: {
@@ -429,7 +429,7 @@ router.post('/share/:fileId', authenticateUser, asyncHandler(async (req: Request
 
   } catch (error) {
     console.error('Erreur partage:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors du partage'
     });
@@ -462,14 +462,14 @@ router.get('/stats/:clientId', authenticateUser, asyncHandler(async (req: Reques
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: statsResponse.stats
     });
 
   } catch (error) {
     console.error('Erreur statistiques:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération des statistiques'
     });
@@ -538,7 +538,7 @@ router.get('/shared/:shareToken', asyncHandler(async (req: Request, res: Respons
       })
       .eq('id', shareData.id);
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         file: shareData.DocumentFile,
@@ -549,7 +549,7 @@ router.get('/shared/:shareToken', asyncHandler(async (req: Request, res: Respons
 
   } catch (error) {
     console.error('Erreur accès fichier partagé:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: 'Erreur lors de l\'accès au fichier partagé'
     });
