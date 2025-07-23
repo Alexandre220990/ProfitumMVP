@@ -155,7 +155,7 @@ export class ExternalIntegrationsService {
       }
     };
 
-    return configs[type][provider];
+    return configs[type][provider as keyof typeof configs[typeof type]];
   }
 
   // ===== INTÉGRATIONS DE SIGNATURE ÉLECTRONIQUE =====

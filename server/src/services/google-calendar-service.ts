@@ -390,7 +390,7 @@ export class GoogleCalendarService {
       return calendars.map(cal => ({
         id: cal.id!,
         summary: cal.summary || 'Calendrier sans nom',
-        description: cal.description,
+        description: cal.description || undefined,
         primary: cal.primary || false,
         accessRole: cal.accessRole as any,
         selected: cal.selected || false
