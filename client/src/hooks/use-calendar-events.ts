@@ -250,7 +250,7 @@ export const useCalendarEvents = (options: UseCalendarEventsOptions = {}): UseCa
       
       loadData();
     }
-  }, [autoLoad, user?.id]); // Retirer refresh des dépendances
+  }, [autoLoad, user?.id, filters.start_date, filters.end_date]); // Ajouter les filtres de date
 
   // ===== MÉMOISATION DES DONNÉES =====
 

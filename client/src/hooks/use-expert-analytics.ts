@@ -397,7 +397,7 @@ export const useExpertAnalytics = (filters: ExpertAnalyticsFilters = { timeRange
     } finally {
       setLoading(false);
     }
-  }, [filters, calculateStartDate, getMetrics, getPerformanceByMonth, getTopProducts, getClientDistribution]);
+  }, [filters.timeRange]); // Réduire les dépendances au minimum
 
   // Fonction pour rafraîchir les données
   const refresh = useCallback(async () => {
@@ -406,7 +406,19 @@ export const useExpertAnalytics = (filters: ExpertAnalyticsFilters = { timeRange
 
   // Charger les données au montage et quand les filtres changent
   useEffect(() => {
-    loadData();
+    // Éviter les rechargements inutiles
+    const controller = new AbortController();
+    
+    const loadDataSafely = async () => {
+      if (controller.signal.aborted) return;
+      await loadData();
+    };
+    
+    loadDataSafely();
+    
+    return () => {
+      controller.abort();
+    };
   }, [loadData]);
 
   return {

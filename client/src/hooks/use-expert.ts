@@ -159,7 +159,7 @@ export const useExpert = () => {
     } finally {
       setLoading(false);
     }
-  }, [user, addToast]);
+  }, [user?.id]); // Réduire les dépendances au minimum
 
   // Recharger les données
   const refreshData = useCallback(() => {
@@ -245,7 +245,19 @@ export const useExpert = () => {
 
   // Charger les données au montage
   useEffect(() => {
-    loadExpertData();
+    // Éviter les rechargements inutiles
+    const controller = new AbortController();
+    
+    const loadDataSafely = async () => {
+      if (controller.signal.aborted) return;
+      await loadExpertData();
+    };
+    
+    loadDataSafely();
+    
+    return () => {
+      controller.abort();
+    };
   }, [loadExpertData]);
 
   return {
