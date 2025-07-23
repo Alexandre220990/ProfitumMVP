@@ -7,7 +7,7 @@ import { AdminProvider } from './contexts/AdminContext';
 import { reminderService } from './services/reminder-service';
 import { queryClient } from './lib/queryClient';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { HelmetProvider } from 'react-helmet-async';
+
 
 // Pages principales
 const DashboardClient = React.lazy(() => import('./pages/dashboard/client'));
@@ -99,8 +99,7 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <HelmetProvider>
-        <AuthProvider>
+      <AuthProvider>
           <ClientProvider>
             <AdminProvider>
               <ToastProvider>
@@ -263,7 +262,6 @@ function App() {
             </AdminProvider>
           </ClientProvider>
         </AuthProvider>
-      </HelmetProvider>
     </QueryClientProvider>
   );
 }
