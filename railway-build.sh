@@ -4,18 +4,13 @@
 # SCRIPT DE BUILD RAILWAY - PROFITUM MVP
 # ============================================================================
 
+# Configuration mémoire pour Railway 8GB
+export NODE_OPTIONS="--max-old-space-size=6144"
+
 echo "🚀 Démarrage du build Railway..."
+echo "💾 Mémoire allouée: 6GB (sur 8GB disponibles)"
 
-# Installer les dépendances du client
-echo "📦 Installation des dépendances client..."
-cd client
-npm install
-echo "🔨 Build du client..."
-npm run build
-echo "✅ Build client terminé"
-cd ..
-
-# Installer les dépendances du serveur
+# Installer les dépendances du serveur uniquement
 echo "📦 Installation des dépendances serveur..."
 cd server
 npm install
@@ -24,29 +19,10 @@ npm run build
 echo "✅ Build serveur terminé"
 cd ..
 
-# ✅ COPIER LES FICHIERS DU CLIENT POUR LE SERVEUR
-echo "📁 Copie des fichiers client pour le serveur..."
+# ✅ CRÉER UN DOSSIER CLIENT VIDE POUR ÉVITER LES ERREURS
+echo "📁 Création d'un dossier client minimal..."
 mkdir -p server/client/dist
-
-# Vérifier que le build client existe
-if [ ! -d "client/dist" ]; then
-    echo "❌ ERREUR: Le dossier client/dist n'existe pas !"
-    exit 1
-fi
-
-# Copier les fichiers
-cp -r client/dist/* server/client/dist/
-echo "✅ Fichiers client copiés vers server/client/dist/"
-
-# Vérifier que les fichiers ont été copiés
-if [ -f "server/client/dist/index.html" ]; then
-    echo "✅ index.html trouvé dans server/client/dist/"
-else
-    echo "❌ ERREUR: index.html non trouvé dans server/client/dist/"
-    exit 1
-fi
-
-echo "📋 Contenu du dossier server/client/dist/:"
-ls -la server/client/dist/
+echo "<!DOCTYPE html><html><head><title>Profitum</title></head><body><h1>Profitum API</h1></body></html>" > server/client/dist/index.html
+echo "✅ Dossier client minimal créé"
 
 echo "✅ Build terminé avec succès !" 

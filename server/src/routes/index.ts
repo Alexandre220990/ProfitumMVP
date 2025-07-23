@@ -284,6 +284,17 @@ router.get('/documentation/search', (req, res) => {
   });
 });
 
+// Route de healthcheck pour Railway
+router.get('/health', (req, res) => {
+  res.json({
+    success: true,
+    message: 'API Profitum opérationnelle',
+    timestamp: new Date().toISOString(),
+    version: '1.0.0',
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
+
 // Routes administrateur
 router.use('/admin', adminRoutes);
 
