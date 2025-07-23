@@ -24,8 +24,7 @@ const ProfileExpert = React.lazy(() => import('./pages/profile/expert'));
 const MessagerieClient = React.lazy(() => import('./pages/messagerie-client'));
 const ClientDocuments = React.lazy(() => import('./pages/dashboard/client-documents'));
 const Settings = React.lazy(() => import('./pages/settings'));
-const Experts = React.lazy(() => import('./pages/marketplace/experts'));
-const ExpertDetail = React.lazy(() => import('./pages/marketplace/expert-detail'));
+const Experts = React.lazy(() => import('./pages/marketplace-experts'));
 const MarketplaceExperts = React.lazy(() => import('./pages/marketplace-experts'));
 const ExpertsVerifies = React.lazy(() => import('./pages/experts-verifies'));
 const DossierClient = React.lazy(() => import('./pages/dossier-client/[id]'));
@@ -116,7 +115,7 @@ function App() {
                       <Route path="/home" element={<HomePage />} />
                       <Route path="/simulateur" element={<SimulateurEligibilite />} />
                       <Route path="/experts" element={<Experts />} />
-                      <Route path="/experts/:id" element={<ExpertDetail />} />
+                      <Route path="/experts/:id" element={<ExpertDetails />} />
                       <Route path="/connexion-client" element={<ConnexionClient />} />
                       <Route path="/connexion-expert" element={<ConnexionExpert />} />
                       <Route path="/connect-admin" element={<ConnectAdmin />} />
