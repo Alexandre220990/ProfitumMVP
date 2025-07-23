@@ -850,6 +850,47 @@ router.post('/experts', asyncHandler(async (req, res) => {
 // ROUTES CLIENTS
 // ========================================
 
+// GET /api/admin/client-produits-eligibles - Données pour le pipeline business
+router.get('/client-produits-eligibles', authenticateUser, requireUserType('admin'), asyncHandler(async (req, res) => {
+  try {
+    const { data: clientProduitsEligibles, error } = await supabaseClient
+      .from('ClientProduitEligible')
+      .select(`
+        id,
+        clientId,
+        produitId,
+        statut,
+        tauxFinal,
+        montantFinal,
+        dureeFinale,
+        current_step,
+        progress,
+        createdAt,
+        updatedAt,
+        simulationId,
+        Client:Client(id, company_name, email),
+        ProduitEligible:ProduitEligible(id, name, type)
+      `)
+      .order('updatedAt', { ascending: false });
+
+    if (error) {
+      throw error;
+    }
+
+    return res.json({
+      success: true,
+      data: clientProduitsEligibles || []
+    });
+
+  } catch (error) {
+    console.error('Erreur récupération ClientProduitEligible:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des données pipeline'
+    });
+  }
+}));
+
 // GET /api/admin/clients - Liste des clients avec filtres
 router.get('/clients', asyncHandler(async (req, res) => {
   try {

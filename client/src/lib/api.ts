@@ -27,18 +27,77 @@ const api = axios.create({ baseURL: BASE_URL, headers: {
 });
 
 // Intercepteur pour ajouter le token d'authentification Supabase
-api.interceptors.request.use((config) => { try {
+api.interceptors.request.use(async (config) => { 
+  try {
     // Récupérer le token Supabase depuis localStorage
-    const supabaseToken = localStorage.getItem('token');
+    let supabaseToken = localStorage.getItem('supabase_token') || localStorage.getItem('token');
+    
+    // Si pas de token, essayer de rafraîchir la session Supabase
+    if (!supabaseToken) {
+      console.log('🔄 Tentative de rafraîchissement de la session Supabase...');
+      const { supabase } = await import('./supabase');
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session?.access_token) {
+        supabaseToken = session.access_token;
+        localStorage.setItem('supabase_token', session.access_token);
+        console.log('✅ Session Supabase rafraîchie');
+      }
+    }
     
     if (supabaseToken) {
-      config.headers.Authorization = `Bearer ${supabaseToken }`;
+      config.headers.Authorization = `Bearer ${supabaseToken}`;
       console.log('🔐 Token Supabase ajouté aux headers');
-    } else { console.log('⚠️ Aucun token Supabase trouvé dans localStorage'); }
-  } catch (error) { console.error('Erreur lors de la récupération du token: ', error); }
+    } else { 
+      console.log('⚠️ Aucun token Supabase trouvé');
+      console.log('🔍 Tokens disponibles:', {
+        supabase_token: localStorage.getItem('supabase_token'),
+        token: localStorage.getItem('token')
+      });
+    }
+  } catch (error) { 
+    console.error('Erreur lors de la récupération du token: ', error); 
+  }
   
   return config;
 });
+
+// Intercepteur pour gérer les erreurs d'authentification
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (error.response?.status === 401) {
+      console.log('🔐 Erreur d\'authentification détectée, tentative de rafraîchissement...');
+      
+      try {
+        const { supabase } = await import('./supabase');
+        const { data: { session }, error: refreshError } = await supabase.auth.refreshSession();
+        
+        if (session?.access_token && !refreshError) {
+          localStorage.setItem('supabase_token', session.access_token);
+          console.log('✅ Token rafraîchi, retry de la requête...');
+          
+          // Retry de la requête originale avec le nouveau token
+          const originalRequest = error.config;
+          originalRequest.headers.Authorization = `Bearer ${session.access_token}`;
+          return api(originalRequest);
+        } else {
+          console.log('❌ Impossible de rafraîchir le token, redirection vers login...');
+          localStorage.removeItem('supabase_token');
+          localStorage.removeItem('token');
+          window.location.href = '/connect-admin';
+        }
+      } catch (refreshError) {
+        console.error('Erreur lors du rafraîchissement:', refreshError);
+        localStorage.removeItem('supabase_token');
+        localStorage.removeItem('token');
+        window.location.href = '/connect-admin';
+      }
+    }
+    
+    return Promise.reject(error);
+  }
+);
 
 // Fonction générique pour gérer les réponses
 const handleResponse = <T>(response: any): ApiResponse<T> => { if (response.data) {
