@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/use-auth';
@@ -92,7 +92,7 @@ const ExpertDossierPage = () => {
     actionData: null
   });
 
-  const fetchDossier = async () => {
+  const fetchDossier = useCallback(async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -149,13 +149,13 @@ const ExpertDossierPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, user?.id, addToast, navigate]);
 
   useEffect(() => {
     if (id && user?.id) {
       fetchDossier();
     }
-  }, [id, user?.id]);
+  }, [fetchDossier]);
 
   const handleRefresh = async () => {
     setRefreshing(true);

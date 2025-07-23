@@ -96,75 +96,89 @@ export const useMessaging = (options: UseMessagingOptions = {}): UseMessagingRet
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // ========================================
-  // CONFIGURATION DES CALLBACKS
+  // CONFIGURATION DES CALLBACKS STABILISÉS
   // ========================================
 
+  // Callbacks stabilisés avec useCallback pour éviter les recréations
+  const onNewMessage = useCallback((message: Message) => {
+    // Invalider le cache des messages seulement si nécessaire
+    if (currentConversation?.id === message.conversation_id) {
+      queryClient.invalidateQueries({ queryKey: ['messages', message.conversation_id] });
+    }
+    
+    // Notification toast pour nouveaux messages
+    if (options.enableNotifications && !isOwnMessage(message)) {
+      toast({
+        title: 'Nouveau message',
+        description: `${message.sender_name}: ${message.content.substring(0, 50)}...`,
+        variant: 'default'
+      });
+    }
+  }, [currentConversation?.id, options.enableNotifications, queryClient]);
+
+  const onMessageRead = useCallback((messageId: string, readAt: string) => {
+    // Mise à jour optimiste du cache seulement si nécessaire
+    queryClient.setQueryData(['messages'], (old: Message[] | undefined) => {
+      if (!old) return old;
+      return old.map(msg => 
+        msg.id === messageId ? { ...msg, is_read: true, read_at: readAt } : msg
+      );
+    });
+  }, [queryClient]);
+
+  const onTyping = useCallback((_userId: string, _isTyping: boolean) => {
+    // Gérer les indicateurs de frappe
+    if (options.enableTyping) {
+      // Logique pour afficher les indicateurs de frappe
+    }
+  }, [options.enableTyping]);
+
+  const onConnectionStatus = useCallback((status: 'connected' | 'disconnected' | 'reconnecting') => {
+    setConnectionStatus(status);
+    setIsConnected(status === 'connected');
+    
+    // Éviter les rechargements constants - seulement si vraiment nécessaire
+    if (status === 'connected' && !isConnected) {
+      // Recharger les données seulement si on vient de se reconnecter
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      if (currentConversation) {
+        queryClient.invalidateQueries({ queryKey: ['messages', currentConversation.id] });
+      }
+    }
+  }, [isConnected, currentConversation, queryClient]);
+
+  const onError = useCallback((error: Error) => {
+    setError(error.message);
+    toast({
+      title: 'Erreur de messagerie',
+      description: error.message,
+      variant: 'destructive'
+    });
+  }, []);
+
+  const onFileUploadProgress = useCallback((fileId: string, progress: number) => {
+    setUploadProgress(prev => new Map(prev).set(fileId, progress));
+  }, []);
+
+  // Configuration des callbacks une seule fois
   useEffect(() => {
     callbacksRef.current = {
-      onNewMessage: (message: Message) => {
-        // Invalider le cache des messages
-        queryClient.invalidateQueries({ queryKey: ['messages', message.conversation_id] });
-        
-        // Notification toast pour nouveaux messages
-        if (options.enableNotifications && !isOwnMessage(message)) {
-          toast({
-            title: 'Nouveau message',
-            description: `${message.sender_name}: ${message.content.substring(0, 50)}...`,
-            variant: 'default'
-          });
-        }
-      },
-      
-      onMessageRead: (messageId: string, readAt: string) => {
-        // Mettre à jour le cache optimiste
-        queryClient.setQueryData(['messages'], (old: Message[] | undefined) => {
-          if (!old) return old;
-          return old.map(msg => 
-            msg.id === messageId ? { ...msg, is_read: true, read_at: readAt } : msg
-          );
-        });
-      },
-      
-      onTyping: (_userId: string, _isTyping: boolean) => {
-        // Gérer les indicateurs de frappe
-        if (options.enableTyping) {
-          // Logique pour afficher les indicateurs de frappe
-        }
-      },
-      
-      onConnectionStatus: (status: 'connected' | 'disconnected' | 'reconnecting') => {
-        setConnectionStatus(status);
-        setIsConnected(status === 'connected');
-        
-        if (status === 'connected') {
-          // Recharger les données quand reconnecté
-          queryClient.invalidateQueries({ queryKey: ['conversations'] });
-          queryClient.invalidateQueries({ queryKey: ['messages'] });
-        }
-      },
-      
-      onError: (error: Error) => {
-        setError(error.message);
-        toast({
-          title: 'Erreur de messagerie',
-          description: error.message,
-          variant: 'destructive'
-        });
-      },
-      
-      onFileUploadProgress: (fileId: string, progress: number) => {
-        setUploadProgress(prev => new Map(prev).set(fileId, progress));
-      }
+      onNewMessage,
+      onMessageRead,
+      onTyping,
+      onConnectionStatus,
+      onError,
+      onFileUploadProgress
     };
 
     messagingService.setCallbacks(callbacksRef.current);
-  }, [queryClient, options.enableNotifications, options.enableTyping]);
+  }, [onNewMessage, onMessageRead, onTyping, onConnectionStatus, onError, onFileUploadProgress]);
 
   // ========================================
-  // QUERIES REACT QUERY OPTIMISÉES (Addy Osmani)
+  // QUERIES REACT QUERY OPTIMISÉES (Sundar Pichai - Cache intelligent)
   // ========================================
 
-  // Query pour les conversations avec cache intelligent
+  // Query pour les conversations avec cache intelligent et dépendances stabilisées
   const {
     data: conversations = [],
     isLoading: conversationsLoading,
@@ -173,14 +187,16 @@ export const useMessaging = (options: UseMessagingOptions = {}): UseMessagingRet
   } = useQuery({
     queryKey: ['conversations', user?.id],
     queryFn: () => messagingService.getConversations(),
-    enabled: !!user?.id && isConnected,
-    staleTime: 30000, // 30 secondes
+    enabled: !!user?.id, // Retirer la dépendance isConnected qui cause les rechargements
+    staleTime: 60000, // Augmenter à 1 minute pour réduire les rechargements
+    gcTime: 300000, // 5 minutes de cache (anciennement cacheTime)
     refetchOnWindowFocus: false,
-    retry: 3,
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000)
+    refetchOnMount: false, // Éviter les rechargements au montage
+    retry: 2, // Réduire les retries
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000)
   });
 
-  // Query pour les messages avec pagination virtuelle
+  // Query pour les messages avec pagination virtuelle et cache optimisé
   const {
     data: messages = [],
     isLoading: messagesLoading,
@@ -189,10 +205,13 @@ export const useMessaging = (options: UseMessagingOptions = {}): UseMessagingRet
   } = useQuery({
     queryKey: ['messages', currentConversation?.id],
     queryFn: () => messagingService.getMessages(currentConversation!.id),
-    enabled: !!currentConversation?.id && isConnected,
-    staleTime: 10000, // 10 secondes
+    enabled: !!currentConversation?.id, // Retirer la dépendance isConnected
+    staleTime: 30000, // 30 secondes
+    gcTime: 180000, // 3 minutes de cache (anciennement cacheTime)
     refetchOnWindowFocus: false,
-    retry: 3
+    refetchOnMount: false,
+    retry: 2,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000)
   });
 
   // ========================================
@@ -369,37 +388,31 @@ export const useMessaging = (options: UseMessagingOptions = {}): UseMessagingRet
     } else if (diffInHours < 48) {
       return 'Hier';
     } else {
-      return date.toLocaleDateString('fr-FR');
+      return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
     }
   }, []);
 
   const getMessageStatus = useCallback((message: Message) => {
     if (message.is_read) return 'read';
-    if (message.created_at) return 'delivered';
+    if (message.delivered_at) return 'delivered';
     return 'sent';
   }, []);
 
   const getUnreadCount = useCallback((conversationId: string) => {
-    return messages.filter(msg => 
-      msg.conversation_id === conversationId && 
-      !msg.is_read && 
-      !isOwnMessage(msg)
+    return (messages as Message[]).filter(msg => 
+      msg.conversation_id === conversationId && !msg.is_read && !isOwnMessage(msg)
     ).length;
   }, [messages, isOwnMessage]);
 
   const getTotalUnreadCount = useCallback(() => {
-    return conversations.reduce((total, conv) => {
-      const unreadInConv = messages.filter(msg => 
-        msg.conversation_id === conv.id && 
-        !msg.is_read && 
-        !isOwnMessage(msg)
-      ).length;
-      return total + unreadInConv;
+    return (conversations as Conversation[]).reduce((total, conv) => {
+      const convMessages = (messages as Message[]).filter(msg => msg.conversation_id === conv.id);
+      return total + convMessages.filter(msg => !msg.is_read && !isOwnMessage(msg)).length;
     }, 0);
   }, [conversations, messages, isOwnMessage]);
 
   const getConversationStats = useCallback((conversationId: string) => {
-    const convMessages = messages.filter(msg => msg.conversation_id === conversationId);
+    const convMessages = (messages as Message[]).filter(msg => msg.conversation_id === conversationId);
     const unreadCount = convMessages.filter(msg => !msg.is_read && !isOwnMessage(msg)).length;
     const lastActivity = convMessages.length > 0 
       ? convMessages[convMessages.length - 1].created_at 
@@ -442,12 +455,25 @@ export const useMessaging = (options: UseMessagingOptions = {}): UseMessagingRet
   }, []);
 
   // ========================================
-  // INITIALISATION ET NETTOYAGE
+  // INITIALISATION ET NETTOYAGE STABILISÉS
   // ========================================
 
+  // État pour tracker l'initialisation
+  const [isInitialized, setIsInitialized] = useState(false);
+
   useEffect(() => {
-    if (options.autoConnect && user?.id && user?.type) {
-      messagingService.initialize(user.id, user.type);
+    if (options.autoConnect && user?.id && user?.type && !isInitialized) {
+      const initializeService = async () => {
+        try {
+          await messagingService.initialize(user.id, user.type);
+          setIsInitialized(true);
+        } catch (error) {
+          console.error('❌ Erreur initialisation messagerie:', error);
+          // Ne pas relancer automatiquement en cas d'erreur
+        }
+      };
+      
+      initializeService();
     }
 
     return () => {
@@ -459,10 +485,13 @@ export const useMessaging = (options: UseMessagingOptions = {}): UseMessagingRet
         clearTimeout(reconnectTimeoutRef.current);
       }
       
-      // Déconnexion du service
-      messagingService.disconnect();
+      // Déconnexion du service seulement si on démonte le composant
+      if (isInitialized) {
+        messagingService.disconnect();
+        setIsInitialized(false);
+      }
     };
-  }, [options.autoConnect, user?.id, user?.type]);
+  }, [options.autoConnect, user?.id, user?.type, isInitialized]); // Ajouter isInitialized aux dépendances
 
   // Gestion des erreurs de queries
   useEffect(() => {

@@ -168,7 +168,7 @@ const FormulaireExpert = () => {
         return;
       }
 
-      const response = await fetch(`http://localhost:5001/api/admin/experts/${id}`, {
+      const response = await fetch(`/api/admin/experts/${id}`, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json'
@@ -241,8 +241,8 @@ const FormulaireExpert = () => {
       }
 
       const url = isEditing 
-        ? `http://localhost:5001/api/admin/experts/${id}`
-        : 'http://localhost:5001/api/admin/experts';
+        ? `/api/admin/experts/${id}`
+        : '/api/admin/experts';
 
       const method = isEditing ? 'PUT' : 'POST';
 

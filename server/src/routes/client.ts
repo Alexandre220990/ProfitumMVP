@@ -136,6 +136,11 @@ router.get('/produits-eligibles', authenticateUser, async (req: Request, res: Re
         expert_id,
         charte_signed,
         charte_signed_at,
+        montantFinal,
+        tauxFinal,
+        dureeFinale,
+        current_step,
+        progress,
         created_at,
         updated_at,
         ProduitEligible (

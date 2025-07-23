@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/components/ui/toast-notifications";
@@ -39,42 +39,42 @@ const ExpertAgenda = () => {
   const [filterType, setFilterType] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
 
-  useEffect(() => {
-    const fetchAgendaData = async () => {
-      if (!user?.id) return;
-      
-      try {
-        setLoading(true);
-        
-        // Charger les événements de l'agenda
-        const response = await get<AgendaEvent[]>(`/api/expert/agenda`);
-        if (response.success && response.data) {
-          setEvents(response.data);
-        }
-
-        addToast({
-          type: 'success',
-          title: 'Agenda chargé',
-          message: 'Vos événements ont été récupérés avec succès',
-          duration: 3000
-        });
-
-      } catch (error) {
-        console.error('Erreur chargement agenda:', error);
-        setError('Erreur lors de la récupération de l\'agenda');
-        addToast({
-          type: 'error',
-          title: 'Erreur',
-          message: 'Erreur lors de la récupération de l\'agenda',
-          duration: 5000
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchAgendaData = useCallback(async () => {
+    if (!user?.id) return;
     
-    fetchAgendaData();
+    try {
+      setLoading(true);
+      
+      // Charger les événements de l'agenda
+      const response = await get<AgendaEvent[]>(`/api/expert/agenda`);
+      if (response.success && response.data) {
+        setEvents(response.data);
+      }
+
+      addToast({
+        type: 'success',
+        title: 'Agenda chargé',
+        message: 'Vos événements ont été récupérés avec succès',
+        duration: 3000
+      });
+
+    } catch (error) {
+      console.error('Erreur chargement agenda:', error);
+      setError('Erreur lors de la récupération de l\'agenda');
+      addToast({
+        type: 'error',
+        title: 'Erreur',
+        message: 'Erreur lors de la récupération de l\'agenda',
+        duration: 5000
+      });
+    } finally {
+      setLoading(false);
+    }
   }, [user, addToast]);
+
+  useEffect(() => {
+    fetchAgendaData();
+  }, [fetchAgendaData]);
 
   // Filtrer les événements
   const filteredEvents = events.filter((event) => {

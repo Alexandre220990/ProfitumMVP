@@ -92,14 +92,24 @@ class CalendarService {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        // Gestion spécifique des erreurs
+        if (response.status === 404) {
+          console.warn('⚠️ Endpoint calendrier non trouvé - retourner tableau vide');
+          return [];
+        }
+        if (response.status === 401) {
+          console.warn('⚠️ Non authentifié pour le calendrier - retourner tableau vide');
+          return [];
+        }
+        throw new Error(`Erreur calendrier: ${response.status} ${response.statusText}`);
       }
 
       const result = await response.json();
       return result.data || [];
     } catch (error) {
-      console.error('❌ Erreur récupération événements:', error);
-      throw error;
+      console.error('❌ Erreur récupération événements calendrier:', error);
+      // Retourner un tableau vide au lieu de lancer une exception
+      return [];
     }
   }
 
@@ -208,14 +218,44 @@ class CalendarService {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        // Gestion spécifique des erreurs
+        if (response.status === 404) {
+          console.warn('⚠️ Endpoint stats calendrier non trouvé - retourner stats par défaut');
+          return {
+            eventsToday: 0,
+            meetingsThisWeek: 0,
+            overdueDeadlines: 0,
+            documentsToValidate: 0
+          };
+        }
+        if (response.status === 401) {
+          console.warn('⚠️ Non authentifié pour les stats calendrier - retourner stats par défaut');
+          return {
+            eventsToday: 0,
+            meetingsThisWeek: 0,
+            overdueDeadlines: 0,
+            documentsToValidate: 0
+          };
+        }
+        throw new Error(`Erreur stats calendrier: ${response.status} ${response.statusText}`);
       }
 
       const result = await response.json();
-      return result.data;
+      return result.data || {
+        eventsToday: 0,
+        meetingsThisWeek: 0,
+        overdueDeadlines: 0,
+        documentsToValidate: 0
+      };
     } catch (error) {
-      console.error('❌ Erreur récupération statistiques:', error);
-      throw error;
+      console.error('❌ Erreur récupération stats calendrier:', error);
+      // Retourner des stats par défaut au lieu de lancer une exception
+      return {
+        eventsToday: 0,
+        meetingsThisWeek: 0,
+        overdueDeadlines: 0,
+        documentsToValidate: 0
+      };
     }
   }
 

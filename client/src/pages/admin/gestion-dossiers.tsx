@@ -133,7 +133,7 @@ export default function GestionDossiers() { const { user } = useAuth();
       if (filters.produit && filters.produit !== 'all') params.append('produit', filters.produit);
       if (filters.expert && filters.expert !== 'all') params.append('expert', filters.expert);
 
-      const response = await fetch(`http://localhost:5001/api/admin/dossiers?${params.toString()}`, { headers: {
+      const response = await fetch(`/api/admin/dossiers?${params.toString()}`, { headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json'
         }
@@ -154,7 +154,8 @@ export default function GestionDossiers() { const { user } = useAuth();
       
       if (!session?.access_token) return;
 
-      const response = await fetch('http://localhost:5001/api/admin/dossiers/stats', { headers: {
+      const response = await fetch('/api/admin/dossiers/stats', {
+        headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json'
         }
@@ -172,7 +173,7 @@ export default function GestionDossiers() { const { user } = useAuth();
       
       if (!session?.access_token) { throw new Error('Token d\'authentification manquant'); }
 
-      const response = await fetch('http://localhost:5001/api/admin/produits', { headers: {
+      const response = await fetch('/api/admin/produits', { headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json'
         }
@@ -231,7 +232,7 @@ export default function GestionDossiers() { const { user } = useAuth();
       
       if (!session?.access_token) return;
 
-      const response = await fetch('http://localhost:5001/api/admin/produits', { method: 'POST', headers: {
+      const response = await fetch('/api/admin/produits', { method: 'POST', headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json'
         },
@@ -251,7 +252,7 @@ export default function GestionDossiers() { const { user } = useAuth();
       
       if (!session?.access_token) return;
 
-      const response = await fetch('http://localhost:5001/api/admin/dossiers', { method: 'POST', headers: {
+      const response = await fetch('/api/admin/dossiers', { method: 'POST', headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json'
         },
@@ -335,7 +336,7 @@ export default function GestionDossiers() { const { user } = useAuth();
   const updateProduit = async () => { try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token || !selectedProduit) return;
-      const response = await fetch(`http://localhost:5001/api/admin/produits/${ selectedProduit.id }`, { method: 'PUT', headers: {
+      const response = await fetch(`/api/admin/produits/${ selectedProduit.id }`, { method: 'PUT', headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json'
         },
@@ -355,7 +356,7 @@ export default function GestionDossiers() { const { user } = useAuth();
   const deleteProduit = async () => { try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token || !selectedProduit) return;
-      const response = await fetch(`http://localhost:5001/api/admin/produits/${ selectedProduit.id }`, { method: 'DELETE', headers: {
+      const response = await fetch(`/api/admin/produits/${ selectedProduit.id }`, { method: 'DELETE', headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json'
         }

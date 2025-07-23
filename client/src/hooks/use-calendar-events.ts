@@ -67,16 +67,13 @@ export const useCalendarEvents = (options: UseCalendarEventsOptions = {}): UseCa
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erreur lors du chargement des événements';
       setError(errorMessage);
-      addToast({
-        type: 'error',
-        title: 'Erreur',
-        message: errorMessage,
-        duration: 5000
-      });
+      
+      // Ne pas afficher de toast pour les erreurs de calendrier non critique
+      console.warn('⚠️ Erreur chargement événements calendrier:', errorMessage);
     } finally {
       setLoading(false);
     }
-  }, [user?.id, filters, addToast]);
+  }, [user?.id, filters]);
 
   // ===== CRÉATION D'ÉVÉNEMENT =====
 
@@ -207,8 +204,15 @@ export const useCalendarEvents = (options: UseCalendarEventsOptions = {}): UseCa
       const statsData = await calendarService.getStats(filters);
       setStats(statsData);
     } catch (err) {
-      console.error('❌ Erreur chargement statistiques:', err);
+      console.warn('⚠️ Erreur chargement statistiques calendrier:', err);
       // Ne pas afficher de toast pour les stats, c'est moins critique
+      // Définir des stats par défaut
+      setStats({
+        eventsToday: 0,
+        meetingsThisWeek: 0,
+        overdueDeadlines: 0,
+        documentsToValidate: 0
+      });
     }
   }, [user?.id, filters]);
 
@@ -231,9 +235,22 @@ export const useCalendarEvents = (options: UseCalendarEventsOptions = {}): UseCa
 
   useEffect(() => {
     if (autoLoad && user?.id) {
-      refresh();
+      // Éviter la boucle infinie en ne dépendant que des valeurs stables
+      const loadData = async () => {
+        try {
+          await Promise.all([
+            loadEvents(),
+            loadStats()
+          ]);
+        } catch (error) {
+          console.error('❌ Erreur chargement automatique calendrier:', error);
+          // Ne pas relancer automatiquement en cas d'erreur
+        }
+      };
+      
+      loadData();
     }
-  }, [autoLoad, user?.id, refresh]);
+  }, [autoLoad, user?.id]); // Retirer refresh des dépendances
 
   // ===== MÉMOISATION DES DONNÉES =====
 

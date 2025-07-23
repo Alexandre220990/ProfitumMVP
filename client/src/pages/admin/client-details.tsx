@@ -188,7 +188,7 @@ const ClientDetails = () => {
         return;
       }
 
-      const response = await fetch(`http://localhost:5001/api/admin/clients/${id}`, {
+      const response = await fetch(`/api/admin/clients/${id}`, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json'
@@ -223,7 +223,7 @@ const ClientDetails = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const response = await fetch(`http://localhost:5001/api/admin/audits/${auditId}/assign-expert`, {
+      const response = await fetch(`/api/admin/audits/${auditId}/assign-expert`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -256,7 +256,7 @@ const ClientDetails = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const response = await fetch(`http://localhost:5001/api/admin/audits/${auditId}/status`, {
+      const response = await fetch(`/api/admin/audits/${auditId}/status`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -289,7 +289,7 @@ const ClientDetails = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const response = await fetch(`http://localhost:5001/api/admin/audits/${auditId}/comment`, {
+      const response = await fetch(`/api/admin/audits/${auditId}/comment`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -322,7 +322,7 @@ const ClientDetails = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const response = await fetch(`http://localhost:5001/api/admin/clients/${client?.id}/messages`, {
+      const response = await fetch(`/api/admin/clients/${client?.id}/messages`, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json'
@@ -347,7 +347,7 @@ const ClientDetails = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const response = await fetch(`http://localhost:5001/api/admin/clients/${client.id}/messages`, {
+      const response = await fetch(`/api/admin/clients/${client.id}/messages`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -386,7 +386,7 @@ const ClientDetails = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const response = await fetch(`http://localhost:5001/api/admin/documents/${documentId}/validate`, {
+      const response = await fetch(`/api/admin/documents/${documentId}/validate`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -418,7 +418,7 @@ const ClientDetails = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const response = await fetch(`http://localhost:5001/api/admin/clients/${client?.id}/request-document`, {
+      const response = await fetch(`/api/admin/clients/${client?.id}/request-document`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -450,7 +450,7 @@ const ClientDetails = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const response = await fetch(`http://localhost:5001/api/admin/clients/${client?.id}/status`, {
+      const response = await fetch(`/api/admin/clients/${client?.id}/status`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -483,7 +483,7 @@ const ClientDetails = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const response = await fetch(`http://localhost:5001/api/admin/clients/${client?.id}/export`, {
+      const response = await fetch(`/api/admin/clients/${client?.id}/export`, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json'
@@ -523,7 +523,7 @@ const ClientDetails = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const response = await fetch(`http://localhost:5001/api/admin/clients/${client?.id}/notify`, {
+      const response = await fetch(`/api/admin/clients/${client?.id}/notify`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,

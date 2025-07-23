@@ -111,7 +111,7 @@ const GestionClients = () => {
 
       console.log('📡 Récupération des clients avec params:', params.toString());
 
-      const response = await fetch(`http://localhost:5001/api/admin/clients?${params}`, {
+      const response = await fetch(`/api/admin/clients?${params}`, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json'
@@ -158,7 +158,7 @@ const GestionClients = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const response = await fetch(`http://localhost:5001/api/admin/clients/${clientId}/status`, {
+      const response = await fetch(`/api/admin/clients/${clientId}/status`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -205,7 +205,7 @@ const GestionClients = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const response = await fetch(`http://localhost:5001/api/admin/clients/${clientId}`, {
+      const response = await fetch(`/api/admin/clients/${clientId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -252,7 +252,7 @@ const GestionClients = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const response = await fetch('http://localhost:5001/api/admin/clients', {
+      const response = await fetch('/api/admin/clients', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
