@@ -59,13 +59,13 @@ router.get('/', authenticateUser, asyncHandler(async (req: Request, res: Respons
       return res.status(500).json({ success: false, message: 'Erreur serveur' });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: reminders || []
     });
   } catch (error) {
     console.error('❌ Erreur route relances:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 }));
 
@@ -107,13 +107,13 @@ router.get('/:id', authenticateUser, asyncHandler(async (req: Request, res: Resp
       return res.status(403).json({ success: false, message: 'Accès non autorisé' });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: reminder
     });
   } catch (error) {
     console.error('❌ Erreur récupération relance:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 }));
 
@@ -166,14 +166,14 @@ router.put('/:id/handle', authenticateUser, asyncHandler(async (req: Request, re
       return res.status(500).json({ success: false, message: 'Erreur serveur' });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: updatedReminder,
       message: 'Relance marquée comme traitée'
     });
   } catch (error) {
     console.error('❌ Erreur traitement relance:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 }));
 
@@ -196,13 +196,13 @@ router.post('/check', authenticateUser, asyncHandler(async (req: Request, res: R
     // Déclencher la vérification des relances
     await reminderService.checkAndCreateReminders();
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Vérification des relances déclenchée avec succès'
     });
   } catch (error) {
     console.error('❌ Erreur vérification relances:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 }));
 
@@ -279,7 +279,7 @@ router.get('/stats/overview', authenticateUser, asyncHandler(async (req: Request
       throw overdueError;
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         totalLast30Days: statusStats?.length || 0,
@@ -293,7 +293,7 @@ router.get('/stats/overview', authenticateUser, asyncHandler(async (req: Request
     });
   } catch (error) {
     console.error('❌ Erreur statistiques relances:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 }));
 
@@ -323,13 +323,13 @@ router.put('/config', authenticateUser, asyncHandler(async (req: Request, res: R
       slaClientDays
     });
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Configuration des relances mise à jour'
     });
   } catch (error) {
     console.error('❌ Erreur mise à jour configuration:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 }));
 

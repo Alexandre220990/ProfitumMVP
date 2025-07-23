@@ -24,7 +24,7 @@ router.post('/create-session', async (req: Request, res: Response) => {
     // Créer la session temporaire
     const sessionResult = await SimulationSessionService.createTemporarySession(simulationData);
     
-    res.json({
+    return res.json({
       success: true,
       data: sessionResult,
       message: 'Session temporaire créée avec succès'
@@ -32,7 +32,7 @@ router.post('/create-session', async (req: Request, res: Response) => {
     
   } catch (error) {
     console.error('❌ Erreur création session temporaire:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Erreur lors de la création de la session temporaire'
     });
@@ -68,7 +68,7 @@ router.get('/validate/:sessionToken', async (req: Request, res: Response) => {
     const sessionData = await SimulationSessionService.getSessionData(sessionToken);
     const products = await SimulationSessionService.getSessionProducts(sessionData.sessionId);
     
-    res.json({
+    return res.json({
       success: true,
       data: {
         session: sessionData,
@@ -79,7 +79,7 @@ router.get('/validate/:sessionToken', async (req: Request, res: Response) => {
     
   } catch (error) {
     console.error('❌ Erreur validation session:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Erreur lors de la validation de la session'
     });
@@ -140,7 +140,7 @@ router.post('/migrate', async (req: Request, res: Response) => {
       });
     }
     
-    res.json({
+    return res.json({
       success: true,
       data: migrationResult,
       message: 'Migration réussie'
@@ -148,7 +148,7 @@ router.post('/migrate', async (req: Request, res: Response) => {
     
   } catch (error) {
     console.error('❌ Erreur migration session:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Erreur lors de la migration'
     });
@@ -173,7 +173,7 @@ router.get('/products/:sessionId', async (req: Request, res: Response) => {
     // Récupérer les produits de la session
     const products = await SimulationSessionService.getSessionProducts(sessionId);
     
-    res.json({
+    return res.json({
       success: true,
       data: products,
       message: 'Produits récupérés avec succès'
@@ -181,7 +181,7 @@ router.get('/products/:sessionId', async (req: Request, res: Response) => {
     
   } catch (error) {
     console.error('❌ Erreur récupération produits session:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Erreur lors de la récupération des produits'
     });

@@ -93,14 +93,14 @@ router.post('/session', async (req, res) => {
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       session_token: sessionToken,
       session_id: data.id
     });
   } catch (error) {
     console.error('Erreur lors de la création de session:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Erreur lors de la création de session'
     });
@@ -123,10 +123,10 @@ router.get('/questions', async (req, res) => {
       });
     }
 
-    res.json(data || []);
+    return res.json(data || []);
   } catch (error) {
     console.error('Erreur lors de la récupération des questions:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Erreur lors de la récupération des questions'
     });
@@ -170,10 +170,10 @@ router.post('/response', async (req, res) => {
       });
     }
 
-    res.json({ success: true });
+    return res.json({ success: true });
   } catch (error) {
     console.error('Erreur lors de la sauvegarde de la réponse:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Erreur lors de la sauvegarde de la réponse'
     });
@@ -338,10 +338,10 @@ router.post('/calculate-eligibility', async (req, res) => {
     // Envoyer notification si forte éligibilité
     await sendHighEligibilityNotification(sessionData, results);
 
-    res.json(results);
+    return res.json(results);
   } catch (error) {
     console.error('Erreur lors du calcul de l\'éligibilité:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Erreur lors du calcul de l\'éligibilité'
     });
@@ -366,10 +366,10 @@ router.get('/results/:sessionId', async (req, res) => {
       });
     }
 
-    res.json(data || []);
+    return res.json(data || []);
   } catch (error) {
     console.error('Erreur lors de la récupération des résultats:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Erreur lors de la récupération des résultats'
     });
@@ -471,7 +471,7 @@ router.get('/results/session/:sessionToken', async (req, res) => {
       recalculatedResults.push(finalResult);
     }
 
-    res.json({
+    return res.json({
       success: true,
       session: {
         id: session.id,
@@ -484,7 +484,7 @@ router.get('/results/session/:sessionToken', async (req, res) => {
 
   } catch (error) {
     console.error('Erreur lors de la récupération des résultats:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Erreur lors de la récupération des résultats'
     });
@@ -510,10 +510,10 @@ router.post('/track', async (req, res) => {
       return res.status(500).json({ success: false });
     }
 
-    res.json({ success: true });
+    return res.json({ success: true });
   } catch (error) {
     console.error('Erreur lors du tracking:', error);
-    res.status(500).json({ success: false });
+    return res.status(500).json({ success: false });
   }
 });
 
@@ -533,13 +533,13 @@ router.get('/sessions', async (req, res) => {
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: data || []
     });
   } catch (error) {
     console.error('Erreur lors de la récupération des sessions:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Erreur lors de la récupération des sessions'
     });
@@ -588,10 +588,10 @@ router.post('/abandon', async (req, res) => {
       });
     }
 
-    res.json({ success: true });
+    return res.json({ success: true });
   } catch (error) {
     console.error('Erreur lors de la gestion de l\'abandon:', error);
-    res.status(500).json({ success: false });
+    return res.status(500).json({ success: false });
   }
 });
 
@@ -1390,12 +1390,12 @@ router.post('/migrate/:sessionToken', async (req, res) => {
     const result = await migrateSimulationToClient(sessionToken, clientId);
 
     if (result.success) {
-      res.json({
+      return res.json({
         success: true,
         message: `Migration réussie: ${result.migratedCount} éligibilités migrées`
       });
     } else {
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         error: result.error
       });
@@ -1403,7 +1403,7 @@ router.post('/migrate/:sessionToken', async (req, res) => {
 
   } catch (error) {
     console.error('Erreur migration:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Erreur lors de la migration'
     });
