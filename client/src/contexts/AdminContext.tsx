@@ -257,7 +257,7 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setLoadingMetrics(true);
     try {
       // Utiliser import.meta.env pour Vite au lieu de process.env
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+      const API_URL = import.meta.env.VITE_API_URL || 'https://www.profitum.app';
       const response = await fetch(`${API_URL}/api/admin/dashboard`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`

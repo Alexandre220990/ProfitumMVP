@@ -1,7 +1,7 @@
 import { ApiResponse } from "@/types/simulation";
 
-// URL de l'API - à configurer selon l'environnement
-const API_URL: string = 'http://[::1]:5004';
+// URL de l'API - configuration dynamique selon l'environnement
+const API_URL: string = import.meta.env.VITE_API_URL || 'https://www.profitum.app';
 
 export function extractData<T>(response: ApiResponse<T> | null | undefined): T | null { if (!response?.success || !response.data) {
     return null; }

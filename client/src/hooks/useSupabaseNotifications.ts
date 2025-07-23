@@ -15,11 +15,12 @@ export function useSupabaseNotifications() {
     
     setLoading(true);
     try {
+      const baseUrl = import.meta.env.VITE_API_URL || 'https://www.profitum.app';
       let endpoint = '/api/notifications';
       if (user.type === 'expert') endpoint = '/api/expert/notifications';
       if (user.type === 'admin') endpoint = '/api/admin/notifications';
       
-      const response = await fetch(endpoint, {
+      const response = await fetch(`${baseUrl}${endpoint}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       if (response.ok) {

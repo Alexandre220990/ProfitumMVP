@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
-import { API_URL } from "@/config";
+import { config } from "@/config/env";
 import { Loader2, PiggyBank, Rocket, RefreshCw, FolderOpen, DollarSign, BarChart3, AlertCircle, TrendingUp, CheckCircle } from "lucide-react";
 import Button from "@/components/ui/design-system/Button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, StatCard } from "@/components/ui/design-system/Card";
@@ -54,7 +54,7 @@ export default function DashboardClient() {
 
   const handleSimulation = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/api/simulations/check-recent/${user?.id}`);
+      const response = await fetch(`${config.API_URL}/api/simulations/check-recent/${user?.id}`);
       const data = await response.json();
       
       if (data.success && data.data.simulation) {
