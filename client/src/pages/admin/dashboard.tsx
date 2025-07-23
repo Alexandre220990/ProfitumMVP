@@ -8,6 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Badge from "@/components/ui/design-system/Badge";
 import { useToast } from "@/components/ui/toast-notifications";
 import AdvancedMetrics from "@/components/admin/AdvancedMetrics";
+import { BusinessPipelineDashboard } from "@/components/admin/BusinessPipelineDashboard";
+import { ValidationActionsDashboard } from "@/components/admin/ValidationActionsDashboard";
 import '@/styles/admin-dashboard.css';
 import { 
   Users, 
@@ -420,10 +422,14 @@ const AdminDashboardPage: React.FC = () => {
 
         {/* Onglets révolutionnaires */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6 animate-slide-in">
-          <TabsList className="grid w-full grid-cols-6 bg-slate-100 p-1 rounded-lg">
+          <TabsList className="grid w-full grid-cols-7 bg-slate-100 p-1 rounded-lg">
             <TabsTrigger value="overview" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200">
               <BarChart3 className="w-4 h-4" />
               Vue d'ensemble
+            </TabsTrigger>
+            <TabsTrigger value="validation" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200">
+              <Shield className="w-4 h-4" />
+              Validations
             </TabsTrigger>
             <TabsTrigger value="metrics" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200">
               <Diamond className="w-4 h-4" />
@@ -449,6 +455,19 @@ const AdminDashboardPage: React.FC = () => {
 
           {/* Vue d'ensemble révolutionnaire */}
           <TabsContent value="overview" className="space-y-6">
+            {/* Nouveau Dashboard Business Pipeline */}
+            <BusinessPipelineDashboard 
+              onActionClick={(action) => {
+                console.log('Action clicked:', action);
+                addToast({
+                  type: 'info',
+                  title: 'Action',
+                  message: `Action ${action} déclenchée`,
+                  duration: 3000
+                });
+              }}
+            />
+            
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               
               {/* Scores de santé */}
@@ -575,6 +594,21 @@ const AdminDashboardPage: React.FC = () => {
                 </CardContent>
               </Card>
             </div>
+          </TabsContent>
+
+          {/* Validations et Actions Rapides */}
+          <TabsContent value="validation" className="space-y-6">
+            <ValidationActionsDashboard 
+              onActionClick={(action, itemId) => {
+                console.log('Validation action:', action, itemId);
+                addToast({
+                  type: 'info',
+                  title: 'Action de validation',
+                  message: `Action ${action} ${itemId ? `sur l'élément ${itemId}` : ''} déclenchée`,
+                  duration: 3000
+                });
+              }}
+            />
           </TabsContent>
 
           {/* Métriques Avancées */}
