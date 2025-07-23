@@ -20,4 +20,9 @@ npm install
 npm run build
 cd ..
 
+# ✅ COPIER LES FICHIERS DU CLIENT POUR LE SERVEUR
+echo "📁 Copie des fichiers client pour le serveur..."
+mkdir -p server/client/dist
+cp -r client/dist/* server/client/dist/
+
 echo "✅ Build terminé avec succès !" 

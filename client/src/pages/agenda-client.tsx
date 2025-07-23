@@ -1,7 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { useNavigate } from 'react-router-dom';
 import { useCalendarEvents } from '@/hooks/use-calendar-events';
+import { GoogleCalendarConnect } from '@/components/google-calendar/GoogleCalendarConnect';
+import { googleCalendarClientService } from '@/services/google-calendar-service';
 import { 
   Calendar, 
   Plus, 
@@ -13,16 +15,17 @@ import {
   ChevronLeft,
   ChevronRight,
   CalendarDays,
-  Settings,
   Edit3,
   Eye,
-  Calendar as CalendarIcon,
   Grid,
   List,
   Sun,
   RefreshCw,
   Bell,
-  AlertTriangle
+  AlertTriangle,
+  Settings,
+  CheckCircle,
+  XCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -31,7 +34,6 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { useToast } from '@/hooks/use-toast';
 
 // ============================================================================
 // TYPES ET INTERFACES
@@ -56,8 +58,6 @@ const CalendarHeader = ({
   onDateChange: (date: Date) => void;
   view: CalendarView;
 }) => {
-  const { toast } = useToast();
-
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('fr-FR', {
       weekday: 'long',
@@ -69,10 +69,6 @@ const CalendarHeader = ({
 
   const goToToday = () => {
     onDateChange(new Date());
-    toast({
-      title: "Aujourd'hui",
-      description: "Vous êtes maintenant sur la date d'aujourd'hui"
-    });
   };
 
   const goToPrevious = () => {
@@ -156,12 +152,16 @@ const CalendarToolbar = ({
   view, 
   onViewChange, 
   onSearchChange,
-  onFilterChange 
+  onFilterChange,
+  isGoogleConnected,
+  onGoogleConnect
 }: {
   view: CalendarView;
   onViewChange: (view: CalendarView) => void;
   onSearchChange: (search: string) => void;
   onFilterChange: (filter: string) => void;
+  isGoogleConnected: boolean;
+  onGoogleConnect: () => void;
 }) => {
   const views: CalendarView[] = [
     { type: 'day', label: 'Jour', icon: Sun },
@@ -217,6 +217,31 @@ const CalendarToolbar = ({
             <SelectItem value="deadline">Échéances</SelectItem>
           </SelectContent>
         </Select>
+      </div>
+
+      {/* Statut Google Calendar */}
+      <div className="flex items-center space-x-2">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onGoogleConnect}
+                className="hover:bg-gray-200"
+              >
+                {isGoogleConnected ? (
+                  <CheckCircle className="w-4 h-4 text-green-600" />
+                ) : (
+                  <XCircle className="w-4 h-4 text-red-600" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Google Calendar {isGoogleConnected ? 'Connecté' : 'Déconnecté'}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
     </div>
   );
@@ -509,11 +534,13 @@ export default function AgendaClientPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showGoogleConnect, setShowGoogleConnect] = useState(false);
   
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<CalendarView>({ type: 'week', label: 'Semaine', icon: Calendar });
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all');
+  const [isGoogleConnected, setIsGoogleConnected] = useState(false);
 
   // Utiliser le hook de calendrier
   const { events, loading, error, refresh } = useCalendarEvents({
@@ -546,6 +573,33 @@ export default function AgendaClientPage() {
     refresh();
   };
 
+  const handleGoogleConnectSuccess = () => {
+    setShowGoogleConnect(false);
+    refresh(); // Rafraîchir les événements après connexion Google
+    setIsGoogleConnected(true);
+  };
+
+  const handleGoogleDisconnect = () => {
+    refresh(); // Rafraîchir les événements après déconnexion Google
+    setIsGoogleConnected(false);
+  };
+
+  useEffect(() => {
+    const checkGoogleConnection = async () => {
+      try {
+        const isConnected = await googleCalendarClientService.isConnected();
+        setIsGoogleConnected(isConnected);
+      } catch (error) {
+        console.error('Erreur lors de la vérification de la connexion Google Calendar:', error);
+        setIsGoogleConnected(false);
+      }
+    };
+
+    checkGoogleConnection();
+    const interval = setInterval(checkGoogleConnection, 5 * 60 * 1000); // Vérifier toutes les 5 minutes
+    return () => clearInterval(interval);
+  }, []);
+
   if (!user) {
     navigate('/login');
     return null;
@@ -566,6 +620,8 @@ export default function AgendaClientPage() {
         onViewChange={setView}
         onSearchChange={setSearchQuery}
         onFilterChange={setFilterType}
+        isGoogleConnected={isGoogleConnected}
+        onGoogleConnect={() => setShowGoogleConnect(true)}
       />
       
       {/* Contenu principal */}
@@ -575,24 +631,46 @@ export default function AgendaClientPage() {
             Mon Agenda
           </h2>
           
-          <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-            <DialogTrigger asChild>
-              <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-                <Plus className="w-4 h-4 mr-2" />
-                Nouvel événement
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>Créer un nouvel événement</DialogTitle>
-              </DialogHeader>
-              <CreateEventForm 
-                currentDate={currentDate} 
-                onSuccess={handleCreateSuccess}
-              />
-            </DialogContent>
-          </Dialog>
+          <div className="flex items-center space-x-3">
+            <Button
+              variant="outline"
+              onClick={() => setShowGoogleConnect(!showGoogleConnect)}
+              className="flex items-center gap-2"
+            >
+              <Settings className="w-4 h-4" />
+              {showGoogleConnect ? 'Masquer' : 'Google Calendar'}
+            </Button>
+            
+            <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+              <DialogTrigger asChild>
+                <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Nouvel événement
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Créer un nouvel événement</DialogTitle>
+                </DialogHeader>
+                <CreateEventForm 
+                  currentDate={currentDate} 
+                  onSuccess={handleCreateSuccess}
+                />
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
+
+        {/* Section Google Calendar Connect */}
+        {showGoogleConnect && (
+          <div className="mb-6">
+            <GoogleCalendarConnect
+              onConnect={handleGoogleConnectSuccess}
+              onDisconnect={handleGoogleDisconnect}
+              className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
+            />
+          </div>
+        )}
 
         {loading ? (
           <div className="flex items-center justify-center h-64">
@@ -600,15 +678,37 @@ export default function AgendaClientPage() {
           </div>
         ) : error ? (
           <div className="text-center py-12">
-            <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-4" />
+            <AlertTriangle className="w-12 h-12 text-orange-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">
-              Erreur de chargement
+              Calendrier non disponible
             </h3>
-            <p className="text-gray-500 mb-4">{error}</p>
-            <Button onClick={refresh} variant="outline">
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Réessayer
-            </Button>
+            <p className="text-gray-500 mb-4">
+              {error.includes('404') || error.includes('non trouvé') 
+                ? 'Le système de calendrier n\'est pas encore configuré. Vous pouvez créer des événements locaux ou connecter Google Calendar.'
+                : error
+              }
+            </p>
+            <div className="flex justify-center space-x-3">
+              <Button onClick={refresh} variant="outline">
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Réessayer
+              </Button>
+              <Button 
+                onClick={() => setShowGoogleConnect(true)}
+                variant="outline"
+                className="border-blue-200 text-blue-600 hover:bg-blue-50"
+              >
+                <Settings className="w-4 h-4 mr-2" />
+                Connecter Google Calendar
+              </Button>
+              <Button 
+                onClick={() => setShowCreateDialog(true)}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Créer un événement
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="space-y-6">
@@ -628,16 +728,26 @@ export default function AgendaClientPage() {
                     <p className="text-gray-500 mb-4">
                       {searchQuery || filterType !== 'all' 
                         ? 'Essayez de modifier vos critères de recherche'
-                        : 'Créez votre premier événement pour commencer'
+                        : 'Créez votre premier événement ou connectez Google Calendar pour synchroniser vos événements existants'
                       }
                     </p>
-                    <Button 
-                      onClick={() => setShowCreateDialog(true)}
-                      className="bg-blue-600 hover:bg-blue-700"
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Créer un événement
-                    </Button>
+                    <div className="flex justify-center space-x-3">
+                      <Button 
+                        onClick={() => setShowGoogleConnect(true)}
+                        variant="outline"
+                        className="border-blue-200 text-blue-600 hover:bg-blue-50"
+                      >
+                        <Settings className="w-4 h-4 mr-2" />
+                        Connecter Google Calendar
+                      </Button>
+                      <Button 
+                        onClick={() => setShowCreateDialog(true)}
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Créer un événement
+                      </Button>
+                    </div>
                   </div>
                 ) : (
                   <div className="grid gap-4">

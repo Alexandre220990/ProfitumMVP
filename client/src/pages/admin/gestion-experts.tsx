@@ -92,7 +92,7 @@ const GestionExperts = () => {
       });
       if (filters.status && filters.status !== "all") params.append('status', filters.status);
       if (filters.approval_status && filters.approval_status !== "all") params.append('approval_status', filters.approval_status);
-      const response = await fetch(`http://localhost:5001/api/admin/experts?${params}`, {
+      const response = await fetch(`/api/admin/experts?${params}`, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json'
@@ -121,7 +121,7 @@ const GestionExperts = () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
-      const response = await fetch(`http://localhost:5001/api/admin/experts/${expertId}/approve`, {
+      const response = await fetch(`/api/admin/experts/${expertId}/approve`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -141,7 +141,7 @@ const GestionExperts = () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
-      const response = await fetch(`http://localhost:5001/api/admin/experts/${expertId}/reject`, {
+      const response = await fetch(`/api/admin/experts/${expertId}/reject`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,

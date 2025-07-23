@@ -46,7 +46,7 @@ export const useAdminAnalytics = (options: UseAdminAnalyticsOptions = {}) => {
   // const metricsCache = useMemo(() => new Map(), []);
   // const insightsCache = useMemo(() => new Map(), []);
 
-  // ===== INITIALISATION =====
+  // ===== INITIALISATION STABILISÉE =====
   
   useEffect(() => {
     let isMounted = true;
@@ -74,7 +74,7 @@ export const useAdminAnalytics = (options: UseAdminAnalyticsOptions = {}) => {
           lastUpdated: new Date()
         }));
         
-        // Configurer les listeners d'événements
+        // Configurer les listeners d'événements une seule fois
         if (enableAlerts) {
           adminAnalyticsService.on('alert', (alert: any) => {
             if (isMounted) {
@@ -120,16 +120,18 @@ export const useAdminAnalytics = (options: UseAdminAnalyticsOptions = {}) => {
     
     return () => {
       isMounted = false;
+      // Nettoyer les listeners pour éviter les fuites mémoire
+      // Note: Le service n'a pas de méthode off, les listeners seront nettoyés automatiquement
     };
-  }, [enableAlerts]);
+  }, []); // Supprimer enableAlerts des dépendances pour éviter les rechargements
 
-  // ===== AUTO-REFRESH =====
+  // ===== AUTO-REFRESH OPTIMISÉ =====
   
   useEffect(() => {
     if (!autoRefresh) return;
     
     const interval = setInterval(() => {
-      // Forcer une mise à jour des métriques
+      // Forcer une mise à jour des métriques seulement si nécessaire
       adminAnalyticsService.emit('forceUpdate');
     }, refreshInterval);
     

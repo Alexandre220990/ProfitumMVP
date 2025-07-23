@@ -265,7 +265,8 @@ export const useDocumentStorage = () => {
       // Récupérer le token depuis localStorage
       const token = localStorage.getItem('token');
       
-      const response = await fetch(`http://[::1]:5004/api/client-documents/client/${clientId}`, {
+      // Utiliser l'URL relative correcte au lieu de l'URL hardcodée
+      const response = await fetch(`/api/client-documents/client/${clientId}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/components/ui/toast-notifications";
@@ -26,7 +26,7 @@ import type { ExpertBusiness, RevenueData, ProductPerformance, ClientPerformance
 
 const ExpertMesAffaires = () => {
   const navigate = useNavigate();
-  const { user, isLoading } = useAuth();
+  const { user } = useAuth();
   const { addToast } = useToast();
   
   const [businessData, setBusinessData] = useState<ExpertBusiness | null>(null);
@@ -35,60 +35,63 @@ const ExpertMesAffaires = () => {
   const [clientPerformance, setClientPerformance] = useState<ClientPerformance[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
+  const [loading, setLoading] = useState(true);
+
+  const fetchBusinessData = useCallback(async () => {
+    if (!user?.id) return;
+    
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Charger les données business
+      const businessResponse = await get<ExpertBusiness>(`/api/expert/business`);
+      if (businessResponse.success && businessResponse.data) {
+        setBusinessData(businessResponse.data);
+      }
+
+      // Charger les données de revenus
+      const revenueResponse = await get<RevenueData[]>(`/api/expert/revenue-history`);
+      if (revenueResponse.success && revenueResponse.data) {
+        setRevenueData(revenueResponse.data);
+      }
+
+      // Charger les performances par produit
+      const productResponse = await get<ProductPerformance[]>(`/api/expert/product-performance`);
+      if (productResponse.success && productResponse.data) {
+        setProductPerformance(productResponse.data);
+      }
+
+      // Charger les performances par client
+      const clientResponse = await get<ClientPerformance[]>(`/api/expert/client-performance`);
+      if (clientResponse.success && clientResponse.data) {
+        setClientPerformance(clientResponse.data);
+      }
+
+      addToast({
+        type: 'success',
+        title: 'Données chargées',
+        message: 'Vos données business ont été récupérées avec succès',
+        duration: 3000
+      });
+
+    } catch (error) {
+      console.error('Erreur chargement données business:', error);
+      setError('Erreur lors de la récupération des données');
+      addToast({
+        type: 'error',
+        title: 'Erreur',
+        message: 'Erreur lors de la récupération des données',
+        duration: 5000
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.id, addToast]);
 
   useEffect(() => {
-    const fetchBusinessData = async () => {
-      if (!user?.id) return;
-      
-      try {
-        
-        // Charger les données business
-        const businessResponse = await get<ExpertBusiness>(`/api/expert/business`);
-        if (businessResponse.success && businessResponse.data) {
-          setBusinessData(businessResponse.data);
-        }
-
-        // Charger les données de revenus
-        const revenueResponse = await get<RevenueData[]>(`/api/expert/revenue-history`);
-        if (revenueResponse.success && revenueResponse.data) {
-          setRevenueData(revenueResponse.data);
-        }
-
-        // Charger les performances par produit
-        const productResponse = await get<ProductPerformance[]>(`/api/expert/product-performance`);
-        if (productResponse.success && productResponse.data) {
-          setProductPerformance(productResponse.data);
-        }
-
-        // Charger les performances par client
-        const clientResponse = await get<ClientPerformance[]>(`/api/expert/client-performance`);
-        if (clientResponse.success && clientResponse.data) {
-          setClientPerformance(clientResponse.data);
-        }
-
-        addToast({
-          type: 'success',
-          title: 'Données chargées',
-          message: 'Vos données business ont été récupérées avec succès',
-          duration: 3000
-        });
-
-      } catch (error) {
-        console.error('Erreur chargement données business:', error);
-        setError('Erreur lors de la récupération des données');
-        addToast({
-          type: 'error',
-          title: 'Erreur',
-          message: 'Erreur lors de la récupération des données',
-          duration: 5000
-        });
-      } finally {
-        
-      }
-    };
-    
     fetchBusinessData();
-  }, [user, addToast]);
+  }, [fetchBusinessData]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('fr-FR', {
@@ -116,7 +119,7 @@ const ExpertMesAffaires = () => {
     });
   };
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex flex-col items-center justify-center">
         <Card className="p-8 text-center">

@@ -7,7 +7,6 @@ import {
   SendMessageRequest,
   TypingIndicator,
   OnlineStatus,
-  MessageStatus,
   FileAttachment
 } from '@/types/messaging';
 
@@ -58,6 +57,17 @@ class MessagingService {
   // ========================================
 
   async initialize(userId: string, userType: 'client' | 'expert' | 'admin'): Promise<void> {
+    // Éviter les initialisations multiples
+    if (this.isConnected && this.currentUserId === userId) {
+      console.log('⚠️ Service déjà connecté pour cet utilisateur');
+      return;
+    }
+
+    // Nettoyer les connexions existantes
+    if (this.isConnected) {
+      await this.disconnect();
+    }
+
     this.currentUserId = userId;
     this.currentUserType = userType;
     
@@ -236,13 +246,24 @@ class MessagingService {
   }
 
   private async createAdminConversation(): Promise<Conversation> {
-    const adminId = '00000000-0000-0000-0000-000000000000'; // ID admin système
+    // Trouver un admin disponible
+    const { data: admins } = await supabase
+      .from('users')
+      .select('id')
+      .eq('type', 'admin')
+      .limit(1);
+
+    const adminId = admins?.[0]?.id;
+    if (!adminId) {
+      throw new Error('Aucun administrateur disponible');
+    }
+
     return this.createConversation({
       participant1_id: this.currentUserId!,
       participant1_type: this.currentUserType!,
       participant2_id: adminId,
       participant2_type: 'admin',
-      conversation_type: 'admin_support',
+      conversation_type: 'support', // Utiliser 'support' au lieu de 'admin_support'
       title: 'Support Administratif',
       description: 'Conversation avec le support administratif'
     });
@@ -314,15 +335,10 @@ class MessagingService {
       const fileId = `${Date.now()}-${file.name}`;
       const filePath = `messaging/${conversationId}/${fileId}`;
 
-      // Upload avec progression (Sarah Drasner - Micro-interactions)
-      const { data, error } = await supabase.storage
+      // Upload sans progression (Supabase ne supporte pas onUploadProgress)
+      const { error } = await supabase.storage
         .from('files')
-        .upload(filePath, file, {
-          onUploadProgress: (progress) => {
-            const percentage = (progress.loaded / progress.total) * 100;
-            this.callbacks.onFileUploadProgress?.(fileId, percentage);
-          }
-        });
+        .upload(filePath, file);
 
       if (error) throw error;
 
@@ -373,7 +389,7 @@ class MessagingService {
           read_at: new Date().toISOString() 
         })
         .eq('conversation_id', conversationId)
-        .eq('sender_id', '!=', this.currentUserId);
+        .neq('sender_id', this.currentUserId);
     } catch (error) {
       console.error('❌ Erreur marquage conversation lue:', error);
       throw error;
@@ -448,7 +464,7 @@ class MessagingService {
 
   async disconnect(): Promise<void> {
     try {
-      for (const [name, channel] of this.channels) {
+      for (const [_name, channel] of this.channels) {
         await supabase.removeChannel(channel);
       }
       this.channels.clear();

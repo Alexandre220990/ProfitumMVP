@@ -15,10 +15,10 @@ interface ClientProduitEligible {
   id: string;
   clientId: string;
   produitId: string;
-  simulation_id?: number;
-  taux_final?: number;
-  montant_final?: number;
-  duree_finale?: number;
+  simulationId?: number;
+  tauxFinal?: number;
+  montantFinal?: number;
+  dureeFinale?: number;
   created_at: string;
   updated_at: string;
   ProduitEligible: {
@@ -82,7 +82,7 @@ export function useAudits(clientId?: string) {
             status: item.current_step > 0 ? "en_cours" as AuditStatus : "non_démarré" as AuditStatus,
             current_step: item.current_step || 0,
             progress: item.progress || 0,
-            potential_gain: item.montant_final || 0,
+            potential_gain: item.montantFinal || 0,
             obtained_gain: 0,
             reliability: 0,
             charter_signed: item.current_step >= 1,
@@ -90,8 +90,8 @@ export function useAudits(clientId?: string) {
             updated_at: item.updated_at,
             description: item.ProduitEligible!.description || '',
             is_eligible_product: true,
-            tauxFinal: item.taux_final || 0,
-            dureeFinale: item.duree_finale || 0
+            tauxFinal: item.tauxFinal || 0,
+            dureeFinale: item.dureeFinale || 0
           }));
 
         console.log(`✅ ${auditsMapped.length} audits mappés avec succès`);

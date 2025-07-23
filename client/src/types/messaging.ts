@@ -30,6 +30,8 @@ export interface Message {
   };
   avatar?: string;
   is_read: boolean;
+  read_at?: string;
+  delivered_at?: string;
   created_at: string;
   updated_at: string;
 }

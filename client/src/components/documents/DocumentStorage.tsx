@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useDocumentStorage } from "@/hooks/use-document-storage";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -70,8 +70,8 @@ export default function DocumentStorage({
     loadStats(); 
   }, [clientId]);
 
-  // Charger les fichiers
-  const loadFiles = async () => { 
+  // Charger les fichiers avec useCallback pour éviter les rechargements constants
+  const loadFiles = useCallback(async () => { 
     const response = await getClientFiles(clientId, {
       category: filters.category && filters.category !== 'all' ? filters.category : undefined, 
       status: filters.status && filters.status !== 'all' ? filters.status : undefined 
@@ -80,15 +80,15 @@ export default function DocumentStorage({
     if (response.success && response.files) { 
       setFiles(response.files); 
     }
-  };
+  }, [clientId, getClientFiles, filters.category, filters.status]);
 
-  // Charger les statistiques
-  const loadStats = async () => { 
+  // Charger les statistiques avec useCallback pour éviter les rechargements constants
+  const loadStats = useCallback(async () => { 
     const response = await getFileStats(clientId);
     if (response.success && response.stats) {
       setStats(response.stats); 
     }
-  };
+  }, [clientId, getFileStats]);
 
   // Gérer l'upload de fichier
   const handleFileUpload = async () => { 

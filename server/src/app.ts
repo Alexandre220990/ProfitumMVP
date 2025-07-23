@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
 import routes from './routes';
 // import { monitoringSystem } from '../lib/monitoring-system';
 
@@ -71,6 +72,25 @@ app.use(async (req, res, next) => {
 
 // Préfixe pour toutes les routes API
 app.use('/api', routes); // DÉCOMMENTÉ pour exposer toutes les routes sous /api
+
+// ✅ SERVIR LES FICHIERS STATIQUES DU CLIENT REACT
+// Chemin vers le dossier de build du client
+const clientBuildPath = path.join(__dirname, '../client/dist');
+
+// Servir les fichiers statiques (CSS, JS, images, etc.)
+app.use(express.static(clientBuildPath));
+
+// ✅ ROUTING CÔTÉ CLIENT POUR LES ROUTES REACT
+// Toutes les routes qui ne commencent pas par /api doivent être servies par l'app React
+app.get('*', (req, res) => {
+  // Ne pas intercepter les routes API
+  if (req.path.startsWith('/api')) {
+    return res.status(404).json({ error: 'API route not found' });
+  }
+  
+  // Servir index.html pour toutes les autres routes (routing côté client)
+  res.sendFile(path.join(clientBuildPath, 'index.html'));
+});
 
 // Gestion des erreurs globale
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

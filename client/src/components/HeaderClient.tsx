@@ -40,11 +40,9 @@ export default function HeaderClient({ onLogout }: HeaderClientProps) {
             onClick={() => navigate(`/dashboard/client/${user?.id}`)} 
             className="cursor-pointer group"
           >
-            <img 
-              src="/profitum_logo_texte.png" 
-              alt="Logo Profitum" 
-              className="h-8 cursor-pointer transition-all duration-300 group-hover:scale-105" 
-            />
+            <span className="text-xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-blue-600 bg-clip-text text-transparent select-none">
+              Profitum
+            </span>
           </div>
         </div>
         {/* NAVIGATION PRINCIPALE - CENTRÉE */}

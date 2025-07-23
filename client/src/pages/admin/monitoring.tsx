@@ -143,7 +143,7 @@ const MonitoringPage = () => {
                 return;
             }
 
-            const response = await fetch('http://localhost:5001/api/monitoring/dashboard', {
+            const response = await fetch('/api/monitoring/dashboard', {
                 headers: {
                     'Authorization': `Bearer ${session.access_token}`,
                     'Content-Type': 'application/json'
@@ -176,7 +176,7 @@ const MonitoringPage = () => {
                 return;
             }
 
-            const res = await fetch('http://localhost:5001/api/monitoring/network-server/status', {
+            const res = await fetch('/api/monitoring/network-server/status', {
                 headers: {
                     'Authorization': `Bearer ${session.access_token}`,
                     'Content-Type': 'application/json'
