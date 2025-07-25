@@ -31,7 +31,7 @@ export default function HeaderExpert() {
         <div onClick={() => navigate("/expert/agenda")} className="flex items-center space-x-2 hover:text-blue-600 transition-colors cursor-pointer">
           <Calendar className="h-5 w-5" /> <span>Agenda</span>
         </div>
-        <div onClick={() => navigate("/expert/messagerie-expert")} className="flex items-center space-x-2 hover:text-blue-600 transition-colors cursor-pointer">
+        <div onClick={() => navigate("/expert/messagerie")} className="flex items-center space-x-2 hover:text-blue-600 transition-colors cursor-pointer">
           <MessageCircle className="h-5 w-5" /> <span>Messagerie</span>
         </div>
         <div onClick={() => navigate("/expert/mes-affaires")} className="flex items-center space-x-2 hover:text-blue-600 transition-colors cursor-pointer">

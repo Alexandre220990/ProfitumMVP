@@ -7,6 +7,7 @@ import produitsEligiblesRoutes from "./produits-eligibles";
 import charteSignatureRoutes from "./charte-signature";
 import specializationsRoutes from "./specializations";
 import expertsRoutes from "./experts";
+import expertRoutes from "./expert";
 import expertDemoRequestRoutes from "./expert/demo-request";
 import adminRoutes from "./admin";
 import monitoringRoutes from "./monitoring";
@@ -20,6 +21,7 @@ import simulatorRoutes from "./simulator";
 import notificationsRoutes from "./notifications";
 import calendarRoutes from "./calendar";
 import sessionMigrationRoutes from "./session-migration";
+import unifiedMessagingRoutes from "./unified-messaging";
 import { enhancedAuthMiddleware, requireUserType } from "../middleware/auth-enhanced";
 import * as fs from 'fs';
 import * as path from 'path';
@@ -50,6 +52,9 @@ router.use('/specializations', specializationsRoutes);
 // Routes des experts
 router.use('/experts', expertsRoutes);
 
+// Routes expert (profil, analytics, business, etc.)
+router.use('/expert', expertRoutes);
+
 // Routes des demandes de démo expert
 router.use('/expert/demo-request', expertDemoRequestRoutes);
 
@@ -76,6 +81,32 @@ router.use('/calendar', calendarRoutes);
 
 // Routes de migration des sessions temporaires
 router.use('/session-migration', sessionMigrationRoutes);
+
+// Routes de messagerie unifiée
+router.use('/messaging', unifiedMessagingRoutes);
+
+// Routes pour les images statiques
+router.get('/avatar.png', (req, res) => {
+  res.status(200).json({ 
+    success: true, 
+    message: 'Avatar placeholder',
+    data: {
+      url: '/images/avatar-placeholder.png',
+      alt: 'Avatar utilisateur'
+    }
+  });
+});
+
+router.get('/profitum_logo_texte.png', (req, res) => {
+  res.status(200).json({ 
+    success: true, 
+    message: 'Logo Profitum',
+    data: {
+      url: '/images/profitum-logo.png',
+      alt: 'Logo Profitum'
+    }
+  });
+});
 
 // Routes de monitoring (admin uniquement)
 router.use("/monitoring", enhancedAuthMiddleware, requireUserType('admin'), monitoringRoutes);

@@ -93,8 +93,40 @@ const upload = multer({
 // ROUTES CONVERSATIONS
 // ========================================
 
+// Route spécifique pour les experts (compatibilité)
+router.get('/expert/messagerie-expert', authenticateUser, async (req, res) => {
+  try {
+    const authUser = req.user as AuthUser;
+    
+    if (authUser.type !== 'expert') {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Accès réservé aux experts' 
+      });
+    }
+
+    // Rediriger vers le système unifié
+    return res.json({
+      success: true,
+      message: 'Système de messagerie unifié',
+      data: {
+        expert_id: authUser.id,
+        conversations_url: '/api/messaging/conversations',
+        messages_url: '/api/messaging/conversations/:id/messages'
+      }
+    });
+  } catch (error) {
+    console.error('❌ Erreur messagerie expert:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
 // GET /api/messaging/conversations - Liste des conversations
-router.get('/conversations', authenticateUser, async (req, res) => {
+// GET /api/messaging/expert/conversations - Conversations spécifiques aux experts
+router.get(['/conversations', '/expert/conversations'], authenticateUser, async (req, res) => {
   try {
     const authUser = req.user as AuthUser;
     const { page = 1, limit = 20, type, status, search } = req.query;
