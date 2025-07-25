@@ -7,7 +7,7 @@ import supabase from '../config/supabase';
 import { v4 as uuidv4 } from 'uuid';
 import { createClient } from '@supabase/supabase-js';
 import { authenticateUser } from '../middleware/authenticate';
-import { AuthUser, BaseUser, UserMetadata } from '../types/auth';
+import { AuthUser, BaseUser, UserMetadata, RequestWithUser } from '../types/auth';
 import { logger } from '../utils/logger';
 import { googleCalendarService } from '../services/google-calendar-service';
 
@@ -918,7 +918,8 @@ router.get('/google/integrations', authenticateUser, async (req, res) => {
       });
     }
 
-    const integrations = await googleCalendarService.getUserIntegrations(req.user.id);
+    const authUser = req.user as AuthUser;
+    const integrations = await googleCalendarService.getUserIntegrations(authUser.id);
     
     return res.json({
       success: true,
@@ -949,8 +950,10 @@ router.post('/google/logout', authenticateUser, async (req, res) => {
       });
     }
 
+    const authUser = req.user as AuthUser;
+
     // Révoquer les tokens Google
-    await googleCalendarService.revokeUserTokens(req.user.id);
+    await googleCalendarService.revokeUserTokens(authUser.id);
     
     // Supprimer les tokens de la base de données
     await supabase
@@ -960,7 +963,7 @@ router.post('/google/logout', authenticateUser, async (req, res) => {
         google_refresh_token: null,
         google_token_expiry: null
       })
-      .eq('id', req.user.id);
+      .eq('id', authUser.id);
 
     return res.json({
       success: true,

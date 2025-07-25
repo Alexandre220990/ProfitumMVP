@@ -385,7 +385,7 @@ router.get('/stats/clients', asyncHandler(async (req, res) => {
 }));
 
 // GET /api/admin/experts - Liste des experts avec filtres
-router.get('/experts', asyncHandler(async (req, res) => {
+router.get('/experts', authenticateUser, requireUserType('admin'), asyncHandler(async (req, res) => {
   try {
     const {
       page = 1,
@@ -471,7 +471,7 @@ router.get('/experts', asyncHandler(async (req, res) => {
 }));
 
 // GET /api/admin/experts/:id - Détails d'un expert
-router.get('/experts/:id', asyncHandler(async (req, res) => {
+router.get('/experts/:id', authenticateUser, requireUserType('admin'), asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -524,7 +524,7 @@ router.get('/experts/:id', asyncHandler(async (req, res) => {
 }));
 
 // PUT /api/admin/experts/:id/approve - Approuver un expert
-router.put('/experts/:id/approve', asyncHandler(async (req, res) => {
+router.put('/experts/:id/approve', authenticateUser, requireUserType('admin'), asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
     const adminId = (req as any).user.id;
@@ -595,7 +595,7 @@ router.put('/experts/:id/approve', asyncHandler(async (req, res) => {
 }));
 
 // PUT /api/admin/experts/:id/reject - Rejeter un expert
-router.put('/experts/:id/reject', asyncHandler(async (req, res) => {
+router.put('/experts/:id/reject', authenticateUser, requireUserType('admin'), asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
     const { reason } = req.body;
@@ -658,7 +658,7 @@ router.put('/experts/:id/reject', asyncHandler(async (req, res) => {
 }));
 
 // PUT /api/admin/experts/:id - Modifier un expert
-router.put('/experts/:id', asyncHandler(async (req, res) => {
+router.put('/experts/:id', authenticateUser, requireUserType('admin'), asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
     const adminId = (req as any).user.id;
@@ -731,7 +731,7 @@ router.put('/experts/:id', asyncHandler(async (req, res) => {
 }));
 
 // POST /api/admin/experts - Créer un nouvel expert
-router.post('/experts', asyncHandler(async (req, res) => {
+router.post('/experts', authenticateUser, requireUserType('admin'), asyncHandler(async (req, res) => {
   try {
     const adminId = (req as any).user.id;
     const expertData = req.body;
@@ -892,7 +892,7 @@ router.get('/client-produits-eligibles', authenticateUser, requireUserType('admi
 }));
 
 // GET /api/admin/clients - Liste des clients avec filtres
-router.get('/clients', asyncHandler(async (req, res) => {
+router.get('/clients', authenticateUser, requireUserType('admin'), asyncHandler(async (req, res) => {
   try {
     const {
       page = 1,
@@ -1050,7 +1050,7 @@ router.post('/clients', authenticateUser, requireUserType('admin'), asyncHandler
 }));
 
 // GET /api/admin/clients/:id - Détails d'un client
-router.get('/clients/:id', asyncHandler(async (req, res) => {
+router.get('/clients/:id', authenticateUser, requireUserType('admin'), asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -1142,7 +1142,7 @@ router.get('/clients/:id', asyncHandler(async (req, res) => {
 }));
 
 // PUT /api/admin/clients/:id/status - Modifier le statut d'un client
-router.put('/clients/:id/status', asyncHandler(async (req, res) => {
+router.put('/clients/:id/status', authenticateUser, requireUserType('admin'), asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -1199,7 +1199,7 @@ router.put('/clients/:id/status', asyncHandler(async (req, res) => {
 }));
 
 // DELETE /api/admin/clients/:id - Supprimer un client
-router.delete('/clients/:id', asyncHandler(async (req, res) => {
+router.delete('/clients/:id', authenticateUser, requireUserType('admin'), asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
     const adminId = (req as any).user.id;
