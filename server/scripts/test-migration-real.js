@@ -71,7 +71,7 @@ async function testMigrationReal() {
 
     for (const response of testResponses) {
       const responseData = {
-        session_id: sessionToken,
+        session_id: sessionToken, // Le simulateur attend le session_token
         question_id: response.question_id,
         response_value: response.response_value
       };
