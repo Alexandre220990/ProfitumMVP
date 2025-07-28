@@ -354,8 +354,8 @@ const SimulateurEligibilite = () => {
       results_count: eligibilityResults.length
     });
 
-    // Naviguer vers l'inscription avec les données
-    navigate('/inscription-simulateur', {
+    // Naviguer vers la page d'inscription existante avec les données
+    navigate('/register-client', {
       state: {
         fromSimulator: true,
         sessionToken: sessionToken,

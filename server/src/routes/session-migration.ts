@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import { createSupabaseClient } from '../config/supabase';
+import { supabaseClient } from '../config/supabase';
 
 const router = Router();
-const supabase = createSupabaseClient();
+const supabase = supabaseClient;
 
 // Mapping des produits du simulateur vers les UUID de ProduitEligible
 const PRODUCT_MAPPING: { [key: string]: string } = {
@@ -111,7 +111,7 @@ router.post('/migrate', async (req, res) => {
 
     // Créer un mapping dynamique basé sur les noms/catégories
     const productMapping: { [key: string]: string } = {};
-    produits?.forEach(produit => {
+    produits?.forEach((produit: any) => {
       const nom = produit.nom?.toUpperCase();
       const categorie = produit.categorie?.toUpperCase();
       
