@@ -1,153 +1,234 @@
-import express, { Router, Request, Response } from 'express';
-import { SimulationSessionService } from '../services/SimulationSessionService';
-import { supabase } from '../lib/supabase';
+import { Router } from 'express';
+import { createSupabaseClient } from '../config/supabase';
 
-const router = express.Router();
+const router = Router();
+const supabase = createSupabaseClient();
 
-/**
- * Route pour créer une session temporaire
- * POST /api/session-migration/create-session
- */
-router.post('/create-session', async (req: Request, res: Response) => {
-  try {
-    const { simulationData } = req.body;
-    
-    if (!simulationData) {
-      return res.status(400).json({
-        success: false,
-        error: 'Données de simulation requises'
-      });
-    }
-    
-    console.log('🔄 Création session temporaire pour simulation');
-    
-    // Créer la session temporaire
-    const sessionResult = await SimulationSessionService.createTemporarySession(simulationData);
-    
-    return res.json({
-      success: true,
-      data: sessionResult,
-      message: 'Session temporaire créée avec succès'
-    });
-    
-  } catch (error) {
-    console.error('❌ Erreur création session temporaire:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Erreur lors de la création de la session temporaire'
-    });
-  }
-});
+// Mapping des produits du simulateur vers les UUID de ProduitEligible
+const PRODUCT_MAPPING: { [key: string]: string } = {
+  'TICPE': 'ticpe-uuid', // À remplacer par le vrai UUID
+  'URSSAF': 'urssaf-uuid', // À remplacer par le vrai UUID
+  'DFS': 'dfs-uuid', // À remplacer par le vrai UUID
+  'FONCIER': 'foncier-uuid' // À remplacer par le vrai UUID
+};
 
-/**
- * Route pour valider une session temporaire
- * GET /api/session-migration/validate/:sessionToken
- */
-router.get('/validate/:sessionToken', async (req: Request, res: Response) => {
+// Route pour récupérer les données d'une session
+router.get('/session-data/:sessionToken', async (req, res) => {
   try {
     const { sessionToken } = req.params;
-    
-    if (!sessionToken) {
-      return res.status(400).json({
+
+    // Récupérer la session
+    const { data: session, error: sessionError } = await supabase
+      .from('TemporarySession')
+      .select('*')
+      .eq('session_token', sessionToken)
+      .single();
+
+    if (sessionError || !session) {
+      return res.status(404).json({
         success: false,
-        error: 'Token de session requis'
+        error: 'Session non trouvée'
       });
     }
-    
-    // Valider la session
-    const isValid = await SimulationSessionService.validateSession(sessionToken);
-    
-    if (!isValid) {
-      return res.status(401).json({
-        success: false,
-        error: 'Session expirée ou invalide'
-      });
+
+    // Récupérer les réponses
+    const { data: responses, error: responsesError } = await supabase
+      .from('TemporaryResponse')
+      .select('*')
+      .eq('session_id', session.id);
+
+    if (responsesError) {
+      console.error('Erreur récupération réponses:', responsesError);
     }
-    
-    // Récupérer les données de session
-    const sessionData = await SimulationSessionService.getSessionData(sessionToken);
-    const products = await SimulationSessionService.getSessionProducts(sessionData.sessionId);
-    
+
+    // Récupérer les résultats d'éligibilité
+    const { data: eligibilityResults, error: eligibilityError } = await supabase
+      .from('TemporaryEligibility')
+      .select('*')
+      .eq('session_id', session.id);
+
+    if (eligibilityError) {
+      console.error('Erreur récupération éligibilité:', eligibilityError);
+    }
+
     return res.json({
       success: true,
       data: {
-        session: sessionData,
-        products: products
-      },
-      message: 'Session valide'
+        session,
+        responses: responses || [],
+        eligibilityResults: eligibilityResults || []
+      }
     });
-    
+
   } catch (error) {
-    console.error('❌ Erreur validation session:', error);
+    console.error('Erreur lors de la récupération des données de session:', error);
     return res.status(500).json({
       success: false,
-      error: 'Erreur lors de la validation de la session'
+      error: 'Erreur serveur'
     });
   }
 });
 
-/**
- * Route pour migrer une session vers un compte client permanent
- * POST /api/session-migration/migrate
- */
-router.post('/migrate', async (req: Request, res: Response) => {
+// Route pour migrer une session vers un compte client
+router.post('/migrate', async (req, res) => {
   try {
-    const { sessionToken, clientData } = req.body;
-    
-    // Validation des données
+    const { sessionToken, clientData, eligibilityResults } = req.body;
+
     if (!sessionToken || !clientData) {
       return res.status(400).json({
         success: false,
-        error: 'Token de session et données client requis'
+        error: 'Données manquantes'
       });
     }
-    
-    // Validation des champs obligatoires
-    const requiredFields = [
-      'email', 'password', 'username', 'company_name', 
-      'phone_number', 'address', 'city', 'postal_code', 'siren'
-    ];
-    
-    const missingFields = requiredFields.filter(field => !clientData[field]);
-    if (missingFields.length > 0) {
-      return res.status(400).json({
+
+    // 1. Récupérer la session
+    const { data: session, error: sessionError } = await supabase
+      .from('TemporarySession')
+      .select('*')
+      .eq('session_token', sessionToken)
+      .single();
+
+    if (sessionError || !session) {
+      return res.status(404).json({
         success: false,
-        error: `Champs requis manquants: ${missingFields.join(', ')}`
+        error: 'Session non trouvée'
       });
     }
-    
-    console.log('🔄 Début migration session vers client');
-    
-    // Vérifier la validité de la session
-    const isValid = await SimulationSessionService.validateSession(sessionToken);
-    if (!isValid) {
-      return res.status(401).json({
-        success: false,
-        error: 'Session expirée ou invalide'
-      });
-    }
-    
-    // Effectuer la migration
-    const migrationResult = await SimulationSessionService.migrateSessionToClient(
-      sessionToken,
-      clientData
-    );
-    
-    if (!migrationResult.success) {
+
+    // 2. Récupérer les UUIDs des produits éligibles
+    const { data: produits, error: produitsError } = await supabase
+      .from('ProduitEligible')
+      .select('id, nom, categorie')
+      .eq('active', true);
+
+    if (produitsError) {
+      console.error('Erreur récupération produits:', produitsError);
       return res.status(500).json({
         success: false,
-        error: migrationResult.error || 'Erreur lors de la migration'
+        error: 'Erreur lors de la récupération des produits'
       });
     }
+
+    // Créer un mapping dynamique basé sur les noms/catégories
+    const productMapping: { [key: string]: string } = {};
+    produits?.forEach(produit => {
+      const nom = produit.nom?.toUpperCase();
+      const categorie = produit.categorie?.toUpperCase();
+      
+      if (nom?.includes('TICPE') || categorie?.includes('TICPE')) {
+        productMapping['TICPE'] = produit.id;
+      } else if (nom?.includes('URSSAF') || categorie?.includes('URSSAF')) {
+        productMapping['URSSAF'] = produit.id;
+      } else if (nom?.includes('DFS') || categorie?.includes('DFS')) {
+        productMapping['DFS'] = produit.id;
+      } else if (nom?.includes('FONCIER') || categorie?.includes('FONCIER')) {
+        productMapping['FONCIER'] = produit.id;
+      }
+    });
+
+    console.log('🔍 Mapping des produits:', productMapping);
+
+    // 3. Récupérer le client créé (par email)
+    const { data: client, error: clientError } = await supabase
+      .from('Client')
+      .select('id')
+      .eq('email', clientData.email)
+      .single();
+
+    if (clientError || !client) {
+      return res.status(404).json({
+        success: false,
+        error: 'Client non trouvé après création'
+      });
+    }
+
+    // 4. Créer les ClientProduitEligible pour chaque résultat
+    const clientProduitsEligibles = [];
     
+    for (const result of eligibilityResults || []) {
+      const produitId = productMapping[result.produit_id];
+      
+      if (!produitId) {
+        console.warn(`⚠️ Produit non trouvé: ${result.produit_id}`);
+        continue;
+      }
+
+      const clientProduitEligible = {
+        id: crypto.randomUUID(),
+        clientId: client.id,
+        produitId: produitId,
+        statut: result.eligibility_score >= 50 ? 'eligible' : 'non_eligible',
+        tauxFinal: result.eligibility_score / 100,
+        montantFinal: result.estimated_savings || 0,
+        dureeFinale: 12, // 12 mois par défaut
+        simulationId: null, // Pas de simulation pour l'instant
+        metadata: {
+          confidence_level: result.confidence_level,
+          recommendations: result.recommendations || [],
+          session_token: sessionToken,
+          migrated_at: new Date().toISOString(),
+          original_produit_id: result.produit_id
+        },
+        notes: `Migration depuis simulateur - Score: ${result.eligibility_score}%, Confiance: ${result.confidence_level}`,
+        priorite: result.eligibility_score >= 80 ? 1 : result.eligibility_score >= 60 ? 2 : 3,
+        dateEligibilite: new Date().toISOString(),
+        current_step: 0,
+        progress: 0,
+        expert_id: null,
+        charte_signed: false,
+        charte_signed_at: null,
+        sessionId: session.id,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      clientProduitsEligibles.push(clientProduitEligible);
+    }
+
+    // 5. Insérer les ClientProduitEligible
+    if (clientProduitsEligibles.length > 0) {
+      const { data: insertedProducts, error: insertError } = await supabase
+        .from('ClientProduitEligible')
+        .insert(clientProduitsEligibles)
+        .select();
+
+      if (insertError) {
+        console.error('Erreur insertion ClientProduitEligible:', insertError);
+        return res.status(500).json({
+          success: false,
+          error: 'Erreur lors de la création des produits éligibles'
+        });
+      }
+
+      console.log(`✅ ${insertedProducts?.length || 0} produits éligibles créés`);
+    }
+
+    // 6. Marquer la session comme migrée
+    const { error: updateError } = await supabase
+      .from('TemporarySession')
+      .update({
+        migrated_to_account: true,
+        migrated_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', session.id);
+
+    if (updateError) {
+      console.error('Erreur mise à jour session:', updateError);
+    }
+
     return res.json({
       success: true,
-      data: migrationResult,
-      message: 'Migration réussie'
+      data: {
+        client_produit_eligibles: clientProduitsEligibles,
+        migrated_count: clientProduitsEligibles.length,
+        session_id: session.id
+      },
+      message: `Migration réussie: ${clientProduitsEligibles.length} produits éligibles créés`
     });
-    
+
   } catch (error) {
-    console.error('❌ Erreur migration session:', error);
+    console.error('Erreur lors de la migration:', error);
     return res.status(500).json({
       success: false,
       error: 'Erreur lors de la migration'
@@ -155,74 +236,52 @@ router.post('/migrate', async (req: Request, res: Response) => {
   }
 });
 
-/**
- * Route pour récupérer les produits d'une session temporaire
- * GET /api/session-migration/products/:sessionId
- */
-router.get('/products/:sessionId', async (req: Request, res: Response) => {
+// Route pour vérifier si une session peut être migrée
+router.get('/can-migrate/:sessionToken', async (req, res) => {
   try {
-    const { sessionId } = req.params;
-    
-    if (!sessionId) {
-      return res.status(400).json({
+    const { sessionToken } = req.params;
+
+    const { data: session, error } = await supabase
+      .from('TemporarySession')
+      .select('*')
+      .eq('session_token', sessionToken)
+      .single();
+
+    if (error || !session) {
+      return res.json({
         success: false,
-        error: 'ID de session requis'
+        can_migrate: false,
+        error: 'Session non trouvée'
       });
     }
-    
-    // Récupérer les produits de la session
-    const products = await SimulationSessionService.getSessionProducts(sessionId);
-    
+
+    if (session.migrated_to_account) {
+      return res.json({
+        success: false,
+        can_migrate: false,
+        error: 'Session déjà migrée'
+      });
+    }
+
+    if (session.expires_at && new Date(session.expires_at) < new Date()) {
+      return res.json({
+        success: false,
+        can_migrate: false,
+        error: 'Session expirée'
+      });
+    }
+
     return res.json({
       success: true,
-      data: products,
-      message: 'Produits récupérés avec succès'
+      can_migrate: true
     });
-    
+
   } catch (error) {
-    console.error('❌ Erreur récupération produits session:', error);
+    console.error('Erreur vérification migration:', error);
     return res.status(500).json({
       success: false,
-      error: 'Erreur lors de la récupération des produits'
-    });
-  }
-});
-
-/**
- * Route pour nettoyer les sessions expirées (admin seulement)
- * POST /api/session-migration/cleanup
- */
-router.post('/cleanup', async (req: Request, res: Response) => {
-  try {
-    // Vérifier les permissions admin (à implémenter selon votre système)
-    // const isAdmin = await checkAdminPermissions(req);
-    // if (!isAdmin) {
-    //   return res.status(403).json({
-    //     success: false,
-    //     error: 'Accès non autorisé'
-    //   });
-    // }
-    
-    console.log('🧹 Nettoyage des sessions expirées');
-    
-    // Appeler la fonction de nettoyage de la base de données
-    // Cette fonction est définie dans la migration SQL
-    const { data, error } = await supabase.rpc('cleanup_expired_sessions');
-    
-    if (error) {
-      throw error;
-    }
-    
-    res.json({
-      success: true,
-      message: 'Nettoyage des sessions expirées terminé'
-    });
-    
-  } catch (error) {
-    console.error('❌ Erreur nettoyage sessions:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Erreur lors du nettoyage des sessions'
+      can_migrate: false,
+      error: 'Erreur serveur'
     });
   }
 });
