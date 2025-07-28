@@ -76,10 +76,23 @@ router.post('/migrate', async (req, res) => {
   try {
     const { sessionToken, clientData, eligibilityResults } = req.body;
 
-    if (!sessionToken || !clientData) {
+    console.log('🔍 Données reçues pour migration:', { 
+      sessionToken: !!sessionToken, 
+      clientData: !!clientData, 
+      eligibilityResults: eligibilityResults?.length || 0 
+    });
+
+    if (!sessionToken) {
       return res.status(400).json({
         success: false,
-        error: 'Données manquantes'
+        error: 'Session token manquant'
+      });
+    }
+
+    if (!clientData || !clientData.email) {
+      return res.status(400).json({
+        success: false,
+        error: 'Données client manquantes ou email manquant'
       });
     }
 
@@ -131,27 +144,45 @@ router.post('/migrate', async (req, res) => {
     console.log('🔍 Mapping des produits:', productMapping);
 
     // 3. Récupérer le client créé (par email)
+    console.log('🔍 Recherche du client avec email:', clientData.email);
+    
     const { data: client, error: clientError } = await supabase
       .from('Client')
-      .select('id')
+      .select('id, email, username')
       .eq('email', clientData.email)
       .single();
 
-    if (clientError || !client) {
+    if (clientError) {
+      console.error('❌ Erreur recherche client:', clientError);
+      return res.status(500).json({
+        success: false,
+        error: 'Erreur lors de la recherche du client'
+      });
+    }
+
+    if (!client) {
+      console.error('❌ Client non trouvé avec email:', clientData.email);
       return res.status(404).json({
         success: false,
         error: 'Client non trouvé après création'
       });
     }
 
+    console.log('✅ Client trouvé:', { id: client.id, email: client.email });
+
     // 4. Créer les ClientProduitEligible pour chaque résultat
     const clientProduitsEligibles = [];
     
+    console.log('🔍 Création des produits éligibles pour', eligibilityResults?.length || 0, 'résultats');
+    
     for (const result of eligibilityResults || []) {
+      console.log(`🔍 Traitement du produit: ${result.produit_id} (${result.estimated_savings}€)`);
+      
       const produitId = productMapping[result.produit_id];
       
       if (!produitId) {
-        console.warn(`⚠️ Produit non trouvé: ${result.produit_id}`);
+        console.warn(`⚠️ Produit non trouvé dans le mapping: ${result.produit_id}`);
+        console.log('🔍 Mapping disponible:', Object.keys(productMapping));
         continue;
       }
 
