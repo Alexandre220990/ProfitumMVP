@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Link, useNavigate } from "react-router-dom";
-import { User, Mail, Lock, Building, Phone, MapPin, FileText, Loader2 } from "lucide-react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { User, Mail, Lock, Building, Phone, MapPin, FileText, Loader2, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -15,37 +15,116 @@ const formSchema = z.object({ username: z.string().optional(), email: z.string()
 
 type FormData = RegisterCredentials & { siren: string; };
 
-export default function CreateAccountClient() { const { toast } = useToast();
+export default function CreateAccountClient() { 
+  const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
   const { setUser } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+  const [fromSimulator, setFromSimulator] = useState(false);
+  const [eligibilityResults, setEligibilityResults] = useState<any[]>([]);
+  const [totalSavings, setTotalSavings] = useState(0);
+  const [sessionToken, setSessionToken] = useState<string>('');
 
   const form = useForm<FormData>({ resolver: zodResolver(formSchema), defaultValues: {
       username: "", email: "", password: "", company_name: "", phone_number: "", address: "", city: "", postal_code: "", siren: "" },
   });
 
-  const onSubmit = async (data: FormData) => { try {
+  // Vérifier si on vient du simulateur
+  useEffect(() => {
+    const state = location.state as any;
+    if (state?.fromSimulator && state?.sessionToken && state?.eligibilityResults) {
+      setFromSimulator(true);
+      setSessionToken(state.sessionToken);
+      setEligibilityResults(state.eligibilityResults);
+      setTotalSavings(state.eligibilityResults.reduce((sum: number, r: any) => sum + r.estimated_savings, 0));
+      
+      // Pré-remplir le formulaire avec les données extraites si disponibles
+      if (state.extractedData) {
+        const extractedData = state.extractedData;
+        // Chercher le nom de l'entreprise dans les réponses
+        const companyResponse = Object.values(extractedData).find((value: any) => 
+          typeof value === 'string' && (value.includes('Transport') || value.includes('BTP') || value.includes('Agricole'))
+        );
+        
+        if (companyResponse) {
+          form.setValue('company_name', companyResponse as string);
+        }
+      }
+    }
+  }, [location, form]);
+
+  const onSubmit = async (data: FormData) => { 
+    try {
       setIsLoading(true);
 
       const cleanSiren = data.siren.replace(/\D/g, "");
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL }/api/auth/register`, { method: "POST", headers: { "Content-Type": "application/json" },
+      // Si on vient du simulateur, migrer les données
+      if (fromSimulator && sessionToken) {
+        try {
+          // 1. Récupérer les données de session
+          const sessionResponse = await fetch(`${import.meta.env.VITE_API_URL}/api/session-migration/session-data/${sessionToken}`);
+          const sessionData = await sessionResponse.json();
+          
+          if (!sessionData.success) {
+            console.warn('Impossible de récupérer les données de session, continuation sans migration');
+          } else {
+            // 2. Préparer les données de migration
+            const migrationData = {
+              sessionToken: sessionToken,
+              clientData: {
+                ...data,
+                siren: cleanSiren,
+                type: "client"
+              },
+              eligibilityResults: eligibilityResults
+            };
+
+            // 3. Effectuer la migration
+            const migrationResponse = await fetch(`${import.meta.env.VITE_API_URL}/api/session-migration/migrate`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(migrationData)
+            });
+
+            const migrationResult = await migrationResponse.json();
+
+            if (!migrationResult.success) {
+              console.warn('Erreur lors de la migration:', migrationResult.error);
+              // Continuer sans migration plutôt que d'échouer complètement
+            } else {
+              console.log('✅ Migration réussie:', migrationResult.data);
+            }
+          }
+        } catch (migrationError) {
+          console.warn('Erreur lors de la migration, continuation sans migration:', migrationError);
+          // Ne pas faire échouer l'inscription à cause de la migration
+        }
+      }
+
+      // Inscription normale
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...data, siren: cleanSiren, type: "client" }),
       });
 
       const json = await response.json();
 
-      if (!json.success || !json.data) { 
-        throw new Error(json.message || "Erreur lors de l'inscription"); 
+      if (!json.success || !json.data) {
+        throw new Error(json.message || "Erreur lors de l'inscription");
       }
 
       const { token, user } = json.data;
 
-      if (!token || !user) { 
+      if (!token || !user) {
         toast({
-          title: "Erreur", 
-          description: "Données utilisateur incomplètes", 
-          variant: "destructive" 
+          title: "Erreur",
+          description: "Données utilisateur incomplètes",
+          variant: "destructive"
         });
         return;
       }
@@ -53,16 +132,37 @@ export default function CreateAccountClient() { const { toast } = useToast();
       localStorage.setItem("token", token);
       setUser(user);
 
-      toast({ 
-        title: "Inscription réussie", 
-        description: `Bienvenue ${user.username || user.email}`,
+      // Nettoyage des données temporaires
+      if (fromSimulator) {
+        localStorage.removeItem('sessionToken');
+        localStorage.removeItem('eligibilityResults');
+        sessionStorage.clear();
+      }
+
+      toast({
+        title: fromSimulator ? "🎉 Inscription réussie avec migration !" : "Inscription réussie",
+        description: fromSimulator 
+          ? `Bienvenue ${user.username || user.email} ! Votre compte a été créé avec ${eligibilityResults.length} produits éligibles.`
+          : `Bienvenue ${user.username || user.email}`,
       });
 
-      navigate(`/dashboard/client/${user.id}`);
-    } catch (error) { console.error("❌ Erreur d'inscription: ", error);
+      // Rediriger vers le dashboard avec les données migrées si applicable
+      navigate(`/dashboard/client/${user.id}`, {
+        state: fromSimulator ? {
+          fromSimulator: true,
+          migrationData: { eligibilityResults, totalSavings }
+        } : undefined
+      });
+    } catch (error) {
+      console.error("❌ Erreur d'inscription: ", error);
       toast({
-        title: "Erreur", description: error instanceof Error ? error.message : "Une erreur est survenue", variant: "destructive" });
-    } finally { setIsLoading(false); }
+        title: "Erreur",
+        description: error instanceof Error ? error.message : "Une erreur est survenue",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const formFields = [{ name: "username", label: "Nom d'utilisateur", icon: User },
@@ -80,13 +180,31 @@ export default function CreateAccountClient() { const { toast } = useToast();
       { /* Branding */ }
       <div className="hidden md:flex w-1/2 bg-gradient-to-r from-blue-600 to-blue-800 text-white p-12 flex-col justify-center">
         <h1 className="text-4xl font-extrabold">Rejoignez Profitum</h1>
-        <p className="mt-4 text-lg opacity-90">Créez votre compte client et accédez à nos services</p>
+        <p className="mt-4 text-lg opacity-90">
+          {fromSimulator 
+            ? `Économisez jusqu'à ${totalSavings.toLocaleString()}€ avec nos optimisations`
+            : "Créez votre compte client et accédez à nos services"
+          }
+        </p>
+        {fromSimulator && (
+          <div className="mt-6 p-4 bg-white/10 rounded-lg">
+            <div className="flex items-center gap-2 mb-2">
+              <CheckCircle className="w-5 h-5 text-green-400" />
+              <span className="font-semibold">Simulation terminée</span>
+            </div>
+            <p className="text-sm opacity-90">
+              {eligibilityResults.length} produit{eligibilityResults.length > 1 ? 's' : ''} éligible{eligibilityResults.length > 1 ? 's' : ''} détecté{eligibilityResults.length > 1 ? 's' : ''}
+            </p>
+          </div>
+        )}
       </div>
 
       { /* Formulaire */ }
       <div className="w-full md:w-1/2 flex items-center justify-center px-6">
         <div className="max-w-lg w-full space-y-6 bg-white p-8 rounded-lg shadow-lg">
-          <h2 className="text-3xl font-bold text-center text-gray-800">Créer un compte</h2>
+          <h2 className="text-3xl font-bold text-center text-gray-800">
+            {fromSimulator ? "Finalisez votre inscription" : "Créer un compte"}
+          </h2>
           <p className="text-center text-gray-500">
             Déjà inscrit ?{ " " }
             <Link to="/connexion-client" className="text-blue-600 font-medium hover:underline">
@@ -121,7 +239,7 @@ export default function CreateAccountClient() { const { toast } = useToast();
                 className="w-full py-3 text-lg bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-md transition-all"
                 disabled={ isLoading }
               >
-                { isLoading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "Créer un compte" }
+                { isLoading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : (fromSimulator ? "Créer mon compte et accéder aux optimisations" : "Créer un compte") }
               </Button>
             </form>
           </Form>
