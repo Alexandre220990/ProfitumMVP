@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { supabaseClient } from '../config/supabase';
+import crypto from 'crypto';
 
 const router = Router();
 const supabase = supabaseClient;
