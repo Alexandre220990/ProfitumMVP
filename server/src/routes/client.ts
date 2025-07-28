@@ -96,14 +96,23 @@ router.put('/profile', authenticateUser, async (req: Request, res: Response) => 
 // GET /api/client/produits-eligibles - Récupérer les produits éligibles du client
 router.get('/produits-eligibles', authenticateUser, async (req: Request, res: Response) => {
   try {
+    console.log('🔍 Route /api/client/produits-eligibles appelée');
+    
     if (!req.user) {
+      console.log('❌ Utilisateur non authentifié');
       return res.status(401).json({ success: false, message: 'Non authentifié' });
     }
 
     const authUser = req.user as AuthUser;
+    console.log('🔍 Utilisateur authentifié:', { 
+      id: authUser.id, 
+      email: authUser.email, 
+      type: authUser.type 
+    });
     
     // Vérifier que l'utilisateur est client
     if (authUser.type !== 'client') {
+      console.log('❌ Type utilisateur incorrect:', authUser.type);
       return res.status(403).json({ success: false, message: 'Accès non autorisé' });
     }
 
