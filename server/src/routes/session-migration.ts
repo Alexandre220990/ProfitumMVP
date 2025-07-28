@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { supabaseClient } from '../config/supabase';
+import { supabaseClient, supabaseAdmin } from '../config/supabase';
 import crypto from 'crypto';
 
 const router = Router();
@@ -192,9 +192,9 @@ router.post('/migrate', async (req, res) => {
       clientProduitsEligibles.push(clientProduitEligible);
     }
 
-    // 5. Insérer les ClientProduitEligible
+    // 5. Insérer les ClientProduitEligible avec supabaseAdmin pour contourner RLS
     if (clientProduitsEligibles.length > 0) {
-      const { data: insertedProducts, error: insertError } = await supabase
+      const { data: insertedProducts, error: insertError } = await supabaseAdmin
         .from('ClientProduitEligible')
         .insert(clientProduitsEligibles)
         .select();
