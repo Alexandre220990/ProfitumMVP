@@ -6,10 +6,13 @@ const supabase = supabaseClient;
 
 // Mapping des produits du simulateur vers les UUID de ProduitEligible
 const PRODUCT_MAPPING: { [key: string]: string } = {
-  'TICPE': 'ticpe-uuid', // À remplacer par le vrai UUID
-  'URSSAF': 'urssaf-uuid', // À remplacer par le vrai UUID
-  'DFS': 'dfs-uuid', // À remplacer par le vrai UUID
-  'FONCIER': 'foncier-uuid' // À remplacer par le vrai UUID
+  'TICPE': '32dd9cf8-15e2-4375-86ab-a95158d3ada1',
+  'URSSAF': 'd1e8f740-7c2a-4b5e-9a91-0e15c0e7d3a2',
+  'DFS': 'e2f9a830-8d3b-4c7c-b590-1d7631c0d4b5',
+  'FONCIER': 'c5d2e980-4f63-44c0-b8a9-9d6e8e21c0f7',
+  'CIR': '37da1c4e-3fcc-49f8-9acb-9b75e231edfd', // Recouvrement
+  'CEE': 'b7f3c891-28d9-4982-b0eb-821c9e7cbcf0',
+  'AUDIT_ENERGETIQUE': 'bc2b94ec-659b-4cf5-a693-d61178b03caf' // Optimisation Énergie
 };
 
 // Route pour récupérer les données d'une session
@@ -110,37 +113,8 @@ router.post('/migrate', async (req, res) => {
       });
     }
 
-    // 2. Récupérer les UUIDs des produits éligibles
-    const { data: produits, error: produitsError } = await supabase
-      .from('ProduitEligible')
-      .select('id, nom, categorie')
-      .eq('active', true);
-
-    if (produitsError) {
-      console.error('Erreur récupération produits:', produitsError);
-      return res.status(500).json({
-        success: false,
-        error: 'Erreur lors de la récupération des produits'
-      });
-    }
-
-    // Créer un mapping dynamique basé sur les noms/catégories
-    const productMapping: { [key: string]: string } = {};
-    produits?.forEach((produit: any) => {
-      const nom = produit.nom?.toUpperCase();
-      const categorie = produit.categorie?.toUpperCase();
-      
-      if (nom?.includes('TICPE') || categorie?.includes('TICPE')) {
-        productMapping['TICPE'] = produit.id;
-      } else if (nom?.includes('URSSAF') || categorie?.includes('URSSAF')) {
-        productMapping['URSSAF'] = produit.id;
-      } else if (nom?.includes('DFS') || categorie?.includes('DFS')) {
-        productMapping['DFS'] = produit.id;
-      } else if (nom?.includes('FONCIER') || categorie?.includes('FONCIER')) {
-        productMapping['FONCIER'] = produit.id;
-      }
-    });
-
+    // 2. Utiliser le mapping statique des produits
+    const productMapping = PRODUCT_MAPPING;
     console.log('🔍 Mapping des produits:', productMapping);
 
     // 3. Récupérer le client créé (par email)
