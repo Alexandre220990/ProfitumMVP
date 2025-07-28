@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, Clock, Calculator, Building2, Truck, Home, DollarSign, UserPlus, Check, Award, Target, Zap, ArrowRight, CheckCircle } from "lucide-react";
+import { ChevronLeft, Clock, Calculator, Building2, Truck, Home, DollarSign, Check, Target, Zap, ArrowRight, CheckCircle } from "lucide-react";
 import { config } from "@/config/env";
 import PublicHeader from '@/components/PublicHeader';
 
@@ -354,7 +354,7 @@ const SimulateurEligibilite = () => {
   const handleInscription = () => { 
     // Tracking conversion
     trackEvent('simulator_conversion', {
-      total_savings: eligibilityResults.reduce((sum, r) => sum + r.estimated_savings, 0),
+      total_savings: eligibilityResults.reduce((sum, r) => sum + (r.estimated_savings || 0), 0),
       results_count: eligibilityResults.length
     });
 
@@ -379,15 +379,7 @@ const SimulateurEligibilite = () => {
     return icons[produitId] || DollarSign;
   };
 
-  const getProductColor = (produitId: string) => { 
-    const colors: Record<string, string> = {
-      'TICPE': 'bg-blue-100 text-blue-800', 
-      'URSSAF': 'bg-red-100 text-red-800', 
-      'DFS': 'bg-teal-100 text-teal-800', 
-      'FONCIER': 'bg-indigo-100 text-indigo-800' 
-    };
-    return colors[produitId] || 'bg-gray-100 text-gray-800';
-  };
+
 
   const generatePersonalizedMessage = (result: EligibilityResult) => { 
     const messages = {
@@ -483,158 +475,226 @@ const SimulateurEligibilite = () => {
 
   // Affichage des résultats
   if (showResults) {
-    const totalSavings = eligibilityResults.reduce((sum, r) => sum + r.estimated_savings, 0);
+    const totalSavings = eligibilityResults.reduce((sum, r) => sum + (r.estimated_savings || 0), 0);
+    const highEligibilityCount = eligibilityResults.filter(r => (r.eligibility_score || 0) >= 70).length;
+    const eligibleProductsCount = eligibilityResults.filter(r => (r.estimated_savings || 0) > 0).length;
 
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
         <PublicHeader />
         
-        <div className="max-w-6xl mx-auto px-4 py-8">
-          <div className="text-center space-y-8">
-            <div className="space-y-6">
-              <div className="bg-gradient-to-r from-green-500 to-emerald-600 p-4 rounded-full w-24 h-24 mx-auto flex items-center justify-center">
-                <Award className="w-12 h-12 text-white" />
-              </div>
-              <h1 className="text-4xl md:text-6xl font-bold text-slate-800">
-                Vos résultats
-              </h1>
-              <p className="text-xl text-slate-600">
-                Voici vos opportunités d'optimisation identifiées
-              </p>
+        {/* Header Section - Compact et élégant */}
+        <div className="max-w-7xl mx-auto px-6 py-12">
+          <div className="text-center space-y-4 mb-12">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl shadow-lg mb-6">
+              <CheckCircle className="w-8 h-8 text-white" />
             </div>
+            <h1 className="text-3xl font-bold text-slate-800 tracking-tight">
+              Vos résultats d'éligibilité
+            </h1>
+            <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+              Analyse personnalisée de vos opportunités d'optimisation fiscale et financière
+            </p>
+          </div>
 
-            <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-3xl p-8 border-2 border-green-200">
-              <div className="text-6xl font-bold text-green-600 mb-2">
-                {totalSavings.toLocaleString('fr-FR')}€
+          {/* Hero Results - Impact visuel modéré */}
+          <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-8 border border-white/60 shadow-xl mb-12">
+            <div className="text-center space-y-6">
+              <div className="space-y-2">
+                <div className="text-5xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+                  {totalSavings.toLocaleString('fr-FR')}€
+                </div>
+                <div className="text-lg text-slate-600 font-medium">
+                  d'économies potentielles identifiées
+                </div>
               </div>
-              <div className="text-xl text-green-700">
-                d'économies potentielles identifiées
+              
+              {/* Métriques clés en grille */}
+              <div className="grid grid-cols-3 gap-6 max-w-2xl mx-auto">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-slate-800">{eligibleProductsCount}</div>
+                  <div className="text-sm text-slate-600">Produits éligibles</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-slate-800">{highEligibilityCount}</div>
+                  <div className="text-sm text-slate-600">Très éligibles</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-slate-800">95%</div>
+                  <div className="text-sm text-slate-600">Taux de succès</div>
+                </div>
               </div>
             </div>
+          </div>
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {eligibilityResults.map((result) => {
-                const message = generatePersonalizedMessage(result);
-                const details = generateProductDetails(result);
-                const Icon = getProductIcon(result.produit_id);
+          {/* Products Grid - Layout moderne */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+            {eligibilityResults.map((result) => {
+              const message = generatePersonalizedMessage(result);
+              const details = generateProductDetails(result);
+              const Icon = getProductIcon(result.produit_id);
+              const isHighEligibility = (result.eligibility_score || 0) >= 70;
+              const hasSavings = (result.estimated_savings || 0) > 0;
 
-                return (
-                  <Card key={result.produit_id} className="bg-white/80 backdrop-blur-sm border border-white/60 rounded-2xl overflow-hidden hover:shadow-xl transition-all duration-300">
-                    <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50/50 border-b border-slate-100">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <div className={`p-2 rounded-xl ${getProductColor(result.produit_id)}`}>
-                            <Icon className="w-6 h-6" />
-                          </div>
-                          <div>
-                            <h3 className="font-semibold text-slate-800">{result.produit_id}</h3>
-                            <p className="text-sm text-slate-600">Score: {result.eligibility_score}%</p>
-                          </div>
+              return (
+                <div 
+                  key={result.produit_id} 
+                  className={`group relative bg-white/90 backdrop-blur-sm border border-white/60 rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 ${
+                    hasSavings ? 'hover:border-emerald-200' : 'hover:border-slate-200'
+                  }`}
+                >
+                  {/* Header de la card */}
+                  <div className="p-6 border-b border-slate-100">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center space-x-3">
+                        <div className={`p-3 rounded-xl transition-colors duration-300 ${
+                          hasSavings 
+                            ? 'bg-emerald-100 text-emerald-700 group-hover:bg-emerald-200' 
+                            : 'bg-slate-100 text-slate-600'
+                        }`}>
+                          <Icon className="w-6 h-6" />
                         </div>
-                        <Badge 
-                          variant={result.eligibility_score >= 70 ? "default" : "secondary"}
-                          className="text-xs"
-                        >
-                          {result.eligibility_score >= 70 ? 'Très éligible' : 'Éligible'}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    
-                    <CardContent className="p-6 space-y-6">
-                      <div className="text-center">
-                        <div className="text-3xl font-bold text-green-600 mb-2">
-                          {result.estimated_savings.toLocaleString('fr-FR')}€
-                        </div>
-                        <p className="text-sm text-slate-600">
-                          Économies estimées
-                        </p>
-                      </div>
-
-                      <div className="space-y-4">
-                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4">
-                          <h4 className="font-semibold text-slate-800 mb-2">{message.title}</h4>
-                          <p className="text-sm text-slate-600">{message.subtitle}</p>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                          <div className="text-center">
-                            <div className="font-semibold text-slate-800">{details.savings.average}€</div>
-                            <div className="text-slate-600">Gain moyen</div>
-                          </div>
-                          <div className="text-center">
-                            <div className="font-semibold text-slate-800">{details.successRate}</div>
-                            <div className="text-slate-600">Taux de succès</div>
-                          </div>
-                        </div>
-
-                        {/* Recommandations personnalisées */}
-                        {result.recommendations && result.recommendations.length > 0 && (
-                          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-6">
-                            <h4 className="font-semibold text-slate-800 mb-4 flex items-center">
-                              <Target className="w-5 h-5 mr-2 text-blue-600" />
-                              Recommandations personnalisées :
-                            </h4>
-                            <ul className="space-y-3">
-                              {result.recommendations.map((rec, index) => (
-                                <li key={index} className="text-sm text-slate-700 flex items-start">
-                                  <CheckCircle className="w-4 h-4 text-green-500 mr-3 mt-0.5 flex-shrink-0" />
-                                  {rec}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-
-                        {/* Urgence */}
-                        <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border-l-4 border-yellow-400 p-4 rounded-2xl">
-                          <p className="text-sm text-yellow-800 font-medium flex items-center">
-                            <Zap className="w-4 h-4 mr-2" />
-                            {message.urgency}
+                        <div>
+                          <h3 className="font-semibold text-slate-800 text-lg">{result.produit_id}</h3>
+                          <p className="text-sm text-slate-500">
+                            Score: {result.eligibility_score || 0}%
                           </p>
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
+                      <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        isHighEligibility 
+                          ? 'bg-emerald-100 text-emerald-700' 
+                          : 'bg-slate-100 text-slate-600'
+                      }`}>
+                        {isHighEligibility ? 'Très éligible' : 'Éligible'}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Contenu principal */}
+                  <div className="p-6 space-y-6">
+                    {/* Montant principal */}
+                    <div className="text-center">
+                      <div className={`text-3xl font-bold mb-2 ${
+                        hasSavings ? 'text-emerald-600' : 'text-slate-400'
+                      }`}>
+                        {(result.estimated_savings || 0).toLocaleString('fr-FR')}€
+                      </div>
+                      <p className="text-sm text-slate-600">
+                        Économies estimées
+                      </p>
+                    </div>
 
-            {/* Call-to-Action */}
-            <div className="text-center space-y-8">
-              <div className="bg-gradient-to-r from-blue-50/80 to-indigo-50/80 backdrop-blur-sm rounded-3xl p-10 border-2 border-blue-200/60 max-w-4xl mx-auto">
-                <h3 className="text-3xl font-light text-blue-900 mb-6">
-                  🎁 Offre spéciale simulation
-                </h3>
-                <p className="text-lg text-blue-700 mb-8 font-light max-w-2xl mx-auto">
-                  Pour profiter de ces opportunités, créez votre compte gratuitement et accédez à nos experts certifiés.
-                </p>
-                
-                <div className="grid md:grid-cols-3 gap-8 mb-8">
-                  <div className="text-center">
-                    <div className="text-4xl font-bold text-green-600 mb-2">100%</div>
-                    <div className="text-sm text-blue-600 font-medium">Gratuit</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-4xl font-bold text-green-600 mb-2">24h</div>
-                    <div className="text-sm text-blue-600 font-medium">Mise en relation</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-4xl font-bold text-green-600 mb-2">500+</div>
-                    <div className="text-sm text-blue-600 font-medium">Experts certifiés</div>
+                    {/* Message personnalisé */}
+                    <div className="bg-gradient-to-r from-slate-50 to-blue-50 rounded-xl p-4">
+                      <h4 className="font-semibold text-slate-800 mb-2 text-sm">
+                        {message.title}
+                      </h4>
+                      <p className="text-sm text-slate-600 leading-relaxed">
+                        {message.subtitle}
+                      </p>
+                    </div>
+
+                    {/* Métriques détaillées */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="text-center p-3 bg-slate-50 rounded-lg">
+                        <div className="font-semibold text-slate-800 text-sm">
+                          {details.savings.average}€
+                        </div>
+                        <div className="text-xs text-slate-600">Gain moyen</div>
+                      </div>
+                      <div className="text-center p-3 bg-slate-50 rounded-lg">
+                        <div className="font-semibold text-slate-800 text-sm">
+                          {details.successRate}
+                        </div>
+                        <div className="text-xs text-slate-600">Taux de succès</div>
+                      </div>
+                    </div>
+
+                    {/* Recommandations */}
+                    {result.recommendations && result.recommendations.length > 0 && (
+                      <div className="space-y-3">
+                        <h4 className="font-semibold text-slate-800 text-sm flex items-center">
+                          <Target className="w-4 h-4 mr-2 text-emerald-600" />
+                          Recommandations
+                        </h4>
+                        <ul className="space-y-2">
+                          {result.recommendations.slice(0, 2).map((rec, index) => (
+                            <li key={index} className="text-sm text-slate-700 flex items-start">
+                              <CheckCircle className="w-3 h-3 text-emerald-500 mr-2 mt-1 flex-shrink-0" />
+                              <span className="leading-relaxed">{rec}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Urgence */}
+                    <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-l-3 border-amber-400 p-3 rounded-xl">
+                      <p className="text-xs text-amber-800 font-medium flex items-center">
+                        <Zap className="w-3 h-3 mr-2" />
+                        {message.urgency}
+                      </p>
+                    </div>
                   </div>
                 </div>
-                
-                <Button 
+              );
+            })}
+          </div>
+
+          {/* CTA Section - Conversion optimisée */}
+          <div className="bg-gradient-to-r from-blue-50/80 to-indigo-50/80 backdrop-blur-sm rounded-3xl p-10 border border-blue-200/60">
+            <div className="text-center space-y-8 max-w-4xl mx-auto">
+              <div className="space-y-4">
+                <h3 className="text-2xl font-bold text-blue-900">
+                  🎁 Offre spéciale simulation
+                </h3>
+                <p className="text-lg text-blue-700 font-light max-w-2xl mx-auto leading-relaxed">
+                  Transformez ces opportunités en économies réelles. Créez votre compte gratuitement 
+                  et accédez à nos experts certifiés pour maximiser vos gains.
+                </p>
+              </div>
+              
+              {/* Avantages en grille */}
+              <div className="grid md:grid-cols-3 gap-8">
+                <div className="text-center group">
+                  <div className="w-16 h-16 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                    <span className="text-2xl font-bold text-white">100%</span>
+                  </div>
+                  <div className="text-sm font-medium text-blue-700">Gratuit</div>
+                  <div className="text-xs text-blue-600 mt-1">Aucun engagement</div>
+                </div>
+                <div className="text-center group">
+                  <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-2xl mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                    <span className="text-2xl font-bold text-white">24h</span>
+                  </div>
+                  <div className="text-sm font-medium text-blue-700">Mise en relation</div>
+                  <div className="text-xs text-blue-600 mt-1">Expert dédié</div>
+                </div>
+                <div className="text-center group">
+                  <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-600 rounded-2xl mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                    <span className="text-2xl font-bold text-white">500+</span>
+                  </div>
+                  <div className="text-sm font-medium text-blue-700">Experts certifiés</div>
+                  <div className="text-xs text-blue-600 mt-1">Sélectionnés</div>
+                </div>
+              </div>
+
+              {/* Bouton d'action principal */}
+              <div className="pt-4">
+                <button
                   onClick={handleInscription}
-                  className="group relative bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold px-10 py-4 text-lg rounded-full hover:from-green-600 hover:to-emerald-700 transform hover:scale-105 transition-all duration-300 shadow-2xl hover:shadow-green-500/25"
+                  className="group relative bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold py-4 px-8 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full opacity-0 group-hover:opacity-20 transition-opacity duration-300 blur-xl"></div>
-                  <span className="relative flex items-center">
-                    <UserPlus className="w-5 h-5 mr-3" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
+                  <span className="relative flex items-center justify-center">
                     Créer mon compte gratuitement
-                    <ArrowRight className="w-5 h-5 ml-3 group-hover:translate-x-1 transition-transform duration-300" />
+                    <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
                   </span>
-                </Button>
+                </button>
+                <p className="text-sm text-blue-600 mt-4 font-medium">
+                  💰 Inscription gratuite • 💰 Économies immédiates • 💰 Satisfaction garantie
+                </p>
               </div>
             </div>
           </div>
