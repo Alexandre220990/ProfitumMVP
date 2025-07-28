@@ -121,7 +121,7 @@ router.post('/migrate', async (req, res) => {
     // 3. Récupérer le client créé (par email)
     console.log('🔍 Recherche du client avec email:', clientData.email);
     
-    const { data: client, error: clientError } = await supabase
+    const { data: client, error: clientError } = await supabaseAdmin
       .from('Client')
       .select('id, email, username')
       .eq('email', clientData.email)
