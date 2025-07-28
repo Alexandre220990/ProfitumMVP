@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { supabaseClient } from '../config/supabase';
+import { supabaseClient, supabaseAdmin } from '../config/supabase';
 
 const router = Router();
 
@@ -17,7 +17,7 @@ router.post('/client-by-email', async (req, res) => {
 
     console.log('🔍 Recherche client par email:', email);
 
-    const { data: client, error } = await supabaseClient
+    const { data: client, error } = await supabaseAdmin
       .from('Client')
       .select('id, email, username, created_at')
       .eq('email', email)
@@ -62,7 +62,7 @@ router.get('/all-clients', async (req, res) => {
   try {
     console.log('🔍 Récupération de tous les clients...');
 
-    const { data: clients, error } = await supabaseClient
+    const { data: clients, error } = await supabaseAdmin
       .from('Client')
       .select('id, email, username, created_at')
       .order('created_at', { ascending: false })
