@@ -162,7 +162,6 @@ router.post('/migrate', async (req, res) => {
       }
 
       const clientProduitEligible = {
-        id: crypto.randomUUID(),
         clientId: client.id,
         produitId: produitId,
         statut: result.eligibility_score >= 50 ? 'eligible' : 'non_eligible',
@@ -184,9 +183,7 @@ router.post('/migrate', async (req, res) => {
         progress: 0,
         expert_id: null,
         charte_signed: false,
-        charte_signed_at: null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        charte_signed_at: null
       };
 
       clientProduitsEligibles.push(clientProduitEligible);
