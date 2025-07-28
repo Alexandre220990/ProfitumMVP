@@ -197,10 +197,13 @@ router.post('/migrate', async (req, res) => {
         .select();
 
       if (insertError) {
-        console.error('Erreur insertion ClientProduitEligible:', insertError);
+        console.error('❌ Erreur insertion ClientProduitEligible:', insertError);
+        console.error('📋 Détails erreur:', JSON.stringify(insertError, null, 2));
+        console.error('📤 Données envoyées:', JSON.stringify(clientProduitsEligibles, null, 2));
         return res.status(500).json({
           success: false,
-          error: 'Erreur lors de la création des produits éligibles'
+          error: 'Erreur lors de la création des produits éligibles',
+          details: insertError.message || insertError
         });
       }
 
@@ -232,10 +235,12 @@ router.post('/migrate', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Erreur lors de la migration:', error);
+    console.error('❌ Erreur lors de la migration:', error);
+    console.error('📋 Stack trace:', error instanceof Error ? error.stack : 'Stack trace non disponible');
     return res.status(500).json({
       success: false,
-      error: 'Erreur lors de la migration'
+      error: 'Erreur lors de la migration',
+      details: error instanceof Error ? error.message : String(error)
     });
   }
 });
@@ -285,7 +290,8 @@ router.get('/can-migrate/:sessionToken', async (req, res) => {
     return res.status(500).json({
       success: false,
       can_migrate: false,
-      error: 'Erreur serveur'
+      error: 'Erreur serveur',
+      details: error instanceof Error ? error.message : String(error)
     });
   }
 });
