@@ -17,11 +17,10 @@ router.post('/client-by-email', async (req, res) => {
 
     console.log('🔍 Recherche client par email:', email);
 
-    const { data: client, error } = await supabaseAdmin
+    const { data: clients, error } = await supabaseAdmin
       .from('Client')
       .select('id, email, username, created_at')
-      .eq('email', email)
-      .single();
+      .eq('email', email);
 
     if (error) {
       console.error('❌ Erreur recherche client:', error);
@@ -31,6 +30,8 @@ router.post('/client-by-email', async (req, res) => {
         details: error.message
       });
     }
+
+    const client = clients && clients.length > 0 ? clients[0] : null;
 
     if (!client) {
       console.log('❌ Client non trouvé:', email);
