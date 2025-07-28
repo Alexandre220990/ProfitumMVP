@@ -185,7 +185,6 @@ router.post('/migrate', async (req, res) => {
         expert_id: null,
         charte_signed: false,
         charte_signed_at: null,
-        sessionId: session.id,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
