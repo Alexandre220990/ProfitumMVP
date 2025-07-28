@@ -31,21 +31,23 @@ router.get('/session-data/:sessionToken', async (req, res) => {
       });
     }
 
-    // Récupérer les réponses (utiliser session_id ou session_token)
+    // Récupérer les réponses avec le bon session_id
     const { data: responses, error: responsesError } = await supabase
       .from('TemporaryResponse')
       .select('*')
-      .or(`session_id.eq.${session.id},session_id.eq.${sessionToken}`);
+      .eq('session_id', session.id)
+      .order('created_at', { ascending: true });
 
     if (responsesError) {
       console.error('Erreur récupération réponses:', responsesError);
     }
 
-    // Récupérer les résultats d'éligibilité (utiliser session_id ou session_token)
+    // Récupérer les résultats d'éligibilité avec le bon session_id
     const { data: eligibilityResults, error: eligibilityError } = await supabase
       .from('TemporaryEligibility')
       .select('*')
-      .or(`session_id.eq.${session.id},session_id.eq.${sessionToken}`);
+      .eq('session_id', session.id)
+      .order('created_at', { ascending: true });
 
     if (eligibilityError) {
       console.error('Erreur récupération éligibilité:', eligibilityError);
