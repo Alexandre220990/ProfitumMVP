@@ -63,6 +63,7 @@ import sessionMigrationRoutes from './routes/session-migration';
 import clientDocumentsRoutes from './routes/client-documents';
 import analyticsRoutes from './routes/analytics';
 import googleCalendarRoutes from './routes/google-calendar';
+import debugRoutes from './routes/debug';
 
 // Créer l'application Express
 const app = express();
@@ -308,6 +309,9 @@ app.use('/api/session-migration', publicRouteLogger, sessionMigrationRoutes);
 
 // Routes de signature de charte - PROTÉGÉES (suppression du middleware global)
 app.use('/api/charte-signature', enhancedAuthMiddleware, charteSignatureRoutes);
+
+// Route de debug (temporaire)
+app.use('/api/debug', debugRoutes);
 
 // Gestion des erreurs
 app.use(errorHandler);
