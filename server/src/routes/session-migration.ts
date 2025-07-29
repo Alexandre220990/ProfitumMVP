@@ -149,7 +149,7 @@ router.post('/migrate', async (req, res) => {
     // 4. Récupérer les éligibilités depuis la base de données
     console.log('🔍 Récupération des éligibilités pour session_id:', session.id);
     
-    const { data: dbEligibilityResults, error: eligibilityError } = await supabase
+    const { data: dbEligibilityResults, error: eligibilityError } = await supabaseAdmin
       .from('TemporaryEligibility')
       .select('*')
       .eq('session_id', session.id)
