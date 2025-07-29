@@ -13,10 +13,18 @@ import {
   Linkedin,
   Instagram,
   ArrowRight,
-  CheckCircle,
   Star,
   Users,
-  Zap
+  Zap,
+  Fuel,
+  Building2,
+  Calculator,
+  Home,
+  Receipt,
+  Lightbulb,
+  Zap as Lightning,
+  Target,
+  Sparkles
 } from "lucide-react";
 import ProcessSteps from "@/components/ProcessSteps";
 import PublicHeader from '@/components/PublicHeader';
@@ -56,58 +64,98 @@ const SERVICES = [
   { 
     id: "ticpe", 
     title: "TICPE", 
-    image: "/images/ticpe-placeholder.png", 
+    subtitle: "Taxe Intérieure de Consommation sur les Produits Énergétiques",
+    icon: Fuel,
     description: "Récupérez la taxe sur les carburants professionnels avec notre accompagnement digitalisé.",
-    color: "blue"
+    color: "blue",
+    gradient: "from-blue-500 to-cyan-500",
+    bgGradient: "from-blue-50 to-cyan-50",
+    borderColor: "border-blue-200",
+    hoverBorderColor: "hover:border-blue-300"
   },
   { 
     id: "urssaf", 
     title: "URSSAF", 
-    image: "/images/urssaf-placeholder.png", 
+    subtitle: "Union de Recouvrement des Cotisations de Sécurité Sociale",
+    icon: Building2,
     description: "Sécurisez vos cotisations et détectez les trop-perçus pour des économies immédiates.",
-    color: "green"
+    color: "emerald",
+    gradient: "from-emerald-500 to-teal-500",
+    bgGradient: "from-emerald-50 to-teal-50",
+    borderColor: "border-emerald-200",
+    hoverBorderColor: "hover:border-emerald-300"
   },
   { 
     id: "social", 
     title: "SOCIAL", 
-    image: "/images/social-placeholder.png", 
+    subtitle: "Optimisation des Charges Sociales",
+    icon: Users,
     description: "Optimisez vos charges sociales avec un audit complet pour réduire vos coûts.",
-    color: "purple"
+    color: "purple",
+    gradient: "from-purple-500 to-violet-500",
+    bgGradient: "from-purple-50 to-violet-50",
+    borderColor: "border-purple-200",
+    hoverBorderColor: "hover:border-purple-300"
   },
   { 
     id: "foncier", 
     title: "FONCIER", 
-    image: "/images/foncier-placeholder.png", 
+    subtitle: "Taxes Foncières et Immobilières",
+    icon: Home,
     description: "Analyse experte de vos taxes foncières pour identifier les économies possibles.",
-    color: "orange"
+    color: "orange",
+    gradient: "from-orange-500 to-amber-500",
+    bgGradient: "from-orange-50 to-amber-50",
+    borderColor: "border-orange-200",
+    hoverBorderColor: "hover:border-orange-300"
   },
   { 
     id: "dfs", 
     title: "DFS", 
-    image: "/images/dfs-placeholder.png", 
+    subtitle: "Déduction Forfaitaire Spécifique",
+    icon: Receipt,
     description: "Accompagnement sur-mesure pour la Déduction Forfaitaire Spécifique.",
-    color: "indigo"
+    color: "indigo",
+    gradient: "from-indigo-500 to-blue-500",
+    bgGradient: "from-indigo-50 to-blue-50",
+    borderColor: "border-indigo-200",
+    hoverBorderColor: "hover:border-indigo-300"
   },
   { 
     id: "cir", 
     title: "CIR", 
-    image: "/images/cir-placeholder.png", 
+    subtitle: "Crédit Impôt Recherche",
+    icon: Lightbulb,
     description: "Valorisez vos innovations avec le Crédit Impôt Recherche et boostez votre trésorerie.",
-    color: "emerald"
+    color: "yellow",
+    gradient: "from-yellow-500 to-orange-500",
+    bgGradient: "from-yellow-50 to-orange-50",
+    borderColor: "border-yellow-200",
+    hoverBorderColor: "hover:border-yellow-300"
   },
   { 
     id: "cee", 
     title: "CEE", 
-    image: "/images/cee-placeholder.png", 
+    subtitle: "Certificats d'Économie d'Énergie",
+    icon: Sparkles,
     description: "Financez vos travaux d'efficacité énergétique avec les Certificats d'Économie d'Énergie.",
-    color: "teal"
+    color: "green",
+    gradient: "from-green-500 to-emerald-500",
+    bgGradient: "from-green-50 to-emerald-50",
+    borderColor: "border-green-200",
+    hoverBorderColor: "hover:border-green-300"
   },
   { 
     id: "energie", 
     title: "ENERGIE", 
-    image: "/images/energie-placeholder.png", 
+    subtitle: "Optimisation Énergétique",
+    icon: Lightning,
     description: "Réduisez vos factures d'énergie avec des offres négociées et un suivi personnalisé.",
-    color: "cyan"
+    color: "pink",
+    gradient: "from-pink-500 to-rose-500",
+    bgGradient: "from-pink-50 to-rose-50",
+    borderColor: "border-pink-200",
+    hoverBorderColor: "hover:border-pink-300"
   }
 ];
 
@@ -168,129 +216,129 @@ const ADVANTAGES = [
 // ============================================================================
 
 const HeroSection = ({ navigate }: { navigate: (path: string) => void }) => (
-  <section className="relative min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 overflow-hidden">
-    <div className="relative z-10 max-w-7xl mx-auto px-6 py-20 lg:py-32">
-      {/* Badges de confiance */}
-      <div className="flex justify-center gap-4 mb-12">
-        <div className="inline-flex items-center gap-2 bg-white/80 backdrop-blur-sm border border-blue-200 text-blue-700 px-4 py-2 rounded-full text-sm font-medium shadow-sm">
-          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+  <section className="relative min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 overflow-hidden flex items-center">
+    <div className="relative z-10 max-w-7xl mx-auto px-6 py-8 lg:py-12 w-full">
+      {/* Badges de confiance - Plus compacts */}
+      <div className="flex justify-center gap-3 mb-8">
+        <div className="inline-flex items-center gap-2 bg-white/90 backdrop-blur-sm border border-blue-200 text-blue-700 px-3 py-1.5 rounded-full text-xs font-medium shadow-sm">
+          <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
           <span>Plateforme certifiée</span>
         </div>
-        <div className="inline-flex items-center gap-2 bg-white/80 backdrop-blur-sm border border-emerald-200 text-emerald-700 px-4 py-2 rounded-full text-sm font-medium shadow-sm">
+        <div className="inline-flex items-center gap-2 bg-white/90 backdrop-blur-sm border border-emerald-200 text-emerald-700 px-3 py-1.5 rounded-full text-xs font-medium shadow-sm">
           <ShieldCheck className="w-3 h-3" />
           <span>Experts vérifiés</span>
         </div>
       </div>
 
-      <div className="flex items-center justify-between gap-16">
-        {/* Section Contenu */}
-        <div className="flex-1 max-w-3xl">
-          {/* Titre principal */}
-          <div className="mb-12">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-light text-slate-900 mb-8 leading-tight">
+      <div className="flex items-center justify-between gap-12 lg:gap-16">
+        {/* Section Contenu - Plus compacte */}
+        <div className="flex-1 max-w-2xl lg:max-w-3xl">
+          {/* Titre principal - Plus impactant */}
+          <div className="mb-8">
+            <h1 className="text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-light text-slate-900 mb-6 leading-tight">
               <span className="block font-light text-slate-700">
                 Profitum connecte les entreprises aux
               </span>
-              <span className="block font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mt-2">
+              <span className="block font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mt-1">
                 meilleurs experts
               </span>
-              <span className="block font-light text-slate-700 mt-4">
+              <span className="block font-light text-slate-700 mt-2">
                 pour transformer contraintes en
               </span>
-              <span className="block font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mt-2">
+              <span className="block font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mt-1">
                 opportunités financières
               </span>
             </h1>
-            <p className="text-xl text-slate-600 mt-8 leading-relaxed">
+            <p className="text-lg md:text-xl text-slate-600 leading-relaxed">
               Optimisez vos finances, réduisez vos charges et accélérez votre croissance grâce à notre écosystème d'experts qualifiés.
             </p>
           </div>
 
-          {/* Boutons d'action */}
-          <div className="flex flex-col lg:flex-row gap-6 mb-12">
+          {/* Boutons d'action - Plus compacts */}
+          <div className="flex flex-col lg:flex-row gap-4 mb-8">
             {/* CTA Client */}
             <div className="flex-1">
-              <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wider mb-4">Pour les entreprises</h3>
+              <h3 className="text-xs font-semibold text-slate-600 uppercase tracking-wider mb-3">Pour les entreprises</h3>
               <button 
                 onClick={() => navigate('/simulateur')}
-                className="group relative w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
+                className="group relative w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
               >
                 <span className="flex items-center justify-center gap-2">
                   Accéder au simulateur
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </span>
               </button>
-              <p className="text-sm text-slate-500 mt-3 text-center">
+              <p className="text-xs text-slate-500 mt-2 text-center">
                 Calculez vos gains en 2 minutes
               </p>
             </div>
 
             {/* CTA Expert */}
             <div className="flex-1">
-              <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wider mb-4">Pour les experts</h3>
+              <h3 className="text-xs font-semibold text-slate-600 uppercase tracking-wider mb-3">Pour les experts</h3>
               <button 
                 onClick={() => navigate('/welcome-expert')}
-                className="group relative w-full bg-white border-2 border-blue-200 hover:border-blue-300 text-blue-700 font-semibold py-4 px-8 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 transform hover:-translate-y-1"
+                className="group relative w-full bg-white border-2 border-blue-200 hover:border-blue-300 text-blue-700 font-semibold py-3 px-6 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 transform hover:-translate-y-1"
               >
                 <span className="flex items-center justify-center gap-2">
                   Rejoindre l'écosystème
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </span>
               </button>
-              <p className="text-sm text-slate-500 mt-3 text-center">
+              <p className="text-xs text-slate-500 mt-2 text-center">
                 Développez votre activité
               </p>
             </div>
           </div>
 
-          {/* Indicateurs de confiance */}
-          <div className="flex items-center justify-center gap-8 text-sm text-slate-600">
+          {/* Indicateurs de confiance - Plus compacts */}
+          <div className="flex items-center justify-center gap-6 text-xs text-slate-600">
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
               <span>500+ experts vérifiés</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+              <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
               <span>+15% d'économies moyennes</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+              <div className="w-1.5 h-1.5 bg-purple-500 rounded-full"></div>
               <span>98% de satisfaction</span>
             </div>
           </div>
         </div>
 
-        {/* Section KPI */}
-        <div className="hidden lg:flex flex-shrink-0 w-80">
-          <div className="w-full space-y-6">
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-blue-100 shadow-sm">
-              <div className="flex items-center justify-between mb-3">
-                <div className="text-3xl font-bold text-slate-900">€2.5M</div>
-                <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center">
-                  <TrendingUp className="w-6 h-6 text-white" />
+        {/* Section KPI - Plus compacte */}
+        <div className="hidden lg:flex flex-shrink-0 w-72">
+          <div className="w-full space-y-4">
+            <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-5 border border-blue-100 shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-2xl font-bold text-slate-900">€2.5M</div>
+                <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center">
+                  <TrendingUp className="w-5 h-5 text-white" />
                 </div>
               </div>
-              <div className="text-sm text-slate-600">Économies générées</div>
+              <div className="text-xs text-slate-600">Économies générées</div>
             </div>
             
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-emerald-100 shadow-sm">
-              <div className="flex items-center justify-between mb-3">
-                <div className="text-3xl font-bold text-slate-900">98%</div>
-                <div className="w-12 h-12 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center">
-                  <ShieldCheck className="w-6 h-6 text-white" />
+            <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-5 border border-emerald-100 shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-2xl font-bold text-slate-900">98%</div>
+                <div className="w-10 h-10 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center">
+                  <ShieldCheck className="w-5 h-5 text-white" />
                 </div>
               </div>
-              <div className="text-sm text-slate-600">Taux de satisfaction</div>
+              <div className="text-xs text-slate-600">Taux de satisfaction</div>
             </div>
             
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-purple-100 shadow-sm">
-              <div className="flex items-center justify-between mb-3">
-                <div className="text-3xl font-bold text-slate-900">24h</div>
-                <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
-                  <Clock className="w-6 h-6 text-white" />
+            <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-5 border border-purple-100 shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-2xl font-bold text-slate-900">24h</div>
+                <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
+                  <Clock className="w-5 h-5 text-white" />
                 </div>
               </div>
-              <div className="text-sm text-slate-600">Délai de réponse</div>
+              <div className="text-xs text-slate-600">Délai de réponse</div>
             </div>
           </div>
         </div>
@@ -376,39 +424,81 @@ const RevolutionSection = () => (
 );
 
 const ServicesSection = () => (
-  <section className="py-24 bg-white">
+  <section className="py-24 bg-gradient-to-br from-slate-50 via-white to-blue-50">
     <div className="max-w-7xl mx-auto px-6">
       <div className="text-center mb-20">
+        <div className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600/10 to-indigo-600/10 border border-blue-200 text-blue-700 px-6 py-3 rounded-full text-sm font-semibold mb-8">
+          <Target className="w-4 h-4" />
+          Solutions d'optimisation
+        </div>
         <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-8">
-          Nos <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Services</span>
+          Une gamme complète de <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">solutions</span>
         </h2>
         <p className="text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed">
-          Une gamme complète de solutions d'optimisation financière adaptées à vos besoins
+          Découvrez nos services d'optimisation financière adaptés à vos besoins spécifiques
         </p>
       </div>
       
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-        {SERVICES.map((service, index) => (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {SERVICES.map((service) => (
           <div
             key={service.id}
-            className="group relative bg-gradient-to-br from-slate-50 to-blue-50 rounded-2xl shadow-sm p-6 flex flex-col items-center text-center transition-all duration-300 transform hover:-translate-y-2 hover:shadow-xl cursor-pointer min-h-[320px] border border-slate-200 hover:border-blue-300"
+            className={`group relative bg-gradient-to-br ${service.bgGradient} rounded-3xl p-8 transition-all duration-500 transform hover:-translate-y-3 hover:shadow-2xl cursor-pointer border ${service.borderColor} ${service.hoverBorderColor} overflow-hidden`}
           >
-            <img
-              src={service.image}
-              alt={service.title}
-              className="w-16 h-16 object-cover rounded-2xl mb-6 border-2 border-slate-100 shadow-sm bg-white group-hover:scale-110 transition-transform duration-300"
-              loading="lazy"
-            />
-            <h3 className="text-xl font-bold mb-4 text-slate-900">{service.title}</h3>
-            <p className="text-slate-600 text-sm leading-relaxed flex-1">
-              {service.description}
-            </p>
-            
-            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-              <div className="w-8 h-1 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full"></div>
+            {/* Background pattern */}
+            <div className="absolute inset-0 opacity-5">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-current to-transparent rounded-full -translate-y-16 translate-x-16"></div>
             </div>
+            
+            {/* Icon container with modern design */}
+            <div className="relative mb-6">
+              <div className={`w-16 h-16 bg-gradient-to-br ${service.gradient} rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110`}>
+                <service.icon className="w-8 h-8 text-white" />
+              </div>
+              {/* Floating accent */}
+              <div className={`absolute -top-2 -right-2 w-6 h-6 bg-gradient-to-br ${service.gradient} rounded-full opacity-80 group-hover:opacity-100 transition-opacity duration-300`}></div>
+            </div>
+            
+            {/* Content */}
+            <div className="relative">
+              <h3 className="text-xl font-bold mb-2 text-slate-900 group-hover:text-slate-800 transition-colors">
+                {service.title}
+              </h3>
+              <p className="text-sm text-slate-600 mb-4 font-medium leading-tight">
+                {service.subtitle}
+              </p>
+              <p className="text-slate-600 text-sm leading-relaxed mb-6">
+                {service.description}
+              </p>
+              
+              {/* Action indicator */}
+              <div className="flex items-center justify-between">
+                <div className={`w-8 h-1 bg-gradient-to-r ${service.gradient} rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300`}></div>
+                <div className={`flex items-center gap-2 text-sm font-medium text-slate-600 group-hover:text-slate-700 transition-colors`}>
+                  <span>En savoir plus</span>
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-300" />
+                </div>
+              </div>
+            </div>
+            
+            {/* Hover effect overlay */}
+            <div className={`absolute inset-0 bg-gradient-to-br ${service.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-300 rounded-3xl`}></div>
+            
+            {/* Corner accent */}
+            <div className={`absolute top-0 right-0 w-20 h-20 bg-gradient-to-br ${service.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-300 rounded-bl-full`}></div>
           </div>
         ))}
+      </div>
+      
+      {/* Call to action */}
+      <div className="text-center mt-16">
+        <div className="inline-flex items-center gap-3 bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl px-8 py-4 shadow-sm">
+          <Calculator className="w-5 h-5 text-blue-600" />
+          <span className="text-slate-700 font-medium">Besoin d'un audit personnalisé ?</span>
+          <button className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-2 rounded-xl font-medium hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 transform hover:-translate-y-0.5">
+            Contactez-nous
+          </button>
+        </div>
       </div>
     </div>
   </section>
