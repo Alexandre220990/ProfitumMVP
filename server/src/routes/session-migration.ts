@@ -75,7 +75,7 @@ router.get('/session-data/:sessionToken', async (req, res) => {
   }
 });
 
-// Route pour migrer une session vers un compte client - REFACTORISÉE
+// Route pour migrer une session vers un compte client - REFACTORISÉE AVEC SUPABASEADMIN PARTOUT
 router.post('/migrate', async (req, res) => {
   try {
     const { sessionToken, clientData } = req.body;
@@ -85,6 +85,9 @@ router.post('/migrate', async (req, res) => {
       sessionToken: !!sessionToken, 
       clientData: !!clientData
     });
+    console.log('🔄 VERSION 2.0 - Si vous voyez ce message, le code est déployé !');
+    console.log('🚀 DÉPLOIEMENT FORCÉ - Migration refactorisée active');
+    console.log('🔧 CORRECTION: Utilisation de supabaseAdmin partout');
 
     // 1. Validation des paramètres
     if (!sessionToken) {
@@ -105,7 +108,7 @@ router.post('/migrate', async (req, res) => {
 
     console.log('✅ Validation des paramètres réussie');
 
-    // 2. Récupération de la session
+    // 2. Récupération de la session avec supabaseAdmin
     console.log('🔍 Étape 1: Récupération de la session...');
     
     const { data: session, error: sessionError } = await supabaseAdmin
@@ -138,7 +141,7 @@ router.post('/migrate', async (req, res) => {
       });
     }
 
-    // 4. Récupération du client
+    // 4. Récupération du client avec supabaseAdmin
     console.log('🔍 Étape 2: Récupération du client...');
     
     const { data: client, error: clientError } = await supabaseAdmin
@@ -161,7 +164,7 @@ router.post('/migrate', async (req, res) => {
       company_name: client.company_name
     });
 
-    // 5. Récupération des éligibilités depuis la base de données
+    // 5. Récupération des éligibilités depuis la base de données avec supabaseAdmin
     console.log('🔍 Étape 3: Récupération des éligibilités...');
     
     const { data: dbEligibilityResults, error: eligibilityError } = await supabaseAdmin
@@ -186,7 +189,7 @@ router.post('/migrate', async (req, res) => {
       });
     }
 
-    // 6. Vérification du mapping des produits
+    // 6. Vérification du mapping des produits avec supabaseAdmin
     console.log('🔍 Étape 4: Vérification du mapping des produits...');
     
     const { data: products, error: productsError } = await supabaseAdmin
@@ -258,7 +261,7 @@ router.post('/migrate', async (req, res) => {
       }
     }
 
-    // 8. Insertion des ClientProduitEligible
+    // 8. Insertion des ClientProduitEligible avec supabaseAdmin
     console.log('🔍 Étape 6: Insertion des produits éligibles...');
     
     if (clientProduitsEligibles.length > 0) {
@@ -290,7 +293,7 @@ router.post('/migrate', async (req, res) => {
       console.log('⚠️ Aucun produit à insérer');
     }
 
-    // 9. Marquage de la session comme migrée
+    // 9. Marquage de la session comme migrée avec supabaseAdmin
     console.log('🔍 Étape 7: Marquage de la session comme migrée...');
     
     const { error: updateError } = await supabaseAdmin
@@ -312,7 +315,7 @@ router.post('/migrate', async (req, res) => {
 
     console.log('✅ Session marquée comme migrée');
 
-    // 10. Vérification finale
+    // 10. Vérification finale avec supabaseAdmin
     console.log('🔍 Étape 8: Vérification finale...');
     
     const { data: finalProducts, error: finalError } = await supabaseAdmin
