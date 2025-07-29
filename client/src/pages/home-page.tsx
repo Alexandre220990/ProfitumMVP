@@ -232,10 +232,10 @@ const HeroSection = ({ navigate }: { navigate: (path: string) => void }) => (
 
       <div className="flex items-center justify-between gap-12 lg:gap-16">
         {/* Section Contenu - Plus compacte */}
-        <div className="flex-1 max-w-2xl lg:max-w-3xl">
+        <div className="flex-1 max-w-3xl lg:max-w-4xl">
           {/* Titre principal - Plus impactant */}
           <div className="mb-12">
-            <h1 className="text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-light text-slate-900 mb-6 leading-tight">
+            <h1 className="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-light text-slate-900 mb-6 leading-tight">
               <span className="block font-light text-slate-700">
                 Profitum connecte les entreprises aux
               </span>

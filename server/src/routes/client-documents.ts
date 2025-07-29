@@ -1,6 +1,5 @@
 import express, { Router, Request, Response } from 'express';
 import { createClient } from '@supabase/supabase-js';
-import { authenticateUser } from '../middleware/authenticate';
 import { AuthUser } from '../types/auth';
 import { asyncHandler } from '../utils/asyncHandler';
 import { DocumentStorageService } from '../services/document-storage-service';
@@ -70,7 +69,7 @@ router.get('/test', (req: Request, res: Response) => {
  * GET /api/client-documents/client/:clientId
  * Récupérer tous les documents d'un client
  */
-router.get('/client/:clientId', authenticateUser, asyncHandler(async (req: Request, res: Response) => {
+router.get('/client/:clientId', asyncHandler(async (req: Request, res: Response) => {
   const { clientId } = req.params;
   const user = (req as any).user as AuthUser;
   
@@ -215,7 +214,7 @@ router.get('/client/:clientId', authenticateUser, asyncHandler(async (req: Reque
  * POST /api/client-documents/upload
  * Upload un fichier pour un client
  */
-router.post('/upload', authenticateUser, upload.single('file'), asyncHandler(async (req: Request, res: Response) => {
+router.post('/upload', asyncHandler(async (req: Request, res: Response) => {
   const user = (req as any).user as AuthUser;
   const { clientId, auditId, category, description, tags, accessLevel, expiresAt } = req.body;
   const file = (req as any).file;
@@ -281,7 +280,7 @@ router.post('/upload', authenticateUser, upload.single('file'), asyncHandler(asy
  * GET /api/client-documents/download/:fileId
  * Télécharger un fichier
  */
-router.get('/download/:fileId', authenticateUser, asyncHandler(async (req: Request, res: Response) => {
+router.get('/download/:fileId', asyncHandler(async (req: Request, res: Response) => {
   const { fileId } = req.params;
   const user = req.user as AuthUser;
 
@@ -311,7 +310,7 @@ router.get('/download/:fileId', authenticateUser, asyncHandler(async (req: Reque
  * PUT /api/client-documents/validate/:fileId
  * Valider un fichier
  */
-router.put('/validate/:fileId', authenticateUser, asyncHandler(async (req: Request, res: Response) => {
+router.put('/validate/:fileId', asyncHandler(async (req: Request, res: Response) => {
   const { fileId } = req.params;
   const { status, comment } = req.body;
   const user = req.user as AuthUser;
@@ -359,7 +358,7 @@ router.put('/validate/:fileId', authenticateUser, asyncHandler(async (req: Reque
  * DELETE /api/client-documents/:fileId
  * Supprimer un fichier
  */
-router.delete('/:fileId', authenticateUser, asyncHandler(async (req: Request, res: Response) => {
+router.delete('/:fileId', asyncHandler(async (req: Request, res: Response) => {
   const { fileId } = req.params;
   const user = req.user as AuthUser;
 
@@ -391,7 +390,7 @@ router.delete('/:fileId', authenticateUser, asyncHandler(async (req: Request, re
  * POST /api/client-documents/share/:fileId
  * Partager un fichier
  */
-router.post('/share/:fileId', authenticateUser, asyncHandler(async (req: Request, res: Response) => {
+router.post('/share/:fileId', asyncHandler(async (req: Request, res: Response) => {
   const { fileId } = req.params;
   const { sharedWithEmail, permissions, expiresAt } = req.body;
   const user = req.user as AuthUser;
@@ -440,7 +439,7 @@ router.post('/share/:fileId', authenticateUser, asyncHandler(async (req: Request
  * GET /api/client-documents/stats/:clientId
  * Obtenir les statistiques de fichiers d'un client
  */
-router.get('/stats/:clientId', authenticateUser, asyncHandler(async (req: Request, res: Response) => {
+router.get('/stats/:clientId', asyncHandler(async (req: Request, res: Response) => {
   const { clientId } = req.params;
   const user = req.user as AuthUser;
 

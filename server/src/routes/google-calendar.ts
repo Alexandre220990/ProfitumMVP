@@ -1,5 +1,4 @@
 import express, { Router, Request, Response } from 'express';
-import { authenticateUser } from '../middleware/authenticate';
 import { AuthUser } from '../types/auth';
 import { googleCalendarService, GoogleCalendarIntegration } from '../services/google-calendar-service';
 import { asyncHandler } from '../utils/asyncHandler';
@@ -75,7 +74,7 @@ const validateUpdateIntegration = (req: Request, res: Response, next: Function) 
 /**
  * GET /api/google-calendar/auth/url - Générer l'URL d'autorisation Google
  */
-router.get('/auth/url', authenticateUser, googleCalendarLimiter, asyncHandler(async (req: Request, res: Response) => {
+router.get('/auth/url', googleCalendarLimiter, asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }
@@ -157,7 +156,7 @@ router.get('/auth/callback', asyncHandler(async (req: Request, res: Response) =>
 /**
  * POST /api/google-calendar/connect - Connecter un compte Google Calendar
  */
-router.post('/connect', authenticateUser, googleCalendarLimiter, validateConnectIntegration, asyncHandler(async (req: Request, res: Response) => {
+router.post('/connect', googleCalendarLimiter, validateConnectIntegration, asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }
@@ -253,7 +252,7 @@ router.post('/connect', authenticateUser, googleCalendarLimiter, validateConnect
 /**
  * GET /api/google-calendar/integrations - Lister les intégrations de l'utilisateur
  */
-router.get('/integrations', authenticateUser, googleCalendarLimiter, asyncHandler(async (req: Request, res: Response) => {
+router.get('/integrations', googleCalendarLimiter, asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }
@@ -277,7 +276,7 @@ router.get('/integrations', authenticateUser, googleCalendarLimiter, asyncHandle
 /**
  * GET /api/google-calendar/integrations/:id - Récupérer une intégration spécifique
  */
-router.get('/integrations/:id', authenticateUser, googleCalendarLimiter, asyncHandler(async (req: Request, res: Response) => {
+router.get('/integrations/:id', googleCalendarLimiter, asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }
@@ -311,7 +310,7 @@ router.get('/integrations/:id', authenticateUser, googleCalendarLimiter, asyncHa
 /**
  * PUT /api/google-calendar/integrations/:id - Mettre à jour une intégration
  */
-router.put('/integrations/:id', authenticateUser, googleCalendarLimiter, validateUpdateIntegration, asyncHandler(async (req: Request, res: Response) => {
+router.put('/integrations/:id', googleCalendarLimiter, validateUpdateIntegration, asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }
@@ -377,7 +376,7 @@ router.put('/integrations/:id', authenticateUser, googleCalendarLimiter, validat
 /**
  * DELETE /api/google-calendar/integrations/:id - Supprimer une intégration
  */
-router.delete('/integrations/:id', authenticateUser, googleCalendarLimiter, asyncHandler(async (req: Request, res: Response) => {
+router.delete('/integrations/:id', googleCalendarLimiter, asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }
@@ -432,7 +431,7 @@ router.delete('/integrations/:id', authenticateUser, googleCalendarLimiter, asyn
 /**
  * GET /api/google-calendar/calendars - Lister les calendriers Google disponibles
  */
-router.get('/calendars', authenticateUser, googleCalendarLimiter, asyncHandler(async (req: Request, res: Response) => {
+router.get('/calendars', googleCalendarLimiter, asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }
@@ -485,7 +484,7 @@ router.get('/calendars', authenticateUser, googleCalendarLimiter, asyncHandler(a
 /**
  * GET /api/google-calendar/free-busy - Obtenir la disponibilité
  */
-router.get('/free-busy', authenticateUser, googleCalendarLimiter, asyncHandler(async (req: Request, res: Response) => {
+router.get('/free-busy', googleCalendarLimiter, asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }
@@ -553,7 +552,7 @@ router.get('/free-busy', authenticateUser, googleCalendarLimiter, asyncHandler(a
 /**
  * POST /api/google-calendar/sync - Déclencher une synchronisation
  */
-router.post('/sync', authenticateUser, googleCalendarLimiter, asyncHandler(async (req: Request, res: Response) => {
+router.post('/sync', googleCalendarLimiter, asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }

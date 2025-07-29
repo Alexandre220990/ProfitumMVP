@@ -1,12 +1,11 @@
 import express, { Router, Request, Response } from 'express';
-import { authenticateUser } from '../middleware/authenticate';
 import { AuthUser } from '../types/auth';
 import { supabase } from '../lib/supabase';
 
 const router = express.Router();
 
 // Route pour obtenir le profil expert
-router.get('/profile', authenticateUser, async (req: Request, res: Response) => {
+router.get('/profile', async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
@@ -42,7 +41,7 @@ router.get('/profile', authenticateUser, async (req: Request, res: Response) => 
 });
 
 // Route pour mettre à jour le profil expert
-router.put('/profile', authenticateUser, async (req: Request, res: Response) => {
+router.put('/profile', async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
@@ -86,7 +85,7 @@ router.put('/profile', authenticateUser, async (req: Request, res: Response) => 
 });
 
 // Route pour obtenir les assignations de l'expert
-router.get('/assignments', authenticateUser, async (req: Request, res: Response) => {
+router.get('/assignments', async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
@@ -148,7 +147,7 @@ router.get('/assignments', authenticateUser, async (req: Request, res: Response)
 });
 
 // Route pour accepter une assignation
-router.post('/assignments/:assignmentId/accept', authenticateUser, async (req: Request, res: Response) => {
+router.post('/assignments/:assignmentId/accept', async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
@@ -190,7 +189,7 @@ router.post('/assignments/:assignmentId/accept', authenticateUser, async (req: R
 });
 
 // Route pour rejeter une assignation
-router.post('/assignments/:assignmentId/reject', authenticateUser, async (req: Request, res: Response) => {
+router.post('/assignments/:assignmentId/reject', async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
@@ -234,7 +233,7 @@ router.post('/assignments/:assignmentId/reject', authenticateUser, async (req: R
 });
 
 // Route pour mettre à jour la progression d'une assignation
-router.put('/assignments/:assignmentId/progress', authenticateUser, async (req: Request, res: Response) => {
+router.put('/assignments/:assignmentId/progress', async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
@@ -277,7 +276,7 @@ router.put('/assignments/:assignmentId/progress', authenticateUser, async (req: 
 });
 
 // Route pour terminer une assignation
-router.post('/assignments/:assignmentId/complete', authenticateUser, async (req: Request, res: Response) => {
+router.post('/assignments/:assignmentId/complete', async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
@@ -322,7 +321,7 @@ router.post('/assignments/:assignmentId/complete', authenticateUser, async (req:
 });
 
 // Route pour obtenir les notifications de l'expert
-router.get('/notifications', authenticateUser, async (req: Request, res: Response) => {
+router.get('/notifications', async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
@@ -410,7 +409,7 @@ router.get('/notifications', authenticateUser, async (req: Request, res: Respons
 });
 
 // Route pour marquer une notification comme lue
-router.put('/notifications/:notificationId/read', authenticateUser, async (req: Request, res: Response) => {
+router.put('/notifications/:notificationId/read', async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
@@ -452,7 +451,7 @@ router.put('/notifications/:notificationId/read', authenticateUser, async (req: 
 });
 
 // Route pour les analytics expert
-router.get('/analytics', authenticateUser, async (req: Request, res: Response) => {
+router.get('/analytics', async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
@@ -514,7 +513,7 @@ router.get('/analytics', authenticateUser, async (req: Request, res: Response) =
 });
 
 // Route pour obtenir les métriques business de l'expert
-router.get('/business', authenticateUser, async (req: Request, res: Response) => {
+router.get('/business', async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
@@ -553,7 +552,7 @@ router.get('/business', authenticateUser, async (req: Request, res: Response) =>
 });
 
 // Route pour obtenir l'historique des revenus
-router.get('/revenue-history', authenticateUser, async (req: Request, res: Response) => {
+router.get('/revenue-history', async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
@@ -586,7 +585,7 @@ router.get('/revenue-history', authenticateUser, async (req: Request, res: Respo
 });
 
 // Route pour obtenir la performance des produits
-router.get('/product-performance', authenticateUser, async (req: Request, res: Response) => {
+router.get('/product-performance', async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
@@ -622,7 +621,7 @@ router.get('/product-performance', authenticateUser, async (req: Request, res: R
 });
 
 // Route pour obtenir la performance des clients
-router.get('/client-performance', authenticateUser, async (req: Request, res: Response) => {
+router.get('/client-performance', async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
@@ -658,7 +657,7 @@ router.get('/client-performance', authenticateUser, async (req: Request, res: Re
 });
 
 // Route pour obtenir l'agenda de l'expert
-router.get('/agenda', authenticateUser, async (req: Request, res: Response) => {
+router.get('/agenda', async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
@@ -691,7 +690,7 @@ router.get('/agenda', authenticateUser, async (req: Request, res: Response) => {
 });
 
 // Route pour la messagerie expert (redirection vers le système unifié)
-router.get('/messagerie-expert', authenticateUser, async (req: Request, res: Response) => {
+router.get('/messagerie-expert', async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
@@ -721,7 +720,7 @@ router.get('/messagerie-expert', authenticateUser, async (req: Request, res: Res
 });
 
 // Route pour obtenir les données business de l'expert
-router.get('/business', authenticateUser, async (req: Request, res: Response) => {
+router.get('/business', async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
@@ -767,7 +766,7 @@ router.get('/business', authenticateUser, async (req: Request, res: Response) =>
 });
 
 // Route pour obtenir l'historique des revenus
-router.get('/revenue-history', authenticateUser, async (req: Request, res: Response) => {
+router.get('/revenue-history', async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
@@ -810,7 +809,7 @@ router.get('/revenue-history', authenticateUser, async (req: Request, res: Respo
 });
 
 // Route pour obtenir les performances par produit
-router.get('/product-performance', authenticateUser, async (req: Request, res: Response) => {
+router.get('/product-performance', async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
@@ -850,7 +849,7 @@ router.get('/product-performance', authenticateUser, async (req: Request, res: R
 });
 
 // Route pour obtenir les performances par client
-router.get('/client-performance', authenticateUser, async (req: Request, res: Response) => {
+router.get('/client-performance', async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
@@ -890,7 +889,7 @@ router.get('/client-performance', authenticateUser, async (req: Request, res: Re
 });
 
 // Route pour obtenir l'agenda de l'expert
-router.get('/agenda', authenticateUser, async (req: Request, res: Response) => {
+router.get('/agenda', async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
@@ -932,7 +931,7 @@ router.get('/agenda', authenticateUser, async (req: Request, res: Response) => {
 });
 
 // Route pour obtenir les audits de l'expert
-router.get('/audits', authenticateUser, async (req: Request, res: Response) => {
+router.get('/audits', async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
@@ -971,7 +970,7 @@ router.get('/audits', authenticateUser, async (req: Request, res: Response) => {
 });
 
 // Route pour obtenir les ClientProduitEligible de l'expert
-router.get('/client-produits-eligibles', authenticateUser, async (req: Request, res: Response) => {
+router.get('/client-produits-eligibles', async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });

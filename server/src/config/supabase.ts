@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
-import dotenv from 'dotenv';
-import path from 'path';
+import * as dotenv from 'dotenv';
+import * as path from 'path';
 import { fileURLToPath } from 'url';
-import https from 'https';
+import * as https from 'https';
 
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 

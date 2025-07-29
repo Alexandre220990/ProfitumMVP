@@ -1,5 +1,4 @@
 import express from 'express';
-import { authenticateUser } from '../middleware/authenticate';
 import { asyncHandler } from '../utils/asyncHandler';
 import { createClient } from '@supabase/supabase-js';
 
@@ -142,7 +141,7 @@ function parseFilters(query: any): AnalyticsFilters {
 }
 
 // GET /api/analytics/dashboard - Dashboard analytics principal
-router.get('/dashboard', authenticateUser, asyncHandler(async (req, res) => {
+router.get('/dashboard', asyncHandler(async (req, res) => {
   try {
     const filters = parseFilters(req.query);
     
@@ -198,7 +197,7 @@ router.get('/dashboard', authenticateUser, asyncHandler(async (req, res) => {
 }));
 
 // GET /api/analytics/metrics - Métriques principales uniquement
-router.get('/metrics', authenticateUser, asyncHandler(async (req, res) => {
+router.get('/metrics', asyncHandler(async (req, res) => {
   try {
     const filters = parseFilters(req.query);
     
@@ -221,7 +220,7 @@ router.get('/metrics', authenticateUser, asyncHandler(async (req, res) => {
 }));
 
 // GET /api/analytics/conversion - Données de conversion
-router.get('/conversion', authenticateUser, asyncHandler(async (req, res) => {
+router.get('/conversion', asyncHandler(async (req, res) => {
   try {
     const filters = parseFilters(req.query);
     
@@ -250,7 +249,7 @@ router.get('/conversion', authenticateUser, asyncHandler(async (req, res) => {
 }));
 
 // GET /api/analytics/products - Performance des produits
-router.get('/products', authenticateUser, asyncHandler(async (req, res) => {
+router.get('/products', asyncHandler(async (req, res) => {
   try {
     const filters = parseFilters(req.query);
     
@@ -273,7 +272,7 @@ router.get('/products', authenticateUser, asyncHandler(async (req, res) => {
 }));
 
 // GET /api/analytics/experts - Performance des experts
-router.get('/experts', authenticateUser, asyncHandler(async (req, res) => {
+router.get('/experts', asyncHandler(async (req, res) => {
   try {
     const filters = parseFilters(req.query);
     
@@ -296,7 +295,7 @@ router.get('/experts', authenticateUser, asyncHandler(async (req, res) => {
 }));
 
 // GET /api/analytics/geographic - Données géographiques
-router.get('/geographic', authenticateUser, asyncHandler(async (req, res) => {
+router.get('/geographic', asyncHandler(async (req, res) => {
   try {
     const filters = parseFilters(req.query);
     
@@ -319,7 +318,7 @@ router.get('/geographic', authenticateUser, asyncHandler(async (req, res) => {
 }));
 
 // GET /api/analytics/realtime - Métriques en temps réel
-router.get('/realtime', authenticateUser, asyncHandler(async (req, res) => {
+router.get('/realtime', asyncHandler(async (req, res) => {
   try {
     const realTimeMetrics = await getRealTimeMetrics();
 
@@ -337,7 +336,7 @@ router.get('/realtime', authenticateUser, asyncHandler(async (req, res) => {
 }));
 
 // GET /api/analytics/export - Export des données
-router.get('/export', authenticateUser, asyncHandler(async (req, res) => {
+router.get('/export', asyncHandler(async (req, res) => {
   try {
     const filters = parseFilters(req.query);
     const format = (req.query.format as string) || 'csv';
