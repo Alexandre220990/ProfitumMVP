@@ -146,12 +146,31 @@ router.post('/migrate', async (req, res) => {
 
     console.log('✅ Client trouvé:', { id: client.id, email: client.email });
 
-    // 4. Créer les ClientProduitEligible pour chaque résultat
+    // 4. Récupérer les éligibilités depuis la base de données
+    console.log('🔍 Récupération des éligibilités pour session_id:', session.id);
+    
+    const { data: dbEligibilityResults, error: eligibilityError } = await supabase
+      .from('TemporaryEligibility')
+      .select('*')
+      .eq('session_id', session.id)
+      .order('created_at', { ascending: true });
+
+    if (eligibilityError) {
+      console.error('❌ Erreur récupération éligibilités:', eligibilityError);
+      return res.status(500).json({
+        success: false,
+        error: 'Erreur lors de la récupération des éligibilités'
+      });
+    }
+
+    console.log(`✅ ${dbEligibilityResults?.length || 0} éligibilités trouvées`);
+
+    // 5. Créer les ClientProduitEligible pour chaque résultat
     const clientProduitsEligibles = [];
     
-    console.log('🔍 Création des produits éligibles pour', eligibilityResults?.length || 0, 'résultats');
+    console.log('🔍 Création des produits éligibles pour', dbEligibilityResults?.length || 0, 'résultats');
     
-    for (const result of eligibilityResults || []) {
+    for (const result of dbEligibilityResults || []) {
       console.log(`🔍 Traitement du produit: ${result.produit_id} (${result.estimated_savings}€)`);
       
       const produitId = result.produit_id && typeof result.produit_id === 'string' 
@@ -192,7 +211,7 @@ router.post('/migrate', async (req, res) => {
       clientProduitsEligibles.push(clientProduitEligible);
     }
 
-    // 5. Insérer les ClientProduitEligible avec supabaseAdmin pour contourner RLS
+    // 6. Insérer les ClientProduitEligible avec supabaseAdmin pour contourner RLS
     if (clientProduitsEligibles.length > 0) {
       const { data: insertedProducts, error: insertError } = await supabaseAdmin
         .from('ClientProduitEligible')
@@ -213,7 +232,7 @@ router.post('/migrate', async (req, res) => {
       console.log(`✅ ${insertedProducts?.length || 0} produits éligibles créés`);
     }
 
-    // 6. Marquer la session comme migrée
+    // 7. Marquer la session comme migrée
     const { error: updateError } = await supabase
       .from('TemporarySession')
       .update({
