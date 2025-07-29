@@ -71,7 +71,7 @@ router.get('/client/:clientId', async (req, res) => {
     console.error('Erreur lors de la récupération des audits:', error);
     return res.status(500).json({ message: 'Erreur serveur' });
   }
-}) as RequestHandler);
+});
 
 // Obtenir un audit spécifique par ID
 router.get('/:auditId', async (req, res) => {
@@ -119,7 +119,7 @@ router.get('/:auditId', async (req, res) => {
       message: 'Erreur lors de la récupération de l\'audit'
     });
   }
-}) as RequestHandler);
+});
 
 // Créer un nouvel audit
 router.post('/', async (req, res) => {
@@ -216,7 +216,7 @@ router.post('/', async (req, res) => {
       message: 'Erreur lors de la création de l\'audit'
     });
   }
-}) as RequestHandler);
+});
 
 // Signer la charte pour un audit
 router.post('/sign-charter', async (req, res) => {
@@ -285,7 +285,7 @@ router.post('/sign-charter', async (req, res) => {
       message: 'Erreur lors de la signature de la charte'
     });
   }
-}) as RequestHandler);
+});
 
 // Mettre à jour le statut d'un audit
 router.put('/:auditId/status', async (req, res) => {
@@ -343,7 +343,7 @@ router.put('/:auditId/status', async (req, res) => {
       message: 'Erreur lors de la mise à jour du statut de l\'audit'
     });
   }
-}) as RequestHandler);
+});
 
 // Télécharger un document pour un audit
 router.post('/:auditId/documents', async (req, res) => {
@@ -405,7 +405,7 @@ router.post('/:auditId/documents', async (req, res) => {
       message: 'Erreur lors de l\'ajout du document'
     });
   }
-}) as RequestHandler);
+});
 
 // Supprimer un document
 router.delete('/documents/:documentId', async (req, res) => {
@@ -464,6 +464,6 @@ router.delete('/documents/:documentId', async (req, res) => {
       message: 'Erreur lors de la suppression du document'
     });
   }
-}) as RequestHandler);
+});
 
 export default router; 
