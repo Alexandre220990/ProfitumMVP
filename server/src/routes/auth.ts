@@ -242,6 +242,56 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// Route pour vérifier si un SIREN existe déjà
+router.post("/check-siren", async (req: Request, res: Response) => {
+  try {
+    const { siren } = req.body;
+
+    if (!siren) {
+      return res.status(400).json({
+        success: false,
+        message: "SIREN requis",
+        error: 'MISSING_SIREN'
+      });
+    }
+
+    // Vérifier si le SIREN existe dans la table Client
+    const { data: existingClient, error: clientError } = await supabaseAdmin
+      .from('Client')
+      .select('id, company_name')
+      .eq('siren', siren)
+      .single();
+
+    if (clientError && clientError.code !== 'PGRST116') {
+      console.error('❌ Erreur vérification SIREN:', clientError);
+      return res.status(500).json({
+        success: false,
+        message: "Erreur lors de la vérification du SIREN",
+        error: 'DATABASE_ERROR'
+      });
+    }
+
+    const exists = !!existingClient;
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        exists,
+        siren,
+        company_name: existingClient?.company_name || null
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur serveur:', error);
+    return res.status(500).json({
+      success: false,
+      message: "Une erreur est survenue lors de la vérification",
+      error: 'SERVER_ERROR'
+    });
+  }
+});
+
 // Route d'inscription
 router.post("/register", async (req: Request, res: Response) => {
   try {
