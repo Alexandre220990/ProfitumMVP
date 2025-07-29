@@ -75,18 +75,20 @@ router.get('/session-data/:sessionToken', async (req, res) => {
   }
 });
 
-// Route pour migrer une session vers un compte client
+// Route pour migrer une session vers un compte client - REFACTORISÉE
 router.post('/migrate', async (req, res) => {
   try {
-    const { sessionToken, clientData, eligibilityResults } = req.body;
+    const { sessionToken, clientData } = req.body;
 
-    console.log('🔍 Données reçues pour migration:', { 
+    console.log('🚀 MIGRATION REFACTORISÉE - Début du processus');
+    console.log('📤 Données reçues:', { 
       sessionToken: !!sessionToken, 
-      clientData: !!clientData, 
-      eligibilityResults: eligibilityResults?.length || 0 
+      clientData: !!clientData
     });
 
+    // 1. Validation des paramètres
     if (!sessionToken) {
+      console.log('❌ Validation échouée: Session token manquant');
       return res.status(400).json({
         success: false,
         error: 'Session token manquant'
@@ -94,61 +96,73 @@ router.post('/migrate', async (req, res) => {
     }
 
     if (!clientData || !clientData.email) {
+      console.log('❌ Validation échouée: Données client manquantes');
       return res.status(400).json({
         success: false,
         error: 'Données client manquantes ou email manquant'
       });
     }
 
-    // 1. Récupérer la session
-    const { data: session, error: sessionError } = await supabase
+    console.log('✅ Validation des paramètres réussie');
+
+    // 2. Récupération de la session
+    console.log('🔍 Étape 1: Récupération de la session...');
+    
+    const { data: session, error: sessionError } = await supabaseAdmin
       .from('TemporarySession')
       .select('*')
       .eq('session_token', sessionToken)
       .single();
 
     if (sessionError || !session) {
+      console.log('❌ Session non trouvée:', sessionToken);
       return res.status(404).json({
         success: false,
         error: 'Session non trouvée'
       });
     }
 
-    // 2. Utiliser le mapping statique des produits
-    const productMapping = PRODUCT_MAPPING;
-    console.log('🔍 Mapping des produits:', productMapping);
+    console.log('✅ Session trouvée:', {
+      id: session.id,
+      session_token: session.session_token,
+      completed: session.completed,
+      migrated_to_account: session.migrated_to_account
+    });
 
-    // 3. Récupérer le client créé (par email)
-    console.log('🔍 Recherche du client avec email:', clientData.email);
-    
-    const { data: clients, error: clientError } = await supabaseAdmin
-      .from('Client')
-      .select('id, email, username')
-      .eq('email', clientData.email);
-
-    if (clientError) {
-      console.error('❌ Erreur recherche client:', clientError);
-      return res.status(500).json({
+    // 3. Vérification que la session n'est pas déjà migrée
+    if (session.migrated_to_account) {
+      console.log('❌ Session déjà migrée');
+      return res.status(400).json({
         success: false,
-        error: 'Erreur lors de la recherche du client'
+        error: 'Session déjà migrée vers un compte'
       });
     }
 
-    const client = clients && clients.length > 0 ? clients[0] : null;
+    // 4. Récupération du client
+    console.log('🔍 Étape 2: Récupération du client...');
+    
+    const { data: client, error: clientError } = await supabaseAdmin
+      .from('Client')
+      .select('id, email, company_name')
+      .eq('email', clientData.email)
+      .single();
 
-    if (!client) {
-      console.error('❌ Client non trouvé avec email:', clientData.email);
+    if (clientError || !client) {
+      console.log('❌ Client non trouvé:', clientData.email);
       return res.status(404).json({
         success: false,
         error: 'Client non trouvé après création'
       });
     }
 
-    console.log('✅ Client trouvé:', { id: client.id, email: client.email });
+    console.log('✅ Client trouvé:', {
+      id: client.id,
+      email: client.email,
+      company_name: client.company_name
+    });
 
-    // 4. Récupérer les éligibilités depuis la base de données
-    console.log('🔍 Récupération des éligibilités pour session_id:', session.id);
-    console.log('🔄 VERSION DÉPLOYÉE - Utilisation de supabaseAdmin pour contourner RLS');
+    // 5. Récupération des éligibilités depuis la base de données
+    console.log('🔍 Étape 3: Récupération des éligibilités...');
     
     const { data: dbEligibilityResults, error: eligibilityError } = await supabaseAdmin
       .from('TemporaryEligibility')
@@ -165,55 +179,91 @@ router.post('/migrate', async (req, res) => {
     }
 
     console.log(`✅ ${dbEligibilityResults?.length || 0} éligibilités trouvées`);
-
-    // 5. Créer les ClientProduitEligible pour chaque résultat
-    const clientProduitsEligibles = [];
     
-    console.log('🔍 Création des produits éligibles pour', dbEligibilityResults?.length || 0, 'résultats');
-    
-    for (const result of dbEligibilityResults || []) {
-      console.log(`🔍 Traitement du produit: ${result.produit_id} (${result.estimated_savings}€)`);
-      
-      const produitId = result.produit_id && typeof result.produit_id === 'string' 
-        ? PRODUCT_MAPPING[result.produit_id] 
-        : undefined;
-      
-      if (!produitId) {
-        console.warn(`⚠️ Produit non trouvé dans le mapping: ${result.produit_id}`);
-        console.log('🔍 Mapping disponible:', Object.keys(PRODUCT_MAPPING));
-        continue;
-      }
-
-      const clientProduitEligible = {
-        clientId: client.id,
-        produitId: produitId,
-        statut: result.eligibility_score >= 50 ? 'eligible' : 'non_eligible',
-        tauxFinal: result.eligibility_score / 100,
-        montantFinal: result.estimated_savings || 0,
-        dureeFinale: 12, // 12 mois par défaut
-        simulationId: null, // Pas de simulation pour l'instant
-        metadata: {
-          confidence_level: result.confidence_level,
-          recommendations: result.recommendations || [],
-          session_token: sessionToken,
-          migrated_at: new Date().toISOString(),
-          original_produit_id: result.produit_id
-        },
-        notes: `Migration depuis simulateur - Score: ${result.eligibility_score}%, Confiance: ${result.confidence_level}`,
-        priorite: result.eligibility_score >= 80 ? 1 : result.eligibility_score >= 60 ? 2 : 3,
-        dateEligibilite: new Date().toISOString(),
-        current_step: 0,
-        progress: 0,
-        expert_id: null,
-        charte_signed: false,
-        charte_signed_at: null
-      };
-
-      clientProduitsEligibles.push(clientProduitEligible);
+    if (dbEligibilityResults && dbEligibilityResults.length > 0) {
+      dbEligibilityResults.forEach((elig, index) => {
+        console.log(`   ${index + 1}. Produit: ${elig.produit_id}, Score: ${elig.eligibility_score}%, Économies: ${elig.estimated_savings}€`);
+      });
     }
 
-    // 6. Insérer les ClientProduitEligible avec supabaseAdmin pour contourner RLS
+    // 6. Vérification du mapping des produits
+    console.log('🔍 Étape 4: Vérification du mapping des produits...');
+    
+    const { data: products, error: productsError } = await supabaseAdmin
+      .from('ProduitEligible')
+      .select('id, nom');
+
+    if (productsError) {
+      console.error('❌ Erreur récupération produits:', productsError);
+      return res.status(500).json({
+        success: false,
+        error: 'Erreur lors de la récupération des produits'
+      });
+    }
+
+    console.log(`✅ ${products?.length || 0} produits dans le catalogue`);
+
+    // 7. Création des ClientProduitEligible
+    console.log('🔍 Étape 5: Création des produits éligibles...');
+    
+    const clientProduitsEligibles = [];
+    
+    if (dbEligibilityResults && dbEligibilityResults.length > 0) {
+      for (const result of dbEligibilityResults) {
+        console.log(`🔍 Traitement du produit: ${result.produit_id} (${result.estimated_savings}€)`);
+        
+        const produitId = result.produit_id && typeof result.produit_id === 'string' 
+          ? PRODUCT_MAPPING[result.produit_id] 
+          : undefined;
+        
+        if (!produitId) {
+          console.warn(`⚠️ Produit non trouvé dans le mapping: ${result.produit_id}`);
+          continue;
+        }
+
+        // Vérifier que le produit existe dans le catalogue
+        const productExists = products?.some(p => p.id === produitId);
+        if (!productExists) {
+          console.warn(`⚠️ Produit ${result.produit_id} (${produitId}) non trouvé dans le catalogue`);
+          continue;
+        }
+
+        const clientProduitEligible = {
+          clientId: client.id,
+          produitId: produitId,
+          statut: result.eligibility_score >= 50 ? 'eligible' : 'non_eligible',
+          tauxFinal: result.eligibility_score / 100,
+          montantFinal: result.estimated_savings || 0,
+          dureeFinale: 12, // 12 mois par défaut
+          simulationId: null, // Pas de simulation pour l'instant
+          metadata: {
+            confidence_level: result.confidence_level,
+            recommendations: result.recommendations || [],
+            session_token: sessionToken,
+            migrated_at: new Date().toISOString(),
+            original_produit_id: result.produit_id
+          },
+          notes: `Migration depuis simulateur - Score: ${result.eligibility_score}%, Confiance: ${result.confidence_level}`,
+          priorite: result.eligibility_score >= 80 ? 1 : result.eligibility_score >= 60 ? 2 : 3,
+          dateEligibilite: new Date().toISOString(),
+          current_step: 0,
+          progress: 0,
+          expert_id: null,
+          charte_signed: false,
+          charte_signed_at: null
+        };
+
+        clientProduitsEligibles.push(clientProduitEligible);
+        console.log(`✅ Produit préparé: ${result.produit_id} → ${produitId}`);
+      }
+    }
+
+    // 8. Insertion des ClientProduitEligible
+    console.log('🔍 Étape 6: Insertion des produits éligibles...');
+    
     if (clientProduitsEligibles.length > 0) {
+      console.log(`📤 Insertion de ${clientProduitsEligibles.length} produits éligibles...`);
+      
       const { data: insertedProducts, error: insertError } = await supabaseAdmin
         .from('ClientProduitEligible')
         .insert(clientProduitsEligibles)
@@ -222,7 +272,6 @@ router.post('/migrate', async (req, res) => {
       if (insertError) {
         console.error('❌ Erreur insertion ClientProduitEligible:', insertError);
         console.error('📋 Détails erreur:', JSON.stringify(insertError, null, 2));
-        console.error('📤 Données envoyées:', JSON.stringify(clientProduitsEligibles, null, 2));
         return res.status(500).json({
           success: false,
           error: 'Erreur lors de la création des produits éligibles',
@@ -231,10 +280,20 @@ router.post('/migrate', async (req, res) => {
       }
 
       console.log(`✅ ${insertedProducts?.length || 0} produits éligibles créés`);
+      
+      if (insertedProducts && insertedProducts.length > 0) {
+        insertedProducts.forEach((prod, index) => {
+          console.log(`   ${index + 1}. ID: ${prod.id}, Client: ${prod.clientId}, Produit: ${prod.produitId}, Statut: ${prod.statut}`);
+        });
+      }
+    } else {
+      console.log('⚠️ Aucun produit à insérer');
     }
 
-    // 7. Marquer la session comme migrée
-    const { error: updateError } = await supabase
+    // 9. Marquage de la session comme migrée
+    console.log('🔍 Étape 7: Marquage de la session comme migrée...');
+    
+    const { error: updateError } = await supabaseAdmin
       .from('TemporarySession')
       .update({
         migrated_to_account: true,
@@ -244,17 +303,44 @@ router.post('/migrate', async (req, res) => {
       .eq('id', session.id);
 
     if (updateError) {
-      console.error('Erreur mise à jour session:', updateError);
+      console.error('❌ Erreur marquage session:', updateError);
+      return res.status(500).json({
+        success: false,
+        error: 'Erreur lors du marquage de la session'
+      });
     }
 
+    console.log('✅ Session marquée comme migrée');
+
+    // 10. Vérification finale
+    console.log('🔍 Étape 8: Vérification finale...');
+    
+    const { data: finalProducts, error: finalError } = await supabaseAdmin
+      .from('ClientProduitEligible')
+      .select('*')
+      .eq('clientId', client.id);
+
+    if (finalError) {
+      console.error('❌ Erreur vérification finale:', finalError);
+    } else {
+      console.log(`✅ ${finalProducts?.length || 0} produits éligibles finaux pour le client`);
+    }
+
+    // 11. Réponse de succès
+    console.log('🎉 MIGRATION RÉUSSIE !');
+    
     return res.json({
       success: true,
       data: {
-        client_produit_eligibles: clientProduitsEligibles,
-        migrated_count: clientProduitsEligibles.length,
-        session_id: session.id
+        client_id: client.id,
+        client_email: client.email,
+        session_id: session.id,
+        session_token: sessionToken,
+        client_produit_eligibles: finalProducts || [],
+        migrated_count: finalProducts?.length || 0,
+        total_savings: finalProducts?.reduce((sum, prod) => sum + (prod.montantFinal || 0), 0) || 0
       },
-      message: `Migration réussie: ${clientProduitsEligibles.length} produits éligibles créés`
+      message: `Migration réussie: ${finalProducts?.length || 0} produits éligibles créés pour ${client.email}`
     });
 
   } catch (error) {
