@@ -243,14 +243,11 @@ const HeroSection = ({ navigate }: { navigate: (path: string) => void }) => (
                 meilleurs experts
               </span>
               <span className="block font-light text-slate-700 mt-2">
-                pour transformer contraintes en
-              </span>
-              <span className="block font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mt-1">
-                opportunités financières
+                pour transformer contraintes en opportunités financières
               </span>
             </h1>
             <p className="text-lg md:text-xl text-slate-600 leading-relaxed">
-              Optimisez vos finances, réduisez vos charges et accélérez votre croissance grâce à notre écosystème d'experts qualifiés.
+              Économisez jusqu'à 25% sur vos charges et boostez votre trésorerie avec nos experts certifiés. Résultats garantis en 30 jours.
             </p>
           </div>
 
@@ -258,35 +255,35 @@ const HeroSection = ({ navigate }: { navigate: (path: string) => void }) => (
           <div className="flex flex-col lg:flex-row gap-4 mb-8">
             {/* CTA Client */}
             <div className="flex-1">
-              <h3 className="text-xs font-semibold text-slate-600 uppercase tracking-wider mb-3">Pour les entreprises</h3>
+              <h3 className="text-xs font-semibold text-slate-600 uppercase tracking-wider mb-3">Entreprises</h3>
               <button 
                 onClick={() => navigate('/simulateur')}
                 className="group relative w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
               >
                 <span className="flex items-center justify-center gap-2">
-                  Accéder au simulateur
+                  Calculer mes économies
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </span>
               </button>
               <p className="text-xs text-slate-500 mt-2 text-center">
-                Calculez vos gains en 2 minutes
+                Simulation gratuite • Résultats en 2 min
               </p>
             </div>
 
             {/* CTA Expert */}
             <div className="flex-1">
-              <h3 className="text-xs font-semibold text-slate-600 uppercase tracking-wider mb-3">Pour les experts</h3>
+              <h3 className="text-xs font-semibold text-slate-600 uppercase tracking-wider mb-3">Experts</h3>
               <button 
                 onClick={() => navigate('/welcome-expert')}
                 className="group relative w-full bg-white border-2 border-blue-200 hover:border-blue-300 text-blue-700 font-semibold py-3 px-6 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 transform hover:-translate-y-1"
               >
                 <span className="flex items-center justify-center gap-2">
-                  Rejoindre l'écosystème
+                  Rejoindre les experts
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </span>
               </button>
               <p className="text-xs text-slate-500 mt-2 text-center">
-                Développez votre activité
+                +40% de clients • Commissions garanties
               </p>
             </div>
           </div>
@@ -295,15 +292,15 @@ const HeroSection = ({ navigate }: { navigate: (path: string) => void }) => (
           <div className="flex items-center justify-center gap-6 text-xs text-slate-600">
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
-              <span>500+ experts vérifiés</span>
+              <span>500+ experts certifiés</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
-              <span>+15% d'économies moyennes</span>
+              <span>25% d'économies moyennes</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 bg-purple-500 rounded-full"></div>
-              <span>98% de satisfaction</span>
+              <span>98% de réussite</span>
             </div>
           </div>
         </div>
@@ -339,6 +336,16 @@ const HeroSection = ({ navigate }: { navigate: (path: string) => void }) => (
                 </div>
               </div>
               <div className="text-xs text-slate-600">Délai de réponse</div>
+            </div>
+
+            <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-5 border border-orange-100 shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-2xl font-bold text-slate-900">20+</div>
+                <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-amber-500 rounded-xl flex items-center justify-center">
+                  <Target className="w-5 h-5 text-white" />
+                </div>
+              </div>
+              <div className="text-xs text-slate-600">Produits d'optimisation</div>
             </div>
           </div>
         </div>
