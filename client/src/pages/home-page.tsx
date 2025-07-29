@@ -234,7 +234,7 @@ const HeroSection = ({ navigate }: { navigate: (path: string) => void }) => (
         {/* Section Contenu - Plus compacte */}
         <div className="flex-1 max-w-2xl lg:max-w-3xl">
           {/* Titre principal - Plus impactant */}
-          <div className="mb-8">
+          <div className="mb-12">
             <h1 className="text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-light text-slate-900 mb-6 leading-tight">
               <span className="block font-light text-slate-700">
                 Profitum connecte les entreprises aux
@@ -251,56 +251,84 @@ const HeroSection = ({ navigate }: { navigate: (path: string) => void }) => (
             </p>
           </div>
 
-          {/* Boutons d'action - Plus compacts */}
-          <div className="flex flex-col lg:flex-row gap-4 mb-8">
-            {/* CTA Client */}
-            <div className="flex-1">
-              <h3 className="text-xs font-semibold text-slate-600 uppercase tracking-wider mb-3">Entreprises</h3>
-              <button 
-                onClick={() => navigate('/simulateur')}
-                className="group relative w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
-              >
-                <span className="flex items-center justify-center gap-2">
-                  Calculer mes économies
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </span>
-              </button>
-              <p className="text-xs text-slate-500 mt-2 text-center">
-                Simulation gratuite • Résultats en 2 min
-              </p>
+          {/* Boutons d'action - Design exceptionnel */}
+          <div className="flex flex-col lg:flex-row gap-6 mb-8">
+            {/* CTA Client - Design premium */}
+            <div className="flex-1 group">
+              <div className="relative">
+                {/* Label avec design sophistiqué */}
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-2 h-2 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full animate-pulse"></div>
+                  <span className="text-xs font-bold text-slate-700 uppercase tracking-widest">Entreprises</span>
+                  <div className="flex-1 h-px bg-gradient-to-r from-blue-200 to-transparent"></div>
+                </div>
+                
+                {/* Bouton principal avec effets avancés */}
+                <button 
+                  onClick={() => navigate('/simulateur')}
+                  className="group relative w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:via-indigo-700 hover:to-blue-800 text-white font-bold py-4 px-8 rounded-2xl shadow-2xl hover:shadow-blue-500/25 transition-all duration-500 transform hover:-translate-y-2 overflow-hidden"
+                >
+                  {/* Effet de brillance */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+                  
+                  {/* Contenu du bouton */}
+                  <span className="relative flex items-center justify-center gap-3">
+                    <span>Calculer mes économies</span>
+                    <div className="w-5 h-5 bg-white/20 rounded-full flex items-center justify-center">
+                      <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform duration-300" />
+                    </div>
+                  </span>
+                </button>
+                
+                {/* Annotation avec design premium */}
+                <div className="mt-3 flex items-center justify-center gap-2">
+                  <div className="flex items-center gap-1.5 bg-white/80 backdrop-blur-sm border border-green-200 rounded-full px-3 py-1.5">
+                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+                    <span className="text-xs font-semibold text-green-700">Gratuit</span>
+                  </div>
+                  <span className="text-xs text-slate-500 font-medium">•</span>
+                  <span className="text-xs text-slate-600 font-medium">Résultats en 2 min</span>
+                </div>
+              </div>
             </div>
 
-            {/* CTA Expert */}
-            <div className="flex-1">
-              <h3 className="text-xs font-semibold text-slate-600 uppercase tracking-wider mb-3">Experts</h3>
-              <button 
-                onClick={() => navigate('/welcome-expert')}
-                className="group relative w-full bg-white border-2 border-blue-200 hover:border-blue-300 text-blue-700 font-semibold py-3 px-6 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 transform hover:-translate-y-1"
-              >
-                <span className="flex items-center justify-center gap-2">
-                  Rejoindre les experts
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </span>
-              </button>
-              <p className="text-xs text-slate-500 mt-2 text-center">
-                +40% de clients • Commissions garanties
-              </p>
-            </div>
-          </div>
-
-          {/* Indicateurs de confiance - Plus compacts */}
-          <div className="flex items-center justify-center gap-6 text-xs text-slate-600">
-            <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
-              <span>500+ experts certifiés</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
-              <span>25% d'économies moyennes</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 bg-purple-500 rounded-full"></div>
-              <span>98% de réussite</span>
+            {/* CTA Expert - Design premium */}
+            <div className="flex-1 group">
+              <div className="relative">
+                {/* Label avec design sophistiqué */}
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-2 h-2 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full animate-pulse"></div>
+                  <span className="text-xs font-bold text-slate-700 uppercase tracking-widest">Experts</span>
+                  <div className="flex-1 h-px bg-gradient-to-r from-emerald-200 to-transparent"></div>
+                </div>
+                
+                {/* Bouton principal avec effets avancés */}
+                <button 
+                  onClick={() => navigate('/welcome-expert')}
+                  className="group relative w-full bg-white border-2 border-emerald-200 hover:border-emerald-300 text-emerald-700 font-bold py-4 px-8 rounded-2xl shadow-xl hover:shadow-emerald-500/20 transition-all duration-500 transform hover:-translate-y-2 overflow-hidden"
+                >
+                  {/* Effet de brillance */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-emerald-50 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+                  
+                  {/* Contenu du bouton */}
+                  <span className="relative flex items-center justify-center gap-3">
+                    <span>Rejoindre les experts</span>
+                    <div className="w-5 h-5 bg-emerald-100 rounded-full flex items-center justify-center">
+                      <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform duration-300" />
+                    </div>
+                  </span>
+                </button>
+                
+                {/* Annotation avec design premium */}
+                <div className="mt-3 flex items-center justify-center gap-2">
+                  <div className="flex items-center gap-1.5 bg-white/80 backdrop-blur-sm border border-purple-200 rounded-full px-3 py-1.5">
+                    <div className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse"></div>
+                    <span className="text-xs font-semibold text-purple-700">+40% clients</span>
+                  </div>
+                  <span className="text-xs text-slate-500 font-medium">•</span>
+                  <span className="text-xs text-slate-600 font-medium">Commissions garanties</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
