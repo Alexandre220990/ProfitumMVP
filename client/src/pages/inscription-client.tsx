@@ -3,58 +3,59 @@ import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { User, Mail, Lock, Building, Phone, MapPin, Loader2, ArrowRight } from "lucide-react";
+import { User, Mail, Lock, Building, Phone, MapPin, Loader2, ArrowRight, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { SirenValidationField } from "@/components/SirenValidationField";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { config } from "@/config/env";
 
 // Schéma de validation du formulaire
-const formSchema = z.object({ 
-  username: z.string().min(2, "Le nom d'utilisateur doit contenir au moins 2 caractères"), 
-  email: z.string().email("Email invalide"), 
-  password: z.string().min(8, "Le mot de passe doit contenir au moins 8 caractères"), 
-  confirmPassword: z.string(), 
-  company_name: z.string().min(2, "Le nom de l'entreprise doit contenir au moins 2 caractères"), 
-  phone_number: z.string().min(10, "Numéro de téléphone invalide"), 
-  address: z.string().min(5, "Adresse invalide"), 
-  city: z.string().min(2, "Ville invalide"), 
+const formSchema = z.object({
+  username: z.string().min(2, "Le nom d'utilisateur doit contenir au moins 2 caractères"),
+  email: z.string().email("Email invalide"),
+  password: z.string().min(8, "Le mot de passe doit contenir au moins 8 caractères"),
+  confirmPassword: z.string(),
+  company_name: z.string().min(2, "Le nom de l'entreprise doit contenir au moins 2 caractères"),
+  phone_number: z.string().min(10, "Numéro de téléphone invalide"),
+  address: z.string().min(5, "Adresse invalide"),
+  city: z.string().min(2, "Ville invalide"),
   postal_code: z.string().regex(/^\d{5}$/, "Code postal invalide"),
   siren: z.string().regex(/^\d{9}$/, "Numéro SIREN invalide"),
-}).refine((data) => data.password === data.confirmPassword, { 
-  message: "Les mots de passe ne correspondent pas", 
-  path: ["confirmPassword"] 
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Les mots de passe ne correspondent pas",
+  path: ["confirmPassword"]
 });
 
 type FormData = z.infer<typeof formSchema>;
 
-const InscriptionClient = () => { 
+const InscriptionClient = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { setUser } = useAuth();
   
   const [isLoading, setIsLoading] = useState(false);
 
-  const form = useForm<FormData>({ 
-    resolver: zodResolver(formSchema), 
+  const form = useForm<FormData>({
+    resolver: zodResolver(formSchema),
     defaultValues: {
-      username: "", 
-      email: "", 
-      password: "", 
-      confirmPassword: "", 
-      company_name: "", 
-      phone_number: "", 
-      address: "", 
-      city: "", 
-      postal_code: "", 
-      siren: "" 
+      username: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+      company_name: "",
+      phone_number: "",
+      address: "",
+      city: "",
+      postal_code: "",
+      siren: ""
     },
   });
 
-  const onSubmit = async (data: FormData) => { 
+  const onSubmit = async (data: FormData) => {
     setIsLoading(true);
     
     try {
@@ -148,18 +149,36 @@ const InscriptionClient = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
-          <CardHeader className="text-center pb-6">
-            <CardTitle className="text-2xl font-bold text-gray-900 mb-2">
-              Inscription Client
-            </CardTitle>
-            <p className="text-gray-600">
-              Créez votre compte client pour accéder à nos services
-            </p>
+    <div className="flex min-h-screen bg-gray-50">
+      {/* Branding */}
+      <div className="hidden md:flex w-1/2 bg-gradient-to-r from-blue-600 to-blue-800 text-white p-12 flex-col justify-center">
+        <h1 className="text-4xl font-extrabold">Rejoignez Profitum</h1>
+        <p className="mt-4 text-lg opacity-90">
+          Créez votre compte client et accédez à nos services d'optimisation fiscale
+        </p>
+        <div className="mt-8 space-y-4">
+          <div className="flex items-center gap-3">
+            <CheckCircle className="w-5 h-5 text-green-400" />
+            <span>Simulation gratuite et personnalisée</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <CheckCircle className="w-5 h-5 text-green-400" />
+            <span>Optimisations fiscales sur mesure</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <CheckCircle className="w-5 h-5 text-green-400" />
+            <span>Accompagnement expert dédié</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Formulaire */}
+      <div className="flex-1 flex items-center justify-center p-8">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl font-bold">Inscription Client</CardTitle>
+            <p className="text-gray-600">Créez votre compte en quelques étapes</p>
           </CardHeader>
-          
           <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -168,12 +187,12 @@ const InscriptionClient = () => {
                   name="username"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="flex items-center gap-2">
-                        <User className="h-4 w-4" />
-                        Nom d'utilisateur
-                      </FormLabel>
+                      <FormLabel>Nom d'utilisateur</FormLabel>
                       <FormControl>
-                        <Input placeholder="Votre nom d'utilisateur" {...field} />
+                        <div className="relative">
+                          <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                          <Input {...field} className="pl-10" placeholder="Votre nom d'utilisateur" />
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -185,12 +204,12 @@ const InscriptionClient = () => {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="flex items-center gap-2">
-                        <Mail className="h-4 w-4" />
-                        Email professionnel
-                      </FormLabel>
+                      <FormLabel>Email</FormLabel>
                       <FormControl>
-                        <Input type="email" placeholder="contact@entreprise.com" {...field} />
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                          <Input {...field} type="email" className="pl-10" placeholder="votre@email.com" />
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -202,12 +221,12 @@ const InscriptionClient = () => {
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="flex items-center gap-2">
-                        <Lock className="h-4 w-4" />
-                        Mot de passe
-                      </FormLabel>
+                      <FormLabel>Mot de passe</FormLabel>
                       <FormControl>
-                        <Input type="password" placeholder="••••••••" {...field} />
+                        <div className="relative">
+                          <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                          <Input {...field} type="password" className="pl-10" placeholder="••••••••" />
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -219,12 +238,12 @@ const InscriptionClient = () => {
                   name="confirmPassword"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="flex items-center gap-2">
-                        <Lock className="h-4 w-4" />
-                        Confirmer le mot de passe
-                      </FormLabel>
+                      <FormLabel>Confirmer le mot de passe</FormLabel>
                       <FormControl>
-                        <Input type="password" placeholder="••••••••" {...field} />
+                        <div className="relative">
+                          <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                          <Input {...field} type="password" className="pl-10" placeholder="••••••••" />
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -236,29 +255,12 @@ const InscriptionClient = () => {
                   name="company_name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="flex items-center gap-2">
-                        <Building className="h-4 w-4" />
-                        Nom de l'entreprise
-                      </FormLabel>
+                      <FormLabel>Nom de l'entreprise</FormLabel>
                       <FormControl>
-                        <Input placeholder="Nom de votre entreprise" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="siren"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center gap-2">
-                        <Building className="h-4 w-4" />
-                        Numéro SIREN
-                      </FormLabel>
-                      <FormControl>
-                        <Input placeholder="123456789" {...field} />
+                        <div className="relative">
+                          <Building className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                          <Input {...field} className="pl-10" placeholder="Nom de votre entreprise" />
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -270,12 +272,12 @@ const InscriptionClient = () => {
                   name="phone_number"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="flex items-center gap-2">
-                        <Phone className="h-4 w-4" />
-                        Téléphone
-                      </FormLabel>
+                      <FormLabel>Téléphone</FormLabel>
                       <FormControl>
-                        <Input placeholder="01 23 45 67 89" {...field} />
+                        <div className="relative">
+                          <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                          <Input {...field} className="pl-10" placeholder="0123456789" />
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -287,12 +289,12 @@ const InscriptionClient = () => {
                   name="address"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4" />
-                        Adresse
-                      </FormLabel>
+                      <FormLabel>Adresse</FormLabel>
                       <FormControl>
-                        <Input placeholder="123 Rue de la Paix" {...field} />
+                        <div className="relative">
+                          <MapPin className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                          <Input {...field} className="pl-10" placeholder="123 Rue de la Paix" />
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -305,12 +307,9 @@ const InscriptionClient = () => {
                     name="city"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="flex items-center gap-2">
-                          <MapPin className="h-4 w-4" />
-                          Ville
-                        </FormLabel>
+                        <FormLabel>Ville</FormLabel>
                         <FormControl>
-                          <Input placeholder="Paris" {...field} />
+                          <Input {...field} placeholder="Paris" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -322,12 +321,9 @@ const InscriptionClient = () => {
                     name="postal_code"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="flex items-center gap-2">
-                          <MapPin className="h-4 w-4" />
-                          Code postal
-                        </FormLabel>
+                        <FormLabel>Code postal</FormLabel>
                         <FormControl>
-                          <Input placeholder="75001" {...field} />
+                          <Input {...field} placeholder="75001" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -335,15 +331,19 @@ const InscriptionClient = () => {
                   />
                 </div>
 
-                <Button 
-                  type="submit" 
-                  className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold py-3"
-                  disabled={isLoading}
-                >
+                {/* Champ SIREN avec validation */}
+                <SirenValidationField
+                  form={form}
+                  name="siren"
+                  label="Numéro SIREN"
+                  placeholder="123456789"
+                />
+
+                <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Création du compte...
+                      Création en cours...
                     </>
                   ) : (
                     <>
@@ -354,30 +354,6 @@ const InscriptionClient = () => {
                 </Button>
               </form>
             </Form>
-
-            <div className="mt-6 text-center">
-              <p className="text-sm text-gray-600">
-                Déjà un compte ?{' '}
-                <button
-                  onClick={() => navigate('/connexion-client')}
-                  className="text-blue-600 hover:text-blue-700 font-medium"
-                >
-                  Se connecter
-                </button>
-              </p>
-            </div>
-
-            <div className="mt-4 text-center">
-              <p className="text-sm text-gray-600">
-                Ou{' '}
-                <button
-                  onClick={() => navigate('/simulateur')}
-                  className="text-blue-600 hover:text-blue-700 font-medium"
-                >
-                  tester notre simulateur d'éligibilité
-                </button>
-              </p>
-            </div>
           </CardContent>
         </Card>
       </div>

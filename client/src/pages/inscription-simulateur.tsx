@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { SirenValidationField } from "@/components/SirenValidationField";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { config } from "@/config/env";
@@ -33,6 +33,8 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
+type MigrationStep = 'checking' | 'migrating' | 'completed' | 'error';
+
 interface EligibilityResult { 
   produit_id: string;
   eligibility_score: number;
@@ -48,7 +50,7 @@ const InscriptionSimulateur = () => {
   const { setUser } = useAuth();
   
   const [isLoading, setIsLoading] = useState(false);
-  const [migrationStep, setMigrationStep] = useState<'checking' | 'migrating' | 'completed' | 'error'>('checking');
+  const [migrationStep, setMigrationStep] = useState<MigrationStep>('checking');
   const [sessionData, setSessionData] = useState<any>(null);
   const [eligibilityResults, setEligibilityResults] = useState<EligibilityResult[]>([]);
   const [totalSavings, setTotalSavings] = useState(0);
@@ -246,6 +248,20 @@ const InscriptionSimulateur = () => {
     return icons[produitId] || '💰';
   };
 
+  const getMigrationMessage = (step: MigrationStep): string => {
+    switch (step) {
+      case 'checking':
+        return 'Vérification...';
+      case 'migrating':
+        return 'Création du compte...';
+      case 'completed':
+        return 'Redirection...';
+      case 'error':
+        return 'Erreur...';
+      default:
+        return 'Traitement...';
+    }
+  };
 
 
   if (migrationStep === 'error') { 
@@ -395,23 +411,6 @@ const InscriptionSimulateur = () => {
 
                       <FormField
                         control={form.control}
-                        name="siren"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Numéro SIREN</FormLabel>
-                            <FormControl>
-                              <div className="relative">
-                                <FileText className="absolute left-3 top-3 text-gray-400 w-5 h-5" />
-                                <Input {...field} placeholder="123456789" className="pl-10" />
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
                         name="phone_number"
                         render={({ field }) => (
                           <FormItem>
@@ -473,28 +472,29 @@ const InscriptionSimulateur = () => {
                           )}
                         />
                       </div>
-                    </div>
 
-                    {/* Bouton de soumission */}
-                    <Button
-                      type="submit"
-                      className="w-full py-3 text-lg bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-md transition-all"
-                      disabled={isLoading}
-                    >
-                      {isLoading ? (
-                        <div className="flex items-center space-x-2">
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                          <span>
-                            {migrationStep === 'migrating' ? 'Migration en cours...' : 'Création du compte...'}
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center space-x-2">
-                          <span>Créer mon compte</span>
-                          <ArrowRight className="w-5 h-5" />
-                        </div>
-                      )}
-                    </Button>
+                      {/* Champ SIREN avec validation */}
+                      <SirenValidationField
+                        form={form}
+                        name="siren"
+                        label="Numéro SIREN"
+                        placeholder="123456789"
+                      />
+
+                      <Button type="submit" className="w-full" disabled={isLoading}>
+                        {isLoading ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            {getMigrationMessage(migrationStep)}
+                          </>
+                        ) : (
+                          <>
+                            Créer mon compte et migrer mes données
+                            <ArrowRight className="ml-2 h-4 w-4" />
+                          </>
+                        )}
+                      </Button>
+                    </div>
                   </form>
                 </Form>
               </CardContent>
