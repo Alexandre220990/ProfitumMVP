@@ -138,76 +138,92 @@ const InscriptionSimulateur = () => {
     try {
       const state = location.state as any;
       
-      // Préparer les données de migration
+      // 1. D'abord créer l'utilisateur via /api/auth/register
+      console.log('📝 Création du compte utilisateur...');
+      
+      const cleanSiren = data.siren.replace(/\D/g, "");
+      
+      const registerResponse = await fetch(`${config.API_URL}/api/auth/register`, {
+        method: "POST",
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+          ...data, 
+          siren: cleanSiren, 
+          type: "client" 
+        }),
+      });
+
+      const registerResult = await registerResponse.json();
+
+      if (!registerResult.success || !registerResult.data) {
+        throw new Error(registerResult.message || "Erreur lors de la création du compte");
+      }
+
+      const { token, user } = registerResult.data;
+      console.log('✅ Compte utilisateur créé:', user.id);
+
+      // 2. Ensuite migrer les données de session
+      console.log('📝 Migration des données de session...');
+      
       const migrationData = {
         sessionToken: state.sessionToken, 
-        sessionId: state.sessionToken, // Utiliser le token comme ID pour simplifier
+        sessionId: state.sessionToken,
         clientData: {
-          ...data, // Ajouter les données extraites de la session
-          ...sessionData?.extracted_client_data // Ajouter les données extraites de la session
+          ...data,
+          ...sessionData?.extracted_client_data
         }
       };
 
-      // Effectuer la migration
-      const response = await fetch(`${config.API_URL}/api/session-migration/migrate`, { 
-        method: 'POST', 
-        headers: {
-          'Content-Type': 'application/json' 
-        },
-        body: JSON.stringify(migrationData)
-      });
+      try {
+        const migrationResponse = await fetch(`${config.API_URL}/api/session-migration/migrate`, { 
+          method: 'POST', 
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}` // Ajouter le token pour l'authentification
+          },
+          body: JSON.stringify(migrationData)
+        });
 
-      const result = await response.json();
+        const migrationResult = await migrationResponse.json();
 
-      if (!result.success) { 
-        throw new Error(result.error || 'Erreur lors de la migration'); 
+        if (migrationResult.success) {
+          console.log('✅ Migration réussie:', migrationResult.data);
+        } else {
+          console.warn('⚠️ Migration échouée, mais compte créé:', migrationResult.error);
+        }
+      } catch (migrationError) {
+        console.warn('⚠️ Erreur lors de la migration, mais compte créé:', migrationError);
+        // Ne pas faire échouer l'inscription à cause de la migration
       }
 
       setMigrationStep('completed');
 
-      // Connexion automatique après migration réussie
-      const loginResponse = await fetch(`${config.API_URL}/api/auth/login`, { 
-        method: 'POST', 
-        headers: {
-          'Content-Type': 'application/json' 
-        },
-        body: JSON.stringify({ email: data.email, password: data.password })
+      // 3. Connexion automatique avec les données du register
+      localStorage.setItem('token', token);
+      setUser(user);
+
+      // Nettoyage des données temporaires
+      localStorage.removeItem('sessionToken');
+      localStorage.removeItem('eligibilityResults');
+      sessionStorage.clear();
+
+      toast({
+        title: "🎉 Inscription réussie !", 
+        description: `Bienvenue ${data.username} ! Votre compte a été créé avec ${eligibilityResults.length} produits éligibles.`,
       });
 
-      const loginResult = await loginResponse.json();
-
-      if (loginResult.success && loginResult.data) { 
-        localStorage.setItem('token', loginResult.data.token);
-        setUser(loginResult.data.user);
-
-        // Nettoyage des données temporaires
-        localStorage.removeItem('sessionToken');
-        localStorage.removeItem('eligibilityResults');
-        sessionStorage.clear();
-
-        toast({
-          title: "🎉 Inscription réussie !", 
-          description: `Bienvenue ${data.username} ! Votre compte a été créé avec ${result.data.client_produit_eligibles?.length || 0} produits éligibles.`,
-        });
-
-        // Rediriger vers le dashboard avec les données migrées
-        navigate(`/dashboard/client/${loginResult.data.user.id}`, { 
-          state: {
-            fromSimulator: true, 
-            migrationData: result.data 
-          }
-        });
-      } else { 
-        // Migration réussie mais problème de connexion
-        toast({
-          title: "Compte créé", 
-          description: "Votre compte a été créé avec succès. Vous pouvez maintenant vous connecter." 
-        });
-        navigate('/connexion-client');
-      }
+      // Rediriger vers le dashboard
+      navigate(`/dashboard/client/${user.id}`, { 
+        state: {
+          fromSimulator: true, 
+          migrationData: { eligibilityResults, totalSavings }
+        }
+      });
 
     } catch (error) { 
-      console.error('Erreur lors de l\'inscription: ', error);
+      console.error('❌ Erreur lors de l\'inscription: ', error);
       setMigrationStep('error');
       
       toast({
