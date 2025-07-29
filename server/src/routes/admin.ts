@@ -1,7 +1,6 @@
 import express, { Router, Request, Response } from 'express';
 import { createClient } from '@supabase/supabase-js';
 import { asyncHandler } from '../utils/asyncHandler';
-import { authenticateUser, requireUserType } from '../middleware/authenticate';
 import { AuthUser } from '../types/auth';
 import messagesRouter from './admin/messages';
 
@@ -30,7 +29,7 @@ interface UpdateData {
 }
 
 // GET /api/admin/dashboard - Dashboard principal avec KPIs
-router.get('/dashboard', authenticateUser, requireUserType('admin'), asyncHandler(async (req, res) => {
+router.get('/dashboard', asyncHandler(async (req, res) => {
   try {
     // 1. KPIs Utilisateurs
     const { count: totalClients } = await supabaseClient
@@ -385,7 +384,7 @@ router.get('/stats/clients', asyncHandler(async (req, res) => {
 }));
 
 // GET /api/admin/experts - Liste des experts avec filtres
-router.get('/experts', authenticateUser, requireUserType('admin'), asyncHandler(async (req, res) => {
+router.get('/experts', asyncHandler(async (req, res) => {
   try {
     const {
       page = 1,
@@ -471,7 +470,7 @@ router.get('/experts', authenticateUser, requireUserType('admin'), asyncHandler(
 }));
 
 // GET /api/admin/experts/:id - Détails d'un expert
-router.get('/experts/:id', authenticateUser, requireUserType('admin'), asyncHandler(async (req, res) => {
+router.get('/experts/:id', asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -524,7 +523,7 @@ router.get('/experts/:id', authenticateUser, requireUserType('admin'), asyncHand
 }));
 
 // PUT /api/admin/experts/:id/approve - Approuver un expert
-router.put('/experts/:id/approve', authenticateUser, requireUserType('admin'), asyncHandler(async (req, res) => {
+router.put('/experts/:id/approve', asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
     const adminId = (req as any).user.id;
@@ -595,7 +594,7 @@ router.put('/experts/:id/approve', authenticateUser, requireUserType('admin'), a
 }));
 
 // PUT /api/admin/experts/:id/reject - Rejeter un expert
-router.put('/experts/:id/reject', authenticateUser, requireUserType('admin'), asyncHandler(async (req, res) => {
+router.put('/experts/:id/reject', asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
     const { reason } = req.body;
@@ -658,7 +657,7 @@ router.put('/experts/:id/reject', authenticateUser, requireUserType('admin'), as
 }));
 
 // PUT /api/admin/experts/:id - Modifier un expert
-router.put('/experts/:id', authenticateUser, requireUserType('admin'), asyncHandler(async (req, res) => {
+router.put('/experts/:id', asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
     const adminId = (req as any).user.id;
@@ -731,7 +730,7 @@ router.put('/experts/:id', authenticateUser, requireUserType('admin'), asyncHand
 }));
 
 // POST /api/admin/experts - Créer un nouvel expert
-router.post('/experts', authenticateUser, requireUserType('admin'), asyncHandler(async (req, res) => {
+router.post('/experts', asyncHandler(async (req, res) => {
   try {
     const adminId = (req as any).user.id;
     const expertData = req.body;
@@ -851,7 +850,7 @@ router.post('/experts', authenticateUser, requireUserType('admin'), asyncHandler
 // ========================================
 
 // GET /api/admin/client-produits-eligibles - Données pour le pipeline business
-router.get('/client-produits-eligibles', authenticateUser, requireUserType('admin'), asyncHandler(async (req, res) => {
+router.get('/client-produits-eligibles', asyncHandler(async (req, res) => {
   try {
     const { data: clientProduitsEligibles, error } = await supabaseClient
       .from('ClientProduitEligible')
@@ -892,7 +891,7 @@ router.get('/client-produits-eligibles', authenticateUser, requireUserType('admi
 }));
 
 // GET /api/admin/clients - Liste des clients avec filtres
-router.get('/clients', authenticateUser, requireUserType('admin'), asyncHandler(async (req, res) => {
+router.get('/clients', asyncHandler(async (req, res) => {
   try {
     const {
       page = 1,
@@ -965,7 +964,7 @@ router.get('/clients', authenticateUser, requireUserType('admin'), asyncHandler(
 }));
 
 // POST /api/admin/clients - Créer un nouveau client
-router.post('/clients', authenticateUser, requireUserType('admin'), asyncHandler(async (req, res) => {
+router.post('/clients', asyncHandler(async (req, res) => {
   try {
     const {
       email,
@@ -1050,7 +1049,7 @@ router.post('/clients', authenticateUser, requireUserType('admin'), asyncHandler
 }));
 
 // GET /api/admin/clients/:id - Détails d'un client
-router.get('/clients/:id', authenticateUser, requireUserType('admin'), asyncHandler(async (req, res) => {
+router.get('/clients/:id', asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -1142,7 +1141,7 @@ router.get('/clients/:id', authenticateUser, requireUserType('admin'), asyncHand
 }));
 
 // PUT /api/admin/clients/:id/status - Modifier le statut d'un client
-router.put('/clients/:id/status', authenticateUser, requireUserType('admin'), asyncHandler(async (req, res) => {
+router.put('/clients/:id/status', asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -1199,7 +1198,7 @@ router.put('/clients/:id/status', authenticateUser, requireUserType('admin'), as
 }));
 
 // DELETE /api/admin/clients/:id - Supprimer un client
-router.delete('/clients/:id', authenticateUser, requireUserType('admin'), asyncHandler(async (req, res) => {
+router.delete('/clients/:id', asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
     const adminId = (req as any).user.id;
@@ -1265,7 +1264,7 @@ router.delete('/clients/:id', authenticateUser, requireUserType('admin'), asyncH
 }));
 
 // Route pour récupérer tous les dossiers clients (ClientProduitEligible)
-router.get('/dossiers', authenticateUser, requireUserType('admin'), async (req, res) => {
+router.get('/dossiers', async (req, res) => {
   try {
     const { page = 1, limit = 10, status, client, produit, expert, sortBy = 'created_at', sortOrder = 'desc' } = req.query;
     
@@ -1394,7 +1393,7 @@ router.get('/dossiers', authenticateUser, requireUserType('admin'), async (req, 
 });
 
 // Route de test pour vérifier l'authentification admin
-router.get('/test', authenticateUser, requireUserType('admin'), async (req, res) => {
+router.get('/test', async (req, res) => {
   try {
     return res.json({
       success: true,
@@ -1408,7 +1407,7 @@ router.get('/test', authenticateUser, requireUserType('admin'), async (req, res)
 });
 
 // Route pour récupérer les statistiques des dossiers
-router.get('/dossiers/stats', authenticateUser, requireUserType('admin'), async (req, res) => {
+router.get('/dossiers/stats', async (req, res) => {
   try {
     console.log('✅ Récupération des statistiques des dossiers');
 
@@ -1492,7 +1491,7 @@ router.get('/dossiers/stats', authenticateUser, requireUserType('admin'), async 
 });
 
 // Route pour récupérer les produits éligibles
-router.get('/produits', authenticateUser, requireUserType('admin'), async (req, res) => {
+router.get('/produits', async (req, res) => {
   try {
     console.log('✅ Récupération des produits éligibles');
 
@@ -1519,7 +1518,7 @@ router.get('/produits', authenticateUser, requireUserType('admin'), async (req, 
 });
 
 // Route pour ajouter un nouveau produit
-router.post('/produits', authenticateUser, requireUserType('admin'), async (req, res) => {
+router.post('/produits', async (req, res) => {
   try {
     console.log('✅ Ajout d\'un nouveau produit');
 
@@ -1570,7 +1569,7 @@ router.post('/produits', authenticateUser, requireUserType('admin'), async (req,
 });
 
 // Route pour modifier un produit
-router.put('/produits/:id', authenticateUser, requireUserType('admin'), async (req, res) => {
+router.put('/produits/:id', async (req, res) => {
   try {
     console.log('✅ Modification du produit:', req.params.id);
 
@@ -1628,7 +1627,7 @@ router.put('/produits/:id', authenticateUser, requireUserType('admin'), async (r
 });
 
 // Route pour supprimer un produit
-router.delete('/produits/:id', authenticateUser, requireUserType('admin'), async (req, res) => {
+router.delete('/produits/:id', async (req, res) => {
   try {
     console.log('✅ Suppression du produit:', req.params.id);
 
@@ -1675,7 +1674,7 @@ router.delete('/produits/:id', authenticateUser, requireUserType('admin'), async
 });
 
 // Route pour ajouter un nouveau dossier
-router.post('/dossiers', authenticateUser, requireUserType('admin'), async (req, res) => {
+router.post('/dossiers', async (req, res) => {
   try {
     console.log('✅ Ajout d\'un nouveau dossier');
 
@@ -1723,7 +1722,7 @@ router.post('/dossiers', authenticateUser, requireUserType('admin'), async (req,
 });
 
 // GET /api/admin/users - Gestion des utilisateurs
-router.get('/users', authenticateUser, requireUserType('admin'), asyncHandler(async (req, res) => {
+router.get('/users', asyncHandler(async (req, res) => {
   try {
     const { type, status, page = 1, limit = 20 } = req.query;
     const offset = (Number(page) - 1) * Number(limit);
@@ -1799,7 +1798,7 @@ router.get('/users', authenticateUser, requireUserType('admin'), asyncHandler(as
 }));
 
 // GET /api/admin/assignments - Gestion des assignations
-router.get('/assignments', authenticateUser, requireUserType('admin'), asyncHandler(async (req, res) => {
+router.get('/assignments', asyncHandler(async (req, res) => {
   try {
     const { status, expert_id, page = 1, limit = 20 } = req.query;
     const offset = (Number(page) - 1) * Number(limit);
@@ -1850,7 +1849,7 @@ router.get('/assignments', authenticateUser, requireUserType('admin'), asyncHand
 }));
 
 // POST /api/admin/assignments/:id/assign - Assigner un expert
-router.post('/assignments/:id/assign', authenticateUser, requireUserType('admin'), asyncHandler(async (req, res) => {
+router.post('/assignments/:id/assign', asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
     const { expert_id, notes } = req.body;
@@ -1883,7 +1882,7 @@ router.post('/assignments/:id/assign', authenticateUser, requireUserType('admin'
 }));
 
 // GET /api/admin/notifications - Notifications système
-router.get('/notifications', authenticateUser, requireUserType('admin'), asyncHandler(async (req, res) => {
+router.get('/notifications', asyncHandler(async (req, res) => {
   try {
     const { type, priority, page = 1, limit = 50 } = req.query;
     const offset = (Number(page) - 1) * Number(limit);
@@ -1927,7 +1926,7 @@ router.get('/notifications', authenticateUser, requireUserType('admin'), asyncHa
 }));
 
 // POST /api/admin/notifications - Créer une notification
-router.post('/notifications', authenticateUser, requireUserType('admin'), asyncHandler(async (req, res) => {
+router.post('/notifications', asyncHandler(async (req, res) => {
   try {
     const { title, message, notification_type, priority, user_id, user_type } = req.body;
 
@@ -1961,7 +1960,7 @@ router.post('/notifications', authenticateUser, requireUserType('admin'), asyncH
 }));
 
 // GET /api/admin/analytics/detailed - Analytics détaillées
-router.get('/analytics/detailed', authenticateUser, requireUserType('admin'), asyncHandler(async (req, res) => {
+router.get('/analytics/detailed', asyncHandler(async (req, res) => {
   try {
     const { period = '30d' } = req.query;
     
@@ -2089,7 +2088,7 @@ router.get('/analytics/detailed', authenticateUser, requireUserType('admin'), as
 }));
 
 // GET /api/admin/security/alerts - Alertes de sécurité
-router.get('/security/alerts', authenticateUser, requireUserType('admin'), asyncHandler(async (req, res) => {
+router.get('/security/alerts', asyncHandler(async (req, res) => {
   try {
     const { severity, resolved, page = 1, limit = 20 } = req.query;
     const offset = (Number(page) - 1) * Number(limit);
@@ -2150,7 +2149,7 @@ router.get('/security/alerts', authenticateUser, requireUserType('admin'), async
 }));
 
 // POST /api/admin/security/alerts/:id/resolve - Résoudre une alerte
-router.post('/security/alerts/:id/resolve', authenticateUser, requireUserType('admin'), asyncHandler(async (req, res) => {
+router.post('/security/alerts/:id/resolve', asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
     const { resolution_notes } = req.body;
@@ -2169,7 +2168,7 @@ router.post('/security/alerts/:id/resolve', authenticateUser, requireUserType('a
 }));
 
 // Route pour obtenir les statistiques admin
-router.get('/stats', authenticateUser, async (req: Request, res: Response) => {
+router.get('/stats', async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });

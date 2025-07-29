@@ -45,6 +45,7 @@ const ConnexionClient = React.lazy(() => import('./pages/connexion-client'));
 const ConnexionExpert = React.lazy(() => import('./pages/connexion-expert'));
 const CreateAccountClient = React.lazy(() => import('./pages/create-account-client'));
 const CreateAccountExpert = React.lazy(() => import('./pages/create-account-expert'));
+const InscriptionClient = React.lazy(() => import('./pages/inscription-client'));
 const WelcomeExpert = React.lazy(() => import('./pages/welcome-expert'));
 const DemoConfirmation = React.lazy(() => import('./pages/demo-confirmation'));
 const ConnectAdmin = React.lazy(() => import('./pages/connect-admin'));
@@ -119,6 +120,7 @@ function App() {
                       <Route path="/connexion-expert" element={<ConnexionExpert />} />
                       <Route path="/connect-admin" element={<ConnectAdmin />} />
                       <Route path="/register-client" element={<CreateAccountClient />} />
+                      <Route path="/inscription-client" element={<InscriptionClient />} />
                       <Route path="/register-expert" element={<CreateAccountExpert />} />
                       <Route path="/welcome-expert" element={<WelcomeExpert />} />
                       <Route path="/demo-confirmation" element={<DemoConfirmation />} />

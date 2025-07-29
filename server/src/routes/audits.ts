@@ -1,5 +1,4 @@
 import express, { Router, Request, Response, NextFunction, RequestHandler } from 'express';
-import { authenticateUser } from '../middleware/authenticate';
 import { AuthUser } from '../types/auth';
 import crypto from 'crypto';
 import { supabase } from '../lib/supabase';
@@ -7,7 +6,7 @@ import { supabase } from '../lib/supabase';
 const router = express.Router();
 
 // Obtenir tous les audits d'un client
-router.get('/client/:clientId', authenticateUser, (async (req, res) => {
+router.get('/client/:clientId', async (req, res) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
@@ -75,7 +74,7 @@ router.get('/client/:clientId', authenticateUser, (async (req, res) => {
 }) as RequestHandler);
 
 // Obtenir un audit spécifique par ID
-router.get('/:auditId', authenticateUser, (async (req, res) => {
+router.get('/:auditId', async (req, res) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
@@ -123,7 +122,7 @@ router.get('/:auditId', authenticateUser, (async (req, res) => {
 }) as RequestHandler);
 
 // Créer un nouvel audit
-router.post('/', authenticateUser, (async (req, res) => {
+router.post('/', async (req, res) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
@@ -220,7 +219,7 @@ router.post('/', authenticateUser, (async (req, res) => {
 }) as RequestHandler);
 
 // Signer la charte pour un audit
-router.post('/sign-charter', authenticateUser, (async (req, res) => {
+router.post('/sign-charter', async (req, res) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
@@ -289,7 +288,7 @@ router.post('/sign-charter', authenticateUser, (async (req, res) => {
 }) as RequestHandler);
 
 // Mettre à jour le statut d'un audit
-router.put('/:auditId/status', authenticateUser, (async (req, res) => {
+router.put('/:auditId/status', async (req, res) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
@@ -347,7 +346,7 @@ router.put('/:auditId/status', authenticateUser, (async (req, res) => {
 }) as RequestHandler);
 
 // Télécharger un document pour un audit
-router.post('/:auditId/documents', authenticateUser, (async (req, res) => {
+router.post('/:auditId/documents', async (req, res) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
@@ -409,7 +408,7 @@ router.post('/:auditId/documents', authenticateUser, (async (req, res) => {
 }) as RequestHandler);
 
 // Supprimer un document
-router.delete('/documents/:documentId', authenticateUser, (async (req, res) => {
+router.delete('/documents/:documentId', async (req, res) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });

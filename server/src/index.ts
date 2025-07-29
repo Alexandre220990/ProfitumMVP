@@ -304,9 +304,6 @@ app.use('/api/analytics', enhancedAuthMiddleware, analyticsRoutes);
 // Routes Google Calendar - PROTÉGÉES
 app.use('/api/google-calendar', enhancedAuthMiddleware, googleCalendarRoutes);
 
-// Routes de migration de session - PUBLIQUES (pour l'inscription depuis le simulateur)
-app.use('/api/session-migration', publicRouteLogger, sessionMigrationRoutes);
-
 // Routes de signature de charte - PROTÉGÉES (suppression du middleware global)
 app.use('/api/charte-signature', enhancedAuthMiddleware, charteSignatureRoutes);
 

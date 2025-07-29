@@ -1,6 +1,5 @@
 import express from 'express';
 import { supabaseAdmin } from '../config/supabase';
-import { authenticateUser, requireUserType } from '../middleware/authenticate';
 import { AuthUser } from '../types/auth';
 import multer from 'multer';
 import path from 'path';
@@ -94,7 +93,7 @@ const upload = multer({
 // ========================================
 
 // Route spécifique pour les experts (compatibilité)
-router.get('/expert/messagerie-expert', authenticateUser, async (req, res) => {
+router.get('/expert/messagerie-expert', async (req, res) => {
   try {
     const authUser = req.user as AuthUser;
     
@@ -126,7 +125,7 @@ router.get('/expert/messagerie-expert', authenticateUser, async (req, res) => {
 
 // GET /api/messaging/conversations - Liste des conversations
 // GET /api/messaging/expert/conversations - Conversations spécifiques aux experts
-router.get(['/conversations', '/expert/conversations'], authenticateUser, async (req, res) => {
+router.get(['/conversations', '/expert/conversations'], async (req, res) => {
   try {
     const authUser = req.user as AuthUser;
     const { page = 1, limit = 20, type, status, search } = req.query;
@@ -239,7 +238,7 @@ router.get(['/conversations', '/expert/conversations'], authenticateUser, async 
 });
 
 // POST /api/messaging/conversations - Créer une conversation
-router.post('/conversations', authenticateUser, async (req, res) => {
+router.post('/conversations', async (req, res) => {
   try {
     const authUser = req.user as AuthUser;
     const { type, participant_ids, title, description, assignment_id } = req.body;
@@ -298,7 +297,7 @@ router.post('/conversations', authenticateUser, async (req, res) => {
 // ========================================
 
 // GET /api/messaging/conversations/:id/messages - Messages d'une conversation
-router.get('/conversations/:id/messages', authenticateUser, async (req, res) => {
+router.get('/conversations/:id/messages', async (req, res) => {
   try {
     const authUser = req.user as AuthUser;
     const { id: conversationId } = req.params;
@@ -394,7 +393,7 @@ router.get('/conversations/:id/messages', authenticateUser, async (req, res) => 
 });
 
 // POST /api/messaging/conversations/:id/messages - Envoyer un message
-router.post('/conversations/:id/messages', authenticateUser, upload.array('files', 5), async (req, res) => {
+router.post('/conversations/:id/messages', async (req, res) => {
   try {
     const authUser = req.user as AuthUser;
     const { id: conversationId } = req.params;
@@ -539,7 +538,7 @@ router.post('/conversations/:id/messages', authenticateUser, upload.array('files
 // ========================================
 
 // GET /api/messaging/files/:id/download - Télécharger un fichier
-router.get('/files/:id/download', authenticateUser, async (req, res) => {
+router.get('/files/:id/download', async (req, res) => {
   try {
     const authUser = req.user as AuthUser;
     const { id: fileId } = req.params;
@@ -606,7 +605,7 @@ router.get('/files/:id/download', authenticateUser, async (req, res) => {
 // ========================================
 
 // GET /api/messaging/notifications - Notifications de l'utilisateur
-router.get('/notifications', authenticateUser, async (req, res) => {
+router.get('/notifications', async (req, res) => {
   try {
     const authUser = req.user as AuthUser;
     const { page = 1, limit = 20 } = req.query;
@@ -663,7 +662,7 @@ router.get('/notifications', authenticateUser, async (req, res) => {
 });
 
 // PUT /api/messaging/notifications/:id/read - Marquer notification comme lue
-router.put('/notifications/:id/read', authenticateUser, async (req, res) => {
+router.put('/notifications/:id/read', async (req, res) => {
   try {
     const authUser = req.user as AuthUser;
     const { id: notificationId } = req.params;
@@ -706,7 +705,7 @@ router.put('/notifications/:id/read', authenticateUser, async (req, res) => {
 // ========================================
 
 // GET /api/unified-messaging/ws-test - Test WebSocket
-router.get('/ws-test', authenticateUser, async (req, res) => {
+router.get('/ws-test', async (req, res) => {
   try {
     const authUser = req.user as AuthUser;
     
@@ -777,8 +776,9 @@ router.get('/status', (req, res) => {
 // ========================================
 
 // GET /api/unified-messaging/admin/users - Liste des utilisateurs pour admin
-router.get('/admin/users', authenticateUser, requireUserType('admin'), async (req, res) => {
+router.get('/admin/users', async (req, res) => {
   try {
+    const authUser = req.user as AuthUser;
     const { search, type, page = 1, limit = 50 } = req.query;
     const offset = (Number(page) - 1) * Number(limit);
 
@@ -870,7 +870,7 @@ router.get('/admin/users', authenticateUser, requireUserType('admin'), async (re
 });
 
 // POST /api/unified-messaging/admin/conversations - Créer conversation admin
-router.post('/admin/conversations', authenticateUser, requireUserType('admin'), async (req, res) => {
+router.post('/admin/conversations', async (req, res) => {
   try {
     const authUser = req.user as AuthUser;
     const { participant_ids, title, description } = req.body;

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { supabaseClient, supabaseAdmin } from '../config/supabase';
-import crypto from 'crypto';
+import * as crypto from 'crypto';
 
 const router = Router();
 const supabase = supabaseClient;
@@ -154,11 +154,13 @@ router.post('/migrate', async (req, res) => {
     for (const result of eligibilityResults || []) {
       console.log(`🔍 Traitement du produit: ${result.produit_id} (${result.estimated_savings}€)`);
       
-      const produitId = productMapping[result.produit_id];
+      const produitId = result.produit_id && typeof result.produit_id === 'string' 
+        ? PRODUCT_MAPPING[result.produit_id] 
+        : undefined;
       
       if (!produitId) {
         console.warn(`⚠️ Produit non trouvé dans le mapping: ${result.produit_id}`);
-        console.log('🔍 Mapping disponible:', Object.keys(productMapping));
+        console.log('🔍 Mapping disponible:', Object.keys(PRODUCT_MAPPING));
         continue;
       }
 
@@ -293,6 +295,104 @@ router.get('/can-migrate/:sessionToken', async (req, res) => {
       can_migrate: false,
       error: 'Erreur serveur',
       details: error instanceof Error ? error.message : String(error)
+    });
+  }
+});
+
+// Route de diagnostic pour vérifier l'état de la migration
+router.get('/diagnose/:sessionToken', async (req, res) => {
+  try {
+    const { sessionToken } = req.params;
+
+    console.log('🔍 Diagnostic pour session:', sessionToken);
+
+    // 1. Vérifier la session
+    const { data: session, error: sessionError } = await supabase
+      .from('TemporarySession')
+      .select('*')
+      .eq('session_token', sessionToken)
+      .single();
+
+    if (sessionError || !session) {
+      return res.status(404).json({
+        success: false,
+        error: 'Session non trouvée',
+        sessionToken
+      });
+    }
+
+    // 2. Vérifier les résultats d'éligibilité
+    const { data: eligibilityResults, error: eligibilityError } = await supabase
+      .from('TemporaryEligibility')
+      .select('*')
+      .eq('session_id', session.id);
+
+    if (eligibilityError) {
+      console.error('Erreur récupération éligibilité:', eligibilityError);
+    }
+
+    // 3. Vérifier les produits éligibles disponibles
+    const { data: produits, error: produitsError } = await supabase
+      .from('ProduitEligible')
+      .select('id, nom, categorie')
+      .eq('active', true);
+
+    if (produitsError) {
+      console.error('Erreur récupération produits:', produitsError);
+    }
+
+    // 4. Vérifier le mapping des produits
+    const mappingStatus: { [key: string]: any } = {};
+    for (const result of eligibilityResults || []) {
+      const produitId = result.produit_id && typeof result.produit_id === 'string' 
+        ? PRODUCT_MAPPING[result.produit_id] 
+        : undefined;
+      mappingStatus[result.produit_id as string] = {
+        found: !!produitId,
+        produitId: produitId,
+        eligibility_score: result.eligibility_score,
+        estimated_savings: result.estimated_savings
+      };
+    }
+
+    // 5. Vérifier si le client existe déjà
+    let clientExists = null;
+    if (session.client_id) {
+      const { data: client, error: clientError } = await supabase
+        .from('Client')
+        .select('id, email, username')
+        .eq('id', session.client_id)
+        .single();
+      
+      if (!clientError && client) {
+        clientExists = client;
+      }
+    }
+
+    return res.json({
+      success: true,
+      diagnostic: {
+        session: {
+          id: session.id,
+          session_token: session.session_token,
+          completed: session.completed,
+          migrated_to_account: session.migrated_to_account,
+          migrated_at: session.migrated_at,
+          created_at: session.created_at
+        },
+        eligibility_results: eligibilityResults || [],
+        produits_disponibles: produits || [],
+        mapping_status: mappingStatus,
+        client_exists: clientExists,
+        product_mapping: PRODUCT_MAPPING
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur lors du diagnostic:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Erreur serveur lors du diagnostic'
     });
   }
 });

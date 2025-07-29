@@ -1,12 +1,11 @@
 import express, { Router, Request, Response } from 'express';
-import { authenticateUser } from '../middleware/authenticate';
 import { AuthUser } from '../types/auth';
 import { supabase } from '../lib/supabase';
 
 const router = express.Router();
 
 // Route pour signer la charte (correspond à l'appel côté client)
-router.post('/charte-signature', authenticateUser, async (req: Request, res: Response) => {
+router.post('/charte-signature', async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
@@ -108,7 +107,7 @@ router.post('/charte-signature', authenticateUser, async (req: Request, res: Res
 });
 
 // Route pour vérifier la signature (correspond à l'appel côté client)
-router.get('/charte-signature/:clientProduitEligibleId', authenticateUser, async (req: Request, res: Response) => {
+router.get('/charte-signature/:clientProduitEligibleId', async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
@@ -143,7 +142,7 @@ router.get('/charte-signature/:clientProduitEligibleId', authenticateUser, async
 });
 
 // Route pour signer la charte (ancienne route pour compatibilité)
-router.post('/sign', authenticateUser, async (req: Request, res: Response) => {
+router.post('/sign', async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
@@ -186,7 +185,7 @@ router.post('/sign', authenticateUser, async (req: Request, res: Response) => {
 });
 
 // Route pour vérifier la signature (ancienne route pour compatibilité)
-router.get('/verify/:clientId/:produitId', authenticateUser, async (req: Request, res: Response) => {
+router.get('/verify/:clientId/:produitId', async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });

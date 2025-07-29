@@ -94,7 +94,7 @@ router.put('/profile', authenticateUser, async (req: Request, res: Response) => 
 });
 
 // GET /api/client/produits-eligibles - Récupérer les produits éligibles du client
-router.get('/produits-eligibles', authenticateUser, async (req: Request, res: Response) => {
+router.get('/produits-eligibles', async (req: Request, res: Response) => {
   try {
     console.log('🔍 Route /api/client/produits-eligibles appelée');
     
