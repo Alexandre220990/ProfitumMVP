@@ -185,13 +185,13 @@ router.get('/check-recent/:clientId', authenticateUser, async (req: Request, res
 
     // Déterminer s'il y a une simulation récente
     const hasRecentSimulation = 
-      (simulationResult.data && simulationResult.data.length > 0) || 
-      (processedResult.data && processedResult.data.length > 0);
+      (simulationResult.data && Array.isArray(simulationResult.data) && simulationResult.data.length > 0) || 
+      (processedResult.data && Array.isArray(processedResult.data) && processedResult.data.length > 0);
 
     console.log('✅ Vérification terminée:', {
       hasRecentSimulation,
-      simulationFound: simulationResult.data?.length > 0,
-      processedFound: processedResult.data?.length > 0
+      simulationFound: simulationResult.data && Array.isArray(simulationResult.data) && simulationResult.data.length > 0,
+      processedFound: processedResult.data && Array.isArray(processedResult.data) && processedResult.data.length > 0
     });
 
     return res.json({
