@@ -314,7 +314,7 @@ router.get('/results/:session_token', async (req, res) => {
 
     // Utiliser la nouvelle fonction pour récupérer les résultats
     const { data, error } = await supabaseClient.rpc('get_simulation_results', {
-      p_session_id: session_token
+      p_session_token: session_token
     });
 
     if (error) {
