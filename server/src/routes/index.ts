@@ -20,7 +20,7 @@ import remindersRoutes from "./reminders";
 import simulatorRoutes from "./simulator";
 import notificationsRoutes from "./notifications";
 import calendarRoutes from "./calendar";
-import sessionMigrationRoutes from "./session-migration";
+import simpleMigrationRoutes from "./simple-migration";
 import unifiedMessagingRoutes from "./unified-messaging";
 import { enhancedAuthMiddleware, requireUserType } from "../middleware/auth-enhanced";
 import * as fs from 'fs';
@@ -79,8 +79,8 @@ router.use('/notifications', notificationsRoutes);
 // Routes du calendrier
 router.use('/calendar', calendarRoutes);
 
-// Routes de migration des sessions temporaires
-router.use('/session-migration', sessionMigrationRoutes);
+// Routes de migration simplifiée
+router.use('/simple-migration', simpleMigrationRoutes);
 
 // Routes de messagerie unifiée
 router.use('/messaging', unifiedMessagingRoutes);
