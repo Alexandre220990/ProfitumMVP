@@ -725,7 +725,12 @@ router.post('/link-auth-account', async (req: Request, res: Response) => {
       });
     }
     
-    console.log('✅ Client trouvé:', { id: client.id, email: client.email, auth_id: client.auth_id });
+    console.log('✅ Client trouvé:', { 
+      id: client.id, 
+      email: client.email, 
+      auth_id: client.auth_id,
+      auth_id_type: typeof client.auth_id 
+    });
     
     // 2. Si le client a déjà un auth_id, retourner les informations
     if (client.auth_id) {
@@ -741,6 +746,7 @@ router.post('/link-auth-account', async (req: Request, res: Response) => {
     }
     
     // 3. Récupérer l'utilisateur Auth existant
+    console.log('🔍 Récupération des utilisateurs Auth...');
     const { data: authUsers, error: authError } = await supabaseClient.auth.admin.listUsers();
     
     if (authError) {
@@ -752,20 +758,28 @@ router.post('/link-auth-account', async (req: Request, res: Response) => {
       });
     }
     
+    console.log(`📊 ${authUsers.users.length} utilisateurs Auth trouvés`);
+    
     // 4. Trouver l'utilisateur par email
     const authUser = authUsers.users.find(user => user.email === email);
     
     if (!authUser) {
       console.error('❌ Utilisateur Auth non trouvé pour:', email);
+      console.log('📧 Emails disponibles:', authUsers.users.map(u => u.email));
       return res.status(404).json({
         success: false,
         message: 'Compte d\'authentification non trouvé'
       });
     }
     
-    console.log('✅ Utilisateur Auth trouvé:', { auth_id: authUser.id, email: authUser.email });
+    console.log('✅ Utilisateur Auth trouvé:', { 
+      auth_id: authUser.id, 
+      email: authUser.email,
+      auth_id_type: typeof authUser.id 
+    });
     
     // 5. Mettre à jour le client avec l'auth_id
+    console.log('🔄 Mise à jour du client avec auth_id:', authUser.id);
     const { error: updateError } = await supabaseClient
       .from('Client')
       .update({ auth_id: authUser.id })
