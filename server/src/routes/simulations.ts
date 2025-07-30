@@ -138,10 +138,16 @@ router.get('/check-recent/:clientId', authenticateUser, async (req: Request, res
     
     console.log('🔍 Vérification simulation récente pour le client:', clientId, 'par utilisateur:', authUser.email);
     
-    // Vérifier que l'utilisateur a accès à ce client (optimisé avec cache)
+    // Vérifier que l'utilisateur a accès à ce client
     if (authUser.type === 'client') {
-      // Vérification directe sans requête supplémentaire si l'email correspond
-      if (authUser.email && !authUser.email.includes(clientId)) {
+      // Récupérer le client par auth_id pour vérifier l'accès
+      const { data: client, error: clientError } = await supabase
+        .from('Client')
+        .select('id')
+        .eq('auth_id', authUser.id)
+        .single();
+
+      if (clientError || !client || client.id !== clientId) {
         console.log('❌ Accès refusé: client ne peut accéder qu\'à ses propres données');
         return res.status(403).json({ 
           success: false, 
@@ -155,11 +161,10 @@ router.get('/check-recent/:clientId', authenticateUser, async (req: Request, res
     yesterday.setDate(yesterday.getDate() - 1);
     const yesterdayISO = yesterday.toISOString();
 
-    // Exécuter les deux requêtes en parallèle pour améliorer les performances
     const [simulationResult, processedResult] = await Promise.all([
       supabase
         .from('Simulation')
-        .select('id, created_at, status')
+        .select('id, created_at, statut')
         .eq('clientId', clientId)
         .gt('created_at', yesterdayISO)
         .order('created_at', { ascending: false })
@@ -167,7 +172,7 @@ router.get('/check-recent/:clientId', authenticateUser, async (req: Request, res
       
       supabase
         .from('SimulationProcessed')
-        .select('id, createdat, status')
+        .select('id, createdat, statut')
         .eq('clientid', clientId)
         .gt('createdat', yesterdayISO)
         .order('createdat', { ascending: false })
@@ -239,7 +244,7 @@ router.post('/', authenticateUser, async (req: Request, res: Response) => {
         clientId,
         type,
         data: data || {},
-        status: 'pending',
+        statut: 'pending',
         createdBy: authUser.id
       })
       .select()
@@ -283,7 +288,7 @@ router.post('/', authenticateUser, async (req: Request, res: Response) => {
       const { error: updateError } = await supabase
         .from('Simulation')
         .update({
-          status: 'completed',
+          statut: 'completed',
           results: pythonResponse,
           processedAt: new Date().toISOString()
         })
@@ -316,7 +321,7 @@ router.post('/', authenticateUser, async (req: Request, res: Response) => {
       await supabase
         .from('Simulation')
         .update({
-          status: 'failed',
+          statut: 'failed',
           error: pythonError instanceof Error ? pythonError.message : 'Erreur inconnue'
         })
         .eq('id', simulation.id);
