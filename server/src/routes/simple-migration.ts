@@ -112,7 +112,7 @@ router.post('/migrate-simulation', authenticateUser, async (req, res) => {
     console.log('   - Client ID recherché:', clientId);
     console.log('   - Email utilisateur authentifié:', authUser.email);
     
-    let client;
+    let client = null; // Initialisation explicite pour éviter les erreurs null
     let clientError;
     
     // Essayer d'abord avec l'ID et l'email
