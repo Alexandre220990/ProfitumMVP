@@ -143,13 +143,13 @@ router.post('/migrate-simulation', authenticateUser, async (req, res) => {
       }
       
       console.log('✅ Client trouvé par email:', clientByEmail);
-      console.log('   - clientByEmail.id:', clientByEmail.id);
-      console.log('   - clientByEmail.email:', clientByEmail.email);
+      console.log('   - clientByEmail.id:', clientByEmail?.id);
+      console.log('   - clientByEmail.email:', clientByEmail?.email);
       client = clientByEmail;
     } else {
       console.log('✅ Client trouvé par ID et email:', clientById);
-      console.log('   - clientById.id:', clientById.id);
-      console.log('   - clientById.email:', clientById.email);
+      console.log('   - clientById.id:', clientById?.id);
+      console.log('   - clientById.email:', clientById?.email);
       client = clientById;
     }
 
