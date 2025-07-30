@@ -105,9 +105,9 @@ const SimulateurEligibilite = () => {
           'Content-Type': 'application/json' 
         },
         body: JSON.stringify({ 
-          event: eventName, 
           session_token: sessionToken, 
-          data: data 
+          event_type: eventName, 
+          event_data: data 
         })
       }).catch(console.error);
 
@@ -162,12 +162,19 @@ const SimulateurEligibilite = () => {
     try {
       setSessionStartTime(Date.now()); // Initialiser le temps de session
       
-      // Créer une session temporaire
+      // Créer une session temporaire avec données client
       const sessionResponse = await fetch(`${config.API_URL}/api/simulator/session`, { 
         method: 'POST', 
         headers: {
           'Content-Type': 'application/json' 
-        }
+        },
+        body: JSON.stringify({
+          client_data: {
+            // Données temporaires qui seront migrées plus tard
+            temp_id: `temp_${Date.now()}`,
+            created_at: new Date().toISOString()
+          }
+        })
       });
       
       if (sessionResponse.ok) { 
@@ -242,9 +249,10 @@ const SimulateurEligibilite = () => {
           'Content-Type': 'application/json' 
         },
         body: JSON.stringify({ 
-          session_id: sessionToken, 
-          question_id: currentQuestion.id, 
-          response_value: response 
+          session_token: sessionToken, 
+          responses: {
+            [currentQuestion.id]: response
+          }
         })
       });
 
@@ -311,7 +319,7 @@ const SimulateurEligibilite = () => {
           'Content-Type': 'application/json' 
         },
         body: JSON.stringify({ 
-          session_id: sessionToken 
+          session_token: sessionToken 
         })
       });
 
