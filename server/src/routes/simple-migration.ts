@@ -23,16 +23,54 @@ interface MigrationRequest {
   simulationResults: SimulationResults;
 }
 
-// Mapping simplifié des produits
-const PRODUCT_MAPPING: { [key: string]: string } = {
-  'TICPE': '32dd9cf8-15e2-4375-86ab-a95158d3ada1',
-  'URSSAF': 'd1e8f740-7c2a-4b5e-9a91-0e15c0e7d3a2',
-  'DFS': 'e2f9a830-8d3b-4c7c-b590-1d7631c0d4b5',
-  'FONCIER': 'c5d2e980-4f63-44c0-b8a9-9d6e8e21c0f7',
-  'CIR': '37da1c4e-3fcc-49f8-9acb-9b75e231edfd',
-  'CEE': 'b7f3c891-28d9-4982-b0eb-821c9e7cbcf0',
-  'AUDIT_ENERGETIQUE': 'bc2b94ec-659b-4cf5-a693-d61178b03caf'
-};
+// Mapping dynamique des produits (sera mis à jour automatiquement)
+let PRODUCT_MAPPING: { [key: string]: string } = {};
+
+/**
+ * Initialiser le mapping des produits depuis la base de données
+ */
+async function initializeProductMapping() {
+  try {
+    console.log('🔄 Initialisation du mapping des produits...');
+    
+    const { data: produits, error } = await supabase
+      .from('ProduitEligible')
+      .select('id, nom, categorie')
+      .order('nom');
+
+    if (error) {
+      console.error('❌ Erreur récupération produits:', error);
+      return;
+    }
+
+    // Mapping basé sur les noms et catégories
+    const mapping: { [key: string]: string } = {};
+    const codesToFind = ['TICPE', 'URSSAF', 'DFS', 'FONCIER', 'CIR', 'CEE', 'AUDIT_ENERGETIQUE'];
+    
+    for (const code of codesToFind) {
+      const matchingProduct = produits.find(p => 
+        p.nom.toLowerCase().includes(code.toLowerCase()) ||
+        p.categorie?.toLowerCase().includes(code.toLowerCase())
+      );
+      
+      if (matchingProduct) {
+        mapping[code] = matchingProduct.id;
+        console.log(`✅ ${code} -> ${matchingProduct.nom} (${matchingProduct.id})`);
+      } else {
+        console.log(`⚠️ ${code} -> Aucun produit trouvé`);
+      }
+    }
+
+    PRODUCT_MAPPING = mapping;
+    console.log('✅ Mapping des produits initialisé:', Object.keys(mapping));
+    
+  } catch (error) {
+    console.error('❌ Erreur initialisation mapping:', error);
+  }
+}
+
+// Initialiser le mapping au démarrage
+initializeProductMapping();
 
 /**
  * Migration simplifiée des résultats de simulation
@@ -42,11 +80,14 @@ router.post('/migrate-simulation', async (req, res) => {
   try {
     const { clientId, email, simulationResults }: MigrationRequest = req.body;
     
-    console.log('🚀 MIGRATION SIMPLIFIÉE');
-    console.log('Client:', email);
-    console.log('Résultats:', simulationResults);
+    console.log('🚀 MIGRATION SIMPLIFIÉE DÉMARRÉE');
+    console.log('📋 Données reçues:');
+    console.log('   - Client ID:', clientId);
+    console.log('   - Email:', email);
+    console.log('   - Nombre de produits:', simulationResults?.products?.length || 0);
     
     if (!clientId || !email || !simulationResults) {
+      console.error('❌ Données manquantes');
       return res.status(400).json({
         success: false,
         error: 'Données manquantes'
@@ -54,6 +95,7 @@ router.post('/migrate-simulation', async (req, res) => {
     }
     
     // 1. Vérifier que le client existe
+    console.log('🔍 Vérification du client...');
     const { data: client, error: clientError } = await supabase
       .from('Client')
       .select('id, email')
@@ -62,6 +104,7 @@ router.post('/migrate-simulation', async (req, res) => {
       .single();
       
     if (clientError || !client) {
+      console.error('❌ Client non trouvé:', clientError);
       return res.status(404).json({
         success: false,
         error: 'Client non trouvé'
@@ -70,16 +113,35 @@ router.post('/migrate-simulation', async (req, res) => {
     
     console.log('✅ Client vérifié:', client.email);
     
-    // 2. Migrer chaque produit
+    // 2. Vérifier le mapping des produits
+    if (Object.keys(PRODUCT_MAPPING).length === 0) {
+      console.log('🔄 Re-initialisation du mapping des produits...');
+      await initializeProductMapping();
+    }
+    
+    console.log('📊 Mapping actuel:', PRODUCT_MAPPING);
+    
+    // 3. Migrer chaque produit
     const migratedProducts = [];
+    const errors = [];
+    
+    console.log('🔄 Début de la migration des produits...');
     
     for (const product of simulationResults.products) {
+      console.log(`\n📦 Traitement du produit: ${product.code}`);
+      console.log(`   - Score: ${product.score}%`);
+      console.log(`   - Économies: ${product.savings}€`);
+      
       const produitId = PRODUCT_MAPPING[product.code];
       
       if (!produitId) {
-        console.warn(`⚠️ Produit non mappé: ${product.code}`);
+        const error = `Produit non mappé: ${product.code}`;
+        console.warn(`⚠️ ${error}`);
+        errors.push(error);
         continue;
       }
+      
+      console.log(`   - Produit ID trouvé: ${produitId}`);
       
       // Créer l'entrée ClientProduitEligible
       const clientProduitEligible = {
@@ -93,7 +155,9 @@ router.post('/migrate-simulation', async (req, res) => {
         metadata: {
           original_code: product.code,
           migrated_at: new Date().toISOString(),
-          source: 'simulator'
+          source: 'simulator',
+          confidence: product.confidence,
+          original_score: product.score
         },
         notes: `Migration depuis simulateur - Score: ${product.score}%`,
         priorite: product.score >= 80 ? 1 : product.score >= 60 ? 2 : 3,
@@ -105,6 +169,8 @@ router.post('/migrate-simulation', async (req, res) => {
         charte_signed_at: null
       };
       
+      console.log(`   - Données à insérer:`, JSON.stringify(clientProduitEligible, null, 2));
+      
       // Insérer dans la base
       const { data: insertedProduct, error: insertError } = await supabase
         .from('ClientProduitEligible')
@@ -113,22 +179,31 @@ router.post('/migrate-simulation', async (req, res) => {
         .single();
         
       if (insertError) {
-        console.error(`❌ Erreur insertion ${product.code}:`, insertError);
+        const error = `Erreur insertion ${product.code}: ${insertError.message}`;
+        console.error(`❌ ${error}`);
+        errors.push(error);
         continue;
       }
       
       migratedProducts.push(insertedProduct);
-      console.log(`✅ ${product.code} migré: ${insertedProduct.id}`);
+      console.log(`✅ ${product.code} migré avec succès: ${insertedProduct.id}`);
     }
     
-    console.log(`🎉 Migration terminée: ${migratedProducts.length} produits`);
+    console.log(`\n🎉 Migration terminée:`);
+    console.log(`   - Produits migrés: ${migratedProducts.length}`);
+    console.log(`   - Erreurs: ${errors.length}`);
+    
+    if (errors.length > 0) {
+      console.log('⚠️ Erreurs rencontrées:', errors);
+    }
     
     return res.json({
       success: true,
       data: {
         client_id: client.id,
         migrated_products: migratedProducts.length,
-        products: migratedProducts
+        products: migratedProducts,
+        errors: errors
       }
     });
     
@@ -136,7 +211,8 @@ router.post('/migrate-simulation', async (req, res) => {
     console.error('❌ Erreur migration:', error);
     return res.status(500).json({
       success: false,
-      error: 'Erreur lors de la migration'
+      error: 'Erreur lors de la migration',
+      details: error instanceof Error ? error.message : 'Erreur inconnue'
     });
   }
 });
@@ -148,6 +224,8 @@ router.get('/client-products/:clientId', async (req, res) => {
   try {
     const { clientId } = req.params;
     
+    console.log('📋 Récupération des produits pour le client:', clientId);
+    
     const { data: products, error } = await supabase
       .from('ClientProduitEligible')
       .select(`
@@ -156,17 +234,20 @@ router.get('/client-products/:clientId', async (req, res) => {
           id,
           nom,
           description,
-          category
+          categorie
         )
       `)
       .eq('clientId', clientId);
       
     if (error) {
+      console.error('❌ Erreur récupération produits:', error);
       return res.status(500).json({
         success: false,
         error: 'Erreur récupération produits'
       });
     }
+    
+    console.log(`✅ ${products?.length || 0} produits récupérés`);
     
     return res.json({
       success: true,
@@ -181,6 +262,68 @@ router.get('/client-products/:clientId', async (req, res) => {
     return res.status(500).json({
       success: false,
       error: 'Erreur serveur'
+    });
+  }
+});
+
+/**
+ * Route de debug pour vérifier le mapping des produits
+ */
+router.get('/debug/mapping', async (req, res) => {
+  try {
+    console.log('🔍 Debug: Vérification du mapping des produits');
+    
+    const { data: produits, error } = await supabase
+      .from('ProduitEligible')
+      .select('id, nom, categorie')
+      .order('nom');
+
+    if (error) {
+      return res.status(500).json({
+        success: false,
+        error: 'Erreur récupération produits'
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        mapping: PRODUCT_MAPPING,
+        produits: produits,
+        mapping_keys: Object.keys(PRODUCT_MAPPING)
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Erreur debug:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Erreur serveur'
+    });
+  }
+});
+
+/**
+ * Route pour recharger le mapping des produits
+ */
+router.post('/reload-mapping', async (req, res) => {
+  try {
+    console.log('🔄 Rechargement du mapping des produits...');
+    await initializeProductMapping();
+    
+    return res.json({
+      success: true,
+      data: {
+        mapping: PRODUCT_MAPPING,
+        message: 'Mapping rechargé avec succès'
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Erreur rechargement mapping:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Erreur lors du rechargement'
     });
   }
 });
