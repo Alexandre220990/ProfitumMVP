@@ -282,7 +282,7 @@ router.post('/migrate-simulation', authenticateUser, async (req, res) => {
     return res.json({
       success: true,
       data: {
-        client_id: client.id,
+        client_id: client?.id || clientId, // Protection contre client null
         migrated_products: migratedProducts.length,
         products: migratedProducts,
         errors: errors
