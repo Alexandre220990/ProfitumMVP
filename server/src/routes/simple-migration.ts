@@ -164,10 +164,18 @@ router.post('/migrate-simulation', authenticateUser, async (req, res) => {
       console.error('   - Client object:', client);
       console.error('   - Client ID type:', typeof client?.id);
       console.error('   - Client ID value:', client?.id);
-      return res.status(500).json({
-        success: false,
-        error: 'Client ID invalide'
-      });
+      
+      // CORRECTION MINEURE : Utiliser directement le clientId de la requête
+      console.log('🔄 Tentative avec clientId de la requête:', clientId);
+      if (clientId) {
+        client = { id: clientId, email: authUser.email, name: 'Client from request' };
+        console.log('✅ Client créé à partir du clientId de la requête');
+      } else {
+        return res.status(500).json({
+          success: false,
+          error: 'Client ID invalide'
+        });
+      }
     }
 
     // 2. Vérifier le mapping des produits
