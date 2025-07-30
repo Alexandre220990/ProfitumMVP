@@ -1,5 +1,5 @@
 import express from 'express';
-import { supabase } from '../lib/supabase';
+import { supabaseClient } from '../config/supabase';
 import { v4 as uuidv4 } from 'uuid';
 
 const router = express.Router();
@@ -50,7 +50,7 @@ async function sendHighEligibilityNotification(sessionData: SessionData, results
 // Fonction pour nettoyer les sessions expirées
 async function cleanupExpiredSessions() {
   try {
-    const { error } = await supabase
+    const { error } = await supabaseClient
       .from('TemporarySession')
       .delete()
       .lt('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
@@ -75,7 +75,7 @@ router.post('/session', async (req, res) => {
     const ipAddress = req.ip || req.connection.remoteAddress || 'unknown';
     const userAgent = req.get('User-Agent') || 'unknown';
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from('TemporarySession')
       .insert({
         session_token: sessionToken,
@@ -110,7 +110,7 @@ router.post('/session', async (req, res) => {
 // Récupérer les questions du questionnaire
 router.get('/questions', async (req, res) => {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from('QuestionnaireQuestion')
       .select('*')
       .order('question_order', { ascending: true });
@@ -139,7 +139,7 @@ router.post('/response', async (req, res) => {
     const { session_id, question_id, response_value } = req.body as ResponseData;
 
     // Vérifier que la session existe d'abord
-    const { data: sessionData, error: sessionError } = await supabase
+    const { data: sessionData, error: sessionError } = await supabaseClient
       .from('TemporarySession')
       .select('id')
       .eq('session_token', session_id)
@@ -154,7 +154,7 @@ router.post('/response', async (req, res) => {
     }
 
     // Utiliser l'ID de la session pour l'insertion
-    const { error } = await supabase
+    const { error } = await supabaseClient
       .from('TemporaryResponse')
       .insert({
         session_id: sessionData.id, // Utiliser l'ID de la session, pas le token
@@ -186,7 +186,7 @@ router.post('/calculate-eligibility', async (req, res) => {
     const { session_id } = req.body;
 
     // Récupérer les données de session (session_id peut être soit l'ID soit le token)
-    const { data: sessionData, error: sessionError } = await supabase
+    const { data: sessionData, error: sessionError } = await supabaseClient
       .from('TemporarySession')
       .select('*')
       .or(`id.eq.${session_id},session_token.eq.${session_id}`)
@@ -200,7 +200,7 @@ router.post('/calculate-eligibility', async (req, res) => {
     }
 
     // Récupérer toutes les réponses de la session
-    const { data: responses, error: responsesError } = await supabase
+    const { data: responses, error: responsesError } = await supabaseClient
       .from('TemporaryResponse')
       .select('question_id, response_value')
       .eq('session_id', sessionData.id);
@@ -214,7 +214,7 @@ router.post('/calculate-eligibility', async (req, res) => {
     }
 
     // Récupérer les règles de calcul
-    const { data: rules, error: rulesError } = await supabase
+    const { data: rules, error: rulesError } = await supabaseClient
       .from('ProductCalculationRules')
       .select('*')
       .eq('is_active', true)
@@ -229,7 +229,7 @@ router.post('/calculate-eligibility', async (req, res) => {
     }
 
     // Récupérer les taux spécifiques
-    const { data: rates, error: ratesError } = await supabase
+    const { data: rates, error: ratesError } = await supabaseClient
       .from('ProductSpecificRates')
       .select('*');
 
@@ -304,7 +304,7 @@ router.post('/calculate-eligibility', async (req, res) => {
 
     // Sauvegarder les résultats
     for (const result of results) {
-      const { error: insertError } = await supabase
+      const { error: insertError } = await supabaseClient
         .from('TemporaryEligibility')
         .insert({
           session_id: sessionData.id,
@@ -321,7 +321,7 @@ router.post('/calculate-eligibility', async (req, res) => {
     }
 
     // Marquer la session comme complétée
-    const { error: updateError } = await supabase
+    const { error: updateError } = await supabaseClient
       .from('TemporarySession')
       .update({
         completed: true,
@@ -349,14 +349,14 @@ router.post('/calculate-eligibility', async (req, res) => {
 });
 
 // Récupérer les résultats
-router.get('/results/:sessionId', async (req, res) => {
+router.get('/results/:session_id', async (req, res) => {
   try {
-    const { sessionId } = req.params;
+    const { session_id } = req.params;
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from('TemporaryEligibility')
       .select('*')
-      .eq('session_id', sessionId);
+      .eq('session_id', session_id);
 
     if (error) {
       console.error('Erreur lors de la récupération des résultats:', error);
@@ -377,15 +377,15 @@ router.get('/results/:sessionId', async (req, res) => {
 });
 
 // Récupérer les résultats d'une session (pour affichage dashboard)
-router.get('/results/session/:sessionToken', async (req, res) => {
+router.get('/results/session/:session_token', async (req, res) => {
   try {
-    const { sessionToken } = req.params;
+    const { session_token } = req.params;
 
     // Récupérer la session
-    const { data: session, error: sessionError } = await supabase
+    const { data: session, error: sessionError } = await supabaseClient
       .from('TemporarySession')
       .select('*')
-      .eq('session_token', sessionToken)
+      .eq('session_token', session_token)
       .single();
 
     if (sessionError || !session) {
@@ -396,7 +396,7 @@ router.get('/results/session/:sessionToken', async (req, res) => {
     }
 
     // Récupérer les résultats d'éligibilité
-    const { data: eligibilityResults, error: eligibilityError } = await supabase
+    const { data: eligibilityResults, error: eligibilityError } = await supabaseClient
       .from('TemporaryEligibility')
       .select('*')
       .eq('session_id', session.id);
@@ -410,7 +410,7 @@ router.get('/results/session/:sessionToken', async (req, res) => {
     }
 
     // Récupérer les réponses pour recalculer si nécessaire
-    const { data: responses, error: responsesError } = await supabase
+    const { data: responses, error: responsesError } = await supabaseClient
       .from('TemporaryResponse')
       .select('*')
       .eq('session_id', session.id)
@@ -496,7 +496,7 @@ router.post('/track', async (req, res) => {
   try {
     const { event, session_token, data } = req.body;
 
-    const { error } = await supabase
+    const { error } = await supabaseClient
       .from('SimulatorAnalytics')
       .insert({
         session_token,
@@ -520,7 +520,7 @@ router.post('/track', async (req, res) => {
 // Récupérer toutes les sessions
 router.get('/sessions', async (req, res) => {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from('TemporarySession')
       .select('*')
       .order('created_at', { ascending: false });
@@ -552,7 +552,7 @@ router.post('/abandon', async (req, res) => {
     const { session_token, reason } = req.body;
 
     // Marquer la session comme abandonnée
-    const { error: updateError } = await supabase
+    const { error: updateError } = await supabaseClient
       .from('TemporarySession')
       .update({
         abandoned: true,
@@ -567,7 +567,7 @@ router.post('/abandon', async (req, res) => {
     }
 
     // Récupérer les données de la session pour analyse
-    const { data: sessionData, error: sessionError } = await supabase
+    const { data: sessionData, error: sessionError } = await supabaseClient
       .from('TemporarySession')
       .select(`
         *,
@@ -1243,7 +1243,7 @@ async function migrateSimulationToClient(sessionToken: string, clientId: string)
     console.log(`🔄 Migration simulation ${sessionToken} vers client ${clientId}`);
 
     // Récupérer la session
-    const { data: session, error: sessionError } = await supabase
+    const { data: session, error: sessionError } = await supabaseClient
       .from('TemporarySession')
       .select('*')
       .eq('session_token', sessionToken)
@@ -1255,7 +1255,7 @@ async function migrateSimulationToClient(sessionToken: string, clientId: string)
     }
 
     // Récupérer les résultats d'éligibilité
-    const { data: eligibilityResults, error: eligibilityError } = await supabase
+    const { data: eligibilityResults, error: eligibilityError } = await supabaseClient
       .from('TemporaryEligibility')
       .select('*')
       .eq('session_id', session.id);
@@ -1266,7 +1266,7 @@ async function migrateSimulationToClient(sessionToken: string, clientId: string)
     }
 
     // Récupérer les réponses pour recalculer si nécessaire
-    const { data: responses, error: responsesError } = await supabase
+    const { data: responses, error: responsesError } = await supabaseClient
       .from('TemporaryResponse')
       .select('*')
       .eq('session_id', session.id)
@@ -1296,7 +1296,7 @@ async function migrateSimulationToClient(sessionToken: string, clientId: string)
       }
 
       // Vérifier si l'éligibilité existe déjà
-      const { data: existingEligibility, error: existingError } = await supabase
+      const { data: existingEligibility, error: existingError } = await supabaseClient
         .from('ClientProduitEligible')
         .select('id')
         .eq('clientId', clientId)
@@ -1326,7 +1326,7 @@ async function migrateSimulationToClient(sessionToken: string, clientId: string)
 
       if (existingEligibility) {
         // Mettre à jour l'éligibilité existante
-        const { error: updateError } = await supabase
+        const { error: updateError } = await supabaseClient
           .from('ClientProduitEligible')
           .update(eligibilityData)
           .eq('id', existingEligibility.id);
@@ -1339,7 +1339,7 @@ async function migrateSimulationToClient(sessionToken: string, clientId: string)
         }
       } else {
         // Créer une nouvelle éligibilité
-        const { error: insertError } = await supabase
+        const { error: insertError } = await supabaseClient
           .from('ClientProduitEligible')
           .insert(eligibilityData);
 
@@ -1353,7 +1353,7 @@ async function migrateSimulationToClient(sessionToken: string, clientId: string)
     }
 
     // Marquer la session comme migrée
-    const { error: updateSessionError } = await supabase
+    const { error: updateSessionError } = await supabaseClient
       .from('TemporarySession')
       .update({
         migrated_to_account: true,
@@ -1375,9 +1375,9 @@ async function migrateSimulationToClient(sessionToken: string, clientId: string)
 }
 
 // Route pour migrer une simulation vers un client (appelée lors de l'inscription)
-router.post('/migrate/:sessionToken', async (req, res) => {
+router.post('/migrate/:session_token', async (req, res) => {
   try {
-    const { sessionToken } = req.params;
+    const { session_token } = req.params;
     const { clientId } = req.body;
 
     if (!clientId) {
@@ -1387,7 +1387,7 @@ router.post('/migrate/:sessionToken', async (req, res) => {
       });
     }
 
-    const result = await migrateSimulationToClient(sessionToken, clientId);
+    const result = await migrateSimulationToClient(session_token, clientId);
 
     if (result.success) {
       return res.json({
