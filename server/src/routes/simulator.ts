@@ -695,6 +695,114 @@ router.post('/create-auth-account', async (req: Request, res: Response) => {
 });
 
 /**
+ * POST /api/simulator/link-auth-account - Lier un compte d'authentification existant à un client migré
+ */
+router.post('/link-auth-account', async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email requis'
+      });
+    }
+    
+    console.log(`🔗 Liaison du compte auth pour: ${email}`);
+    
+    // 1. Vérifier que le client existe
+    const { data: client, error: clientError } = await supabaseClient
+      .from('Client')
+      .select('id, email, name, company_name, auth_id')
+      .eq('email', email)
+      .single();
+    
+    if (clientError || !client) {
+      console.error('❌ Client non trouvé:', clientError);
+      return res.status(404).json({
+        success: false,
+        message: 'Client non trouvé'
+      });
+    }
+    
+    console.log('✅ Client trouvé:', { id: client.id, email: client.email, auth_id: client.auth_id });
+    
+    // 2. Si le client a déjà un auth_id, retourner les informations
+    if (client.auth_id) {
+      return res.json({
+        success: true,
+        message: 'Client déjà lié à un compte d\'authentification',
+        data: {
+          client_id: client.id,
+          auth_id: client.auth_id,
+          email: email
+        }
+      });
+    }
+    
+    // 3. Récupérer l'utilisateur Auth existant
+    const { data: authUsers, error: authError } = await supabaseClient.auth.admin.listUsers();
+    
+    if (authError) {
+      console.error('❌ Erreur récupération utilisateurs Auth:', authError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la récupération des utilisateurs',
+        error: authError.message
+      });
+    }
+    
+    // 4. Trouver l'utilisateur par email
+    const authUser = authUsers.users.find(user => user.email === email);
+    
+    if (!authUser) {
+      console.error('❌ Utilisateur Auth non trouvé pour:', email);
+      return res.status(404).json({
+        success: false,
+        message: 'Compte d\'authentification non trouvé'
+      });
+    }
+    
+    console.log('✅ Utilisateur Auth trouvé:', { auth_id: authUser.id, email: authUser.email });
+    
+    // 5. Mettre à jour le client avec l'auth_id
+    const { error: updateError } = await supabaseClient
+      .from('Client')
+      .update({ auth_id: authUser.id })
+      .eq('id', client.id);
+    
+    if (updateError) {
+      console.error('❌ Erreur mise à jour client:', updateError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la mise à jour du client',
+        error: updateError.message
+      });
+    }
+    
+    console.log(`✅ Client lié avec succès au compte auth: ${email}`);
+    
+    return res.json({
+      success: true,
+      message: 'Client lié avec succès au compte d\'authentification',
+      data: {
+        client_id: client.id,
+        auth_id: authUser.id,
+        email: email
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Erreur liaison compte auth:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur',
+      error: error instanceof Error ? error.message : 'Erreur inconnue'
+    });
+  }
+});
+
+/**
  * GET /api/simulator/health
  * Endpoint de santé du simulateur
  */
