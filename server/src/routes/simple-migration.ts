@@ -153,9 +153,9 @@ router.post('/migrate-simulation', authenticateUser, async (req, res) => {
       client = clientById;
     }
 
-    console.log('✅ Client vérifié:', client.email);
-    console.log('✅ Client ID récupéré:', client.id);
-    console.log('✅ Type client.id:', typeof client.id);
+    console.log('✅ Client vérifié:', client?.email);
+    console.log('✅ Client ID récupéré:', client?.id);
+    console.log('✅ Type client.id:', typeof client?.id);
     console.log('✅ Client complet:', client);
     
     // Vérification supplémentaire que le client a un ID valide
