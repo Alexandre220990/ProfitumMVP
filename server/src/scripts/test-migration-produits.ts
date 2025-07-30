@@ -72,7 +72,7 @@ const testSimulationResults = {
 
 // Client de test
 const testClient = {
-  id: '550e8400-e29b-41d4-a716-446655440000', // UUID valide
+  id: '74dfdf10-af1b-4c84-8828-fa5e0eed5b69', // ID réel du client existant
   email: 'test-migration@example.com',
   name: 'Test Client Test Migration',
   company_name: 'Test Company',

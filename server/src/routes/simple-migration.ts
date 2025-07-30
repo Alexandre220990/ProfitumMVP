@@ -143,9 +143,13 @@ router.post('/migrate-simulation', authenticateUser, async (req, res) => {
       }
       
       console.log('✅ Client trouvé par email:', clientByEmail);
+      console.log('   - clientByEmail.id:', clientByEmail.id);
+      console.log('   - clientByEmail.email:', clientByEmail.email);
       client = clientByEmail;
     } else {
       console.log('✅ Client trouvé par ID et email:', clientById);
+      console.log('   - clientById.id:', clientById.id);
+      console.log('   - clientById.email:', clientById.email);
       client = clientById;
     }
 
@@ -155,8 +159,9 @@ router.post('/migrate-simulation', authenticateUser, async (req, res) => {
     console.log('✅ Client complet:', client);
     
     // Vérification supplémentaire que le client a un ID valide
-    if (!client.id) {
+    if (!client || !client.id) {
       console.error('❌ Client ID manquant ou invalide');
+      console.error('   - Client object:', client);
       return res.status(500).json({
         success: false,
         error: 'Client ID invalide'
