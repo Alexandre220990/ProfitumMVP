@@ -118,7 +118,7 @@ router.post('/migrate-simulation', authenticateUser, async (req, res) => {
     // Essayer d'abord avec l'ID et l'email
     const { data: clientById, error: errorById } = await supabase
       .from('Client')
-      .select('id, email, name')
+      .select('*')  // Récupérer toutes les colonnes pour s'assurer d'avoir l'ID
       .eq('id', clientId)
       .eq('email', authUser.email)
       .single();
@@ -130,7 +130,7 @@ router.post('/migrate-simulation', authenticateUser, async (req, res) => {
       // Essayer de trouver le client par email seulement
       const { data: clientByEmail, error: emailError } = await supabase
         .from('Client')
-        .select('id, email, name')
+        .select('*')  // Récupérer toutes les colonnes pour s'assurer d'avoir l'ID
         .eq('email', authUser.email)
         .single();
         
@@ -162,6 +162,8 @@ router.post('/migrate-simulation', authenticateUser, async (req, res) => {
     if (!client || !client.id) {
       console.error('❌ Client ID manquant ou invalide');
       console.error('   - Client object:', client);
+      console.error('   - Client ID type:', typeof client?.id);
+      console.error('   - Client ID value:', client?.id);
       return res.status(500).json({
         success: false,
         error: 'Client ID invalide'
