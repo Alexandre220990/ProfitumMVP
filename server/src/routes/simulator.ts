@@ -622,6 +622,8 @@ router.post('/create-auth-account', async (req: Request, res: Response) => {
       });
     }
     
+    console.log('✅ Client trouvé:', { id: client.id, email: client.email });
+    
     // Créer le compte d'authentification
     const { data: authData, error: authError } = await supabaseClient.auth.admin.createUser({
       email: email,
@@ -643,6 +645,16 @@ router.post('/create-auth-account', async (req: Request, res: Response) => {
       });
     }
     
+    if (!authData.user) {
+      console.error('❌ Aucun utilisateur créé dans Auth');
+      return res.status(500).json({
+        success: false,
+        message: 'Échec de la création du compte d\'authentification'
+      });
+    }
+    
+    console.log('✅ Compte Auth créé:', { auth_id: authData.user.id });
+    
     // Mettre à jour le client avec l'auth_id
     const { error: updateError } = await supabaseClient
       .from('Client')
@@ -651,6 +663,8 @@ router.post('/create-auth-account', async (req: Request, res: Response) => {
     
     if (updateError) {
       console.error('❌ Erreur mise à jour client:', updateError);
+      // Nettoyer le compte Auth en cas d'erreur
+      await supabaseClient.auth.admin.deleteUser(authData.user.id);
       return res.status(500).json({
         success: false,
         message: 'Erreur lors de la mise à jour du client',
