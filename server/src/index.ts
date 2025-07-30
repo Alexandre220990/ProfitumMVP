@@ -59,7 +59,7 @@ import {
 } from './middleware/performance';
 
 import expertNotificationsRoutes from './routes/expert/notifications';
-import sessionMigrationRoutes from './routes/session-migration';
+import simpleMigrationRoutes from './routes/simple-migration';
 import clientDocumentsRoutes from './routes/client-documents';
 import analyticsRoutes from './routes/analytics';
 import googleCalendarRoutes from './routes/google-calendar';
@@ -226,7 +226,7 @@ app.use('/api/partners', publicRouteLogger, partnersRouter);
 app.use('/api/simulator', publicRouteLogger, simulatorRoutes);
 
 // 🔄 ROUTES DE MIGRATION DES SESSIONS - PUBLIQUES (pas d'authentification requise)
-app.use('/api/session-migration', publicRouteLogger, sessionMigrationRoutes);
+app.use('/api/simple-migration', publicRouteLogger, simpleMigrationRoutes);
 
 // Route de santé (publique mais loggée) - PLACÉE AVANT LES ROUTES PROTÉGÉES
 app.get('/api/health', publicRouteLogger, (req, res) => {
