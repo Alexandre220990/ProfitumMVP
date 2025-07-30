@@ -75,6 +75,12 @@ const SimulateurEligibilite = () => {
   // Tracking analytics
   const trackEvent = (eventName: string, data: Record<string, unknown> = {}) => { 
     try {
+      // Ne tracker que si on a un sessionToken
+      if (!sessionToken) {
+        console.log('⚠️ Tracking ignoré: sessionToken non disponible');
+        return;
+      }
+
       // Google Analytics 4
       if (typeof window !== 'undefined' && (window as any).gtag) {
         (window as any).gtag('event', eventName, {
@@ -181,10 +187,12 @@ const SimulateurEligibilite = () => {
         const sessionData = await sessionResponse.json();
         setSessionToken(sessionData.session_token);
         
-        // Tracking début de session
-        trackEvent('simulator_session_start', {
-          timestamp: new Date().toISOString() 
-        });
+        // Tracking début de session (après avoir défini sessionToken)
+        setTimeout(() => {
+          trackEvent('simulator_session_start', {
+            timestamp: new Date().toISOString() 
+          });
+        }, 100);
         
         // Charger les questions
         await loadQuestions();
