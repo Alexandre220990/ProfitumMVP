@@ -21,6 +21,7 @@ DECLARE
     hashed_password text;
     produit_uuid uuid;
     taux_final_normalise numeric;
+    auth_user_id uuid;
 BEGIN
     -- Récupérer la session
     SELECT * INTO session_record 
@@ -31,6 +32,19 @@ BEGIN
         RETURN jsonb_build_object(
             'success', false,
             'error', 'Session non trouvée ou non complétée'
+        );
+    END IF;
+    
+    -- Récupérer l'ID de l'utilisateur Auth par email
+    SELECT id INTO auth_user_id
+    FROM auth.users
+    WHERE email = p_client_inscription_data->>'email'
+    LIMIT 1;
+    
+    IF auth_user_id IS NULL THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error', 'Utilisateur Auth non trouvé pour cet email'
         );
     END IF;
     
@@ -51,6 +65,7 @@ BEGIN
         siren,
         type,
         statut,
+        auth_id,
         "derniereConnexion",
         "dateCreation",
         updated_at,
@@ -68,6 +83,7 @@ BEGIN
         p_client_inscription_data->>'siren',
         'client',
         'actif',
+        auth_user_id,
         NOW(),
         NOW(),
         NOW(),
@@ -158,22 +174,25 @@ BEGIN
         )
     WHERE id = session_record.id;
     
-    migration_result := jsonb_build_object(
-        'success', true,
-        'session_token', p_session_token,
-        'client_id', client_id,
-        'migrated_eligibility_count', migrated_count,
-        'message', 'Migration réussie - Mot de passe temporaire généré',
-        'temp_password_info', 'Le client devra changer son mot de passe lors de la première connexion'
-    );
-    
-    RETURN migration_result;
-    
-EXCEPTION WHEN OTHERS THEN
+    -- Retourner le résultat
     RETURN jsonb_build_object(
-        'success', false,
-        'error', SQLERRM,
-        'error_code', SQLSTATE
+        'success', true,
+        'client_id', client_id,
+        'auth_id', auth_user_id,
+        'migrated_eligibility_count', migrated_count,
+        'message', 'Migration réussie'
     );
+    
+EXCEPTION
+    WHEN OTHERS THEN
+        -- En cas d'erreur, nettoyer le client créé si nécessaire
+        IF client_id IS NOT NULL THEN
+            DELETE FROM "Client" WHERE id = client_id;
+        END IF;
+        
+        RETURN jsonb_build_object(
+            'success', false,
+            'error', 'Erreur lors de la migration: ' || SQLERRM
+        );
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER; 
+$$ LANGUAGE plpgsql; 

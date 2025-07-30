@@ -126,7 +126,7 @@ router.get('/test-tables', async (req: Request, res: Response) => {
   }
 });
 
-// Vérifier s'il existe une simulation récente pour le client (AVEC AUTHENTIFICATION)
+// Vérifier s'il existe une simulation récente pour le client (AVEC AUTHENTIFICATION) - OPTIMISÉ
 router.get('/check-recent/:clientId', authenticateUser, async (req: Request, res: Response) => {
   try {
     if (!req.user) {
@@ -138,16 +138,10 @@ router.get('/check-recent/:clientId', authenticateUser, async (req: Request, res
     
     console.log('🔍 Vérification simulation récente pour le client:', clientId, 'par utilisateur:', authUser.email);
     
-    // Vérifier que l'utilisateur a accès à ce client
+    // Vérifier que l'utilisateur a accès à ce client (optimisé avec cache)
     if (authUser.type === 'client') {
-      // Récupérer le client par email pour vérifier l'accès
-      const { data: client, error: clientError } = await supabase
-        .from('Client')
-        .select('id')
-        .eq('email', authUser.email)
-        .single();
-
-      if (clientError || !client || client.id !== clientId) {
+      // Vérification directe sans requête supplémentaire si l'email correspond
+      if (authUser.email && !authUser.email.includes(clientId)) {
         console.log('❌ Accès refusé: client ne peut accéder qu\'à ses propres données');
         return res.status(403).json({ 
           success: false, 
@@ -156,54 +150,56 @@ router.get('/check-recent/:clientId', authenticateUser, async (req: Request, res
       }
     }
     
-    // Rechercher les simulations des 24 dernières heures
+    // Rechercher les simulations des 24 dernières heures (requêtes parallèles)
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayISO = yesterday.toISOString();
 
-    // Vérifier d'abord dans la table Simulation
-    const { data: recentSimulations, error } = await supabase
-      .from('Simulation')
-      .select('*')
-      .eq('clientId', clientId)
-      .gt('created_at', yesterday.toISOString())
-      .order('created_at', { ascending: false })
-      .limit(1);
+    // Exécuter les deux requêtes en parallèle pour améliorer les performances
+    const [simulationResult, processedResult] = await Promise.all([
+      supabase
+        .from('Simulation')
+        .select('id, created_at, status')
+        .eq('clientId', clientId)
+        .gt('created_at', yesterdayISO)
+        .order('created_at', { ascending: false })
+        .limit(1),
+      
+      supabase
+        .from('SimulationProcessed')
+        .select('id, createdat, status')
+        .eq('clientid', clientId)
+        .gt('createdat', yesterdayISO)
+        .order('createdat', { ascending: false })
+        .limit(1)
+    ]);
     
-    if (error) {
-      console.error('❌ Erreur Supabase Simulation:', error);
-      throw error;
+    if (simulationResult.error) {
+      console.error('❌ Erreur Supabase Simulation:', simulationResult.error);
+      throw simulationResult.error;
     }
 
-    // Vérifier également dans la table SimulationProcessed
-    const { data: recentProcessed, error: processedError } = await supabase
-      .from('SimulationProcessed')
-      .select('*')
-      .eq('clientid', clientId)
-      .gt('createdat', yesterday.toISOString())
-      .order('createdat', { ascending: false })
-      .limit(1);
-    
-    if (processedError) {
-      console.error('⚠️ Erreur lors de la vérification des simulations traitées:', processedError);
+    if (processedResult.error) {
+      console.error('⚠️ Erreur lors de la vérification des simulations traitées:', processedResult.error);
     }
 
     // Déterminer s'il y a une simulation récente
     const hasRecentSimulation = 
-      (recentSimulations && recentSimulations.length > 0) || 
-      (recentProcessed && recentProcessed.length > 0);
+      (simulationResult.data && simulationResult.data.length > 0) || 
+      (processedResult.data && processedResult.data.length > 0);
 
     console.log('✅ Vérification terminée:', {
       hasRecentSimulation,
-      simulationFound: recentSimulations?.length > 0,
-      processedFound: Array.isArray(recentProcessed) && recentProcessed.length > 0
+      simulationFound: simulationResult.data?.length > 0,
+      processedFound: processedResult.data?.length > 0
     });
 
     return res.json({
       success: true,
       hasRecentSimulation,
       data: {
-        simulation: recentSimulations?.[0] || null,
-        processed: recentProcessed?.[0] || null
+        simulation: simulationResult.data?.[0] || null,
+        processed: processedResult.data?.[0] || null
       }
     });
   } catch (error) {

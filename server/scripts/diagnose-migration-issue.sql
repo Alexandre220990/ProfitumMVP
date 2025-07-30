@@ -1,156 +1,143 @@
--- Script de diagnostic pour le problème de migration des ClientProduitEligible
--- À exécuter dans Supabase SQL Editor
+-- =====================================================
+-- SCRIPT DE DIAGNOSTIC POUR LE PROBLÈME DE MIGRATION
+-- Date: 2025-01-30
+-- =====================================================
 
--- 1. Vérifier la structure de la table ClientProduitEligible
+-- 1. Vérifier la structure de la table Client
 SELECT 
+    'Structure Client' as section,
     column_name,
     data_type,
-    is_nullable,
-    column_default
+    is_nullable
 FROM information_schema.columns 
-WHERE table_name = 'ClientProduitEligible' 
+WHERE table_name = 'Client'
 ORDER BY ordinal_position;
 
--- 2. Vérifier les contraintes de la table
+-- 2. Vérifier les clients sans auth_id
 SELECT 
-    tc.constraint_name,
-    tc.constraint_type,
-    cc.check_clause
-FROM information_schema.table_constraints tc
-LEFT JOIN information_schema.check_constraints cc ON tc.constraint_name = cc.constraint_name
-WHERE tc.table_name = 'ClientProduitEligible';
-
--- 3. Vérifier les produits éligibles disponibles
-SELECT 
-    id,
-    nom,
-    categorie,
-    active,
-    created_at
-FROM "ProduitEligible" 
-ORDER BY nom;
-
--- 4. Vérifier les sessions temporaires récentes
-SELECT 
-    id,
-    session_token,
-    completed,
-    migrated_to_account,
-    migrated_at,
-    created_at
-FROM "TemporarySession" 
-ORDER BY created_at DESC 
-LIMIT 10;
-
--- 5. Vérifier les résultats d'éligibilité temporaires
-SELECT 
-    te.id,
-    te.session_id,
-    te.produit_id,
-    te.eligibility_score,
-    te.estimated_savings,
-    te.confidence_level,
-    te.created_at,
-    ts.session_token,
-    ts.migrated_to_account
-FROM "TemporaryEligibility" te
-JOIN "TemporarySession" ts ON te.session_id = ts.id
-ORDER BY te.created_at DESC 
-LIMIT 20;
-
--- 6. Vérifier les clients récents
-SELECT 
+    'Clients sans auth_id' as section,
     id,
     email,
-    username,
+    name,
     company_name,
+    statut,
     created_at
-FROM "Client" 
-ORDER BY created_at DESC 
-LIMIT 10;
+FROM "Client"
+WHERE auth_id IS NULL
+ORDER BY created_at DESC;
 
--- 7. Vérifier les ClientProduitEligible existants
+-- 3. Vérifier les clients avec auth_id
 SELECT 
+    'Clients avec auth_id' as section,
+    id,
+    email,
+    name,
+    company_name,
+    auth_id,
+    statut,
+    created_at
+FROM "Client"
+WHERE auth_id IS NOT NULL
+ORDER BY created_at DESC;
+
+-- 4. Vérifier les utilisateurs Auth
+SELECT 
+    'Utilisateurs Auth' as section,
+    id,
+    email,
+    created_at
+FROM auth.users
+WHERE email LIKE '%@%'
+ORDER BY created_at DESC;
+
+-- 5. Vérifier les sessions de simulateur
+SELECT 
+    'Sessions Simulateur' as section,
+    id,
+    session_token,
+    status,
+    created_at,
+    updated_at
+FROM "SimulatorSession"
+ORDER BY created_at DESC;
+
+-- 6. Vérifier les ClientProduitEligible existants
+SELECT 
+    'ClientProduitEligible existants' as section,
     cpe.id,
     cpe."clientId",
     cpe."produitId",
     cpe.statut,
     cpe."tauxFinal",
     cpe."montantFinal",
-    cpe."dureeFinale",
-    cpe."simulationId",
-    cpe.metadata,
-    cpe.notes,
-    cpe."created_at",
+    cpe.created_at,
     c.email as client_email,
     pe.nom as produit_nom
 FROM "ClientProduitEligible" cpe
 LEFT JOIN "Client" c ON cpe."clientId" = c.id
 LEFT JOIN "ProduitEligible" pe ON cpe."produitId" = pe.id
-ORDER BY cpe."created_at" DESC 
-LIMIT 20;
+ORDER BY cpe.created_at DESC;
 
--- 8. Vérifier les politiques RLS sur ClientProduitEligible
+-- 7. Vérifier les politiques RLS sur ClientProduitEligible
 SELECT 
+    'Politiques RLS ClientProduitEligible' as section,
     schemaname,
     tablename,
     policyname,
     permissive,
     roles,
-    cmd,
-    qual,
-    with_check
-FROM pg_policies 
+    cmd
+FROM pg_policies
 WHERE tablename = 'ClientProduitEligible';
 
--- 9. Test d'insertion manuel avec les données minimales
--- (À décommenter pour tester)
-/*
-INSERT INTO "ClientProduitEligible" (
-    id,
-    "clientId",
-    "produitId",
-    statut,
-    "tauxFinal",
-    "montantFinal",
-    "dureeFinale",
-    "created_at",
-    "updated_at"
-) VALUES (
-    gen_random_uuid(),
-    (SELECT id FROM "Client" ORDER BY created_at DESC LIMIT 1),
-    (SELECT id FROM "ProduitEligible" WHERE nom = 'TICPE' LIMIT 1),
-    'eligible',
-    0.75,
-    5000,
-    12,
-    NOW(),
-    NOW()
-) RETURNING *;
-*/
-
--- 10. Vérifier les erreurs de contrainte potentielles
--- Test avec des données invalides pour identifier les contraintes
+-- 8. Vérifier les permissions sur les tables
 SELECT 
-    'Test contraintes' as test_type,
+    'Permissions Client' as section,
+    grantee,
+    privilege_type,
+    is_grantable
+FROM information_schema.role_table_grants
+WHERE table_name = 'Client';
+
+SELECT 
+    'Permissions ClientProduitEligible' as section,
+    grantee,
+    privilege_type,
+    is_grantable
+FROM information_schema.role_table_grants
+WHERE table_name = 'ClientProduitEligible';
+
+-- 9. Vérifier les dernières insertions ClientProduitEligible
+SELECT 
+    'Dernières insertions ClientProduitEligible' as section,
+    cpe.id,
+    cpe."clientId",
+    cpe."produitId",
+    cpe.statut,
+    cpe.created_at,
+    c.email as client_email,
+    c.auth_id,
+    pe.nom as produit_nom
+FROM "ClientProduitEligible" cpe
+LEFT JOIN "Client" c ON cpe."clientId" = c.id
+LEFT JOIN "ProduitEligible" pe ON cpe."produitId" = pe.id
+ORDER BY cpe.created_at DESC
+LIMIT 10;
+
+-- 10. Vérifier la correspondance auth_id vs client_id
+SELECT 
+    'Correspondance Auth-Client' as section,
+    c.id as client_id,
+    c.email as client_email,
+    c.auth_id,
+    au.id as auth_user_id,
+    au.email as auth_email,
     CASE 
-        WHEN EXISTS (
-            SELECT 1 FROM "ClientProduitEligible" 
-            WHERE "tauxFinal" < 0 OR "tauxFinal" > 1
-        ) THEN 'ERREUR: tauxFinal hors limites'
-        ELSE 'OK: tauxFinal dans les limites'
-    END as taux_check,
-    CASE 
-        WHEN EXISTS (
-            SELECT 1 FROM "ClientProduitEligible" 
-            WHERE "montantFinal" < 0
-        ) THEN 'ERREUR: montantFinal négatif'
-        ELSE 'OK: montantFinal positif'
-    END as montant_check,
-    CASE 
-        WHEN EXISTS (
-            SELECT 1 FROM "ClientProduitEligible" 
-            WHERE "dureeFinale" <= 0
-        ) THEN 'ERREUR: dureeFinale invalide'
-        ELSE 'OK: dureeFinale valide'
-    END as duree_check;
+        WHEN c.auth_id = au.id THEN 'Correspondance OK'
+        WHEN c.auth_id IS NULL THEN 'Client sans auth_id'
+        WHEN au.id IS NULL THEN 'Auth_id invalide'
+        ELSE 'Incohérence'
+    END as status
+FROM "Client" c
+LEFT JOIN auth.users au ON c.auth_id = au.id
+ORDER BY c.created_at DESC;
