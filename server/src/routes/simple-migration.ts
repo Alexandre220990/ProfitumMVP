@@ -218,7 +218,7 @@ router.post('/migrate-simulation', authenticateUser, async (req, res) => {
 
       // Créer l'entrée ClientProduitEligible avec vérification des valeurs
       const clientProduitEligible = {
-        clientId: client.id, // Utiliser client.id au lieu de clientId
+        clientId: client?.id || clientId, // Fallback sur clientId si client.id est null
         produitId: produitId,
         statut: product.score >= 50 ? 'eligible' : 'non_eligible',
         tauxFinal: product.score / 100,
