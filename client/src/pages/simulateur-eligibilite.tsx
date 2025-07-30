@@ -166,6 +166,7 @@ const SimulateurEligibilite = () => {
 
   const initializeSimulator = async () => { 
     try {
+      console.log('🚀 Initialisation du simulateur...');
       setSessionStartTime(Date.now()); // Initialiser le temps de session
       
       // Créer une session temporaire avec données client
@@ -186,6 +187,7 @@ const SimulateurEligibilite = () => {
       if (sessionResponse.ok) { 
         const sessionData = await sessionResponse.json();
         setSessionToken(sessionData.session_token);
+        console.log('✅ Session créée:', sessionData.session_token);
         
         // Tracking début de session (après avoir défini sessionToken)
         setTimeout(() => {
@@ -195,7 +197,10 @@ const SimulateurEligibilite = () => {
         }, 100);
         
         // Charger les questions
+        console.log('📋 Chargement des questions...');
         await loadQuestions();
+      } else {
+        console.error('❌ Erreur création session:', sessionResponse.status);
       }
     } catch (error) { 
       console.error('Erreur lors de l\'initialisation: ', error);
@@ -212,11 +217,17 @@ const SimulateurEligibilite = () => {
       const response = await fetch(`${config.API_URL}/api/simulator/questions`);
       if (response.ok) { 
         const questionsData = await response.json();
-        setQuestions(questionsData);
-        setTotalSteps(questionsData.length);
-        setCurrentQuestion(questionsData[0] || null);
         
-        console.log(`📋 ${questionsData.length} questions chargées`);
+        // L'API retourne {success: true, questions: [...]}
+        const questions = questionsData.questions || questionsData;
+        
+        setQuestions(questions);
+        setTotalSteps(questions.length);
+        setCurrentQuestion(questions[0] || null);
+        
+        console.log(`📋 ${questions.length} questions chargées`);
+      } else {
+        console.error('❌ Erreur API:', response.status, response.statusText);
       }
     } catch (error) { 
       console.error('Erreur lors du chargement des questions: ', error); 
