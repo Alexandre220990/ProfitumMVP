@@ -109,24 +109,59 @@ router.post('/migrate-simulation', authenticateUser, async (req, res) => {
 
     // 1. Vérifier que le client existe (utiliser l'email de l'utilisateur authentifié)
     console.log('🔍 Vérification du client...');
-    const { data: client, error: clientError } = await supabase
+    console.log('   - Client ID recherché:', clientId);
+    console.log('   - Email utilisateur authentifié:', authUser.email);
+    
+    let client;
+    let clientError;
+    
+    // Essayer d'abord avec l'ID et l'email
+    const { data: clientById, error: errorById } = await supabase
       .from('Client')
-      .select('id, email')
+      .select('id, email, name')
       .eq('id', clientId)
-      .eq('email', authUser.email) // Utiliser l'email de l'utilisateur authentifié
+      .eq('email', authUser.email)
       .single();
 
-    if (clientError || !client) {
-      console.error('❌ Client non trouvé:', clientError);
-      return res.status(404).json({
-        success: false,
-        error: 'Client non trouvé'
-      });
+    if (errorById || !clientById) {
+      console.error('❌ Client non trouvé par ID et email:', errorById);
+      console.log('🔄 Tentative de récupération par email seulement...');
+      
+      // Essayer de trouver le client par email seulement
+      const { data: clientByEmail, error: emailError } = await supabase
+        .from('Client')
+        .select('id, email, name')
+        .eq('email', authUser.email)
+        .single();
+        
+      if (emailError || !clientByEmail) {
+        console.error('❌ Client non trouvé par email non plus:', emailError);
+        return res.status(404).json({
+          success: false,
+          error: 'Client non trouvé'
+        });
+      }
+      
+      console.log('✅ Client trouvé par email:', clientByEmail);
+      client = clientByEmail;
+    } else {
+      console.log('✅ Client trouvé par ID et email:', clientById);
+      client = clientById;
     }
 
     console.log('✅ Client vérifié:', client.email);
     console.log('✅ Client ID récupéré:', client.id);
     console.log('✅ Type client.id:', typeof client.id);
+    console.log('✅ Client complet:', client);
+    
+    // Vérification supplémentaire que le client a un ID valide
+    if (!client.id) {
+      console.error('❌ Client ID manquant ou invalide');
+      return res.status(500).json({
+        success: false,
+        error: 'Client ID invalide'
+      });
+    }
 
     // 2. Vérifier le mapping des produits
     if (Object.keys(PRODUCT_MAPPING).length === 0) {
@@ -157,6 +192,14 @@ router.post('/migrate-simulation', authenticateUser, async (req, res) => {
       }
 
       console.log(`   - Produit ID trouvé: ${produitId}`);
+
+      // Vérification que le clientId est valide
+      if (!client.id) {
+        const error = `Client ID manquant pour le produit ${product.code}`;
+        console.error(`❌ ${error}`);
+        errors.push(error);
+        continue;
+      }
 
       // Créer l'entrée ClientProduitEligible avec vérification des valeurs
       const clientProduitEligible = {

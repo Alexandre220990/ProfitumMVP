@@ -1,162 +1,181 @@
-const fetch = require('node-fetch');
+// Script de diagnostic pour le problème de migration
+require('dotenv').config({ path: '../.env' });
 
-const API_URL = 'https://profitummvp-production.up.railway.app';
+const { createClient } = require('@supabase/supabase-js');
+
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  console.error('❌ Variables d\'environnement manquantes');
+  process.exit(1);
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function diagnoseMigrationIssue() {
-  console.log('🔍 DIAGNOSTIC COMPLET DU PROBLÈME DE MIGRATION');
-  console.log('=' .repeat(60));
+  console.log('🔍 DIAGNOSTIC DU PROBLÈME DE MIGRATION');
+  console.log('='.repeat(50));
 
   try {
-    // 1. Test de connexion
-    console.log('\n📊 1. Test de connexion...');
-    const loginResponse = await fetch(`${API_URL}/api/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: 'test-migration@example.com',
-        password: 'TestPassword123!'
-      })
-    });
-
-    if (!loginResponse.ok) {
-      console.log('❌ Échec de connexion:', loginResponse.status);
-      const errorText = await loginResponse.text();
-      console.log('Erreur:', errorText);
-      return;
-    }
-
-    const loginData = await loginResponse.json();
-    console.log('✅ Connexion réussie');
+    // 1. Vérifier la structure de la table ClientProduitEligible
+    console.log('\n1️⃣ Structure de la table ClientProduitEligible...');
     
-    if (!loginData.success || !loginData.data?.token) {
-      console.log('❌ Token manquant dans la réponse');
-      return;
-    }
-
-    const token = loginData.data.token;
-    console.log('🔑 Token obtenu:', token.substring(0, 30) + '...');
-
-    // 2. Test de la route produits-eligibles
-    console.log('\n📊 2. Test de la route produits-eligibles...');
-    const produitsResponse = await fetch(`${API_URL}/api/client/produits-eligibles`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    console.log('Status produits-eligibles:', produitsResponse.status);
+    const { data: structureData, error: structureError } = await supabase
+      .rpc('get_table_structure', { table_name: 'ClientProduitEligible' });
     
-    if (produitsResponse.ok) {
-      const produitsData = await produitsResponse.json();
-      console.log('✅ Produits éligibles récupérés:', produitsData.success);
-      console.log('📊 Nombre de produits:', produitsData.data?.length || 0);
-    } else {
-      const errorText = await produitsResponse.text();
-      console.log('❌ Erreur produits-eligibles:', errorText);
-    }
-
-    // 3. Test de création de session temporaire
-    console.log('\n📊 3. Test de création de session temporaire...');
-    const sessionResponse = await fetch(`${API_URL}/api/simulator/session`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ip_address: '127.0.0.1',
-        user_agent: 'Test Script'
-      })
-    });
-
-    if (sessionResponse.ok) {
-      const sessionData = await sessionResponse.json();
-      console.log('✅ Session créée:', sessionData.success);
+    if (structureError) {
+      console.log('⚠️ Impossible de récupérer la structure via RPC, tentative directe...');
       
-      if (sessionData.success && sessionData.data?.session_token) {
-        const sessionToken = sessionData.data.session_token;
-        console.log('🔑 Session token:', sessionToken.substring(0, 30) + '...');
-
-        // 4. Test d'ajout de réponse
-        console.log('\n📊 4. Test d\'ajout de réponse...');
-        const responseData = {
-          sessionToken: sessionToken,
-          questionId: 'test-question-id',
-          responseValue: { value: 'test-response' }
-        };
-
-        const responseResponse = await fetch(`${API_URL}/api/simulator/response`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(responseData)
-        });
-
-        if (responseResponse.ok) {
-          console.log('✅ Réponse ajoutée');
-        } else {
-          const errorText = await responseResponse.text();
-          console.log('❌ Erreur ajout réponse:', errorText);
-        }
-
-        // 5. Test de calcul d'éligibilité
-        console.log('\n📊 5. Test de calcul d\'éligibilité...');
-        const eligibilityResponse = await fetch(`${API_URL}/api/simulator/calculate-eligibility`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessionToken })
-        });
-
-        if (eligibilityResponse.ok) {
-          const eligibilityData = await eligibilityResponse.json();
-          console.log('✅ Éligibilité calculée:', eligibilityData.success);
-          console.log('📊 Résultats:', eligibilityData.data?.length || 0);
-        } else {
-          const errorText = await eligibilityResponse.text();
-          console.log('❌ Erreur calcul éligibilité:', errorText);
-        }
-
-        // 6. Test de migration
-        console.log('\n📊 6. Test de migration...');
-        const migrationData = {
-          sessionToken: sessionToken,
-          clientData: {
-            email: 'test@example.com',
-            username: 'Test User',
-            company_name: 'Test Company'
-          },
-          eligibilityResults: [
-            {
-              produit_id: 'TICPE',
-              eligibility_score: 75,
-              estimated_savings: 4388,
-              confidence_level: 'high',
-              recommendations: ['Optimisation recommandée']
-            }
-          ]
-        };
-
-        const migrationResponse = await fetch(`${API_URL}/api/session-migration/migrate`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(migrationData)
-        });
-
-        console.log('Status migration:', migrationResponse.status);
-        
-        if (migrationResponse.ok) {
-          const migrationResult = await migrationResponse.json();
-          console.log('✅ Migration réussie:', migrationResult.success);
-          console.log('📊 Produits migrés:', migrationResult.data?.migrated_count || 0);
-        } else {
-          const errorText = await migrationResponse.text();
-          console.log('❌ Erreur migration:', errorText);
-        }
+      // Tentative directe
+      const { data: sampleData, error: sampleError } = await supabase
+        .from('ClientProduitEligible')
+        .select('*')
+        .limit(1);
+      
+      if (sampleError) {
+        console.error('❌ Erreur accès table:', sampleError);
+      } else {
+        console.log('✅ Structure détectée:', Object.keys(sampleData?.[0] || {}));
       }
     } else {
-      const errorText = await sessionResponse.text();
-      console.log('❌ Erreur création session:', errorText);
+      console.log('✅ Structure récupérée:', structureData);
+    }
+
+    // 2. Créer un client de test
+    console.log('\n2️⃣ Création d\'un client de test...');
+    
+    const timestamp = Date.now();
+    const testClientData = {
+      email: `diagnostic-${timestamp}@example.com`,
+      password: 'TestPassword123!',
+      name: 'Client Diagnostic',
+      company_name: 'Entreprise Diagnostic',
+      phone_number: '0123456789',
+      address: '123 Rue Diagnostic',
+      city: 'Paris',
+      postal_code: '75001',
+      siren: String(Math.floor(100000000 + Math.random() * 900000000)),
+      type: 'client',
+      statut: 'actif',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    const { data: client, error: clientError } = await supabase
+      .from('Client')
+      .insert(testClientData)
+      .select()
+      .single();
+
+    if (clientError) {
+      throw new Error(`Erreur création client: ${clientError.message}`);
+    }
+
+    console.log('✅ Client créé:', client.email);
+    console.log('   ID:', client.id);
+    console.log('   Type ID:', typeof client.id);
+
+    // 3. Vérifier que le client existe bien
+    console.log('\n3️⃣ Vérification de l\'existence du client...');
+    
+    const { data: clientCheck, error: clientCheckError } = await supabase
+      .from('Client')
+      .select('id, email')
+      .eq('id', client.id)
+      .eq('email', client.email)
+      .single();
+
+    if (clientCheckError || !clientCheck) {
+      console.error('❌ Client non trouvé lors de la vérification:', clientCheckError);
+    } else {
+      console.log('✅ Client vérifié avec succès:', clientCheck);
+    }
+
+    // 4. Test d'insertion directe dans ClientProduitEligible
+    console.log('\n4️⃣ Test d\'insertion directe...');
+    
+    // Récupérer un produit éligible existant
+    const { data: produits, error: produitsError } = await supabase
+      .from('ProduitEligible')
+      .select('id, nom')
+      .limit(1);
+
+    if (produitsError || !produits || produits.length === 0) {
+      console.error('❌ Aucun produit éligible trouvé:', produitsError);
+      return;
+    }
+
+    const produitId = produits[0].id;
+    console.log('✅ Produit sélectionné:', produits[0].nom, '(', produitId, ')');
+
+    // Test d'insertion directe
+    const testInsertData = {
+      clientId: client.id,
+      produitId: produitId,
+      statut: 'eligible',
+      tauxFinal: 0.85,
+      montantFinal: 5000,
+      dureeFinale: 12,
+      simulationId: null,
+      metadata: {
+        test: true,
+        diagnostic: true
+      },
+      notes: 'Test diagnostic',
+      priorite: 1,
+      dateEligibilite: new Date().toISOString(),
+      current_step: 0,
+      progress: 0,
+      expert_id: null,
+      charte_signed: false,
+      charte_signed_at: null
+    };
+
+    console.log('📤 Données à insérer:', JSON.stringify(testInsertData, null, 2));
+
+    const { data: insertedData, error: insertError } = await supabase
+      .from('ClientProduitEligible')
+      .insert(testInsertData)
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error('❌ Erreur insertion directe:', insertError);
+      console.error('❌ Détails de l\'erreur:', JSON.stringify(insertError, null, 2));
+    } else {
+      console.log('✅ Insertion directe réussie:', insertedData);
+    }
+
+    // 5. Nettoyage
+    console.log('\n5️⃣ Nettoyage...');
+    
+    if (insertedData) {
+      const { error: deleteError } = await supabase
+        .from('ClientProduitEligible')
+        .delete()
+        .eq('id', insertedData.id);
+      
+      if (deleteError) {
+        console.error('⚠️ Erreur suppression test:', deleteError);
+      } else {
+        console.log('✅ Données de test supprimées');
+      }
+    }
+
+    const { error: deleteClientError } = await supabase
+      .from('Client')
+      .delete()
+      .eq('id', client.id);
+    
+    if (deleteClientError) {
+      console.error('⚠️ Erreur suppression client:', deleteClientError);
+    } else {
+      console.log('✅ Client de test supprimé');
     }
 
   } catch (error) {
-    console.error('❌ Erreur générale:', error.message);
+    console.error('❌ Erreur diagnostic:', error);
   }
 }
 
