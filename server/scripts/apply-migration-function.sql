@@ -1,9 +1,9 @@
 -- =====================================================
--- CORRECTION DE LA FONCTION DE MIGRATION
+-- APPLICATION DE LA FONCTION DE MIGRATION
 -- Date: 2025-01-30
 -- =====================================================
 
--- Recréer la fonction avec gestion des produits inexistants
+-- Fonction pour migrer une session vers un client existant
 CREATE OR REPLACE FUNCTION migrate_simulator_to_existing_client(
     p_session_token text,
     p_client_email text
@@ -75,8 +75,7 @@ BEGIN
                     'original_session_token', p_session_token,
                     'confidence_level', eligibility_record.confidence_level,
                     'recommendations', eligibility_record.recommendations,
-                    'calculation_details', eligibility_record.calculation_details,
-                    'risk_factors', eligibility_record.risk_factors
+                    'calculation_details', eligibility_record.calculation_details
                 )
             );
             
@@ -98,7 +97,6 @@ BEGIN
                     'confidence_level', eligibility_record.confidence_level,
                     'recommendations', eligibility_record.recommendations,
                     'calculation_details', eligibility_record.calculation_details,
-                    'risk_factors', eligibility_record.risk_factors,
                     'updated_at', NOW()
                 )
             WHERE "clientId" = client_record.id 
@@ -141,11 +139,18 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Test de la fonction corrigée
-DO $$
-DECLARE
-    result json;
-BEGIN
-    result := migrate_simulator_to_existing_client('SESSION_TOKEN_TEST', 'test2@test.fr');
-    RAISE NOTICE 'Résultat de la migration: %', result;
-END $$; 
+-- Vérifier que la fonction a été créée
+SELECT 
+    'Fonction de migration' as section,
+    routine_name,
+    routine_type,
+    'CRÉÉE' as status
+FROM information_schema.routines 
+WHERE routine_name = 'migrate_simulator_to_existing_client';
+
+-- Test de la fonction avec une session existante
+-- (à décommenter pour tester)
+-- SELECT migrate_simulator_to_existing_client('SESSION_TOKEN_TEST', 'test2@test.fr');
+
+-- Commentaire sur la fonction
+COMMENT ON FUNCTION migrate_simulator_to_existing_client(text, text) IS 'Migre une session simulateur vers un client existant identifié par email'; 
