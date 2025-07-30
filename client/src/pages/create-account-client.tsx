@@ -64,30 +64,33 @@ export default function CreateAccountClient() {
       if (fromSimulator && sessionToken) {
         try {
           // 1. Récupérer les données de session
-          const sessionResponse = await fetch(`${import.meta.env.VITE_API_URL}/api/session-migration/session-data/${sessionToken}`);
+          const sessionResponse = await fetch(`${import.meta.env.VITE_API_URL}/api/simulator/results/${sessionToken}`);
           const sessionData = await sessionResponse.json();
           
           if (!sessionData.success) {
             console.warn('Impossible de récupérer les données de session, continuation sans migration');
           } else {
-            // 2. Préparer les données de migration
-            const migrationData = {
-              sessionToken: sessionToken,
-              clientData: {
-                ...data,
-                siren: cleanSiren,
-                type: "client"
-              },
-              eligibilityResults: eligibilityResults
-            };
-
-            // 3. Effectuer la migration
-            const migrationResponse = await fetch(`${import.meta.env.VITE_API_URL}/api/session-migration/migrate`, {
+            // 2. Effectuer la migration avec les nouvelles routes
+            const migrationResponse = await fetch(`${import.meta.env.VITE_API_URL}/api/simulator/migrate/${sessionToken}`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json'
               },
-              body: JSON.stringify(migrationData)
+              body: JSON.stringify({
+                email: data.email,
+                nom: data.nom,
+                prenom: data.prenom,
+                societe: data.societe,
+                telephone: data.telephone,
+                adresse: data.adresse,
+                code_postal: data.code_postal,
+                ville: data.ville,
+                pays: data.pays,
+                siret: cleanSiren,
+                secteur_activite: data.secteur_activite,
+                chiffre_affaires: data.chiffre_affaires,
+                nombre_employes: data.nombre_employes
+              })
             });
 
             const migrationResult = await migrationResponse.json();
