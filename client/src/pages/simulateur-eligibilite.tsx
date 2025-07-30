@@ -354,11 +354,12 @@ const SimulateurEligibilite = () => {
         console.log('✅ Résultats d\'éligibilité:', eligibilityResults);
         
         // Tracking résultats
+        const resultsArray = Array.isArray(eligibilityResults) ? eligibilityResults : [];
         trackEvent('simulator_completed', {
           total_questions: totalSteps,
           session_duration: Date.now() - sessionStartTime,
-          results_count: eligibilityResults.length,
-          total_savings: eligibilityResults.reduce((sum: number, r: any) => sum + (r.estimated_savings || 0), 0)
+          results_count: resultsArray.length,
+          total_savings: resultsArray.reduce((sum: number, r: any) => sum + (r.estimated_savings || 0), 0)
         });
       } else {
         console.error('❌ Erreur calcul éligibilité:', response.status, response.statusText);
@@ -384,9 +385,10 @@ const SimulateurEligibilite = () => {
 
   const handleInscription = () => { 
     // Tracking conversion
+    const resultsArray = Array.isArray(eligibilityResults) ? eligibilityResults : [];
     trackEvent('simulator_conversion', {
-      total_savings: eligibilityResults.reduce((sum, r) => sum + (r.estimated_savings || 0), 0),
-      results_count: eligibilityResults.length
+      total_savings: resultsArray.reduce((sum, r) => sum + (r.estimated_savings || 0), 0),
+      results_count: resultsArray.length
     });
 
     // Naviguer vers la page d'inscription existante avec les données
@@ -506,9 +508,10 @@ const SimulateurEligibilite = () => {
 
   // Affichage des résultats
   if (showResults) {
-    const totalSavings = eligibilityResults.reduce((sum, r) => sum + (r.estimated_savings || 0), 0);
-    const highEligibilityCount = eligibilityResults.filter(r => (r.eligibility_score || 0) >= 70).length;
-    const eligibleProductsCount = eligibilityResults.filter(r => (r.estimated_savings || 0) > 0).length;
+    const resultsArray = Array.isArray(eligibilityResults) ? eligibilityResults : [];
+    const totalSavings = resultsArray.reduce((sum, r) => sum + (r.estimated_savings || 0), 0);
+    const highEligibilityCount = resultsArray.filter(r => (r.eligibility_score || 0) >= 70).length;
+    const eligibleProductsCount = resultsArray.filter(r => (r.estimated_savings || 0) > 0).length;
 
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
@@ -560,7 +563,7 @@ const SimulateurEligibilite = () => {
 
           {/* Products Grid - Layout moderne */}
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-            {eligibilityResults.map((result) => {
+            {resultsArray.map((result) => {
               const message = generatePersonalizedMessage(result);
               const details = generateProductDetails(result);
               const Icon = getProductIcon(result.produit_id);
