@@ -1,6 +1,7 @@
 import express from 'express';
 import { supabaseClient } from '../config/supabase';
 import { v4 as uuidv4 } from 'uuid';
+import { Request, Response } from 'express';
 
 const router = express.Router();
 
@@ -586,6 +587,95 @@ router.post('/abandon', async (req, res) => {
       success: false,
       error: 'Erreur inattendue lors de l\'abandon',
       details: error instanceof Error ? error.message : 'Erreur inconnue'
+    });
+  }
+});
+
+/**
+ * POST /api/simulator/create-auth-account - Créer un compte d'authentification pour un client migré
+ */
+router.post('/create-auth-account', async (req: Request, res: Response) => {
+  try {
+    const { email, password } = req.body;
+    
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email et mot de passe requis'
+      });
+    }
+    
+    console.log(`🔐 Création de compte auth pour: ${email}`);
+    
+    // Vérifier que le client existe
+    const { data: client, error: clientError } = await supabaseClient
+      .from('Client')
+      .select('id, email, name, company_name')
+      .eq('email', email)
+      .single();
+    
+    if (clientError || !client) {
+      console.error('❌ Client non trouvé:', clientError);
+      return res.status(404).json({
+        success: false,
+        message: 'Client non trouvé'
+      });
+    }
+    
+    // Créer le compte d'authentification
+    const { data: authData, error: authError } = await supabaseClient.auth.admin.createUser({
+      email: email,
+      password: password,
+      email_confirm: true,
+      user_metadata: {
+        type: 'client',
+        name: client.name,
+        company_name: client.company_name
+      }
+    });
+    
+    if (authError) {
+      console.error('❌ Erreur création compte auth:', authError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la création du compte',
+        error: authError.message
+      });
+    }
+    
+    // Mettre à jour le client avec l'auth_id
+    const { error: updateError } = await supabaseClient
+      .from('Client')
+      .update({ auth_id: authData.user.id })
+      .eq('id', client.id);
+    
+    if (updateError) {
+      console.error('❌ Erreur mise à jour client:', updateError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la mise à jour du client',
+        error: updateError.message
+      });
+    }
+    
+    console.log(`✅ Compte auth créé avec succès pour: ${email}`);
+    
+    return res.json({
+      success: true,
+      message: 'Compte d\'authentification créé avec succès',
+      data: {
+        client_id: client.id,
+        auth_id: authData.user.id,
+        email: email
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Erreur création compte auth:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur',
+      error: error instanceof Error ? error.message : 'Erreur inconnue'
     });
   }
 });
