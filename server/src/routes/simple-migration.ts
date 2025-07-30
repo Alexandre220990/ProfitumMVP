@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { supabaseClient } from '../config/supabase';
+import { authenticateUser } from '../middleware/authenticate';
 
 const router = Router();
 const supabase = supabaseClient;
@@ -75,18 +76,28 @@ initializeProductMapping();
 /**
  * Migration simplifiée des résultats de simulation
  * Appelée directement après l'inscription du client
+ * REQUIRES AUTHENTICATION
  */
-router.post('/migrate-simulation', async (req, res) => {
+router.post('/migrate-simulation', authenticateUser, async (req, res) => {
   try {
     const { clientId, email, simulationResults }: MigrationRequest = req.body;
+    const authUser = req.user; // Récupéré par le middleware d'authentification
 
     console.log('🚀 MIGRATION SIMPLIFIÉE DÉMARRÉE');
     console.log('📋 Données reçues:');
     console.log('   - Client ID:', clientId);
     console.log('   - Email:', email);
     console.log('   - Nombre de produits:', simulationResults?.products?.length || 0);
-    console.log('   - Type clientId:', typeof clientId);
-    console.log('   - ClientId est null/undefined:', clientId === null || clientId === undefined);
+    console.log('   - Utilisateur authentifié:', authUser?.email);
+
+    // Vérification de sécurité : l'utilisateur authentifié doit correspondre au client
+    if (authUser?.email !== email) {
+      console.error('❌ Tentative d\'accès non autorisé:', authUser?.email, 'vs', email);
+      return res.status(403).json({
+        success: false,
+        error: 'Accès non autorisé'
+      });
+    }
 
     if (!clientId || !email || !simulationResults) {
       console.error('❌ Données manquantes');
@@ -96,13 +107,13 @@ router.post('/migrate-simulation', async (req, res) => {
       });
     }
 
-    // 1. Vérifier que le client existe
+    // 1. Vérifier que le client existe (utiliser l'email de l'utilisateur authentifié)
     console.log('🔍 Vérification du client...');
     const { data: client, error: clientError } = await supabase
       .from('Client')
       .select('id, email')
       .eq('id', clientId)
-      .eq('email', email)
+      .eq('email', authUser.email) // Utiliser l'email de l'utilisateur authentifié
       .single();
 
     if (clientError || !client) {
