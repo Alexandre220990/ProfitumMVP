@@ -242,7 +242,7 @@ router.post('/migrate-simulation', authenticateUser, async (req, res) => {
       console.log(`     * statut: ${clientProduitEligible.statut}`);
       console.log(`     * tauxFinal: ${clientProduitEligible.tauxFinal}`);
       console.log(`     * montantFinal: ${clientProduitEligible.montantFinal}`);
-      console.log(`     * sessionId: ${clientProduitEligible.sessionId}`);
+      console.log(`     * sessionId: null (non défini car clientId présent)`);
 
       // Insérer dans la base
       const { data: insertedProduct, error: insertError } = await supabase
