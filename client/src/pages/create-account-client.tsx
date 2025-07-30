@@ -24,6 +24,9 @@ export default function CreateAccountClient() {
   const [fromSimulator, setFromSimulator] = useState(false);
   const [eligibilityResults, setEligibilityResults] = useState<any[]>([]);
   const [totalSavings, setTotalSavings] = useState(0);
+  
+  // Variable pour les résultats sécurisés
+  const resultsArray = Array.isArray(eligibilityResults) ? eligibilityResults : [];
   const [sessionToken, setSessionToken] = useState<string>('');
 
   const form = useForm<FormData>({ resolver: zodResolver(formSchema), defaultValues: {
@@ -37,7 +40,8 @@ export default function CreateAccountClient() {
       setFromSimulator(true);
       setSessionToken(state.sessionToken);
       setEligibilityResults(state.eligibilityResults);
-      setTotalSavings(state.eligibilityResults.reduce((sum: number, r: any) => sum + r.estimated_savings, 0));
+      const resultsArray = Array.isArray(state.eligibilityResults) ? state.eligibilityResults : [];
+      setTotalSavings(resultsArray.reduce((sum: number, r: any) => sum + (r.estimated_savings || 0), 0));
       
       // Pré-remplir le formulaire avec les données extraites si disponibles
       if (state.extractedData) {
@@ -78,18 +82,18 @@ export default function CreateAccountClient() {
               },
               body: JSON.stringify({
                 email: data.email,
-                nom: data.nom,
-                prenom: data.prenom,
-                societe: data.societe,
-                telephone: data.telephone,
-                adresse: data.adresse,
-                code_postal: data.code_postal,
-                ville: data.ville,
-                pays: data.pays,
+                nom: data.username, // Utiliser username comme nom
+                prenom: data.username, // Utiliser username comme prénom
+                societe: data.company_name,
+                telephone: data.phone_number,
+                adresse: data.address,
+                code_postal: data.postal_code,
+                ville: data.city,
+                pays: "France", // Valeur par défaut
                 siret: cleanSiren,
-                secteur_activite: data.secteur_activite,
-                chiffre_affaires: data.chiffre_affaires,
-                nombre_employes: data.nombre_employes
+                secteur_activite: "Non spécifié", // Valeur par défaut
+                chiffre_affaires: 0, // Valeur par défaut
+                nombre_employes: 0 // Valeur par défaut
               })
             });
 
@@ -145,7 +149,7 @@ export default function CreateAccountClient() {
       toast({
         title: fromSimulator ? "🎉 Inscription réussie avec migration !" : "Inscription réussie",
         description: fromSimulator 
-          ? `Bienvenue ${user.username || user.email} ! Votre compte a été créé avec ${eligibilityResults.length} produits éligibles.`
+          ? `Bienvenue ${user.username || user.email} ! Votre compte a été créé avec ${resultsArray.length} produits éligibles.`
           : `Bienvenue ${user.username || user.email}`,
       });
 
@@ -153,7 +157,7 @@ export default function CreateAccountClient() {
       navigate(`/dashboard/client/${user.id}`, {
         state: fromSimulator ? {
           fromSimulator: true,
-          migrationData: { eligibilityResults, totalSavings }
+          migrationData: { eligibilityResults: resultsArray, totalSavings }
         } : undefined
       });
     } catch (error) {
@@ -196,7 +200,7 @@ export default function CreateAccountClient() {
               <span className="font-semibold">Simulation terminée</span>
             </div>
             <p className="text-sm opacity-90">
-              {eligibilityResults.length} produit{eligibilityResults.length > 1 ? 's' : ''} éligible{eligibilityResults.length > 1 ? 's' : ''} détecté{eligibilityResults.length > 1 ? 's' : ''}
+              {resultsArray.length} produit{resultsArray.length > 1 ? 's' : ''} éligible{resultsArray.length > 1 ? 's' : ''} détecté{resultsArray.length > 1 ? 's' : ''}
             </p>
           </div>
         )}
