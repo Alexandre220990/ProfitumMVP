@@ -209,7 +209,7 @@ router.post('/migrate-simulation', authenticateUser, async (req, res) => {
       console.log(`   - Produit ID trouvé: ${produitId}`);
 
       // Vérification que le clientId est valide
-      if (!client.id) {
+      if (!client || !client.id) {
         const error = `Client ID manquant pour le produit ${product.code}`;
         console.error(`❌ ${error}`);
         errors.push(error);
