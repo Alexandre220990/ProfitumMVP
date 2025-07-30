@@ -93,7 +93,7 @@ router.put('/profile', authenticateUser, async (req: Request, res: Response) => 
   }
 });
 
-// GET /api/client/produits-eligibles - Récupérer les produits éligibles du client
+// GET /api/client/produits-eligibles - Récupérer les produits éligibles du client (OPTIMISÉ)
 router.get('/produits-eligibles', async (req: Request, res: Response) => {
   try {
     console.log('🔍 Route /api/client/produits-eligibles appelée');
@@ -116,25 +116,29 @@ router.get('/produits-eligibles', async (req: Request, res: Response) => {
       return res.status(403).json({ success: false, message: 'Accès non autorisé' });
     }
 
-    // Pagination
+    // Pagination optimisée
     const page = parseInt(req.query.page as string) || 1;
     const pageSize = parseInt(req.query.pageSize as string) || 20;
     const offset = (page - 1) * pageSize;
-    const limit = offset + pageSize - 1;
 
-    // Récupérer d'abord le client par email pour obtenir l'ID de la table Client
+    // Récupérer d'abord le client par auth_id pour obtenir l'ID client
     const { data: client, error: clientError } = await supabase
       .from('Client')
       .select('id')
-      .eq('email', authUser.email)
+      .eq('auth_id', authUser.id)
       .single();
 
     if (clientError || !client) {
-      console.error('Erreur lors de la récupération du client:', clientError);
-      return res.status(500).json({ success: false, message: 'Client non trouvé' });
+      console.error('❌ Client non trouvé pour auth_id:', authUser.id);
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Profil client non trouvé. Veuillez contacter le support.' 
+      });
     }
 
-    // Récupérer les produits éligibles du client avec les détails des produits (pagination)
+    console.log('🔍 Client trouvé:', { clientId: client.id, authId: authUser.id });
+
+    // Requête optimisée avec jointure directe et sélection de champs spécifiques
     const { data: produitsData, error: produitsError, count } = await supabase
       .from('ClientProduitEligible')
       .select(`
@@ -152,24 +156,27 @@ router.get('/produits-eligibles', async (req: Request, res: Response) => {
         progress,
         created_at,
         updated_at,
-        ProduitEligible (
+        ProduitEligible!inner (
           id,
           nom,
           description,
           category
         )
       `, { count: 'exact' })
-      .eq('clientId', client.id)
+      .eq('ClientProduitEligible.clientId', client.id) // Utiliser l'ID du client
       .order('created_at', { ascending: false })
-      .range(offset, limit);
+      .range(offset, offset + pageSize - 1);
 
     if (produitsError) {
+      console.error('❌ Erreur lors de la récupération des produits:', produitsError);
       throw produitsError;
     }
 
+    console.log(`✅ ${produitsData?.length || 0} produits récupérés pour la page ${page}`);
+
     return res.json({
       success: true,
-      data: produitsData,
+      data: produitsData || [],
       pagination: {
         page,
         pageSize,
@@ -179,10 +186,11 @@ router.get('/produits-eligibles', async (req: Request, res: Response) => {
     });
 
   } catch (error) {
-    console.error('Error fetching client products:', error);
+    console.error('❌ Erreur lors de la récupération des produits:', error);
     return res.status(500).json({
       success: false,
-      message: 'Error fetching client products'
+      message: 'Erreur lors de la récupération des produits',
+      error: error instanceof Error ? error.message : 'Erreur inconnue'
     });
   }
 });

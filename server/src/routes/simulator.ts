@@ -55,6 +55,42 @@ interface SimulatorResults {
 // FONCTIONS UTILITAIRES
 // =====================================================
 
+// Cache pour les questions du questionnaire (durée: 1 heure)
+let questionsCache: any = null;
+let questionsCacheTimestamp: number = 0;
+const CACHE_DURATION = 60 * 60 * 1000; // 1 heure en millisecondes
+
+/**
+ * Récupère les questions du questionnaire avec cache
+ */
+async function getQuestionsWithCache() {
+  const now = Date.now();
+  
+  // Vérifier si le cache est valide
+  if (questionsCache && (now - questionsCacheTimestamp) < CACHE_DURATION) {
+    console.log('📋 Questions récupérées depuis le cache');
+    return questionsCache;
+  }
+  
+  // Récupérer depuis la base de données
+  console.log('📋 Récupération des questions depuis la base de données...');
+  const { data, error } = await supabaseClient
+    .from('QuestionnaireQuestion')
+    .select('*')
+    .order('question_order', { ascending: true });
+  
+  if (error) {
+    throw error;
+  }
+  
+  // Mettre à jour le cache
+  questionsCache = data;
+  questionsCacheTimestamp = now;
+  
+  console.log(`✅ ${data?.length || 0} questions mises en cache`);
+  return data;
+}
+
 /**
  * Envoie une notification pour les fortes éligibilités
  */
@@ -169,32 +205,21 @@ router.post('/session', async (req, res) => {
 
 /**
  * GET /api/simulator/questions
- * Récupère les questions du questionnaire
+ * Récupère les questions du questionnaire (AVEC CACHE)
  */
 router.get('/questions', async (req, res) => {
   try {
     console.log('📋 Récupération des questions du questionnaire...');
 
-    const { data, error } = await supabaseClient
-      .from('QuestionnaireQuestion')
-      .select('*')
-      .order('question_order', { ascending: true });
-
-    if (error) {
-      console.error('❌ Erreur lors de la récupération des questions:', error);
-      return res.status(500).json({
-        success: false,
-        error: 'Erreur lors de la récupération des questions',
-        details: error.message
-      });
-    }
+    const data = await getQuestionsWithCache();
 
     console.log(`✅ ${data?.length || 0} questions récupérées`);
 
     return res.json({
       success: true,
       questions: data || [],
-      count: data?.length || 0
+      count: data?.length || 0,
+      cached: questionsCache && (Date.now() - questionsCacheTimestamp) < CACHE_DURATION
     });
   } catch (error) {
     console.error('❌ Erreur inattendue lors de la récupération des questions:', error);
@@ -842,13 +867,69 @@ router.get('/health', async (req, res) => {
       status: 'healthy',
       timestamp: new Date().toISOString(),
       database: 'connected',
-      version: '2.0.0'
+      version: '2.0.0',
+      cache: {
+        questions: questionsCache ? 'active' : 'inactive',
+        lastUpdate: questionsCacheTimestamp ? new Date(questionsCacheTimestamp).toISOString() : null
+      }
     });
   } catch (error) {
     return res.status(503).json({
       success: false,
       status: 'unhealthy',
       error: 'Erreur inattendue',
+      details: error instanceof Error ? error.message : 'Erreur inconnue'
+    });
+  }
+});
+
+/**
+ * GET /api/simulator/performance
+ * Endpoint de monitoring des performances
+ */
+router.get('/performance', async (req, res) => {
+  try {
+    const startTime = Date.now();
+    
+    // Test de performance de la base de données
+    const dbStartTime = Date.now();
+    const { data, error } = await supabaseClient
+      .from('SimulatorSession')
+      .select('count')
+      .limit(1);
+    const dbResponseTime = Date.now() - dbStartTime;
+
+    if (error) {
+      return res.status(503).json({
+        success: false,
+        status: 'database_error',
+        error: 'Erreur de connexion à la base de données',
+        details: error.message
+      });
+    }
+
+    const totalResponseTime = Date.now() - startTime;
+
+    return res.json({
+      success: true,
+      status: 'operational',
+      timestamp: new Date().toISOString(),
+      performance: {
+        totalResponseTime: `${totalResponseTime}ms`,
+        databaseResponseTime: `${dbResponseTime}ms`,
+        cacheStatus: questionsCache ? 'active' : 'inactive',
+        cacheAge: questionsCacheTimestamp ? `${Math.floor((Date.now() - questionsCacheTimestamp) / 1000)}s` : 'N/A'
+      },
+      recommendations: [
+        dbResponseTime > 500 ? 'Considérer l\'optimisation des requêtes de base de données' : null,
+        !questionsCache ? 'Activer le cache pour améliorer les performances' : null
+      ].filter(Boolean)
+    });
+  } catch (error) {
+    return res.status(503).json({
+      success: false,
+      status: 'error',
+      error: 'Erreur lors du test de performance',
       details: error instanceof Error ? error.message : 'Erreur inconnue'
     });
   }

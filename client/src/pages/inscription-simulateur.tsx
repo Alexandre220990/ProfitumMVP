@@ -105,12 +105,12 @@ const InscriptionSimulateur = () => {
       if (!state?.sessionToken) return;
 
       try {
-        const response = await fetch(`${config.API_URL}/api/session-migration/can-migrate/${state.sessionToken}`);
+        const response = await fetch(`${config.API_URL}/api/simulator/results/${state.sessionToken}`);
         const data = await response.json();
 
         if (data.success && data.can_migrate) { 
           // Récupérer les données de session
-          const sessionResponse = await fetch(`${config.API_URL}/api/session-migration/session-data/${state.sessionToken}`);
+          const sessionResponse = await fetch(`${config.API_URL}/api/simulator/results/${state.sessionToken}`);
           const sessionData = await sessionResponse.json();
 
           if (sessionData.success) { 
@@ -179,13 +179,22 @@ const InscriptionSimulateur = () => {
       };
 
       try {
-        const migrationResponse = await fetch(`${config.API_URL}/api/session-migration/migrate`, { 
+        const migrationResponse = await fetch(`${config.API_URL}/api/simulator/migrate/${state.sessionToken}`, { 
           method: 'POST', 
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}` // Ajouter le token pour l'authentification
           },
-          body: JSON.stringify(migrationData)
+          body: JSON.stringify({
+            email: data.email,
+            name: data.username,
+            company_name: data.company_name,
+            phone_number: data.phone_number,
+            address: data.address,
+            city: data.city,
+            postal_code: data.postal_code,
+            siren: cleanSiren
+          })
         });
 
         const migrationResult = await migrationResponse.json();
