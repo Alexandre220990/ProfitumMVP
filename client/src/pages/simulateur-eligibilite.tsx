@@ -346,10 +346,12 @@ const SimulateurEligibilite = () => {
         const results = await response.json();
         console.log('🔍 Résultats reçus du backend:', results);
         
-        // Le backend retourne directement le tableau de résultats
-        const eligibilityResults = Array.isArray(results) ? results : [];
+        // Le backend retourne {success: true, eligibility_results: [...]}
+        const eligibilityResults = results.eligibility_results || results || [];
         setEligibilityResults(eligibilityResults);
         setShowResults(true);
+        
+        console.log('✅ Résultats d\'éligibilité:', eligibilityResults);
         
         // Tracking résultats
         trackEvent('simulator_completed', {
@@ -358,6 +360,8 @@ const SimulateurEligibilite = () => {
           results_count: eligibilityResults.length,
           total_savings: eligibilityResults.reduce((sum: number, r: any) => sum + (r.estimated_savings || 0), 0)
         });
+      } else {
+        console.error('❌ Erreur calcul éligibilité:', response.status, response.statusText);
       }
     } catch (error) { 
       console.error('Erreur lors du calcul des résultats: ', error);
