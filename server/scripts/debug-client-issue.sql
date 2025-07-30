@@ -51,7 +51,7 @@ SELECT
     'Sessions simulateur' as section,
     id,
     session_token,
-    statut,
+    status,
     created_at,
     updated_at,
     metadata
@@ -78,7 +78,7 @@ SELECT
     'Simulations traitées' as section,
     id,
     clientid,
-    statut,
+    status,
     createdat,
     updatedat
 FROM "SimulationProcessed"
