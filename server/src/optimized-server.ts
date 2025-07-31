@@ -40,6 +40,7 @@ import {
 // Utils
 import checkNetworkInterfaces from './utils/ipcheck';
 import { addCorsTestRoute } from './utils/cors-test';
+import { getCorsConfig, corsMiddleware } from './config/cors';
 
 dotenv.config();
 
@@ -59,16 +60,16 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 // ===== CONFIGURATION DES MIDDLEWARES =====
 
-// Configuration CORS optimisée
-app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? ['https://profitum.app', 'https://www.profitum.app', 'https://profitum-mvp.vercel.app', 'https://profitummvp-production.up.railway.app'] 
-    : ['http://[::1]:3000', 'http://localhost:3000', 'http://127.0.0.1:3000', 'http://[::1]:5173', 'http://localhost:5173'],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'apikey', 'X-Requested-With'],
-  exposedHeaders: ['X-Response-Time', 'X-Cache-Hit']
-}));
+// Configuration CORS unifiée depuis le fichier centralisé
+const corsOptions = getCorsConfig();
+
+app.use(cors(corsOptions));
+
+// Middleware pour gérer les requêtes OPTIONS (preflight)
+app.options('*', cors(corsOptions));
+
+// Middleware GLOBAL pour s'assurer que les headers CORS sont bien appliqués
+app.use(corsMiddleware);
 
 // Middleware de compression pour améliorer les performances
 app.use(compression({

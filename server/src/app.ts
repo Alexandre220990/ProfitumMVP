@@ -3,38 +3,23 @@ import cors from 'cors';
 import path from 'path';
 import routes from './routes';
 // import { monitoringSystem } from '../lib/monitoring-system';
+import { getCorsConfig, corsMiddleware } from './config/cors';
 
 // Routes pour les documents clients
 import clientDocumentsRouter from './routes/enhanced-client-documents';
 
 const app = express();
 
-// ✅ Configuration CORS dynamique
-const allowedOrigins = [
-  'http://[::1]:3000',
-  'http://localhost:3000',
-  'http://127.0.0.1:3000',
-  'http://[::1]:5173',
-  'http://localhost:5173',
-  'https://profitum-mvp.vercel.app',
-  'https://profitum.app',
-  'https://www.profitum.app',
-  'https://profitummvp-production.up.railway.app'
-];
+// Configuration CORS unifiée depuis le fichier centralisé
+const corsOptions = getCorsConfig();
 
-app.use(cors({
-  origin: function (origin, callback) {
-    // Autoriser les requêtes sans origin (ex: curl, Postman)
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS: ' + origin));
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+app.use(cors(corsOptions));
+
+// Middleware pour gérer les requêtes OPTIONS (preflight)
+app.options('*', cors(corsOptions));
+
+// Middleware GLOBAL pour s'assurer que les headers CORS sont bien appliqués
+app.use(corsMiddleware);
 
 // Middleware pour parser le JSON
 app.use(express.json());
