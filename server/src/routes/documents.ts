@@ -1,6 +1,6 @@
 import express, { Router, Request, Response } from 'express';
 import { createClient } from '@supabase/supabase-js';
-import { authenticateUser } from '../middleware/authenticate';
+
 import { AuthUser } from '../types/auth';
 import { asyncHandler } from '../utils/asyncHandler';
 
@@ -50,7 +50,7 @@ interface DocumentPermission {
 // ===== ROUTES DOCUMENTS =====
 
 // GET /api/documents - Lister les documents avec filtres
-router.get('/', authenticateUser, asyncHandler(async (req: Request, res: Response) => {
+router.get('/', asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }
@@ -138,7 +138,7 @@ router.get('/', authenticateUser, asyncHandler(async (req: Request, res: Respons
 }));
 
 // GET /api/documents/:id - Récupérer un document spécifique
-router.get('/:id', authenticateUser, asyncHandler(async (req: Request, res: Response) => {
+router.get('/:id', asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }
@@ -194,7 +194,7 @@ router.get('/:id', authenticateUser, asyncHandler(async (req: Request, res: Resp
 }));
 
 // POST /api/documents - Créer un nouveau document
-router.post('/', authenticateUser, asyncHandler(async (req: Request, res: Response) => {
+router.post('/', asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }
@@ -292,7 +292,7 @@ router.post('/', authenticateUser, asyncHandler(async (req: Request, res: Respon
 }));
 
 // PUT /api/documents/:id - Modifier un document
-router.put('/:id', authenticateUser, asyncHandler(async (req: Request, res: Response) => {
+router.put('/:id', asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }
@@ -414,7 +414,7 @@ router.put('/:id', authenticateUser, asyncHandler(async (req: Request, res: Resp
 }));
 
 // DELETE /api/documents/:id - Supprimer un document
-router.delete('/:id', authenticateUser, asyncHandler(async (req: Request, res: Response) => {
+router.delete('/:id', asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }
@@ -452,7 +452,7 @@ router.delete('/:id', authenticateUser, asyncHandler(async (req: Request, res: R
 // ===== ROUTES LABELS =====
 
 // GET /api/labels - Lister tous les labels
-router.get('/labels', authenticateUser, asyncHandler(async (req: Request, res: Response) => {
+router.get('/labels', asyncHandler(async (req: Request, res: Response) => {
   const { data: labels, error } = await supabase
     .from('GEDDocumentLabel')
     .select('*')
@@ -473,7 +473,7 @@ router.get('/labels', authenticateUser, asyncHandler(async (req: Request, res: R
 }));
 
 // POST /api/labels - Créer un nouveau label
-router.post('/labels', authenticateUser, asyncHandler(async (req: Request, res: Response) => {
+router.post('/labels', asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }
@@ -524,7 +524,7 @@ router.post('/labels', authenticateUser, asyncHandler(async (req: Request, res: 
 // ===== ROUTES FAVORIS =====
 
 // POST /api/documents/:id/favorite - Ajouter aux favoris
-router.post('/:id/favorite', authenticateUser, asyncHandler(async (req: Request, res: Response) => {
+router.post('/:id/favorite', asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }
@@ -554,7 +554,7 @@ router.post('/:id/favorite', authenticateUser, asyncHandler(async (req: Request,
 }));
 
 // DELETE /api/documents/:id/favorite - Retirer des favoris
-router.delete('/:id/favorite', authenticateUser, asyncHandler(async (req: Request, res: Response) => {
+router.delete('/:id/favorite', asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }
@@ -583,7 +583,7 @@ router.delete('/:id/favorite', authenticateUser, asyncHandler(async (req: Reques
 }));
 
 // GET /api/documents/favorites - Récupérer les favoris de l'utilisateur
-router.get('/favorites', authenticateUser, asyncHandler(async (req: Request, res: Response) => {
+router.get('/favorites', asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }

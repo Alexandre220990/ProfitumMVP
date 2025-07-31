@@ -1,5 +1,5 @@
 import express, { Router, Request, Response } from 'express';
-import { authenticateUser } from '../middleware/authenticate';
+
 import { AuthUser } from '../types/auth';
 import { collaborativeEventsService } from '../services/collaborative-events-service';
 import { asyncHandler } from '../utils/asyncHandler';
@@ -168,7 +168,7 @@ const validateRespondToInvitation = (req: Request, res: Response, next: Function
  * POST /api/collaborative-events - Créer un événement collaboratif
  */
 router.post('/', 
-  authenticateUser, 
+  
   collaborativeEventsLimiter, 
   validateCreateEvent,
   asyncHandler(async (req: Request, res: Response) => {
@@ -209,7 +209,7 @@ router.post('/',
  * GET /api/collaborative-events - Lister les événements collaboratifs de l'utilisateur
  */
 router.get('/', 
-  authenticateUser, 
+  
   collaborativeEventsLimiter,
   asyncHandler(async (req: Request, res: Response) => {
     if (!req.user) {
@@ -243,7 +243,7 @@ router.get('/',
  * GET /api/collaborative-events/stats - Obtenir les statistiques des événements
  */
 router.get('/stats', 
-  authenticateUser, 
+  
   collaborativeEventsLimiter,
   asyncHandler(async (req: Request, res: Response) => {
     if (!req.user) {
@@ -274,7 +274,7 @@ router.get('/stats',
  * PUT /api/collaborative-events/:id - Mettre à jour un événement collaboratif
  */
 router.put('/:id', 
-  authenticateUser, 
+  
   collaborativeEventsLimiter, 
   validateUpdateEvent,
   asyncHandler(async (req: Request, res: Response) => {
@@ -307,7 +307,7 @@ router.put('/:id',
  * DELETE /api/collaborative-events/:id - Annuler un événement collaboratif
  */
 router.delete('/:id', 
-  authenticateUser, 
+  
   collaborativeEventsLimiter,
   asyncHandler(async (req: Request, res: Response) => {
     if (!req.user) {
@@ -342,7 +342,7 @@ router.delete('/:id',
  * POST /api/collaborative-events/invitations/:id/respond - Répondre à une invitation
  */
 router.post('/invitations/:id/respond', 
-  authenticateUser, 
+  
   collaborativeEventsLimiter, 
   validateRespondToInvitation,
   asyncHandler(async (req: Request, res: Response) => {
@@ -375,7 +375,7 @@ router.post('/invitations/:id/respond',
  * GET /api/collaborative-events/invitations - Lister les invitations de l'utilisateur
  */
 router.get('/invitations', 
-  authenticateUser, 
+  
   collaborativeEventsLimiter,
   asyncHandler(async (req: Request, res: Response) => {
     if (!req.user) {
@@ -429,7 +429,7 @@ router.get('/invitations',
  * GET /api/collaborative-events/search - Rechercher des événements
  */
 router.get('/search', 
-  authenticateUser, 
+  
   collaborativeEventsLimiter,
   asyncHandler(async (req: Request, res: Response) => {
     if (!req.user) {

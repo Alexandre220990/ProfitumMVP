@@ -1,6 +1,6 @@
 import express from 'express';
 import DocumentWorkflowService, { DocumentWorkflow, DocumentCategory, UserRole } from '../../services/document-workflow-service';
-import { authenticateToken } from '../../middleware/authenticate';
+import { enhancedAuthMiddleware } from '../../middleware/auth-enhanced';
 import { asyncHandler } from '../../utils/asyncHandler';
 
 const router = express.Router();
@@ -13,7 +13,7 @@ const workflowService = new DocumentWorkflowService();
  * POST /api/documents/workflow/initialize-client
  */
 router.post('/initialize-client', 
-  authenticateToken,
+  
   asyncHandler(async (req, res) => {
     const { clientId } = req.body;
     
@@ -45,7 +45,7 @@ router.post('/initialize-client',
  * POST /api/documents/workflow/request
  */
 router.post('/request',
-  authenticateToken,
+  
   asyncHandler(async (req, res) => {
     const {
       clientId,
@@ -112,7 +112,7 @@ router.post('/request',
  * POST /api/documents/workflow/upload
  */
 router.post('/upload',
-  authenticateToken,
+  
   asyncHandler(async (req, res) => {
     const {
       clientId,
@@ -176,7 +176,7 @@ router.post('/upload',
  * POST /api/documents/workflow/complete-step
  */
 router.post('/complete-step',
-  authenticateToken,
+  
   asyncHandler(async (req, res) => {
     const {
       documentRequestId,
@@ -229,7 +229,7 @@ router.post('/complete-step',
  * GET /api/documents/workflow/client/:clientId
  */
 router.get('/client/:clientId',
-  authenticateToken,
+  
   asyncHandler(async (req, res) => {
     const { clientId } = req.params;
     const userRole = req.user?.role;
@@ -265,7 +265,7 @@ router.get('/client/:clientId',
  * GET /api/documents/workflow/pending
  */
 router.get('/pending',
-  authenticateToken,
+  
   asyncHandler(async (req, res) => {
     const userId = req.user?.id;
     const userRole = req.user?.role;
@@ -300,7 +300,7 @@ router.get('/pending',
  * GET /api/documents/workflow/stats
  */
 router.get('/stats',
-  authenticateToken,
+  
   asyncHandler(async (req, res) => {
     const userRole = req.user?.role;
 
@@ -389,7 +389,7 @@ router.get('/stats',
  * POST /api/documents/workflow/validate
  */
 router.post('/validate',
-  authenticateToken,
+  
   asyncHandler(async (req, res) => {
     const {
       documentFileId,
@@ -450,7 +450,7 @@ router.post('/validate',
  * GET /api/documents/workflow/validations/:documentFileId
  */
 router.get('/validations/:documentFileId',
-  authenticateToken,
+  
   asyncHandler(async (req, res) => {
     const { documentFileId } = req.params;
 
@@ -489,7 +489,7 @@ router.get('/validations/:documentFileId',
  * POST /api/documents/workflow/share
  */
 router.post('/share',
-  authenticateToken,
+  
   asyncHandler(async (req, res) => {
     const {
       documentFileId,
@@ -549,7 +549,7 @@ router.post('/share',
  * GET /api/documents/workflow/shares/:documentFileId
  */
 router.get('/shares/:documentFileId',
-  authenticateToken,
+  
   asyncHandler(async (req, res) => {
     const { documentFileId } = req.params;
     const userId = req.user?.id;

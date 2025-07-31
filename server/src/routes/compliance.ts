@@ -1,5 +1,5 @@
 import express from 'express';
-import { authenticateToken } from '../middleware/authenticate';
+import { enhancedAuthMiddleware } from '../middleware/auth-enhanced';
 import { checkRole } from '../middleware/check-role';
 import ComplianceService from '../services/compliance-service';
 import ExternalIntegrationsService from '../services/external-integrations-service';
@@ -16,7 +16,7 @@ const integrationsService = new ExternalIntegrationsService();
  * @access Admin, Expert
  */
 router.get('/workflow/templates/:id',
-  authenticateToken,
+  
   checkRole(['admin', 'expert']),
   async (req, res) => {
     try {
@@ -40,7 +40,7 @@ router.get('/workflow/templates/:id',
  * @access Admin
  */
 router.post('/workflow/templates',
-  authenticateToken,
+  
   checkRole(['admin']),
   async (req, res) => {
     try {
@@ -65,7 +65,7 @@ router.post('/workflow/templates',
  * @access Admin, Expert
  */
 router.post('/workflow/instances',
-  authenticateToken,
+  
   checkRole(['admin', 'expert']),
   async (req, res) => {
     try {
@@ -90,7 +90,7 @@ router.post('/workflow/instances',
  * @access Admin, Expert
  */
 router.post('/workflow/instances/:id/execute-step',
-  authenticateToken,
+  
   checkRole(['admin', 'expert']),
   async (req, res) => {
     try {
@@ -116,7 +116,7 @@ router.post('/workflow/instances/:id/execute-step',
  * @access Admin, Expert
  */
 router.post('/integrations/signature/request',
-  authenticateToken,
+  
   checkRole(['admin', 'expert']),
   async (req, res) => {
     try {
@@ -158,7 +158,7 @@ router.post('/integrations/signature/request',
  * @access Admin, Expert
  */
 router.get('/integrations/signature/:id/status',
-  authenticateToken,
+  
   checkRole(['admin', 'expert']),
   async (req, res) => {
     try {
@@ -194,7 +194,7 @@ router.get('/integrations/signature/:id/status',
  * @access Admin
  */
 router.post('/integrations/payment/request',
-  authenticateToken,
+  
   checkRole(['admin']),
   async (req, res) => {
     try {
@@ -236,7 +236,7 @@ router.post('/integrations/payment/request',
  * @access Admin
  */
 router.get('/integrations/payment/:id/status',
-  authenticateToken,
+  
   checkRole(['admin']),
   async (req, res) => {
     try {
@@ -272,7 +272,7 @@ router.get('/integrations/payment/:id/status',
  * @access Admin
  */
 router.post('/integrations/push/send',
-  authenticateToken,
+  
   checkRole(['admin']),
   async (req, res) => {
     try {
@@ -316,7 +316,7 @@ router.post('/integrations/push/send',
  * @access Admin, CISO
  */
 router.get('/compliance/controls',
-  authenticateToken,
+  
   checkRole(['admin', 'ciso']),
   async (req, res) => {
     try {
@@ -350,7 +350,7 @@ router.get('/compliance/controls',
  * @access Admin, CISO
  */
 router.post('/compliance/controls',
-  authenticateToken,
+  
   checkRole(['admin', 'ciso']),
   async (req, res) => {
     try {
@@ -378,7 +378,7 @@ router.post('/compliance/controls',
  * @access Admin, CISO
  */
 router.put('/compliance/controls/:id',
-  authenticateToken,
+  
   checkRole(['admin', 'ciso']),
   async (req, res) => {
     try {
@@ -407,7 +407,7 @@ router.put('/compliance/controls/:id',
  * @access Admin, CISO
  */
 router.post('/compliance/reports/generate',
-  authenticateToken,
+  
   checkRole(['admin', 'ciso']),
   async (req, res) => {
     try {
@@ -439,7 +439,7 @@ router.post('/compliance/reports/generate',
  * @access Admin, CISO
  */
 router.get('/compliance/stats',
-  authenticateToken,
+  
   checkRole(['admin', 'ciso']),
   async (req, res) => {
     try {
@@ -465,7 +465,7 @@ router.get('/compliance/stats',
  * @access Admin, CISO
  */
 router.post('/compliance/incidents',
-  authenticateToken,
+  
   checkRole(['admin', 'ciso']),
   async (req, res) => {
     try {
@@ -493,7 +493,7 @@ router.post('/compliance/incidents',
  * @access Admin, DPO
  */
 router.post('/compliance/data-subject-requests',
-  authenticateToken,
+  
   checkRole(['admin', 'dpo']),
   async (req, res) => {
     try {
@@ -523,7 +523,7 @@ router.post('/compliance/data-subject-requests',
  * @access Admin
  */
 router.post('/compliance/initialize',
-  authenticateToken,
+  
   checkRole(['admin']),
   async (req, res) => {
     try {
@@ -563,7 +563,7 @@ router.post('/compliance/initialize',
  * @access Admin
  */
 router.post('/workflow/initialize',
-  authenticateToken,
+  
   checkRole(['admin']),
   async (req, res) => {
     try {

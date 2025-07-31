@@ -14,7 +14,7 @@ Le système de migration a été complètement refactorisé pour éliminer la co
 - ❌ Chaîne de données fragile et sujette aux erreurs
 
 ### **Nouveau Système (Actif)**
-- ✅ `simple-migration.ts` - Migration directe et simplifiée
+- ✅ `session-migration.ts` - Migration optimisée et unifiée
 - ✅ Stockage temporaire en localStorage/sessionStorage
 - ✅ Migration directe vers `ClientProduitEligible`
 - ✅ Process robuste et fiable
@@ -74,7 +74,7 @@ localStorage.setItem('simulation_results', JSON.stringify(simulationResults));
 const migrateAfterRegistration = async (clientId, email) => {
   const results = localStorage.getItem('simulation_results');
   if (results) {
-    await fetch('/api/simple-migration/migrate-simulation', {
+    await fetch('/api/session-migration/migrate', {
       method: 'POST',
       body: JSON.stringify({
         clientId,
@@ -145,7 +145,7 @@ const migrateAfterRegistration = async (clientId, email) => {
 
 ### **Routes Supprimées**
 - ❌ `/api/session-migration/*`
-- ✅ `/api/simple-migration/*` (nouveau)
+- ✅ `/api/session-migration/*` (optimisé)
 
 ### **Tables Temporaires (Nettoyage Optionnel)**
 - ⚠️ `TemporarySession` - Peut être supprimée après vérification

@@ -1,5 +1,5 @@
 import express, { Router, Request, Response } from 'express';
-import { authenticateUser } from '../middleware/authenticate';
+
 import { AuthUser } from '../types/auth';
 import { supabase } from '../lib/supabase';
 
@@ -10,7 +10,7 @@ const router = express.Router();
  * @route GET /api/me
  * @access Private
  */
-router.get('/', authenticateUser, async (req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });

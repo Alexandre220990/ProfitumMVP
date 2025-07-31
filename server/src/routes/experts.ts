@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticateUser, requireUserType } from '../middleware/authenticate';
+import { requireUserType } from '../middleware/auth-enhanced';
 import { supabase } from '../lib/supabase';
 import { Audit, Client, Expert } from '../types/database';
 import { ApiResponse } from '../types/api';
@@ -30,7 +30,7 @@ const supabaseService = createClient(
 );
 
 // Appliquer le middleware d'authentification à toutes les routes (commenté pour permettre l'inscription publique)
-// router.use(authenticateUser);
+// router.use(enhancedAuthMiddleware);
 // router.use(requireUserType);
 
 // Route publique pour l'inscription d'un expert (pas d'authentification requise)

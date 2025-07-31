@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { createClient } from '@supabase/supabase-js';
-import { authenticateUser } from '../../middleware/authenticate';
+
 
 const router = Router();
 
@@ -11,7 +11,7 @@ const supabase = createClient(
 );
 
 // Route pour signer la charte d'un produit éligible
-router.post('/:id/sign-charte', authenticateUser, async (req, res) => {
+router.post('/:id/sign-charte', async (req, res) => {
   try {
     const { id } = req.params;
     const { produit_id, charte_accepted } = req.body;

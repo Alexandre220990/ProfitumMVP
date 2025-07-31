@@ -368,47 +368,7 @@ router.get('/results/:session_token', async (req, res) => {
   }
 });
 
-/**
- * POST /api/simulator/migrate/:session_token
- * Migre une session vers un client identifié
- */
-router.post('/migrate/:session_token', async (req, res) => {
-  try {
-    const { session_token } = req.params;
-    const clientInscriptionData = req.body;
 
-    console.log(`🔄 Migration de la session vers client: ${session_token.substring(0, 8)}...`);
-
-    // Utiliser la nouvelle fonction de migration
-    const { data, error } = await supabaseClient.rpc('migrate_simulator_to_client', {
-      p_session_token: session_token,
-      p_client_inscription_data: clientInscriptionData
-    });
-
-    if (error) {
-      console.error('❌ Erreur lors de la migration:', error);
-      return res.status(500).json({
-        success: false,
-        error: 'Erreur lors de la migration',
-        details: error.message
-      });
-    }
-
-    console.log('✅ Migration réussie');
-
-    return res.json({
-      success: true,
-      ...data
-    });
-  } catch (error) {
-    console.error('❌ Erreur inattendue lors de la migration:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Erreur inattendue lors de la migration',
-      details: error instanceof Error ? error.message : 'Erreur inconnue'
-    });
-  }
-});
 
 /**
  * POST /api/simulator/track

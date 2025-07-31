@@ -34,7 +34,7 @@ export interface MigrationData {
 export interface MigrationResult {
   success: boolean;
   clientId?: string;
-  clientProduitEligibles?: any[];
+  migratedProducts?: any[];
   error?: string;
   details?: {
     sessionMigrated: boolean;
@@ -48,6 +48,7 @@ export class SessionMigrationService {
   
   /**
    * Migrer une session temporaire vers un compte client
+   * Processus optimisé avec gestion d'erreur robuste
    */
   static async migrateSessionToClient(migrationData: MigrationData): Promise<MigrationResult> {
     const result: MigrationResult = {
@@ -61,55 +62,68 @@ export class SessionMigrationService {
     };
 
     try {
-      console.log('🔄 Début de la migration session → client:', migrationData.sessionToken);
+      console.log('🔄 Début de la migration session → client:', migrationData.sessionToken.substring(0, 8));
 
-      // 1. Récupérer les données de session
+      // 1. Vérifier que la session peut être migrée
+      const canMigrate = await this.canMigrateSession(migrationData.sessionId);
+      if (!canMigrate) {
+        result.error = 'Session non éligible à la migration (expirée ou déjà migrée)';
+        return result;
+      }
+
+      // 2. Récupérer les données de session
       const sessionData = await this.getSessionData(migrationData.sessionId);
       if (!sessionData) {
         result.error = 'Session temporaire non trouvée';
         return result;
       }
+      result.details!.sessionMigrated = true;
 
-      // 2. Récupérer les réponses du simulateur
+      // 3. Récupérer les réponses du simulateur
       const responses = await this.getSessionResponses(migrationData.sessionId);
       if (!responses || responses.length === 0) {
         result.error = 'Aucune réponse trouvée pour cette session';
         return result;
       }
+      result.details!.responsesMigrated = true;
 
-      // 3. Récupérer les résultats d'éligibilité
+      // 4. Récupérer les résultats d'éligibilité
       const eligibilityResults = await this.getSessionEligibility(migrationData.sessionId);
       if (!eligibilityResults || eligibilityResults.length === 0) {
         result.error = 'Aucun résultat d\'éligibilité trouvé';
         return result;
       }
+      result.details!.eligibilityMigrated = true;
 
-      // 4. Extraire les données client des réponses
+      // 5. Extraire les données client des réponses
       const extractedClientData = this.extractClientDataFromResponses(responses);
       
-      // 5. Créer le compte client
+      // 6. Créer le compte client avec données enrichies
       const clientId = await this.createClientAccount({
         ...migrationData.clientData,
-        ...extractedClientData
+        ...extractedClientData,
+        session_migrated_from: migrationData.sessionToken
       });
 
       if (!clientId) {
         result.error = 'Échec de la création du compte client';
         return result;
       }
+      result.clientId = clientId;
+      result.details!.clientCreated = true;
 
       result.clientId = clientId;
       result.details!.clientCreated = true;
 
       // 6. Créer les ClientProduitEligible
-      const clientProduitEligibles = await this.createClientProduitEligibles(
+      const migratedProducts = await this.createClientProduitEligibles(
         clientId,
         eligibilityResults,
         responses
       );
 
-      if (clientProduitEligibles) {
-        result.clientProduitEligibles = clientProduitEligibles;
+      if (migratedProducts) {
+        result.migratedProducts = migratedProducts;
         result.details!.eligibilityMigrated = true;
       }
 

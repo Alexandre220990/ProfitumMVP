@@ -1,6 +1,6 @@
 import express, { Router, Request, Response } from 'express';
 import multer from 'multer';
-import { authenticateUser } from '../middleware/authenticate';
+
 import { AuthUser } from '../types/auth';
 import { asyncHandler } from '../utils/asyncHandler';
 import { unifiedDocumentService, DocumentEvents } from '../services/unified-document-service';
@@ -123,7 +123,7 @@ const encryptSensitiveData = (req: Request, res: Response, next: Function): void
  * Upload sécurisé de fichiers
  */
 router.post('/upload', 
-  authenticateUser,
+  
   uploadLimiter,
   upload.single('file'),
   validateUploadRequest,
@@ -211,7 +211,7 @@ router.post('/upload',
  * Liste sécurisée des fichiers
  */
 router.get('/list', 
-  authenticateUser,
+  
   asyncHandler(async (req: Request, res: Response) => {
     const user = (req as any).user as AuthUser;
     const { category, status, search, accessLevel } = req.query;
@@ -247,7 +247,7 @@ router.get('/list',
  * Téléchargement sécurisé
  */
 router.get('/download/:fileId', 
-  authenticateUser,
+  
   downloadLimiter,
   asyncHandler(async (req: Request, res: Response) => {
     const user = (req as any).user as AuthUser;
@@ -290,7 +290,7 @@ router.get('/download/:fileId',
  * Suppression sécurisée
  */
 router.delete('/delete/:fileId', 
-  authenticateUser,
+  
   asyncHandler(async (req: Request, res: Response) => {
     const user = (req as any).user as AuthUser;
     const { fileId } = req.params;
@@ -332,7 +332,7 @@ router.delete('/delete/:fileId',
  * Partage sécurisé
  */
 router.post('/share/:fileId', 
-  authenticateUser,
+  
   asyncHandler(async (req: Request, res: Response) => {
     const user = (req as any).user as AuthUser;
     const { fileId } = req.params;
@@ -387,7 +387,7 @@ router.post('/share/:fileId',
  * Validation sécurisée (admin/expert uniquement)
  */
 router.post('/validate/:fileId', 
-  authenticateUser,
+  
   asyncHandler(async (req: Request, res: Response) => {
     const user = (req as any).user as AuthUser;
     const { fileId } = req.params;
@@ -447,7 +447,7 @@ router.post('/validate/:fileId',
  * Statistiques sécurisées
  */
 router.get('/stats/:userId', 
-  authenticateUser,
+  
   asyncHandler(async (req: Request, res: Response) => {
     const user = (req as any).user as AuthUser;
     const { userId } = req.params;

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticateUser } from '../../middleware/authenticate';
+
 import { asyncHandler } from '../../utils/asyncHandler';
 import { supabase } from '../../lib/supabase';
 
@@ -10,7 +10,7 @@ const router = Router();
  * @desc Récupérer les assignations de l'utilisateur connecté
  * @access Authentifié (Expert/Client)
  */
-router.get('/', authenticateUser, asyncHandler(async (req, res) => {
+router.get('/', asyncHandler(async (req, res) => {
     const authenticatedUser = (req as any).user;
     const { status, page = 1, limit = 10 } = req.query;
 
@@ -136,7 +136,7 @@ router.get('/', authenticateUser, asyncHandler(async (req, res) => {
  * @desc Récupérer les détails d'une assignation spécifique
  * @access Authentifié (Expert/Client concerné)
  */
-router.get('/:id', authenticateUser, asyncHandler(async (req, res) => {
+router.get('/:id', asyncHandler(async (req, res) => {
     const { id } = req.params;
     const authenticatedUser = (req as any).user;
 
@@ -214,7 +214,7 @@ router.get('/:id', authenticateUser, asyncHandler(async (req, res) => {
  * @desc Mettre à jour le statut d'une assignation
  * @access Authentifié (Expert/Client concerné)
  */
-router.put('/:id/status', authenticateUser, asyncHandler(async (req, res) => {
+router.put('/:id/status', asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { status, notes } = req.body;
     const authenticatedUser = (req as any).user;
@@ -338,7 +338,7 @@ router.put('/:id/status', authenticateUser, asyncHandler(async (req, res) => {
  * @desc Marquer une assignation comme terminée et évaluer
  * @access Authentifié (Client uniquement)
  */
-router.post('/:id/complete', authenticateUser, asyncHandler(async (req, res) => {
+router.post('/:id/complete', asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { rating, feedback } = req.body;
     const authenticatedUser = (req as any).user;

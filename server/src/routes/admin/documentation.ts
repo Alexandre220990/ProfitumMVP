@@ -1,11 +1,11 @@
 import express from 'express';
-import { authenticateToken } from '../../middleware/authenticate';
+import { enhancedAuthMiddleware } from '../../middleware/auth-enhanced';
 import { supabase } from '../../lib/supabase';
 
 const router = express.Router();
 
 // Middleware d'authentification pour toutes les routes admin
-router.use(authenticateToken);
+router.use(enhancedAuthMiddleware);
 
 // Interface pour les documents
 interface Document {

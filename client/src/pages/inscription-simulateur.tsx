@@ -179,21 +179,25 @@ const InscriptionSimulateur = () => {
       };
 
       try {
-        const migrationResponse = await fetch(`${config.API_URL}/api/simulator/migrate/${state.sessionToken}`, { 
+        const migrationResponse = await fetch(`${config.API_URL}/api/session-migration/migrate`, { 
           method: 'POST', 
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}` // Ajouter le token pour l'authentification
           },
           body: JSON.stringify({
-            email: data.email,
-            name: data.username,
-            company_name: data.company_name,
-            phone_number: data.phone_number,
-            address: data.address,
-            city: data.city,
-            postal_code: data.postal_code,
-            siren: cleanSiren
+            sessionToken: state.sessionToken,
+            clientData: {
+              email: data.email,
+              username: data.username,
+              password: data.password,
+              company_name: data.company_name,
+              phone_number: data.phone_number,
+              address: data.address,
+              city: data.city,
+              postal_code: data.postal_code,
+              siren: cleanSiren
+            }
           })
         });
 

@@ -6,7 +6,7 @@ import dotenv from 'dotenv';
 import supabase from '../config/supabase';
 import { v4 as uuidv4 } from 'uuid';
 import { createClient } from '@supabase/supabase-js';
-import { authenticateUser } from '../middleware/authenticate';
+
 import { AuthUser, BaseUser, UserMetadata, RequestWithUser } from '../types/auth';
 import { logger } from '../utils/logger';
 import { googleCalendarService } from '../services/google-calendar-service';
@@ -127,7 +127,7 @@ const checkAuth = async (req: Request, res: express.Response) => {
   }
 };
 
-router.get('/check', authenticateUser, checkAuth);
+router.get('/check', checkAuth);
 
 // Route de connexion
 router.post('/login', async (req, res) => {
@@ -576,7 +576,7 @@ const getCurrentUser = async (req: Request, res: express.Response) => {
   }
 };
 
-router.get('/current-user', authenticateUser, getCurrentUser);
+router.get('/current-user', getCurrentUser);
 
 // Route de vérification du token
 const verifyToken = async (req: Request, res: express.Response) => {
@@ -653,7 +653,7 @@ const verifyToken = async (req: Request, res: express.Response) => {
   }
 };
 
-router.get('/verify', authenticateUser, verifyToken);
+router.get('/verify', verifyToken);
 
 // Route de vérification du token (alternative)
 const verifyTokenAlt = async (req: Request, res: express.Response) => {
@@ -686,7 +686,7 @@ const verifyTokenAlt = async (req: Request, res: express.Response) => {
   }
 };
 
-router.get('/verify-token', authenticateUser, verifyTokenAlt);
+router.get('/verify-token', verifyTokenAlt);
 
 // Endpoint pour créer un utilisateur dans Supabase
 router.post('/create-user', async (req, res) => {
@@ -959,7 +959,7 @@ router.post('/google/callback', async (req, res) => {
  * ✅ Authentification requise
  * ✅ Validation des permissions
  */
-router.get('/google/integrations', authenticateUser, async (req, res) => {
+router.get('/google/integrations', async (req, res) => {
   try {
     if (!req.user) {
       return res.status(401).json({
@@ -991,7 +991,7 @@ router.get('/google/integrations', authenticateUser, async (req, res) => {
  * ✅ Authentification requise
  * ✅ Révoquer les tokens
  */
-router.post('/google/logout', authenticateUser, async (req, res) => {
+router.post('/google/logout', async (req, res) => {
   try {
     if (!req.user) {
       return res.status(401).json({

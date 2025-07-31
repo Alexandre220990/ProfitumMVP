@@ -1,5 +1,5 @@
 import express, { Router, Request, Response } from 'express';
-import { authenticateUser } from '../middleware/authenticate';
+
 import { AuthUser } from '../types/auth';
 import { supabase } from '../lib/supabase';
 import { asyncHandler } from '../utils/asyncHandler';
@@ -134,7 +134,7 @@ const logCalendarActivity = async (
 /**
  * GET /api/calendar/events - Récupérer les événements
  */
-router.get('/events', authenticateUser, calendarLimiter, asyncHandler(async (req: Request, res: Response) => {
+router.get('/events', calendarLimiter, asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }
@@ -245,7 +245,7 @@ router.get('/events', authenticateUser, calendarLimiter, asyncHandler(async (req
 /**
  * POST /api/calendar/events - Créer un événement
  */
-router.post('/events', authenticateUser, calendarLimiter, validateEvent, asyncHandler(async (req: Request, res: Response) => {
+router.post('/events', calendarLimiter, validateEvent, asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }
@@ -317,7 +317,7 @@ router.post('/events', authenticateUser, calendarLimiter, validateEvent, asyncHa
 /**
  * PUT /api/calendar/events/:id - Modifier un événement
  */
-router.put('/events/:id', authenticateUser, calendarLimiter, validateEvent, asyncHandler(async (req: Request, res: Response) => {
+router.put('/events/:id', calendarLimiter, validateEvent, asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }
@@ -386,7 +386,7 @@ router.put('/events/:id', authenticateUser, calendarLimiter, validateEvent, asyn
 /**
  * DELETE /api/calendar/events/:id - Supprimer un événement
  */
-router.delete('/events/:id', authenticateUser, calendarLimiter, asyncHandler(async (req: Request, res: Response) => {
+router.delete('/events/:id', calendarLimiter, asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }
@@ -452,7 +452,7 @@ router.delete('/events/:id', authenticateUser, calendarLimiter, asyncHandler(asy
 /**
  * GET /api/calendar/steps - Récupérer les étapes de dossier
  */
-router.get('/steps', authenticateUser, calendarLimiter, asyncHandler(async (req: Request, res: Response) => {
+router.get('/steps', calendarLimiter, asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }
@@ -528,7 +528,7 @@ router.get('/steps', authenticateUser, calendarLimiter, asyncHandler(async (req:
 /**
  * POST /api/calendar/steps - Créer une étape de dossier
  */
-router.post('/steps', authenticateUser, calendarLimiter, validateDossierStep, asyncHandler(async (req: Request, res: Response) => {
+router.post('/steps', calendarLimiter, validateDossierStep, asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }
@@ -593,7 +593,7 @@ router.post('/steps', authenticateUser, calendarLimiter, validateDossierStep, as
 /**
  * PUT /api/calendar/steps/:id - Modifier une étape de dossier
  */
-router.put('/steps/:id', authenticateUser, calendarLimiter, validateDossierStep, asyncHandler(async (req: Request, res: Response) => {
+router.put('/steps/:id', calendarLimiter, validateDossierStep, asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }
@@ -668,7 +668,7 @@ router.put('/steps/:id', authenticateUser, calendarLimiter, validateDossierStep,
 /**
  * DELETE /api/calendar/steps/:id - Supprimer une étape de dossier
  */
-router.delete('/steps/:id', authenticateUser, calendarLimiter, asyncHandler(async (req: Request, res: Response) => {
+router.delete('/steps/:id', calendarLimiter, asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }
@@ -740,7 +740,7 @@ router.delete('/steps/:id', authenticateUser, calendarLimiter, asyncHandler(asyn
 /**
  * GET /api/calendar/stats - Statistiques du calendrier
  */
-router.get('/stats', authenticateUser, calendarLimiter, asyncHandler(async (req: Request, res: Response) => {
+router.get('/stats', calendarLimiter, asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }
@@ -857,7 +857,7 @@ router.get('/stats', authenticateUser, calendarLimiter, asyncHandler(async (req:
 /**
  * POST /api/calendar/events/:id/participants - Ajouter des participants
  */
-router.post('/events/:id/participants', authenticateUser, calendarLimiter, asyncHandler(async (req: Request, res: Response) => {
+router.post('/events/:id/participants', calendarLimiter, asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }
@@ -938,7 +938,7 @@ router.post('/events/:id/participants', authenticateUser, calendarLimiter, async
 /**
  * GET /api/calendar/events/:id/reminders - Récupérer les rappels d'un événement
  */
-router.get('/events/:id/reminders', authenticateUser, calendarLimiter, asyncHandler(async (req: Request, res: Response) => {
+router.get('/events/:id/reminders', calendarLimiter, asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }
@@ -991,7 +991,7 @@ router.get('/events/:id/reminders', authenticateUser, calendarLimiter, asyncHand
 /**
  * POST /api/calendar/reminders - Créer un rappel pour un événement
  */
-router.post('/reminders', authenticateUser, calendarLimiter, asyncHandler(async (req: Request, res: Response) => {
+router.post('/reminders', calendarLimiter, asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }

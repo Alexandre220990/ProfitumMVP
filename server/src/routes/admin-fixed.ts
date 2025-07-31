@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { createClient } from '@supabase/supabase-js';
 import { asyncHandler } from '../utils/asyncHandler';
-import { authenticateUser } from '../middleware/authenticate';
+
 import { RequestWithUser } from '../types/auth';
 
 const router = Router();
@@ -245,7 +245,7 @@ router.get('/dashboard', asyncHandler(async (req, res) => {
 }));
 
 // Route pour récupérer tous les dossiers clients
-router.get('/dossiers', authenticateUser, async (req: Request, res) => {
+router.get('/dossiers', async (req: Request, res) => {
   try {
     const { page = 1, limit = 10, status, client, produit, expert, sortBy = 'created_at', sortOrder = 'desc' } = req.query;
     
@@ -323,7 +323,7 @@ router.get('/dossiers', authenticateUser, async (req: Request, res) => {
 });
 
 // Route pour récupérer les statistiques des dossiers
-router.get('/dossiers/stats', authenticateUser, async (req: Request, res) => {
+router.get('/dossiers/stats', async (req: Request, res) => {
   try {
     // Vérifier que l'utilisateur est admin
     const { data: admin, error: adminError } = await supabase
@@ -396,7 +396,7 @@ router.get('/dossiers/stats', authenticateUser, async (req: Request, res) => {
 });
 
 // Route pour récupérer les détails d'un dossier
-router.get('/dossiers/:id', authenticateUser, async (req: Request, res) => {
+router.get('/dossiers/:id', async (req: Request, res) => {
   try {
     const { id } = req.params;
     
@@ -440,7 +440,7 @@ router.get('/dossiers/:id', authenticateUser, async (req: Request, res) => {
 });
 
 // Route pour mettre à jour un dossier
-router.put('/dossiers/:id', authenticateUser, async (req: Request, res) => {
+router.put('/dossiers/:id', async (req: Request, res) => {
   try {
     const { id } = req.params;
     const { validation_state, expert_id, commentaire } = req.body;
