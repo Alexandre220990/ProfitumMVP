@@ -50,6 +50,14 @@
     {
       "source": "/homepage-test",
       "destination": "/index.html"
+    },
+    {
+      "source": "/simulateur",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/simulateur-eligibilite",
+      "destination": "/index.html"
     }
   ]
 } 
