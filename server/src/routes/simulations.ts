@@ -163,7 +163,7 @@ router.get('/check-recent/:clientId', async (req: Request, res: Response) => {
 
     const [simulationResult, processedResult] = await Promise.all([
       supabase
-        .from('Simulation')
+        .from('simulations')
         .select('id, created_at, statut')
         .eq('clientId', clientId)
         .gt('created_at', yesterdayISO)
@@ -239,7 +239,7 @@ router.post('/', async (req: Request, res: Response) => {
 
     // Créer la simulation en base
     const { data: simulation, error: simulationError } = await supabase
-      .from('Simulation')
+      .from('simulations')
       .insert({
         clientId,
         type,
