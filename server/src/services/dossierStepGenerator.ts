@@ -124,8 +124,11 @@ export class DossierStepGenerator {
         return false;
       }
 
-      // 3. Déterminer les étapes à créer
-      const productName = clientProduit.ProduitEligible?.nom;
+      // 3. Déterminer les étapes à créer avec assertion de type
+      const produitEligible = clientProduit.ProduitEligible as ProduitEligible;
+      const client = clientProduit.Client as Client;
+      
+      const productName = produitEligible?.nom;
       if (!productName) {
         console.error('❌ Nom du produit non trouvé');
         return false;
@@ -139,7 +142,7 @@ export class DossierStepGenerator {
         const dueDate = new Date(baseDate);
         dueDate.setDate(dueDate.getDate() + (index * 2)); // 2 jours entre chaque étape
 
-        const clientName = clientProduit.Client?.company_name || clientProduit.Client?.name || 'Client';
+        const clientName = client?.company_name || client?.name || 'Client';
 
         return {
           dossier_id: clientProduitId,
