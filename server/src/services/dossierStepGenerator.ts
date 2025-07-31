@@ -15,16 +15,6 @@ interface Client {
   email: string;
 }
 
-interface ClientProduitEligibleWithRelations {
-  id: string;
-  clientId: string;
-  produitId: string;
-  statut: string;
-  montantFinal: number;
-  ProduitEligible: ProduitEligible;
-  Client: Client;
-}
-
 // Configuration des étapes par type de produit
 const PRODUCT_STEPS_CONFIG: Record<string, Array<{
   name: string;
@@ -94,28 +84,10 @@ export class DossierStepGenerator {
         return true;
       }
 
-      // 2. Récupérer les détails du dossier avec les relations
+      // 2. Récupérer les détails du dossier
       const { data: clientProduit, error: fetchError } = await supabase
         .from('ClientProduitEligible')
-        .select(`
-          id,
-          clientId,
-          produitId,
-          statut,
-          montantFinal,
-          ProduitEligible (
-            id,
-            nom,
-            description,
-            category
-          ),
-          Client (
-            id,
-            name,
-            company_name,
-            email
-          )
-        `)
+        .select('id, clientId, produitId, statut, montantFinal')
         .eq('id', clientProduitId)
         .single();
 
@@ -124,25 +96,41 @@ export class DossierStepGenerator {
         return false;
       }
 
-      // 3. Déterminer les étapes à créer avec assertion de type
-      const produitEligible = clientProduit.ProduitEligible as ProduitEligible;
-      const client = clientProduit.Client as Client;
-      
-      const productName = produitEligible?.nom;
-      if (!productName) {
-        console.error('❌ Nom du produit non trouvé');
+      // 3. Récupérer les détails du produit
+      const { data: produitEligible, error: produitError } = await supabase
+        .from('ProduitEligible')
+        .select('id, nom, description, category')
+        .eq('id', clientProduit.produitId)
+        .single();
+
+      if (produitError || !produitEligible) {
+        console.error('❌ Erreur récupération du produit:', produitError);
         return false;
       }
 
+      // 4. Récupérer les détails du client
+      const { data: client, error: clientError } = await supabase
+        .from('Client')
+        .select('id, name, company_name, email')
+        .eq('id', clientProduit.clientId)
+        .single();
+
+      if (clientError || !client) {
+        console.error('❌ Erreur récupération du client:', clientError);
+        return false;
+      }
+
+      // 5. Déterminer les étapes à créer
+      const productName = produitEligible.nom;
       const stepsConfig = PRODUCT_STEPS_CONFIG[productName] || DEFAULT_STEPS;
 
-      // 4. Calculer les dates d'échéance
+      // 6. Calculer les dates d'échéance
       const baseDate = new Date();
       const stepsToCreate = stepsConfig.map((step, index) => {
         const dueDate = new Date(baseDate);
         dueDate.setDate(dueDate.getDate() + (index * 2)); // 2 jours entre chaque étape
 
-        const clientName = client?.company_name || client?.name || 'Client';
+        const clientName = client.company_name || client.name || 'Client';
 
         return {
           dossier_id: clientProduitId,
@@ -163,7 +151,7 @@ export class DossierStepGenerator {
         };
       });
 
-      // 5. Créer les étapes
+      // 7. Créer les étapes
       const { data: createdSteps, error: createError } = await supabase
         .from('DossierStep')
         .insert(stepsToCreate)
