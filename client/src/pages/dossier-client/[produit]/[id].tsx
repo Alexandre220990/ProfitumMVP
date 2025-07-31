@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import DossierStepsDisplay from '@/components/DossierStepsDisplay';
 
 import { 
   ArrowLeft, 
@@ -547,37 +548,17 @@ export default function DossierClientProduit() {
             </div>
 
             {/* Progression de l'audit */}
-            {clientProduit.audit && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Progression de l'audit</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium">Étape {clientProduit.audit.current_step} sur {clientProduit.audit.total_steps}</span>
-                      <span className="text-sm text-gray-500">{clientProduit.audit.progress}%</span>
-                    </div>
-                    <Progress value={clientProduit.audit.progress} className="w-full" />
-                    
-                    {productDetails?.etapes_processus && (
-                      <div className="mt-6 space-y-3">
-                        {productDetails.etapes_processus.map((etape) => (
-                          <div key={etape.id} className="flex items-center space-x-3">
-                            {getStepStatusIcon(etape.statut)}
-                            <div className="flex-1">
-                              <p className="font-medium">{etape.titre}</p>
-                              <p className="text-sm text-gray-500">{etape.description}</p>
-                            </div>
-                            <span className="text-sm text-gray-500">{etape.duree_estimee}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            <DossierStepsDisplay
+              dossierId={clientProduit.id}
+              dossierName={`${clientProduit.produit.nom} - ${clientProduit.client.company_name}`}
+              showGenerateButton={true}
+              compact={false}
+              onStepUpdate={(stepId, updates) => {
+                console.log('Étape mise à jour:', stepId, updates);
+                // Optionnel : rafraîchir les données du dossier
+                fetchDossierData();
+              }}
+            />
           </TabsContent>
 
           {/* Audit */}

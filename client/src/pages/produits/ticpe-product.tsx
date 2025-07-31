@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import ProductProcessWorkflow from '@/components/ProductProcessWorkflow';
+import DossierStepsDisplay from '@/components/DossierStepsDisplay';
 import { Fuel, TrendingUp, Shield, Clock, Calculator, Award, Truck, Building2, CheckCircle } from "lucide-react";
 import { config } from "@/config/env";
 import HeaderClient from "@/components/HeaderClient";
@@ -120,12 +120,15 @@ export default function TICPEProductPage() {
       {clientProduit && clientProduit.id && (
         <div className="bg-white border-b mt-20">
           <div className="max-w-7xl mx-auto px-4 py-6">
-            <ProductProcessWorkflow
+            <DossierStepsDisplay
               dossierId={clientProduit.id}
-              productType="ticpe"
-              currentStep={(clientProduit.current_step || 1).toString()}
-              onStepAction={(stepId: string, action: string) => console.log('Action sur étape:', stepId, action)}
-              onMessageSend={(message: string) => console.log('Message envoyé:', message)}
+              dossierName={`TICPE - ${user?.company_name || 'Votre dossier'}`}
+              showGenerateButton={true}
+              compact={true}
+              onStepUpdate={(stepId, updates) => {
+                console.log('Étape mise à jour:', stepId, updates);
+                loadClientProduit();
+              }}
             />
           </div>
         </div>
