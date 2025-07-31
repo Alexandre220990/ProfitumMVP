@@ -11,7 +11,7 @@ router.get('/tables', async (req: Request, res: Response) => {
     const results: any = {};
     
     // Tables à vérifier
-    const tables = ['Client', 'ClientProduitEligible', 'ProduitEligible', 'simulations'];
+    const tables = ['Client', 'ClientProduitEligible', 'ProduitEligible', 'simulations', 'DossierStep'];
     
     for (const table of tables) {
       console.log(`🔍 Vérification de la table ${table}`);
