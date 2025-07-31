@@ -141,11 +141,11 @@ setInterval(cleanupExpiredSessions, 60 * 60 * 1000);
 
 /**
  * POST /api/simulator/session
- * Crée une nouvelle session de simulation avec données client
+ * Crée une nouvelle session de simulation avec client temporaire automatique
  */
 router.post('/session', async (req, res) => {
   try {
-    console.log('🔄 Création d\'une nouvelle session simulateur...');
+    console.log('🔄 Création d\'une nouvelle session simulateur avec client temporaire...');
     
     const sessionToken = uuidv4();
     const ipAddress = req.ip || req.connection.remoteAddress || 'unknown';
@@ -166,11 +166,10 @@ router.post('/session', async (req, res) => {
       user_agent: userAgent
     };
 
-    // Utiliser la nouvelle fonction pour créer la session
-    const { data, error } = await supabaseClient.rpc('create_simulator_session_with_client_data', {
+    // Utiliser la nouvelle fonction pour créer la simulation avec client temporaire
+    const { data, error } = await supabaseClient.rpc('create_simulation_with_temporary_client', {
       p_session_token: sessionToken,
-      p_client_data: enrichedClientData,
-      p_expires_in_hours: 24
+      p_client_data: enrichedClientData
     });
 
     if (error) {
@@ -182,16 +181,20 @@ router.post('/session', async (req, res) => {
       });
     }
 
-    console.log('✅ Session créée avec succès:', {
+    console.log('✅ Session créée avec client temporaire:', {
       sessionToken: sessionToken.substring(0, 8) + '...',
+      clientId: data.client_id,
+      simulationId: data.simulation_id,
       expiresAt: data.expires_at
     });
 
     return res.json({
       success: true,
       session_token: sessionToken,
-      session_id: data.session_id,
-      expires_at: data.expires_at
+      client_id: data.client_id,
+      simulation_id: data.simulation_id,
+      expires_at: data.expires_at,
+      message: 'Session créée avec client temporaire automatique'
     });
   } catch (error) {
     console.error('❌ Erreur inattendue lors de la création de session:', error);
@@ -890,6 +893,113 @@ router.get('/performance', async (req, res) => {
       success: false,
       status: 'error',
       error: 'Erreur lors du test de performance',
+      details: error instanceof Error ? error.message : 'Erreur inconnue'
+    });
+  }
+});
+
+/**
+ * POST /api/simulator/migrate-temporary-client
+ * Migre un client temporaire vers un client permanent
+ */
+router.post('/migrate-temporary-client', async (req, res) => {
+  try {
+    const { 
+      temp_client_id, 
+      real_email, 
+      real_password, 
+      real_data 
+    } = req.body;
+
+    if (!temp_client_id || !real_email || !real_password) {
+      return res.status(400).json({
+        success: false,
+        error: 'temp_client_id, real_email et real_password sont requis'
+      });
+    }
+
+    console.log(`🔄 Migration du client temporaire ${temp_client_id} vers ${real_email}...`);
+
+    // Utiliser la fonction de migration
+    const { data, error } = await supabaseClient.rpc('migrate_temporary_client', {
+      p_temp_client_id: temp_client_id,
+      p_real_email: real_email,
+      p_real_password: real_password,
+      p_real_data: real_data || {}
+    });
+
+    if (error) {
+      console.error('❌ Erreur lors de la migration:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Erreur lors de la migration du client',
+        details: error.message
+      });
+    }
+
+    if (!data) {
+      return res.status(404).json({
+        success: false,
+        error: 'Client temporaire non trouvé ou déjà migré'
+      });
+    }
+
+    console.log('✅ Client temporaire migré avec succès:', {
+      temp_client_id,
+      real_email
+    });
+
+    return res.json({
+      success: true,
+      message: 'Client temporaire migré avec succès',
+      client_id: temp_client_id,
+      email: real_email
+    });
+  } catch (error) {
+    console.error('❌ Erreur inattendue lors de la migration:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Erreur inattendue lors de la migration',
+      details: error instanceof Error ? error.message : 'Erreur inconnue'
+    });
+  }
+});
+
+/**
+ * GET /api/simulator/temporary-client/:client_id
+ * Récupère les informations d'un client temporaire
+ */
+router.get('/temporary-client/:client_id', async (req, res) => {
+  try {
+    const { client_id } = req.params;
+
+    console.log(`📋 Récupération des infos du client temporaire ${client_id}...`);
+
+    const { data, error } = await supabaseClient
+      .from('Client')
+      .select('id, email, name, company_name, type, expires_at, metadata')
+      .eq('id', client_id)
+      .eq('type', 'temporaire')
+      .single();
+
+    if (error || !data) {
+      return res.status(404).json({
+        success: false,
+        error: 'Client temporaire non trouvé'
+      });
+    }
+
+    console.log('✅ Informations client temporaire récupérées');
+
+    return res.json({
+      success: true,
+      client: data
+    });
+  } catch (error) {
+    console.error('❌ Erreur inattendue lors de la récupération:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Erreur inattendue lors de la récupération',
       details: error instanceof Error ? error.message : 'Erreur inconnue'
     });
   }
