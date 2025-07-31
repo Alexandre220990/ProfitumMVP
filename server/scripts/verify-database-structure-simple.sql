@@ -1,5 +1,5 @@
--- Script de vérification complète de la structure de la base de données
--- À exécuter pour diagnostiquer les problèmes d'authentification et de redirection
+-- Script de vérification simplifié de la structure de la base de données
+-- Version sans les contraintes problématiques
 
 -- 1. Vérification des tables principales
 SELECT 'VÉRIFICATION DES TABLES PRINCIPALES' as info;
@@ -86,7 +86,7 @@ BEGIN
     IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'auth_sessions') THEN
         RAISE NOTICE 'Table auth_sessions existe';
     ELSE
-        RAISE NOTICE 'Table auth_sessions n''existe pas';
+        RAISE NOTICE 'Table auth_sessions n existe pas';
     END IF;
 END $$;
 
@@ -99,7 +99,7 @@ BEGIN
     IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'auth_users') THEN
         RAISE NOTICE 'Table auth_users existe';
     ELSE
-        RAISE NOTICE 'Table auth_users n''existe pas';
+        RAISE NOTICE 'Table auth_users n existe pas';
     END IF;
 END $$;
 
@@ -112,29 +112,11 @@ BEGIN
     IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'access_logs') THEN
         RAISE NOTICE 'Table access_logs existe';
     ELSE
-        RAISE NOTICE 'Table access_logs n''existe pas';
+        RAISE NOTICE 'Table access_logs n existe pas';
     END IF;
 END $$;
 
--- 7. Vérification des contraintes et index
-SELECT 'VÉRIFICATION DES CONTRAINTES' as info;
-
--- Contraintes sur la table Client
-SELECT 
-    conname as constraint_name,
-    contype as constraint_type,
-    pg_get_constraintdef(oid) as constraint_definition
-FROM pg_constraint 
-WHERE conrelid = (SELECT oid FROM pg_class WHERE relname = 'Client' AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public'));
-
--- Index sur la table Client
-SELECT 
-    indexname as index_name,
-    indexdef as index_definition
-FROM pg_indexes 
-WHERE tablename = 'Client';
-
--- 8. Vérification des données de test
+-- 7. Vérification des données de test
 SELECT 'VÉRIFICATION DES DONNÉES DE TEST' as info;
 
 -- Clients de test
@@ -144,7 +126,7 @@ FROM "Client"
 WHERE email LIKE '%test%' OR email LIKE '%example%' OR company_name LIKE '%test%'
 ORDER BY created_at DESC;
 
--- 9. Recommandations
+-- 8. Recommandations
 SELECT 'RECOMMANDATIONS' as info;
 
 -- Clients à corriger (sans auth_id)

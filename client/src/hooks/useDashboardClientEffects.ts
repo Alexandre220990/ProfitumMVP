@@ -52,8 +52,20 @@ export function useDashboardClientEffects() { const { user, isLoading } = useAut
   }, [user, audits, isLoadingAudits, hasRecentSimulation]);
 
   // Effet pour la redirection
-  useEffect(() => { if (!isLoading && !user) {
-      navigate('/connexion-client'); }
+  useEffect(() => { 
+    if (!isLoading && !user) {
+      console.log('🔍 Redirection vers connexion client - utilisateur non authentifié');
+      navigate('/connexion-client'); 
+    } else if (user && user.type !== 'client') {
+      console.warn('⚠️ Utilisateur non-client détecté:', user.type, 'redirection vers dashboard approprié');
+      if (user.type === 'admin') {
+        navigate('/admin/dashboard');
+      } else if (user.type === 'expert') {
+        navigate('/expert/dashboard');
+      } else {
+        navigate('/connexion-client');
+      }
+    }
   }, [user, isLoading, navigate]);
 
   return { showWelcomeDialog, setShowWelcomeDialog, showSimulationDialog, setShowSimulationDialog, loadingTooLong, useFallbackData, setUseFallbackData, audits, isLoadingAudits, auditsError, refreshAudits, hasRecentSimulation };
