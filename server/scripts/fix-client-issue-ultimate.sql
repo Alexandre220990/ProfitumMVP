@@ -1,0 +1,220 @@
+-- =====================================================
+-- CORRECTION CLIENT ISSUE - wamuchacha@gmail.com (VERSION ULTIME)
+-- Date: 2025-01-30
+-- =====================================================
+
+-- 1. VÉRIFIER ET CORRIGER LE TYPE D'UTILISATEUR
+DO $$
+DECLARE
+    user_record RECORD;
+    client_record RECORD;
+    admin_record RECORD;
+BEGIN
+    -- Vérifier l'utilisateur auth
+    SELECT * INTO user_record 
+    FROM auth.users 
+    WHERE email = 'wamuchacha@gmail.com';
+    
+    IF FOUND THEN
+        RAISE NOTICE 'Utilisateur auth trouvé: %', user_record.id;
+        
+        -- Vérifier s'il existe dans Client
+        SELECT * INTO client_record 
+        FROM "Client" 
+        WHERE email = 'wamuchacha@gmail.com';
+        
+        -- Vérifier s'il existe dans Admin
+        SELECT * INTO admin_record 
+        FROM "Admin" 
+        WHERE email = 'wamuchacha@gmail.com';
+        
+        -- Si l'utilisateur est admin ET client, supprimer l'entrée admin
+        IF admin_record.id IS NOT NULL AND client_record.id IS NOT NULL THEN
+            RAISE NOTICE 'Conflit détecté: utilisateur est admin ET client. Suppression de l''entrée admin.';
+            DELETE FROM "Admin" WHERE email = 'wamuchacha@gmail.com';
+        END IF;
+        
+        -- Si l'utilisateur n'existe pas dans Client, le créer
+        IF client_record.id IS NULL THEN
+            RAISE NOTICE 'Création de l''entrée Client pour wamuchacha@gmail.com';
+            INSERT INTO "Client" (
+                id,
+                email,
+                auth_id,
+                name,
+                company_name,
+                created_at,
+                updated_at
+            ) VALUES (
+                gen_random_uuid(),
+                'wamuchacha@gmail.com',
+                user_record.id,
+                'Client Test',
+                'Entreprise Test',
+                NOW(),
+                NOW()
+            );
+        END IF;
+        
+    ELSE
+        RAISE NOTICE 'Utilisateur auth non trouvé pour wamuchacha@gmail.com';
+    END IF;
+END $$;
+
+-- 2. CRÉER DES PRODUITS ÉLIGIBLES DE TEST SI AUCUN N'EXISTE
+DO $$
+DECLARE
+    client_id UUID;
+    produit_count INTEGER;
+    ticpe_id UUID := '32dd9cf8-15e2-4375-86ab-a95158d3ada1'; -- UUID exact de TICPE
+    urssaf_id UUID := 'd1e8f740-7c2a-4b5e-9a91-0e15c0e7d3a2'; -- UUID exact de URSSAF
+    dfs_id UUID := 'e2f9a830-8d3b-4c7c-b590-1d7631c0d4b5'; -- UUID exact de DFS
+BEGIN
+    -- Récupérer l'ID du client
+    SELECT id INTO client_id 
+    FROM "Client" 
+    WHERE email = 'wamuchacha@gmail.com';
+    
+    IF client_id IS NOT NULL THEN
+        -- Compter les produits éligibles existants
+        SELECT COUNT(*) INTO produit_count 
+        FROM "ClientProduitEligible" 
+        WHERE "clientId" = client_id;
+        
+        RAISE NOTICE 'Client trouvé: %. Produits éligibles existants: %', client_id, produit_count;
+        
+        -- Si aucun produit éligible, en créer de test
+        IF produit_count = 0 THEN
+            RAISE NOTICE 'Création de produits éligibles de test...';
+            
+            RAISE NOTICE 'UUIDs produits: TICPE=% URSSAF=% DFS=%', ticpe_id, urssaf_id, dfs_id;
+            
+            -- TICPE (85% -> 0.85)
+            INSERT INTO "ClientProduitEligible" (
+                "clientId",
+                "produitId",
+                statut,
+                "tauxFinal",
+                "montantFinal",
+                "dureeFinale",
+                metadata,
+                notes,
+                priorite,
+                created_at,
+                updated_at
+            ) VALUES (
+                client_id,
+                ticpe_id,
+                'eligible',
+                0.85, -- 85% divisé par 100
+                7500.00,
+                12,
+                '{"source": "test_creation", "confidence_level": "high", "original_percentage": 85}'::jsonb,
+                'Produit éligible créé pour test',
+                1,
+                NOW(),
+                NOW()
+            );
+            RAISE NOTICE 'Produit TICPE créé avec taux 0.85';
+            
+            -- URSSAF (70% -> 0.70)
+            INSERT INTO "ClientProduitEligible" (
+                "clientId",
+                "produitId",
+                statut,
+                "tauxFinal",
+                "montantFinal",
+                "dureeFinale",
+                metadata,
+                notes,
+                priorite,
+                created_at,
+                updated_at
+            ) VALUES (
+                client_id,
+                urssaf_id,
+                'eligible',
+                0.70, -- 70% divisé par 100
+                4500.00,
+                12,
+                '{"source": "test_creation", "confidence_level": "medium", "original_percentage": 70}'::jsonb,
+                'Produit éligible créé pour test',
+                2,
+                NOW(),
+                NOW()
+            );
+            RAISE NOTICE 'Produit URSSAF créé avec taux 0.70';
+            
+            -- DFS (55% -> 0.55)
+            INSERT INTO "ClientProduitEligible" (
+                "clientId",
+                "produitId",
+                statut,
+                "tauxFinal",
+                "montantFinal",
+                "dureeFinale",
+                metadata,
+                notes,
+                priorite,
+                created_at,
+                updated_at
+            ) VALUES (
+                client_id,
+                dfs_id,
+                'en_cours',
+                0.55, -- 55% divisé par 100
+                3000.00,
+                12,
+                '{"source": "test_creation", "confidence_level": "medium", "original_percentage": 55}'::jsonb,
+                'Produit en cours créé pour test',
+                3,
+                NOW(),
+                NOW()
+            );
+            RAISE NOTICE 'Produit DFS créé avec taux 0.55';
+            
+            RAISE NOTICE '3 produits éligibles de test créés avec succès';
+        ELSE
+            RAISE NOTICE 'Produits éligibles déjà existants, pas de création nécessaire';
+        END IF;
+    ELSE
+        RAISE NOTICE 'Client non trouvé, impossible de créer des produits éligibles';
+    END IF;
+END $$;
+
+-- 3. VÉRIFICATION FINALE
+SELECT 
+    'VERIFICATION_FINALE' as section,
+    CASE 
+        WHEN EXISTS(SELECT 1 FROM auth.users WHERE email = 'wamuchacha@gmail.com') THEN '✅ Utilisateur auth OK'
+        ELSE '❌ Utilisateur auth manquant'
+    END as auth_status,
+    CASE 
+        WHEN EXISTS(SELECT 1 FROM "Client" WHERE email = 'wamuchacha@gmail.com') THEN '✅ Client OK'
+        ELSE '❌ Client manquant'
+    END as client_status,
+    CASE 
+        WHEN EXISTS(SELECT 1 FROM "Admin" WHERE email = 'wamuchacha@gmail.com') THEN '⚠️ CONFLIT ADMIN!'
+        ELSE '✅ Pas de conflit admin'
+    END as admin_conflict,
+    CASE 
+        WHEN EXISTS(SELECT 1 FROM "ClientProduitEligible" cpe JOIN "Client" c ON cpe."clientId" = c.id WHERE c.email = 'wamuchacha@gmail.com') THEN '✅ Produits éligibles OK'
+        ELSE '❌ Aucun produit éligible'
+    END as produits_status;
+
+-- 4. AFFICHER LES PRODUITS ÉLIGIBLES CRÉÉS
+SELECT 
+    'PRODUITS_ELIGIBLES_FINAUX' as section,
+    cpe.id,
+    cpe."produitId",
+    pe.nom as produit_nom,
+    cpe.statut,
+    cpe."tauxFinal",
+    ROUND((cpe."tauxFinal" * 100)::numeric, 0) as taux_pourcentage,
+    cpe."montantFinal",
+    cpe.created_at
+FROM "ClientProduitEligible" cpe
+JOIN "Client" c ON cpe."clientId" = c.id
+LEFT JOIN "ProduitEligible" pe ON cpe."produitId" = pe.id
+WHERE c.email = 'wamuchacha@gmail.com'
+ORDER BY cpe.created_at DESC; 
