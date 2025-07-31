@@ -64,6 +64,7 @@ import clientDocumentsRoutes from './routes/client-documents';
 import analyticsRoutes from './routes/analytics';
 import googleCalendarRoutes from './routes/google-calendar';
 import debugRoutes from './routes/debug';
+import { getCorsConfig, corsMiddleware } from './config/cors';
 
 // Créer l'application Express
 const app = express();
@@ -84,36 +85,8 @@ if (!supabaseUrl || !supabaseServiceKey) {
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-// Configuration CORS simplifiée et robuste
-const allowedOrigins = [
-  'https://profitum.app',
-  'https://www.profitum.app', 
-  'https://profitum-mvp.vercel.app',
-  'https://profitummvp-production.up.railway.app'
-];
-
-const corsOptions = {
-  origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
-    // Autoriser les requêtes sans origin (ex: curl, Postman, tests)
-    if (!origin) {
-      return callback(null, true);
-    }
-    
-    // Vérifier si l'origine est autorisée
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-    
-    // Log pour debug
-    console.log(`🚫 CORS bloqué pour l'origine: ${origin}`);
-    return callback(new Error('Not allowed by CORS'));
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-CSRF-Token', 'Accept', 'Origin'],
-  exposedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
-  maxAge: 86400 // 24 heures
-};
+// Configuration CORS unifiée depuis le fichier centralisé
+const corsOptions = getCorsConfig();
 
 app.use(cors(corsOptions));
 
@@ -121,20 +94,7 @@ app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 
 // Middleware GLOBAL pour s'assurer que les headers CORS sont bien appliqués sur TOUTES les réponses
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  
-  // Ajouter les headers CORS seulement si l'origine est autorisée
-  if (origin && allowedOrigins.includes(origin)) {
-    res.header('Access-Control-Allow-Origin', origin);
-  }
-  
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-CSRF-Token, Accept, Origin');
-  
-  next();
-});
+app.use(corsMiddleware);
 
 // Middleware de logging Supabase
 app.use(logSupabaseRequest);
@@ -243,7 +203,7 @@ app.use('/api/simulation', enhancedAuthMiddleware, simulationRoutes);
 // Routes client - PROTÉGÉES avec permissions spécifiques
 app.use('/api/client', enhancedAuthMiddleware, requireUserType('client'), clientRoutes);
 
-// Routes expert - PROTÉGÉES avec permissions spécifiques
+// Routes expert - PROTÉGÉES avec permissions spécifiques  
 app.use('/api/expert', enhancedAuthMiddleware, requireUserType('expert'), expertRoutes);
 
 // Routes admin - PROTÉGÉES avec permissions spécifiques
@@ -252,7 +212,7 @@ app.use('/api/admin', enhancedAuthMiddleware, requireUserType('admin'), adminRou
 // Routes audit - PROTÉGÉES
 app.use('/api/audit', enhancedAuthMiddleware, auditRoutes);
 
-// Routes simulation - PROTÉGÉES
+// Routes simulation - PROTÉGÉES (correction pour éviter les conflits)
 app.use('/api/simulation', enhancedAuthMiddleware, simulationRoute);
 
 // Routes de messagerie - PROTÉGÉES
@@ -285,6 +245,18 @@ app.use('/api/charte-signature', enhancedAuthMiddleware, charteSignatureRoutes);
 
 // Route de debug (temporaire)
 app.use('/api/debug', debugRoutes);
+
+// Route de fallback pour les routes non trouvées
+app.use('/api/*', (req, res) => {
+  console.log(`❌ Route non trouvée: ${req.method} ${req.originalUrl}`);
+  res.status(404).json({
+    success: false,
+    message: 'Route non trouvée',
+    path: req.originalUrl,
+    method: req.method,
+    timestamp: new Date().toISOString()
+  });
+});
 
 // Gestion des erreurs
 app.use(errorHandler);
