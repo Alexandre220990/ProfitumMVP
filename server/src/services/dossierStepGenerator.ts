@@ -1,49 +1,72 @@
 import { supabase } from '../lib/supabase';
 
+// Types pour les relations
+interface ProduitEligible {
+  id: string;
+  nom: string;
+  description: string;
+  category: string;
+}
+
+interface Client {
+  id: string;
+  name: string;
+  company_name: string;
+  email: string;
+}
+
+interface ClientProduitEligibleWithRelations {
+  id: string;
+  clientId: string;
+  produitId: string;
+  statut: string;
+  montantFinal: number;
+  ProduitEligible: ProduitEligible;
+  Client: Client;
+}
+
 // Configuration des étapes par type de produit
-const PRODUCT_STEPS_CONFIG = {
+const PRODUCT_STEPS_CONFIG: Record<string, Array<{
+  name: string;
+  type: 'validation' | 'documentation' | 'expertise' | 'approval' | 'payment';
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  duration: number;
+}>> = {
   'TICPE': [
-    { name: 'Validation éligibilité', type: 'validation', priority: 'high', duration: 30 },
-    { name: 'Signature charte', type: 'documentation', priority: 'high', duration: 15 },
-    { name: 'Sélection expert', type: 'expertise', priority: 'medium', duration: 60 },
-    { name: 'Analyse documents', type: 'documentation', priority: 'high', duration: 120 },
-    { name: 'Soumission administration', type: 'approval', priority: 'critical', duration: 180 },
-    { name: 'Suivi remboursement', type: 'payment', priority: 'high', duration: 240 }
-  ],
-  'URSSAF': [
-    { name: 'Validation éligibilité', type: 'validation', priority: 'high', duration: 30 },
-    { name: 'Signature charte', type: 'documentation', priority: 'high', duration: 15 },
-    { name: 'Sélection expert', type: 'expertise', priority: 'medium', duration: 60 },
-    { name: 'Analyse documents', type: 'documentation', priority: 'high', duration: 120 },
-    { name: 'Soumission URSSAF', type: 'approval', priority: 'critical', duration: 180 },
-    { name: 'Suivi remboursement', type: 'payment', priority: 'high', duration: 240 }
-  ],
-  'DFS': [
-    { name: 'Validation éligibilité', type: 'validation', priority: 'high', duration: 30 },
-    { name: 'Signature charte', type: 'documentation', priority: 'high', duration: 15 },
-    { name: 'Sélection expert', type: 'expertise', priority: 'medium', duration: 60 },
-    { name: 'Analyse documents', type: 'documentation', priority: 'high', duration: 120 },
-    { name: 'Soumission DFS', type: 'approval', priority: 'critical', duration: 180 },
-    { name: 'Suivi remboursement', type: 'payment', priority: 'high', duration: 240 }
+    { name: 'Validation de l\'éligibilité', type: 'validation', priority: 'high', duration: 60 },
+    { name: 'Collecte des documents', type: 'documentation', priority: 'high', duration: 120 },
+    { name: 'Audit technique', type: 'expertise', priority: 'critical', duration: 240 },
+    { name: 'Validation finale', type: 'approval', priority: 'high', duration: 60 },
+    { name: 'Demande de remboursement', type: 'payment', priority: 'medium', duration: 120 }
   ],
   'CIR': [
-    { name: 'Validation éligibilité', type: 'validation', priority: 'high', duration: 30 },
-    { name: 'Signature charte', type: 'documentation', priority: 'high', duration: 15 },
-    { name: 'Sélection expert', type: 'expertise', priority: 'medium', duration: 60 },
-    { name: 'Analyse R&D', type: 'documentation', priority: 'high', duration: 180 },
-    { name: 'Soumission CIR', type: 'approval', priority: 'critical', duration: 240 },
-    { name: 'Suivi crédit d\'impôt', type: 'payment', priority: 'high', duration: 300 }
+    { name: 'Vérification des critères', type: 'validation', priority: 'high', duration: 90 },
+    { name: 'Analyse des dépenses', type: 'documentation', priority: 'critical', duration: 180 },
+    { name: 'Expertise comptable', type: 'expertise', priority: 'critical', duration: 300 },
+    { name: 'Validation administrative', type: 'approval', priority: 'high', duration: 90 },
+    { name: 'Déclaration fiscale', type: 'payment', priority: 'medium', duration: 120 }
+  ],
+  'URSSAF': [
+    { name: 'Audit des cotisations', type: 'validation', priority: 'high', duration: 120 },
+    { name: 'Analyse des erreurs', type: 'documentation', priority: 'critical', duration: 180 },
+    { name: 'Expertise sociale', type: 'expertise', priority: 'critical', duration: 240 },
+    { name: 'Validation URSSAF', type: 'approval', priority: 'high', duration: 90 },
+    { name: 'Remboursement', type: 'payment', priority: 'medium', duration: 120 }
+  ],
+  'DFS': [
+    { name: 'Vérification des conditions', type: 'validation', priority: 'high', duration: 60 },
+    { name: 'Collecte des justificatifs', type: 'documentation', priority: 'high', duration: 120 },
+    { name: 'Expertise formation', type: 'expertise', priority: 'critical', duration: 180 },
+    { name: 'Validation OPCO', type: 'approval', priority: 'high', duration: 90 },
+    { name: 'Versement des fonds', type: 'payment', priority: 'medium', duration: 120 }
   ]
 };
 
-// Configuration par défaut pour les produits non configurés
+// Étapes par défaut pour les produits non configurés
 const DEFAULT_STEPS = [
-  { name: 'Validation éligibilité', type: 'validation', priority: 'high', duration: 30 },
-  { name: 'Signature charte', type: 'documentation', priority: 'high', duration: 15 },
-  { name: 'Sélection expert', type: 'expertise', priority: 'medium', duration: 60 },
-  { name: 'Analyse documents', type: 'documentation', priority: 'high', duration: 120 },
-  { name: 'Soumission administration', type: 'approval', priority: 'critical', duration: 180 },
-  { name: 'Suivi remboursement', type: 'payment', priority: 'high', duration: 240 }
+  { name: 'Validation initiale', type: 'validation' as const, priority: 'high' as const, duration: 60 },
+  { name: 'Documentation requise', type: 'documentation' as const, priority: 'high' as const, duration: 120 },
+  { name: 'Expertise technique', type: 'expertise' as const, priority: 'critical' as const, duration: 240 }
 ];
 
 export class DossierStepGenerator {
@@ -54,9 +77,25 @@ export class DossierStepGenerator {
   static async generateStepsForDossier(clientProduitId: string): Promise<boolean> {
     try {
       console.log(`🔧 Génération des étapes pour le dossier: ${clientProduitId}`);
-      
-      // 1. Récupérer les informations du ClientProduitEligible
-      const { data: clientProduit, error: clientProduitError } = await supabase
+
+      // 1. Vérifier si des étapes existent déjà
+      const { data: existingSteps, error: checkError } = await supabase
+        .from('DossierStep')
+        .select('id')
+        .eq('dossier_id', clientProduitId);
+
+      if (checkError) {
+        console.error('❌ Erreur vérification des étapes existantes:', checkError);
+        return false;
+      }
+
+      if (existingSteps && existingSteps.length > 0) {
+        console.log(`ℹ️ Des étapes existent déjà pour le dossier: ${clientProduitId}`);
+        return true;
+      }
+
+      // 2. Récupérer les détails du dossier avec les relations
+      const { data: clientProduit, error: fetchError } = await supabase
         .from('ClientProduitEligible')
         .select(`
           id,
@@ -64,44 +103,35 @@ export class DossierStepGenerator {
           produitId,
           statut,
           montantFinal,
-          ProduitEligible:ProduitEligible!inner(
+          ProduitEligible (
             id,
             nom,
-            description
+            description,
+            category
           ),
-          Client:Client!inner(
+          Client (
             id,
+            name,
             company_name,
-            name
+            email
           )
         `)
         .eq('id', clientProduitId)
         .single();
 
-      if (clientProduitError || !clientProduit) {
-        console.error('❌ ClientProduitEligible non trouvé:', clientProduitError);
+      if (fetchError || !clientProduit) {
+        console.error('❌ Erreur récupération du dossier:', fetchError);
         return false;
-      }
-
-      // 2. Vérifier si des étapes existent déjà
-      const { data: existingSteps, error: existingStepsError } = await supabase
-        .from('DossierStep')
-        .select('id')
-        .eq('dossier_id', clientProduitId);
-
-      if (existingStepsError) {
-        console.error('❌ Erreur vérification étapes existantes:', existingStepsError);
-        return false;
-      }
-
-      if (existingSteps && existingSteps.length > 0) {
-        console.log(`ℹ️ Étapes déjà existantes pour le dossier: ${clientProduitId}`);
-        return true;
       }
 
       // 3. Déterminer les étapes à créer
-      const productName = clientProduit.ProduitEligible.nom;
-      const stepsConfig = PRODUCT_STEPS_CONFIG[productName as keyof typeof PRODUCT_STEPS_CONFIG] || DEFAULT_STEPS;
+      const productName = clientProduit.ProduitEligible?.nom;
+      if (!productName) {
+        console.error('❌ Nom du produit non trouvé');
+        return false;
+      }
+
+      const stepsConfig = PRODUCT_STEPS_CONFIG[productName] || DEFAULT_STEPS;
 
       // 4. Calculer les dates d'échéance
       const baseDate = new Date();
@@ -109,9 +139,11 @@ export class DossierStepGenerator {
         const dueDate = new Date(baseDate);
         dueDate.setDate(dueDate.getDate() + (index * 2)); // 2 jours entre chaque étape
 
+        const clientName = clientProduit.Client?.company_name || clientProduit.Client?.name || 'Client';
+
         return {
           dossier_id: clientProduitId,
-          dossier_name: `${productName} - ${clientProduit.Client.company_name || clientProduit.Client.name}`,
+          dossier_name: `${productName} - ${clientName}`,
           step_name: step.name,
           step_type: step.type,
           due_date: dueDate.toISOString(),
