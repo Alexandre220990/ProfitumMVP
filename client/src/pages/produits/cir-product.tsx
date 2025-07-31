@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import ProductProcessWorkflow from '@/components/ProductProcessWorkflow';
+import DossierStepsDisplay from '@/components/DossierStepsDisplay';
 import { Shield, DollarSign, FileSignature, Building2, MessageSquare, FileText } from "lucide-react";
 import { config } from "@/config/env";
 import HeaderClient from "@/components/HeaderClient";
@@ -265,10 +265,15 @@ const CIRProductPage = () => {
             </Card>
 
             {/* Workflow du processus */}
-            <ProductProcessWorkflow 
+            <DossierStepsDisplay
               dossierId={clientProduit.id}
-              currentStep={String(clientProduit.current_step || 0)}
-              productType="CIR"
+              dossierName={`CIR - ${user?.company_name || 'Votre dossier'}`}
+              showGenerateButton={true}
+              compact={true}
+              onStepUpdate={(stepId, updates) => {
+                console.log('Étape mise à jour:', stepId, updates);
+                fetchDossierData();
+              }}
             />
           </div>
 
