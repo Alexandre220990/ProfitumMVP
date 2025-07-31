@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { config } from "@/config/env";
@@ -12,6 +12,7 @@ import { AuditTable } from "@/components/dashboard/AuditTable";
 import { EmptyAuditState } from "@/components/dashboard/EmptyAuditState";
 import { useDashboardClientEffects } from "@/hooks/useDashboardClientEffects";
 import { useKpiData } from "@/hooks/useKpiData";
+import { useClientProducts } from "@/hooks/use-client-products";
 import "react-circular-progressbar/dist/styles.css";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -23,8 +24,19 @@ export default function DashboardClient() {
   const { user } = useAuth();
   
   const { showSimulationDialog, setShowSimulationDialog, loadingTooLong, useFallbackData, setUseFallbackData, audits, isLoadingAudits, auditsError, refreshAudits, hasRecentSimulation } = useDashboardClientEffects();
+  
+  // Hook pour les produits éligibles du client
+  const { produits, loading: loadingProducts, error: productsError, hasProducts, totalProducts } = useClientProducts();
 
   const kpiData = useKpiData(audits as Audit[]);
+
+  // Redirection automatique vers le simulateur si le client n'a pas de produits éligibles
+  useEffect(() => {
+    if (!loadingProducts && !hasProducts && !productsError) {
+      console.log('🔄 Client sans produits éligibles - redirection automatique vers simulateur');
+      navigate('/simulateur');
+    }
+  }, [loadingProducts, hasProducts, productsError, navigate]);
 
   // Mapping des types d'audit vers les URLs des pages de produits
   const auditTypeToProductUrl = (auditType: string, clientProduitId: string): string => {
@@ -305,6 +317,54 @@ export default function DashboardClient() {
             className="bg-gradient-to-br from-orange-50 to-amber-50 border-orange-200"
           />
         </div>
+
+        {/* Section des produits éligibles */}
+        {!loadingProducts && !productsError && hasProducts && (
+          <Card className="mb-6">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <CheckCircle className="w-5 h-5 text-green-600" />
+                Vos Produits Éligibles
+                <Badge variant="primary" className="ml-2">
+                  {totalProducts}
+                </Badge>
+              </CardTitle>
+              <CardDescription>
+                Produits identifiés lors de votre simulation
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {produits.map((produit) => (
+                  <div key={produit.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-semibold text-gray-900">{produit.ProduitEligible.nom}</h3>
+                      <Badge variant={produit.statut === 'eligible' ? 'success' : 'warning'}>
+                        {produit.statut}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-3">{produit.ProduitEligible.description}</p>
+                    <div className="flex justify-between items-center">
+                      <span className="text-lg font-bold text-green-600">
+                        {produit.montantFinal.toLocaleString()} €
+                      </span>
+                      <Button 
+                        variant="secondary" 
+                        size="sm"
+                        onClick={() => {
+                          const productUrl = auditTypeToProductUrl(produit.ProduitEligible.nom, produit.id);
+                          handleNavigation(productUrl);
+                        }}
+                      >
+                        Voir détails
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Section des audits compacte */}
         {!isLoadingAudits && !auditsError && filteredAudits.length === 0 ? (

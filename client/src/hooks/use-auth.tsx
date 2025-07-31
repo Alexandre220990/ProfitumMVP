@@ -78,14 +78,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       // Rediriger vers le dashboard approprié selon le type d'utilisateur
+      console.log('🔀 Redirection utilisateur (login):', { type: user.type, email: user.email });
       if (user.type === 'client') { 
-        navigate('/dashboard'); 
+        console.log('➡️ Redirection vers dashboard client');
+        navigate('/dashboard/client'); 
       } else if (user.type === 'expert') { 
-        navigate('/expert'); 
+        console.log('➡️ Redirection vers dashboard expert');
+        navigate('/expert/dashboard'); 
       } else if (user.type === 'admin') { 
+        console.log('➡️ Redirection vers dashboard admin');
         navigate("/admin/dashboard"); 
       } else {
-        navigate("/admin"); 
+        console.warn('⚠️ Type utilisateur non reconnu:', user.type);
+        console.log('➡️ Redirection par défaut vers dashboard client');
+        navigate('/dashboard/client'); // Redirection par défaut vers client
       }
     } catch (error) { toast({
         title: "Erreur", description: error instanceof Error ? error.message : "Erreur de connexion", variant: "destructive" });
@@ -116,14 +122,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       toast({ title: "Inscription réussie", description: response.message || "Votre compte a été créé avec succès" });
 
       // Rediriger vers le dashboard approprié selon le type d'utilisateur
+      console.log('🔀 Redirection utilisateur (register):', { type: user.type, email: user.email });
       if (user.type === 'client') { 
-        navigate('/dashboard'); 
+        console.log('➡️ Redirection vers dashboard client');
+        navigate('/dashboard/client'); 
       } else if (user.type === 'expert') { 
-        navigate('/expert'); 
+        console.log('➡️ Redirection vers dashboard expert');
+        navigate('/expert/dashboard'); 
       } else if (user.type === 'admin') { 
+        console.log('➡️ Redirection vers dashboard admin');
         navigate("/admin/dashboard"); 
       } else {
-        navigate("/admin"); 
+        console.warn('⚠️ Type utilisateur non reconnu:', user.type);
+        console.log('➡️ Redirection par défaut vers dashboard client');
+        navigate('/dashboard/client'); // Redirection par défaut vers client
       }
     } catch (error) { toast({
         title: "Erreur", description: error instanceof Error ? error.message : "Erreur d'inscription", variant: "destructive" });

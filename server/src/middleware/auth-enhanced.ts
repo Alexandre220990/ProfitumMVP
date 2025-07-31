@@ -232,30 +232,69 @@ export const enhancedAuthMiddleware = async (
     let userData: any = null;
     let userType: 'client' | 'expert' | 'admin' = 'client';
 
-    // Vérifier si c'est un client par email
-    const { data: clientData } = await supabase
+    console.log('🔍 Vérification du type d\'utilisateur pour:', {
+      userId: user.id,
+      userEmail: user.email,
+      route: req.path
+    });
+
+    // Vérifier d'abord par auth_id (plus fiable)
+    console.log('🔍 Recherche client par auth_id:', user.id);
+    const { data: clientDataByAuthId, error: authIdError } = await supabase
       .from('Client')
-      .select('id, email, company_name, name')
-      .eq('email', user.email)
+      .select('id, email, company_name, name, auth_id')
+      .eq('auth_id', user.id)
       .single();
 
-    if (clientData) {
-      userData = clientData;
+    if (authIdError) {
+      console.log('⚠️ Erreur recherche par auth_id:', authIdError.message);
+    }
+
+    if (clientDataByAuthId) {
+      userData = clientDataByAuthId;
       userType = 'client';
+      console.log('✅ Client trouvé par auth_id:', { clientId: clientDataByAuthId.id, email: clientDataByAuthId.email });
     } else {
+      console.log('❌ Client non trouvé par auth_id, recherche par email...');
+      // Fallback : vérifier par email
+      const { data: clientDataByEmail, error: emailError } = await supabase
+        .from('Client')
+        .select('id, email, company_name, name, auth_id')
+        .eq('email', user.email)
+        .single();
+
+      if (emailError) {
+        console.log('⚠️ Erreur recherche par email:', emailError.message);
+      }
+
+      if (clientDataByEmail) {
+        userData = clientDataByEmail;
+        userType = 'client';
+        console.log('✅ Client trouvé par email:', { clientId: clientDataByEmail.id, email: clientDataByEmail.email });
+      }
+    }
+
+          if (!userData) {
+      console.log('❌ Client non trouvé, recherche expert...');
       // Vérifier si c'est un expert par email
-      const { data: expertData } = await supabase
+      const { data: expertData, error: expertError } = await supabase
         .from('Expert')
         .select('id, email, name, approval_status')
         .eq('email', user.email)
         .single();
 
+      if (expertError) {
+        console.log('⚠️ Erreur recherche expert:', expertError.message);
+      }
+
       if (expertData) {
         userData = expertData;
         userType = 'expert';
+        console.log('✅ Expert trouvé:', { expertId: expertData.id, email: expertData.email, status: expertData.approval_status });
         
         // Vérifier le statut d'approbation de l'expert
         if (expertData.approval_status !== 'approved') {
+          console.log('❌ Expert non approuvé:', expertData.approval_status);
           await logAccess({
             timestamp: new Date(),
             userId: user.id,
@@ -278,17 +317,24 @@ export const enhancedAuthMiddleware = async (
           });
         }
       } else {
+        console.log('❌ Expert non trouvé, recherche admin...');
         // Vérifier si c'est un admin par email
-        const { data: adminData } = await supabase
+        const { data: adminData, error: adminError } = await supabase
           .from('Admin')
           .select('id, email, name')
           .eq('email', user.email)
           .single();
         
+        if (adminError) {
+          console.log('⚠️ Erreur recherche admin:', adminError.message);
+        }
+        
         if (adminData) {
           userData = adminData;
           userType = 'admin';
+          console.log('✅ Admin trouvé:', { adminId: adminData.id, email: adminData.email });
         } else {
+          console.log('❌ Utilisateur non trouvé dans aucune table');
           // Utilisateur non trouvé dans aucune table
           await logAccess({
             timestamp: new Date(),
@@ -317,7 +363,7 @@ export const enhancedAuthMiddleware = async (
     const permissions = USER_PERMISSIONS[userType] || [];
 
     // 5. Ajout des informations utilisateur à la requête
-    (req as unknown as AuthenticatedRequest).user = {
+    const authenticatedUser = {
       id: userData.id,
       type: userType,
       email: userData.email,
@@ -337,6 +383,18 @@ export const enhancedAuthMiddleware = async (
       aud: user.aud || 'authenticated',
       created_at: user.created_at || new Date().toISOString()
     };
+
+    (req as unknown as AuthenticatedRequest).user = authenticatedUser;
+
+    // Log pour debug
+    console.log('🔐 Utilisateur authentifié:', {
+      id: authenticatedUser.id,
+      type: authenticatedUser.type,
+      email: authenticatedUser.email,
+      auth_id: authenticatedUser.auth_id,
+      route: req.path,
+      method: req.method
+    });
 
     // 6. Log d'accès réussi
     await logAccess({

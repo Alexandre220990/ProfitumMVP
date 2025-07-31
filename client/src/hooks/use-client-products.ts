@@ -50,30 +50,54 @@ export const useClientProducts = (): UseClientProductsReturn => {
 
   const fetchProducts = useCallback(async () => {
     if (!user) {
+      console.log('❌ Utilisateur non authentifié dans useClientProducts');
       setError('Utilisateur non authentifié');
       setLoading(false);
       return;
     }
 
+    console.log('🔍 Récupération des produits éligibles pour utilisateur:', {
+      id: user.id,
+      type: user.type,
+      email: user.email
+    });
+
     try {
       setLoading(true);
       setError(null);
 
+      console.log('🌐 Appel API /api/client/produits-eligibles...');
       const response = await api.get('/api/client/produits-eligibles');
+      
+      console.log('📦 Réponse API produits éligibles:', {
+        success: response.data.success,
+        dataLength: response.data.data?.length || 0,
+        total: response.data.pagination?.total || 0,
+        message: response.data.message
+      });
       
       if (response.data.success) {
         setProduits(response.data.data || []);
         setTotalProducts(response.data.pagination?.total || 0);
+        console.log('✅ Produits éligibles récupérés:', response.data.data?.length || 0);
       } else {
+        console.error('❌ Erreur API produits éligibles:', response.data.message);
         setError(response.data.message || 'Erreur lors de la récupération des produits');
       }
     } catch (err: any) {
-      console.error('Erreur lors de la récupération des produits éligibles:', err);
+      console.error('❌ Erreur lors de la récupération des produits éligibles:', err);
+      console.error('Détails erreur:', {
+        status: err.response?.status,
+        message: err.response?.data?.message,
+        url: err.config?.url,
+        headers: err.config?.headers
+      });
       
       if (err.response?.status === 401) {
         setError('Session expirée. Veuillez vous reconnecter.');
-      } else if (err.response?.status === 404) {
+      } else       if (err.response?.status === 404) {
         setError('Aucun produit éligible trouvé. Commencez par faire une simulation.');
+        console.log('🔄 Client sans produits éligibles - redirection vers simulateur recommandée');
       } else {
         setError('Erreur de connexion. Veuillez réessayer.');
       }
