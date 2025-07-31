@@ -163,7 +163,7 @@ router.get('/produits-eligibles', async (req: Request, res: Response) => {
           category
         )
       `, { count: 'exact' })
-      .eq('ClientProduitEligible.clientId', client.id) // Utiliser l'ID du client
+      .eq('clientId', client.id) // Utiliser l'ID du client
       .order('created_at', { ascending: false })
       .range(offset, offset + pageSize - 1);
 

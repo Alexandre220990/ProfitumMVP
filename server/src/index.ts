@@ -64,6 +64,7 @@ import clientDocumentsRoutes from './routes/client-documents';
 import analyticsRoutes from './routes/analytics';
 import googleCalendarRoutes from './routes/google-calendar';
 import debugRoutes from './routes/debug';
+import diagnosticRoutes from './routes/diagnostic';
 import { getCorsConfig, corsMiddleware } from './config/cors';
 
 // Créer l'application Express
@@ -245,6 +246,9 @@ app.use('/api/charte-signature', enhancedAuthMiddleware, charteSignatureRoutes);
 
 // Route de debug (temporaire)
 app.use('/api/debug', debugRoutes);
+
+// Route de diagnostic (temporaire)
+app.use('/api/diagnostic', diagnosticRoutes);
 
 // Route de fallback pour les routes non trouvées
 app.use('/api/*', (req, res) => {
