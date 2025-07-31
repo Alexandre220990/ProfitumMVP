@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import DossierStepsDisplay from '@/components/DossierStepsDisplay';
+import CharteSignatureWorkflow from '@/components/CharteSignatureWorkflow';
 import { Shield, DollarSign, FileSignature, Zap, MessageSquare, FileText } from "lucide-react";
 import { config } from "@/config/env";
 import HeaderClient from "@/components/HeaderClient";
@@ -265,15 +265,16 @@ const AuditEnergetiquePage = () => {
               </CardContent>
             </Card>
 
-            {/* Workflow du processus */}
-            <DossierStepsDisplay
-              dossierId={clientProduit.id}
-              dossierName={`Audit Énergétique - ${user?.company_name || 'Votre dossier'}`}
-              showGenerateButton={true}
-              compact={true}
-              onStepUpdate={(stepId, updates) => {
-                console.log('Étape mise à jour:', stepId, updates);
-                loadClientProduit();
+            {/* Workflow du processus optimisé */}
+            <CharteSignatureWorkflow
+              clientProduitId={clientProduit.id}
+              productName="Audit Énergétique"
+              companyName={user?.company_name}
+              estimatedAmount={clientProduit.montantFinal}
+              onSignatureComplete={(success) => {
+                if (success) {
+                  loadClientProduit();
+                }
               }}
             />
           </div>

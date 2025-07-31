@@ -5,7 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import DossierStepsDisplay from '@/components/DossierStepsDisplay';
+import CharteSignatureWorkflow from '@/components/CharteSignatureWorkflow';
 import { TrendingUp, Shield, Clock, Play, DollarSign, AlertTriangle, Zap } from "lucide-react";
 import { config } from "@/config/env";
 import HeaderClient from "@/components/HeaderClient";
@@ -130,18 +130,19 @@ const URSSAFProductPage = () => { const navigate = useNavigate();
       { /* Header Client */ }
       <HeaderClient />
 
-      { /* Process Workflow */ }
+      { /* Process Workflow Optimisé */ }
       { clientProduit && clientProduit.id && (
         <div className="bg-white border-b mt-20">
           <div className="max-w-7xl mx-auto px-4 py-6">
-            <DossierStepsDisplay
-              dossierId={clientProduit.id}
-              dossierName={`URSSAF - ${user?.company_name || 'Votre dossier'}`}
-              showGenerateButton={true}
-              compact={true}
-              onStepUpdate={(stepId, updates) => {
-                console.log('Étape mise à jour:', stepId, updates);
-                loadClientProduit();
+            <CharteSignatureWorkflow
+              clientProduitId={clientProduit.id}
+              productName="URSSAF"
+              companyName={user?.company_name}
+              estimatedAmount={clientProduit.montantFinal}
+              onSignatureComplete={(success) => {
+                if (success) {
+                  loadClientProduit();
+                }
               }}
             />
           </div>
