@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import DossierStepsDisplay from '@/components/DossierStepsDisplay';
+import CharteSignatureWorkflow from '@/components/CharteSignatureWorkflow';
 import { Fuel, TrendingUp, Shield, Clock, Calculator, Award, Truck, Building2, CheckCircle } from "lucide-react";
 import { config } from "@/config/env";
 import HeaderClient from "@/components/HeaderClient";
@@ -116,18 +116,19 @@ export default function TICPEProductPage() {
       {/* Header Client */}
       <HeaderClient />
 
-      {/* Process Workflow */}
+      {/* Process Workflow Optimisé */}
       {clientProduit && clientProduit.id && (
         <div className="bg-white border-b mt-20">
           <div className="max-w-7xl mx-auto px-4 py-6">
-            <DossierStepsDisplay
-              dossierId={clientProduit.id}
-              dossierName={`TICPE - ${user?.company_name || 'Votre dossier'}`}
-              showGenerateButton={true}
-              compact={true}
-              onStepUpdate={(stepId, updates) => {
-                console.log('Étape mise à jour:', stepId, updates);
-                loadClientProduit();
+            <CharteSignatureWorkflow
+              clientProduitId={clientProduit.id}
+              productName="TICPE"
+              companyName={user?.company_name}
+              estimatedAmount={clientProduit.montantFinal}
+              onSignatureComplete={(success) => {
+                if (success) {
+                  loadClientProduit();
+                }
               }}
             />
           </div>
