@@ -65,6 +65,7 @@ import analyticsRoutes from './routes/analytics';
 import googleCalendarRoutes from './routes/google-calendar';
 import debugRoutes from './routes/debug';
 import diagnosticRoutes from './routes/diagnostic';
+import dossierStepsRoutes from './routes/dossier-steps';
 import { getCorsConfig, corsMiddleware } from './config/cors';
 
 // Créer l'application Express
@@ -249,6 +250,9 @@ app.use('/api/debug', debugRoutes);
 
 // Route de diagnostic (temporaire)
 app.use('/api/diagnostic', diagnosticRoutes);
+
+// Route de gestion des étapes de dossier
+app.use('/api/dossier-steps', dossierStepsRoutes);
 
 // Route de fallback pour les routes non trouvées
 app.use('/api/*', (req, res) => {
