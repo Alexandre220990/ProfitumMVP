@@ -1,4 +1,4 @@
-import DossierStepsDisplay from "@/components/DossierStepsDisplay";
+import CharteSignatureWorkflow from "@/components/CharteSignatureWorkflow";
 import HeaderClient from "@/components/HeaderClient";
 
 const SocialProductPage = () => { 
@@ -10,13 +10,12 @@ const SocialProductPage = () => {
       { /* Contenu principal avec marge pour le header fixe */ }
       <div className="pt-20">
         <div className="max-w-7xl mx-auto px-4 py-6">
-          <DossierStepsDisplay
-            dossierId="default-social-dossier"
-            dossierName="Social - Votre dossier"
-            showGenerateButton={true}
-            compact={true}
-            onStepUpdate={(stepId, updates) => {
-              console.log('Étape mise à jour:', stepId, updates);
+          <CharteSignatureWorkflow
+            clientProduitId="default-social-dossier"
+            productName="Social"
+            companyName="Votre entreprise"
+            onSignatureComplete={(success) => {
+              console.log('Signature terminée:', success);
             }}
           />
         </div>
