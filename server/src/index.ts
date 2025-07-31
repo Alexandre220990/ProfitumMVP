@@ -84,78 +84,54 @@ if (!supabaseUrl || !supabaseServiceKey) {
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-// Configuration CORS
-app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? ['https://profitum.app', 'https://www.profitum.app', 'https://profitum-mvp.vercel.app', 'https://profitummvp-production.up.railway.app'] 
-    : ['http://[::1]:3000', 'http://localhost:3000', 'http://127.0.0.1:3000', 'http://[::1]:5173', 'http://localhost:5173'],
+// Configuration CORS simplifiée et robuste
+const allowedOrigins = [
+  'https://profitum.app',
+  'https://www.profitum.app', 
+  'https://profitum-mvp.vercel.app',
+  'https://profitummvp-production.up.railway.app'
+];
+
+const corsOptions = {
+  origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
+    // Autoriser les requêtes sans origin (ex: curl, Postman, tests)
+    if (!origin) {
+      return callback(null, true);
+    }
+    
+    // Vérifier si l'origine est autorisée
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    
+    // Log pour debug
+    console.log(`🚫 CORS bloqué pour l'origine: ${origin}`);
+    return callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-CSRF-Token', 'Accept', 'Origin'],
   exposedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
   maxAge: 86400 // 24 heures
-}));
+};
+
+app.use(cors(corsOptions));
 
 // Middleware pour gérer les requêtes OPTIONS (preflight)
-app.options('*', (req, res) => {
-  const origin = req.headers.origin;
-  if (origin) {
-    res.header('Access-Control-Allow-Origin', origin);
-  }
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-CSRF-Token, Accept, Origin');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.header('Access-Control-Max-Age', '86400');
-  res.sendStatus(200);
-});
+app.options('*', cors(corsOptions));
 
 // Middleware GLOBAL pour s'assurer que les headers CORS sont bien appliqués sur TOUTES les réponses
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  if (origin) {
+  
+  // Ajouter les headers CORS seulement si l'origine est autorisée
+  if (origin && allowedOrigins.includes(origin)) {
     res.header('Access-Control-Allow-Origin', origin);
   }
+  
   res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-CSRF-Token, Accept, Origin');
-  
-  // Intercepter toutes les réponses pour s'assurer que les headers CORS sont présents
-  const originalSend = res.send;
-  const originalJson = res.json;
-  const originalStatus = res.status;
-  
-  // Override res.send pour ajouter les headers CORS
-  res.send = function(body) {
-    if (origin) {
-      this.header('Access-Control-Allow-Origin', origin);
-    }
-    this.header('Access-Control-Allow-Credentials', 'true');
-    this.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-    this.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-CSRF-Token, Accept, Origin');
-    return originalSend.call(this, body);
-  };
-  
-  // Override res.json pour ajouter les headers CORS
-  res.json = function(body) {
-    if (origin) {
-      this.header('Access-Control-Allow-Origin', origin);
-    }
-    this.header('Access-Control-Allow-Credentials', 'true');
-    this.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-    this.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-CSRF-Token, Accept, Origin');
-    return originalJson.call(this, body);
-  };
-  
-  // Override res.status pour s'assurer que les headers CORS sont ajoutés même sur les erreurs
-  res.status = function(code) {
-    if (origin) {
-      this.header('Access-Control-Allow-Origin', origin);
-    }
-    this.header('Access-Control-Allow-Credentials', 'true');
-    this.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-    this.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-CSRF-Token, Accept, Origin');
-    return originalStatus.call(this, code);
-  };
   
   next();
 });
