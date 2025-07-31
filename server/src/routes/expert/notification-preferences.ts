@@ -1,6 +1,6 @@
 import express, { Router, Request, Response } from 'express';
 import { createClient } from '@supabase/supabase-js';
-import { authenticateUser } from '../../middleware/authenticate';
+
 
 const router = express.Router();
 
@@ -14,7 +14,7 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 // ============================================================================
 
 // GET /api/expert/notification-preferences - Récupérer les préférences de l'expert
-router.get('/', authenticateUser, async (req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
   try {
     const expertId = req.user?.id;
     if (!expertId) {
@@ -75,7 +75,7 @@ router.get('/', authenticateUser, async (req: Request, res: Response) => {
 });
 
 // PUT /api/expert/notification-preferences - Mettre à jour les préférences
-router.put('/', authenticateUser, async (req: Request, res: Response) => {
+router.put('/', async (req: Request, res: Response) => {
   try {
     const expertId = req.user?.id;
     if (!expertId) {
@@ -178,7 +178,7 @@ router.put('/', authenticateUser, async (req: Request, res: Response) => {
 });
 
 // POST /api/expert/notification-preferences/reset - Réinitialiser les préférences par défaut
-router.post('/reset', authenticateUser, async (req: Request, res: Response) => {
+router.post('/reset', async (req: Request, res: Response) => {
   try {
     const expertId = req.user?.id;
     if (!expertId) {
@@ -274,7 +274,7 @@ router.post('/reset', authenticateUser, async (req: Request, res: Response) => {
 });
 
 // GET /api/expert/notification-preferences/test - Tester les notifications
-router.get('/test', authenticateUser, async (req: Request, res: Response) => {
+router.get('/test', async (req: Request, res: Response) => {
   try {
     const expertId = req.user?.id;
     if (!expertId) {

@@ -1,7 +1,7 @@
 import express, { Router, Request, Response } from 'express';
 import { createClient } from "@supabase/supabase-js";
 import { ClientProduitEligibleSchema, ClientProduitEligible } from "../validations/clientProduitEligible";
-import { authenticateUser } from '../middleware/authenticate';
+
 // Types pour l'authentification
 interface AuthUser {
   id: string;
@@ -85,7 +85,7 @@ router.options('/client/:clientId', (req, res) => {
 });
 
 // Route pour obtenir les produits éligibles d'un client
-router.get("/client/:clientId", authenticateUser, async (req: Request, res: Response) => {
+router.get("/client/:clientId", async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
@@ -137,7 +137,7 @@ router.get("/client/:clientId", authenticateUser, async (req: Request, res: Resp
 });
 
 // Route pour obtenir les détails d'un produit éligible
-router.get("/produits-eligibles/details/:produitId", authenticateUser, async (req: Request, res: Response) => {
+router.get("/produits-eligibles/details/:produitId", async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });

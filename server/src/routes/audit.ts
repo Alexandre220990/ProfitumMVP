@@ -1,12 +1,12 @@
 import express, { Router, Request, Response } from 'express';
-import { authenticateUser } from '../middleware/authenticate';
+
 import { AuthUser } from '../types/auth';
 import { supabase } from '../lib/supabase';
 
 const router = express.Router();
 
 // Route pour créer un audit
-router.post('/', authenticateUser, async (req: Request, res: Response) => {
+router.post('/', async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });

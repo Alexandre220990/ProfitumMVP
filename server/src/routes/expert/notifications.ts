@@ -1,6 +1,6 @@
 import express, { Router, Request, Response } from 'express';
 import { createClient } from '@supabase/supabase-js';
-import { authenticateUser } from '../../middleware/authenticate';
+
 import { AuthUser } from '../../types/auth';
 
 const router = express.Router();
@@ -15,7 +15,7 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 // ============================================================================
 
 // GET /api/expert/notifications - Récupérer les notifications de l'expert
-router.get('/', authenticateUser, async (req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
   try {
     const authUser = req.user as AuthUser;
     const expertId = authUser.id;
@@ -83,7 +83,7 @@ router.get('/', authenticateUser, async (req: Request, res: Response) => {
 });
 
 // POST /api/expert/notifications/:id/read - Marquer une notification comme lue
-router.post('/:id/read', authenticateUser, async (req: Request, res: Response) => {
+router.post('/:id/read', async (req: Request, res: Response) => {
   try {
     const authUser = req.user as AuthUser;
     const expertId = authUser.id;
@@ -145,7 +145,7 @@ router.post('/:id/read', authenticateUser, async (req: Request, res: Response) =
 });
 
 // POST /api/expert/notifications/mark-all-read - Marquer toutes les notifications comme lues
-router.post('/mark-all-read', authenticateUser, async (req: Request, res: Response) => {
+router.post('/mark-all-read', async (req: Request, res: Response) => {
   try {
     const authUser = req.user as AuthUser;
     const expertId = authUser.id;
@@ -191,7 +191,7 @@ router.post('/mark-all-read', authenticateUser, async (req: Request, res: Respon
 });
 
 // DELETE /api/expert/notifications/:id - Supprimer une notification
-router.delete('/:id', authenticateUser, async (req: Request, res: Response) => {
+router.delete('/:id', async (req: Request, res: Response) => {
   try {
     const authUser = req.user as AuthUser;
     const expertId = authUser.id;
@@ -250,7 +250,7 @@ router.delete('/:id', authenticateUser, async (req: Request, res: Response) => {
 });
 
 // GET /api/expert/notifications/unread-count - Obtenir le nombre de notifications non lues
-router.get('/unread-count', authenticateUser, async (req: Request, res: Response) => {
+router.get('/unread-count', async (req: Request, res: Response) => {
   try {
     const authUser = req.user as AuthUser;
     const expertId = authUser.id;

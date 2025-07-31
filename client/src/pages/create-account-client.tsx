@@ -74,26 +74,28 @@ export default function CreateAccountClient() {
           if (!sessionData.success) {
             console.warn('Impossible de récupérer les données de session, continuation sans migration');
           } else {
-            // 2. Effectuer la migration avec les nouvelles routes
-            const migrationResponse = await fetch(`${import.meta.env.VITE_API_URL}/api/simulator/migrate/${sessionToken}`, {
+            // 2. Effectuer la migration avec les nouvelles routes unifiées
+            const migrationResponse = await fetch(`${import.meta.env.VITE_API_URL}/api/session-migration/migrate`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json'
               },
               body: JSON.stringify({
-                email: data.email,
-                nom: data.username, // Utiliser username comme nom
-                prenom: data.username, // Utiliser username comme prénom
-                societe: data.company_name,
-                telephone: data.phone_number,
-                adresse: data.address,
-                code_postal: data.postal_code,
-                ville: data.city,
-                pays: "France", // Valeur par défaut
-                siret: cleanSiren,
-                secteur_activite: "Non spécifié", // Valeur par défaut
-                chiffre_affaires: 0, // Valeur par défaut
-                nombre_employes: 0 // Valeur par défaut
+                sessionToken,
+                clientData: {
+                  email: data.email,
+                  password: data.password,
+                  username: data.username,
+                  company_name: data.company_name,
+                  phone_number: data.phone_number,
+                  address: data.address,
+                  city: data.city,
+                  postal_code: data.postal_code,
+                  siren: cleanSiren,
+                  secteurActivite: "Non spécifié", // Valeur par défaut
+                  nombreEmployes: 0, // Valeur par défaut
+                  revenuAnnuel: 0 // Valeur par défaut
+                }
               })
             });
 

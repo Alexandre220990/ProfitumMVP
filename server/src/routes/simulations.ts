@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 const fetch = require('node-fetch');
 import { PYTHON_API_URL } from '../config/api';
 import jwt from 'jsonwebtoken';
-import { authenticateUser } from '../middleware/authenticate';
+
 
 // Types pour l'authentification
 interface AuthUser {
@@ -127,7 +127,7 @@ router.get('/test-tables', async (req: Request, res: Response) => {
 });
 
 // Vérifier s'il existe une simulation récente pour le client (AVEC AUTHENTIFICATION) - OPTIMISÉ
-router.get('/check-recent/:clientId', authenticateUser, async (req: Request, res: Response) => {
+router.get('/check-recent/:clientId', async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
@@ -218,7 +218,7 @@ router.get('/check-recent/:clientId', authenticateUser, async (req: Request, res
 });
 
 // Route pour créer une simulation
-router.post('/', authenticateUser, async (req: Request, res: Response) => {
+router.post('/', async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
@@ -344,7 +344,7 @@ router.post('/', authenticateUser, async (req: Request, res: Response) => {
 });
 
 // Route pour récupérer les simulations d'un client
-router.get('/client/:clientId', authenticateUser, async (req: Request, res: Response) => {
+router.get('/client/:clientId', async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
@@ -392,7 +392,7 @@ router.get('/client/:clientId', authenticateUser, async (req: Request, res: Resp
 });
 
 // Route pour exporter une simulation
-router.post('/:id/export', authenticateUser, async (req: Request, res: Response) => {
+router.post('/:id/export', async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });

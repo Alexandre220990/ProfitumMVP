@@ -20,51 +20,10 @@ console.log(`SimulationRoutes - Utilisation de la clé API: ${supabaseKey.substr
 
 const supabase = createClient<Database>(supabaseUrl, supabaseKey);
 
-// Middleware d'authentification
-const authenticateUser = async (req: Request, res: Response, next: Function) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
 
-  if (!token) {
-    return res.status(401).json({ message: 'Token manquant' });
-  }
-
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default_secret');
-    
-    // Vérifier l'existence de l'utilisateur dans Supabase par email
-    const { data: user, error } = await supabase
-      .from('Client')
-      .select('*')
-      .eq('email', (decoded as any).email)
-      .single();
-      
-    if (error || !user) {
-      // Essayer dans la table Expert
-      const { data: expert, error: expertError } = await supabase
-        .from('Expert')
-        .select('*')
-        .eq('email', (decoded as any).email)
-        .single();
-        
-      if (expertError || !expert) {
-        return res.status(403).json({ message: 'Utilisateur non trouvé' });
-      }
-      
-      (req as any).user = expert;
-    } else {
-      (req as any).user = user;
-    }
-    
-    next();
-    return;
-  } catch (error) {
-    return res.status(401).json({ message: 'Token invalide' });
-  }
-};
 
 // Route pour récupérer les questions
-router.get('/questions', authenticateUser, async (req: Request, res: Response) => {
+router.get('/questions', async (req: Request, res: Response) => {
   try {
     console.log('Récupération des questions de simulation');
     
@@ -138,7 +97,7 @@ router.get('/questions', authenticateUser, async (req: Request, res: Response) =
 });
 
 // Route pour créer une nouvelle simulation
-router.post('/', authenticateUser, async (req: Request, res: Response) => {
+router.post('/', async (req: Request, res: Response) => {
   try {
     const { client_id, answers } = req.body;
     
@@ -195,7 +154,7 @@ router.post('/', authenticateUser, async (req: Request, res: Response) => {
 });
 
 // Route pour terminer une simulation
-router.post('/:id/terminer', authenticateUser, async (req: Request, res: Response) => {
+router.post('/:id/terminer', async (req: Request, res: Response) => {
   try {
     const simulationId = parseInt(req.params.id);
     
@@ -237,7 +196,7 @@ router.post('/:id/terminer', authenticateUser, async (req: Request, res: Respons
 });
 
 // Route pour sauvegarder les réponses
-router.post('/:id/answers', authenticateUser, async (req: Request, res: Response) => {
+router.post('/:id/answers', async (req: Request, res: Response) => {
   try {
     const simulationId = parseInt(req.params.id);
     const { answers } = req.body;
@@ -284,7 +243,7 @@ router.post('/:id/answers', authenticateUser, async (req: Request, res: Response
 });
 
 // Route pour récupérer les réponses d'une simulation
-router.get('/:id/answers', authenticateUser, async (req: Request, res: Response) => {
+router.get('/:id/answers', async (req: Request, res: Response) => {
   try {
     const simulationId = parseInt(req.params.id);
     
@@ -326,7 +285,7 @@ router.get('/:id/answers', authenticateUser, async (req: Request, res: Response)
 });
 
 // Route pour traiter une réponse en temps réel
-router.post('/:id/answer', authenticateUser, async (req: Request, res: Response) => {
+router.post('/:id/answer', async (req: Request, res: Response) => {
   try {
     const simulationId = parseInt(req.params.id);
     const { questionId, answer, timestamp } = req.body;

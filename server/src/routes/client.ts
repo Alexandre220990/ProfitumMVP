@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { asyncHandler } from '../utils/asyncHandler';
 import { AuthUser } from '../types/auth';
 import { NotificationService } from '../services/NotificationService';
-import { authenticateUser } from '../middleware/authenticate';
+
 
 const router = express.Router();
 const supabase = createClient(
@@ -12,7 +12,7 @@ const supabase = createClient(
 );
 
 // Route pour obtenir le profil client
-router.get('/profile', authenticateUser, async (req: Request, res: Response) => {
+router.get('/profile', async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
@@ -48,7 +48,7 @@ router.get('/profile', authenticateUser, async (req: Request, res: Response) => 
 });
 
 // Route pour mettre à jour le profil client
-router.put('/profile', authenticateUser, async (req: Request, res: Response) => {
+router.put('/profile', async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
@@ -495,7 +495,7 @@ router.put('/produits-eligibles/:id/workflow', async (req, res) => {
 });
 
 // Route pour obtenir les assignations d'un client
-router.get('/:clientId/assignments', authenticateUser, async (req: Request, res: Response) => {
+router.get('/:clientId/assignments', async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });

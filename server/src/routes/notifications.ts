@@ -1,7 +1,7 @@
 import express, { Router, Request, Response } from 'express';
 import { createClient } from '@supabase/supabase-js';
 import { asyncHandler } from '../utils/asyncHandler';
-import { authenticateUser, requireUserType } from '../middleware/authenticate';
+import { requireUserType } from '../middleware/auth-enhanced';
 
 import * as webpush from 'web-push';
 
@@ -51,7 +51,7 @@ interface NotificationData {
 }
 
 // POST /api/notifications - Créer une notification
-router.post('/', authenticateUser, asyncHandler(async (req, res) => {
+router.post('/', asyncHandler(async (req, res) => {
   try {
     const userId = (req as any).user.id;
     const { user_id, user_type, event_id, event_title, type, message } = req.body;
@@ -111,7 +111,7 @@ router.post('/', authenticateUser, asyncHandler(async (req, res) => {
 }));
 
 // GET /api/notifications - Récupérer les notifications
-router.get('/', authenticateUser, asyncHandler(async (req, res) => {
+router.get('/', asyncHandler(async (req, res) => {
   try {
     const userId = (req as any).user.id;
     const { page = 1, limit = 20, type, priority, read } = req.query;
@@ -166,7 +166,7 @@ router.get('/', authenticateUser, asyncHandler(async (req, res) => {
 }));
 
 // POST /api/notifications/push/subscribe - S'abonner aux notifications push
-router.post('/push/subscribe', authenticateUser, asyncHandler(async (req, res) => {
+router.post('/push/subscribe', asyncHandler(async (req, res) => {
   try {
     const userId = (req as any).user.id;
     const { subscription }: { subscription: PushSubscription } = req.body;
@@ -228,7 +228,7 @@ router.post('/push/subscribe', authenticateUser, asyncHandler(async (req, res) =
 }));
 
 // POST /api/notifications/push/unsubscribe - Se désabonner des notifications push
-router.post('/push/unsubscribe', authenticateUser, asyncHandler(async (req, res) => {
+router.post('/push/unsubscribe', asyncHandler(async (req, res) => {
   try {
     const userId = (req as any).user.id;
 
@@ -259,7 +259,7 @@ router.post('/push/unsubscribe', authenticateUser, asyncHandler(async (req, res)
 }));
 
 // POST /api/notifications/push/send - Envoyer une notification push
-router.post('/push/send', authenticateUser, requireUserType('admin'), asyncHandler(async (req, res) => {
+router.post('/push/send', requireUserType('admin'), asyncHandler(async (req, res) => {
   try {
     const { userId, notification }: { userId: string; notification: NotificationData } = req.body;
 
@@ -351,7 +351,7 @@ router.post('/push/send', authenticateUser, requireUserType('admin'), asyncHandl
 }));
 
 // PUT /api/notifications/:id/read - Marquer une notification comme lue
-router.put('/:id/read', authenticateUser, asyncHandler(async (req, res) => {
+router.put('/:id/read', asyncHandler(async (req, res) => {
   try {
     const userId = (req as any).user.id;
     const { id } = req.params;
@@ -383,7 +383,7 @@ router.put('/:id/read', authenticateUser, asyncHandler(async (req, res) => {
 }));
 
 // PUT /api/notifications/:id/star - Marquer une notification comme favori
-router.put('/:id/star', authenticateUser, asyncHandler(async (req, res) => {
+router.put('/:id/star', asyncHandler(async (req, res) => {
   try {
     const userId = (req as any).user.id;
     const { id } = req.params;
@@ -415,7 +415,7 @@ router.put('/:id/star', authenticateUser, asyncHandler(async (req, res) => {
 }));
 
 // DELETE /api/notifications/:id - Supprimer une notification
-router.delete('/:id', authenticateUser, asyncHandler(async (req, res) => {
+router.delete('/:id', asyncHandler(async (req, res) => {
   try {
     const userId = (req as any).user.id;
     const { id } = req.params;
@@ -443,7 +443,7 @@ router.delete('/:id', authenticateUser, asyncHandler(async (req, res) => {
 }));
 
 // GET /api/notifications/preferences - Récupérer les préférences
-router.get('/preferences', authenticateUser, asyncHandler(async (req, res) => {
+router.get('/preferences', asyncHandler(async (req, res) => {
   try {
     const userId = (req as any).user.id;
 
@@ -488,7 +488,7 @@ router.get('/preferences', authenticateUser, asyncHandler(async (req, res) => {
 }));
 
 // PUT /api/notifications/preferences - Mettre à jour les préférences
-router.put('/preferences', authenticateUser, asyncHandler(async (req, res) => {
+router.put('/preferences', asyncHandler(async (req, res) => {
   try {
     const userId = (req as any).user.id;
     const updates = req.body;

@@ -1,5 +1,5 @@
 import express, { Router, Request, Response } from 'express';
-import { authenticateUser } from '../middleware/authenticate';
+
 import { AuthUser } from '../types/auth';
 import { supabase } from '../lib/supabase';
 import { ReminderService } from '../services/reminderService';
@@ -11,7 +11,7 @@ const reminderService = new ReminderService();
 /**
  * GET /api/reminders - Récupérer les relances de l'utilisateur connecté
  */
-router.get('/', authenticateUser, asyncHandler(async (req: Request, res: Response) => {
+router.get('/', asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }
@@ -72,7 +72,7 @@ router.get('/', authenticateUser, asyncHandler(async (req: Request, res: Respons
 /**
  * GET /api/reminders/:id - Récupérer une relance spécifique
  */
-router.get('/:id', authenticateUser, asyncHandler(async (req: Request, res: Response) => {
+router.get('/:id', asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }
@@ -120,7 +120,7 @@ router.get('/:id', authenticateUser, asyncHandler(async (req: Request, res: Resp
 /**
  * PUT /api/reminders/:id/handle - Marquer une relance comme traitée
  */
-router.put('/:id/handle', authenticateUser, asyncHandler(async (req: Request, res: Response) => {
+router.put('/:id/handle', asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }
@@ -180,7 +180,7 @@ router.put('/:id/handle', authenticateUser, asyncHandler(async (req: Request, re
 /**
  * POST /api/reminders/check - Déclencher manuellement la vérification des relances (admin uniquement)
  */
-router.post('/check', authenticateUser, asyncHandler(async (req: Request, res: Response) => {
+router.post('/check', asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }
@@ -209,7 +209,7 @@ router.post('/check', authenticateUser, asyncHandler(async (req: Request, res: R
 /**
  * GET /api/reminders/stats - Statistiques des relances (admin uniquement)
  */
-router.get('/stats/overview', authenticateUser, asyncHandler(async (req: Request, res: Response) => {
+router.get('/stats/overview', asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }
@@ -300,7 +300,7 @@ router.get('/stats/overview', authenticateUser, asyncHandler(async (req: Request
 /**
  * PUT /api/reminders/config - Mettre à jour la configuration des relances (admin uniquement)
  */
-router.put('/config', authenticateUser, asyncHandler(async (req: Request, res: Response) => {
+router.put('/config', asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }
