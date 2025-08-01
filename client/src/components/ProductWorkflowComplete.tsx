@@ -9,6 +9,9 @@ import { useToast } from "@/hooks/use-toast";
 import { FileSignature, CheckCircle, Clock, Users, FileText, Shield, Play, AlertCircle, DollarSign } from "lucide-react";
 import { signCharte, checkCharteSignature } from "@/lib/charte-signature-api";
 import { useDossierSteps } from '@/hooks/use-dossier-steps';
+import TICPEWorkflow from './TICPEWorkflow';
+import URSSAFWorkflow from './URSSAFWorkflow';
+import FONCIERWorkflow from './FONCIERWorkflow';
 
 interface ProductWorkflowCompleteProps {
   clientProduitId: string;
@@ -205,6 +208,45 @@ export default function ProductWorkflowComplete({
           <p className="text-gray-600">Chargement...</p>
         </div>
       </div>
+    );
+  }
+
+  // Vérifier le type de produit pour utiliser le workflow spécialisé
+  const productType = productName.toLowerCase();
+  
+  if (productType.includes('ticpe')) {
+    return (
+      <TICPEWorkflow
+        clientProduitId={clientProduitId}
+        companyName={companyName}
+        estimatedAmount={estimatedAmount}
+        onWorkflowComplete={onStepUpdate}
+        className={className}
+      />
+    );
+  }
+  
+  if (productType.includes('urssaf')) {
+    return (
+      <URSSAFWorkflow
+        clientProduitId={clientProduitId}
+        companyName={companyName}
+        estimatedAmount={estimatedAmount}
+        onWorkflowComplete={onStepUpdate}
+        className={className}
+      />
+    );
+  }
+  
+  if (productType.includes('foncier')) {
+    return (
+      <FONCIERWorkflow
+        clientProduitId={clientProduitId}
+        companyName={companyName}
+        estimatedAmount={estimatedAmount}
+        onWorkflowComplete={onStepUpdate}
+        className={className}
+      />
     );
   }
 

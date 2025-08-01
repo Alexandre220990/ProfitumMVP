@@ -27,6 +27,8 @@ export interface Message {
     audit_id?: string;
     reminder_type?: string;
     attachments?: FileAttachment[];
+    encrypted?: boolean;
+    original_content?: string;
   };
   avatar?: string;
   is_read: boolean;
@@ -48,10 +50,21 @@ export interface Conversation {
   description?: string;
   avatar?: string;
   last_message_at?: string;
+  last_message?: Message;
   unread_count: number;
   is_archived: boolean;
   created_at: string;
   updated_at: string;
+  // Nouvelles propriétés pour les conversations automatiques
+  otherParticipant?: {
+    id: string;
+    type: 'client' | 'expert' | 'admin';
+    name: string;
+    isOnline: boolean;
+  };
+  participant_ids?: string[];
+  dossier_id?: string;
+  auto_created?: boolean;
 }
 
 export interface ConversationParticipant {
@@ -99,6 +112,8 @@ export interface CreateConversationRequest {
   conversation_type: 'private' | 'support';
   title?: string;
   description?: string;
+  dossier_id?: string;
+  auto_created?: boolean;
 }
 
 export interface SendMessageRequest {
@@ -142,4 +157,128 @@ export interface ConversationWithParticipant extends Conversation {
     name: string;
     isOnline: boolean;
   };
+}
+
+// ============================================================================
+// TYPES POUR L'INTÉGRATION CALENDRIER
+// ============================================================================
+
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  description?: string;
+  start_date: string;
+  end_date: string;
+  type: 'appointment' | 'deadline' | 'meeting' | 'task' | 'reminder';
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+  category: 'client' | 'expert' | 'admin' | 'system' | 'collaborative';
+  dossier_id?: string;
+  dossier_name?: string;
+  client_id?: string;
+  expert_id?: string;
+  location?: string;
+  is_online?: boolean;
+  meeting_url?: string;
+  phone_number?: string;
+  color: string;
+  is_recurring?: boolean;
+  recurrence_rule?: string;
+  participants?: string[];
+  reminders?: Array<{ type: 'email' | 'push' | 'sms', time: number }>;
+  metadata?: any;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateCalendarEventRequest {
+  title: string;
+  description?: string;
+  start_date: string;
+  end_date: string;
+  type: 'appointment' | 'deadline' | 'meeting' | 'task' | 'reminder';
+  category: 'client' | 'expert' | 'admin' | 'system' | 'collaborative';
+  is_online?: boolean;
+  meeting_url?: string;
+  phone_number?: string;
+  participants?: string[];
+  reminders?: Array<{ type: 'email' | 'push' | 'sms', time: number }>;
+  metadata?: any;
+}
+
+// ============================================================================
+// TYPES POUR LES SIGNALEMENTS
+// ============================================================================
+
+export interface ConversationReport {
+  conversation_id: string;
+  reason: string;
+  reported_user_id: string;
+  reported_user_type: 'client' | 'expert' | 'admin';
+  reporter_id: string;
+  reporter_type: 'client' | 'expert' | 'admin';
+  description?: string;
+  evidence?: string[];
+  created_at: string;
+}
+
+export interface ReportConversationRequest {
+  conversation_id: string;
+  reason: string;
+  reported_user_id: string;
+  reported_user_type: 'client' | 'expert' | 'admin';
+  description?: string;
+  evidence?: string[];
+}
+
+// ============================================================================
+// TYPES POUR LES NOTIFICATIONS PUSH
+// ============================================================================
+
+export interface PushNotification {
+  id: string;
+  user_id: string;
+  title: string;
+  body: string;
+  data?: any;
+  icon?: string;
+  badge?: string;
+  tag?: string;
+  requireInteraction?: boolean;
+  silent?: boolean;
+  created_at: string;
+}
+
+export interface PushNotificationRequest {
+  user_id: string;
+  title: string;
+  body: string;
+  data?: any;
+  icon?: string;
+  badge?: string;
+  tag?: string;
+  requireInteraction?: boolean;
+  silent?: boolean;
+}
+
+// ============================================================================
+// TYPES POUR LES CONVERSATIONS AUTOMATIQUES
+// ============================================================================
+
+export interface ExpertAssignment {
+  id: string;
+  expert_id: string;
+  client_id: string;
+  dossier_id: string;
+  status: 'pending' | 'validated' | 'rejected' | 'completed';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AutoConversationConfig {
+  enabled: boolean;
+  trigger_on_validation: boolean;
+  include_admin_support: boolean;
+  default_message?: string;
+  auto_archive_after_days?: number;
 } 

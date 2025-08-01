@@ -5,12 +5,12 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { User, Settings, LogOut, Users, FileText, HelpCircle, BarChart, MessageSquare, Bell } from "lucide-react";
-import UnifiedNotificationCenter from "./UnifiedNotificationCenter";
+import { useNotificationBadge } from "@/hooks/useNotificationBadge";
 
 export default function HeaderAdmin() { 
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [notifOpen, setNotifOpen] = useState(false);
+  const { unreadCount, hasNotifications } = useNotificationBadge();
 
   const handleLogout = async () => { 
     await logout();
@@ -47,13 +47,17 @@ export default function HeaderAdmin() {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => setNotifOpen(true)}
+          onClick={() => navigate('/notification-center')}
           className="relative p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all"
           aria-label="Ouvrir le centre de notifications"
         >
           <Bell className="h-5 w-5" />
+          {hasNotifications && (
+            <div className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </div>
+          )}
         </Button>
-        {notifOpen && <UnifiedNotificationCenter />}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button className="relative rounded-full p-1 border-none shadow-md bg-gray-100 hover:bg-gray-200 transition-all">
@@ -81,9 +85,7 @@ export default function HeaderAdmin() {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      {notifOpen && (
-        <div className="fixed inset-0 z-50" onClick={() => setNotifOpen(false)} aria-label="Fermer le centre de notifications" tabIndex={-1} />
-      )}
+
     </header>
   );
 } 

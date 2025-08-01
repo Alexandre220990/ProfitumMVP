@@ -85,18 +85,23 @@ const AdminUserSelector: React.FC<AdminUserSelectorProps> = ({
     try {
       setLoading(true);
       const response = await api.get('/unified-messaging/admin/users', {
-        params: { limit: 100 }
+        params: { 
+          limit: 100,
+          type: userType === 'all' ? undefined : userType
+        }
       });
 
       if (response.data.success) {
         setUsers(response.data.data.users);
+      } else {
+        throw new Error(response.data.message || 'Erreur lors du chargement');
       }
     } catch (error) {
       console.error('❌ Erreur chargement utilisateurs:', error);
       toast({
         variant: 'destructive',
         title: 'Erreur',
-        description: 'Impossible de charger les utilisateurs'
+        description: 'Impossible de charger les utilisateurs. Vérifiez votre connexion.'
       });
     } finally {
       setLoading(false);

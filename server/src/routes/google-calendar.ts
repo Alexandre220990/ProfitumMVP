@@ -607,6 +607,135 @@ router.post('/sync', googleCalendarLimiter, asyncHandler(async (req: Request, re
 }));
 
 // ============================================================================
+// ROUTE DE SYNCHRONISATION D'ÉVÉNEMENT
+// ============================================================================
+
+/**
+ * POST /api/google-calendar/sync-event - Synchroniser un événement avec Google Calendar
+ */
+router.post('/sync-event', googleCalendarLimiter, asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) {
+    return res.status(401).json({ success: false, message: 'Non authentifié' });
+  }
+
+  const authUser = req.user as AuthUser;
+  const { event_id, integration_id } = req.body;
+
+  if (!event_id || !integration_id) {
+    return res.status(400).json({
+      success: false,
+      message: 'event_id et integration_id sont requis'
+    });
+  }
+
+  try {
+    // 1. Vérifier que l'intégration appartient à l'utilisateur
+    const { data: integration, error: integrationError } = await supabase
+      .from('GoogleCalendarIntegration')
+      .select('*')
+      .eq('id', integration_id)
+      .eq('user_id', authUser.id)
+      .eq('is_active', true)
+      .single();
+
+    if (integrationError || !integration) {
+      return res.status(404).json({
+        success: false,
+        message: 'Intégration Google Calendar non trouvée ou inactive'
+      });
+    }
+
+    // 2. Récupérer l'événement
+    const { data: event, error: eventError } = await supabase
+      .from('CalendarEvent')
+      .select('*')
+      .eq('id', event_id)
+      .single();
+
+    if (eventError || !event) {
+      return res.status(404).json({
+        success: false,
+        message: 'Événement non trouvé'
+      });
+    }
+
+    // 3. Vérifier les permissions (créateur ou participant)
+    const isCreator = event.created_by === authUser.id;
+    const isParticipant = await checkEventParticipation(event_id, authUser.id);
+
+    if (!isCreator && !isParticipant) {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès non autorisé à cet événement'
+      });
+    }
+
+    // 4. Synchroniser avec Google Calendar
+    const googleEventId = await googleCalendarService.syncEventToGoogleCalendar(
+      integration,
+      event
+    );
+
+    // 5. Mettre à jour l'événement avec l'ID Google
+    await supabase
+      .from('CalendarEvent')
+      .update({
+        metadata: {
+          ...event.metadata,
+          google_calendar_id: googleEventId,
+          last_sync: new Date().toISOString()
+        }
+      })
+      .eq('id', event_id);
+
+    // 6. Logger l'activité
+    await logGoogleCalendarActivity(
+      authUser.id,
+      authUser.type,
+      'sync_event',
+      'event',
+      event_id,
+      {
+        integration_id,
+        google_event_id: googleEventId,
+        sync_direction: 'export'
+      }
+    );
+
+    return res.json({
+      success: true,
+      data: {
+        event_id,
+        google_event_id: googleEventId,
+        sync_status: 'completed'
+      },
+      message: 'Événement synchronisé avec Google Calendar'
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur synchronisation événement:', error);
+    
+    // Logger l'erreur
+    await logGoogleCalendarActivity(
+      authUser.id,
+      authUser.type,
+      'sync_event_error',
+      'event',
+      event_id,
+      {
+        integration_id,
+        error: error instanceof Error ? error.message : 'Erreur inconnue'
+      }
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la synchronisation avec Google Calendar'
+    });
+  }
+}));
+
+// ============================================================================
 // FONCTIONS UTILITAIRES
 // ============================================================================
 
@@ -633,6 +762,17 @@ async function logGoogleCalendarActivity(
   } catch (error) {
     console.error('❌ Erreur log activité Google Calendar:', error);
   }
+}
+
+async function checkEventParticipation(eventId: string, userId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('CalendarEventParticipant')
+    .select('id')
+    .eq('event_id', eventId)
+    .eq('user_id', userId)
+    .single();
+
+  return !error && !!data;
 }
 
 export default router; 

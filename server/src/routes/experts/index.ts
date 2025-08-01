@@ -13,11 +13,14 @@ const router = Router();
 // Route publique pour récupérer les experts approuvés (marketplace)
 router.get('/', asyncHandler(async (req, res) => {
   try {
-    const { data: experts, error } = await supabase
+    const { speciality, experience, rating, availability } = req.query;
+    
+    let query = supabase
       .from('Expert')
       .select(`
         id,
         name,
+        email,
         company_name,
         specializations,
         experience,
@@ -28,11 +31,32 @@ router.get('/', asyncHandler(async (req, res) => {
         status,
         disponibilites,
         certifications,
+        completed_projects,
         created_at
       `)
       .eq('status', 'active')
-      .eq('approval_status', 'approved')
-      .order('rating', { ascending: false });
+      .eq('approval_status', 'approved');
+
+    // Filtres optionnels
+    if (speciality) {
+      query = query.contains('specializations', [speciality]);
+    }
+    
+    if (experience) {
+      const minExperience = parseInt(experience as string);
+      query = query.gte('experience', minExperience);
+    }
+    
+    if (rating) {
+      const minRating = parseFloat(rating as string);
+      query = query.gte('rating', minRating);
+    }
+    
+    if (availability) {
+      query = query.eq('disponibilites', availability);
+    }
+
+    const { data: experts, error } = await query.order('rating', { ascending: false });
 
     if (error) {
       throw error;

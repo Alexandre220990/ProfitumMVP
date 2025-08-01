@@ -66,7 +66,9 @@ import googleCalendarRoutes from './routes/google-calendar';
 import debugRoutes from './routes/debug';
 import diagnosticRoutes from './routes/diagnostic';
 import dossierStepsRoutes from './routes/dossier-steps';
+import documentsRoutes from './routes/documents';
 import { getCorsConfig, corsMiddleware } from './config/cors';
+import { startCalendarRemindersCron } from './cron/calendar-reminders';
 
 // Créer l'application Express
 const app = express();
@@ -254,6 +256,9 @@ app.use('/api/diagnostic', diagnosticRoutes);
 // Route de gestion des étapes de dossier
 app.use('/api/dossier-steps', dossierStepsRoutes);
 
+// Routes documents - PROTÉGÉES avec authentification
+app.use('/api/documents', documentsRoutes);
+
 // Route de fallback pour les routes non trouvées
 app.use('/api/*', (req, res) => {
   console.log(`❌ Route non trouvée: ${req.method} ${req.originalUrl}`);
@@ -283,6 +288,14 @@ server.listen(PORT, HOST, () => {
     console.log('✅ Service WebSocket unifié initialisé (port 5003)');
   } catch (error) {
     console.error('❌ Erreur initialisation WebSocket unifié:', error);
+  }
+  
+  // Démarrer le cron job pour les rappels calendrier
+  try {
+    startCalendarRemindersCron();
+    console.log('✅ Cron job rappels calendrier démarré');
+  } catch (error) {
+    console.error('❌ Erreur démarrage cron job rappels calendrier:', error);
   }
   
   // monitoringSystem.recordAuditLog({

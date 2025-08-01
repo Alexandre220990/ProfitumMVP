@@ -1,7 +1,7 @@
 import { Page, expect } from '@playwright/test';
 
 export class TestHelpers {
-  constructor(private page: Page) {}
+  constructor(protected page: Page) {}
 
   // Attendre et vérifier qu'un élément est visible
   async waitForElement(selector: string, timeout = 10000) {

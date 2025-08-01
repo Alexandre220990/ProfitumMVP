@@ -42,7 +42,21 @@ export enum NotificationType {
   EXPERT_REJECTED = 'expert_rejected',
   EXPERT_ACCOUNT_CREATED = 'expert_account_created',
   EXPERT_PROFILE_UPDATED = 'expert_profile_updated',
-  EXPERT_STATUS_CHANGED = 'expert_status_changed'
+  EXPERT_STATUS_CHANGED = 'expert_status_changed',
+  
+  // Calendrier
+  CALENDAR_EVENT_CREATED = 'calendar_event_created',
+  CALENDAR_EVENT_UPDATED = 'calendar_event_updated',
+  CALENDAR_EVENT_DELETED = 'calendar_event_deleted',
+  CALENDAR_EVENT_REMINDER = 'calendar_event_reminder',
+  CALENDAR_EVENT_INVITATION = 'calendar_event_invitation',
+  CALENDAR_EVENT_ACCEPTED = 'calendar_event_accepted',
+  CALENDAR_EVENT_DECLINED = 'calendar_event_declined',
+  
+  // Messages
+  MESSAGE_RECEIVED = 'message_received',
+  MESSAGE_URGENT = 'message_urgent',
+  MESSAGE_RESPONSE = 'message_response'
 }
 
 export enum NotificationPriority {
@@ -234,6 +248,190 @@ export class NotificationService {
       }],
       
       [NotificationType.DEADLINE_REMINDER, {
+        id: 'deadline_reminder',
+        type: NotificationType.DEADLINE_REMINDER,
+        title: 'Rappel d\'échéance',
+        message: 'Échéance approchante : {deadline_description} - {deadline_date}',
+        emailSubject: 'Rappel d\'échéance - {deadline_description}',
+        emailBody: `
+          <h2>Rappel d'échéance</h2>
+          <p>Bonjour {recipient_name},</p>
+          <p>Une échéance importante approche :</p>
+          <ul>
+            <li><strong>Description :</strong> {deadline_description}</li>
+            <li><strong>Date limite :</strong> {deadline_date}</li>
+            <li><strong>Type :</strong> {deadline_type}</li>
+            <li><strong>Priorité :</strong> {priority}</li>
+          </ul>
+          <p>Veuillez prendre les mesures nécessaires avant cette date.</p>
+        `,
+        pushTitle: 'Rappel d\'échéance',
+        pushBody: '{deadline_description} - {deadline_date}',
+        priority: NotificationPriority.HIGH,
+        channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL, NotificationChannel.PUSH],
+        variables: ['deadline_description', 'deadline_date', 'deadline_type', 'priority', 'recipient_name']
+      }],
+      
+      // Templates pour les événements calendrier
+      [NotificationType.CALENDAR_EVENT_CREATED, {
+        id: 'calendar_event_created',
+        type: NotificationType.CALENDAR_EVENT_CREATED,
+        title: 'Nouvel événement calendrier',
+        message: 'Nouvel événement : "{event_title}" le {event_date} à {event_time}',
+        emailSubject: 'Nouvel événement - {event_title}',
+        emailBody: `
+          <h2>Nouvel événement calendrier</h2>
+          <p>Bonjour {recipient_name},</p>
+          <p>Un nouvel événement a été créé :</p>
+          <ul>
+            <li><strong>Titre :</strong> {event_title}</li>
+            <li><strong>Date :</strong> {event_date}</li>
+            <li><strong>Heure :</strong> {event_time}</li>
+            <li><strong>Durée :</strong> {event_duration}</li>
+            <li><strong>Type :</strong> {event_type}</li>
+            <li><strong>Lieu :</strong> {event_location}</li>
+            <li><strong>Description :</strong> {event_description}</li>
+          </ul>
+          <p><a href="{event_url}">Voir l'événement</a></p>
+        `,
+        pushTitle: 'Nouvel événement',
+        pushBody: '{event_title} - {event_date} {event_time}',
+        priority: NotificationPriority.MEDIUM,
+        channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL, NotificationChannel.PUSH],
+        variables: ['event_title', 'event_date', 'event_time', 'event_duration', 'event_type', 'event_location', 'event_description', 'event_url', 'recipient_name']
+      }],
+      
+      [NotificationType.CALENDAR_EVENT_UPDATED, {
+        id: 'calendar_event_updated',
+        type: NotificationType.CALENDAR_EVENT_UPDATED,
+        title: 'Événement modifié',
+        message: 'L\'événement "{event_title}" a été modifié',
+        emailSubject: 'Événement modifié - {event_title}',
+        emailBody: `
+          <h2>Événement modifié</h2>
+          <p>Bonjour {recipient_name},</p>
+          <p>L'événement suivant a été modifié :</p>
+          <ul>
+            <li><strong>Titre :</strong> {event_title}</li>
+            <li><strong>Nouvelle date :</strong> {event_date}</li>
+            <li><strong>Nouvelle heure :</strong> {event_time}</li>
+            <li><strong>Modifié par :</strong> {modified_by}</li>
+            <li><strong>Changements :</strong> {changes}</li>
+          </ul>
+          <p><a href="{event_url}">Voir l'événement</a></p>
+        `,
+        pushTitle: 'Événement modifié',
+        pushBody: '{event_title} - {changes}',
+        priority: NotificationPriority.MEDIUM,
+        channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL, NotificationChannel.PUSH],
+        variables: ['event_title', 'event_date', 'event_time', 'modified_by', 'changes', 'event_url', 'recipient_name']
+      }],
+      
+      [NotificationType.CALENDAR_EVENT_REMINDER, {
+        id: 'calendar_event_reminder',
+        type: NotificationType.CALENDAR_EVENT_REMINDER,
+        title: 'Rappel événement',
+        message: 'Rappel : "{event_title}" dans {reminder_time}',
+        emailSubject: 'Rappel événement - {event_title}',
+        emailBody: `
+          <h2>Rappel événement</h2>
+          <p>Bonjour {recipient_name},</p>
+          <p>Rappel pour l'événement suivant :</p>
+          <ul>
+            <li><strong>Titre :</strong> {event_title}</li>
+            <li><strong>Date :</strong> {event_date}</li>
+            <li><strong>Heure :</strong> {event_time}</li>
+            <li><strong>Lieu :</strong> {event_location}</li>
+            <li><strong>Rappel dans :</strong> {reminder_time}</li>
+          </ul>
+          <p><a href="{event_url}">Voir l'événement</a></p>
+        `,
+        pushTitle: 'Rappel événement',
+        pushBody: '{event_title} dans {reminder_time}',
+        priority: NotificationPriority.HIGH,
+        channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL, NotificationChannel.PUSH, NotificationChannel.SMS],
+        variables: ['event_title', 'event_date', 'event_time', 'event_location', 'reminder_time', 'event_url', 'recipient_name']
+      }],
+      
+      [NotificationType.CALENDAR_EVENT_INVITATION, {
+        id: 'calendar_event_invitation',
+        type: NotificationType.CALENDAR_EVENT_INVITATION,
+        title: 'Invitation événement',
+        message: 'Vous êtes invité à "{event_title}" le {event_date}',
+        emailSubject: 'Invitation - {event_title}',
+        emailBody: `
+          <h2>Invitation événement</h2>
+          <p>Bonjour {recipient_name},</p>
+          <p>Vous êtes invité à l'événement suivant :</p>
+          <ul>
+            <li><strong>Titre :</strong> {event_title}</li>
+            <li><strong>Date :</strong> {event_date}</li>
+            <li><strong>Heure :</strong> {event_time}</li>
+            <li><strong>Lieu :</strong> {event_location}</li>
+            <li><strong>Organisateur :</strong> {organizer_name}</li>
+            <li><strong>Description :</strong> {event_description}</li>
+          </ul>
+          <p>
+            <a href="{accept_url}" style="background: green; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-right: 10px;">Accepter</a>
+            <a href="{decline_url}" style="background: red; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Décliner</a>
+          </p>
+        `,
+        pushTitle: 'Invitation événement',
+        pushBody: '{event_title} - {event_date}',
+        priority: NotificationPriority.MEDIUM,
+        channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL, NotificationChannel.PUSH],
+        variables: ['event_title', 'event_date', 'event_time', 'event_location', 'organizer_name', 'event_description', 'accept_url', 'decline_url', 'recipient_name']
+      }],
+      
+      [NotificationType.MESSAGE_RECEIVED, {
+        id: 'message_received',
+        type: NotificationType.MESSAGE_RECEIVED,
+        title: 'Nouveau message',
+        message: 'Nouveau message de {sender_name} : "{message_preview}"',
+        emailSubject: 'Nouveau message - {sender_name}',
+        emailBody: `
+          <h2>Nouveau message</h2>
+          <p>Bonjour {recipient_name},</p>
+          <p>Vous avez reçu un nouveau message :</p>
+          <ul>
+            <li><strong>De :</strong> {sender_name}</li>
+            <li><strong>Objet :</strong> {conversation_title}</li>
+            <li><strong>Message :</strong> {message_preview}</li>
+            <li><strong>Date :</strong> {message_date}</li>
+          </ul>
+          <p><a href="{message_url}">Répondre</a></p>
+        `,
+        pushTitle: 'Nouveau message',
+        pushBody: '{sender_name} : {message_preview}',
+        priority: NotificationPriority.MEDIUM,
+        channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL, NotificationChannel.PUSH],
+        variables: ['sender_name', 'conversation_title', 'message_preview', 'message_date', 'message_url', 'recipient_name']
+      }],
+      
+      [NotificationType.MESSAGE_URGENT, {
+        id: 'message_urgent',
+        type: NotificationType.MESSAGE_URGENT,
+        title: '⚠️ Message urgent',
+        message: 'Message urgent de {sender_name} : "{message_preview}"',
+        emailSubject: '⚠️ MESSAGE URGENT - {sender_name}',
+        emailBody: `
+          <h2 style="color: red;">Message urgent</h2>
+          <p>Bonjour {recipient_name},</p>
+          <p>Vous avez reçu un message urgent :</p>
+          <ul>
+            <li><strong>De :</strong> {sender_name}</li>
+            <li><strong>Objet :</strong> {conversation_title}</li>
+            <li><strong>Message :</strong> {message_preview}</li>
+            <li><strong>Date :</strong> {message_date}</li>
+          </ul>
+          <p><a href="{message_url}">Répondre immédiatement</a></p>
+        `,
+        pushTitle: '⚠️ Message urgent',
+        pushBody: '{sender_name} : {message_preview}',
+        priority: NotificationPriority.URGENT,
+        channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL, NotificationChannel.PUSH, NotificationChannel.SMS],
+        variables: ['sender_name', 'conversation_title', 'message_preview', 'message_date', 'message_url', 'recipient_name']
+      }]
         id: 'deadline_reminder',
         type: NotificationType.DEADLINE_REMINDER,
         title: '⚠️ Échéance approche',

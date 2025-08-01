@@ -7,7 +7,7 @@
 -- ===== 1. VÉRIFICATION DE L'ÉTAT ACTUEL =====
 DO $$
 DECLARE
-    simulation_count INTEGER;
+    simulation_count INTEGER; 
     client_count INTEGER;
     notification_count INTEGER;
     conversation_count INTEGER;

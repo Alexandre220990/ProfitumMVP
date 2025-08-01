@@ -5,7 +5,7 @@ import { Briefcase, Calendar, MessageSquare, FileText, User, LogOut, Bell, Setti
 import Button from "@/components/ui/design-system/Button";
 import Badge from "@/components/ui/design-system/Badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import UnifiedNotificationCenter from "./UnifiedNotificationCenter";
+import { useNotificationBadge } from "@/hooks/useNotificationBadge";
 
 interface HeaderClientProps {
   onLogout?: () => void;
@@ -14,7 +14,7 @@ interface HeaderClientProps {
 export default function HeaderClient({ onLogout }: HeaderClientProps) { 
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [notifOpen, setNotifOpen] = useState(false);
+  const { unreadCount, hasNotifications } = useNotificationBadge();
 
   const handleLogout = async () => { 
     try {
@@ -102,16 +102,17 @@ export default function HeaderClient({ onLogout }: HeaderClientProps) {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setNotifOpen(true)}
+            onClick={() => navigate('/notification-center')}
             className="relative p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200"
             aria-label="Ouvrir le centre de notifications"
           >
             <Bell className="h-5 w-5" />
-            <Badge variant="primary" className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-xs">
-              2
-            </Badge>
+            {hasNotifications && (
+              <Badge variant="primary" className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-xs">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </Badge>
+            )}
           </Button>
-          {notifOpen && <UnifiedNotificationCenter />}
           {/* Menu utilisateur */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

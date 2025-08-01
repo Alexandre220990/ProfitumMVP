@@ -5,8 +5,10 @@ import { supabase } from '../lib/supabase';
 import { asyncHandler } from '../utils/asyncHandler';
 import { rateLimit } from 'express-rate-limit';
 import Joi from 'joi';
+import { NotificationService, NotificationType } from '../services/notification-service';
 
 const router = express.Router();
+const notificationService = new NotificationService();
 
 // ============================================================================
 // RATE LIMITING ET SÉCURITÉ
@@ -301,6 +303,54 @@ router.post('/events', calendarLimiter, validateEvent, asyncHandler(async (req: 
             time_minutes: reminder.time
           });
       }
+    }
+
+    // Envoyer les notifications aux participants
+    try {
+      // Notification pour l'organisateur
+      await notificationService.sendNotification(
+        authUser.id,
+        authUser.type,
+        NotificationType.CALENDAR_EVENT_CREATED,
+        {
+          event_title: event.title,
+          event_date: new Date(event.start_date).toLocaleDateString('fr-FR'),
+          event_time: new Date(event.start_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+          event_duration: `${Math.round((new Date(event.end_date).getTime() - new Date(event.start_date).getTime()) / (1000 * 60))} min`,
+          event_type: event.type,
+          event_location: event.location || 'Non spécifié',
+          event_description: event.description || 'Aucune description',
+          event_url: `${process.env.FRONTEND_URL}/calendar/event/${event.id}`,
+          recipient_name: authUser.name || 'Utilisateur'
+        }
+      );
+
+      // Notifications pour les participants si spécifiés
+      if (eventData.participants && Array.isArray(eventData.participants)) {
+        for (const participantId of eventData.participants) {
+          if (participantId !== authUser.id) {
+            await notificationService.sendNotification(
+              participantId,
+              'client', // TODO: Déterminer le type dynamiquement
+              NotificationType.CALENDAR_EVENT_INVITATION,
+              {
+                event_title: event.title,
+                event_date: new Date(event.start_date).toLocaleDateString('fr-FR'),
+                event_time: new Date(event.start_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+                event_location: event.location || 'Non spécifié',
+                organizer_name: authUser.name || 'Organisateur',
+                event_description: event.description || 'Aucune description',
+                accept_url: `${process.env.FRONTEND_URL}/calendar/event/${event.id}/accept`,
+                decline_url: `${process.env.FRONTEND_URL}/calendar/event/${event.id}/decline`,
+                recipient_name: 'Participant' // TODO: Récupérer le nom du participant
+              }
+            );
+          }
+        }
+      }
+    } catch (notificationError) {
+      console.warn('⚠️ Erreur envoi notifications calendrier:', notificationError);
+      // Ne pas faire échouer la création d'événement si les notifications échouent
     }
 
     return res.status(201).json({

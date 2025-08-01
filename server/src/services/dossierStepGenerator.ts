@@ -18,12 +18,13 @@ interface Client {
 // Configuration des étapes par type de produit
 const PRODUCT_STEPS_CONFIG: Record<string, Array<{
   name: string;
-  type: 'validation' | 'documentation' | 'expertise' | 'approval' | 'payment';
+  type: 'validation' | 'documentation' | 'expertise' | 'approval' | 'payment' | 'expert_selection';
   priority: 'low' | 'medium' | 'high' | 'critical';
   duration: number;
 }>> = {
   'TICPE': [
-    { name: 'Validation de l\'éligibilité', type: 'validation', priority: 'high', duration: 60 },
+    { name: 'Confirmer l\'éligibilité', type: 'validation', priority: 'critical', duration: 60 },
+    { name: 'Sélection de l\'expert', type: 'expert_selection', priority: 'high', duration: 120 },
     { name: 'Collecte des documents', type: 'documentation', priority: 'high', duration: 120 },
     { name: 'Audit technique', type: 'expertise', priority: 'critical', duration: 240 },
     { name: 'Validation finale', type: 'approval', priority: 'high', duration: 60 },
