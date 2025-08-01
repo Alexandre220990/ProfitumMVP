@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import CharteSignatureWorkflow from '@/components/CharteSignatureWorkflow';
+import ProductWorkflowComplete from '@/components/ProductWorkflowComplete';
 import { Fuel, TrendingUp, Shield, Clock, Calculator, Award, Truck, Building2, CheckCircle } from "lucide-react";
 import { config } from "@/config/env";
 import HeaderClient from "@/components/HeaderClient";
@@ -116,11 +116,11 @@ export default function TICPEProductPage() {
       {/* Header Client */}
       <HeaderClient />
 
-      {/* Process Workflow Optimisé */}
+      {/* Process Workflow Complet */}
       {clientProduit && clientProduit.id && (
         <div className="bg-white border-b mt-20">
           <div className="max-w-7xl mx-auto px-4 py-6">
-            <CharteSignatureWorkflow
+            <ProductWorkflowComplete
               clientProduitId={clientProduit.id}
               productName="TICPE"
               companyName={user?.company_name}
@@ -129,6 +129,10 @@ export default function TICPEProductPage() {
                 if (success) {
                   loadClientProduit();
                 }
+              }}
+              onStepUpdate={(stepId, updates) => {
+                console.log('Étape mise à jour:', stepId, updates);
+                loadClientProduit();
               }}
             />
           </div>
