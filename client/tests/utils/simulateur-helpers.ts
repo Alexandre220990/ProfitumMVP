@@ -2,7 +2,7 @@ import { Page, expect } from '@playwright/test';
 import { TestHelpers } from './test-helpers';
 
 export class SimulateurHelpers extends TestHelpers {
-  constructor(private page: Page) {
+  constructor(page: Page) {
     super(page);
   }
 

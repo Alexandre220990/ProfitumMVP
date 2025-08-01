@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { MessageSquare, Plus, Users } from "lucide-react";
 import HeaderAdmin from "@/components/HeaderAdmin";
-import { UnifiedMessagingApp } from "@/components/messaging/UnifiedMessagingApp";
+import { OptimizedMessagingApp } from "@/components/messaging/OptimizedMessagingApp";
 import AdminUserSelector from "@/components/AdminUserSelector";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -150,11 +150,9 @@ export default function MessagerieAdmin() {
 
         {/* Système de messagerie unifié optimisé */}
         <div className="h-[600px] bg-white rounded-xl shadow-lg overflow-hidden border border-slate-200">
-          <UnifiedMessagingApp 
-            userType="admin"
-            headerTitle="Messagerie Admin"
-            showHeader={false}
+          <OptimizedMessagingApp 
             theme="purple"
+            showHeader={false}
           />
         </div>
       </div>

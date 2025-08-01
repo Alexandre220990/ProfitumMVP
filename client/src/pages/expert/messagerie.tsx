@@ -1,6 +1,6 @@
 import { MessageSquare } from "lucide-react";
 import HeaderExpert from "@/components/HeaderExpert";
-import { UnifiedMessagingApp } from "@/components/messaging/UnifiedMessagingApp";
+import { OptimizedMessagingApp } from "@/components/messaging/OptimizedMessagingApp";
 
 export default function MessagerieExpert() {
   return (
@@ -29,11 +29,9 @@ export default function MessagerieExpert() {
 
         {/* Système de messagerie unifié optimisé */}
         <div className="h-[600px] bg-white rounded-xl shadow-lg overflow-hidden border border-slate-200">
-          <UnifiedMessagingApp 
-            userType="expert"
-            headerTitle="Messagerie Expert"
-            showHeader={false}
+          <OptimizedMessagingApp 
             theme="green"
+            showHeader={false}
           />
         </div>
       </div>

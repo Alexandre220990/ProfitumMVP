@@ -337,7 +337,7 @@ export const DossierStepsDisplay: React.FC<DossierStepsDisplayProps> = ({
 
             {/* Liste des étapes */}
             <div className="space-y-3">
-              {steps.map((step, index) => (
+              {steps.map((step) => (
                 <div
                   key={step.id}
                   className="border rounded-lg p-4 hover:bg-gray-50 transition-colors"

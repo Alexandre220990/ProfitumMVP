@@ -23,6 +23,7 @@ const ProfileClient = React.lazy(() => import('./pages/profile/client'));
 const ProfileExpert = React.lazy(() => import('./pages/profile/expert'));
 const MessagerieClient = React.lazy(() => import('./pages/messagerie-client'));
 const ClientDocuments = React.lazy(() => import('./pages/dashboard/client-documents'));
+const NotificationCenter = React.lazy(() => import('./pages/notification-center'));
 const Settings = React.lazy(() => import('./pages/settings'));
 const Experts = React.lazy(() => import('./pages/marketplace-experts'));
 const MarketplaceExperts = React.lazy(() => import('./pages/marketplace-experts'));
@@ -158,6 +159,10 @@ function App() {
                       <Route path="/aide-client" element={<ProtectedRoute requiredType="client" />}>
                         <Route index element={<AideClient />} />
                       </Route>
+                      
+                      <Route path="/notification-center" element={<ProtectedRoute requiredType="client" />}>
+                        <Route index element={<NotificationCenter />} />
+                      </Route>
                       <Route path="/messagerie-client" element={<ProtectedRoute requiredType="client" />}>
                         <Route index element={<MessagerieClient />} />
                       </Route>
@@ -192,6 +197,7 @@ function App() {
                         <Route path="aide-client" element={<AideClient />} />
                         <Route path="profile/client" element={<ProfileClient />} />
                         <Route path="messagerie-client" element={<MessagerieClient />} />
+                        <Route path="notification-center" element={<NotificationCenter />} />
                         <Route path="dossier-client/:id" element={<DossierClient />} />
                         <Route path="dossier-client/:produit/:id" element={<ProduitClient />} />
                         <Route path="produits/audit_energetique" element={<AuditEnergetique />} />

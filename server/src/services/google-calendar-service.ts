@@ -852,42 +852,143 @@ export class GoogleCalendarService {
   }
 
   /**
-   * Révoquer les tokens Google d'un utilisateur
-   * ✅ Sécurisation de la révocation
+   * Révoquer les tokens d'un utilisateur
    */
   async revokeUserTokens(userId: string): Promise<void> {
     try {
-      // Récupérer les tokens de l'utilisateur
-      const { data: integration, error } = await supabase
+      const { data: integrations, error } = await supabase
         .from('GoogleCalendarIntegration')
         .select('access_token, refresh_token')
-        .eq('user_id', userId)
-        .single();
+        .eq('user_id', userId);
 
-      if (error || !integration) {
-        console.log(`ℹ️ Aucune intégration trouvée pour l'utilisateur ${userId}`);
-        return;
+      if (error) throw error;
+
+      // Révoquer tous les tokens de l'utilisateur
+      for (const integration of integrations || []) {
+        try {
+          const oauth2Client = this.getOAuth2Client(integration.access_token);
+          await oauth2Client.revokeToken(integration.refresh_token);
+        } catch (revokeError) {
+          console.warn('⚠️ Erreur révocation token:', revokeError);
+        }
       }
 
-      // Révoquer le token d'accès
-      if (integration.access_token) {
-        await fetch(`https://oauth2.googleapis.com/revoke?token=${integration.access_token}`, {
-          method: 'POST'
-        });
-      }
+      // Désactiver les intégrations
+      await supabase
+        .from('GoogleCalendarIntegration')
+        .update({
+          is_active: false,
+          sync_enabled: false,
+          error_message: 'Tokens révoqués'
+        })
+        .eq('user_id', userId);
 
-      // Révoquer le refresh token
-      if (integration.refresh_token) {
-        await fetch(`https://oauth2.googleapis.com/revoke?token=${integration.refresh_token}`, {
-          method: 'POST'
-        });
-      }
-
-      console.log(`✅ Tokens révoqués pour l'utilisateur ${userId}`);
     } catch (error) {
       console.error('❌ Erreur révocation tokens:', error);
-      // Ne pas faire échouer la déconnexion si la révocation échoue
+      throw new Error('Impossible de révoquer les tokens');
     }
+  }
+
+  // ========================================
+  // SYNCHRONISATION D'ÉVÉNEMENTS
+  // ========================================
+
+  /**
+   * Synchroniser un événement Profitum vers Google Calendar
+   */
+  async syncEventToGoogleCalendar(
+    integration: GoogleCalendarIntegration,
+    profitumEvent: CalendarEvent
+  ): Promise<string> {
+    try {
+      // 1. Vérifier et rafraîchir les tokens si nécessaire
+      const tokens = await this.ensureValidTokens(integration);
+      
+      // 2. Convertir l'événement Profitum en format Google
+      const googleEvent = this.convertProfitumToGoogleEvent(profitumEvent);
+      
+      // 3. Ajouter les métadonnées Profitum
+      googleEvent.extendedProperties = {
+        private: {
+          profitumEventId: profitumEvent.id,
+          profitumUserId: integration.user_id,
+          profitumUserType: integration.user_type,
+          profitumDossierId: profitumEvent.dossier_id,
+          profitumStepId: profitumEvent.metadata?.stepId
+        }
+      };
+
+      // 4. Créer ou mettre à jour l'événement dans Google Calendar
+      let googleEventId: string;
+      
+      if (profitumEvent.metadata?.google_calendar_id) {
+        // Mettre à jour l'événement existant
+        const updatedEvent = await this.updateEvent(
+          tokens.access_token,
+          integration.calendar_id,
+          profitumEvent.metadata.google_calendar_id,
+          googleEvent
+        );
+        googleEventId = updatedEvent.id!;
+      } else {
+        // Créer un nouvel événement
+        const createdEvent = await this.createEvent(
+          tokens.access_token,
+          integration.calendar_id,
+          googleEvent
+        );
+        googleEventId = createdEvent.id!;
+      }
+
+      // 5. Mettre à jour le statut de synchronisation
+      await this.updateIntegration(integration.id, {
+        last_sync_at: new Date().toISOString(),
+        sync_status: 'idle'
+      });
+
+      console.log('✅ Événement synchronisé vers Google Calendar:', googleEventId);
+      return googleEventId;
+
+    } catch (error) {
+      console.error('❌ Erreur synchronisation vers Google Calendar:', error);
+      
+      // Mettre à jour le statut d'erreur
+      await this.updateIntegration(integration.id, {
+        sync_status: 'error',
+        error_message: error instanceof Error ? error.message : 'Erreur inconnue'
+      });
+
+      throw error;
+    }
+  }
+
+  /**
+   * S'assurer que les tokens sont valides et les rafraîchir si nécessaire
+   */
+  private async ensureValidTokens(integration: GoogleCalendarIntegration): Promise<GoogleAuthTokens> {
+    const expiryDate = new Date(integration.token_expires_at).getTime();
+    
+    if (this.isTokenExpired(expiryDate)) {
+      console.log('🔄 Tokens expirés, rafraîchissement...');
+      const newTokens = await this.refreshTokens(integration.refresh_token);
+      
+      // Mettre à jour l'intégration avec les nouveaux tokens
+      await this.updateIntegration(integration.id, {
+        access_token: newTokens.access_token,
+        refresh_token: newTokens.refresh_token,
+        token_expires_at: new Date(newTokens.expiry_date).toISOString()
+      });
+
+      return newTokens;
+    }
+
+    return {
+      access_token: integration.access_token,
+      refresh_token: integration.refresh_token,
+      scope: 'https://www.googleapis.com/auth/calendar',
+      token_type: 'Bearer',
+      expiry_date: expiryDate
+    };
   }
 }
 
