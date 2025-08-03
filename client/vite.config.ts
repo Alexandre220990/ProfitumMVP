@@ -20,11 +20,14 @@ export default defineConfig({
     emptyOutDir: true,
     chunkSizeWarningLimit: 1000,
     rollupOptions: {
+      external: [],
       output: {
         manualChunks: {
           'react-vendor': ['react', 'react-dom'],
           'ui-vendor': ['lucide-react'],
-          'supabase-vendor': ['@supabase/supabase-js']
+          'supabase-vendor': ['@supabase/supabase-js'],
+          vendor: ['react', 'react-dom'],
+          dropzone: ['react-dropzone']
         },
         // Ajout d'un hash pour forcer le rafraîchissement du cache
         assetFileNames: (assetInfo) => {
@@ -53,7 +56,8 @@ export default defineConfig({
       'react',
       'react-dom',
       'lucide-react',
-      '@supabase/supabase-js'
+      '@supabase/supabase-js',
+      'react-dropzone'
     ]
   }
 }); 

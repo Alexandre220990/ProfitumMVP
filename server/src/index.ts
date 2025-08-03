@@ -1,3 +1,7 @@
+// IMPORTANT: Make sure to import `instrument.ts` at the top of your file.
+import "./instrument";
+
+import * as Sentry from "@sentry/node";
 import express from 'express';
 import cors from 'cors';
 import bcrypt from 'bcrypt';
@@ -26,7 +30,7 @@ import adminRoutes from './routes/admin';
 import auditRoutes from './routes/audit';
 import simulationRoute from './routes/simulation';
 import charteSignatureRoutes from './routes/charte-signature';
-import messagingRoutes from './routes/messaging';
+// import messagingRoutes from './routes/messaging';
 import unifiedMessagingRoutes from './routes/unified-messaging';
 import simulatorRoutes from './routes/simulator';
 import { createClient } from '@supabase/supabase-js';
@@ -91,6 +95,9 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 // Configuration CORS unifiée depuis le fichier centralisé
 const corsOptions = getCorsConfig();
+
+// Middleware Sentry (doit être en premier)
+Sentry.setupExpressErrorHandler(app);
 
 app.use(cors(corsOptions));
 
@@ -220,7 +227,7 @@ app.use('/api/audit', enhancedAuthMiddleware, auditRoutes);
 app.use('/api/simulation', enhancedAuthMiddleware, simulationRoute);
 
 // Routes de messagerie - PROTÉGÉES
-app.use('/api/messaging', enhancedAuthMiddleware, messagingRoutes);
+// app.use('/api/messaging', enhancedAuthMiddleware, messagingRoutes);
 app.use('/api/unified-messaging', enhancedAuthMiddleware, unifiedMessagingRoutes);
 
 // Routes des documents client - PROTÉGÉES
@@ -234,6 +241,11 @@ app.use('/api/tests', enhancedAuthMiddleware, requireUserType('admin'), testsRou
 
 // Routes de tests terminaux - PROTÉGÉES avec permissions admin
 app.use('/api/terminal-tests', enhancedAuthMiddleware, requireUserType('admin'), terminalTestsRoutes);
+
+// Route de test Sentry (pour vérifier que tout fonctionne)
+app.get("/debug-sentry", function mainHandler(req, res) {
+  throw new Error("My first Sentry error!");
+});
 
 // Routes de notifications expert - PROTÉGÉES
 app.use('/api/expert/notifications', enhancedAuthMiddleware, expertNotificationsRoutes);
@@ -269,6 +281,17 @@ app.use('/api/*', (req, res) => {
     method: req.method,
     timestamp: new Date().toISOString()
   });
+});
+
+// The error handler must be registered before any other error middleware and after all controllers
+Sentry.setupExpressErrorHandler(app);
+
+// Optional fallthrough error handler
+app.use(function onError(err: any, req: any, res: any, next: any) {
+  // The error id is attached to `res.sentry` to be returned
+  // and optionally displayed to the user for support.
+  res.statusCode = 500;
+  res.end(res.sentry + "\n");
 });
 
 // Gestion des erreurs

@@ -8,7 +8,7 @@ La migration automatique a échoué à cause des permissions Supabase. Voici com
 ### 1. Accéder à l'interface Supabase
 1. Allez sur https://supabase.com/dashboard
 2. Connectez-vous à votre compte
-3. Sélectionnez votre projet `gvvlsgtubqfxdztldunj`
+3. Sélectionnez votre projet `your-project-ref`
 
 ### 2. Ouvrir l'éditeur SQL
 1. Dans le menu de gauche, cliquez sur "SQL Editor"

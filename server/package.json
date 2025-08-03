@@ -17,6 +17,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@sentry/node": "^10.0.0",
     "@supabase/postgrest-js": "^1.21.0",
     "@supabase/supabase-js": "^2.52.0",
     "@types/helmet": "^0.0.48",

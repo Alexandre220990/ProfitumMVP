@@ -4,8 +4,6 @@ import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, Users
 import { DayPicker } from "react-day-picker";
 import { format, isSameDay, startOfWeek, endOfWeek, eachDayOfInterval, addDays, subDays, startOfMonth, endOfMonth } from "date-fns";
 import { fr } from "date-fns/locale";
-import { useAuth } from "@/hooks/use-auth";
-import { useToast } from '@/hooks/use-toast';
 import { useCalendarEvents } from '@/hooks/use-calendar-events';
 import { CalendarEvent as ServiceCalendarEvent } from '@/services/calendar-service';
 
@@ -133,15 +131,12 @@ interface UnifiedCalendarProps {
 
 export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
   className = '',
-  theme = 'blue',
   showHeader = true,
   enableGoogleSync = false,
   enableRealTime = true,
   defaultView = 'month',
   filters = {}
 }) => {
-  const { user } = useAuth();
-  const { toast } = useToast();
   
   // État local
   const [view, setView] = useState<CalendarView>({ type: defaultView, date: new Date() });
@@ -153,21 +148,15 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
 
   // Hook calendrier unifié
   const {
-    events,
-    stats,
     loading,
-    error,
     isConnected,
     filteredEvents,
     createEvent,
     updateEvent,
     deleteEvent,
     getEventsForDate,
-    getEventsForDateRange,
     getUpcomingEvents,
-    getOverdueEvents,
-    syncWithGoogleCalendar,
-    exportToGoogleCalendar
+    syncWithGoogleCalendar
   } = useCalendarEvents({
     autoLoad: true,
     enableRealTime,

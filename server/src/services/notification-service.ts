@@ -1,76 +1,118 @@
 import { createClient } from '@supabase/supabase-js';
-import nodemailer from 'nodemailer';
+import * as nodemailer from 'nodemailer';
+import { EventEmitter } from 'events';
+import { v4 as uuidv4 } from 'uuid';
+import { Redis } from 'ioredis';
+
+// ===== CONFIGURATION SENTRY =====
+import { captureError, captureMessage, withSentry } from '../config/sentry';
 
 // Configuration Supabase
 const supabaseUrl = process.env.SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Types de notifications
+// Configuration Redis pour le cache et les notifications en temps réel
+const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+
+// Event emitter pour les notifications en temps réel
+const notificationEmitter = new EventEmitter();
+
+// ===== TYPES ET ENUMS =====
+
 export enum NotificationType {
-  // Documents
-  DOCUMENT_UPLOADED = 'document_uploaded',
-  DOCUMENT_VALIDATED = 'document_validated',
-  DOCUMENT_REJECTED = 'document_rejected',
-  DOCUMENT_EXPIRING = 'document_expiring',
-  DOCUMENT_EXPIRED = 'document_expired',
+  // === CLIENTS ===
+  CLIENT_DOCUMENT_UPLOADED = 'client_document_uploaded',
+  CLIENT_DOCUMENT_VALIDATED = 'client_document_validated',
+  CLIENT_DOCUMENT_REJECTED = 'client_document_rejected',
+  CLIENT_DOCUMENT_EXPIRING = 'client_document_expiring',
+  CLIENT_DOCUMENT_EXPIRED = 'client_document_expired',
+  CLIENT_EXPERT_ASSIGNED = 'client_expert_assigned',
+  CLIENT_EXPERT_UNASSIGNED = 'client_expert_unassigned',
+  CLIENT_MESSAGE_RECEIVED = 'client_message_received',
+  CLIENT_DEADLINE_REMINDER = 'client_deadline_reminder',
+  CLIENT_DEADLINE_OVERDUE = 'client_deadline_overdue',
+  CLIENT_WORKFLOW_COMPLETED = 'client_workflow_completed',
+  CLIENT_WORKFLOW_STUCK = 'client_workflow_stuck',
+  CLIENT_PAYMENT_RECEIVED = 'client_payment_received',
+  CLIENT_INVOICE_GENERATED = 'client_invoice_generated',
+  CLIENT_INVOICE_OVERDUE = 'client_invoice_overdue',
+  CLIENT_CALENDAR_EVENT_REMINDER = 'client_calendar_event_reminder',
+  CLIENT_ACCOUNT_UPGRADED = 'client_account_upgraded',
+  CLIENT_ACCOUNT_DOWNGRADED = 'client_account_downgraded',
   
-  // Workflow
-  WORKFLOW_STEP_COMPLETED = 'workflow_step_completed',
-  WORKFLOW_COMPLETED = 'workflow_completed',
-  WORKFLOW_STUCK = 'workflow_stuck',
+  // === EXPERTS ===
+  EXPERT_NEW_ASSIGNMENT = 'expert_new_assignment',
+  EXPERT_ASSIGNMENT_CANCELLED = 'expert_assignment_cancelled',
+  EXPERT_CLIENT_MESSAGE = 'expert_client_message',
+  EXPERT_DEADLINE_APPROACHING = 'expert_deadline_approaching',
+  EXPERT_DEADLINE_OVERDUE = 'expert_deadline_overdue',
+  EXPERT_DOCUMENT_REQUIRED = 'expert_document_required',
+  EXPERT_WORKFLOW_STEP_COMPLETED = 'expert_workflow_step_completed',
+  EXPERT_WORKFLOW_ESCALATED = 'expert_workflow_escalated',
+  EXPERT_PAYMENT_PROCESSED = 'expert_payment_processed',
+  EXPERT_CERTIFICATION_EXPIRING = 'expert_certification_expiring',
+  EXPERT_CERTIFICATION_EXPIRED = 'expert_certification_expired',
+  EXPERT_PERFORMANCE_REVIEW = 'expert_performance_review',
+  EXPERT_CALENDAR_EVENT_REMINDER = 'expert_calendar_event_reminder',
+  EXPERT_ACCOUNT_APPROVED = 'expert_account_approved',
+  EXPERT_ACCOUNT_REJECTED = 'expert_account_rejected',
+  EXPERT_ACCOUNT_SUSPENDED = 'expert_account_suspended',
+  EXPERT_ACCOUNT_REACTIVATED = 'expert_account_reactivated',
   
-  // Sécurité
+  // === ADMINS ===
+  ADMIN_NEW_CLIENT_REGISTRATION = 'admin_new_client_registration',
+  ADMIN_NEW_EXPERT_APPLICATION = 'admin_new_expert_application',
+  ADMIN_EXPERT_APPROVAL_REQUIRED = 'admin_expert_approval_required',
+  ADMIN_WORKFLOW_ESCALATION = 'admin_workflow_escalation',
+  ADMIN_PAYMENT_ISSUE = 'admin_payment_issue',
+  ADMIN_SYSTEM_ALERT = 'admin_system_alert',
+  ADMIN_PERFORMANCE_METRICS = 'admin_performance_metrics',
+  ADMIN_SECURITY_ALERT = 'admin_security_alert',
+  ADMIN_DOCUMENT_VALIDATION_REQUIRED = 'admin_document_validation_required',
+  ADMIN_CLIENT_COMPLAINT = 'admin_client_complaint',
+  ADMIN_EXPERT_COMPLAINT = 'admin_expert_complaint',
+  ADMIN_SYSTEM_MAINTENANCE = 'admin_system_maintenance',
+  ADMIN_BACKUP_COMPLETED = 'admin_backup_completed',
+  ADMIN_BACKUP_FAILED = 'admin_backup_failed',
+  
+  // === SYSTÈME ===
+  SYSTEM_MAINTENANCE = 'system_maintenance',
+  SYSTEM_UPDATE = 'system_update',
+  SECURITY_BREACH = 'security_breach',
   UNAUTHORIZED_ACCESS = 'unauthorized_access',
-  SUSPICIOUS_ACTIVITY = 'suspicious_activity',
   MULTIPLE_LOGIN_ATTEMPTS = 'multiple_login_attempts',
-  
-  // Rappels
-  MISSING_DOCUMENT = 'missing_document',
-  VALIDATION_REMINDER = 'validation_reminder',
-  DEADLINE_REMINDER = 'deadline_reminder',
-  
-  // Business
-  NEW_CLIENT = 'new_client',
-  EXPERT_ASSIGNMENT = 'expert_assignment',
-  PAYMENT_RECEIVED = 'payment_received',
-  INVOICE_GENERATED = 'invoice_generated',
-  
-  // Expert Management
-  EXPERT_DEMO_REQUEST = 'expert_demo_request',
-  EXPERT_APPROVED = 'expert_approved',
-  EXPERT_REJECTED = 'expert_rejected',
-  EXPERT_ACCOUNT_CREATED = 'expert_account_created',
-  EXPERT_PROFILE_UPDATED = 'expert_profile_updated',
-  EXPERT_STATUS_CHANGED = 'expert_status_changed',
-  
-  // Calendrier
-  CALENDAR_EVENT_CREATED = 'calendar_event_created',
-  CALENDAR_EVENT_UPDATED = 'calendar_event_updated',
-  CALENDAR_EVENT_DELETED = 'calendar_event_deleted',
-  CALENDAR_EVENT_REMINDER = 'calendar_event_reminder',
-  CALENDAR_EVENT_INVITATION = 'calendar_event_invitation',
-  CALENDAR_EVENT_ACCEPTED = 'calendar_event_accepted',
-  CALENDAR_EVENT_DECLINED = 'calendar_event_declined',
-  
-  // Messages
-  MESSAGE_RECEIVED = 'message_received',
-  MESSAGE_URGENT = 'message_urgent',
-  MESSAGE_RESPONSE = 'message_response'
+  ACCOUNT_LOCKED = 'account_locked',
+  PASSWORD_CHANGED = 'password_changed',
+  TWO_FACTOR_ENABLED = 'two_factor_enabled',
+  LOGIN_FROM_NEW_DEVICE = 'login_from_new_device'
 }
 
 export enum NotificationPriority {
   LOW = 'low',
   MEDIUM = 'medium',
   HIGH = 'high',
-  URGENT = 'urgent'
+  URGENT = 'urgent',
+  CRITICAL = 'critical'
 }
 
 export enum NotificationChannel {
   IN_APP = 'in_app',
   EMAIL = 'email',
   PUSH = 'push',
-  SMS = 'sms'
+  SMS = 'sms',
+  SLACK = 'slack',
+  TEAMS = 'teams',
+  WEBHOOK = 'webhook'
+}
+
+export enum NotificationStatus {
+  PENDING = 'pending',
+  SENT = 'sent',
+  DELIVERED = 'delivered',
+  READ = 'read',
+  FAILED = 'failed',
+  CANCELLED = 'cancelled'
 }
 
 export interface NotificationTemplate {
@@ -85,7 +127,13 @@ export interface NotificationTemplate {
   smsText?: string;
   priority: NotificationPriority;
   channels: NotificationChannel[];
-  variables: string[]; // Variables à remplacer dans le template
+  variables: string[];
+  category: string;
+  tags: string[];
+  isActive: boolean;
+  version: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Notification {
@@ -99,10 +147,25 @@ export interface Notification {
   priority: NotificationPriority;
   channels: NotificationChannel[];
   sent_channels: NotificationChannel[];
+  status: NotificationStatus;
   read: boolean;
   read_at?: string;
   sent_at?: string;
+  delivered_at?: string;
+  failed_at?: string;
+  retry_count: number;
+  max_retries: number;
+  expires_at?: string;
   created_at: string;
+  updated_at: string;
+  metadata?: {
+    user_agent?: string;
+    ip_address?: string;
+    device_id?: string;
+    session_id?: string;
+    campaign_id?: string;
+    a_b_test?: string;
+  };
 }
 
 export interface UserNotificationPreferences {
@@ -110,13 +173,52 @@ export interface UserNotificationPreferences {
   email_enabled: boolean;
   push_enabled: boolean;
   sms_enabled: boolean;
+  slack_enabled: boolean;
+  teams_enabled: boolean;
+  webhook_enabled: boolean;
   in_app_enabled: boolean;
-  quiet_hours_start?: string; // Format HH:MM
-  quiet_hours_end?: string; // Format HH:MM
+  quiet_hours_start?: string;
+  quiet_hours_end?: string;
   timezone: string;
   language: string;
   priority_filter: NotificationPriority[];
   type_filter: NotificationType[];
+  category_filter: string[];
+  frequency: 'immediate' | 'hourly' | 'daily' | 'weekly';
+  digest_enabled: boolean;
+  digest_frequency: 'daily' | 'weekly';
+  digest_time?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NotificationMetrics {
+  total_sent: number;
+  total_delivered: number;
+  total_read: number;
+  total_failed: number;
+  delivery_rate: number;
+  read_rate: number;
+  average_delivery_time: number;
+  channel_performance: {
+    [channel in NotificationChannel]: {
+      sent: number;
+      delivered: number;
+      failed: number;
+      delivery_rate: number;
+    };
+  };
+}
+
+export interface NotificationBatch {
+  id: string;
+  notifications: Notification[];
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  created_at: string;
+  completed_at?: string;
+  total_count: number;
+  success_count: number;
+  failure_count: number;
 }
 
 export class NotificationService {
@@ -128,9 +230,6 @@ export class NotificationService {
     this.initializeTemplates();
   }
 
-  /**
-   * Initialiser le transporteur email
-   */
   private initializeEmailTransporter(): void {
     this.emailTransporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
@@ -143,530 +242,368 @@ export class NotificationService {
     });
   }
 
-  /**
-   * Initialiser les templates de notifications
-   */
   private initializeTemplates(): void {
-    this.templates = new Map([
-      [NotificationType.DOCUMENT_UPLOADED, {
-        id: 'document_uploaded',
-        type: NotificationType.DOCUMENT_UPLOADED,
-        title: 'Nouveau document uploadé',
-        message: 'Un nouveau document "{document_name}" a été uploadé par {uploader_name}',
-        emailSubject: 'Nouveau document - {document_name}',
-        emailBody: `
-          <h2>Nouveau document uploadé</h2>
-          <p>Bonjour {recipient_name},</p>
-          <p>Un nouveau document a été uploadé :</p>
-          <ul>
-            <li><strong>Document :</strong> {document_name}</li>
-            <li><strong>Uploadé par :</strong> {uploader_name}</li>
-            <li><strong>Date :</strong> {upload_date}</li>
-            <li><strong>Type :</strong> {document_type}</li>
-          </ul>
-          <p><a href="{document_url}">Voir le document</a></p>
-        `,
-        pushTitle: 'Nouveau document',
-        pushBody: '{document_name} uploadé par {uploader_name}',
-        priority: NotificationPriority.MEDIUM,
-        channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL, NotificationChannel.PUSH],
-        variables: ['document_name', 'uploader_name', 'upload_date', 'document_type', 'document_url', 'recipient_name']
-      }],
-      
-      [NotificationType.DOCUMENT_VALIDATED, {
-        id: 'document_validated',
-        type: NotificationType.DOCUMENT_VALIDATED,
-        title: 'Document validé',
-        message: 'Le document "{document_name}" a été validé par {validator_name}',
-        emailSubject: 'Document validé - {document_name}',
-        emailBody: `
-          <h2>Document validé</h2>
-          <p>Bonjour {recipient_name},</p>
-          <p>Le document suivant a été validé :</p>
-          <ul>
-            <li><strong>Document :</strong> {document_name}</li>
-            <li><strong>Validé par :</strong> {validator_name}</li>
-            <li><strong>Date :</strong> {validation_date}</li>
-            <li><strong>Commentaires :</strong> {comments}</li>
-          </ul>
-        `,
-        pushTitle: 'Document validé',
-        pushBody: '{document_name} validé par {validator_name}',
-        priority: NotificationPriority.MEDIUM,
-        channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL, NotificationChannel.PUSH],
-        variables: ['document_name', 'validator_name', 'validation_date', 'comments', 'recipient_name']
-      }],
-      
-      [NotificationType.UNAUTHORIZED_ACCESS, {
-        id: 'unauthorized_access',
-        type: NotificationType.UNAUTHORIZED_ACCESS,
-        title: '⚠️ Accès non autorisé détecté',
-        message: 'Tentative d\'accès non autorisé au document "{document_name}" depuis {ip_address}',
-        emailSubject: '⚠️ ALERTE SÉCURITÉ - Accès non autorisé',
-        emailBody: `
-          <h2 style="color: red;">ALERTE SÉCURITÉ</h2>
-          <p>Bonjour {recipient_name},</p>
-          <p>Une tentative d'accès non autorisé a été détectée :</p>
-          <ul>
-            <li><strong>Document :</strong> {document_name}</li>
-            <li><strong>Adresse IP :</strong> {ip_address}</li>
-            <li><strong>Date :</strong> {access_date}</li>
-            <li><strong>User Agent :</strong> {user_agent}</li>
-          </ul>
-          <p>Si vous n'êtes pas à l'origine de cette tentative, veuillez contacter immédiatement le support.</p>
-        `,
-        pushTitle: '⚠️ Accès non autorisé',
-        pushBody: 'Tentative d\'accès détectée sur {document_name}',
-        priority: NotificationPriority.URGENT,
-        channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL, NotificationChannel.PUSH, NotificationChannel.SMS],
-        variables: ['document_name', 'ip_address', 'access_date', 'user_agent', 'recipient_name']
-      }],
-      
-      [NotificationType.MISSING_DOCUMENT, {
-        id: 'missing_document',
-        type: NotificationType.MISSING_DOCUMENT,
-        title: 'Document manquant',
-        message: 'Le document "{document_name}" est requis et manquant',
-        emailSubject: 'Document manquant - {document_name}',
-        emailBody: `
-          <h2>Document manquant</h2>
-          <p>Bonjour {recipient_name},</p>
-          <p>Le document suivant est requis et manquant :</p>
-          <ul>
-            <li><strong>Document :</strong> {document_name}</li>
-            <li><strong>Type :</strong> {document_type}</li>
-            <li><strong>Échéance :</strong> {deadline}</li>
-            <li><strong>Description :</strong> {description}</li>
-          </ul>
-          <p>Veuillez uploader ce document dès que possible.</p>
-        `,
-        pushTitle: 'Document manquant',
-        pushBody: '{document_name} requis - échéance {deadline}',
-        priority: NotificationPriority.HIGH,
-        channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL, NotificationChannel.PUSH],
-        variables: ['document_name', 'document_type', 'deadline', 'description', 'recipient_name']
-      }],
-      
-      [NotificationType.DEADLINE_REMINDER, {
-        id: 'deadline_reminder',
-        type: NotificationType.DEADLINE_REMINDER,
-        title: 'Rappel d\'échéance',
-        message: 'Échéance approchante : {deadline_description} - {deadline_date}',
-        emailSubject: 'Rappel d\'échéance - {deadline_description}',
-        emailBody: `
-          <h2>Rappel d'échéance</h2>
-          <p>Bonjour {recipient_name},</p>
-          <p>Une échéance importante approche :</p>
-          <ul>
-            <li><strong>Description :</strong> {deadline_description}</li>
-            <li><strong>Date limite :</strong> {deadline_date}</li>
-            <li><strong>Type :</strong> {deadline_type}</li>
-            <li><strong>Priorité :</strong> {priority}</li>
-          </ul>
-          <p>Veuillez prendre les mesures nécessaires avant cette date.</p>
-        `,
-        pushTitle: 'Rappel d\'échéance',
-        pushBody: '{deadline_description} - {deadline_date}',
-        priority: NotificationPriority.HIGH,
-        channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL, NotificationChannel.PUSH],
-        variables: ['deadline_description', 'deadline_date', 'deadline_type', 'priority', 'recipient_name']
-      }],
-      
-      // Templates pour les événements calendrier
-      [NotificationType.CALENDAR_EVENT_CREATED, {
-        id: 'calendar_event_created',
-        type: NotificationType.CALENDAR_EVENT_CREATED,
-        title: 'Nouvel événement calendrier',
-        message: 'Nouvel événement : "{event_title}" le {event_date} à {event_time}',
-        emailSubject: 'Nouvel événement - {event_title}',
-        emailBody: `
-          <h2>Nouvel événement calendrier</h2>
-          <p>Bonjour {recipient_name},</p>
-          <p>Un nouvel événement a été créé :</p>
-          <ul>
-            <li><strong>Titre :</strong> {event_title}</li>
-            <li><strong>Date :</strong> {event_date}</li>
-            <li><strong>Heure :</strong> {event_time}</li>
-            <li><strong>Durée :</strong> {event_duration}</li>
-            <li><strong>Type :</strong> {event_type}</li>
-            <li><strong>Lieu :</strong> {event_location}</li>
-            <li><strong>Description :</strong> {event_description}</li>
-          </ul>
-          <p><a href="{event_url}">Voir l'événement</a></p>
-        `,
-        pushTitle: 'Nouvel événement',
-        pushBody: '{event_title} - {event_date} {event_time}',
-        priority: NotificationPriority.MEDIUM,
-        channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL, NotificationChannel.PUSH],
-        variables: ['event_title', 'event_date', 'event_time', 'event_duration', 'event_type', 'event_location', 'event_description', 'event_url', 'recipient_name']
-      }],
-      
-      [NotificationType.CALENDAR_EVENT_UPDATED, {
-        id: 'calendar_event_updated',
-        type: NotificationType.CALENDAR_EVENT_UPDATED,
-        title: 'Événement modifié',
-        message: 'L\'événement "{event_title}" a été modifié',
-        emailSubject: 'Événement modifié - {event_title}',
-        emailBody: `
-          <h2>Événement modifié</h2>
-          <p>Bonjour {recipient_name},</p>
-          <p>L'événement suivant a été modifié :</p>
-          <ul>
-            <li><strong>Titre :</strong> {event_title}</li>
-            <li><strong>Nouvelle date :</strong> {event_date}</li>
-            <li><strong>Nouvelle heure :</strong> {event_time}</li>
-            <li><strong>Modifié par :</strong> {modified_by}</li>
-            <li><strong>Changements :</strong> {changes}</li>
-          </ul>
-          <p><a href="{event_url}">Voir l'événement</a></p>
-        `,
-        pushTitle: 'Événement modifié',
-        pushBody: '{event_title} - {changes}',
-        priority: NotificationPriority.MEDIUM,
-        channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL, NotificationChannel.PUSH],
-        variables: ['event_title', 'event_date', 'event_time', 'modified_by', 'changes', 'event_url', 'recipient_name']
-      }],
-      
-      [NotificationType.CALENDAR_EVENT_REMINDER, {
-        id: 'calendar_event_reminder',
-        type: NotificationType.CALENDAR_EVENT_REMINDER,
-        title: 'Rappel événement',
-        message: 'Rappel : "{event_title}" dans {reminder_time}',
-        emailSubject: 'Rappel événement - {event_title}',
-        emailBody: `
-          <h2>Rappel événement</h2>
-          <p>Bonjour {recipient_name},</p>
-          <p>Rappel pour l'événement suivant :</p>
-          <ul>
-            <li><strong>Titre :</strong> {event_title}</li>
-            <li><strong>Date :</strong> {event_date}</li>
-            <li><strong>Heure :</strong> {event_time}</li>
-            <li><strong>Lieu :</strong> {event_location}</li>
-            <li><strong>Rappel dans :</strong> {reminder_time}</li>
-          </ul>
-          <p><a href="{event_url}">Voir l'événement</a></p>
-        `,
-        pushTitle: 'Rappel événement',
-        pushBody: '{event_title} dans {reminder_time}',
-        priority: NotificationPriority.HIGH,
-        channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL, NotificationChannel.PUSH, NotificationChannel.SMS],
-        variables: ['event_title', 'event_date', 'event_time', 'event_location', 'reminder_time', 'event_url', 'recipient_name']
-      }],
-      
-      [NotificationType.CALENDAR_EVENT_INVITATION, {
-        id: 'calendar_event_invitation',
-        type: NotificationType.CALENDAR_EVENT_INVITATION,
-        title: 'Invitation événement',
-        message: 'Vous êtes invité à "{event_title}" le {event_date}',
-        emailSubject: 'Invitation - {event_title}',
-        emailBody: `
-          <h2>Invitation événement</h2>
-          <p>Bonjour {recipient_name},</p>
-          <p>Vous êtes invité à l'événement suivant :</p>
-          <ul>
-            <li><strong>Titre :</strong> {event_title}</li>
-            <li><strong>Date :</strong> {event_date}</li>
-            <li><strong>Heure :</strong> {event_time}</li>
-            <li><strong>Lieu :</strong> {event_location}</li>
-            <li><strong>Organisateur :</strong> {organizer_name}</li>
-            <li><strong>Description :</strong> {event_description}</li>
-          </ul>
-          <p>
-            <a href="{accept_url}" style="background: green; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-right: 10px;">Accepter</a>
-            <a href="{decline_url}" style="background: red; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Décliner</a>
-          </p>
-        `,
-        pushTitle: 'Invitation événement',
-        pushBody: '{event_title} - {event_date}',
-        priority: NotificationPriority.MEDIUM,
-        channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL, NotificationChannel.PUSH],
-        variables: ['event_title', 'event_date', 'event_time', 'event_location', 'organizer_name', 'event_description', 'accept_url', 'decline_url', 'recipient_name']
-      }],
-      
-      [NotificationType.MESSAGE_RECEIVED, {
-        id: 'message_received',
-        type: NotificationType.MESSAGE_RECEIVED,
-        title: 'Nouveau message',
-        message: 'Nouveau message de {sender_name} : "{message_preview}"',
-        emailSubject: 'Nouveau message - {sender_name}',
-        emailBody: `
-          <h2>Nouveau message</h2>
-          <p>Bonjour {recipient_name},</p>
-          <p>Vous avez reçu un nouveau message :</p>
-          <ul>
-            <li><strong>De :</strong> {sender_name}</li>
-            <li><strong>Objet :</strong> {conversation_title}</li>
-            <li><strong>Message :</strong> {message_preview}</li>
-            <li><strong>Date :</strong> {message_date}</li>
-          </ul>
-          <p><a href="{message_url}">Répondre</a></p>
-        `,
-        pushTitle: 'Nouveau message',
-        pushBody: '{sender_name} : {message_preview}',
-        priority: NotificationPriority.MEDIUM,
-        channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL, NotificationChannel.PUSH],
-        variables: ['sender_name', 'conversation_title', 'message_preview', 'message_date', 'message_url', 'recipient_name']
-      }],
-      
-      [NotificationType.MESSAGE_URGENT, {
-        id: 'message_urgent',
-        type: NotificationType.MESSAGE_URGENT,
-        title: '⚠️ Message urgent',
-        message: 'Message urgent de {sender_name} : "{message_preview}"',
-        emailSubject: '⚠️ MESSAGE URGENT - {sender_name}',
-        emailBody: `
-          <h2 style="color: red;">Message urgent</h2>
-          <p>Bonjour {recipient_name},</p>
-          <p>Vous avez reçu un message urgent :</p>
-          <ul>
-            <li><strong>De :</strong> {sender_name}</li>
-            <li><strong>Objet :</strong> {conversation_title}</li>
-            <li><strong>Message :</strong> {message_preview}</li>
-            <li><strong>Date :</strong> {message_date}</li>
-          </ul>
-          <p><a href="{message_url}">Répondre immédiatement</a></p>
-        `,
-        pushTitle: '⚠️ Message urgent',
-        pushBody: '{sender_name} : {message_preview}',
-        priority: NotificationPriority.URGENT,
-        channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL, NotificationChannel.PUSH, NotificationChannel.SMS],
-        variables: ['sender_name', 'conversation_title', 'message_preview', 'message_date', 'message_url', 'recipient_name']
-      }]
-        id: 'deadline_reminder',
-        type: NotificationType.DEADLINE_REMINDER,
-        title: '⚠️ Échéance approche',
-        message: 'L\'échéance pour "{document_name}" approche ({days_left} jours restants)',
-        emailSubject: '⚠️ Échéance approche - {document_name}',
-        emailBody: `
-          <h2>Échéance approche</h2>
-          <p>Bonjour {recipient_name},</p>
-          <p>L'échéance pour le document suivant approche :</p>
-          <ul>
-            <li><strong>Document :</strong> {document_name}</li>
-            <li><strong>Échéance :</strong> {deadline}</li>
-            <li><strong>Jours restants :</strong> {days_left}</li>
-            <li><strong>Type :</strong> {document_type}</li>
-          </ul>
-          <p>Veuillez traiter ce document avant l'échéance.</p>
-        `,
-        pushTitle: '⚠️ Échéance approche',
-        pushBody: '{document_name} - {days_left} jours restants',
-        priority: NotificationPriority.HIGH,
-        channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL, NotificationChannel.PUSH],
-        variables: ['document_name', 'deadline', 'days_left', 'document_type', 'recipient_name']
-      }],
-      
-      // ===== TEMPLATES POUR LES EXPERTS =====
-      
-      [NotificationType.EXPERT_DEMO_REQUEST, {
-        id: 'expert_demo_request',
-        type: NotificationType.EXPERT_DEMO_REQUEST,
-        title: '🎉 Nouvelle demande de démo expert',
-        message: 'Un nouvel expert "{expert_name}" souhaite rejoindre la plateforme',
-        emailSubject: '🎉 Nouvelle demande de démo expert - {expert_name}',
-        emailBody: `
-          <h2>🎉 Nouvelle demande de démo expert</h2>
-          <p>Bonjour {recipient_name},</p>
-          <p>Un nouvel expert souhaite rejoindre la plateforme Profitum :</p>
-          <ul>
-            <li><strong>Nom :</strong> {expert_name}</li>
-            <li><strong>Email :</strong> {expert_email}</li>
-            <li><strong>Entreprise :</strong> {company_name}</li>
-            <li><strong>SIREN :</strong> {siren}</li>
-            <li><strong>Téléphone :</strong> {phone}</li>
-            <li><strong>Localisation :</strong> {location}</li>
-            <li><strong>Expérience :</strong> {experience}</li>
-            <li><strong>Spécialisations :</strong> {specializations}</li>
-            <li><strong>Langues :</strong> {languages}</li>
-            {website ? '<li><strong>Site web :</strong> {website}</li>' : ''}
-            {linkedin ? '<li><strong>LinkedIn :</strong> {linkedin}</li>' : ''}
-            {compensation ? '<li><strong>Compensation souhaitée :</strong> {compensation}%</li>' : ''}
-            {max_clients ? '<li><strong>Clients max :</strong> {max_clients}</li>' : ''}
-          </ul>
-          <h3>Description :</h3>
-          <p>{description}</p>
-          <p><strong>Action requise :</strong> Contacter l'expert pour organiser une présentation de la plateforme.</p>
-          <p>Accédez au dashboard admin pour gérer cette demande : <a href="{admin_dashboard_url}">Dashboard Admin</a></p>
-        `,
-        pushTitle: '🎉 Nouvelle demande expert',
-        pushBody: '{expert_name} souhaite rejoindre la plateforme',
-        priority: NotificationPriority.HIGH,
-        channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL],
-        variables: ['expert_name', 'expert_email', 'company_name', 'siren', 'phone', 'location', 'experience', 'specializations', 'languages', 'website', 'linkedin', 'compensation', 'max_clients', 'description', 'admin_dashboard_url', 'recipient_name']
-      }],
-      
-      [NotificationType.EXPERT_APPROVED, {
-        id: 'expert_approved',
-        type: NotificationType.EXPERT_APPROVED,
-        title: '✅ Votre compte expert a été approuvé !',
-        message: 'Félicitations ! Votre compte expert a été approuvé par l\'équipe Profitum',
-        emailSubject: '✅ Votre compte expert a été approuvé - Profitum',
-        emailBody: `
-          <h2>✅ Félicitations ! Votre compte expert a été approuvé</h2>
-          <p>Bonjour {expert_name},</p>
-          <p>Nous avons le plaisir de vous informer que votre demande d'inscription en tant qu'expert sur la plateforme Profitum a été <strong>approuvée</strong> !</p>
-          
-          <h3>Prochaines étapes :</h3>
-          <ol>
-            <li><strong>Accédez à votre espace expert :</strong> <a href="{expert_dashboard_url}">Dashboard Expert</a></li>
-            <li><strong>Complétez votre profil :</strong> Ajoutez vos certifications, expériences et disponibilités</li>
-            <li><strong>Configurez vos préférences :</strong> Définissez vos taux horaires et conditions</li>
-            <li><strong>Commencez à recevoir des missions :</strong> Les clients pourront bientôt vous contacter</li>
-          </ol>
-          
-          <h3>Informations importantes :</h3>
-          <ul>
-            <li><strong>Votre compensation :</strong> {compensation}%</li>
-            <li><strong>Limite de clients :</strong> {max_clients} clients maximum</li>
-            <li><strong>Abonnement :</strong> {abonnement}</li>
-          </ul>
-          
-          <p>Si vous avez des questions, n'hésitez pas à contacter notre équipe support : <a href="mailto:support@profitum.fr">support@profitum.fr</a></p>
-          
-          <p>Bienvenue dans l'équipe Profitum ! 🎉</p>
-        `,
-        pushTitle: '✅ Compte expert approuvé',
-        pushBody: 'Votre compte expert a été approuvé - Accédez à votre dashboard',
-        priority: NotificationPriority.HIGH,
-        channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL, NotificationChannel.PUSH],
-        variables: ['expert_name', 'expert_email', 'compensation', 'max_clients', 'abonnement', 'expert_dashboard_url', 'recipient_name']
-      }],
-      
-      [NotificationType.EXPERT_REJECTED, {
-        id: 'expert_rejected',
-        type: NotificationType.EXPERT_REJECTED,
-        title: '❌ Votre demande expert n\'a pas été retenue',
-        message: 'Votre demande d\'inscription en tant qu\'expert n\'a pas été approuvée',
-        emailSubject: '❌ Réponse à votre demande expert - Profitum',
-        emailBody: `
-          <h2>❌ Réponse à votre demande d'inscription expert</h2>
-          <p>Bonjour {expert_name},</p>
-          <p>Nous vous remercions pour votre intérêt pour la plateforme Profitum et pour le temps que vous avez consacré à votre candidature.</p>
-          
-          <p>Après avoir examiné attentivement votre profil et votre demande, nous regrettons de vous informer que votre candidature n'a pas été retenue pour le moment.</p>
-          
-          <h3>Raison(s) :</h3>
-          <p>{rejection_reason}</p>
-          
-          <h3>Que faire maintenant ?</h3>
-          <ul>
-            <li>Vous pouvez améliorer votre profil et postuler à nouveau dans 3 mois</li>
-            <li>Nous vous encourageons à développer vos compétences dans les domaines demandés</li>
-            <li>Vous pouvez nous contacter pour plus de détails : <a href="mailto:experts@profitum.fr">experts@profitum.fr</a></li>
-          </ul>
-          
-          <p>Nous vous souhaitons le meilleur pour vos projets futurs.</p>
-          <p>Cordialement,<br>L'équipe Profitum</p>
-        `,
-        pushTitle: '❌ Demande expert non retenue',
-        pushBody: 'Votre demande d\'inscription expert n\'a pas été approuvée',
-        priority: NotificationPriority.MEDIUM,
-        channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL],
-        variables: ['expert_name', 'expert_email', 'rejection_reason', 'recipient_name']
-      }],
-      
-      [NotificationType.EXPERT_ACCOUNT_CREATED, {
-        id: 'expert_account_created',
-        type: NotificationType.EXPERT_ACCOUNT_CREATED,
-        title: '🔐 Votre compte expert a été créé',
-        message: 'Votre compte expert a été créé avec succès. Mot de passe temporaire : {temp_password}',
-        emailSubject: '🔐 Votre compte expert a été créé - Profitum',
-        emailBody: `
-          <h2>🔐 Votre compte expert a été créé</h2>
-          <p>Bonjour {expert_name},</p>
-          <p>Votre compte expert sur la plateforme Profitum a été créé avec succès !</p>
-          
-          <h3>Informations de connexion :</h3>
-          <ul>
-            <li><strong>Email :</strong> {expert_email}</li>
-            <li><strong>Mot de passe temporaire :</strong> <code>{temp_password}</code></li>
-          </ul>
-          
-          <p><strong>⚠️ IMPORTANT :</strong> Veuillez changer votre mot de passe dès votre première connexion.</p>
-          
-          <h3>Accès à votre espace :</h3>
-          <p><a href="{login_url}">Se connecter à mon espace expert</a></p>
-          
-          <h3>Prochaines étapes :</h3>
-          <ol>
-            <li>Connectez-vous avec vos identifiants</li>
-            <li>Changez votre mot de passe</li>
-            <li>Complétez votre profil</li>
-            <li>Configurez vos préférences</li>
-          </ol>
-          
-          <p>Si vous avez des questions, contactez-nous : <a href="mailto:support@profitum.fr">support@profitum.fr</a></p>
-        `,
-        pushTitle: '🔐 Compte expert créé',
-        pushBody: 'Votre compte expert a été créé - Mot de passe temporaire fourni',
-        priority: NotificationPriority.HIGH,
-        channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL],
-        variables: ['expert_name', 'expert_email', 'temp_password', 'login_url', 'recipient_name']
-      }],
-      
-      [NotificationType.EXPERT_PROFILE_UPDATED, {
-        id: 'expert_profile_updated',
-        type: NotificationType.EXPERT_PROFILE_UPDATED,
-        title: '📝 Votre profil expert a été mis à jour',
-        message: 'Votre profil expert a été mis à jour par l\'administrateur',
-        emailSubject: '📝 Mise à jour de votre profil expert - Profitum',
-        emailBody: `
-          <h2>📝 Mise à jour de votre profil expert</h2>
-          <p>Bonjour {expert_name},</p>
-          <p>Votre profil expert sur la plateforme Profitum a été mis à jour par l'équipe administrative.</p>
-          
-          <h3>Modifications apportées :</h3>
-          <ul>
-            {updated_fields}
-          </ul>
-          
-          <p>Vous pouvez consulter votre profil mis à jour : <a href="{expert_profile_url}">Voir mon profil</a></p>
-          
-          <p>Si vous avez des questions concernant ces modifications, n'hésitez pas à nous contacter : <a href="mailto:support@profitum.fr">support@profitum.fr</a></p>
-        `,
-        pushTitle: '📝 Profil expert mis à jour',
-        pushBody: 'Votre profil expert a été mis à jour par l\'administrateur',
-        priority: NotificationPriority.MEDIUM,
-        channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL],
-        variables: ['expert_name', 'expert_email', 'updated_fields', 'expert_profile_url', 'recipient_name']
-      }],
-      
-      [NotificationType.EXPERT_STATUS_CHANGED, {
-        id: 'expert_status_changed',
-        type: NotificationType.EXPERT_STATUS_CHANGED,
-        title: '🔄 Statut de votre compte expert modifié',
-        message: 'Le statut de votre compte expert a été modifié : {old_status} → {new_status}',
-        emailSubject: '🔄 Modification du statut de votre compte expert - Profitum',
-        emailBody: `
-          <h2>🔄 Modification du statut de votre compte expert</h2>
-          <p>Bonjour {expert_name},</p>
-          <p>Le statut de votre compte expert sur la plateforme Profitum a été modifié.</p>
-          
-          <h3>Modification :</h3>
-          <ul>
-            <li><strong>Ancien statut :</strong> {old_status}</li>
-            <li><strong>Nouveau statut :</strong> {new_status}</li>
-            <li><strong>Date de modification :</strong> {change_date}</li>
-            <li><strong>Raison :</strong> {change_reason}</li>
-          </ul>
-          
-          <h3>Impact :</h3>
-          <p>{status_impact}</p>
-          
-          <p>Si vous avez des questions concernant cette modification, contactez-nous : <a href="mailto:support@profitum.fr">support@profitum.fr</a></p>
-        `,
-        pushTitle: '🔄 Statut expert modifié',
-        pushBody: 'Statut de votre compte expert modifié : {old_status} → {new_status}',
-        priority: NotificationPriority.HIGH,
-        channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL, NotificationChannel.PUSH],
-        variables: ['expert_name', 'expert_email', 'old_status', 'new_status', 'change_date', 'change_reason', 'status_impact', 'recipient_name']
-      }]
-    ]);
+    this.templates = new Map();
+
+    // ===== TEMPLATES CLIENTS =====
+    
+    // Document uploadé
+    this.templates.set(NotificationType.CLIENT_DOCUMENT_UPLOADED, {
+      id: 'client_document_uploaded',
+      type: NotificationType.CLIENT_DOCUMENT_UPLOADED,
+      title: 'Document uploadé avec succès',
+      message: 'Votre document "{document_name}" a été uploadé et est en cours de validation.',
+      emailSubject: 'Document uploadé - {document_name}',
+      emailBody: `
+        <h2>Document uploadé avec succès</h2>
+        <p>Bonjour {client_name},</p>
+        <p>Votre document <strong>{document_name}</strong> a été uploadé avec succès dans votre espace client.</p>
+        <p><strong>Détails :</strong></p>
+        <ul>
+          <li>Document : {document_name}</li>
+          <li>Type : {document_type}</li>
+          <li>Date d'upload : {upload_date}</li>
+          <li>Statut : En cours de validation</li>
+        </ul>
+        <p>Notre équipe va examiner votre document et vous informera du résultat sous 24-48h.</p>
+        <p>Cordialement,<br>L'équipe Profitum</p>
+      `,
+      pushTitle: 'Document uploadé',
+      pushBody: 'Votre document {document_name} a été uploadé avec succès',
+      smsText: 'Document {document_name} uploadé avec succès. Validation en cours.',
+      priority: NotificationPriority.MEDIUM,
+      channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL, NotificationChannel.PUSH],
+      variables: ['document_name', 'document_type', 'upload_date', 'client_name'],
+      category: 'documents',
+      tags: ['upload', 'success', 'client'],
+      isActive: true,
+      version: '1.0.0',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+
+    // Document validé
+    this.templates.set(NotificationType.CLIENT_DOCUMENT_VALIDATED, {
+      id: 'client_document_validated',
+      type: NotificationType.CLIENT_DOCUMENT_VALIDATED,
+      title: 'Document validé',
+      message: 'Votre document "{document_name}" a été validé par notre équipe.',
+      emailSubject: 'Document validé - {document_name}',
+      emailBody: `
+        <h2>✅ Document validé</h2>
+        <p>Bonjour {client_name},</p>
+        <p>Excellente nouvelle ! Votre document <strong>{document_name}</strong> a été validé par notre équipe.</p>
+        <p><strong>Détails :</strong></p>
+        <ul>
+          <li>Document : {document_name}</li>
+          <li>Validé le : {validation_date}</li>
+          <li>Validé par : {validator_name}</li>
+          <li>Commentaires : {comments}</li>
+        </ul>
+        <p>Votre dossier progresse bien. Nous vous tiendrons informé des prochaines étapes.</p>
+        <p>Cordialement,<br>L'équipe Profitum</p>
+      `,
+      pushTitle: '✅ Document validé',
+      pushBody: 'Votre document {document_name} a été validé',
+      smsText: 'Document {document_name} validé avec succès.',
+      priority: NotificationPriority.HIGH,
+      channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL, NotificationChannel.PUSH, NotificationChannel.SMS],
+      variables: ['document_name', 'validation_date', 'validator_name', 'comments', 'client_name'],
+      category: 'documents',
+      tags: ['validation', 'success', 'client'],
+      isActive: true,
+      version: '1.0.0',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+
+    // Document rejeté
+    this.templates.set(NotificationType.CLIENT_DOCUMENT_REJECTED, {
+      id: 'client_document_rejected',
+      type: NotificationType.CLIENT_DOCUMENT_REJECTED,
+      title: 'Document rejeté - Action requise',
+      message: 'Votre document "{document_name}" a été rejeté. Raison : {rejection_reason}',
+      emailSubject: '⚠️ Document rejeté - Action requise',
+      emailBody: `
+        <h2>⚠️ Document rejeté</h2>
+        <p>Bonjour {client_name},</p>
+        <p>Votre document <strong>{document_name}</strong> a été rejeté lors de la validation.</p>
+        <p><strong>Raison du rejet :</strong></p>
+        <p>{rejection_reason}</p>
+        <p><strong>Actions à effectuer :</strong></p>
+        <ul>
+          <li>Corriger le document selon les commentaires</li>
+          <li>Réuploader le document corrigé</li>
+          <li>Vérifier que le document est lisible et complet</li>
+        </ul>
+        <p>Une fois corrigé, le document sera revalidé sous 24h.</p>
+        <p>Cordialement,<br>L'équipe Profitum</p>
+      `,
+      pushTitle: '⚠️ Document rejeté',
+      pushBody: 'Document {document_name} rejeté. Raison : {rejection_reason}',
+      smsText: 'Document {document_name} rejeté. Veuillez corriger et réuploader.',
+      priority: NotificationPriority.HIGH,
+      channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL, NotificationChannel.PUSH, NotificationChannel.SMS],
+      variables: ['document_name', 'rejection_reason', 'client_name'],
+      category: 'documents',
+      tags: ['rejection', 'action-required', 'client'],
+      isActive: true,
+      version: '1.0.0',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+
+    // Expert assigné
+    this.templates.set(NotificationType.CLIENT_EXPERT_ASSIGNED, {
+      id: 'client_expert_assigned',
+      type: NotificationType.CLIENT_EXPERT_ASSIGNED,
+      title: 'Expert assigné à votre dossier',
+      message: 'L\'expert {expert_name} a été assigné à votre dossier et vous contactera prochainement.',
+      emailSubject: 'Expert assigné - {expert_name}',
+      emailBody: `
+        <h2>👨‍💼 Expert assigné</h2>
+        <p>Bonjour {client_name},</p>
+        <p>Un expert a été assigné à votre dossier pour vous accompagner dans votre projet.</p>
+        <p><strong>Informations expert :</strong></p>
+        <ul>
+          <li>Nom : {expert_name}</li>
+          <li>Spécialité : {expert_specialty}</li>
+          <li>Expérience : {expert_experience}</li>
+          <li>Contact : {expert_email}</li>
+        </ul>
+        <p>L'expert vous contactera dans les 24h pour planifier un premier rendez-vous.</p>
+        <p>Cordialement,<br>L'équipe Profitum</p>
+      `,
+      pushTitle: '👨‍💼 Expert assigné',
+      pushBody: 'L\'expert {expert_name} a été assigné à votre dossier',
+      smsText: 'Expert {expert_name} assigné à votre dossier. Contact dans les 24h.',
+      priority: NotificationPriority.HIGH,
+      channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL, NotificationChannel.PUSH, NotificationChannel.SMS],
+      variables: ['expert_name', 'expert_specialty', 'expert_experience', 'expert_email', 'client_name'],
+      category: 'experts',
+      tags: ['assignment', 'expert', 'client'],
+      isActive: true,
+      version: '1.0.0',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+
+    // ===== TEMPLATES EXPERTS =====
+
+    // Nouvelle assignation
+    this.templates.set(NotificationType.EXPERT_NEW_ASSIGNMENT, {
+      id: 'expert_new_assignment',
+      type: NotificationType.EXPERT_NEW_ASSIGNMENT,
+      title: 'Nouvelle assignation client',
+      message: 'Vous avez été assigné au client {client_name} pour le projet {project_name}.',
+      emailSubject: 'Nouvelle assignation - {client_name}',
+      emailBody: `
+        <h2>🎯 Nouvelle assignation</h2>
+        <p>Bonjour {expert_name},</p>
+        <p>Vous avez été assigné à un nouveau client.</p>
+        <p><strong>Informations client :</strong></p>
+        <ul>
+          <li>Client : {client_name}</li>
+          <li>Projet : {project_name}</li>
+          <li>Type de projet : {project_type}</li>
+          <li>Budget estimé : {estimated_budget}</li>
+          <li>Deadline : {deadline}</li>
+        </ul>
+        <p><strong>Actions requises :</strong></p>
+        <ul>
+          <li>Contacter le client dans les 24h</li>
+          <li>Planifier un premier rendez-vous</li>
+          <li>Analyser les documents fournis</li>
+        </ul>
+        <p>Accédez à votre dashboard pour plus de détails.</p>
+        <p>Cordialement,<br>L'équipe Profitum</p>
+      `,
+      pushTitle: '🎯 Nouvelle assignation',
+      pushBody: 'Nouveau client {client_name} assigné - Projet {project_name}',
+      smsText: 'Nouvelle assignation : {client_name} - {project_name}. Contact dans 24h.',
+      priority: NotificationPriority.HIGH,
+      channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL, NotificationChannel.PUSH, NotificationChannel.SMS],
+      variables: ['client_name', 'project_name', 'project_type', 'estimated_budget', 'deadline', 'expert_name'],
+      category: 'assignments',
+      tags: ['new-assignment', 'client', 'expert'],
+      isActive: true,
+      version: '1.0.0',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+
+    // Message client
+    this.templates.set(NotificationType.EXPERT_CLIENT_MESSAGE, {
+      id: 'expert_client_message',
+      type: NotificationType.EXPERT_CLIENT_MESSAGE,
+      title: 'Nouveau message de {client_name}',
+      message: 'Vous avez reçu un nouveau message de {client_name} : "{message_preview}"',
+      emailSubject: 'Nouveau message - {client_name}',
+      emailBody: `
+        <h2>💬 Nouveau message client</h2>
+        <p>Bonjour {expert_name},</p>
+        <p>Vous avez reçu un nouveau message de <strong>{client_name}</strong>.</p>
+        <p><strong>Message :</strong></p>
+        <p>"{message_preview}"</p>
+        <p><strong>Détails :</strong></p>
+        <ul>
+          <li>Client : {client_name}</li>
+          <li>Projet : {project_name}</li>
+          <li>Date : {message_date}</li>
+          <li>Urgence : {urgency_level}</li>
+        </ul>
+        <p>Veuillez répondre dans les plus brefs délais.</p>
+        <p>Cordialement,<br>L'équipe Profitum</p>
+      `,
+      pushTitle: '💬 Message de {client_name}',
+      pushBody: 'Nouveau message : {message_preview}',
+      smsText: 'Message de {client_name} : {message_preview}',
+      priority: NotificationPriority.MEDIUM,
+      channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL, NotificationChannel.PUSH],
+      variables: ['client_name', 'message_preview', 'project_name', 'message_date', 'urgency_level', 'expert_name'],
+      category: 'communication',
+      tags: ['message', 'client', 'expert'],
+      isActive: true,
+      version: '1.0.0',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+
+    // ===== TEMPLATES ADMINS =====
+
+    // Nouvelle inscription client
+    this.templates.set(NotificationType.ADMIN_NEW_CLIENT_REGISTRATION, {
+      id: 'admin_new_client_registration',
+      type: NotificationType.ADMIN_NEW_CLIENT_REGISTRATION,
+      title: 'Nouvelle inscription client',
+      message: 'Un nouveau client {client_name} s\'est inscrit sur la plateforme.',
+      emailSubject: '🎉 Nouveau client - {client_name}',
+      emailBody: `
+        <h2>🎉 Nouvelle inscription client</h2>
+        <p>Bonjour {admin_name},</p>
+        <p>Un nouveau client s'est inscrit sur la plateforme Profitum.</p>
+        <p><strong>Informations client :</strong></p>
+        <ul>
+          <li>Nom : {client_name}</li>
+          <li>Email : {client_email}</li>
+          <li>Téléphone : {client_phone}</li>
+          <li>Entreprise : {company_name}</li>
+          <li>SIREN : {siren}</li>
+          <li>Type de projet : {project_type}</li>
+          <li>Budget estimé : {estimated_budget}</li>
+        </ul>
+        <p><strong>Actions recommandées :</strong></p>
+        <ul>
+          <li>Vérifier les informations client</li>
+          <li>Assigner un expert approprié</li>
+          <li>Planifier un suivi</li>
+        </ul>
+        <p>Cordialement,<br>Système Profitum</p>
+      `,
+      pushTitle: '🎉 Nouveau client',
+      pushBody: 'Nouvelle inscription : {client_name} - {project_type}',
+      smsText: 'Nouveau client {client_name} inscrit. Projet : {project_type}',
+      priority: NotificationPriority.HIGH,
+      channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL, NotificationChannel.PUSH, NotificationChannel.SLACK],
+      variables: ['client_name', 'client_email', 'client_phone', 'company_name', 'siren', 'project_type', 'estimated_budget', 'admin_name'],
+      category: 'registrations',
+      tags: ['new-client', 'registration', 'admin'],
+      isActive: true,
+      version: '1.0.0',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+
+    // Nouvelle candidature expert
+    this.templates.set(NotificationType.ADMIN_NEW_EXPERT_APPLICATION, {
+      id: 'admin_new_expert_application',
+      type: NotificationType.ADMIN_NEW_EXPERT_APPLICATION,
+      title: 'Nouvelle candidature expert',
+      message: 'Un nouvel expert {expert_name} a soumis sa candidature.',
+      emailSubject: '👨‍💼 Nouvelle candidature expert - {expert_name}',
+      emailBody: `
+        <h2>👨‍💼 Nouvelle candidature expert</h2>
+        <p>Bonjour {admin_name},</p>
+        <p>Un nouvel expert a soumis sa candidature pour rejoindre la plateforme.</p>
+        <p><strong>Informations expert :</strong></p>
+        <ul>
+          <li>Nom : {expert_name}</li>
+          <li>Email : {expert_email}</li>
+          <li>Téléphone : {expert_phone}</li>
+          <li>Spécialités : {specialties}</li>
+          <li>Expérience : {experience_years} ans</li>
+          <li>Certifications : {certifications}</li>
+          <li>Compensation souhaitée : {compensation}%</li>
+        </ul>
+        <p><strong>Actions requises :</strong></p>
+        <ul>
+          <li>Examiner la candidature</li>
+          <li>Vérifier les références</li>
+          <li>Planifier un entretien</li>
+          <li>Prendre une décision d'approbation</li>
+        </ul>
+        <p>Cordialement,<br>Système Profitum</p>
+      `,
+      pushTitle: '👨‍💼 Nouvelle candidature',
+      pushBody: 'Candidature expert : {expert_name} - {specialties}',
+      smsText: 'Nouvelle candidature expert {expert_name}. Spécialités : {specialties}',
+      priority: NotificationPriority.HIGH,
+      channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL, NotificationChannel.PUSH, NotificationChannel.SLACK],
+      variables: ['expert_name', 'expert_email', 'expert_phone', 'specialties', 'experience_years', 'certifications', 'compensation', 'admin_name'],
+      category: 'applications',
+      tags: ['new-expert', 'application', 'admin'],
+      isActive: true,
+      version: '1.0.0',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+
+    // Escalade workflow
+    this.templates.set(NotificationType.ADMIN_WORKFLOW_ESCALATION, {
+      id: 'admin_workflow_escalation',
+      type: NotificationType.ADMIN_WORKFLOW_ESCALATION,
+      title: '⚠️ Escalade workflow requise',
+      message: 'Le workflow du client {client_name} nécessite une intervention administrative.',
+      emailSubject: '⚠️ ESCALADE - Workflow {client_name}',
+      emailBody: `
+        <h2>⚠️ Escalade workflow</h2>
+        <p>Bonjour {admin_name},</p>
+        <p>Une escalade workflow a été déclenchée et nécessite votre intervention.</p>
+        <p><strong>Détails :</strong></p>
+        <ul>
+          <li>Client : {client_name}</li>
+          <li>Expert : {expert_name}</li>
+          <li>Projet : {project_name}</li>
+          <li>Raison : {escalation_reason}</li>
+          <li>Deadline : {deadline}</li>
+          <li>Priorité : {priority_level}</li>
+        </ul>
+        <p><strong>Actions requises :</strong></p>
+        <ul>
+          <li>Analyser la situation</li>
+          <li>Contacter l'expert et/ou le client</li>
+          <li>Prendre les mesures correctives</li>
+          <li>Mettre à jour le statut</li>
+        </ul>
+        <p>Cordialement,<br>Système Profitum</p>
+      `,
+      pushTitle: '⚠️ Escalade workflow',
+      pushBody: 'Escalade : {client_name} - {escalation_reason}',
+      smsText: 'ESCALADE workflow {client_name}. Raison : {escalation_reason}',
+      priority: NotificationPriority.URGENT,
+      channels: [NotificationChannel.IN_APP, NotificationChannel.EMAIL, NotificationChannel.PUSH, NotificationChannel.SMS, NotificationChannel.SLACK],
+      variables: ['client_name', 'expert_name', 'project_name', 'escalation_reason', 'deadline', 'priority_level', 'admin_name'],
+      category: 'escalations',
+      tags: ['escalation', 'workflow', 'admin', 'urgent'],
+      isActive: true,
+      version: '1.0.0',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
   }
 
-  /**
-   * Envoyer une notification
-   */
+  // ===== MÉTHODES PRINCIPALES =====
+
   async sendNotification(
     recipientId: string,
     recipientType: 'client' | 'expert' | 'admin' | 'profitum',
@@ -675,15 +612,15 @@ export class NotificationService {
     priority?: NotificationPriority
   ): Promise<string> {
     try {
-      // Obtenir le template
+      // Récupérer le template
       const template = this.templates.get(type);
       if (!template) {
         throw new Error(`Template non trouvé pour le type: ${type}`);
       }
 
-      // Obtenir les préférences utilisateur
+      // Récupérer les préférences utilisateur
       const preferences = await this.getUserPreferences(recipientId);
-      
+
       // Remplacer les variables dans le template
       const title = this.replaceVariables(template.title, data);
       const message = this.replaceVariables(template.message, data);
@@ -694,14 +631,17 @@ export class NotificationService {
         .insert({
           recipient_id: recipientId,
           recipient_type: recipientType,
-          type,
-          title,
-          message,
-          data,
+          type: type,
+          title: title,
+          message: message,
+          data: data,
           priority: priority || template.priority,
           channels: template.channels,
           sent_channels: [],
+          status: NotificationStatus.PENDING,
           read: false,
+          retry_count: 0,
+          max_retries: 3,
           created_at: new Date().toISOString()
         })
         .select()
@@ -709,13 +649,19 @@ export class NotificationService {
 
       if (error) throw error;
 
-      // Envoyer via les canaux autorisés
+      // Vérifier si la notification doit être envoyée en fonction des préférences
+      if (preferences && !await this.shouldSendNotification(notification, preferences)) {
+        console.log(`Notification de type ${type} ignorée pour l'utilisateur ${recipientId} en raison des préférences.`);
+        return notification.id;
+      }
+
+      // Envoyer via les canaux configurés
       const sentChannels: NotificationChannel[] = [];
-      
+
       for (const channel of template.channels) {
         if (this.isChannelEnabled(channel, preferences)) {
-          const sent = await this.sendViaChannel(channel, notification, data, template);
-          if (sent) {
+          const success = await this.sendViaChannel(channel, notification, data, template);
+          if (success) {
             sentChannels.push(channel);
           }
         }
@@ -727,22 +673,19 @@ export class NotificationService {
           .from('notification')
           .update({
             sent_channels: sentChannels,
+            status: NotificationStatus.SENT,
             sent_at: new Date().toISOString()
           })
           .eq('id', notification.id);
       }
 
       return notification.id;
-
     } catch (error) {
       console.error('Erreur envoi notification:', error);
       throw error;
     }
   }
 
-  /**
-   * Envoyer via un canal spécifique
-   */
   private async sendViaChannel(
     channel: NotificationChannel,
     notification: Notification,
@@ -757,6 +700,8 @@ export class NotificationService {
           return await this.sendPushNotification(notification, data, template);
         case NotificationChannel.SMS:
           return await this.sendSMS(notification, data, template);
+        case NotificationChannel.SLACK:
+          return await this.sendSlackNotification(notification, data, template);
         case NotificationChannel.IN_APP:
           return true; // Déjà créé en base
         default:
@@ -768,9 +713,6 @@ export class NotificationService {
     }
   }
 
-  /**
-   * Envoyer un email
-   */
   private async sendEmail(
     notification: Notification,
     data: any,
@@ -780,14 +722,15 @@ export class NotificationService {
       const subject = this.replaceVariables(template.emailSubject || template.title, data);
       const body = this.replaceVariables(template.emailBody || template.message, data);
 
-      // Obtenir l'email du destinataire
+      // Récupérer l'email de l'utilisateur
       const email = await this.getUserEmail(notification.recipient_id);
       if (!email) return false;
 
+      // Envoyer l'email
       await this.emailTransporter.sendMail({
         from: process.env.SMTP_FROM,
         to: email,
-        subject,
+        subject: subject,
         html: body
       });
 
@@ -798,25 +741,23 @@ export class NotificationService {
     }
   }
 
-  /**
-   * Envoyer une notification push
-   */
   private async sendPushNotification(
     notification: Notification,
     data: any,
     template: NotificationTemplate
   ): Promise<boolean> {
     try {
-      // Obtenir le token push de l'utilisateur
+      // Récupérer le token push
       const pushToken = await this.getUserPushToken(notification.recipient_id);
       if (!pushToken) return false;
 
       const title = this.replaceVariables(template.pushTitle || template.title, data);
       const body = this.replaceVariables(template.pushBody || template.message, data);
 
-      // Envoyer via service push (Firebase, OneSignal, etc.)
-      // À implémenter selon le service choisi
-      
+      // Ici, vous intégreriez votre service de push notification
+      // Par exemple, Firebase Cloud Messaging, OneSignal, etc.
+      console.log('Push notification:', { token: pushToken, title, body });
+
       return true;
     } catch (error) {
       console.error('Erreur envoi push:', error);
@@ -824,24 +765,22 @@ export class NotificationService {
     }
   }
 
-  /**
-   * Envoyer un SMS
-   */
   private async sendSMS(
     notification: Notification,
     data: any,
     template: NotificationTemplate
   ): Promise<boolean> {
     try {
-      // Obtenir le numéro de téléphone de l'utilisateur
+      // Récupérer le numéro de téléphone
       const phoneNumber = await this.getUserPhoneNumber(notification.recipient_id);
       if (!phoneNumber) return false;
 
       const text = this.replaceVariables(template.smsText || template.message, data);
 
-      // Envoyer via service SMS (Twilio, etc.)
-      // À implémenter selon le service choisi
-      
+      // Ici, vous intégreriez votre service SMS
+      // Par exemple, Twilio, Vonage, etc.
+      console.log('SMS:', { phone: phoneNumber, text });
+
       return true;
     } catch (error) {
       console.error('Erreur envoi SMS:', error);
@@ -849,23 +788,30 @@ export class NotificationService {
     }
   }
 
-  /**
-   * Remplacer les variables dans un template
-   */
+  private async sendSlackNotification(
+    notification: Notification,
+    data: any,
+    template: NotificationTemplate
+  ): Promise<boolean> {
+    try {
+      // Ici, vous intégreriez l'API Slack
+      // Envoi vers un canal Slack spécifique selon le type d'utilisateur
+      console.log('Slack notification:', { notification, data, template });
+      return true;
+    } catch (error) {
+      console.error('Erreur envoi Slack:', error);
+      return false;
+    }
+  }
+
   private replaceVariables(template: string, data: any): string {
     let result = template;
-    
     for (const [key, value] of Object.entries(data)) {
-      const placeholder = `{${key}}`;
-      result = result.replace(new RegExp(placeholder, 'g'), String(value));
+      result = result.replace(new RegExp(`{${key}}`, 'g'), String(value));
     }
-    
     return result;
   }
 
-  /**
-   * Obtenir les préférences utilisateur
-   */
   private async getUserPreferences(userId: string): Promise<UserNotificationPreferences | null> {
     const { data, error } = await supabase
       .from('UserNotificationPreferences')
@@ -881,14 +827,11 @@ export class NotificationService {
     return data;
   }
 
-  /**
-   * Vérifier si un canal est activé
-   */
   private isChannelEnabled(
     channel: NotificationChannel,
     preferences: UserNotificationPreferences | null
   ): boolean {
-    if (!preferences) return true; // Par défaut activé
+    if (!preferences) return true; // Par défaut, tous les canaux sont activés
 
     switch (channel) {
       case NotificationChannel.EMAIL:
@@ -897,6 +840,8 @@ export class NotificationService {
         return preferences.push_enabled;
       case NotificationChannel.SMS:
         return preferences.sms_enabled;
+      case NotificationChannel.SLACK:
+        return preferences.slack_enabled;
       case NotificationChannel.IN_APP:
         return preferences.in_app_enabled;
       default:
@@ -904,9 +849,6 @@ export class NotificationService {
     }
   }
 
-  /**
-   * Obtenir l'email de l'utilisateur
-   */
   private async getUserEmail(userId: string): Promise<string | null> {
     const { data, error } = await supabase
       .from('Client')
@@ -928,9 +870,6 @@ export class NotificationService {
     return data.email;
   }
 
-  /**
-   * Obtenir le token push de l'utilisateur
-   */
   private async getUserPushToken(userId: string): Promise<string | null> {
     const { data, error } = await supabase
       .from('UserDevices')
@@ -943,9 +882,6 @@ export class NotificationService {
     return data?.push_token || null;
   }
 
-  /**
-   * Obtenir le numéro de téléphone de l'utilisateur
-   */
   private async getUserPhoneNumber(userId: string): Promise<string | null> {
     const { data, error } = await supabase
       .from('Client')
@@ -967,23 +903,20 @@ export class NotificationService {
     return data.telephone;
   }
 
-  /**
-   * Marquer une notification comme lue
-   */
+  // ===== MÉTHODES PUBLIQUES =====
+
   async markAsRead(notificationId: string, userId: string): Promise<void> {
     await supabase
       .from('notification')
       .update({
         read: true,
-        read_at: new Date().toISOString()
+        read_at: new Date().toISOString(),
+        status: NotificationStatus.READ
       })
       .eq('id', notificationId)
       .eq('recipient_id', userId);
   }
 
-  /**
-   * Obtenir les notifications d'un utilisateur
-   */
   async getUserNotifications(
     userId: string,
     limit: number = 50,
@@ -1004,9 +937,6 @@ export class NotificationService {
     return data || [];
   }
 
-  /**
-   * Obtenir le nombre de notifications non lues
-   */
   async getUnreadCount(userId: string): Promise<number> {
     const { count, error } = await supabase
       .from('notification')
@@ -1021,6 +951,599 @@ export class NotificationService {
 
     return count || 0;
   }
+
+  private async shouldSendNotification(
+    notification: Notification,
+    preferences: UserNotificationPreferences | null
+  ): Promise<boolean> {
+    // Vérifier les heures calmes
+    if (await this.isInQuietHours(preferences)) {
+      return false;
+    }
+
+    // Vérifier les filtres de priorité
+    if (preferences?.priority_filter && 
+        !preferences.priority_filter.includes(notification.priority)) {
+      return false;
+    }
+
+    // Vérifier les filtres de type
+    if (preferences?.type_filter && 
+        !preferences.type_filter.includes(notification.type)) {
+      return false;
+    }
+
+    return true;
+  }
+
+  private async isInQuietHours(preferences: UserNotificationPreferences | null): Promise<boolean> {
+    if (!preferences?.quiet_hours_start || !preferences?.quiet_hours_end) {
+      return false;
+    }
+
+    const now = new Date();
+    const userTimezone = preferences.timezone || 'Europe/Paris';
+    
+    // Convertir l'heure actuelle dans le fuseau horaire de l'utilisateur
+    const userTime = new Date(now.toLocaleString('en-US', { timeZone: userTimezone }));
+    const currentTime = userTime.getHours() * 60 + userTime.getMinutes();
+
+    const [startHour, startMinute] = preferences.quiet_hours_start.split(':').map(Number);
+    const [endHour, endMinute] = preferences.quiet_hours_end.split(':').map(Number);
+    
+    const startTime = startHour * 60 + startMinute;
+    const endTime = endHour * 60 + endMinute;
+
+    if (startTime <= endTime) {
+      return currentTime >= startTime && currentTime <= endTime;
+    } else {
+      // Gestion du cas où les heures calmes traversent minuit
+      return currentTime >= startTime || currentTime <= endTime;
+    }
+  }
+
+  // ===== MÉTHODES SPÉCIFIQUES PAR TYPE D'UTILISATEUR =====
+
+  // Méthodes pour les clients
+  async sendClientNotification(
+    clientId: string,
+    type: NotificationType,
+    data: any,
+    priority?: NotificationPriority
+  ): Promise<string> {
+    return this.sendNotification(clientId, 'client', type, data, priority);
+  }
+
+  // Méthodes pour les experts
+  async sendExpertNotification(
+    expertId: string,
+    type: NotificationType,
+    data: any,
+    priority?: NotificationPriority
+  ): Promise<string> {
+    return this.sendNotification(expertId, 'expert', type, data, priority);
+  }
+
+  // Méthodes pour les admins
+  async sendAdminNotification(
+    adminId: string,
+    type: NotificationType,
+    data: any,
+    priority?: NotificationPriority
+  ): Promise<string> {
+    return this.sendNotification(adminId, 'admin', type, data, priority);
+  }
+
+  // Méthode pour notifier tous les admins
+  async notifyAllAdmins(
+    type: NotificationType,
+    data: any,
+    priority?: NotificationPriority
+  ): Promise<string[]> {
+    const { data: admins, error } = await supabase
+      .from('Admin')
+      .select('id');
+
+    if (error || !admins) {
+      console.error('Erreur récupération admins:', error);
+      return [];
+    }
+
+    const notificationIds: string[] = [];
+    for (const admin of admins) {
+      try {
+        const notificationId = await this.sendNotification(
+          admin.id,
+          'admin',
+          type,
+          data,
+          priority
+        );
+        notificationIds.push(notificationId);
+      } catch (error) {
+        console.error(`Erreur notification admin ${admin.id}:`, error);
+      }
+    }
+
+    return notificationIds;
+  }
 }
 
-export default NotificationService; 
+export default NotificationService;
+
+// ===== UTILITAIRES ET HELPERS =====
+
+/**
+ * Gestionnaire d'erreurs centralisé pour les notifications
+ */
+class NotificationErrorHandler {
+  static handle(error: any, context: string): void {
+    // Log local
+    console.error(`[Notification Error - ${context}]:`, {
+      message: error.message,
+      stack: error.stack,
+      timestamp: new Date().toISOString(),
+      context
+    });
+
+    // Envoyer à Sentry
+    captureError(error, {
+      tags: {
+        service: 'notification-service',
+        context: context
+      },
+      extra: {
+        timestamp: new Date().toISOString(),
+        context: context
+      }
+    });
+  }
+
+  static async retry<T>(
+    operation: () => Promise<T>,
+    maxRetries: number = 3,
+    delay: number = 1000
+  ): Promise<T> {
+    let lastError: any;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await operation();
+      } catch (error) {
+        lastError = error;
+        console.warn(`Tentative ${attempt}/${maxRetries} échouée:`, (error as any).message);
+        
+        if (attempt < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, delay * attempt));
+        }
+      }
+    }
+    
+    throw lastError;
+  }
+}
+
+/**
+ * Cache intelligent pour les templates et préférences
+ */
+class NotificationCache {
+  private static instance: NotificationCache;
+  private templateCache = new Map<string, NotificationTemplate>();
+  private preferencesCache = new Map<string, UserNotificationPreferences>();
+  private cacheTTL = 5 * 60 * 1000; // 5 minutes
+
+  static getInstance(): NotificationCache {
+    if (!NotificationCache.instance) {
+      NotificationCache.instance = new NotificationCache();
+    }
+    return NotificationCache.instance;
+  }
+
+  setTemplate(type: string, template: NotificationTemplate): void {
+    this.templateCache.set(type, template);
+  }
+
+  getTemplate(type: string): NotificationTemplate | undefined {
+    return this.templateCache.get(type);
+  }
+
+  setPreferences(userId: string, preferences: UserNotificationPreferences): void {
+    this.preferencesCache.set(userId, preferences);
+  }
+
+  getPreferences(userId: string): UserNotificationPreferences | undefined {
+    return this.preferencesCache.get(userId);
+  }
+
+  clearCache(): void {
+    this.templateCache.clear();
+    this.preferencesCache.clear();
+  }
+}
+
+/**
+ * Métriques de performance pour les notifications
+ */
+class NotificationMetricsManager {
+  private static instance: NotificationMetricsManager;
+  private metrics = {
+    sent: 0,
+    delivered: 0,
+    failed: 0,
+    deliveryTime: [] as number[],
+    channelPerformance: {} as Record<string, { sent: number; failed: number }>
+  };
+
+  static getInstance(): NotificationMetricsManager {
+    if (!NotificationMetricsManager.instance) {
+      NotificationMetricsManager.instance = new NotificationMetricsManager();
+    }
+    return NotificationMetricsManager.instance;
+  }
+
+  recordSent(channel: string): void {
+    this.metrics.sent++;
+    if (!this.metrics.channelPerformance[channel]) {
+      this.metrics.channelPerformance[channel] = { sent: 0, failed: 0 };
+    }
+    this.metrics.channelPerformance[channel].sent++;
+  }
+
+  recordDelivered(deliveryTime: number): void {
+    this.metrics.delivered++;
+    this.metrics.deliveryTime.push(deliveryTime);
+  }
+
+  recordFailed(channel: string): void {
+    this.metrics.failed++;
+    if (!this.metrics.channelPerformance[channel]) {
+      this.metrics.channelPerformance[channel] = { sent: 0, failed: 0 };
+    }
+    this.metrics.channelPerformance[channel].failed++;
+  }
+
+  getMetrics() {
+    const avgDeliveryTime = this.metrics.deliveryTime.length > 0
+      ? this.metrics.deliveryTime.reduce((a, b) => a + b, 0) / this.metrics.deliveryTime.length
+      : 0;
+
+    return {
+      ...this.metrics,
+      deliveryRate: this.metrics.sent > 0 ? (this.metrics.delivered / this.metrics.sent) * 100 : 0,
+      failureRate: this.metrics.sent > 0 ? (this.metrics.failed / this.metrics.sent) * 100 : 0,
+      averageDeliveryTime: avgDeliveryTime
+    };
+  }
+
+  reset(): void {
+    this.metrics = {
+      sent: 0,
+      delivered: 0,
+      failed: 0,
+      deliveryTime: [],
+      channelPerformance: {}
+    };
+  }
+}
+
+/**
+ * Gestionnaire de notifications en lot optimisé
+ */
+class BatchNotificationManager {
+  private static instance: BatchNotificationManager;
+  private batchQueue: Array<{
+    recipientId: string;
+    recipientType: 'client' | 'expert' | 'admin' | 'profitum';
+    type: NotificationType;
+    data: any;
+    priority?: NotificationPriority;
+  }> = [];
+  private processing = false;
+  private batchSize = 50;
+  private batchDelay = 1000; // 1 seconde
+
+  static getInstance(): BatchNotificationManager {
+    if (!BatchNotificationManager.instance) {
+      BatchNotificationManager.instance = new BatchNotificationManager();
+    }
+    return BatchNotificationManager.instance;
+  }
+
+  addToBatch(notification: {
+    recipientId: string;
+    recipientType: 'client' | 'expert' | 'admin' | 'profitum';
+    type: NotificationType;
+    data: any;
+    priority?: NotificationPriority;
+  }): void {
+    this.batchQueue.push(notification);
+    
+    if (!this.processing) {
+      this.processBatch();
+    }
+  }
+
+  private async processBatch(): Promise<void> {
+    if (this.processing || this.batchQueue.length === 0) return;
+
+    this.processing = true;
+    
+    while (this.batchQueue.length > 0) {
+      const batch = this.batchQueue.splice(0, this.batchSize);
+      
+      try {
+                 await Promise.allSettled(
+           batch.map(notification => 
+             new NotificationService().sendNotification(
+               notification.recipientId,
+               notification.recipientType,
+               notification.type,
+               notification.data,
+               notification.priority
+             )
+           )
+         );
+             } catch (error) {
+         NotificationErrorHandler.handle(error as any, 'BatchProcessing');
+       }
+
+      // Attendre avant le prochain lot
+      if (this.batchQueue.length > 0) {
+        await new Promise(resolve => setTimeout(resolve, this.batchDelay));
+      }
+    }
+
+    this.processing = false;
+  }
+}
+
+/**
+ * Gestionnaire de notifications programmées
+ */
+class ScheduledNotificationManager {
+  private static instance: ScheduledNotificationManager;
+  private scheduledNotifications = new Map<string, NodeJS.Timeout>();
+
+  static getInstance(): ScheduledNotificationManager {
+    if (!ScheduledNotificationManager.instance) {
+      ScheduledNotificationManager.instance = new ScheduledNotificationManager();
+    }
+    return ScheduledNotificationManager.instance;
+  }
+
+  scheduleNotification(
+    notificationId: string,
+    scheduledTime: Date,
+    notification: {
+      recipientId: string;
+      recipientType: 'client' | 'expert' | 'admin' | 'profitum';
+      type: NotificationType;
+      data: any;
+      priority?: NotificationPriority;
+    }
+  ): void {
+    const delay = scheduledTime.getTime() - Date.now();
+    
+         if (delay <= 0) {
+       // Notification en retard, envoyer immédiatement
+       new NotificationService().sendNotification(
+         notification.recipientId,
+         notification.recipientType,
+         notification.type,
+         notification.data,
+         notification.priority
+       );
+       return;
+     }
+
+     const timeout = setTimeout(async () => {
+       try {
+         await new NotificationService().sendNotification(
+           notification.recipientId,
+           notification.recipientType,
+           notification.type,
+           notification.data,
+           notification.priority
+         );
+        this.scheduledNotifications.delete(notificationId);
+               } catch (error: any) {
+           NotificationErrorHandler.handle(error, 'ScheduledNotification');
+         }
+    }, delay);
+
+    this.scheduledNotifications.set(notificationId, timeout);
+  }
+
+  cancelScheduledNotification(notificationId: string): boolean {
+    const timeout = this.scheduledNotifications.get(notificationId);
+    if (timeout) {
+      clearTimeout(timeout);
+      this.scheduledNotifications.delete(notificationId);
+      return true;
+    }
+    return false;
+  }
+
+  getScheduledCount(): number {
+    return this.scheduledNotifications.size;
+  }
+}
+
+// ===== EXTENSIONS DE LA CLASSE PRINCIPALE =====
+
+// Étendre la classe NotificationService avec des méthodes utilitaires
+export class NotificationServiceExtended extends NotificationService {
+  private static instance: NotificationServiceExtended;
+
+  static getInstance(): NotificationServiceExtended {
+    if (!NotificationServiceExtended.instance) {
+      NotificationServiceExtended.instance = new NotificationServiceExtended();
+    }
+    return NotificationServiceExtended.instance;
+  }
+
+  // Méthodes utilitaires avancées
+  async sendBulkNotifications(
+    notifications: Array<{
+      recipientId: string;
+      recipientType: 'client' | 'expert' | 'admin' | 'profitum';
+      type: NotificationType;
+      data: any;
+      priority?: NotificationPriority;
+    }>
+  ): Promise<{ success: number; failed: number; errors: string[] }> {
+    const results = await Promise.allSettled(
+      notifications.map(notification =>
+        this.sendNotification(
+          notification.recipientId,
+          notification.recipientType,
+          notification.type,
+          notification.data,
+          notification.priority
+        )
+      )
+    );
+
+    const success = results.filter(r => r.status === 'fulfilled').length;
+    const failed = results.filter(r => r.status === 'rejected').length;
+    const errors = results
+      .filter(r => r.status === 'rejected')
+      .map(r => (r as PromiseRejectedResult).reason?.message || 'Unknown error');
+
+    return { success, failed, errors };
+  }
+
+  async sendNotificationWithRetry(
+    recipientId: string,
+    recipientType: 'client' | 'expert' | 'admin' | 'profitum',
+    type: NotificationType,
+    data: any,
+    priority?: NotificationPriority,
+    maxRetries: number = 3
+  ): Promise<string> {
+    return NotificationErrorHandler.retry(
+      () => this.sendNotification(recipientId, recipientType, type, data, priority),
+      maxRetries
+    );
+  }
+
+  async scheduleNotification(
+    recipientId: string,
+    recipientType: 'client' | 'expert' | 'admin' | 'profitum',
+    type: NotificationType,
+    data: any,
+    scheduledTime: Date,
+    priority?: NotificationPriority
+  ): Promise<string> {
+    const notificationId = uuidv4();
+    
+    ScheduledNotificationManager.getInstance().scheduleNotification(
+      notificationId,
+      scheduledTime,
+      { recipientId, recipientType, type, data, priority }
+    );
+
+    return notificationId;
+  }
+
+  async cancelScheduledNotification(notificationId: string): Promise<boolean> {
+    return ScheduledNotificationManager.getInstance().cancelScheduledNotification(notificationId);
+  }
+
+  async addToBatch(
+    recipientId: string,
+    recipientType: 'client' | 'expert' | 'admin' | 'profitum',
+    type: NotificationType,
+    data: any,
+    priority?: NotificationPriority
+  ): Promise<void> {
+    BatchNotificationManager.getInstance().addToBatch({
+      recipientId,
+      recipientType,
+      type,
+      data,
+      priority
+    });
+  }
+
+  getMetrics() {
+    return NotificationMetricsManager.getInstance().getMetrics();
+  }
+
+  resetMetrics() {
+    NotificationMetricsManager.getInstance().reset();
+  }
+
+  clearCache() {
+    NotificationCache.getInstance().clearCache();
+  }
+
+  getScheduledCount(): number {
+    return ScheduledNotificationManager.getInstance().getScheduledCount();
+  }
+
+  // ===== MÉTHODES SENTRY AVANCÉES =====
+
+  /**
+   * Créer un breadcrumb pour tracer les actions utilisateur
+   */
+  addSentryBreadcrumb(message: string, category: string, data?: any): void {
+    captureMessage(message, {
+      tags: { category },
+      extra: { data }
+    });
+  }
+
+  /**
+   * Définir le contexte utilisateur dans Sentry
+   */
+  setSentryUser(userId: string, userType: 'client' | 'expert' | 'admin'): void {
+    captureMessage(`Utilisateur défini: ${userId} (${userType})`, {
+      user: { id: userId, type: userType },
+      level: 'info'
+    });
+  }
+
+  /**
+   * Envoyer une notification avec traçage Sentry
+   */
+  async sendNotificationWithTracing(
+    recipientId: string,
+    recipientType: 'client' | 'expert' | 'admin' | 'profitum',
+    type: NotificationType,
+    data: any,
+    priority?: NotificationPriority
+  ): Promise<string> {
+    try {
+      // Ajouter un breadcrumb
+      this.addSentryBreadcrumb(
+        `Envoi notification ${type}`,
+        'notification',
+        { recipientId, recipientType, type }
+      );
+
+      // Définir l'utilisateur
+      this.setSentryUser(recipientId, recipientType as 'client' | 'expert' | 'admin');
+
+      const result = await this.sendNotification(recipientId, recipientType, type, data, priority);
+
+      // Ajouter un breadcrumb de succès
+      this.addSentryBreadcrumb(
+        `Notification ${type} envoyée avec succès`,
+        'notification_success',
+        { recipientId, recipientType, type }
+      );
+
+      return result;
+    } catch (error) {
+      // Ajouter un breadcrumb d'échec
+      this.addSentryBreadcrumb(
+        `Échec envoi notification ${type}`,
+        'notification_error',
+        { recipientId, recipientType, type, error: (error as any).message }
+      );
+
+      throw error;
+    }
+  }
+} 
