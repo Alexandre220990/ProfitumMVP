@@ -54,7 +54,7 @@ export class TICPENotificationService {
     const templates = [
       {
         id: TICPENotificationType.ELIGIBILITY_CONFIRMED,
-        type: NotificationType.WORKFLOW_STEP_COMPLETED,
+        type: NotificationType.EXPERT_WORKFLOW_STEP_COMPLETED,
         title: 'Éligibilité TICPE confirmée',
         message: 'Votre éligibilité au remboursement TICPE a été confirmée. Vous pouvez maintenant sélectionner un expert.',
         emailSubject: '✅ Éligibilité TICPE confirmée - Prochaine étape',
@@ -83,7 +83,7 @@ export class TICPENotificationService {
       },
       {
         id: TICPENotificationType.EXPERT_SELECTED,
-        type: NotificationType.EXPERT_ASSIGNMENT,
+        type: NotificationType.EXPERT_NEW_ASSIGNMENT,
         title: 'Expert TICPE sélectionné',
         message: '{{expert_name}} a été sélectionné pour votre dossier TICPE.',
         emailSubject: '👨‍💼 Expert TICPE sélectionné - {{expert_name}}',
@@ -106,7 +106,7 @@ export class TICPENotificationService {
       },
       {
         id: TICPENotificationType.DOCUMENTS_COLLECTED,
-        type: NotificationType.DOCUMENT_UPLOADED,
+        type: NotificationType.CLIENT_DOCUMENT_UPLOADED,
         title: 'Documents TICPE collectés',
         message: '{{documents_count}} documents ont été collectés pour votre dossier TICPE.',
         emailSubject: '📄 Documents TICPE collectés - Audit en cours',
@@ -128,7 +128,7 @@ export class TICPENotificationService {
       },
       {
         id: TICPENotificationType.AUDIT_COMPLETED,
-        type: NotificationType.WORKFLOW_STEP_COMPLETED,
+        type: NotificationType.EXPERT_WORKFLOW_STEP_COMPLETED,
         title: 'Audit TICPE terminé',
         message: 'L\'audit technique de votre dossier TICPE est terminé.',
         emailSubject: '✅ Audit TICPE terminé - Validation en cours',
@@ -154,7 +154,7 @@ export class TICPENotificationService {
       },
       {
         id: TICPENotificationType.VALIDATION_APPROVED,
-        type: NotificationType.WORKFLOW_COMPLETED,
+        type: NotificationType.CLIENT_WORKFLOW_COMPLETED,
         title: 'Validation TICPE approuvée',
         message: 'Votre dossier TICPE a été validé. Demande de remboursement en cours.',
         emailSubject: '🎉 Validation TICPE approuvée - Remboursement en cours',
@@ -189,7 +189,7 @@ export class TICPENotificationService {
     return this.notificationService.sendNotification(
       data.client_id,
       'client',
-      TICPENotificationType.ELIGIBILITY_CONFIRMED as any,
+      NotificationType.EXPERT_WORKFLOW_STEP_COMPLETED,
       {
         ...data,
         dashboard_url: `${process.env.FRONTEND_URL}/dashboard/client-audit/${data.dossier_id}`
@@ -203,7 +203,7 @@ export class TICPENotificationService {
     await this.notificationService.sendNotification(
       data.client_id,
       'client',
-      TICPENotificationType.EXPERT_SELECTED as any,
+      NotificationType.EXPERT_NEW_ASSIGNMENT,
       {
         ...data,
         dashboard_url: `${process.env.FRONTEND_URL}/dashboard/client-audit/${data.dossier_id}`
@@ -216,7 +216,7 @@ export class TICPENotificationService {
       await this.notificationService.sendNotification(
         data.expert_id,
         'expert',
-        TICPENotificationType.EXPERT_DOSSIER_ASSIGNED as any,
+        NotificationType.EXPERT_NEW_ASSIGNMENT,
         {
           ...data,
           dashboard_url: `${process.env.FRONTEND_URL}/expert/dossier/${data.dossier_id}`
@@ -232,7 +232,7 @@ export class TICPENotificationService {
     return this.notificationService.sendNotification(
       data.client_id,
       'client',
-      TICPENotificationType.DOCUMENTS_COLLECTED as any,
+      NotificationType.CLIENT_DOCUMENT_UPLOADED,
       {
         ...data,
         dashboard_url: `${process.env.FRONTEND_URL}/dashboard/client-audit/${data.dossier_id}`
@@ -245,7 +245,7 @@ export class TICPENotificationService {
     return this.notificationService.sendNotification(
       data.client_id,
       'client',
-      TICPENotificationType.AUDIT_COMPLETED as any,
+      NotificationType.EXPERT_WORKFLOW_STEP_COMPLETED,
       {
         ...data,
         dashboard_url: `${process.env.FRONTEND_URL}/dashboard/client-audit/${data.dossier_id}`
@@ -258,7 +258,7 @@ export class TICPENotificationService {
     return this.notificationService.sendNotification(
       data.client_id,
       'client',
-      TICPENotificationType.VALIDATION_APPROVED as any,
+      NotificationType.CLIENT_WORKFLOW_COMPLETED,
       {
         ...data,
         dashboard_url: `${process.env.FRONTEND_URL}/dashboard/client-audit/${data.dossier_id}`
@@ -276,7 +276,7 @@ export class TICPENotificationService {
       await this.notificationService.sendNotification(
         adminId,
         'admin',
-        TICPENotificationType.ADMIN_DOCUMENT_UPLOADED as any,
+        NotificationType.CLIENT_DOCUMENT_UPLOADED,
         {
           ...data,
           dashboard_url: `${process.env.FRONTEND_URL}/admin/documents/validate`

@@ -62,7 +62,7 @@ export class FONCIERNotificationService {
     return this.notificationService.sendNotification(
       data.client_id,
       'client',
-      NotificationType.WORKFLOW_STEP_COMPLETED,
+      NotificationType.EXPERT_WORKFLOW_STEP_COMPLETED,
       {
         ...data,
         product_type: 'FONCIER',
@@ -78,7 +78,7 @@ export class FONCIERNotificationService {
     await this.notificationService.sendNotification(
       data.client_id,
       'client',
-      NotificationType.EXPERT_ASSIGNMENT,
+      NotificationType.EXPERT_NEW_ASSIGNMENT,
       {
         ...data,
         product_type: 'FONCIER',
@@ -93,7 +93,7 @@ export class FONCIERNotificationService {
       await this.notificationService.sendNotification(
         data.expert_id,
         'expert',
-        NotificationType.EXPERT_ASSIGNMENT,
+        NotificationType.EXPERT_NEW_ASSIGNMENT,
         {
           ...data,
           product_type: 'FONCIER',
@@ -111,7 +111,7 @@ export class FONCIERNotificationService {
     return this.notificationService.sendNotification(
       data.client_id,
       'client',
-      NotificationType.DOCUMENT_UPLOADED,
+      NotificationType.CLIENT_DOCUMENT_UPLOADED,
       {
         ...data,
         product_type: 'FONCIER',
@@ -126,7 +126,7 @@ export class FONCIERNotificationService {
     return this.notificationService.sendNotification(
       data.client_id,
       'client',
-      NotificationType.WORKFLOW_STEP_COMPLETED,
+      NotificationType.EXPERT_WORKFLOW_STEP_COMPLETED,
       {
         ...data,
         product_type: 'FONCIER',
@@ -141,7 +141,7 @@ export class FONCIERNotificationService {
     return this.notificationService.sendNotification(
       data.client_id,
       'client',
-      NotificationType.WORKFLOW_COMPLETED,
+      NotificationType.CLIENT_WORKFLOW_COMPLETED,
       {
         ...data,
         product_type: 'FONCIER',
@@ -161,7 +161,7 @@ export class FONCIERNotificationService {
       await this.notificationService.sendNotification(
         adminId,
         'admin',
-        NotificationType.DOCUMENT_UPLOADED,
+        NotificationType.CLIENT_DOCUMENT_UPLOADED,
         {
           ...data,
           product_type: 'FONCIER',
@@ -180,7 +180,7 @@ export class FONCIERNotificationService {
     return this.notificationService.sendNotification(
       data.client_id,
       'client',
-      NotificationType.WORKFLOW_STEP_COMPLETED,
+      NotificationType.EXPERT_WORKFLOW_STEP_COMPLETED,
       {
         ...data,
         product_type: 'FONCIER',
@@ -197,7 +197,7 @@ export class FONCIERNotificationService {
     return this.notificationService.sendNotification(
       data.client_id,
       'client',
-      NotificationType.WORKFLOW_STEP_COMPLETED,
+      NotificationType.EXPERT_WORKFLOW_STEP_COMPLETED,
       {
         ...data,
         product_type: 'FONCIER',

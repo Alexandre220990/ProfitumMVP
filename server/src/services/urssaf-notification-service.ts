@@ -54,7 +54,7 @@ export class URSSAFNotificationService {
     const templates = [
       {
         id: URSSAFNotificationType.ELIGIBILITY_CONFIRMED,
-        type: NotificationType.WORKFLOW_STEP_COMPLETED,
+        type: NotificationType.EXPERT_WORKFLOW_STEP_COMPLETED,
         title: 'Éligibilité URSSAF confirmée',
         message: 'Votre éligibilité au remboursement URSSAF a été confirmée. Vous pouvez maintenant sélectionner un expert.',
         emailSubject: '✅ Éligibilité URSSAF confirmée - Prochaine étape',
@@ -83,7 +83,7 @@ export class URSSAFNotificationService {
       },
       {
         id: URSSAFNotificationType.EXPERT_SELECTED,
-        type: NotificationType.EXPERT_ASSIGNMENT,
+        type: NotificationType.EXPERT_NEW_ASSIGNMENT,
         title: 'Expert URSSAF sélectionné',
         message: '{{expert_name}} a été sélectionné pour votre dossier URSSAF.',
         emailSubject: '👨‍💼 Expert URSSAF sélectionné - {{expert_name}}',
@@ -106,7 +106,7 @@ export class URSSAFNotificationService {
       },
       {
         id: URSSAFNotificationType.DOCUMENTS_COLLECTED,
-        type: NotificationType.DOCUMENT_UPLOADED,
+        type: NotificationType.CLIENT_DOCUMENT_UPLOADED,
         title: 'Documents URSSAF collectés',
         message: '{{documents_count}} documents ont été collectés pour votre dossier URSSAF.',
         emailSubject: '📄 Documents URSSAF collectés - Audit en cours',
@@ -128,7 +128,7 @@ export class URSSAFNotificationService {
       },
       {
         id: URSSAFNotificationType.AUDIT_COMPLETED,
-        type: NotificationType.WORKFLOW_STEP_COMPLETED,
+        type: NotificationType.EXPERT_WORKFLOW_STEP_COMPLETED,
         title: 'Audit URSSAF terminé',
         message: 'L\'audit comptable de votre dossier URSSAF est terminé.',
         emailSubject: '✅ Audit URSSAF terminé - Validation en cours',
@@ -154,7 +154,7 @@ export class URSSAFNotificationService {
       },
       {
         id: URSSAFNotificationType.VALIDATION_APPROVED,
-        type: NotificationType.WORKFLOW_COMPLETED,
+        type: NotificationType.CLIENT_WORKFLOW_COMPLETED,
         title: 'Validation URSSAF approuvée',
         message: 'Votre dossier URSSAF a été validé. Demande de remboursement en cours.',
         emailSubject: '🎉 Validation URSSAF approuvée - Remboursement en cours',
@@ -189,7 +189,7 @@ export class URSSAFNotificationService {
     return this.notificationService.sendNotification(
       data.client_id,
       'client',
-      URSSAFNotificationType.ELIGIBILITY_CONFIRMED as any,
+      NotificationType.EXPERT_WORKFLOW_STEP_COMPLETED,
       {
         ...data,
         dashboard_url: `${process.env.FRONTEND_URL}/dashboard/client-audit/${data.dossier_id}`
@@ -203,7 +203,7 @@ export class URSSAFNotificationService {
     await this.notificationService.sendNotification(
       data.client_id,
       'client',
-      URSSAFNotificationType.EXPERT_SELECTED as any,
+      NotificationType.EXPERT_NEW_ASSIGNMENT,
       {
         ...data,
         dashboard_url: `${process.env.FRONTEND_URL}/dashboard/client-audit/${data.dossier_id}`
@@ -216,7 +216,7 @@ export class URSSAFNotificationService {
       await this.notificationService.sendNotification(
         data.expert_id,
         'expert',
-        URSSAFNotificationType.EXPERT_DOSSIER_ASSIGNED as any,
+        NotificationType.EXPERT_NEW_ASSIGNMENT,
         {
           ...data,
           dashboard_url: `${process.env.FRONTEND_URL}/expert/dossier/${data.dossier_id}`
@@ -232,7 +232,7 @@ export class URSSAFNotificationService {
     return this.notificationService.sendNotification(
       data.client_id,
       'client',
-      URSSAFNotificationType.DOCUMENTS_COLLECTED as any,
+      NotificationType.CLIENT_DOCUMENT_UPLOADED,
       {
         ...data,
         dashboard_url: `${process.env.FRONTEND_URL}/dashboard/client-audit/${data.dossier_id}`
@@ -245,7 +245,7 @@ export class URSSAFNotificationService {
     return this.notificationService.sendNotification(
       data.client_id,
       'client',
-      URSSAFNotificationType.AUDIT_COMPLETED as any,
+      NotificationType.EXPERT_WORKFLOW_STEP_COMPLETED,
       {
         ...data,
         dashboard_url: `${process.env.FRONTEND_URL}/dashboard/client-audit/${data.dossier_id}`
@@ -258,7 +258,7 @@ export class URSSAFNotificationService {
     return this.notificationService.sendNotification(
       data.client_id,
       'client',
-      URSSAFNotificationType.VALIDATION_APPROVED as any,
+      NotificationType.CLIENT_WORKFLOW_COMPLETED,
       {
         ...data,
         dashboard_url: `${process.env.FRONTEND_URL}/dashboard/client-audit/${data.dossier_id}`
@@ -276,7 +276,7 @@ export class URSSAFNotificationService {
       await this.notificationService.sendNotification(
         adminId,
         'admin',
-        URSSAFNotificationType.ADMIN_DOCUMENT_UPLOADED as any,
+        NotificationType.CLIENT_DOCUMENT_UPLOADED,
         {
           ...data,
           dashboard_url: `${process.env.FRONTEND_URL}/admin/documents/validate`

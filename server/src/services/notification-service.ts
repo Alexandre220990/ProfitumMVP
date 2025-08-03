@@ -1067,6 +1067,31 @@ export class NotificationService {
 
     return notificationIds;
   }
+
+  // Méthode publique pour ajouter des templates personnalisés
+  public addTemplate(template: Partial<NotificationTemplate> & { type: NotificationType }): void {
+    const fullTemplate: NotificationTemplate = {
+      id: template.id || template.type,
+      type: template.type,
+      title: template.title || '',
+      message: template.message || '',
+      emailSubject: template.emailSubject,
+      emailBody: template.emailBody,
+      pushTitle: template.pushTitle,
+      pushBody: template.pushBody,
+      smsText: template.smsText,
+      priority: template.priority || NotificationPriority.MEDIUM,
+      channels: template.channels || [NotificationChannel.IN_APP],
+      variables: template.variables || [],
+      category: template.category || 'general',
+      tags: template.tags || [],
+      isActive: template.isActive !== false,
+      version: template.version || '1.0.0',
+      createdAt: template.createdAt || new Date().toISOString(),
+      updatedAt: template.updatedAt || new Date().toISOString()
+    };
+    this.templates.set(template.type, fullTemplate);
+  }
 }
 
 export default NotificationService;
