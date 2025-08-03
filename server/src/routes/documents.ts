@@ -485,6 +485,7 @@ router.get('/:documentId/download', enhancedAuthMiddleware, async (req: Request,
     res.setHeader('Content-Disposition', `attachment; filename="${document.original_filename}"`);
     res.setHeader('Content-Length', buffer.length);
     res.send(buffer);
+    return;
 
   } catch (error) {
     console.error('❌ Erreur téléchargement document:', error);

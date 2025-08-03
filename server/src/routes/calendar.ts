@@ -311,7 +311,7 @@ router.post('/events', calendarLimiter, validateEvent, asyncHandler(async (req: 
       await notificationService.sendNotification(
         authUser.id,
         authUser.type,
-        NotificationType.CALENDAR_EVENT_CREATED,
+        NotificationType.CLIENT_CALENDAR_EVENT_REMINDER,
         {
           event_title: event.title,
           event_date: new Date(event.start_date).toLocaleDateString('fr-FR'),
@@ -321,7 +321,7 @@ router.post('/events', calendarLimiter, validateEvent, asyncHandler(async (req: 
           event_location: event.location || 'Non spécifié',
           event_description: event.description || 'Aucune description',
           event_url: `${process.env.FRONTEND_URL}/calendar/event/${event.id}`,
-          recipient_name: authUser.name || 'Utilisateur'
+          recipient_name: (authUser as any).name || 'Utilisateur'
         }
       );
 
@@ -332,13 +332,13 @@ router.post('/events', calendarLimiter, validateEvent, asyncHandler(async (req: 
             await notificationService.sendNotification(
               participantId,
               'client', // TODO: Déterminer le type dynamiquement
-              NotificationType.CALENDAR_EVENT_INVITATION,
+              NotificationType.CLIENT_CALENDAR_EVENT_REMINDER,
               {
                 event_title: event.title,
                 event_date: new Date(event.start_date).toLocaleDateString('fr-FR'),
                 event_time: new Date(event.start_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
                 event_location: event.location || 'Non spécifié',
-                organizer_name: authUser.name || 'Organisateur',
+                organizer_name: (authUser as any).name || 'Organisateur',
                 event_description: event.description || 'Aucune description',
                 accept_url: `${process.env.FRONTEND_URL}/calendar/event/${event.id}/accept`,
                 decline_url: `${process.env.FRONTEND_URL}/calendar/event/${event.id}/decline`,

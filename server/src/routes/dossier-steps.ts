@@ -71,7 +71,7 @@ router.post('/documents/upload', enhancedAuthMiddleware, async (req: Request, re
       });
     }
 
-    if (dossier.clientId !== user.id) {
+    if (!user || dossier.clientId !== user.id) {
       return res.status(403).json({
         success: false,
         message: 'Accès non autorisé'
@@ -82,7 +82,7 @@ router.post('/documents/upload', enhancedAuthMiddleware, async (req: Request, re
     const { data: document, error: docError } = await supabase
       .from('DocumentFile')
       .insert({
-        client_id: user.id,
+        client_id: user?.id,
         original_filename: file_name,
         stored_filename: `${Date.now()}_${file_name}`,
         file_path: `dossiers/${dossier_id}/${document_type}/${file_name}`,
@@ -95,8 +95,8 @@ router.post('/documents/upload', enhancedAuthMiddleware, async (req: Request, re
         validation_status: 'pending',
         metadata: {
           dossier_id: dossier_id,
-          product_type: dossier.ProduitEligible?.nom,
-          uploaded_by: user.id,
+          product_type: dossier.ProduitEligible?.[0]?.nom,
+          uploaded_by: user?.id,
           upload_date: new Date().toISOString()
         }
       })
