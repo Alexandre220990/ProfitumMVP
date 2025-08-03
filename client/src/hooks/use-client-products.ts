@@ -95,7 +95,7 @@ export const useClientProducts = (): UseClientProductsReturn => {
       
       if (err.response?.status === 401) {
         setError('Session expirée. Veuillez vous reconnecter.');
-      } else       if (err.response?.status === 404) {
+      } else if (err.response?.status === 404) {
         setError('Aucun produit éligible trouvé. Commencez par faire une simulation.');
         console.log('🔄 Client sans produits éligibles - redirection vers simulateur recommandée');
       } else {

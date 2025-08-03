@@ -1,8 +1,8 @@
 import * as React from "react";
-import { useState, useCallback, useMemo, useEffect } from "react";
-import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, Users, FileText, AlertTriangle, Edit, Trash2, Bell, MapPin, Video, User, Grid, List, CalendarDays, Eye, RefreshCw } from "lucide-react";
+import { useState, useCallback } from "react";
+import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, Users, FileText, AlertTriangle, Edit, Trash2, Bell, MapPin, Video, Grid, List, CalendarDays, Eye, RefreshCw } from "lucide-react";
 import { DayPicker } from "react-day-picker";
-import { format, isSameDay, startOfWeek, endOfWeek, eachDayOfInterval, isSameWeek, addDays, subDays, startOfMonth, endOfMonth } from "date-fns";
+import { format, isSameDay, startOfWeek, endOfWeek, eachDayOfInterval, addDays, subDays, startOfMonth, endOfMonth } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from '@/hooks/use-toast';
@@ -13,14 +13,14 @@ import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // ============================================================================
 // TYPES ET INTERFACES
@@ -54,7 +54,8 @@ const PRIORITY_COLORS = {
   critical: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400',
   high: 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400',
   medium: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400',
-  low: 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+  low: 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400',
+  urgent: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
 } as const;
 
 const STATUS_COLORS = {
@@ -179,53 +180,7 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
     }
   });
 
-  // ========================================
-  // FONCTIONS UTILITAIRES
-  // ========================================
 
-  const getViewStartDate = (currentView: CalendarView): Date => {
-    switch (currentView.type) {
-      case 'day':
-        return startOfDay(currentView.date);
-      case 'week':
-        return startOfWeek(currentView.date, { locale: fr });
-      case 'month':
-        return startOfMonth(currentView.date);
-      case 'agenda':
-      case 'list':
-        return subDays(currentView.date, 30);
-      default:
-        return currentView.date;
-    }
-  };
-
-  const getViewEndDate = (currentView: CalendarView): Date => {
-    switch (currentView.type) {
-      case 'day':
-        return endOfDay(currentView.date);
-      case 'week':
-        return endOfWeek(currentView.date, { locale: fr });
-      case 'month':
-        return endOfMonth(currentView.date);
-      case 'agenda':
-      case 'list':
-        return addDays(currentView.date, 30);
-      default:
-        return currentView.date;
-    }
-  };
-
-  const startOfDay = (date: Date): Date => {
-    const newDate = new Date(date);
-    newDate.setHours(0, 0, 0, 0);
-    return newDate;
-  };
-
-  const endOfDay = (date: Date): Date => {
-    const newDate = new Date(date);
-    newDate.setHours(23, 59, 59, 999);
-    return newDate;
-  };
 
   // ========================================
   // GESTION DES ÉVÉNEMENTS
@@ -779,7 +734,6 @@ const EventForm: React.FC<EventFormProps> = ({ event, onSubmit, onCancel }) => {
     location: event?.location || '',
     is_online: event?.is_online || false,
     meeting_url: event?.meeting_url || '',
-    phone_number: event?.phone_number || '',
     color: event?.color || '#3B82F6'
   });
 
@@ -980,7 +934,7 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker>;
 
-function Calendar({ className, classNames, showOutsideDays = true, ...props }: CalendarProps) {
+export function Calendar({ className, classNames, showOutsideDays = true, ...props }: CalendarProps) {
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
