@@ -110,8 +110,8 @@ export class CalendarReminderService {
       for (const recipient of recipients) {
         await this.notificationService.sendNotification(
           recipient.user_id,
-          recipient.user_type,
-          NotificationType.CALENDAR_EVENT_REMINDER,
+          recipient.user_type as 'client' | 'expert' | 'admin' | 'profitum',
+          NotificationType.CLIENT_CALENDAR_EVENT_REMINDER,
           {
             event_title: event.title,
             event_date: eventStart.toLocaleDateString('fr-FR'),
@@ -290,8 +290,8 @@ export class CalendarReminderService {
       for (const recipient of recipients) {
         await this.notificationService.sendNotification(
           recipient.user_id,
-          recipient.user_type,
-          NotificationType.CALENDAR_EVENT_REMINDER,
+          recipient.user_type as 'client' | 'expert' | 'admin' | 'profitum',
+          NotificationType.CLIENT_CALENDAR_EVENT_REMINDER,
           {
             event_title: event.title,
             event_date: new Date(event.start_date).toLocaleDateString('fr-FR'),

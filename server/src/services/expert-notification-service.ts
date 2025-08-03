@@ -59,7 +59,7 @@ export class ExpertNotificationService {
       return await this.notificationService.sendNotification(
         adminId,
         'admin',
-        NotificationType.EXPERT_DEMO_REQUEST,
+        NotificationType.ADMIN_NEW_EXPERT_APPLICATION,
         notificationData,
         NotificationPriority.HIGH
       );
@@ -83,7 +83,7 @@ export class ExpertNotificationService {
       return await this.notificationService.sendNotification(
         data.expert_id,
         'expert',
-        NotificationType.EXPERT_APPROVED,
+        NotificationType.EXPERT_ACCOUNT_APPROVED,
         notificationData,
         NotificationPriority.HIGH
       );
@@ -106,7 +106,7 @@ export class ExpertNotificationService {
       return await this.notificationService.sendNotification(
         data.expert_id,
         'expert',
-        NotificationType.EXPERT_REJECTED,
+        NotificationType.EXPERT_ACCOUNT_REJECTED,
         notificationData,
         NotificationPriority.MEDIUM
       );
@@ -130,7 +130,7 @@ export class ExpertNotificationService {
       return await this.notificationService.sendNotification(
         data.expert_id,
         'expert',
-        NotificationType.EXPERT_ACCOUNT_CREATED,
+        NotificationType.EXPERT_ACCOUNT_APPROVED,
         notificationData,
         NotificationPriority.HIGH
       );
@@ -154,7 +154,7 @@ export class ExpertNotificationService {
       return await this.notificationService.sendNotification(
         data.expert_id,
         'expert',
-        NotificationType.EXPERT_PROFILE_UPDATED,
+        NotificationType.EXPERT_ACCOUNT_APPROVED,
         notificationData,
         NotificationPriority.MEDIUM
       );
@@ -177,7 +177,7 @@ export class ExpertNotificationService {
       return await this.notificationService.sendNotification(
         data.expert_id,
         'expert',
-        NotificationType.EXPERT_STATUS_CHANGED,
+        NotificationType.EXPERT_ACCOUNT_SUSPENDED,
         notificationData,
         NotificationPriority.HIGH
       );

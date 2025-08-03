@@ -189,7 +189,7 @@ export class CRMService {
         await this.notificationService.sendNotification(
           contactData.assigned_to,
           'admin',
-          NotificationType.NEW_CLIENT,
+          NotificationType.ADMIN_NEW_CLIENT_REGISTRATION,
           {
             contact_name: `${contactData.first_name} ${contactData.last_name}`,
             company_name: contactData.company_name,
@@ -418,7 +418,7 @@ export class CRMService {
         await this.notificationService.sendNotification(
           taskData.assigned_to,
           'admin',
-          NotificationType.VALIDATION_REMINDER,
+          NotificationType.CLIENT_DEADLINE_REMINDER,
           {
             task_title: taskData.title,
             due_date: taskData.due_date,
@@ -526,7 +526,7 @@ export class CRMService {
       await this.notificationService.sendNotification(
         opportunityData.assigned_to,
         'admin',
-        NotificationType.EXPERT_ASSIGNMENT,
+        NotificationType.EXPERT_NEW_ASSIGNMENT,
         {
           opportunity_title: opportunityData.title,
           value: opportunityData.value,

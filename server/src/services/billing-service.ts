@@ -179,7 +179,7 @@ export class BillingService {
       await this.notificationService.sendNotification(
         invoiceData.client_id,
         'client',
-        NotificationType.INVOICE_GENERATED,
+        NotificationType.CLIENT_INVOICE_GENERATED,
         {
           invoice_number: invoiceNumber,
           total_amount: totalAmount,
@@ -251,7 +251,7 @@ export class BillingService {
         await this.notificationService.sendNotification(
           invoice.client_id,
           'client',
-          NotificationType.INVOICE_GENERATED,
+          NotificationType.CLIENT_INVOICE_GENERATED,
           {
             invoice_number: invoice.invoice_number,
             total_amount: invoice.total_amount,
@@ -357,7 +357,7 @@ export class BillingService {
         await this.notificationService.sendNotification(
           invoice.client_id,
           'client',
-          NotificationType.PAYMENT_RECEIVED,
+          NotificationType.CLIENT_PAYMENT_RECEIVED,
           {
             invoice_number: invoice.invoice_number,
             amount: paymentData.amount,
@@ -368,10 +368,10 @@ export class BillingService {
 
         // Si c'est une commission d'expert, notifier l'expert
         if (invoice.expert_id && invoice.billing_type === BillingType.EXPERT_COMMISSION) {
-          await this.notificationService.sendNotification(
-            invoice.expert_id,
-            'expert',
-            NotificationType.PAYMENT_RECEIVED,
+                  await this.notificationService.sendNotification(
+          invoice.expert_id,
+          'expert',
+          NotificationType.EXPERT_PAYMENT_PROCESSED,
             {
               invoice_number: invoice.invoice_number,
               amount: paymentData.amount,

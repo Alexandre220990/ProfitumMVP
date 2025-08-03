@@ -143,7 +143,7 @@ router.post('/eligibility/validate', enhancedAuthMiddleware, async (req: Request
     }
 
     // Vérifier que l'utilisateur est admin
-    if (user.type !== 'admin') {
+    if (!user || user.type !== 'admin') {
       return res.status(403).json({
         success: false,
         message: 'Accès réservé aux administrateurs'
@@ -240,7 +240,7 @@ router.post('/expert/select', enhancedAuthMiddleware, async (req: Request, res: 
       });
     }
 
-    if (dossier.clientId !== user.id) {
+    if (!user || dossier.clientId !== user.id) {
       return res.status(403).json({
         success: false,
         message: 'Accès non autorisé'
@@ -274,7 +274,7 @@ router.post('/expert/select', enhancedAuthMiddleware, async (req: Request, res: 
       .from('ExpertAssignment')
       .insert({
         expert_id: expert_id,
-        client_id: user.id,
+        client_id: user?.id,
         client_produit_id: dossier_id,
         status: 'pending',
         assignment_date: new Date().toISOString(),
@@ -372,7 +372,7 @@ router.post('/expert/accept', enhancedAuthMiddleware, async (req: Request, res: 
       });
     }
 
-    if (assignment.expert_id !== user.id) {
+    if (!user || assignment.expert_id !== user.id) {
       return res.status(403).json({
         success: false,
         message: 'Accès non autorisé'

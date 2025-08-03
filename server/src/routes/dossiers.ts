@@ -1,6 +1,6 @@
 import express, { Request, Response } from 'express';
 import { supabase } from '../lib/supabase';
-import { enhancedAuthMiddleware } from '../middleware/auth';
+import { enhancedAuthMiddleware } from '../middleware/auth-enhanced';
 
 const router = express.Router();
 
@@ -61,8 +61,8 @@ router.get('/client/:clientId', enhancedAuthMiddleware, async (req: Request, res
 
         return {
           id: dossier.id,
-          product_name: dossier.ProduitEligible?.nom || 'Produit inconnu',
-          product_description: dossier.ProduitEligible?.description,
+          product_name: dossier.ProduitEligible?.[0]?.nom || 'Produit inconnu',
+          product_description: dossier.ProduitEligible?.[0]?.description || '',
           status: dossier.status,
           created_at: dossier.created_at,
           documents_count: documentsCount || 0
@@ -138,8 +138,8 @@ router.get('/:dossierId', enhancedAuthMiddleware, async (req: Request, res: Resp
 
     const enrichedDossier = {
       ...dossier,
-      product_name: dossier.ProduitEligible?.nom,
-      product_description: dossier.ProduitEligible?.description,
+      product_name: dossier.ProduitEligible?.[0]?.nom,
+      product_description: dossier.ProduitEligible?.[0]?.description,
       documents: documents || [],
       documents_count: documents?.length || 0
     };
