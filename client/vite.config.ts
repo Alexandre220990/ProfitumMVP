@@ -9,7 +9,7 @@ export default defineConfig({
       "@": path.resolve(__dirname, "src"),
       "@shared": path.resolve(__dirname, "../shared"),
     },
-    dedupe: ['react', 'react-dom', 'react-dropzone']
+    dedupe: ['react', 'react-dom']
   },
   // Configuration spécifique pour Vercel
   server: {
@@ -26,8 +26,7 @@ export default defineConfig({
         manualChunks: {
           'react-vendor': ['react', 'react-dom'],
           'ui-vendor': ['lucide-react'],
-          'supabase-vendor': ['@supabase/supabase-js'],
-          dropzone: ['react-dropzone']
+          'supabase-vendor': ['@supabase/supabase-js']
         },
         // Ajout d'un hash pour forcer le rafraîchissement du cache
         assetFileNames: (assetInfo) => {
@@ -56,8 +55,7 @@ export default defineConfig({
       'react',
       'react-dom',
       'lucide-react',
-      '@supabase/supabase-js',
-      'react-dropzone'
+      '@supabase/supabase-js'
     ],
     force: true
   }
