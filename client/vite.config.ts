@@ -26,7 +26,6 @@ export default defineConfig({
           'react-vendor': ['react', 'react-dom'],
           'ui-vendor': ['lucide-react'],
           'supabase-vendor': ['@supabase/supabase-js'],
-          vendor: ['react', 'react-dom'],
           dropzone: ['react-dropzone']
         },
         // Ajout d'un hash pour forcer le rafraîchissement du cache
