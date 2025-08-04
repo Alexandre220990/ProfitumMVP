@@ -1,21 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { 
-  Calculator, 
-  TrendingUp, 
-  Lightbulb, 
-  Building2, 
-  Users, 
   FileText,
   CheckCircle,
-  Clock,
-  AlertCircle,
-  ArrowLeft,
-  ExternalLink
+  ExternalLink,
+  ArrowLeft
 } from 'lucide-react';
 import HeaderClient from '@/components/HeaderClient';
 
