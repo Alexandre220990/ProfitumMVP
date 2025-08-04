@@ -29,7 +29,7 @@ import expertRoutes from './routes/expert';
 import adminRoutes from './routes/admin';
 import auditRoutes from './routes/audit';
 import simulationRoute from './routes/simulation';
-import charteSignatureRoutes from './routes/charte-signature';
+
 // import messagingRoutes from './routes/messaging';
 import unifiedMessagingRoutes from './routes/unified-messaging';
 import simulatorRoutes from './routes/simulator';
@@ -258,7 +258,7 @@ app.use('/api/analytics', enhancedAuthMiddleware, analyticsRoutes);
 app.use('/api/google-calendar', enhancedAuthMiddleware, googleCalendarRoutes);
 
 // Routes de signature de charte - PROTÉGÉES (suppression du middleware global)
-// app.use('/api/charte-signature', enhancedAuthMiddleware, charteSignatureRoutes);
+
 
 // Route de debug (temporaire)
 app.use('/api/debug', debugRoutes);

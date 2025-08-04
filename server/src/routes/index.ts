@@ -4,7 +4,6 @@ import auditRoutes from "./audits";
 import simulationRoutes from "./simulationRoutes";
 import partnerRoutes from "./partners";
 import produitsEligiblesRoutes from "./produits-eligibles";
-import charteSignatureRoutes from "./charte-signature";
 import specializationsRoutes from "./specializations";
 import expertsRoutes from "./experts";
 import expertRoutes from "./expert";
@@ -44,9 +43,6 @@ router.use('/partners', partnerRoutes);
 // Routes des produits éligibles
 router.use('/produits-eligibles', produitsEligiblesRoutes);
 
-// Routes des signatures de charte
-router.use('/charte-signature', charteSignatureRoutes);
-
 // Routes des spécialisations
 router.use('/specializations', specializationsRoutes);
 
@@ -82,8 +78,6 @@ router.use('/notifications', notificationsRoutes);
 
 // Routes du calendrier
 router.use('/calendar', enhancedAuthMiddleware, calendarRoutes);
-
-
 
 // Routes de messagerie unifiée
 router.use('/messaging', unifiedMessagingRoutes);

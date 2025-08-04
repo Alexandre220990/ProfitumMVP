@@ -21,7 +21,7 @@ import expertRoutes from './routes/expert';
 import adminRoutes from './routes/admin';
 import auditRoutes from './routes/audit';
 import simulationRoute from './routes/simulation';
-import charteSignatureRoutes from './routes/charte-signature';
+
 
 // Middlewares
 import { errorHandler } from './middleware/error-handler';
@@ -217,7 +217,7 @@ app.use('/api/expert', enhancedAuthMiddleware, requireUserType('expert'), expert
 app.use('/api/admin', enhancedAuthMiddleware, requireUserType('admin'), adminRoutes);
 app.use('/api/audit', enhancedAuthMiddleware, auditRoutes);
 app.use('/api/simulation', enhancedAuthMiddleware, simulationRoute);
-app.use('/api', enhancedAuthMiddleware, charteSignatureRoutes);
+
 
 // ===== ROUTES DE SYSTÈME =====
 
