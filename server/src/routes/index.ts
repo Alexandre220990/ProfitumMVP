@@ -330,6 +330,6 @@ router.get('/health', (req, res) => {
 });
 
 // Routes administrateur
-router.use('/admin', adminRoutes);
+router.use('/admin', enhancedAuthMiddleware, adminRoutes);
 
 export default router; 
