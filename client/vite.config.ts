@@ -9,6 +9,7 @@ export default defineConfig({
       "@": path.resolve(__dirname, "src"),
       "@shared": path.resolve(__dirname, "../shared"),
     },
+    dedupe: ['react', 'react-dom', 'react-dropzone']
   },
   // Configuration spécifique pour Vercel
   server: {
@@ -19,8 +20,8 @@ export default defineConfig({
     outDir: "dist",
     emptyOutDir: true,
     chunkSizeWarningLimit: 1000,
-    rollupOptions: {
-      external: [],
+          rollupOptions: {
+        external: [],
       output: {
         manualChunks: {
           'react-vendor': ['react', 'react-dom'],
@@ -57,6 +58,7 @@ export default defineConfig({
       'lucide-react',
       '@supabase/supabase-js',
       'react-dropzone'
-    ]
+    ],
+    force: true
   }
 }); 
