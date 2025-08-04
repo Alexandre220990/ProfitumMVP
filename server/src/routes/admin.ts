@@ -906,12 +906,18 @@ router.get('/validations/experts', asyncHandler(async (req, res) => {
       .select(`
         id,
         email,
-        nom,
-        prenom,
+        name,
         company_name,
         approval_status,
+        status,
+        phone,
+        location,
+        rating,
+        experience,
         created_at,
-        updated_at
+        updated_at,
+        approved_by,
+        approved_at
       `)
       .eq('approval_status', 'pending')
       .order('created_at', { ascending: false });
@@ -1889,7 +1895,7 @@ router.get('/assignments', asyncHandler(async (req, res) => {
         Expert (id, name, email, specializations),
         ClientProduitEligible (
           id,
-          Client (id, nom, prenom, email),
+          Client (id, name, company_name, email),
           ProduitEligible (id, nom, description)
         )
       `);
