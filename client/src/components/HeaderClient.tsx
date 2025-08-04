@@ -15,6 +15,7 @@ export default function HeaderClient({ onLogout }: HeaderClientProps) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { unreadCount, hasNotifications } = useNotificationBadge();
+  const [notifOpen, setNotifOpen] = useState(false);
 
   const handleLogout = async () => { 
     try {
@@ -102,7 +103,7 @@ export default function HeaderClient({ onLogout }: HeaderClientProps) {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => navigate('/notification-center')}
+            onClick={() => setNotifOpen(!notifOpen)}
             className="relative p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200"
             aria-label="Ouvrir le centre de notifications"
           >
@@ -156,7 +157,30 @@ export default function HeaderClient({ onLogout }: HeaderClientProps) {
         </div>
       </div>
       {notifOpen && (
-        <div className="fixed inset-0 z-50" onClick={() => setNotifOpen(false)} aria-label="Fermer le centre de notifications" tabIndex={-1} />
+        <>
+          <div className="fixed inset-0 z-50" onClick={() => setNotifOpen(false)} aria-label="Fermer le centre de notifications" tabIndex={-1} />
+          <div className="absolute top-full right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+            <div className="p-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">Notifications</h3>
+              <div className="space-y-2">
+                <div className="text-sm text-gray-600">
+                  {unreadCount > 0 ? `${unreadCount} notification(s) non lue(s)` : 'Aucune nouvelle notification'}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setNotifOpen(false);
+                    navigate('/notification-center');
+                  }}
+                  className="w-full justify-start"
+                >
+                  Voir toutes les notifications
+                </Button>
+              </div>
+            </div>
+          </div>
+        </>
       )}
     </header>
   );
