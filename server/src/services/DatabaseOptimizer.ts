@@ -196,8 +196,6 @@ export class DatabaseOptimizer {
           id,
           produit_id,
           statut,
-          charte_signed,
-          charte_signed_at,
           ProduitEligible!inner(
             id,
             nom,
@@ -205,8 +203,7 @@ export class DatabaseOptimizer {
             category
           )
         `)
-        .eq('client_id', clientId)
-        .eq('charte_signed', true);
+        .eq('client_id', clientId);
 
       if (error) throw error;
 

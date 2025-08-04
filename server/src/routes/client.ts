@@ -147,8 +147,6 @@ router.get('/produits-eligibles', async (req: Request, res: Response) => {
         produitId,
         statut,
         expert_id,
-        charte_signed,
-        charte_signed_at,
         montantFinal,
         tauxFinal,
         dureeFinale,
@@ -303,94 +301,6 @@ router.put('/produits-eligibles/:id/assign-expert', async (req, res) => {
       success: false,
       message: 'Error assigning expert'
     });
-  }
-});
-
-// POST /api/client/produits-eligibles/:id/sign-charte - Signer la charte d'un produit éligible
-router.post('/produits-eligibles/:id/sign-charte', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { produit_id, charte_accepted } = req.body;
-    const token = req.headers.authorization?.replace('Bearer ', '');
-
-    if (!token) {
-      return res.status(401).json({
-        success: false,
-        message: 'Token d\'authentification requis'
-      });
-    }
-
-    // Vérifier l'authentification
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    if (authError || !user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Token invalide'
-      });
-    }
-
-    // Vérifier que l'utilisateur est un client
-    const { data: clientData, error: clientError } = await supabase
-      .from('Client')
-      .select('id')
-      .eq('auth_id', user.id)
-      .single();
-
-    if (clientError || !clientData) {
-      return res.status(403).json({
-        success: false,
-        message: 'Accès réservé aux clients'
-      });
-    }
-
-    // Vérifier que le produit appartient au client
-    const { data: clientProduit, error: fetchError } = await supabase
-      .from('ClientProduitEligible')
-      .select('*')
-      .eq('id', id)
-      .eq('clientId', clientData.id)
-      .single();
-
-    if (fetchError || !clientProduit) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Produit éligible non trouvé' 
-      });
-    }
-
-    // Mettre à jour le statut de signature de charte
-    const { data: updatedProduit, error: updateError } = await supabase
-      .from('ClientProduitEligible')
-      .update({ 
-        charte_signed: true,
-        charte_signed_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', id)
-      .eq('clientId', clientData.id)
-      .select()
-      .single();
-
-    if (updateError) {
-      console.error('Erreur lors de la mise à jour de la charte:', updateError);
-      return res.status(500).json({ 
-        success: false, 
-        message: 'Erreur lors de la signature de la charte' 
-      });
-    }
-
-    // Log de l'activité
-    console.log(`Charte signée pour le produit ${id} par le client ${clientData.id}`);
-
-    return res.json({ 
-      success: true, 
-      message: 'Charte signée avec succès',
-      data: updatedProduit
-    });
-
-  } catch (error) {
-    console.error('Erreur lors de la signature de la charte:', error);
-    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });
 

@@ -31,8 +31,7 @@ interface ClientProduitEligible {
   current_step: number;
   progress: number;
   expert_id?: string;
-  charte_signed: boolean;
-  charte_signed_at?: string;
+
   ProduitEligible: {
     id: string;
     nom: string;

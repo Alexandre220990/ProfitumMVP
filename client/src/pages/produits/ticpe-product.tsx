@@ -26,8 +26,7 @@ interface ClientProduitEligible {
   current_step: number;
   progress: number;
   expert_id?: string;
-  charte_signed: boolean;
-  charte_signed_at?: string;
+
   ProduitEligible: {
     id: string;
     nom: string;
@@ -125,11 +124,7 @@ export default function TICPEProductPage() {
               productName="TICPE"
               companyName={user?.company_name}
               estimatedAmount={clientProduit.montantFinal}
-              onSignatureComplete={(success) => {
-                if (success) {
-                  loadClientProduit();
-                }
-              }}
+
               onStepUpdate={(stepId, updates) => {
                 console.log('Étape mise à jour:', stepId, updates);
                 loadClientProduit();

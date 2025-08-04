@@ -29,8 +29,6 @@ export const ClientProduitEligibleSchema = z.object({
   current_step: z.number(),
   progress: z.number(),
   expert_id: z.string().optional(),
-  charte_signed: z.boolean(),
-  charte_signed_at: z.string().optional(),
   sessionId: z.string().optional(),
   produit: ProduitSchema.optional(),
 });

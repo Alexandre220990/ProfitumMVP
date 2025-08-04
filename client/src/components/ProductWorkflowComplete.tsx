@@ -1,13 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { FileSignature, CheckCircle, Clock, Users, FileText, Shield, Play, AlertCircle, DollarSign } from "lucide-react";
-import { signCharte, checkCharteSignature } from "@/lib/charte-signature-api";
+import { CheckCircle, Clock, FileText, Shield, Play, AlertCircle, DollarSign } from "lucide-react";
 import { useDossierSteps } from '@/hooks/use-dossier-steps';
 import TICPEWorkflow from './TICPEWorkflow';
 import URSSAFWorkflow from './URSSAFWorkflow';
@@ -18,7 +15,6 @@ interface ProductWorkflowCompleteProps {
   productName: string;
   companyName?: string;
   estimatedAmount?: number;
-  onSignatureComplete?: (success: boolean) => void;
   onStepUpdate?: (stepId: string, updates: any) => void;
   className?: string;
 }
@@ -28,18 +24,10 @@ export default function ProductWorkflowComplete({
   productName,
   companyName,
   estimatedAmount,
-  onSignatureComplete,
   onStepUpdate,
   className = ""
 }: ProductWorkflowCompleteProps) {
   const { toast } = useToast();
-  
-  // États pour la signature de charte
-  const [isSigned, setIsSigned] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSigning, setIsSigning] = useState(false);
-  const [showCharteDialog, setShowCharteDialog] = useState(false);
-  const [charteAccepted, setCharteAccepted] = useState(false);
 
   // Hook pour les étapes du dossier
   const {
@@ -55,77 +43,6 @@ export default function ProductWorkflowComplete({
     pendingSteps,
     overallProgress
   } = useDossierSteps(clientProduitId);
-
-  // Vérifier le statut de signature au chargement
-  useEffect(() => {
-    checkSignatureStatus();
-  }, [clientProduitId]);
-
-  const checkSignatureStatus = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const response = await checkCharteSignature(clientProduitId);
-      
-      if (response.success && response.data) {
-        setIsSigned(response.data.signed);
-      }
-    } catch (error) {
-      console.error('Erreur lors de la vérification de la signature:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de vérifier le statut de la signature",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [clientProduitId, toast]);
-
-  const handleSignCharte = useCallback(async () => {
-    if (!charteAccepted) {
-      toast({
-        title: "Action requise",
-        description: "Veuillez accepter les conditions de la charte",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      setIsSigning(true);
-      
-      const signatureData = {
-        clientProduitEligibleId: clientProduitId,
-        ipAddress: undefined,
-        userAgent: navigator.userAgent
-      };
-
-      const response = await signCharte(signatureData);
-
-      if (response.success && response.data) {
-        setIsSigned(true);
-        setShowCharteDialog(false);
-        
-        toast({
-          title: "Succès",
-          description: "Charte signée avec succès !",
-        });
-
-        onSignatureComplete?.(true);
-      } else {
-        throw new Error(response.message || "Erreur lors de la signature");
-      }
-    } catch (error) {
-      console.error('Erreur lors de la signature:', error);
-      toast({
-        title: "Erreur",
-        description: error instanceof Error ? error.message : "Impossible de signer la charte",
-        variant: "destructive"
-      });
-    } finally {
-      setIsSigning(false);
-    }
-  }, [charteAccepted, clientProduitId, toast, onSignatureComplete]);
 
   // Gestion des étapes du dossier
   const handleStepUpdate = useCallback(async (stepId: string, updates: any) => {
@@ -200,7 +117,7 @@ export default function ProductWorkflowComplete({
     }
   };
 
-  if (isLoading || stepsLoading) {
+  if (stepsLoading) {
     return (
       <div className={`flex items-center justify-center p-8 ${className}`}>
         <div className="text-center">
@@ -270,53 +187,6 @@ export default function ProductWorkflowComplete({
           <Progress value={overallProgress} className="h-2" />
         </div>
       </div>
-
-      {/* Section Signature de Charte */}
-      <Card className="border-2 border-blue-200 bg-blue-50">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                {isSigned ? (
-                  <CheckCircle className="w-5 h-5 text-green-500" />
-                ) : (
-                  <div className="w-5 h-5 rounded-full bg-blue-500 animate-pulse" />
-                )}
-                <span className="text-sm font-medium text-gray-600">1</span>
-              </div>
-              
-              <div className="flex items-center space-x-3">
-                <div className="flex items-center space-x-2">
-                  <FileSignature className="w-5 h-5" />
-                  <div>
-                    <h4 className="font-medium text-gray-800">Signature de la charte</h4>
-                    <p className="text-sm text-gray-600">Accepter les conditions d'engagement</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-3">
-              <Badge 
-                variant={isSigned ? 'default' : 'secondary'}
-                className={isSigned ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}
-              >
-                {isSigned ? 'Terminé' : 'En cours'}
-              </Badge>
-              
-              {!isSigned && (
-                <Button 
-                  size="sm" 
-                  onClick={() => setShowCharteDialog(true)}
-                  className="flex items-center space-x-1"
-                >
-                  <span>Signer la charte</span>
-                </Button>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Section Étapes du Dossier */}
       {steps.length > 0 ? (
@@ -411,86 +281,6 @@ export default function ProductWorkflowComplete({
           </CardContent>
         </Card>
       )}
-
-      {/* Modal de signature de charte */}
-      <Dialog open={showCharteDialog} onOpenChange={setShowCharteDialog}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <FileSignature className="w-5 h-5" />
-              Signature de la charte - {productName}
-            </DialogTitle>
-            <DialogDescription>
-              Veuillez lire et accepter les conditions de la charte pour continuer.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            {/* Contenu de la charte */}
-            <div className="bg-gray-50 p-4 rounded-lg max-h-60 overflow-y-auto">
-              <h4 className="font-semibold mb-2">Charte d'engagement - {productName}</h4>
-              <div className="text-sm text-gray-700 space-y-2">
-                <p>En signant cette charte, vous vous engagez à :</p>
-                <ul className="list-disc list-inside space-y-1">
-                  <li>Fournir les informations et documents nécessaires dans les délais impartis</li>
-                  <li>Collaborer activement avec l'expert assigné pour optimiser vos gains</li>
-                  <li>Respecter les procédures et réglementations en vigueur</li>
-                  <li>Informer immédiatement de tout changement de situation</li>
-                  <li>Accepter les conditions de commission de l'expert</li>
-                </ul>
-                {estimatedAmount && (
-                  <p className="mt-4">
-                    <strong>Gain potentiel estimé :</strong> {estimatedAmount.toLocaleString()}€
-                  </p>
-                )}
-              </div>
-            </div>
-            
-            {/* Checkbox d'acceptation */}
-            <div className="flex items-start space-x-2">
-              <Checkbox
-                id="charte-accept"
-                checked={charteAccepted}
-                onCheckedChange={(checked: boolean) => setCharteAccepted(checked)}
-              />
-              <label 
-                htmlFor="charte-accept" 
-                className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >
-                J'accepte les termes de la charte et autorise l'équipe à procéder à l'optimisation de mes obligations {productName}.
-              </label>
-            </div>
-          </div>
-          
-          {/* Boutons d'action */}
-          <div className="flex space-x-3 pt-4">
-            <Button 
-              variant="outline" 
-              onClick={() => setShowCharteDialog(false)}
-              className="flex-1"
-            >
-              Annuler
-            </Button>
-            <Button 
-              onClick={handleSignCharte}
-              disabled={!charteAccepted || isSigning}
-              className="flex-1 bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700"
-            >
-              {isSigning ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Signature en cours...
-                </>
-              ) : (
-                <>
-                  <FileSignature className="w-4 h-4 mr-2" />
-                  Signer la charte
-                </>
-              )}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 } 

@@ -27,8 +27,7 @@ export interface ClientProduitEligible {
   current_step: number;
   progress: number;
   expert_id?: string;
-  charte_signed: boolean;
-  charte_signed_at?: string;
+
   created_at: string;
   updated_at: string;
   simulationId?: number;

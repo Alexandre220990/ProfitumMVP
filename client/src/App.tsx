@@ -61,6 +61,7 @@ const TermsPage = React.lazy(() => import('./pages/terms'));
 
 // Admin pages
 const AdminDashboard = React.lazy(() => import('./pages/admin/dashboard'));
+const AdminDashboardOptimized = React.lazy(() => import('./pages/admin/dashboard-optimized'));
 const AdminClientDetails = React.lazy(() => import('./pages/admin/client-details'));
 const AdminDocumentationNew = React.lazy(() => import('./pages/admin/documentation-new'));
 const AdminGestionDossiers = React.lazy(() => import('./pages/admin/gestion-dossiers'));
@@ -240,6 +241,7 @@ function App() {
                       <Route path="/admin" element={<ProtectedRoute requiredType="admin" />}>
                         <Route index element={<AdminDashboard />} />
                         <Route path="dashboard" element={<AdminDashboard />} />
+                        <Route path="dashboard-optimized" element={<AdminDashboardOptimized />} />
                         <Route path="analytics" element={<AnalyticsPage />} />
                         <Route path="clients/:id" element={<AdminClientDetails />} />
                         <Route path="documentation" element={<AdminDocumentationNew />} />

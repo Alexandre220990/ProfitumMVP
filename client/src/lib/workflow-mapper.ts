@@ -32,8 +32,7 @@ export interface DossierData {
   current_step: number;
   progress: number;
   statut: string;
-  charte_signed: boolean;
-  charte_signed_at?: string;
+
   expert_id?: string;
   created_at: string;
   updated_at: string;
@@ -134,18 +133,8 @@ function getStepActions(stepNumber: number, dossier: DossierData, status: string
     case 1: // Simulation
       return [];
       
-    case 2: // Signature de la charte
-      if (!dossier.charte_signed) {
-        return [{
-          label: 'Signer la charte',
-          action: 'sign_charte',
-          variant: 'primary'
-        }];
-      }
-      return [];
-      
-    case 3: // Pré-sélection de l'expert
-      if (dossier.charte_signed && !dossier.expert_id) {
+    case 2: // Pré-sélection de l'expert
+      if (!dossier.expert_id) {
         return [{
           label: 'Sélectionner un expert',
           action: 'select_expert',
@@ -154,7 +143,7 @@ function getStepActions(stepNumber: number, dossier: DossierData, status: string
       }
       return [];
       
-    case 4: // Vérification de l'éligibilité
+    case 3: // Vérification de l'éligibilité
       if (dossier.expert_id) {
         return [
           {
@@ -171,7 +160,7 @@ function getStepActions(stepNumber: number, dossier: DossierData, status: string
       }
       return [];
       
-    case 5: // Complétion du dossier
+    case 4: // Complétion du dossier
       return [
         {
           label: 'Compléter le dossier',
@@ -185,7 +174,7 @@ function getStepActions(stepNumber: number, dossier: DossierData, status: string
         }
       ];
       
-    case 6: // Mise en relation avec l'expert
+    case 5: // Mise en relation avec l'expert
       return [
         {
           label: 'Contacter le client',
@@ -199,7 +188,7 @@ function getStepActions(stepNumber: number, dossier: DossierData, status: string
         }
       ];
       
-    case 7: // Remise du rapport d'expert
+    case 6: // Remise du rapport d'expert
       return [
         {
           label: 'Générer le rapport',
@@ -213,7 +202,7 @@ function getStepActions(stepNumber: number, dossier: DossierData, status: string
         }
       ];
       
-    case 8: // Envoi à l'administration
+    case 7: // Envoi à l'administration
       return [
         {
           label: 'Soumettre à l\'administration',
@@ -222,21 +211,12 @@ function getStepActions(stepNumber: number, dossier: DossierData, status: string
         }
       ];
       
-    case 9: // Remboursement
+    case 8: // Remboursement
       return [
         {
           label: 'Suivre le remboursement',
           action: 'track_reimbursement',
           variant: 'outline'
-        }
-      ];
-      
-    case 10: // Dossier clôturé
-      return [
-        {
-          label: 'Clôturer le dossier',
-          action: 'close_dossier',
-          variant: 'primary'
         }
       ];
       
@@ -334,17 +314,7 @@ function getStepNotifications(stepNumber: number, dossier: DossierData, status: 
   
   // Notifications spécifiques selon l'étape
   switch (stepNumber) {
-    case 2: // Signature de la charte
-      if (!dossier.charte_signed) {
-        notifications.push({
-          type: 'warning',
-          message: 'Signature de la charte requise pour continuer',
-          timestamp: new Date().toISOString()
-        });
-      }
-      break;
-      
-    case 4: // Vérification de l'éligibilité
+    case 3: // Vérification de l'éligibilité
       notifications.push({
         type: 'info',
         message: 'Documents requis pour l\'analyse d\'éligibilité',
@@ -352,7 +322,7 @@ function getStepNotifications(stepNumber: number, dossier: DossierData, status: 
       });
       break;
       
-    case 6: // Mise en relation avec l'expert
+    case 5: // Mise en relation avec l'expert
       if (dossier.expert_id) {
         notifications.push({
           type: 'success',
@@ -396,31 +366,28 @@ function getStepNotes(stepNumber: number, dossier: DossierData): string[] {
  */
 function getStepRequirements(stepNumber: number): string[] {
   switch (stepNumber) {
-    case 2: // Signature de la charte
+    case 2: // Pré-sélection de l'expert
       return ['Simulation validée'];
       
-    case 3: // Pré-sélection de l'expert
-      return ['Charte signée'];
-      
-    case 4: // Vérification de l'éligibilité
+    case 3: // Vérification de l'éligibilité
       return ['Expert assigné', 'Documents collectés'];
       
-    case 5: // Complétion du dossier
+    case 4: // Complétion du dossier
       return ['Analyse d\'éligibilité terminée'];
       
-    case 6: // Mise en relation avec l'expert
+    case 5: // Mise en relation avec l'expert
       return ['Dossier complété'];
       
-    case 7: // Remise du rapport d'expert
+    case 6: // Remise du rapport d'expert
       return ['Contact client établi'];
       
-    case 8: // Envoi à l'administration
+    case 7: // Envoi à l'administration
       return ['Rapport d\'expert validé'];
       
-    case 9: // Remboursement
+    case 8: // Remboursement
       return ['Dossier soumis à l\'administration'];
       
-    case 10: // Dossier clôturé
+    case 9: // Dossier clôturé
       return ['Remboursement reçu'];
       
     default:
@@ -434,15 +401,14 @@ function getStepRequirements(stepNumber: number): string[] {
 function getStepDuration(stepNumber: number): string {
   switch (stepNumber) {
     case 1: return 'Immédiat';
-    case 2: return '5 minutes';
-    case 3: return '24-48h';
-    case 4: return '3-5 jours';
-    case 5: return '2-3 jours';
-    case 6: return '1-2 jours';
-    case 7: return '3-7 jours';
-    case 8: return '1-2 semaines';
-    case 9: return '2-4 semaines';
-    case 10: return '1 jour';
+    case 2: return '24-48h';
+    case 3: return '3-5 jours';
+    case 4: return '2-3 jours';
+    case 5: return '1-2 jours';
+    case 6: return '3-7 jours';
+    case 7: return '1-2 semaines';
+    case 8: return '2-4 semaines';
+    case 9: return '1 jour';
     default: return 'Variable';
   }
 }
@@ -477,13 +443,10 @@ export function canActivateStep(stepNumber: number, dossier: DossierData): boole
   
   // Vérifications spécifiques selon l'étape
   switch (stepNumber) {
-    case 2: // Signature de la charte
+    case 2: // Pré-sélection de l'expert
       return dossier.current_step >= 1;
       
-    case 3: // Pré-sélection de l'expert
-      return dossier.charte_signed;
-      
-    case 4: // Vérification de l'éligibilité
+    case 3: // Vérification de l'éligibilité
       return dossier.expert_id !== undefined;
       
     default:

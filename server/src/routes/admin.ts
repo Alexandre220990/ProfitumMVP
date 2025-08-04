@@ -872,8 +872,6 @@ router.get('/client-produits-eligibles', asyncHandler(async (req, res) => {
         priorite,
         dateEligibilite,
         expert_id,
-        charte_signed,
-        charte_signed_at,
         sessionId,
         Client:Client(id, company_name, email),
         ProduitEligible:ProduitEligible(id, nom, category, description)

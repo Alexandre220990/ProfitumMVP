@@ -5,10 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Checkbox } from "@/components/ui/checkbox";
-import CharteSignatureWorkflow from '@/components/CharteSignatureWorkflow';
-import { Shield, DollarSign, FileSignature, Building2, MessageSquare, FileText } from "lucide-react";
+import { Shield, DollarSign, Building2, MessageSquare, FileText } from "lucide-react";
 import { config } from "@/config/env";
 import HeaderClient from "@/components/HeaderClient";
 
@@ -30,8 +27,7 @@ interface ClientProduitEligible {
   current_step: number;
   progress: number;
   expert_id?: string;
-  charte_signed: boolean;
-  charte_signed_at?: string;
+
   ProduitEligible: {
     id: string;
     nom: string;
@@ -51,9 +47,7 @@ const CIRProductPage = () => {
   const [loading, setLoading] = useState(true);
   
   // États pour la signature de charte
-  const [showCharteDialog, setShowCharteDialog] = useState(false);
-  const [charteAccepted, setCharteAccepted] = useState(false);
-  const [isSigningCharte, setIsSigningCharte] = useState(false);
+
 
   // Vérification de sécurité
   useEffect(() => {
@@ -119,40 +113,7 @@ const CIRProductPage = () => {
     }
   };
 
-  const handleSignCharte = async () => {
-    if (!clientProduit) return;
-    
-    setIsSigningCharte(true);
-    try {
-      const response = await fetch(`${config.API_URL}/api/produits-eligibles/${clientProduit.id}/sign-charte`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        toast({
-          title: "Charte signée",
-          description: "Votre charte a été signée avec succès",
-        });
-        setShowCharteDialog(false);
-        loadClientProduit(); // Recharger les données
-      } else {
-        throw new Error('Erreur lors de la signature');
-      }
-    } catch (error) {
-      console.error('Erreur lors de la signature:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de signer la charte",
-        variant: "destructive"
-      });
-    } finally {
-      setIsSigningCharte(false);
-    }
-  };
+
 
   if (loading) {
     return (
@@ -284,21 +245,10 @@ const CIRProductPage = () => {
               <CardContent className="p-6">
                 <h3 className="text-lg font-semibold mb-4">Actions rapides</h3>
                 <div className="space-y-3">
-                  {!clientProduit.charte_signed ? (
-                    <Button 
-                      onClick={() => setShowCharteDialog(true)}
-                      className="w-full"
-                      disabled={isSigningCharte}
-                    >
-                      <FileSignature className="w-4 h-4 mr-2" />
-                      {isSigningCharte ? 'Signature...' : 'Signer la charte'}
-                    </Button>
-                  ) : (
-                    <Button variant="outline" className="w-full" disabled>
-                      <FileSignature className="w-4 h-4 mr-2" />
-                      Charte signée
-                    </Button>
-                  )}
+                  <Button variant="outline" className="w-full">
+                    <MessageSquare className="w-4 h-4 mr-2" />
+                    Contacter l'expert
+                  </Button>
                   
                   <Button variant="outline" className="w-full">
                     <MessageSquare className="w-4 h-4 mr-2" />
@@ -340,40 +290,7 @@ const CIRProductPage = () => {
         </div>
       </div>
 
-      {/* Dialog de signature de charte */}
-      <Dialog open={showCharteDialog} onOpenChange={setShowCharteDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Signature de la charte CIR</DialogTitle>
-            <DialogDescription>
-              En signant cette charte, vous acceptez de nous confier l'optimisation de votre crédit d'impôt recherche.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <div className="flex items-start space-x-2">
-              <Checkbox
-                id="charte-accept"
-                checked={charteAccepted}
-                onCheckedChange={(checked: boolean) => setCharteAccepted(checked)}
-              />
-              <label htmlFor="charte-accept" className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                J'accepte les termes de la charte et autorise l'équipe à procéder à l'optimisation de mon crédit d'impôt recherche.
-              </label>
-            </div>
-          </div>
-          <div className="flex justify-end space-x-2">
-            <Button variant="outline" onClick={() => setShowCharteDialog(false)}>
-              Annuler
-            </Button>
-            <Button 
-              onClick={handleSignCharte}
-              disabled={!charteAccepted || isSigningCharte}
-            >
-              {isSigningCharte ? 'Signature...' : 'Signer la charte'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+
     </div>
   );
 };

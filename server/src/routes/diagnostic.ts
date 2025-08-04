@@ -78,8 +78,6 @@ router.get('/tables', async (req: Request, res: Response) => {
           produitId,
           statut,
           expert_id,
-          charte_signed,
-          charte_signed_at,
           montantFinal,
           tauxFinal,
           dureeFinale,

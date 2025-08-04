@@ -8,8 +8,7 @@ export interface ClientProduitEligible {
   produitId: string;
   statut: string;
   expert_id?: string;
-  charte_signed: boolean;
-  charte_signed_at?: string;
+
   montantFinal: number;
   tauxFinal: number;
   dureeFinale: number;

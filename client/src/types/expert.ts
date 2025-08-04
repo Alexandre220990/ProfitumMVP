@@ -1,24 +1,40 @@
-// Types pour l'interface expert
+// Types pour l'interface expert - Conforme à la base de données
 
 export interface Expert {
   id: string;
-  username: string;
   email: string;
-  name?: string;
-  company_name?: string;
+  name: string;
+  company_name: string;
+  siren: string;
   specializations: string[];
-  experience: number;
+  experience: string; // Conforme à la DB (text)
   location: string;
-  rating: number;
+  rating: number; // double precision en DB
+  compensation: number | null; // double precision en DB
+  description: string | null;
+  status: string;
+  disponibilites: any | null; // jsonb en DB
+  certifications: any | null; // jsonb en DB
+  card_number: string | null;
+  card_expiry: string | null;
+  card_cvc: string | null;
+  abonnement: string | null;
+  website: string | null;
+  linkedin: string | null;
+  languages: string[] | null;
+  availability: string | null;
+  max_clients: number | null;
+  hourly_rate: number | null; // double precision en DB
+  phone: string | null;
+  auth_id: string | null; // uuid en DB
+  approved_by: string | null; // uuid en DB
+  approved_at: string | null; // timestamptz en DB
+  approval_status: string | null;
+  // Champs calculés ajoutés
   total_assignments: number;
   completed_assignments: number;
   total_earnings: number;
   monthly_earnings: number;
-  status?: string;
-  phone_number?: string;
-  clients?: number;
-  description?: string;
-  siren?: string;
   created_at: string;
   updated_at: string;
 }
@@ -28,11 +44,24 @@ export interface PublicExpert {
   name: string;
   company_name: string;
   specializations: string[];
-  experience: number;
+  experience: string;
   location: string;
   rating: number;
   status: string;
-  description: string;
+  description: string | null;
+  website: string | null;
+  linkedin: string | null;
+  languages: string[] | null;
+  availability: string | null;
+  max_clients: number | null;
+  hourly_rate: number | null;
+  phone: string | null;
+  approval_status: string | null;
+  // Champs calculés ajoutés
+  total_assignments: number;
+  completed_assignments: number;
+  total_earnings: number;
+  monthly_earnings: number;
 }
 
 export interface ExpertPreferences {
