@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { useDropzone } from 'react-dropzone';
+import { DropzoneFallback } from '@/components/ui/dropzone-fallback';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -205,19 +205,15 @@ export default function DocumentUpload({
     }
   }, [selectedDossier, documentType, documentCategory, documentDescription, showDossierSelector, onUploadComplete, toast]);
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: {
-      'application/pdf': ['.pdf'],
-      'image/*': ['.jpg', '.jpeg', '.png', '.gif'],
-      'application/msword': ['.doc'],
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
-      'application/vnd.ms-excel': ['.xls'],
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx']
-    },
-    maxSize: 10 * 1024 * 1024, // 10MB
-    multiple: true
-  });
+  // Configuration accept pour les fichiers
+  const acceptConfig = {
+    'application/pdf': ['.pdf'],
+    'image/*': ['.jpg', '.jpeg', '.png', '.gif'],
+    'application/msword': ['.doc'],
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+    'application/vnd.ms-excel': ['.xls'],
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx']
+  };
 
   const removeDocument = (documentId: string) => {
     setUploadedDocuments(prev => prev.filter(doc => doc.id !== documentId));
@@ -349,36 +345,19 @@ export default function DocumentUpload({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div
-            {...getRootProps()}
-            className={`
-              border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
-              ${isDragActive 
-                ? 'border-blue-500 bg-blue-50' 
-                : 'border-gray-300 hover:border-gray-400'
-              }
-            `}
+          <DropzoneFallback
+            onDrop={onDrop}
+            accept={acceptConfig}
+            maxSize={10 * 1024 * 1024} // 10MB
+            maxFiles={10}
+            disabled={isUploading}
           >
-            <input {...getInputProps()} />
-            <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            {isDragActive ? (
-              <p className="text-lg font-medium text-blue-600">
-                Déposez les fichiers ici...
+            <div className="mt-4">
+              <p className="text-sm text-gray-400">
+                PDF, Images, Word, Excel (max 10MB par fichier)
               </p>
-            ) : (
-              <div>
-                <p className="text-lg font-medium text-gray-900 mb-2">
-                  Glissez-déposez vos fichiers ici
-                </p>
-                <p className="text-gray-500 mb-4">
-                  ou cliquez pour sélectionner des fichiers
-                </p>
-                <p className="text-sm text-gray-400">
-                  PDF, Images, Word, Excel (max 10MB par fichier)
-                </p>
-              </div>
-            )}
-          </div>
+            </div>
+          </DropzoneFallback>
         </CardContent>
       </Card>
 
