@@ -9,13 +9,13 @@ SELECT * FROM "ProduitEligible";
 -- 2. Fusionner dureeMax et duree_max
 -- Si duree_max est NULL mais dureeMax a une valeur, copier dureeMax vers duree_max
 UPDATE "ProduitEligible" 
-SET duree_max = dureeMax 
-WHERE duree_max IS NULL AND dureeMax IS NOT NULL;
+SET "duree_max" = "dureeMax" 
+WHERE "duree_max" IS NULL AND "dureeMax" IS NOT NULL;
 
 -- Si dureeMax est NULL mais duree_max a une valeur, copier duree_max vers dureeMax
 UPDATE "ProduitEligible" 
-SET dureeMax = duree_max 
-WHERE dureeMax IS NULL AND duree_max IS NOT NULL;
+SET "dureeMax" = "duree_max" 
+WHERE "dureeMax" IS NULL AND "duree_max" IS NOT NULL;
 
 -- 3. Fusionner categorie et category
 -- Si category est NULL mais categorie a une valeur, copier categorie vers category
@@ -32,10 +32,10 @@ WHERE categorie IS NULL AND category IS NOT NULL;
 SELECT 
     id,
     nom,
-    dureeMax,
+    "dureeMax",
     duree_max,
     CASE 
-        WHEN dureeMax != duree_max THEN 'INCOHÉRENT'
+        WHEN "dureeMax" != duree_max THEN 'INCOHÉRENT'
         ELSE 'OK'
     END as duree_status,
     categorie,
@@ -45,7 +45,7 @@ SELECT
         ELSE 'OK'
     END as category_status
 FROM "ProduitEligible" 
-WHERE dureeMax != duree_max OR categorie != category;
+WHERE "dureeMax" != duree_max OR categorie != category;
 
 -- 5. Nettoyer les colonnes doublons (à exécuter après vérification)
 -- ALTER TABLE "ProduitEligible" DROP COLUMN IF EXISTS dureeMax;
