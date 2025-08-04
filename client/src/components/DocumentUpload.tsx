@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react';
-// @ts-ignore
-const { useDropzone } = window.ReactDropzone;
+import { useDropzone } from 'react-dropzone';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';

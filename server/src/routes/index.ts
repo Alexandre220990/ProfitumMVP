@@ -45,7 +45,7 @@ router.use('/partners', partnerRoutes);
 router.use('/produits-eligibles', produitsEligiblesRoutes);
 
 // Routes des signatures de charte
-router.use('/api', charteSignatureRoutes);
+router.use('/charte-signature', charteSignatureRoutes);
 
 // Routes des spécialisations
 router.use('/specializations', specializationsRoutes);

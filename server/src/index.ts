@@ -73,6 +73,7 @@ import dossierStepsRoutes from './routes/dossier-steps';
 import documentsRoutes from './routes/documents';
 import { getCorsConfig, corsMiddleware } from './config/cors';
 import { startCalendarRemindersCron } from './cron/calendar-reminders';
+import routes from './routes';
 
 // Créer l'application Express
 const app = express();
@@ -257,7 +258,7 @@ app.use('/api/analytics', enhancedAuthMiddleware, analyticsRoutes);
 app.use('/api/google-calendar', enhancedAuthMiddleware, googleCalendarRoutes);
 
 // Routes de signature de charte - PROTÉGÉES (suppression du middleware global)
-app.use('/api/charte-signature', enhancedAuthMiddleware, charteSignatureRoutes);
+// app.use('/api/charte-signature', enhancedAuthMiddleware, charteSignatureRoutes);
 
 // Route de debug (temporaire)
 app.use('/api/debug', debugRoutes);
@@ -270,6 +271,9 @@ app.use('/api/dossier-steps', dossierStepsRoutes);
 
 // Routes documents - PROTÉGÉES avec authentification
 app.use('/api/documents', documentsRoutes);
+
+// Router centralisé pour toutes les routes API
+app.use('/api', routes);
 
 // Route de fallback pour les routes non trouvées
 app.use('/api/*', (req, res) => {
