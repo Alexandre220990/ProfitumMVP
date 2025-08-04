@@ -47,8 +47,46 @@ interface AdminDocumentStats {
 
 export default function EnhancedAdminDocumentsPage() {
   const { user } = useAuth();
-  const { getClientFiles, getExpertFiles, deleteFile, downloadFile } = useEnhancedDocumentStorage();
+  
+  // Gestion d'erreur pour le hook
+  let documentStorage;
+  try {
+    documentStorage = useEnhancedDocumentStorage();
+  } catch (error) {
+    console.error('Erreur hook useEnhancedDocumentStorage:', error);
+    documentStorage = {
+      getClientFiles: () => Promise.resolve({ success: false, error: 'Hook non disponible' }),
+      getExpertFiles: () => Promise.resolve({ success: false, error: 'Hook non disponible' }),
+      deleteFile: () => Promise.resolve({ success: false, error: 'Hook non disponible' }),
+      downloadFile: () => Promise.resolve({ success: false, error: 'Hook non disponible' })
+    };
+  }
+  
+  const { getClientFiles, getExpertFiles, deleteFile, downloadFile } = documentStorage;
   const { toast } = useToast();
+
+  // Gestion d'erreur globale
+  const [error, setError] = useState<string | null>(null);
+
+  // Vérification de l'authentification
+  if (!user) {
+    return (
+      <div className="container mx-auto p-6">
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-center">
+              <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">Accès non autorisé</h2>
+              <p className="text-gray-600 mb-4">Vous devez être connecté pour accéder à cette page.</p>
+              <Button onClick={() => window.location.href = '/connect-admin'}>
+                Se connecter
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<AdminDocumentStats | null>(null);
@@ -70,16 +108,19 @@ export default function EnhancedAdminDocumentsPage() {
     if (!user?.id) return;
 
     setLoading(true);
+    setError(null);
     try {
       // Charger les statistiques globales
       const globalStats = await loadGlobalStats();
       setStats(globalStats);
     } catch (error) {
       console.error('Erreur chargement données admin:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Erreur lors du chargement des données';
+      setError(errorMessage);
       toast({
         variant: 'destructive',
         title: 'Erreur',
-        description: 'Erreur lors du chargement des données'
+        description: errorMessage
       });
     } finally {
       setLoading(false);
@@ -217,32 +258,55 @@ export default function EnhancedAdminDocumentsPage() {
     );
   }
 
-  if (!stats) {
+  if (error) {
     return (
       <div className="container mx-auto p-6">
         <Card>
           <CardContent className="p-6">
-            <p>Erreur lors du chargement des données.</p>
+            <div className="text-center">
+              <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">Erreur de chargement</h2>
+              <p className="text-gray-600 mb-4">{error}</p>
+              <Button onClick={() => window.location.reload()}>
+                Recharger la page
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
     );
   }
 
-  return (
-    <div className="container mx-auto p-6">
-      <div className="mb-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">👨‍💼 Administration Documents</h1>
-            <p className="text-gray-600">Gestion centralisée des documents clients et experts</p>
-          </div>
-          <Button onClick={handleRefresh} variant="outline">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Actualiser
-          </Button>
-        </div>
+  if (!stats) {
+    return (
+      <div className="container mx-auto p-6">
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p>Chargement des données...</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
+    );
+  }
+
+  try {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="mb-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">👨‍💼 Administration Documents</h1>
+              <p className="text-gray-600">Gestion centralisée des documents clients et experts</p>
+            </div>
+            <Button onClick={handleRefresh} variant="outline">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Actualiser
+            </Button>
+          </div>
+        </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList>
@@ -421,19 +485,39 @@ export default function EnhancedAdminDocumentsPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <EnhancedDocumentUpload 
-                clientId={user?.id || ''}
-                onUploadComplete={handleFileUploaded}
-                onUploadError={(error) => {
-                  toast({
-                    variant: 'destructive',
-                    title: 'Erreur',
-                    description: error
-                  });
-                }}
-                showAdvancedOptions={true}
-                defaultCategory="guide"
-              />
+              {(() => {
+                try {
+                  return (
+                    <EnhancedDocumentUpload 
+                      clientId={user?.id || ''}
+                      onUploadComplete={handleFileUploaded}
+                      onUploadError={(error) => {
+                        toast({
+                          variant: 'destructive',
+                          title: 'Erreur',
+                          description: error
+                        });
+                      }}
+                      showAdvancedOptions={true}
+                      defaultCategory="guide"
+                    />
+                  );
+                } catch (error) {
+                  console.error('Erreur rendu EnhancedDocumentUpload:', error);
+                  return (
+                    <div className="text-center p-6">
+                      <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+                      <p className="text-gray-600">Erreur lors du chargement du composant d'upload</p>
+                      <Button 
+                        onClick={() => window.location.reload()} 
+                        className="mt-4"
+                      >
+                        Recharger
+                      </Button>
+                    </div>
+                  );
+                }
+              })()}
             </CardContent>
           </Card>
         </TabsContent>
@@ -607,4 +691,33 @@ export default function EnhancedAdminDocumentsPage() {
       </Tabs>
     </div>
   );
+  } catch (error) {
+    console.error('Erreur critique dans EnhancedAdminDocumentsPage:', error);
+    return (
+      <div className="container mx-auto p-6">
+        <Card>
+          <CardContent className="p-6">
+            <div className="text-center">
+              <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">Erreur critique</h2>
+              <p className="text-gray-600 mb-4">
+                Une erreur inattendue s'est produite lors du chargement de la page.
+              </p>
+              <div className="space-y-2">
+                <Button onClick={() => window.location.reload()}>
+                  Recharger la page
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => window.location.href = '/admin/dashboard'}
+                >
+                  Retour au dashboard
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 }
