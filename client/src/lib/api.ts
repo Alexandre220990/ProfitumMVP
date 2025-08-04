@@ -14,8 +14,8 @@ const getBaseUrl = () => {
     return 'http://localhost:5001';
   }
   
-  // En production, utiliser l'URL par défaut
-  return 'https://www.profitum.app';
+  // En production, utiliser l'URL Railway
+  return 'https://profitummvp-production.up.railway.app';
 };
 
 const BASE_URL = getBaseUrl();

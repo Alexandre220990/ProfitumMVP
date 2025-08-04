@@ -36,7 +36,7 @@ router.use('/auth', authRoutes);
 router.use('/audits', auditRoutes);
 
 // Routes des simulations
-router.use('/simulations', simulationRoutes);
+router.use('/simulations', enhancedAuthMiddleware, simulationRoutes);
 
 // Routes des partenaires
 router.use('/partners', partnerRoutes);
@@ -81,7 +81,7 @@ router.use('/simulator', simulatorRoutes);
 router.use('/notifications', notificationsRoutes);
 
 // Routes du calendrier
-router.use('/calendar', calendarRoutes);
+router.use('/calendar', enhancedAuthMiddleware, calendarRoutes);
 
 
 

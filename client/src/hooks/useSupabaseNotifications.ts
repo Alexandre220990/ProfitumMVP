@@ -15,7 +15,7 @@ export function useSupabaseNotifications() {
     
     setLoading(true);
     try {
-      const baseUrl = import.meta.env.VITE_API_URL || 'https://www.profitum.app';
+      const baseUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
       let endpoint = '/api/notifications';
       if (user.type === 'expert') endpoint = '/api/expert/notifications';
       if (user.type === 'admin') endpoint = '/api/admin/notifications';

@@ -59,7 +59,7 @@ export interface CalendarStats {
 // ============================================================================
 
 class CalendarService {
-  private baseUrl = `${import.meta.env.VITE_API_URL || 'https://www.profitum.app'}/api/calendar`;
+  private baseUrl = `${import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app'}/api/calendar`;
 
   // ===== GESTION DES ÉVÉNEMENTS =====
 

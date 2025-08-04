@@ -33,7 +33,7 @@ export interface AppConfig {
 
 export const config: AppConfig = {
   // Configuration API
-  API_URL: import.meta.env.VITE_API_URL || 'https://www.profitum.app',
+  API_URL: import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app',
   
   // Configuration Supabase (vraies valeurs)
   SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL || 'https://gvvlsgtubqfxdztldunj.supabase.co',

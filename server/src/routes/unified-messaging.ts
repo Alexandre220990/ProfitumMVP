@@ -172,7 +172,10 @@ router.get(['/conversations', '/expert/conversations'], async (req, res) => {
 
     // Enrichir avec les informations des participants
     const enrichedConversations = await Promise.all(
-      conversations?.map(async (conv: Conversation) => {
+      conversations?.filter((conv: Conversation) => {
+        // Filtrer les conversations avec UUID nul pour éviter les doublons
+        return !conv.participant_ids.includes('00000000-0000-0000-0000-000000000000');
+      }).map(async (conv: Conversation) => {
         const participants = await Promise.all(
           conv.participant_ids.map(async (participantId: string) => {
             if (participantId === '00000000-0000-0000-0000-000000000000') {
