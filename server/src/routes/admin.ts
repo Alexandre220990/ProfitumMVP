@@ -876,7 +876,7 @@ router.get('/client-produits-eligibles', asyncHandler(async (req, res) => {
         charte_signed_at,
         sessionId,
         Client:Client(id, company_name, email),
-        ProduitEligible:ProduitEligible(id, name, type)
+        ProduitEligible:ProduitEligible(id, nom, category, description)
       `)
       .order('updated_at', { ascending: false });
 
@@ -901,26 +901,34 @@ router.get('/client-produits-eligibles', asyncHandler(async (req, res) => {
 // GET /api/admin/validations/experts - Validations des experts
 router.get('/validations/experts', asyncHandler(async (req, res) => {
   try {
+    // Récupérer les experts avec leurs informations d'authentification
     const { data: experts, error } = await supabaseClient
-      .from('Expert')
+      .from('authenticated_users')
       .select(`
         id,
         email,
-        name,
-        company_name,
-        approval_status,
-        status,
-        phone,
-        location,
-        rating,
-        experience,
-        created_at,
-        updated_at,
-        approved_by,
-        approved_at
+        user_type,
+        profile_id,
+        raw_user_meta_data,
+        Expert!inner(
+          id,
+          name,
+          company_name,
+          approval_status,
+          status,
+          phone,
+          location,
+          rating,
+          experience,
+          created_at,
+          updated_at,
+          approved_by,
+          approved_at
+        )
       `)
-      .eq('approval_status', 'pending')
-      .order('created_at', { ascending: false });
+      .eq('user_type', 'expert')
+      .eq('Expert.approval_status', 'pending')
+      .order('Expert.created_at', { ascending: false });
 
     if (error) {
       throw error;
