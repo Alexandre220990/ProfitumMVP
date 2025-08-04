@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Checkbox } from "@/components/ui/checkbox";
 import { 
   Search, 
   MapPin, 
@@ -21,14 +20,12 @@ import {
   Award, 
   Clock, 
   TrendingUp,
-  CheckCircle,
   Sparkles,
-  FileSignature,
   Handshake
 } from "lucide-react";
 import HeaderClient from "@/components/HeaderClient";
 import { get, post } from "@/lib/api";
-import { useCharteSignature } from "@/hooks/use-charte-signature";
+
 
 // Types
 interface ClientProduitEligible {
@@ -48,7 +45,7 @@ interface ClientProduitEligible {
     description: string;
     category: string;
   };
-  charte_signed?: boolean;
+
   expert_id?: string;
 }
 
@@ -93,15 +90,12 @@ export default function MarketplaceExperts() {
   const [sortBy, setSortBy] = useState("match-score");
 
   // États pour les modales
-  const [showCharteModal, setShowCharteModal] = useState(false);
   const [showExpertSelectionModal, setShowExpertSelectionModal] = useState(false);
   const [selectedClientProduit, setSelectedClientProduit] = useState<ClientProduitEligible | null>(null);
   const [selectedExpert, setSelectedExpert] = useState<Expert | null>(null);
-  const [charteAccepted, setCharteAccepted] = useState(false);
   const [isAssigningExpert, setIsAssigningExpert] = useState(false);
 
-  // Hook pour la signature de charte
-  const { signCharte, isLoading: charteLoading } = useCharteSignature();
+
 
   // Charger les données
   useEffect(() => {
@@ -256,43 +250,7 @@ export default function MarketplaceExperts() {
     return [...new Set(products)];
   };
 
-  // Ouvrir la modale de signature de charte
-  const openCharteModal = (clientProduit: ClientProduitEligible) => {
-    setSelectedClientProduit(clientProduit);
-    setCharteAccepted(false);
-    setShowCharteModal(true);
-  };
 
-  // Signer la charte
-  const handleSignCharte = async () => {
-    if (!selectedClientProduit || !charteAccepted) {
-      toast({
-        variant: "destructive",
-        title: "Erreur",
-        description: "Veuillez accepter les conditions de la charte"
-      });
-      return;
-    }
-
-    try {
-      const success = await signCharte();
-      if (success) {
-        setShowCharteModal(false);
-        toast({
-          title: "Succès",
-          description: "Charte signée avec succès ! Vous pouvez maintenant sélectionner un expert."
-        });
-        // Recharger les données pour mettre à jour les statuts
-        loadData();
-      }
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Erreur",
-        description: "Impossible de signer la charte"
-      });
-    }
-  };
 
   // Ouvrir la modale de sélection d'expert
   const openExpertSelectionModal = (clientProduit: ClientProduitEligible) => {
@@ -338,11 +296,6 @@ export default function MarketplaceExperts() {
     } finally {
       setIsAssigningExpert(false);
     }
-  };
-
-  // Vérifier si un produit a une charte signée
-  const isCharteSigned = (clientProduit: ClientProduitEligible) => {
-    return clientProduit.charte_signed === true;
   };
 
   // Vérifier si un produit a un expert assigné
@@ -519,44 +472,21 @@ export default function MarketplaceExperts() {
                             {produit.statut}
                           </Badge>
                           
-                          {/* Statut de la charte */}
-                          <div className="flex items-center gap-2">
-                            {isCharteSigned(produit) ? (
-                              <Badge variant="default" className="bg-green-600 text-white text-xs">
-                                <CheckCircle className="w-3 h-3 mr-1" />
-                                Charte signée
-                              </Badge>
-                            ) : (
-                              <Button 
-                                onClick={() => openCharteModal(produit)}
-                                size="sm"
-                                className="bg-orange-600 hover:bg-orange-700 text-white text-xs"
-                              >
-                                <FileSignature className="w-3 h-3 mr-1" />
-                                Signer la charte
-                              </Button>
-                            )}
-                          </div>
-                          
                           {/* Statut de l'expert */}
-                          {isCharteSigned(produit) && (
-                            <div className="flex items-center gap-2">
-                              {hasExpertAssigned(produit) ? (
-                                <Badge variant="default" className="bg-purple-600 text-white text-xs">
-                                  <Users className="w-3 h-3 mr-1" />
-                                  Expert assigné
-                                </Badge>
-                              ) : (
-                                <Button 
-                                  onClick={() => openExpertSelectionModal(produit)}
-                                  size="sm"
-                                  className="bg-purple-600 hover:bg-purple-700 text-white text-xs"
-                                >
-                                  <Users className="w-3 h-3 mr-1" />
-                                  Choisir un expert
-                                </Button>
-                              )}
-                            </div>
+                          {hasExpertAssigned(produit) ? (
+                            <Badge variant="default" className="bg-purple-600 text-white text-xs">
+                              <Users className="w-3 h-3 mr-1" />
+                              Expert assigné
+                            </Badge>
+                          ) : (
+                            <Button 
+                              onClick={() => openExpertSelectionModal(produit)}
+                              size="sm"
+                              className="bg-purple-600 hover:bg-purple-700 text-white text-xs"
+                            >
+                              <Users className="w-3 h-3 mr-1" />
+                              Choisir un expert
+                            </Button>
                           )}
                           
                           {/* Bouton voir le dossier si expert assigné */}
@@ -766,65 +696,6 @@ export default function MarketplaceExperts() {
             </div>
           </TabsContent>
         </Tabs>
-
-        {/* Modale de signature de charte */}
-        <Dialog open={showCharteModal} onOpenChange={setShowCharteModal}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <FileSignature className="w-5 h-5" />
-                Signature de la charte - {selectedClientProduit?.ProduitEligible.nom}
-              </DialogTitle>
-              <DialogDescription>
-                Veuillez lire et accepter les conditions de la charte pour continuer.
-              </DialogDescription>
-            </DialogHeader>
-            
-            <div className="space-y-4">
-              <div className="bg-gray-50 p-4 rounded-lg max-h-60 overflow-y-auto">
-                <h4 className="font-semibold mb-2">Charte d'engagement - {selectedClientProduit?.ProduitEligible.nom}</h4>
-                <div className="text-sm text-gray-700 space-y-2">
-                  <p>
-                    En signant cette charte, vous vous engagez à :
-                  </p>
-                  <ul className="list-disc list-inside space-y-1">
-                    <li>Fournir les informations et documents nécessaires dans les délais impartis</li>
-                    <li>Collaborer activement avec l'expert assigné pour optimiser vos gains</li>
-                    <li>Respecter les procédures et réglementations en vigueur</li>
-                    <li>Informer immédiatement de tout changement de situation</li>
-                    <li>Accepter les conditions de commission de l'expert</li>
-                  </ul>
-                  <p className="mt-4">
-                    <strong>Gain potentiel estimé :</strong> {selectedClientProduit?.montantFinal?.toLocaleString()}€
-                  </p>
-                </div>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <Checkbox 
-                  id="charte-accepted" 
-                  checked={charteAccepted}
-                  onCheckedChange={(checked: boolean) => setCharteAccepted(checked)}
-                />
-                <label htmlFor="charte-accepted" className="text-sm">
-                  J'accepte les conditions de la charte et m'engage à les respecter
-                </label>
-              </div>
-            </div>
-            
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowCharteModal(false)}>
-                Annuler
-              </Button>
-              <Button 
-                onClick={handleSignCharte}
-                disabled={!charteAccepted || charteLoading}
-              >
-                {charteLoading ? "Signature en cours..." : "Signer la charte"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
 
         {/* Modale de sélection d'expert */}
         <Dialog open={showExpertSelectionModal} onOpenChange={setShowExpertSelectionModal}>

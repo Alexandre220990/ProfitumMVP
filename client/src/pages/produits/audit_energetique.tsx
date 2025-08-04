@@ -1,10 +1,22 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { CheckCircle, FileText, ExternalLink, ArrowLeft } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { 
+  Calculator, 
+  TrendingUp, 
+  Lightbulb, 
+  Building2, 
+  Users, 
+  FileText,
+  CheckCircle,
+  Clock,
+  AlertCircle,
+  ArrowLeft,
+  ExternalLink
+} from 'lucide-react';
 import HeaderClient from '@/components/HeaderClient';
 
 const AuditEnergetiquePage = () => {
