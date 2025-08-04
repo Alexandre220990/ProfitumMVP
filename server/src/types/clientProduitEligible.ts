@@ -11,13 +11,24 @@ export interface Produit {
 
 export interface ClientProduitEligible {
   id: string;
-  client_id: string;
-  produit_id: string;
-  simulation_id: number;
-  taux_final: number;
-  montant_final: number;
-  duree_finale: number;
+  clientId: string;
+  produitId: string;
+  simulationId: string;
+  statut: string;
+  tauxFinal: number;
+  montantFinal: number;
+  dureeFinale: number;
   created_at: string;
   updated_at: string;
-  produit: Produit;
+  metadata?: any;
+  notes?: string;
+  priorite?: number;
+  dateEligibilite?: string;
+  current_step: number;
+  progress: number;
+  expert_id?: string;
+  charte_signed: boolean;
+  charte_signed_at?: string;
+  sessionId?: string;
+  produit?: Produit;
 } 

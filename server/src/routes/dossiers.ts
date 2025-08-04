@@ -31,7 +31,7 @@ router.get('/client/:clientId', enhancedAuthMiddleware, async (req: Request, res
       .select(`
         id,
         clientId,
-        status,
+        statut,
         created_at,
         ProduitEligible(
           id,
@@ -63,7 +63,7 @@ router.get('/client/:clientId', enhancedAuthMiddleware, async (req: Request, res
           id: dossier.id,
           product_name: dossier.ProduitEligible?.[0]?.nom || 'Produit inconnu',
           product_description: dossier.ProduitEligible?.[0]?.description || '',
-          status: dossier.status,
+          status: dossier.statut,
           created_at: dossier.created_at,
           documents_count: documentsCount || 0
         };

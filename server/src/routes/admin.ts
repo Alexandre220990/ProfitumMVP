@@ -864,13 +864,21 @@ router.get('/client-produits-eligibles', asyncHandler(async (req, res) => {
         dureeFinale,
         current_step,
         progress,
-        createdAt,
-        updatedAt,
+        created_at,
+        updated_at,
         simulationId,
+        metadata,
+        notes,
+        priorite,
+        dateEligibilite,
+        expert_id,
+        charte_signed,
+        charte_signed_at,
+        sessionId,
         Client:Client(id, company_name, email),
         ProduitEligible:ProduitEligible(id, name, type)
       `)
-      .order('updatedAt', { ascending: false });
+      .order('updated_at', { ascending: false });
 
     if (error) {
       throw error;
@@ -886,6 +894,77 @@ router.get('/client-produits-eligibles', asyncHandler(async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération des données pipeline'
+    });
+  }
+}));
+
+// GET /api/admin/validations/experts - Validations des experts
+router.get('/validations/experts', asyncHandler(async (req, res) => {
+  try {
+    const { data: experts, error } = await supabaseClient
+      .from('Expert')
+      .select(`
+        id,
+        email,
+        nom,
+        prenom,
+        company_name,
+        approval_status,
+        created_at,
+        updated_at
+      `)
+      .eq('approval_status', 'pending')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      throw error;
+    }
+
+    return res.json({
+      success: true,
+      data: experts || []
+    });
+
+  } catch (error) {
+    console.error('Erreur récupération validations experts:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des validations experts'
+    });
+  }
+}));
+
+// GET /api/admin/validations/content - Validations de contenu
+router.get('/validations/content', asyncHandler(async (req, res) => {
+  try {
+    const { data: content, error } = await supabaseClient
+      .from('Document')
+      .select(`
+        id,
+        original_filename,
+        category,
+        validation_status,
+        uploaded_by,
+        created_at,
+        updated_at
+      `)
+      .eq('validation_status', 'pending')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      throw error;
+    }
+
+    return res.json({
+      success: true,
+      data: content || []
+    });
+
+  } catch (error) {
+    console.error('Erreur récupération validations content:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des validations content'
     });
   }
 }));

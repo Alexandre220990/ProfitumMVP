@@ -13,15 +13,26 @@ export const ProduitSchema = z.object({
 
 export const ClientProduitEligibleSchema = z.object({
   id: z.string(),
-  client_id: z.string(),
-  produit_id: z.string(),
-  simulation_id: z.number(),
-  taux_final: z.number(),
-  montant_final: z.number(),
-  duree_finale: z.number(),
+  clientId: z.string(),
+  produitId: z.string(),
+  simulationId: z.string(),
+  statut: z.string(),
+  tauxFinal: z.number(),
+  montantFinal: z.number(),
+  dureeFinale: z.number(),
   created_at: z.string(),
   updated_at: z.string(),
-  produit: ProduitSchema,
+  metadata: z.any().optional(),
+  notes: z.string().optional(),
+  priorite: z.number().optional(),
+  dateEligibilite: z.string().optional(),
+  current_step: z.number(),
+  progress: z.number(),
+  expert_id: z.string().optional(),
+  charte_signed: z.boolean(),
+  charte_signed_at: z.string().optional(),
+  sessionId: z.string().optional(),
+  produit: ProduitSchema.optional(),
 });
 
 export type Produit = z.infer<typeof ProduitSchema>;
