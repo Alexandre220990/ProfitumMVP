@@ -713,6 +713,12 @@ class MessagingService {
   // ========================================
 
   private async getUserConversationIds(): Promise<string> {
+    // Validation de l'UUID utilisateur
+    if (!this.currentUserId || this.currentUserId === '00000000-0000-0000-0000-000000000000') {
+      console.warn('⚠️ UUID utilisateur invalide pour getUserConversationIds:', this.currentUserId);
+      return '';
+    }
+
     const { data } = await supabase
       .from('conversations')
       .select('id')
@@ -722,6 +728,12 @@ class MessagingService {
   }
 
   private async getUserInfo(userId: string): Promise<any> {
+    // Validation de l'UUID
+    if (!userId || userId === '00000000-0000-0000-0000-000000000000') {
+      console.warn('⚠️ UUID utilisateur invalide:', userId);
+      return null;
+    }
+
     const { data } = await supabase
       .from('auth.users')
       .select('id, email, raw_user_meta_data')
@@ -816,6 +828,12 @@ class MessagingService {
   }
 
   private async getUserEventIds(): Promise<string> {
+    // Validation de l'UUID utilisateur
+    if (!this.currentUserId || this.currentUserId === '00000000-0000-0000-0000-000000000000') {
+      console.warn('⚠️ UUID utilisateur invalide pour getUserEventIds:', this.currentUserId);
+      return '';
+    }
+
     try {
       const { data, error } = await supabase
         .from('CalendarEvent')
@@ -824,10 +842,10 @@ class MessagingService {
 
       if (error) throw error;
       
-      return data.map(event => event.id).join(',') || '00000000-0000-0000-0000-000000000000';
+      return data.map(event => event.id).join(',') || '';
     } catch (error) {
       console.error('Erreur récupération IDs événements:', error);
-      return '00000000-0000-0000-0000-000000000000';
+      return '';
     }
   }
 
