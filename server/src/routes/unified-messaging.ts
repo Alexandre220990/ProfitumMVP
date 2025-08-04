@@ -18,6 +18,17 @@ interface Conversation {
   created_at: string;
   updated_at: string;
   messages?: Message[];
+  // Nouvelles colonnes métier
+  dossier_id?: string;
+  client_id?: string;
+  expert_id?: string;
+  produit_id?: string;
+  created_by?: string;
+  access_level?: string;
+  is_archived?: boolean;
+  priority?: string;
+  category?: string;
+  tags?: string[];
 }
 
 interface Message {
@@ -187,12 +198,33 @@ router.get(['/conversations', '/expert/conversations'], async (req, res) => {
               };
             }
 
-            // Récupérer les infos utilisateur selon le type
-            const { data: userData } = await supabaseAdmin
-              .from(authUser.type === 'client' ? 'Client' : 'Expert')
-              .select('id, name, email, company_name')
-              .eq('id', participantId)
-              .single();
+            // Récupérer les infos utilisateur selon le type et les nouvelles colonnes métier
+            let userData = null;
+            
+            // Utiliser les colonnes métier si disponibles
+            if (conv.client_id && participantId === conv.client_id) {
+              const { data } = await supabaseAdmin
+                .from('Client')
+                .select('id, name, email, company_name')
+                .eq('id', conv.client_id)
+                .single();
+              userData = data;
+            } else if (conv.expert_id && participantId === conv.expert_id) {
+              const { data } = await supabaseAdmin
+                .from('Expert')
+                .select('id, name, email, company_name')
+                .eq('id', conv.expert_id)
+                .single();
+              userData = data;
+            } else {
+              // Fallback vers l'ancienne méthode
+              const { data } = await supabaseAdmin
+                .from(authUser.type === 'client' ? 'Client' : 'Expert')
+                .select('id, name, email, company_name')
+                .eq('id', participantId)
+                .single();
+              userData = data;
+            }
 
             return {
               id: participantId,
@@ -244,7 +276,22 @@ router.get(['/conversations', '/expert/conversations'], async (req, res) => {
 router.post('/conversations', async (req, res) => {
   try {
     const authUser = req.user as AuthUser;
-    const { type, participant_ids, title, description, assignment_id } = req.body;
+    const { 
+      type, 
+      participant_ids, 
+      title, 
+      description, 
+      assignment_id,
+      // Nouvelles colonnes métier
+      dossier_id,
+      client_id,
+      expert_id,
+      produit_id,
+      access_level = 'private',
+      priority = 'medium',
+      category = 'general',
+      tags = []
+    } = req.body;
 
     if (!type || !participant_ids || participant_ids.length < 2) {
       return res.status(400).json({
@@ -268,7 +315,17 @@ router.post('/conversations', async (req, res) => {
         participant_ids,
         title,
         description,
-        assignment_id
+        assignment_id,
+        // Nouvelles colonnes métier
+        dossier_id,
+        client_id,
+        expert_id,
+        produit_id,
+        created_by: authUser.id,
+        access_level,
+        priority,
+        category,
+        tags
       })
       .select()
       .single();

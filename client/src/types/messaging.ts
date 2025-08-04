@@ -40,30 +40,44 @@ export interface Message {
 
 export interface Conversation {
   id: string;
-  participant1_id: string;
-  participant1_type: 'client' | 'expert' | 'admin';
-  participant2_id: string;
-  participant2_type: 'client' | 'expert' | 'admin';
-  conversation_type: 'private' | 'support' | 'system';
-  type?: 'expert_client' | 'admin_support' | 'internal';
+  type: 'expert_client' | 'admin_support' | 'internal';
+  participant_ids: string[];
   title?: string;
   description?: string;
-  avatar?: string;
+  status: 'active' | 'archived' | 'blocked';
   last_message_at?: string;
-  last_message?: Message;
-  unread_count: number;
-  is_archived: boolean;
   created_at: string;
   updated_at: string;
-  // Nouvelles propriétés pour les conversations automatiques
+  
+  // Nouvelles colonnes métier
+  dossier_id?: string;
+  client_id?: string;
+  expert_id?: string;
+  produit_id?: string;
+  created_by?: string;
+  access_level?: 'public' | 'private' | 'restricted';
+  is_archived?: boolean;
+  priority?: 'low' | 'medium' | 'high' | 'urgent';
+  category?: string;
+  tags?: string[];
+  
+  // Propriétés enrichies pour l'affichage
+  last_message?: Message;
+  unread_count: number;
   otherParticipant?: {
     id: string;
     type: 'client' | 'expert' | 'admin';
     name: string;
     isOnline: boolean;
   };
-  participant_ids?: string[];
-  dossier_id?: string;
+  
+  // Propriétés de compatibilité (à déprécier)
+  participant1_id?: string;
+  participant1_type?: 'client' | 'expert' | 'admin';
+  participant2_id?: string;
+  participant2_type?: 'client' | 'expert' | 'admin';
+  conversation_type?: 'private' | 'support' | 'system';
+  avatar?: string;
   auto_created?: boolean;
 }
 
@@ -105,14 +119,27 @@ export interface MessageNotification {
 
 // Types pour les requêtes API
 export interface CreateConversationRequest {
-  participant1_id: string;
-  participant1_type: 'client' | 'expert' | 'admin';
-  participant2_id: string;
-  participant2_type: 'client' | 'expert' | 'admin';
-  conversation_type: 'private' | 'support';
+  type: 'expert_client' | 'admin_support' | 'internal';
+  participant_ids: string[];
   title?: string;
   description?: string;
+  
+  // Nouvelles colonnes métier
   dossier_id?: string;
+  client_id?: string;
+  expert_id?: string;
+  produit_id?: string;
+  access_level?: 'public' | 'private' | 'restricted';
+  priority?: 'low' | 'medium' | 'high' | 'urgent';
+  category?: string;
+  tags?: string[];
+  
+  // Propriétés de compatibilité (à déprécier)
+  participant1_id?: string;
+  participant1_type?: 'client' | 'expert' | 'admin';
+  participant2_id?: string;
+  participant2_type?: 'client' | 'expert' | 'admin';
+  conversation_type?: 'private' | 'support';
   auto_created?: boolean;
 }
 

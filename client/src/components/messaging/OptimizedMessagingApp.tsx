@@ -15,13 +15,14 @@ import {
   CheckCheck,
   Shield,
   User,
-  Building2
+  Info,
+  TrendingUp
 } from 'lucide-react';
 import { useMessaging } from '@/hooks/use-messaging';
 import { Message, Conversation } from '@/types/messaging';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
+
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { 
   DropdownMenu, 
@@ -37,6 +38,10 @@ import {
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
+import { ConversationList } from './ConversationList';
+import { ConversationDetails } from './ConversationDetails';
+import { ConversationFilters, ConversationFilters as ConversationFiltersType } from './ConversationFilters';
+import { ConversationStats } from './ConversationStats';
 
 // ============================================================================
 // MESSAGERIE CLIENT OPTIMISÉE - COMPOSANT UNIFIÉ
@@ -73,6 +78,11 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
   const [showMeetingModal, setShowMeetingModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   
+  // Nouveaux états pour les colonnes métier
+  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
+  const [viewMode, setViewMode] = useState<'list' | 'details' | 'stats'>('list');
+  const [activeFilters, setActiveFilters] = useState<ConversationFiltersType>({});
+  
   // Références pour optimisations
   const messageInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -88,6 +98,41 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
     allowedFileTypes: ['image/*', 'application/pdf', 'text/*'],
     enableAutoConversations: true // Conversations automatiques avec experts
   });
+
+  // ========================================
+  // GESTION DES CONVERSATIONS AVEC COLONNES MÉTIER
+  // ========================================
+
+  const handleConversationSelect = useCallback((conversation: Conversation) => {
+    setSelectedConversation(conversation);
+    messaging.selectConversation(conversation);
+    setViewMode('list'); // Retour à la liste après sélection
+  }, [messaging]);
+
+  const handleShowConversationDetails = useCallback((conversation: Conversation | string | null) => {
+    if (!conversation) return;
+    
+    if (typeof conversation === 'string') {
+      // Si c'est un ID, trouver la conversation
+      const foundConversation = messaging.conversations.find(c => c.id === conversation);
+      if (foundConversation) {
+        setSelectedConversation(foundConversation);
+        setViewMode('details');
+      }
+    } else {
+      setSelectedConversation(conversation);
+      setViewMode('details');
+    }
+  }, [messaging.conversations]);
+
+  const handleBackToList = useCallback(() => {
+    setViewMode('list');
+    setSelectedConversation(null);
+  }, []);
+
+  const handleFilterChange = useCallback((filters: ConversationFiltersType) => {
+    setActiveFilters(filters);
+  }, []);
 
   // ========================================
   // THÈMES ET COULEURS OPTIMISÉS
@@ -263,56 +308,7 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
   // COMPOSANTS INTERNES OPTIMISÉS
   // ========================================
 
-  const ConversationItem: React.FC<{ conversation: Conversation }> = ({ conversation }) => {
-    const isActive = messaging.currentConversation?.id === conversation.id;
-    const unreadCount = messaging.getUnreadCount(conversation.id);
-    const isExpert = conversation.participant2_type === 'expert';
-    const isAdmin = conversation.participant2_type === 'admin';
 
-    return (
-      <motion.div
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-        className={`
-          flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all
-          ${isActive ? currentTheme.secondary : 'hover:bg-gray-50'}
-          ${isActive ? currentTheme.border : 'border-transparent'}
-        `}
-        onClick={() => messaging.selectConversation(conversation)}
-      >
-        <div className="relative">
-          <Avatar className="w-10 h-10">
-            <AvatarImage src={conversation.avatar} />
-            <AvatarFallback className={currentTheme.accent}>
-              {isExpert ? <Building2 className="w-5 h-5" /> : 
-               isAdmin ? <Shield className="w-5 h-5" /> : 
-               <User className="w-5 h-5" />}
-            </AvatarFallback>
-          </Avatar>
-          {/* TODO: Implémenter le statut en ligne */}
-          {false && (
-            <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
-          )}
-        </div>
-        
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between">
-            <h4 className="font-medium text-sm truncate">
-              {conversation.title || `Expert ${conversation.participant2_id}`}
-            </h4>
-            {unreadCount > 0 && (
-              <Badge variant="destructive" className="text-xs">
-                {unreadCount}
-              </Badge>
-            )}
-          </div>
-          <p className="text-xs text-gray-500 truncate">
-            {conversation.last_message_at ? 'Dernier message' : 'Aucun message'}
-          </p>
-        </div>
-      </motion.div>
-    );
-  };
 
   const MessageItem: React.FC<{ message: Message }> = ({ message }) => {
     const isOwn = messaging.isOwnMessage(message);
@@ -425,10 +421,45 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
 
       {/* Contenu principal */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Liste des conversations */}
+        {/* Liste des conversations avec colonnes métier */}
         <div className="w-80 border-r border-gray-200 flex flex-col">
-          {/* Recherche */}
-          <div className="p-4 border-b border-gray-200">
+          {/* Header avec bouton détails et filtres */}
+          <div className="p-4 border-b border-gray-200 bg-gray-50">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-gray-900">Conversations</h3>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setViewMode(viewMode === 'stats' ? 'list' : 'stats')}
+                  className="text-purple-600 hover:text-purple-700"
+                >
+                  <TrendingUp className="w-4 h-4 mr-1" />
+                  {viewMode === 'stats' ? 'Liste' : 'Stats'}
+                </Button>
+                {selectedConversation && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleShowConversationDetails(selectedConversation as Conversation)}
+                    className="text-blue-600 hover:text-blue-700"
+                  >
+                    <Info className="w-4 h-4 mr-1" />
+                    Détails
+                  </Button>
+                )}
+              </div>
+            </div>
+            
+            {/* Filtres avancés */}
+            <div className="mb-3">
+              <ConversationFilters
+                onFilterChange={handleFilterChange}
+                activeFilters={activeFilters}
+              />
+            </div>
+            
+            {/* Recherche */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <Input
@@ -440,18 +471,36 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
             </div>
           </div>
 
-          {/* Conversations */}
-          <div className="flex-1 overflow-y-auto p-2">
-            <AnimatePresence>
-              {messaging.conversations
-                .filter(conv => 
-                  conv.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                  conv.participant2_id?.toLowerCase().includes(searchQuery.toLowerCase())
-                )
-                .map(conversation => (
-                  <ConversationItem key={conversation.id} conversation={conversation} />
-                ))}
-            </AnimatePresence>
+          {/* Conversations avec nouveau composant */}
+          <div className="flex-1 overflow-y-auto">
+            {viewMode === 'list' ? (
+              <ConversationList
+                onConversationSelect={handleConversationSelect}
+                selectedConversationId={messaging.currentConversation?.id}
+                userType={user?.type || 'client'}
+              />
+            ) : viewMode === 'details' && selectedConversation ? (
+              <div className="p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleBackToList}
+                    className="text-gray-600 hover:text-gray-800"
+                  >
+                    ← Retour
+                  </Button>
+                </div>
+                <ConversationDetails
+                  conversation={selectedConversation}
+                  userType={user?.type || 'client'}
+                />
+              </div>
+            ) : viewMode === 'stats' ? (
+              <div className="p-4">
+                <ConversationStats conversations={messaging.conversations} />
+              </div>
+            ) : null}
           </div>
         </div>
 

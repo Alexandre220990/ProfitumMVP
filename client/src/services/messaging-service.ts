@@ -238,11 +238,37 @@ class MessagingService {
 
       if (error) throw error;
 
-      // Enrichir avec les informations des participants
+      // Enrichir avec les informations des participants en utilisant les nouvelles colonnes métier
       const enrichedConversations = await Promise.all(
         data.map(async (conv) => {
           const otherParticipantId = conv.participant_ids.find((id: string) => id !== this.currentUserId);
-          const otherParticipant = await this.getUserInfo(otherParticipantId);
+          let otherParticipant = null;
+          
+          // Utiliser les nouvelles colonnes métier pour identifier le participant
+          if (conv.client_id && otherParticipantId === conv.client_id) {
+            const { data: clientData } = await supabase
+              .from('Client')
+              .select('id, name, email, company_name')
+              .eq('id', conv.client_id)
+              .single();
+            otherParticipant = {
+              ...clientData,
+              type: 'client' as const
+            };
+          } else if (conv.expert_id && otherParticipantId === conv.expert_id) {
+            const { data: expertData } = await supabase
+              .from('Expert')
+              .select('id, name, email, company_name')
+              .eq('id', conv.expert_id)
+              .single();
+            otherParticipant = {
+              ...expertData,
+              type: 'expert' as const
+            };
+          } else {
+            // Fallback vers l'ancienne méthode
+            otherParticipant = await this.getUserInfo(otherParticipantId);
+          }
           
           return {
             ...conv,
@@ -600,13 +626,30 @@ class MessagingService {
 
   async createConversation(request: CreateConversationRequest): Promise<Conversation> {
     try {
+      // Préparer les données avec les nouvelles colonnes métier
+      const conversationData = {
+        type: request.type,
+        participant_ids: request.participant_ids,
+        title: request.title,
+        description: request.description,
+        status: 'active',
+        // Nouvelles colonnes métier
+        dossier_id: request.dossier_id,
+        client_id: request.client_id,
+        expert_id: request.expert_id,
+        produit_id: request.produit_id,
+        created_by: this.currentUserId,
+        access_level: request.access_level || 'private',
+        priority: request.priority || 'medium',
+        category: request.category || 'general',
+        tags: request.tags || [],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
       const { data, error } = await supabase
         .from('conversations')
-        .insert({
-          ...request,
-          participant_ids: [request.participant1_id, request.participant2_id],
-          created_at: new Date().toISOString()
-        })
+        .insert(conversationData)
         .select()
         .single();
 

@@ -168,7 +168,7 @@ export class UnifiedDocumentService {
         return false;
       }
 
-      return permission[`can_${action}`] || false;
+      return (permission as any)[`can_${action}`] || false;
     } catch (error) {
       console.error('Erreur vérification permission:', error);
       return false;
@@ -281,7 +281,7 @@ export class UnifiedDocumentService {
         .update({
           ...updates,
           last_modified: new Date().toISOString(),
-          version: supabaseClient.raw('version + 1')
+          version: (supabaseClient as any).raw('version + 1')
         })
         .eq('id', documentId);
 
