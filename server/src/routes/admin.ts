@@ -944,17 +944,20 @@ router.get('/validations/experts', asyncHandler(async (req, res) => {
 router.get('/validations/content', asyncHandler(async (req, res) => {
   try {
     const { data: content, error } = await supabaseClient
-      .from('Document')
+      .from('GEDDocument')
       .select(`
         id,
-        original_filename,
+        title,
+        description,
         category,
-        validation_status,
-        uploaded_by,
+        file_path,
+        version,
         created_at,
-        updated_at
+        last_modified,
+        created_by,
+        is_active
       `)
-      .eq('validation_status', 'pending')
+      .eq('is_active', true)
       .order('created_at', { ascending: false });
 
     if (error) {
