@@ -75,4 +75,12 @@ declare global {
   }
 }
 
+declare global {
+  interface Window {
+    ReactDropzone: {
+      useDropzone: any;
+    };
+  }
+}
+
 export {}; 

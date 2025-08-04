@@ -21,7 +21,7 @@ export default defineConfig({
     emptyOutDir: true,
     chunkSizeWarningLimit: 1000,
           rollupOptions: {
-        external: [],
+        external: ['react-dropzone'],
       output: {
         manualChunks: {
           'react-vendor': ['react', 'react-dom'],
