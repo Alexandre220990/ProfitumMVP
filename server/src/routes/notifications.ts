@@ -74,7 +74,7 @@ router.post('/', asyncHandler(async (req, res) => {
 
     // Créer la notification
     const { data: notification, error } = await supabaseClient
-      .from('Notification')
+      .from('notification')
       .insert({
         user_id,
         user_type,
@@ -118,7 +118,7 @@ router.get('/', asyncHandler(async (req, res) => {
     const offset = (Number(page) - 1) * Number(limit);
 
     let query = supabaseClient
-      .from('Notification')
+      .from('notification')
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
@@ -357,7 +357,7 @@ router.put('/:id/read', asyncHandler(async (req, res) => {
     const { id } = req.params;
 
     const { error } = await supabaseClient
-      .from('Notification')
+      .from('notification')
       .update({
         is_read: true,
         read_at: new Date().toISOString(),
@@ -390,7 +390,7 @@ router.put('/:id/star', asyncHandler(async (req, res) => {
     const { starred } = req.body;
 
     const { error } = await supabaseClient
-      .from('Notification')
+      .from('notification')
       .update({
         starred: starred,
         updated_at: new Date().toISOString()
@@ -421,7 +421,7 @@ router.delete('/:id', asyncHandler(async (req, res) => {
     const { id } = req.params;
 
     const { error } = await supabaseClient
-      .from('Notification')
+      .from('notification')
       .delete()
       .eq('id', id)
       .eq('user_id', userId);

@@ -22,7 +22,7 @@ export class SupabaseNotificationService {
           {
             event: '*',
             schema: 'public',
-            table: 'Notification',
+            table: 'notification',
             filter: `user_id=eq.${userId}`
           },
           (payload: RealtimePostgresChangesPayload<any>) => {

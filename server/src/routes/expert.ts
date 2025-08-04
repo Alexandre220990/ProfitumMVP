@@ -336,7 +336,7 @@ router.get('/notifications', async (req: Request, res: Response) => {
     // Vérifier si la table Notification existe, sinon retourner des notifications par défaut
     try {
       const { data: notifications, error } = await supabase
-        .from('Notification')
+        .from('notification')
         .select('*')
         .eq('user_id', authUser.id)
         .eq('user_type', 'expert')
@@ -424,7 +424,7 @@ router.put('/notifications/:notificationId/read', async (req: Request, res: Resp
 
     // Marquer comme lue
     const { data: notification, error } = await supabase
-      .from('Notification')
+              .from('notification')
       .update({
         is_read: true,
         read_at: new Date().toISOString()

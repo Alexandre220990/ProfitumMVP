@@ -88,7 +88,7 @@ const createAdminNotification = async (expertData: any) => {
     // Créer une notification pour chaque admin
     for (const admin of admins) {
       await supabase
-        .from('Notification')
+        .from('notification')
         .insert({
           user_id: admin.auth_id,
           user_type: 'admin',
