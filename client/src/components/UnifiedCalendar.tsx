@@ -2,9 +2,8 @@ import React, { useState, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, Users, FileText, AlertTriangle, Edit, Trash2, Bell, MapPin, Video, List, CalendarDays, RefreshCw } from 'lucide-react';
 import { format, isSameDay, startOfWeek, endOfWeek, addDays, subDays, startOfMonth, endOfMonth, addMinutes } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { zonedTimeToUtc, utcToZonedTime } from 'date-fns-tz/zoneUtil/index.js';
-import { useAuth } from '@/hooks/use-auth';
-import { useToast } from '@/hooks/use-toast';
+import { fromZonedTime, toZonedTime } from 'date-fns-tz';
+
 import { useCalendarEvents } from '@/hooks/use-calendar-events';
 import { CalendarEvent } from '@/services/calendar-service';
 
@@ -92,12 +91,7 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
   
   // Fonction pour obtenir l'heure actuelle en France
   const getCurrentTimeInFrance = () => {
-    return utcToZonedTime(new Date(), TIMEZONE);
-  };
-  
-  // Fonction pour formater l'heure en format datetime-local
-  const formatDateTimeLocal = (date: Date) => {
-    return format(date, "yyyy-MM-dd'T'HH:mm");
+    return toZonedTime(new Date(), TIMEZONE);
   };
   
   // État local
@@ -174,7 +168,7 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
   const handleDateSelect = useCallback((date: Date | undefined) => {
     if (date) {
       // Convertir la date sélectionnée au fuseau horaire français
-      const dateInFrance = utcToZonedTime(date, TIMEZONE);
+      const dateInFrance = toZonedTime(date, TIMEZONE);
       setSelectedDate(dateInFrance);
       setShowEventDialog(true);
     }
@@ -186,8 +180,8 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
         await updateEvent({ ...eventData, id: selectedEvent.id });
       } else {
         // Convertir les dates au fuseau horaire français
-        const startDate = selectedDate ? zonedTimeToUtc(selectedDate, TIMEZONE) : getCurrentTimeInFrance();
-        const endDate = eventData.end_date ? zonedTimeToUtc(new Date(eventData.end_date), TIMEZONE) : addMinutes(startDate, 30);
+        const startDate = selectedDate ? fromZonedTime(selectedDate, TIMEZONE) : getCurrentTimeInFrance();
+        const endDate = eventData.end_date ? fromZonedTime(new Date(eventData.end_date), TIMEZONE) : addMinutes(startDate, 30);
         
         await createEvent({
           ...eventData,
@@ -626,7 +620,7 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
   
   // Fonction pour obtenir l'heure actuelle en France
   const getCurrentTimeInFrance = () => {
-    return utcToZonedTime(new Date(), TIMEZONE);
+    return toZonedTime(new Date(), TIMEZONE);
   };
   
   // Fonction pour formater l'heure en format datetime-local
@@ -643,10 +637,10 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
     title: event?.title || '',
     description: event?.description || '',
     start_date: event?.start_date 
-      ? formatDateTimeLocal(utcToZonedTime(new Date(event.start_date), TIMEZONE))
+      ? formatDateTimeLocal(toZonedTime(new Date(event.start_date), TIMEZONE))
       : formatDateTimeLocal(getCurrentTimeInFrance()),
     end_date: event?.end_date 
-      ? formatDateTimeLocal(utcToZonedTime(new Date(event.end_date), TIMEZONE))
+      ? formatDateTimeLocal(toZonedTime(new Date(event.end_date), TIMEZONE))
       : formatDateTimeLocal(getDefaultEndTime(getCurrentTimeInFrance())),
     type: event?.type || 'appointment',
     priority: event?.priority || 'medium',
@@ -673,9 +667,9 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
     e.preventDefault();
     
     // Convertir les dates au fuseau horaire français
-    const startDate = zonedTimeToUtc(new Date(formData.start_date), TIMEZONE);
+    const startDate = fromZonedTime(new Date(formData.start_date), TIMEZONE);
     const endDate = formData.end_date 
-      ? zonedTimeToUtc(new Date(formData.end_date), TIMEZONE)
+      ? fromZonedTime(new Date(formData.end_date), TIMEZONE)
       : getDefaultEndTime(startDate);
     
     const eventData = {
