@@ -8,6 +8,7 @@ import { reminderService } from './services/reminder-service';
 import { queryClient } from './lib/queryClient';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Toaster as UIToaster } from "./components/ui/toaster";
+import { ToastProvider } from "./components/ui/toast-notifications";
 
 
 // Pages principales
@@ -102,7 +103,8 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
+      <ToastProvider>
+        <AuthProvider>
           <ClientProvider>
             <AdminProvider>
               <Suspense fallback={<div>Chargement...</div>}>
@@ -272,6 +274,7 @@ function App() {
             </AdminProvider>
           </ClientProvider>
         </AuthProvider>
+      </ToastProvider>
     </QueryClientProvider>
   );
 }
