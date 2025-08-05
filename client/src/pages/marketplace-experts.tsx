@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
-import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -26,7 +25,6 @@ import {
 import HeaderClient from "@/components/HeaderClient";
 import { get, post } from "@/lib/api";
 
-
 // Types
 interface ClientProduitEligible {
   id: string;
@@ -45,7 +43,6 @@ interface ClientProduitEligible {
     description: string;
     category: string;
   };
-
   expert_id?: string;
 }
 
@@ -76,7 +73,6 @@ interface ExpertMatch {
 
 export default function MarketplaceExperts() {
   const { user } = useAuth();
-  const { toast } = useToast();
   const navigate = useNavigate();
   
   // États
@@ -122,11 +118,11 @@ export default function MarketplaceExperts() {
       }
     } catch (error) {
       console.error("Erreur lors du chargement:", error);
-      toast({
-        variant: "destructive",
-        title: "Erreur",
-        description: "Impossible de charger les données de la marketplace"
-      });
+      // toast({
+      //   variant: "destructive",
+      //   title: "Erreur",
+      //   description: "Impossible de charger les données de la marketplace"
+      // });
     } finally {
       setLoading(false);
     }
@@ -230,17 +226,17 @@ export default function MarketplaceExperts() {
       });
 
       if (response.success) {
-        toast({
-          title: "Demande envoyée",
-          description: "L'expert a été notifié de votre demande"
-        });
+        // toast({
+        //   title: "Demande envoyée",
+        //   description: "L'expert a été notifié de votre demande"
+        // });
       }
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Erreur",
-        description: "Impossible d'envoyer la demande"
-      });
+      // toast({
+      //   variant: "destructive",
+      //   title: "Erreur",
+      //   description: "Impossible d'envoyer la demande"
+      // });
     }
   };
 
@@ -262,11 +258,11 @@ export default function MarketplaceExperts() {
   // Assigner un expert
   const assignExpert = async () => {
     if (!selectedClientProduit || !selectedExpert) {
-      toast({
-        variant: "destructive",
-        title: "Erreur",
-        description: "Veuillez sélectionner un expert"
-      });
+      // toast({
+      //   variant: "destructive",
+      //   title: "Erreur",
+      //   description: "Veuillez sélectionner un expert"
+      // });
       return;
     }
 
@@ -278,21 +274,21 @@ export default function MarketplaceExperts() {
 
       if (response.success) {
         setShowExpertSelectionModal(false);
-        toast({
-          title: "Succès",
-          description: `Expert ${selectedExpert.name} assigné avec succès !`
-        });
+        // toast({
+        //   title: "Succès",
+        //   description: `Expert ${selectedExpert.name} assigné avec succès !`
+        // });
         // Recharger les données
         loadData();
         // Rediriger vers la page du produit
         navigate(`/dossier-client/${selectedClientProduit.ProduitEligible.nom.toLowerCase()}/${selectedClientProduit.id}`);
       }
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Erreur",
-        description: "Impossible d'assigner l'expert"
-      });
+      // toast({
+      //   variant: "destructive",
+      //   title: "Erreur",
+      //   description: "Impossible d'assigner l'expert"
+      // });
     } finally {
       setIsAssigningExpert(false);
     }

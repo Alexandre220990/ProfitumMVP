@@ -5,7 +5,7 @@ import { Eye, EyeOff, Loader2, CheckCircle, AlertCircle, ArrowRight, Shield, Zap
 import Button from "@/components/ui/design-system/Button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/components/ui/toast-notifications";
+import { useToast } from "@/hooks/use-toast";
 
 export default function ConnexionClient() {
   const [email, setEmail] = useState("");
@@ -16,7 +16,7 @@ export default function ConnexionClient() {
   
   const { login } = useAuth();
   const navigate = useNavigate();
-  const { addToast } = useToast();
+  const { toast } = useToast();
 
   const validateForm = () => {
     const newErrors: { email?: string; password?: string } = {};
@@ -41,11 +41,10 @@ export default function ConnexionClient() {
     e.preventDefault();
     
     if (!validateForm()) {
-      addToast({
-        type: 'error',
+      toast({
+        variant: "destructive",
         title: 'Erreur de validation',
-        message: 'Veuillez corriger les erreurs dans le formulaire',
-        duration: 5000
+        description: 'Veuillez corriger les erreurs dans le formulaire'
       });
       return;
     }
@@ -58,20 +57,17 @@ export default function ConnexionClient() {
         password,
         type: 'client'
       });
-      addToast({
-        type: 'success',
+      toast({
         title: 'Connexion réussie',
-        message: 'Bienvenue sur votre espace client !',
-        duration: 3000
+        description: 'Bienvenue sur votre espace client !'
       });
       navigate(`/dashboard/client`);
     } catch (error) {
       console.error("Erreur de connexion:", error);
-      addToast({
-        type: 'error',
+      toast({
+        variant: "destructive",
         title: 'Erreur de connexion',
-        message: 'Email ou mot de passe incorrect',
-        duration: 5000
+        description: 'Email ou mot de passe incorrect'
       });
     } finally {
       setIsLoading(false);
