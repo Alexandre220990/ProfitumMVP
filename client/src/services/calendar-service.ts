@@ -118,6 +118,8 @@ class CalendarService {
    */
   async createEvent(eventData: CreateEventData): Promise<CalendarEvent> {
     try {
+      console.log('🔍 Service calendar - Données envoyées:', eventData);
+      
       const response = await fetch(`${this.baseUrl}/events`, {
         method: 'POST',
         headers: {

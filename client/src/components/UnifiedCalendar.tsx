@@ -650,6 +650,8 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('🔍 Données du formulaire avant traitement:', formData);
+    
     // Utiliser les dates directement
     const startDate = new Date(formData.start_date);
     const endDate = formData.end_date 
@@ -661,6 +663,8 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
       start_date: startDate.toISOString(),
       end_date: endDate.toISOString()
     };
+    
+    console.log('🔍 Données d\'événement envoyées:', eventData);
     
     onSubmit(eventData);
   };
