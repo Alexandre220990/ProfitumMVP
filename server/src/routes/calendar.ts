@@ -73,6 +73,7 @@ const dossierStepSchema = Joi.object({
 
 const validateEvent = (req: Request, res: Response, next: Function) => {
   console.log('🔍 Validation événement - Données reçues:', JSON.stringify(req.body, null, 2));
+  console.log('🔍 Headers:', JSON.stringify(req.headers, null, 2));
   
   const { error, value } = eventSchema.validate(req.body, { 
     abortEarly: false,
@@ -83,6 +84,12 @@ const validateEvent = (req: Request, res: Response, next: Function) => {
   if (error) {
     console.error('❌ Erreur validation événement:', error.details);
     console.error('❌ Données reçues:', req.body);
+    console.error('❌ Erreurs détaillées:', error.details.map(detail => ({
+      field: detail.path.join('.'),
+      message: detail.message,
+      value: detail.context?.value,
+      type: detail.type
+    })));
     
     return res.status(400).json({
       success: false,

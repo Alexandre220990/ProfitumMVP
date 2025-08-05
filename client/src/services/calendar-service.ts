@@ -15,8 +15,8 @@ export interface CalendarEvent {
   meeting_url?: string;
   color: string;
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
-  type: 'meeting' | 'appointment' | 'reminder' | 'deadline' | 'consultation' | 'audit' | 'presentation' | 'follow_up';
-  priority: 'low' | 'medium' | 'high' | 'urgent';
+  type: 'appointment' | 'deadline' | 'meeting' | 'task' | 'reminder';
+  priority: 'low' | 'medium' | 'high' | 'critical';
   category: 'client' | 'expert' | 'admin' | 'system' | 'collaborative';
   dossier_id?: string;
   client_id?: string;
