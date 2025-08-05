@@ -41,7 +41,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { ConversationList } from './ConversationList';
 import { ConversationDetails } from './ConversationDetails';
 import { ConversationFilters, ConversationFilters as ConversationFiltersType } from './ConversationFilters';
-import { ConversationStats } from './ConversationStats';
+
 
 // ============================================================================
 // MESSAGERIE CLIENT OPTIMISÉE - COMPOSANT UNIFIÉ
@@ -80,7 +80,7 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
   
   // Nouveaux états pour les colonnes métier
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
-  const [viewMode, setViewMode] = useState<'list' | 'details' | 'stats'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'details'>('list');
   const [activeFilters, setActiveFilters] = useState<ConversationFiltersType>({});
   
   // Références pour optimisations
@@ -428,15 +428,6 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold text-gray-900">Conversations</h3>
               <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setViewMode(viewMode === 'stats' ? 'list' : 'stats')}
-                  className="text-purple-600 hover:text-purple-700"
-                >
-                  <TrendingUp className="w-4 h-4 mr-1" />
-                  {viewMode === 'stats' ? 'Liste' : 'Stats'}
-                </Button>
                 {selectedConversation && (
                   <Button
                     variant="ghost"
@@ -495,10 +486,6 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
                   conversation={selectedConversation}
                   userType={user?.type || 'client'}
                 />
-              </div>
-            ) : viewMode === 'stats' ? (
-              <div className="p-4">
-                <ConversationStats conversations={messaging.conversations} />
               </div>
             ) : null}
           </div>

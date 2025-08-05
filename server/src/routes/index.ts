@@ -14,6 +14,7 @@ import testsRoutes from "./tests";
 import terminalTestsRoutes from "./terminal-tests";
 import documentsRoutes from "./documents";
 import clientDocumentsRoutes from "./client-documents";
+import enhancedClientDocumentsRoutes from "./enhanced-client-documents";
 import dossiersRoutes from "./dossiers";
 import workflowRoutes from "./documents/workflow";
 import remindersRoutes from "./reminders";
@@ -60,6 +61,9 @@ router.use('/documents', documentsRoutes);
 
 // Routes des documents client (sans préfixe api car déjà dans /api)
 router.use('/client-documents', clientDocumentsRoutes);
+
+// Routes des documents client améliorés
+router.use('/enhanced-client-documents', enhancedClientDocumentsRoutes);
 
 // Routes des dossiers
 router.use('/dossiers', dossiersRoutes);

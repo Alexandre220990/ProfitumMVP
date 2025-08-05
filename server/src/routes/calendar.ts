@@ -72,16 +72,38 @@ const dossierStepSchema = Joi.object({
 // ============================================================================
 
 const validateEvent = (req: Request, res: Response, next: Function) => {
-  const { error, value } = eventSchema.validate(req.body);
+  console.log('🔍 Validation événement - Données reçues:', JSON.stringify(req.body, null, 2));
+  
+  const { error, value } = eventSchema.validate(req.body, { 
+    abortEarly: false,
+    allowUnknown: true,
+    stripUnknown: true
+  });
+  
   if (error) {
     console.error('❌ Erreur validation événement:', error.details);
+    console.error('❌ Données reçues:', req.body);
+    
     return res.status(400).json({
       success: false,
       message: 'Données invalides pour la création d\'événement',
-      errors: error.details.map(detail => detail.message),
-      receivedData: req.body
+      errors: error.details.map(detail => ({
+        field: detail.path.join('.'),
+        message: detail.message,
+        value: detail.context?.value
+      })),
+      receivedData: req.body,
+      schema: {
+        required: ['title', 'start_date', 'end_date', 'type'],
+        validTypes: ['appointment', 'deadline', 'meeting', 'task', 'reminder'],
+        validPriorities: ['low', 'medium', 'high', 'critical'],
+        validStatuses: ['pending', 'confirmed', 'completed', 'cancelled'],
+        validCategories: ['client', 'expert', 'admin', 'system', 'collaborative']
+      }
     });
   }
+  
+  console.log('✅ Validation réussie - Données validées:', JSON.stringify(value, null, 2));
   req.body = value;
   return next();
 };

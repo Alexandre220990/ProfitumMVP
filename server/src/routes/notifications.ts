@@ -113,10 +113,23 @@ router.post('/', asyncHandler(async (req, res) => {
 // GET /api/notifications - Récupérer les notifications
 router.get('/', asyncHandler(async (req, res) => {
   try {
+    // Vérifier l'authentification
+    if (!req.user || !(req as any).user.id) {
+      console.error('❌ Utilisateur non authentifié dans /api/notifications');
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur non authentifié'
+      });
+    }
+
     const userId = (req as any).user.id;
+    const userType = (req as any).user.type;
+    console.log(`🔍 Récupération notifications pour utilisateur: ${userId} (${userType})`);
+
     const { page = 1, limit = 20, type, priority, read } = req.query;
     const offset = (Number(page) - 1) * Number(limit);
 
+    // Construire la requête de base
     let query = supabaseClient
       .from('notification')
       .select('*')
@@ -137,11 +150,16 @@ router.get('/', asyncHandler(async (req, res) => {
     // Pagination
     query = query.range(offset, offset + Number(limit) - 1);
 
+    console.log(`📊 Requête notifications: page=${page}, limit=${limit}, offset=${offset}`);
+
     const { data: notifications, error, count } = await query;
 
     if (error) {
+      console.error('❌ Erreur Supabase notifications:', error);
       throw error;
     }
+
+    console.log(`✅ ${notifications?.length || 0} notifications récupérées`);
 
     return res.json({
       success: true,
@@ -157,10 +175,11 @@ router.get('/', asyncHandler(async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Erreur récupération notifications:', error);
+    console.error('❌ Erreur récupération notifications:', error);
     return res.status(500).json({
       success: false,
-      message: 'Erreur lors de la récupération des notifications'
+      message: 'Erreur lors de la récupération des notifications',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 }));

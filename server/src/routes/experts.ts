@@ -390,8 +390,8 @@ router.get('/:id/audits', async (req, res) => {
   }
 });
 
-// PUT /api/client/produits-eligibles/:id/assign-expert - Attribuer un expert à un produit éligible
-router.put('/client/produits-eligibles/:id/assign-expert', async (req, res) => {
+// POST /api/client/produits-eligibles/:id/assign-expert - Attribuer un expert à un produit éligible
+router.post('/client/produits-eligibles/:id/assign-expert', async (req, res) => {
   try {
     const { id } = req.params;
     const { expert_id } = req.body;
