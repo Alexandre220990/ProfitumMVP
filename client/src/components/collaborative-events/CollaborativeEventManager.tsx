@@ -20,6 +20,7 @@ interface CollaborativeEvent {
   description?: string;
   start_date: string;
   end_date: string;
+  type: 'appointment' | 'deadline' | 'meeting' | 'task' | 'reminder';
   location?: string;
   is_online?: boolean;
   meeting_url?: string;
@@ -95,6 +96,7 @@ export const CollaborativeEventManager: React.FC = () => {
     end_date: '',
     location: '',
     is_online: false,
+    type: 'meeting' as const,
     priority: 'medium' as const,
     participants: [] as Array<{
       user_id: string;
@@ -307,6 +309,7 @@ export const CollaborativeEventManager: React.FC = () => {
       end_date: '',
       location: '',
       is_online: false,
+      type: 'meeting',
       priority: 'medium',
       participants: [],
       meeting_details: {
@@ -404,7 +407,7 @@ export const CollaborativeEventManager: React.FC = () => {
             </DialogHeader>
             <div className="space-y-6">
               {/* Informations de base */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Titre *
@@ -414,6 +417,26 @@ export const CollaborativeEventManager: React.FC = () => {
                     onChange={(e) => setCreateForm(prev => ({ ...prev, title: e.target.value }))}
                     placeholder="Titre de l'événement"
                   />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Type *
+                  </label>
+                  <Select
+                    value={createForm.type}
+                    onValueChange={(value: any) => setCreateForm(prev => ({ ...prev, type: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="appointment">Rendez-vous</SelectItem>
+                      <SelectItem value="meeting">Réunion</SelectItem>
+                      <SelectItem value="task">Tâche</SelectItem>
+                      <SelectItem value="deadline">Échéance</SelectItem>
+                      <SelectItem value="reminder">Rappel</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
