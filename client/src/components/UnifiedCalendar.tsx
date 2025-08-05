@@ -1,7 +1,8 @@
 import React, { useState, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, Users, FileText, AlertTriangle, Edit, Trash2, Bell, MapPin, Video, List, CalendarDays, RefreshCw } from 'lucide-react';
-import { format, isSameDay, startOfWeek, endOfWeek, addDays, subDays, startOfMonth, endOfMonth } from 'date-fns';
+import { format, isSameDay, startOfWeek, endOfWeek, addDays, subDays, startOfMonth, endOfMonth, addMinutes } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { zonedTimeToUtc, utcToZonedTime } from 'date-fns-tz';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { useCalendarEvents } from '@/hooks/use-calendar-events';
@@ -86,8 +87,21 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
   filters = {}
 }) => {
   
+  // Configuration du fuseau horaire français
+  const TIMEZONE = 'Europe/Paris';
+  
+  // Fonction pour obtenir l'heure actuelle en France
+  const getCurrentTimeInFrance = () => {
+    return utcToZonedTime(new Date(), TIMEZONE);
+  };
+  
+  // Fonction pour formater l'heure en format datetime-local
+  const formatDateTimeLocal = (date: Date) => {
+    return format(date, "yyyy-MM-dd'T'HH:mm");
+  };
+  
   // État local
-  const [view, setView] = useState<CalendarView>({ type: defaultView, date: new Date() });
+  const [view, setView] = useState<CalendarView>({ type: defaultView, date: getCurrentTimeInFrance() });
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showEventDialog, setShowEventDialog] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
@@ -159,7 +173,9 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
 
   const handleDateSelect = useCallback((date: Date | undefined) => {
     if (date) {
-      setSelectedDate(date);
+      // Convertir la date sélectionnée au fuseau horaire français
+      const dateInFrance = utcToZonedTime(date, TIMEZONE);
+      setSelectedDate(dateInFrance);
       setShowEventDialog(true);
     }
   }, []);
@@ -169,10 +185,14 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
       if (selectedEvent) {
         await updateEvent({ ...eventData, id: selectedEvent.id });
       } else {
+        // Convertir les dates au fuseau horaire français
+        const startDate = selectedDate ? zonedTimeToUtc(selectedDate, TIMEZONE) : getCurrentTimeInFrance();
+        const endDate = eventData.end_date ? zonedTimeToUtc(new Date(eventData.end_date), TIMEZONE) : addMinutes(startDate, 30);
+        
         await createEvent({
           ...eventData,
-          start_date: selectedDate?.toISOString() || new Date().toISOString(),
-          end_date: eventData.end_date || addDays(selectedDate || new Date(), 1).toISOString()
+          start_date: startDate.toISOString(),
+          end_date: endDate.toISOString()
         });
       }
       setShowEventDialog(false);
@@ -601,11 +621,33 @@ interface EventDialogProps {
 }
 
 const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, onSubmit, onCancel }) => {
+  // Configuration du fuseau horaire français
+  const TIMEZONE = 'Europe/Paris';
+  
+  // Fonction pour obtenir l'heure actuelle en France
+  const getCurrentTimeInFrance = () => {
+    return utcToZonedTime(new Date(), TIMEZONE);
+  };
+  
+  // Fonction pour formater l'heure en format datetime-local
+  const formatDateTimeLocal = (date: Date) => {
+    return format(date, "yyyy-MM-dd'T'HH:mm");
+  };
+  
+  // Fonction pour obtenir l'heure de fin par défaut (30 minutes après)
+  const getDefaultEndTime = (startDate: Date) => {
+    return addMinutes(startDate, 30);
+  };
+  
   const [formData, setFormData] = useState({
     title: event?.title || '',
     description: event?.description || '',
-    start_date: event?.start_date ? new Date(event.start_date).toISOString().slice(0, 16) : '',
-    end_date: event?.end_date ? new Date(event.end_date).toISOString().slice(0, 16) : '',
+    start_date: event?.start_date 
+      ? formatDateTimeLocal(utcToZonedTime(new Date(event.start_date), TIMEZONE))
+      : formatDateTimeLocal(getCurrentTimeInFrance()),
+    end_date: event?.end_date 
+      ? formatDateTimeLocal(utcToZonedTime(new Date(event.end_date), TIMEZONE))
+      : formatDateTimeLocal(getDefaultEndTime(getCurrentTimeInFrance())),
     type: event?.type || 'appointment',
     priority: event?.priority || 'medium',
     status: event?.status || 'pending',
@@ -615,13 +657,31 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
     color: event?.color || '#3B82F6'
   });
 
+  // Effet pour mettre à jour automatiquement l'heure de fin quand l'heure de début change
+  React.useEffect(() => {
+    if (formData.start_date && !event) { // Seulement pour les nouveaux événements
+      const startDate = new Date(formData.start_date);
+      const endDate = getDefaultEndTime(startDate);
+      setFormData(prev => ({
+        ...prev,
+        end_date: formatDateTimeLocal(endDate)
+      }));
+    }
+  }, [formData.start_date, event]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Convertir les dates au fuseau horaire français
+    const startDate = zonedTimeToUtc(new Date(formData.start_date), TIMEZONE);
+    const endDate = formData.end_date 
+      ? zonedTimeToUtc(new Date(formData.end_date), TIMEZONE)
+      : getDefaultEndTime(startDate);
+    
     const eventData = {
       ...formData,
-      start_date: new Date(formData.start_date).toISOString(),
-      end_date: formData.end_date ? new Date(formData.end_date).toISOString() : new Date(new Date(formData.start_date).getTime() + 60 * 60 * 1000).toISOString()
+      start_date: startDate.toISOString(),
+      end_date: endDate.toISOString()
     };
     
     onSubmit(eventData);

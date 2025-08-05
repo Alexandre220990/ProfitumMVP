@@ -179,7 +179,7 @@ router.get('/', asyncHandler(async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération des notifications',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      error: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.message : String(error)) : undefined
     });
   }
 }));
