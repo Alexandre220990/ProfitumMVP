@@ -27,7 +27,7 @@ export default defineConfig({
           'react-vendor': ['react', 'react-dom'],
           'ui-vendor': ['lucide-react'],
           'supabase-vendor': ['@supabase/supabase-js'],
-          'date-vendor': ['date-fns', 'date-fns-tz']
+          'date-vendor': ['date-fns']
         },
         // Ajout d'un hash pour forcer le rafraîchissement du cache
         assetFileNames: (assetInfo) => {
@@ -57,8 +57,7 @@ export default defineConfig({
       'react-dom',
       'lucide-react',
       '@supabase/supabase-js',
-      'date-fns',
-      'date-fns-tz'
+      'date-fns'
     ],
     force: true
   }

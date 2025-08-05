@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, Users
 import { DayPicker } from "react-day-picker";
 import { format, isSameDay, startOfWeek, endOfWeek, eachDayOfInterval, addDays, subDays, startOfMonth, endOfMonth, addMinutes } from "date-fns";
 import { fr } from "date-fns/locale";
-import { fromZonedTime, toZonedTime } from 'date-fns-tz';
+
 import { useCalendarEvents } from '@/hooks/use-calendar-events';
 import { CalendarEvent as ServiceCalendarEvent } from '@/services/calendar-service';
 
@@ -712,12 +712,11 @@ interface EventFormProps {
 }
 
 const EventForm: React.FC<EventFormProps> = ({ event, onSubmit, onCancel }) => {
-  // Configuration du fuseau horaire français
-  const TIMEZONE = 'Europe/Paris';
+
   
-  // Fonction pour obtenir l'heure actuelle en France
-  const getCurrentTimeInFrance = () => {
-    return toZonedTime(new Date(), TIMEZONE);
+  // Fonction pour obtenir l'heure actuelle
+  const getCurrentTime = () => {
+    return new Date();
   };
   
   // Fonction pour formater l'heure en format datetime-local
@@ -734,11 +733,11 @@ const EventForm: React.FC<EventFormProps> = ({ event, onSubmit, onCancel }) => {
     title: event?.title || '',
     description: event?.description || '',
     start_date: event?.start_date 
-      ? formatDateTimeLocal(toZonedTime(new Date(event.start_date), TIMEZONE))
-      : formatDateTimeLocal(getCurrentTimeInFrance()),
+      ? formatDateTimeLocal(new Date(event.start_date))
+      : formatDateTimeLocal(getCurrentTime()),
     end_date: event?.end_date 
-      ? formatDateTimeLocal(toZonedTime(new Date(event.end_date), TIMEZONE))
-      : formatDateTimeLocal(getDefaultEndTime(getCurrentTimeInFrance())),
+      ? formatDateTimeLocal(new Date(event.end_date))
+      : formatDateTimeLocal(getDefaultEndTime(getCurrentTime())),
     type: event?.type || 'appointment',
     priority: event?.priority || 'medium',
     status: event?.status || 'pending',
@@ -764,10 +763,10 @@ const EventForm: React.FC<EventFormProps> = ({ event, onSubmit, onCancel }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Convertir les dates au fuseau horaire français
-    const startDate = fromZonedTime(new Date(formData.start_date), TIMEZONE);
+    // Utiliser les dates directement
+    const startDate = new Date(formData.start_date);
     const endDate = formData.end_date 
-      ? fromZonedTime(new Date(formData.end_date), TIMEZONE)
+      ? new Date(formData.end_date)
       : getDefaultEndTime(startDate);
     
     const eventData = {
