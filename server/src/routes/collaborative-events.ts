@@ -34,6 +34,7 @@ const createEventSchema = Joi.object({
   description: Joi.string().max(1000).optional(),
   start_date: Joi.date().iso().required(),
   end_date: Joi.date().iso().greater(Joi.ref('start_date')).required(),
+  type: Joi.string().valid('appointment', 'deadline', 'meeting', 'task', 'reminder').required(),
   location: Joi.string().max(500).optional(),
   is_online: Joi.boolean().default(false),
   priority: Joi.string().valid('low', 'medium', 'high', 'critical').default('medium'),

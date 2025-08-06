@@ -113,9 +113,9 @@ router.get('/client/:clientId', asyncHandler(async (req: Request, res: Response)
 
     // Récupérer les simulations du client
     const { data: simulations, error: simulationsError } = await supabase
-      .from('Simulation')
+      .from('simulations')
       .select('*')
-      .eq('clientId', clientId); // ✅ CORRIGÉ : 'clientId' au lieu de 'client_id'
+      .eq('client_id', clientId);
 
     if (simulationsError) {
       console.error('❌ Erreur récupération simulations:', simulationsError);

@@ -22,13 +22,13 @@ router.post('/', async (req: Request, res: Response) => {
 
     // Créer la simulation
     const { data: simulation, error } = await supabase
-      .from('Simulation')
+      .from('simulations')
       .insert({
-        clientId,
+        client_id: clientId,
         type,
-        data,
-        createdBy: authUser.id,
-        createdAt: new Date().toISOString()
+        answers: data,
+        status: 'en_cours',
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // Expire dans 24h
       })
       .select()
       .single();

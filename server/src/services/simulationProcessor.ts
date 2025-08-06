@@ -201,11 +201,11 @@ async function verifierSimulationEnCours(
   clientId: string
 ) {
   const { data, error } = await supabase
-    .from('Simulation')
+    .from('simulations')
     .select('*')
-    .eq('clientId', clientId)
-    .eq('statut', 'en_cours')
-    .order('dateCreation', { ascending: false })
+    .eq('client_id', clientId)
+    .eq('status', 'en_cours')
+    .order('created_at', { ascending: false })
     .limit(1)
     .single()
   
@@ -237,8 +237,8 @@ export async function traiterSimulation(simulationId: number): Promise<Simulatio
     
     // 1. Récupérer la simulation et vérifier son existence
     const { data: simulation, error: simError } = await supabase
-      .from('Simulation')
-      .select('*, clientId')
+      .from('simulations')
+      .select('*, client_id')
       .eq('id', simulationId)
       .single()
     
@@ -276,7 +276,7 @@ export async function traiterSimulation(simulationId: number): Promise<Simulatio
     const { error: archiveError } = await supabase
       .from('SimulationProcessed')
       .insert({
-        clientid: simulation.clientId,
+        clientid: simulation.client_id,
         simulationid: simulationId,
         dateprocessed: now,
         produitseligiblesids: eligibleProducts.map(p => p.productId),

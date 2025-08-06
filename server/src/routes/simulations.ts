@@ -164,8 +164,8 @@ router.get('/check-recent/:clientId', async (req: Request, res: Response) => {
     const [simulationResult, processedResult] = await Promise.all([
       supabase
         .from('simulations')
-        .select('id, created_at, statut')
-        .eq('clientId', clientId)
+        .select('id, created_at, status')
+        .eq('client_id', clientId)
         .gt('created_at', yesterdayISO)
         .order('created_at', { ascending: false })
         .limit(1),
@@ -241,11 +241,11 @@ router.post('/', async (req: Request, res: Response) => {
     const { data: simulation, error: simulationError } = await supabase
       .from('simulations')
       .insert({
-        clientId,
+        client_id: clientId,
         type,
-        data: data || {},
-        statut: 'pending',
-        createdBy: authUser.id
+        answers: data || {},
+        status: 'en_cours',
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
       })
       .select()
       .single();
@@ -364,9 +364,9 @@ router.get('/client/:clientId', async (req: Request, res: Response) => {
     console.log('🔍 Récupération des simulations pour le client:', clientId);
 
     const { data: simulations, error } = await supabase
-      .from('Simulation')
+      .from('simulations')
       .select('*')
-      .eq('clientId', clientId)
+      .eq('client_id', clientId)
       .order('created_at', { ascending: false });
 
     if (error) {

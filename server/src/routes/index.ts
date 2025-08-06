@@ -21,6 +21,7 @@ import remindersRoutes from "./reminders";
 import simulatorRoutes from "./simulator";
 import notificationsRoutes from "./notifications";
 import calendarRoutes from "./calendar";
+import staticAssetsRoutes from "./static-assets";
 
 import unifiedMessagingRoutes from "./unified-messaging";
 import { enhancedAuthMiddleware, requireUserType } from "../middleware/auth-enhanced";
@@ -82,6 +83,12 @@ router.use('/notifications', notificationsRoutes);
 
 // Routes du calendrier
 router.use('/calendar', enhancedAuthMiddleware, calendarRoutes);
+
+// Routes admin
+router.use('/admin', enhancedAuthMiddleware, requireUserType('admin'), adminRoutes);
+
+// Routes des assets statiques
+router.use('/', staticAssetsRoutes);
 
 // Routes de messagerie unifiée
 router.use('/messaging', unifiedMessagingRoutes);
