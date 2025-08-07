@@ -174,6 +174,7 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
       } else {
         console.log('📝 Création nouvel événement');
         // Utiliser les dates du formulaire directement
+        console.log('🔍 Appel createEvent avec:', eventData);
         await createEvent(eventData);
       }
       setShowEventDialog(false);
@@ -647,6 +648,7 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('🔍 EventDialog handleSubmit appelé');
     console.log('🔍 Données du formulaire avant traitement:', formData);
     
     // Utiliser les dates directement
@@ -662,6 +664,7 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
     };
     
     console.log('🔍 Données d\'événement envoyées:', eventData);
+    console.log('🔍 Appel onSubmit avec:', eventData);
     
     onSubmit(eventData);
   };

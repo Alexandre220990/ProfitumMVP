@@ -65,6 +65,25 @@ window.fetch = function(...args) {
         // Cloner la réponse pour pouvoir la lire
         response.clone().json().then(data => {
           console.log('- Error data:', data);
+          
+          // Afficher les détails des erreurs de validation
+          if (data.errors && Array.isArray(data.errors)) {
+            console.log('❌ Erreurs de validation:');
+            data.errors.forEach((error, index) => {
+              console.log(`  ${index + 1}. ${error.message || error}`);
+            });
+          }
+          
+          // Afficher les données reçues
+          if (data.receivedData) {
+            console.log('📋 Données reçues par l\'API:', data.receivedData);
+          }
+          
+          // Afficher le schéma attendu
+          if (data.schema) {
+            console.log('📋 Schéma attendu:', data.schema);
+          }
+          
         }).catch(error => {
           console.log('- Error parsing response:', error);
         });
