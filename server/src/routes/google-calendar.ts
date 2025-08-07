@@ -635,7 +635,7 @@ router.post('/sync-event', googleCalendarLimiter, asyncHandler(async (req: Reque
       .select('*')
       .eq('id', integration_id)
       .eq('user_id', authUser.id)
-      .eq('is_active', true)
+      .eq('sync_enabled', true)
       .single();
 
     if (integrationError || !integration) {

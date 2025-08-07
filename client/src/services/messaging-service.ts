@@ -994,7 +994,7 @@ class MessagingService {
         .from('GoogleCalendarIntegration')
         .select('*')
         .eq('user_id', this.currentUserId)
-        .eq('is_active', true)
+        .eq('sync_enabled', true)
         .single();
 
       if (!integrations) {

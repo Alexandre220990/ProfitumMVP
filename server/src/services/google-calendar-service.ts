@@ -877,7 +877,6 @@ export class GoogleCalendarService {
       await supabase
         .from('GoogleCalendarIntegration')
         .update({
-          is_active: false,
           sync_enabled: false,
           error_message: 'Tokens révoqués'
         })
