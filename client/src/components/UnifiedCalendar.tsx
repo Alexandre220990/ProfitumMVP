@@ -626,7 +626,7 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
       : formatDateTimeLocal(getDefaultEndTime(new Date())),
     type: event?.type || 'appointment',
     priority: event?.priority || 'medium',
-    status: event?.status || 'pending',
+    category: event?.category || 'client',
     location: event?.location || '',
     is_online: event?.is_online || false,
     meeting_url: event?.meeting_url || '',
@@ -660,7 +660,10 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
     const eventData = {
       ...formData,
       start_date: startDate.toISOString(),
-      end_date: endDate.toISOString()
+      end_date: endDate.toISOString(),
+      // Nettoyer les champs vides
+      location: formData.location || null,
+      meeting_url: formData.meeting_url || null
     };
     
     console.log('🔍 Données d\'événement envoyées:', eventData);
@@ -761,16 +764,17 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
             </div>
             
             <div>
-              <Label htmlFor="status">Statut</Label>
-              <Select value={formData.status} onValueChange={(value) => setFormData(prev => ({ ...prev, status: value as any }))}>
+              <Label htmlFor="category">Catégorie</Label>
+              <Select value={formData.category} onValueChange={(value) => setFormData(prev => ({ ...prev, category: value as any }))}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="pending">En attente</SelectItem>
-                  <SelectItem value="confirmed">Confirmé</SelectItem>
-                  <SelectItem value="completed">Terminé</SelectItem>
-                  <SelectItem value="cancelled">Annulé</SelectItem>
+                  <SelectItem value="client">Client</SelectItem>
+                  <SelectItem value="expert">Expert</SelectItem>
+                  <SelectItem value="admin">Administration</SelectItem>
+                  <SelectItem value="system">Système</SelectItem>
+                  <SelectItem value="collaborative">Collaboratif</SelectItem>
                 </SelectContent>
               </Select>
             </div>

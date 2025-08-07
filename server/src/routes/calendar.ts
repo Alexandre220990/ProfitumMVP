@@ -42,15 +42,15 @@ const eventSchema = Joi.object({
   end_date: Joi.date().iso().greater(Joi.ref('start_date')).required(),
   type: Joi.string().valid('appointment', 'deadline', 'meeting', 'task', 'reminder').required(),
   priority: Joi.string().valid('low', 'medium', 'high', 'critical').default('medium'),
-  status: Joi.string().valid('pending', 'confirmed', 'completed', 'cancelled').default('pending'),
+  status: Joi.string().valid('pending', 'confirmed', 'completed', 'cancelled').forbidden(),
   category: Joi.string().valid('client', 'expert', 'admin', 'system', 'collaborative').default('client'),
   dossier_id: Joi.string().uuid().optional(),
   dossier_name: Joi.string().max(255).optional(),
   client_id: Joi.string().uuid().optional(),
   expert_id: Joi.string().uuid().optional(),
-  location: Joi.string().max(500).optional(),
+  location: Joi.string().max(500).allow(null, '').optional(),
   is_online: Joi.boolean().default(false),
-  meeting_url: Joi.string().uri().optional(),
+  meeting_url: Joi.string().max(500).allow(null, '').optional(),
   phone_number: Joi.string().max(20).optional(),
   color: Joi.string().pattern(/^#[0-9A-Fa-f]{6}$/).default('#3B82F6'),
   is_recurring: Joi.boolean().default(false),
@@ -292,6 +292,7 @@ router.post('/events', calendarLimiter, validateEvent, asyncHandler(async (req: 
     // Ajouter les informations de création
     const newEvent = {
       ...eventData,
+      status: 'pending', // Status défini automatiquement par le système
       created_by: authUser.database_id, // Utiliser l'ID de la base de données
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
