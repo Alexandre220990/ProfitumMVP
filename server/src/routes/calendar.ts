@@ -1,6 +1,10 @@
 import express, { Router, Request, Response } from 'express';
 
 import { AuthUser } from '../types/auth';
+import { AuthenticatedRequest } from '../middleware/auth-enhanced';
+
+// Type pour l'utilisateur authentifié avec database_id
+type AuthenticatedUser = NonNullable<AuthenticatedRequest['user']>;
 import { supabase } from '../lib/supabase';
 import { asyncHandler } from '../utils/asyncHandler';
 import { rateLimit } from 'express-rate-limit';
@@ -170,7 +174,7 @@ router.get('/events', calendarLimiter, asyncHandler(async (req: Request, res: Re
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }
 
-  const authUser = req.user as AuthUser;
+  const authUser = req.user as AuthenticatedUser;
   const { 
     start_date, 
     end_date, 
@@ -194,7 +198,7 @@ router.get('/events', calendarLimiter, asyncHandler(async (req: Request, res: Re
       const { data: clientDossiers, error: dossiersError } = await supabase
         .from('ClientProduitEligible')
         .select('id, expert_id')
-        .eq('clientId', authUser.id);
+        .eq('clientId', authUser.database_id);
 
       if (dossiersError) {
         console.error('❌ Erreur récupération dossiers client:', dossiersError);
@@ -206,7 +210,7 @@ router.get('/events', calendarLimiter, asyncHandler(async (req: Request, res: Re
       const dossierIds = clientDossiers?.map(d => d.id) || [];
 
       // Construire la condition OR pour les clients
-      const orConditions = [`client_id.eq.${authUser.id}`];
+      const orConditions = [`client_id.eq.${authUser.database_id}`];
       
       if (expertIds.length > 0) {
         orConditions.push(...expertIds.map(expertId => `expert_id.eq.${expertId}`));
@@ -219,7 +223,7 @@ router.get('/events', calendarLimiter, asyncHandler(async (req: Request, res: Re
       query = query.or(orConditions.join(','));
 
     } else if (authUser.type === 'expert') {
-      query = query.eq('expert_id', authUser.id);
+      query = query.eq('expert_id', authUser.database_id);
     }
     // Admin voit tous les événements
 
@@ -249,7 +253,7 @@ router.get('/events', calendarLimiter, asyncHandler(async (req: Request, res: Re
 
     // Log de l'activité
     await logCalendarActivity(
-      authUser.id,
+      authUser.database_id,
       authUser.type,
       'get_events',
       'event',
@@ -281,23 +285,23 @@ router.post('/events', calendarLimiter, validateEvent, asyncHandler(async (req: 
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }
 
-  const authUser = req.user as AuthUser;
+  const authUser = req.user as AuthenticatedUser;
   const eventData = req.body;
 
   try {
     // Ajouter les informations de création
     const newEvent = {
       ...eventData,
-      created_by: (authUser as any).database_id, // Utiliser l'ID de la base de données
+      created_by: authUser.database_id, // Utiliser l'ID de la base de données
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
 
     // Ajouter l'ID client/expert selon le type d'utilisateur
     if (authUser.type === 'client') {
-      newEvent.client_id = (authUser as any).database_id; // Utiliser l'ID de la base de données
+      newEvent.client_id = authUser.database_id; // Utiliser l'ID de la base de données
     } else if (authUser.type === 'expert') {
-      newEvent.expert_id = (authUser as any).database_id; // Utiliser l'ID de la base de données
+      newEvent.expert_id = authUser.database_id; // Utiliser l'ID de la base de données
     }
 
     const { data: event, error } = await supabase
@@ -401,7 +405,7 @@ router.put('/events/:id', calendarLimiter, validateEvent, asyncHandler(async (re
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }
 
-  const authUser = req.user as AuthUser;
+  const authUser = req.user as AuthenticatedUser;
   const { id } = req.params;
   const updates = req.body;
 
@@ -470,7 +474,7 @@ router.delete('/events/:id', calendarLimiter, asyncHandler(async (req: Request, 
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }
 
-  const authUser = req.user as AuthUser;
+  const authUser = req.user as AuthenticatedUser;
   const { id } = req.params;
 
   try {
@@ -536,7 +540,7 @@ router.get('/steps', calendarLimiter, asyncHandler(async (req: Request, res: Res
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }
 
-  const authUser = req.user as AuthUser;
+  const authUser = req.user as AuthenticatedUser;
   const { dossier_id, status, priority, limit = 100, offset = 0 } = req.query;
 
   try {
@@ -612,7 +616,7 @@ router.post('/steps', calendarLimiter, validateDossierStep, asyncHandler(async (
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }
 
-  const authUser = req.user as AuthUser;
+  const authUser = req.user as AuthenticatedUser;
   const stepData = req.body;
 
   try {
@@ -677,7 +681,7 @@ router.put('/steps/:id', calendarLimiter, validateDossierStep, asyncHandler(asyn
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }
 
-  const authUser = req.user as AuthUser;
+  const authUser = req.user as AuthenticatedUser;
   const { id } = req.params;
   const updates = req.body;
 
@@ -752,7 +756,7 @@ router.delete('/steps/:id', calendarLimiter, asyncHandler(async (req: Request, r
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }
 
-  const authUser = req.user as AuthUser;
+  const authUser = req.user as AuthenticatedUser;
   const { id } = req.params;
 
   try {
@@ -824,7 +828,7 @@ router.get('/stats', calendarLimiter, asyncHandler(async (req: Request, res: Res
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }
 
-  const authUser = req.user as AuthUser;
+  const authUser = req.user as AuthenticatedUser;
   const { start_date, end_date } = req.query;
 
   try {
@@ -843,9 +847,9 @@ router.get('/stats', calendarLimiter, asyncHandler(async (req: Request, res: Res
           .eq('start_date', new Date().toISOString().split('T')[0]);
         
         if (authUser.type === 'client') {
-          query = query.eq('client_id', authUser.id);
+          query = query.eq('client_id', authUser.database_id);
         } else if (authUser.type === 'expert') {
-          query = query.eq('expert_id', authUser.id);
+          query = query.eq('expert_id', authUser.database_id);
         }
         
         return query;
@@ -861,9 +865,9 @@ router.get('/stats', calendarLimiter, asyncHandler(async (req: Request, res: Res
           .lte('start_date', new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString());
         
         if (authUser.type === 'client') {
-          query = query.eq('client_id', authUser.id);
+          query = query.eq('client_id', authUser.database_id);
         } else if (authUser.type === 'expert') {
-          query = query.eq('expert_id', authUser.id);
+          query = query.eq('expert_id', authUser.database_id);
         }
         
         return query;
@@ -878,7 +882,7 @@ router.get('/stats', calendarLimiter, asyncHandler(async (req: Request, res: Res
           .neq('status', 'completed');
         
         if (authUser.type === 'client') {
-          query = query.eq('ClientProduitEligible.Client.id', authUser.id);
+          query = query.eq('ClientProduitEligible.Client.id', authUser.database_id);
         } else if (authUser.type === 'expert') {
           query = query.eq('assignee', authUser.email);
         }
@@ -895,7 +899,7 @@ router.get('/stats', calendarLimiter, asyncHandler(async (req: Request, res: Res
           .eq('status', 'pending');
         
         if (authUser.type === 'client') {
-          query = query.eq('ClientProduitEligible.Client.id', authUser.id);
+          query = query.eq('ClientProduitEligible.Client.id', authUser.database_id);
         } else if (authUser.type === 'expert') {
           query = query.eq('assignee', authUser.email);
         }
@@ -941,7 +945,7 @@ router.post('/events/:id/participants', calendarLimiter, asyncHandler(async (req
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }
 
-  const authUser = req.user as AuthUser;
+  const authUser = req.user as AuthenticatedUser;
   const { id } = req.params;
   const { participants } = req.body;
 
@@ -1022,7 +1026,7 @@ router.get('/events/:id/reminders', calendarLimiter, asyncHandler(async (req: Re
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }
 
-  const authUser = req.user as AuthUser;
+  const authUser = req.user as AuthenticatedUser;
   const { id } = req.params;
 
   try {
@@ -1075,7 +1079,7 @@ router.post('/reminders', calendarLimiter, asyncHandler(async (req: Request, res
     return res.status(401).json({ success: false, message: 'Non authentifié' });
   }
 
-  const authUser = req.user as AuthUser;
+  const authUser = req.user as AuthenticatedUser;
   const { event_id, type, time_before_event } = req.body;
 
   // Validation des données

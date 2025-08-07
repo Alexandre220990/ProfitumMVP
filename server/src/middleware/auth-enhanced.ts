@@ -19,6 +19,7 @@ export interface AuthenticatedRequest extends Request {
     email: string;
     permissions: string[];
     auth_id: string;
+    database_id: string; // ID de la base de données pour les clés étrangères
     user_metadata: {
       username: string;
       type: 'client' | 'expert' | 'admin';
