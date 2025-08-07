@@ -364,21 +364,38 @@ export class CollaborativeEventsService {
     if (participants) {
       for (const participant of participants) {
         try {
-          // Récupérer les informations utilisateur depuis auth.users
-          const { data: userData, error: userError } = await supabase
-            .from('auth.users')
-            .select('email, raw_user_meta_data')
+          // Récupérer les informations utilisateur depuis Client/Expert
+          const { data: clientData } = await supabase
+            .from('Client')
+            .select('email, name')
             .eq('id', participant.user_id)
             .single();
 
-          if (!userError && userData) {
+          if (clientData) {
             enrichedParticipants.push({
               user_id: participant.user_id,
               user_type: participant.user_type,
-              email: userData.email || '',
-              name: userData.raw_user_meta_data?.name || 'Utilisateur',
+              email: clientData.email || '',
+              name: clientData.name || 'Utilisateur',
               status: participant.status
             });
+          } else {
+            // Essayer Expert
+            const { data: expertData } = await supabase
+              .from('Expert')
+              .select('email, name')
+              .eq('id', participant.user_id)
+              .single();
+
+            if (expertData) {
+              enrichedParticipants.push({
+                user_id: participant.user_id,
+                user_type: participant.user_type,
+                email: expertData.email || '',
+                name: expertData.name || 'Utilisateur',
+                status: participant.status
+              });
+            }
           }
         } catch (error) {
           console.error('❌ Erreur récupération utilisateur:', error);

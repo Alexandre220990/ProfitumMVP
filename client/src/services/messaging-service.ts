@@ -777,13 +777,33 @@ class MessagingService {
       return null;
     }
 
-    const { data } = await supabase
-      .from('auth.users')
-      .select('id, email, raw_user_meta_data')
+    // Rechercher dans les tables Client et Expert
+    const { data: clientData } = await supabase
+      .from('Client')
+      .select('id, email, name, company_name')
       .eq('id', userId)
       .single();
 
-    return data;
+    if (clientData) {
+      return clientData;
+    }
+
+    const { data: expertData } = await supabase
+      .from('Expert')
+      .select('id, email, name, company_name')
+      .eq('id', userId)
+      .single();
+
+    if (expertData) {
+      return expertData;
+    }
+
+    // Fallback : retourner les informations de base
+    return {
+      id: userId,
+      email: 'utilisateur@profitum.fr',
+      name: 'Utilisateur'
+    };
   }
 
   private async isUserOnline(userId: string): Promise<boolean> {

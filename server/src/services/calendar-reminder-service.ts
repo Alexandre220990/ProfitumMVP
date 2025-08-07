@@ -137,18 +137,34 @@ export class CalendarReminderService {
 
     // Ajouter l'organisateur
     if (event.created_by) {
-      const { data: organizer } = await supabase
-        .from('auth.users')
-        .select('id, email, raw_user_meta_data')
+      // Rechercher dans Client
+      const { data: clientOrganizer } = await supabase
+        .from('Client')
+        .select('id, email, name')
         .eq('id', event.created_by)
         .single();
 
-      if (organizer) {
+      if (clientOrganizer) {
         recipients.push({
-          user_id: organizer.id,
-          user_type: 'client', // TODO: Déterminer le type dynamiquement
-          name: organizer.raw_user_meta_data?.name || organizer.email
+          user_id: clientOrganizer.id,
+          user_type: 'client',
+          name: clientOrganizer.name || clientOrganizer.email
         });
+      } else {
+        // Rechercher dans Expert
+        const { data: expertOrganizer } = await supabase
+          .from('Expert')
+          .select('id, email, name')
+          .eq('id', event.created_by)
+          .single();
+
+        if (expertOrganizer) {
+          recipients.push({
+            user_id: expertOrganizer.id,
+            user_type: 'expert',
+            name: expertOrganizer.name || expertOrganizer.email
+          });
+        }
       }
     }
 
