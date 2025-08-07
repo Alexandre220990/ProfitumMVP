@@ -34,7 +34,7 @@ const router = Router();
 router.use('/auth', authRoutes);
 
 // Routes des audits
-router.use('/audits', auditRoutes);
+router.use('/audits', enhancedAuthMiddleware, auditRoutes);
 
 // Routes des simulations
 router.use('/simulations', enhancedAuthMiddleware, simulationRoutes);
@@ -43,7 +43,7 @@ router.use('/simulations', enhancedAuthMiddleware, simulationRoutes);
 router.use('/partners', partnerRoutes);
 
 // Routes des produits éligibles
-router.use('/produits-eligibles', produitsEligiblesRoutes);
+router.use('/produits-eligibles', enhancedAuthMiddleware, produitsEligiblesRoutes);
 
 // Routes des spécialisations
 router.use('/specializations', specializationsRoutes);
@@ -52,34 +52,34 @@ router.use('/specializations', specializationsRoutes);
 router.use('/experts', expertsRoutes);
 
 // Routes expert (profil, analytics, business, etc.)
-router.use('/expert', expertRoutes);
+router.use('/expert', enhancedAuthMiddleware, expertRoutes);
 
 // Routes des demandes de démo expert
 router.use('/expert/demo-request', expertDemoRequestRoutes);
 
 // Routes des documents (GED)
-router.use('/documents', documentsRoutes);
+router.use('/documents', enhancedAuthMiddleware, documentsRoutes);
 
 // Routes des documents client (sans préfixe api car déjà dans /api)
-router.use('/client-documents', clientDocumentsRoutes);
+router.use('/client-documents', enhancedAuthMiddleware, clientDocumentsRoutes);
 
 // Routes des documents client améliorés
-router.use('/enhanced-client-documents', enhancedClientDocumentsRoutes);
+router.use('/enhanced-client-documents', enhancedAuthMiddleware, enhancedClientDocumentsRoutes);
 
 // Routes des dossiers
-router.use('/dossiers', dossiersRoutes);
+router.use('/dossiers', enhancedAuthMiddleware, dossiersRoutes);
 
 // Routes du workflow
-router.use('/workflow', workflowRoutes);
+router.use('/workflow', enhancedAuthMiddleware, workflowRoutes);
 
 // Routes des relances
-router.use('/reminders', remindersRoutes);
+router.use('/reminders', enhancedAuthMiddleware, remindersRoutes);
 
 // Routes du simulateur d'éligibilité
 router.use('/simulator', simulatorRoutes);
 
 // Routes des notifications
-router.use('/notifications', notificationsRoutes);
+router.use('/notifications', enhancedAuthMiddleware, notificationsRoutes);
 
 // Routes du calendrier
 router.use('/calendar', enhancedAuthMiddleware, calendarRoutes);
@@ -91,7 +91,7 @@ router.use('/admin', enhancedAuthMiddleware, requireUserType('admin'), adminRout
 router.use('/', staticAssetsRoutes);
 
 // Routes de messagerie unifiée
-router.use('/messaging', unifiedMessagingRoutes);
+router.use('/messaging', enhancedAuthMiddleware, unifiedMessagingRoutes);
 
 // Routes pour les images statiques
 router.get('/avatar.png', (req, res) => {

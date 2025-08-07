@@ -2,6 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import { EnhancedDocumentStorageService } from '../services/enhanced-document-storage-service';
 import { AuthUser } from '../types/auth';
+import { enhancedAuthMiddleware } from '../middleware/auth-enhanced';
 
 const router = express.Router();
 const documentStorageService = new EnhancedDocumentStorageService();
@@ -45,7 +46,7 @@ const upload = multer({
  * POST /api/enhanced-client-documents/upload
  * Upload un fichier pour un client
  */
-router.post('/upload', async (req, res) => {
+router.post('/upload', enhancedAuthMiddleware, upload.single('file'), async (req, res) => {
   try {
     const user = (req as any).user as AuthUser;
     const { clientId, expertId, auditId, category, description, tags, accessLevel, expiresAt } = req.body;
@@ -134,7 +135,7 @@ router.post('/upload', async (req, res) => {
  * GET /api/enhanced-client-documents/download/:fileId
  * Télécharger un fichier
  */
-router.get('/download/:fileId', async (req, res) => {
+router.get('/download/:fileId', enhancedAuthMiddleware, async (req, res) => {
   try {
     const user = (req as any).user as AuthUser;
     const { fileId } = req.params;
@@ -172,7 +173,7 @@ router.get('/download/:fileId', async (req, res) => {
  * GET /api/enhanced-client-documents/client/:clientId
  * Lister les fichiers d'un client
  */
-router.get('/client/:clientId', async (req, res) => {
+router.get('/client/:clientId', enhancedAuthMiddleware, async (req, res) => {
   try {
     const user = (req as any).user as AuthUser;
     const { clientId } = req.params;
@@ -226,7 +227,7 @@ router.get('/client/:clientId', async (req, res) => {
  * GET /api/enhanced-client-documents/expert/:expertId
  * Lister les fichiers d'un expert
  */
-router.get('/expert/:expertId', async (req, res) => {
+router.get('/expert/:expertId', enhancedAuthMiddleware, async (req, res) => {
   try {
     const user = (req as any).user as AuthUser;
     const { expertId } = req.params;
@@ -282,7 +283,7 @@ router.get('/expert/:expertId', async (req, res) => {
  * POST /api/enhanced-client-documents/validate/:fileId
  * Valider un fichier
  */
-router.post('/validate/:fileId', async (req, res) => {
+router.post('/validate/:fileId', enhancedAuthMiddleware, async (req, res) => {
   try {
     const user = (req as any).user as AuthUser;
     const { fileId } = req.params;
@@ -338,7 +339,7 @@ router.post('/validate/:fileId', async (req, res) => {
  * DELETE /api/enhanced-client-documents/:fileId
  * Supprimer un fichier
  */
-router.delete('/:fileId', async (req, res) => {
+router.delete('/:fileId', enhancedAuthMiddleware, async (req, res) => {
   try {
     const user = (req as any).user as AuthUser;
     const { fileId } = req.params;
@@ -376,7 +377,7 @@ router.delete('/:fileId', async (req, res) => {
  * POST /api/enhanced-client-documents/share/:fileId
  * Partager un fichier
  */
-router.post('/share/:fileId', async (req, res) => {
+router.post('/share/:fileId', enhancedAuthMiddleware, async (req, res) => {
   try {
     const user = (req as any).user as AuthUser;
     const { fileId } = req.params;
@@ -427,7 +428,7 @@ router.post('/share/:fileId', async (req, res) => {
  * GET /api/enhanced-client-documents/stats/:clientId
  * Obtenir les statistiques des fichiers d'un client
  */
-router.get('/stats/:clientId', async (req, res) => {
+router.get('/stats/:clientId', enhancedAuthMiddleware, async (req, res) => {
   try {
     const user = (req as any).user as AuthUser;
     const { clientId } = req.params;
