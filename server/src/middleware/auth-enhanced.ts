@@ -274,7 +274,7 @@ export const enhancedAuthMiddleware = async (
       }
     }
 
-          if (!userData) {
+    if (!userData) {
       console.log('❌ Client non trouvé, recherche expert...');
       // Vérifier si c'est un expert par email
       const { data: expertData, error: expertError } = await supabase
@@ -364,11 +364,12 @@ export const enhancedAuthMiddleware = async (
 
     // 5. Ajout des informations utilisateur à la requête
     const authenticatedUser = {
-      id: userData.id,
+      id: user.id, // Utiliser l'ID Supabase Auth pour compatibilité
       type: userType,
       email: userData.email,
       permissions,
       auth_id: user.id,
+      database_id: userData.id, // ID de la base de données pour les clés étrangères
       user_metadata: {
         username: (user.user_metadata as any)?.username || userData.email?.split('@')[0] || 'user',
         type: userType,

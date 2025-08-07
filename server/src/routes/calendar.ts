@@ -288,16 +288,16 @@ router.post('/events', calendarLimiter, validateEvent, asyncHandler(async (req: 
     // Ajouter les informations de création
     const newEvent = {
       ...eventData,
-      created_by: authUser.id,
+      created_by: (authUser as any).database_id, // Utiliser l'ID de la base de données
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
 
     // Ajouter l'ID client/expert selon le type d'utilisateur
     if (authUser.type === 'client') {
-      newEvent.client_id = authUser.id;
+      newEvent.client_id = (authUser as any).database_id; // Utiliser l'ID de la base de données
     } else if (authUser.type === 'expert') {
-      newEvent.expert_id = authUser.id;
+      newEvent.expert_id = (authUser as any).database_id; // Utiliser l'ID de la base de données
     }
 
     const { data: event, error } = await supabase
