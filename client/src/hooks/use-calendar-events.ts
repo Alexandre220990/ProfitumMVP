@@ -128,8 +128,8 @@ export const useCalendarEvents = (options: UseCalendarEventsOptions = {}): UseCa
       const enrichedEventData = {
         ...eventData,
         category: eventData.category || (user?.type === 'client' ? 'client' : user?.type === 'expert' ? 'expert' : 'admin'),
-        color: eventData.color || '#3B82F6',
-        created_by: user?.id
+        color: eventData.color || '#3B82F6'
+        // created_by est géré automatiquement par l'API backend
       };
 
       const newEvent = await calendarService.createEvent(enrichedEventData);
