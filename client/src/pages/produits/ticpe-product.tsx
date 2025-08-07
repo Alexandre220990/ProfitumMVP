@@ -5,7 +5,6 @@ import HeaderClient from "@/components/HeaderClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { 
   Fuel, 
@@ -14,14 +13,10 @@ import {
   CheckCircle, 
   Clock, 
   AlertCircle,
-  ArrowRight,
   Info,
-  Calculator,
   TrendingUp,
   Shield,
   Award,
-  Building2,
-  Truck,
   Euro
 } from "lucide-react";
 import TICPEWorkflow from "@/components/TICPEWorkflow";
