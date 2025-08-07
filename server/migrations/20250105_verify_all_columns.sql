@@ -38,6 +38,7 @@ WHERE table_schema = 'public'
 AND table_name = 'Client'
 ORDER BY ordinal_position;
 
+
 -- Table Expert
 SELECT 
     'Expert' as table_name,

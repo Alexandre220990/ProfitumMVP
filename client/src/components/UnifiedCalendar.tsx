@@ -166,26 +166,23 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
 
   const handleEventSubmit = useCallback(async (eventData: any) => {
     try {
+      console.log('🔍 handleEventSubmit appelé avec:', eventData);
+      
       if (selectedEvent) {
+        console.log('📝 Mise à jour événement existant');
         await updateEvent({ ...eventData, id: selectedEvent.id });
       } else {
-        // Utiliser les dates directement
-        const startDate = selectedDate || new Date();
-        const endDate = eventData.end_date ? new Date(eventData.end_date) : addMinutes(startDate, 30);
-        
-        await createEvent({
-          ...eventData,
-          start_date: startDate.toISOString(),
-          end_date: endDate.toISOString()
-        });
+        console.log('📝 Création nouvel événement');
+        // Utiliser les dates du formulaire directement
+        await createEvent(eventData);
       }
       setShowEventDialog(false);
       setSelectedEvent(null);
       setSelectedDate(null);
     } catch (error) {
-      console.error('Erreur création/mise à jour événement:', error);
+      console.error('❌ Erreur création/mise à jour événement:', error);
     }
-  }, [selectedEvent, selectedDate, createEvent, updateEvent]);
+  }, [selectedEvent, createEvent, updateEvent]);
 
   const handleEditEvent = useCallback((event: CalendarEvent) => {
     setSelectedEvent(event);
