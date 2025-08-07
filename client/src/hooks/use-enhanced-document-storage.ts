@@ -113,7 +113,8 @@ export const useEnhancedDocumentStorage = () => {
         formData.append('expiresAt', request.expiresAt.toISOString());
       }
 
-      const response = await fetch('/api/enhanced-client-documents/upload', {
+      const baseUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
+      const response = await fetch(`${baseUrl}/api/enhanced-client-documents/upload`, {
         method: 'POST',
         body: formData,
         credentials: 'include'
@@ -157,7 +158,8 @@ export const useEnhancedDocumentStorage = () => {
     setLoading(true);
 
     try {
-      const response = await fetch(`/api/enhanced-client-documents/download/${fileId}`, {
+      const baseUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
+      const response = await fetch(`${baseUrl}/api/enhanced-client-documents/download/${fileId}`, {
         method: 'GET',
         credentials: 'include'
       });
@@ -219,7 +221,8 @@ export const useEnhancedDocumentStorage = () => {
       if (filters?.limit) params.append('limit', filters.limit.toString());
       if (filters?.offset) params.append('offset', filters.offset.toString());
 
-      const response = await fetch(`/api/enhanced-client-documents/client/${clientId}?${params}`, {
+      const baseUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
+      const response = await fetch(`${baseUrl}/api/enhanced-client-documents/client/${clientId}?${params}`, {
         method: 'GET',
         credentials: 'include'
       });
@@ -262,7 +265,8 @@ export const useEnhancedDocumentStorage = () => {
       if (filters?.limit) params.append('limit', filters.limit.toString());
       if (filters?.offset) params.append('offset', filters.offset.toString());
 
-      const response = await fetch(`/api/enhanced-client-documents/expert/${expertId}?${params}`, {
+      const baseUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
+      const response = await fetch(`${baseUrl}/api/enhanced-client-documents/expert/${expertId}?${params}`, {
         method: 'GET',
         credentials: 'include'
       });
@@ -297,7 +301,8 @@ export const useEnhancedDocumentStorage = () => {
     setLoading(true);
 
     try {
-      const response = await fetch(`/api/enhanced-client-documents/validate/${fileId}`, {
+      const baseUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
+      const response = await fetch(`${baseUrl}/api/enhanced-client-documents/validate/${fileId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -344,7 +349,8 @@ export const useEnhancedDocumentStorage = () => {
     setLoading(true);
 
     try {
-      const response = await fetch(`/api/enhanced-client-documents/${fileId}`, {
+      const baseUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
+      const response = await fetch(`${baseUrl}/api/enhanced-client-documents/${fileId}`, {
         method: 'DELETE',
         credentials: 'include'
       });
@@ -392,7 +398,8 @@ export const useEnhancedDocumentStorage = () => {
     setLoading(true);
 
     try {
-      const response = await fetch(`/api/enhanced-client-documents/share/${fileId}`, {
+      const baseUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
+      const response = await fetch(`${baseUrl}/api/enhanced-client-documents/share/${fileId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -439,7 +446,8 @@ export const useEnhancedDocumentStorage = () => {
     setLoading(true);
 
     try {
-      const response = await fetch(`/api/enhanced-client-documents/stats/${clientId}`, {
+      const baseUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
+      const response = await fetch(`${baseUrl}/api/enhanced-client-documents/stats/${clientId}`, {
         method: 'GET',
         credentials: 'include'
       });
