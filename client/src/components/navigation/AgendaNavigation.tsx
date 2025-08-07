@@ -232,7 +232,7 @@ export default function AgendaNavigation({
                   navigate('/expert');
                   break;
                 case 'admin':
-                  navigate('/admin');
+                  navigate('/admin/dashboard-optimized');
                   break;
                 default:
                   navigate('/');

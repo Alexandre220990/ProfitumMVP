@@ -20,12 +20,12 @@ export default function HeaderAdmin() {
   return (
     <header className="bg-white shadow-md py-4 px-8 flex justify-between items-center fixed top-0 left-0 right-0 w-full z-50">
       {/* LOGO PROFITUM */}
-      <div onClick={() => navigate("/admin")} className="cursor-pointer">
+      <div onClick={() => navigate("/admin/dashboard-optimized")} className="cursor-pointer">
         <img src="/profitum_logo_texte.png" alt="Logo Profitum" className="h-14 cursor-pointer transition-transform hover:scale-105" />
       </div>
       {/* NAVIGATION ADMIN */}
       <nav className="flex space-x-10 text-gray-700 font-semibold text-lg">
-        <div onClick={() => navigate("/admin")} className="flex items-center space-x-2 hover:text-blue-600 transition-colors cursor-pointer">
+        <div onClick={() => navigate("/admin/dashboard-optimized")} className="flex items-center space-x-2 hover:text-blue-600 transition-colors cursor-pointer">
           <BarChart className="h-5 w-5" /> <span>Tableau de bord</span>
         </div>
         <div onClick={() => navigate("/admin/gestion-clients")} className="flex items-center space-x-2 hover:text-blue-600 transition-colors cursor-pointer">

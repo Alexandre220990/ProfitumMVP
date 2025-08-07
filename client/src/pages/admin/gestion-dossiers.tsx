@@ -391,7 +391,7 @@ export default function GestionDossiers() { const { user } = useAuth();
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-red-50">
       <div className="container mx-auto px-6 py-4 flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">Gestion des Dossiers</h1>
-        <Button variant="outline" size="sm" onClick={ () => navigate('/admin') }>
+        <Button variant="outline" size="sm" onClick={ () => navigate('/admin/dashboard-optimized') }>
           ← Retour au Dashboard
         </Button>
       </div>

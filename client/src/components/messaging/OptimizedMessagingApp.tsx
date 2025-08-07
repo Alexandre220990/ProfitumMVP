@@ -419,7 +419,7 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
         </div>
       )}
 
-      {/* Contenu principal */}
+      {/* Contenu principal avec zone de saisie fixe en bas */}
       <div className="flex-1 flex overflow-hidden">
         {/* Liste des conversations avec colonnes métier */}
         <div className="w-80 border-r border-gray-200 flex flex-col">
@@ -549,50 +549,10 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
 
               {/* Indicateur de frappe */}
               {isTyping && (
-                <div className="px-4 py-2 text-sm text-gray-500 italic">
+                <div className="px-4 py-2 text-sm text-gray-500 italic bg-gray-50 border-t border-gray-100">
                   {messaging.currentConversation.otherParticipant?.name} est en train d'écrire...
                 </div>
               )}
-
-              {/* Zone de saisie */}
-              <div className="p-4 border-t border-gray-200 bg-white">
-                <div className="flex items-end gap-2">
-                  <div className="flex-1">
-                    <Input
-                      ref={messageInputRef}
-                      placeholder="Tapez votre message..."
-                      value={messageInput}
-                      onChange={(e) => {
-                        setMessageInput(e.target.value);
-                        handleTyping(e.target.value.length > 0);
-                      }}
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault();
-                          handleSendMessage();
-                        }
-                      }}
-                      className="min-h-[40px]"
-                    />
-                  </div>
-                  
-                  <Button
-                    onClick={() => console.log('Upload fichier')}
-                    variant="outline"
-                    size="sm"
-                  >
-                    <Paperclip className="w-4 h-4" />
-                  </Button>
-                  
-                  <Button
-                    onClick={handleSendMessage}
-                    disabled={!messageInput.trim() && selectedFiles.length === 0}
-                    className={currentTheme.button}
-                  >
-                    <Send className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center text-gray-500">
@@ -624,6 +584,51 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
           />
         )}
       </AnimatePresence>
+
+      {/* Zone de saisie fixe en bas */}
+      {messaging.currentConversation && (
+        <div className="border-t border-gray-200 bg-white shadow-lg z-10">
+          <div className="p-4">
+            <div className="flex items-end gap-2">
+              <div className="flex-1">
+                <Input
+                  ref={messageInputRef}
+                  placeholder="Tapez votre message..."
+                  value={messageInput}
+                  onChange={(e) => {
+                    setMessageInput(e.target.value);
+                    handleTyping(e.target.value.length > 0);
+                  }}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendMessage();
+                    }
+                  }}
+                  className="min-h-[44px]"
+                />
+              </div>
+              
+              <Button
+                onClick={() => console.log('Upload fichier')}
+                variant="outline"
+                size="sm"
+                className="h-[44px] px-3"
+              >
+                <Paperclip className="w-4 h-4" />
+              </Button>
+              
+              <Button
+                onClick={handleSendMessage}
+                disabled={!messageInput.trim() && selectedFiles.length === 0}
+                className={`${currentTheme.button} h-[44px] px-4`}
+              >
+                <Send className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

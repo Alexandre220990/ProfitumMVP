@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,8 +11,6 @@ import { useToast } from '@/hooks/use-toast';
 import { 
   FileText, 
   Upload, 
-  Search, 
-  Filter, 
   Grid, 
   List, 
   Download, 
@@ -25,28 +23,23 @@ import {
   BarChart3,
   RefreshCw,
   Plus,
-  Archive,
   CheckCircle,
   AlertCircle,
   Clock,
-  Users,
   Building2,
-  Shield,
   Info,
   X
 } from 'lucide-react';
 import HeaderClient from '@/components/HeaderClient';
 import DocumentUpload from '@/components/DocumentUpload';
-import { UnifiedDocumentSystem } from '@/components/documents/UnifiedDocumentSystem';
 import DocumentStats from '@/components/documents/DocumentStats';
-import DocumentSearch from '@/components/documents/DocumentSearch';
-import DocumentGrid from '@/components/documents/DocumentGrid';
 
 // ============================================================================
 // ESPACE DOCUMENTAIRE CLIENT UNIFIÉ ET OPTIMISÉ
 // ============================================================================
 // Architecture modulaire et évolutive
 // Réutilisation optimale des composants existants
+// Utilisation des nouvelles API enhanced-client-documents
 
 interface DocumentFile {
   id: string;
@@ -99,72 +92,44 @@ export default function DocumentsClientPage() {
   
   // États principaux
   const [activeTab, setActiveTab] = useState('overview');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [documents, setDocuments] = useState<DocumentFile[]>([]);
-  const [filteredDocuments, setFilteredDocuments] = useState<DocumentFile[]>([]);
   const [dossiers, setDossiers] = useState<DossierInfo[]>([]);
   const [stats, setStats] = useState<DocumentStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-
-  // États de filtrage
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('');
-  const [productFilter, setProductFilter] = useState('');
-  const [dateFilter, setDateFilter] = useState('');
-
-  // États d'upload
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  const [selectedProduct, setSelectedProduct] = useState<string>('all');
   const [selectedDossier, setSelectedDossier] = useState<string>('');
 
-  // Charger les données au montage
+  // Chargement initial
   useEffect(() => {
     if (user?.id) {
       loadAllData();
     }
   }, [user?.id]);
 
-  // Filtrer les documents
-  useEffect(() => {
-    let filtered = documents;
+  // Filtrage des documents
+  const filteredDocuments = documents.filter(doc => {
+    const matchesSearch = !searchTerm || 
+      doc.original_filename.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      doc.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      doc.category.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = selectedStatus === 'all' || doc.status === selectedStatus;
+    const matchesCategory = selectedCategory === 'all' || doc.category === selectedCategory;
+    const matchesProduct = selectedProduct === 'all' || doc.product_type === selectedProduct;
+    
+    return matchesSearch && matchesStatus && matchesCategory && matchesProduct;
+  });
 
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(doc =>
-        doc.original_filename.toLowerCase().includes(query) ||
-        doc.description?.toLowerCase().includes(query) ||
-        doc.category.toLowerCase().includes(query) ||
-        doc.document_type.toLowerCase().includes(query)
-      );
-    }
-
-    if (statusFilter) {
-      filtered = filtered.filter(doc => doc.status === statusFilter);
-    }
-
-    if (categoryFilter) {
-      filtered = filtered.filter(doc => doc.category === categoryFilter);
-    }
-
-    if (productFilter) {
-      filtered = filtered.filter(doc => doc.product_type === productFilter);
-    }
-
-    if (dateFilter) {
-      const filterDate = new Date(dateFilter);
-      filtered = filtered.filter(doc => {
-        const docDate = new Date(doc.created_at);
-        return docDate.toDateString() === filterDate.toDateString();
-      });
-    }
-
-    setFilteredDocuments(filtered);
-  }, [documents, searchQuery, statusFilter, categoryFilter, productFilter, dateFilter]);
-
+  // Chargement de toutes les données
   const loadAllData = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
       await Promise.all([
         loadDocuments(),
         loadDossiers(),
@@ -182,15 +147,16 @@ export default function DocumentsClientPage() {
     }
   };
 
+  // Chargement des documents via la nouvelle API enhanced-client-documents
   const loadDocuments = async () => {
     try {
-      const response = await fetch(`/api/documents/client/${user?.id}`, {
+      const response = await fetch(`/api/enhanced-client-documents/client/${user?.id}`, {
         credentials: 'include'
       });
       const result = await response.json();
       
       if (result.success) {
-        setDocuments(result.data.documents || []);
+        setDocuments(result.data.files || []);
       } else {
         throw new Error(result.message);
       }
@@ -219,9 +185,10 @@ export default function DocumentsClientPage() {
     }
   };
 
+  // Chargement des statistiques via la nouvelle API enhanced-client-documents
   const loadStats = async () => {
     try {
-      const response = await fetch(`/api/documents/stats/${user?.id}`, {
+      const response = await fetch(`/api/enhanced-client-documents/stats/${user?.id}`, {
         credentials: 'include'
       });
       const result = await response.json();
@@ -256,9 +223,10 @@ export default function DocumentsClientPage() {
     }
   };
 
+  // Suppression de document via la nouvelle API
   const handleDocumentDelete = async (documentId: string) => {
     try {
-      const response = await fetch(`/api/documents/${documentId}`, {
+      const response = await fetch(`/api/enhanced-client-documents/${documentId}`, {
         method: 'DELETE',
         credentials: 'include'
       });
@@ -285,9 +253,10 @@ export default function DocumentsClientPage() {
     }
   };
 
-  const handleDocumentDownload = async (document: DocumentFile) => {
+  // Téléchargement de document via la nouvelle API
+  const handleDocumentDownload = async (docFile: DocumentFile) => {
     try {
-      const response = await fetch(`/api/documents/${document.id}/download`, {
+      const response = await fetch(`/api/enhanced-client-documents/download/${docFile.id}`, {
         credentials: 'include'
       });
       
@@ -296,7 +265,7 @@ export default function DocumentsClientPage() {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = document.original_filename;
+        a.download = docFile.original_filename;
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
@@ -307,10 +276,10 @@ export default function DocumentsClientPage() {
           description: "Document téléchargé avec succès"
         });
       } else {
-        throw new Error('Erreur téléchargement');
+        throw new Error('Erreur lors du téléchargement');
       }
     } catch (error) {
-      console.error('Erreur téléchargement:', error);
+      console.error('Erreur téléchargement document:', error);
       toast({
         title: "Erreur",
         description: "Impossible de télécharger le document",
@@ -574,41 +543,41 @@ export default function DocumentsClientPage() {
                   <div className="md:col-span-2">
                     <Input
                       placeholder="Rechercher un document..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
                       className="w-full"
                     />
                   </div>
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <Select value={selectedStatus} onValueChange={setSelectedStatus}>
                     <SelectTrigger>
                       <SelectValue placeholder="Statut" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Tous les statuts</SelectItem>
+                      <SelectItem value="all">Tous les statuts</SelectItem>
                       <SelectItem value="uploaded">Uploadé</SelectItem>
                       <SelectItem value="validated">Validé</SelectItem>
                       <SelectItem value="rejected">Rejeté</SelectItem>
                       <SelectItem value="archived">Archivé</SelectItem>
                     </SelectContent>
                   </Select>
-                  <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                  <Select value={selectedCategory} onValueChange={setSelectedCategory}>
                     <SelectTrigger>
                       <SelectValue placeholder="Catégorie" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Toutes les catégories</SelectItem>
+                      <SelectItem value="all">Toutes les catégories</SelectItem>
                       <SelectItem value="identity">Identité</SelectItem>
                       <SelectItem value="financial">Financier</SelectItem>
                       <SelectItem value="legal">Juridique</SelectItem>
                       <SelectItem value="technical">Technique</SelectItem>
                     </SelectContent>
                   </Select>
-                  <Select value={productFilter} onValueChange={setProductFilter}>
+                  <Select value={selectedProduct} onValueChange={setSelectedProduct}>
                     <SelectTrigger>
                       <SelectValue placeholder="Produit" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Tous les produits</SelectItem>
+                      <SelectItem value="all">Tous les produits</SelectItem>
                       <SelectItem value="TICPE">TICPE</SelectItem>
                       <SelectItem value="URSSAF">URSSAF</SelectItem>
                       <SelectItem value="FONCIER">FONCIER</SelectItem>
@@ -732,7 +701,7 @@ export default function DocumentsClientPage() {
                       Aucun document trouvé
                     </h3>
                     <p className="text-gray-500 mb-6">
-                      {searchQuery || statusFilter || categoryFilter || productFilter
+                      {searchTerm || selectedStatus !== 'all' || selectedCategory !== 'all' || selectedProduct !== 'all'
                         ? "Aucun document ne correspond à vos critères de recherche"
                         : "Vous n'avez pas encore uploadé de documents"
                       }

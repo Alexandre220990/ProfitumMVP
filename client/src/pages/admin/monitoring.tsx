@@ -376,7 +376,7 @@ const MonitoringPage = () => {
                             <Button 
                                 variant="outline" 
                                 size="sm" 
-                                onClick={() => navigate('/admin')}
+                                onClick={() => navigate('/admin/dashboard-optimized')}
                             >
                                 ← Retour au Dashboard
                             </Button>

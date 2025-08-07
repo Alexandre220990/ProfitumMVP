@@ -457,7 +457,7 @@ const GestionClients = () => {
               </Dialog>
               <Button 
                 variant="outline" 
-                onClick={() => navigate('/admin')}
+                onClick={() => navigate('/admin/dashboard-optimized')}
               >
                 ← Retour au Dashboard
               </Button>
