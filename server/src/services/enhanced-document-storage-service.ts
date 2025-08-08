@@ -51,6 +51,7 @@ export interface UploadFileRequest {
   expires_at?: Date;
   uploaded_by: string;
   user_type: 'client' | 'expert' | 'admin';
+  file_path?: string; // Ajout de la propriété manquante
 }
 
 export interface FileUploadResponse {
@@ -74,6 +75,37 @@ export interface FileListResponse {
   files?: DocumentFile[];
   total?: number;
   error?: string;
+}
+
+// Types pour les sections de documents
+export interface DocumentSection {
+  id: string;
+  name: string;
+  display_name: string;
+  description?: string;
+  icon: string;
+  color: string;
+  order_index: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// Types pour les requêtes de sections
+export interface GetSectionsRequest {
+  user_id: string;
+  user_type: string;
+}
+
+export interface GetSectionFilesRequest {
+  section_name: string;
+  user_id: string;
+  user_type: string;
+  filters?: {
+    status?: string;
+    limit?: number;
+    offset?: number;
+  };
 }
 
 export class EnhancedDocumentStorageService {
@@ -589,6 +621,206 @@ export class EnhancedDocumentStorageService {
     } catch (error) {
       console.error('Erreur partage fichier:', error);
       return { success: false, error: 'Erreur lors du partage' };
+    }
+  }
+
+  // ===== GESTION DES SECTIONS =====
+  
+  /**
+   * Récupérer toutes les sections disponibles pour un utilisateur
+   */
+  async getDocumentSections(request: GetSectionsRequest): Promise<{
+    success: boolean;
+    sections?: DocumentSection[];
+    error?: string;
+  }> {
+    try {
+      const { user_id, user_type } = request;
+      
+      // Récupérer toutes les sections actives
+      const { data: sections, error } = await supabase
+        .from('document_sections')
+        .select('*')
+        .eq('is_active', true)
+        .order('order_index', { ascending: true });
+
+      if (error) {
+        console.error('Erreur récupération sections:', error);
+        return {
+          success: false,
+          error: `Erreur récupération sections: ${error.message}`
+        };
+      }
+
+      return {
+        success: true,
+        sections: sections || []
+      };
+
+    } catch (error) {
+      console.error('Erreur getDocumentSections:', error);
+      return {
+        success: false,
+        error: 'Erreur lors de la récupération des sections'
+      };
+    }
+  }
+
+  /**
+   * Récupérer les fichiers d'une section spécifique
+   */
+  async getSectionFiles(request: GetSectionFilesRequest): Promise<{
+    success: boolean;
+    files?: DocumentFile[];
+    total?: number;
+    error?: string;
+  }> {
+    try {
+      const { section_name, user_id, user_type, filters } = request;
+      
+      // Construire la requête selon la section
+      let query = supabase
+        .from('GEDDocument')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      // Filtrer selon la section
+      switch (section_name) {
+        case 'formation':
+          query = query.eq('category', 'business');
+          break;
+        case 'mes_documents':
+          query = query.eq('category', 'technical');
+          break;
+        case 'mes_rapports':
+          query = query.eq('category', 'business');
+          break;
+        case 'mes_factures':
+          query = query.eq('category', 'business');
+          break;
+        default:
+          return {
+            success: false,
+            error: 'Section non reconnue'
+          };
+      }
+
+      // Filtrer selon le type d'utilisateur
+      if (user_type === 'client') {
+        query = query.eq('created_by', user_id);
+      } else if (user_type === 'expert') {
+        query = query.eq('created_by', user_id);
+      }
+      // Les admins voient tous les fichiers
+
+      // Appliquer les filtres optionnels
+      if (filters?.status && filters.status !== 'all') {
+        query = query.eq('is_active', filters.status === 'validated');
+      }
+
+      // Pagination
+      if (filters?.limit) {
+        query = query.limit(filters.limit);
+      }
+      if (filters?.offset) {
+        query = query.range(filters.offset, filters.offset + (filters.limit || 10) - 1);
+      }
+
+      const { data: files, error, count } = await query;
+
+      if (error) {
+        console.error('Erreur récupération fichiers section:', error);
+        return {
+          success: false,
+          error: `Erreur récupération fichiers: ${error.message}`
+        };
+      }
+
+      return {
+        success: true,
+        files: files || [],
+        total: count || 0
+      };
+
+    } catch (error) {
+      console.error('Erreur getSectionFiles:', error);
+      return {
+        success: false,
+        error: 'Erreur lors de la récupération des fichiers de la section'
+      };
+    }
+  }
+
+  /**
+   * Upload un fichier dans une section spécifique
+   */
+  async uploadFileToSection(request: UploadFileRequest & { section_name: string }): Promise<FileUploadResponse> {
+    try {
+      const { section_name, ...uploadRequest } = request;
+      
+      // Déterminer la catégorie selon la section
+      let category: string;
+      switch (section_name) {
+        case 'formation':
+          category = 'business';
+          break;
+        case 'mes_documents':
+          category = 'technical';
+          break;
+        case 'mes_rapports':
+          category = 'business';
+          break;
+        case 'mes_factures':
+          category = 'business';
+          break;
+        default:
+          return {
+            success: false,
+            error: 'Section non reconnue'
+          };
+      }
+
+      // Créer le document dans GEDDocument
+      const { data: documentData, error: dbError } = await supabase
+        .from('GEDDocument')
+        .insert({
+          title: uploadRequest.description || 'Document uploadé',
+          description: uploadRequest.description,
+          content: 'Contenu du document', // À adapter selon le type de fichier
+          category: category,
+          file_path: uploadRequest.file_path || '', // Valeur par défaut si undefined
+          created_by: uploadRequest.uploaded_by,
+          is_active: true,
+          read_time: 5,
+          version: 1
+        })
+        .select()
+        .single();
+
+      if (dbError) {
+        console.error('Erreur base de données:', dbError);
+        return {
+          success: false,
+          error: `Erreur base de données: ${dbError.message}`
+        };
+      }
+
+      // Enregistrer l'activité
+      await this.logFileActivity(documentData.id, uploadRequest.uploaded_by, 'upload');
+
+      return {
+        success: true,
+        file_id: documentData.id,
+        file_path: uploadRequest.file_path || '',
+        metadata: documentData
+      };
+
+    } catch (error) {
+      console.error('Erreur uploadFileToSection:', error);
+      return {
+        success: false,
+        error: 'Erreur lors de l\'upload vers la section'
+      };
     }
   }
 

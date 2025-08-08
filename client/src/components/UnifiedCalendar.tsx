@@ -157,12 +157,7 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
   // GESTION DES ÉVÉNEMENTS
   // ========================================
 
-  const handleDateSelect = useCallback((date: Date | undefined) => {
-    if (date) {
-      setSelectedDate(date);
-      setShowEventDialog(true);
-    }
-  }, []);
+
 
   const handleEventSubmit = useCallback(async (eventData: any) => {
     try {
@@ -324,72 +319,140 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
   // RENDU DES VUES
   // ========================================
 
-  const renderMonthView = () => (
-    <div className="space-y-6">
-      <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">
-          {format(view.date, 'MMMM yyyy', { locale: fr })}
-        </h2>
-      </div>
-      
-      {/* Grille simple pour le mois */}
-      <div className="grid grid-cols-7 gap-1">
-        {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map(day => (
-          <div key={day} className="p-2 text-center text-sm font-medium text-gray-500">
-            {day}
+  const renderMonthView = () => {
+    // Calculer le premier lundi de la semaine contenant le 1er du mois
+    const firstDayOfMonth = startOfMonth(view.date);
+    const firstMondayOfMonth = startOfWeek(firstDayOfMonth, { weekStartsOn: 1 });
+    
+    // Calculer le nombre de jours à afficher (6 semaines = 42 jours)
+    const daysToShow = 42;
+    
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Calendrier principal */}
+        <div className="lg:col-span-2 space-y-6">
+          <div className="text-center mb-6">
+            <h2 className="text-2xl font-bold text-gray-900">
+              {format(view.date, 'MMMM yyyy', { locale: fr })}
+            </h2>
           </div>
-        ))}
-        
-        {Array.from({ length: 35 }, (_, i) => {
-          const date = addDays(startOfMonth(view.date), i);
-          const dayEvents = getEventsForDate(date);
           
-          return (
-            <div
-              key={i}
-              className={cn(
-                "p-2 min-h-[80px] border border-gray-200 cursor-pointer hover:bg-gray-50",
-                isSameDay(date, new Date()) && "bg-blue-50 border-blue-300"
-              )}
-              onClick={() => handleDateSelect(date)}
-            >
-              <div className="text-sm font-medium">{format(date, 'd')}</div>
-              {dayEvents.length > 0 && (
-                <div className="mt-1">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full mx-auto"></div>
-                  <div className="text-xs text-gray-500 mt-1">{dayEvents.length} événement(s)</div>
+          {/* Grille du mois avec lundi en premier */}
+          <div className="grid grid-cols-7 gap-1">
+            {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map(day => (
+              <div key={day} className="p-2 text-center text-sm font-medium text-gray-500">
+                {day}
+              </div>
+            ))}
+            
+            {Array.from({ length: daysToShow }, (_, i) => {
+              const date = addDays(firstMondayOfMonth, i);
+              const dayEvents = getEventsForDate(date);
+              const isCurrentMonth = date.getMonth() === view.date.getMonth();
+              const isToday = isSameDay(date, new Date());
+              const isSelected = selectedDate && isSameDay(date, selectedDate);
+              
+              return (
+                <div
+                  key={i}
+                  className={cn(
+                    "p-2 min-h-[80px] border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors",
+                    !isCurrentMonth && "bg-gray-50 text-gray-400",
+                    isToday && "bg-blue-50 border-blue-300 font-bold",
+                    isSelected && "bg-blue-100 border-blue-400"
+                  )}
+                  onClick={() => setSelectedDate(date)}
+                >
+                  <div className={cn(
+                    "text-sm font-medium",
+                    isToday && "text-blue-600",
+                    isSelected && "text-blue-700"
+                  )}>
+                    {format(date, 'd')}
+                  </div>
+                  {dayEvents.length > 0 && (
+                    <div className="mt-1">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full mx-auto"></div>
+                      <div className="text-xs text-gray-500 mt-1">{dayEvents.length} événement(s)</div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-      
-      {/* Événements de la date sélectionnée */}
-      {selectedDate && (
-        <div className="mt-8 p-6 bg-gray-50 rounded-xl">
-          <h3 className="font-semibold text-gray-900 mb-4 text-lg">
-            Événements du {format(selectedDate, 'dd/MM/yyyy', { locale: fr })}
-          </h3>
-          <div className="space-y-4">
-            {getEventsForDate(selectedDate).length === 0 ? (
-              <p className="text-gray-500 text-center py-8">
-                Aucun événement prévu pour cette date
-              </p>
+              );
+            })}
+          </div>
+        </div>
+        
+        {/* Panneau latéral des événements */}
+        <div className="lg:col-span-1">
+          <div className="sticky top-4">
+            {selectedDate ? (
+              <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold text-gray-900 text-lg">
+                    {format(selectedDate, 'EEEE dd MMMM yyyy', { locale: fr })}
+                  </h3>
+                  <Button
+                    size="sm"
+                    onClick={() => setShowEventDialog(true)}
+                    className="flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Nouvel événement
+                  </Button>
+                </div>
+                
+                <div className="space-y-3">
+                  {getEventsForDate(selectedDate).length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <CalendarIcon className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+                      <p className="text-sm">Aucun événement prévu</p>
+                      <p className="text-xs text-gray-400 mt-1">Cliquez sur "Nouvel événement" pour commencer</p>
+                    </div>
+                  ) : (
+                    getEventsForDate(selectedDate).map(event => (
+                      <div
+                        key={event.id}
+                        className="p-3 bg-gray-50 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors"
+                        onClick={() => handleEditEvent(event)}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <div className={cn("w-2 h-2 rounded-full", EVENT_TYPES[event.type as keyof typeof EVENT_TYPES]?.color || 'bg-blue-500')}></div>
+                            <span className="font-medium text-gray-900 text-sm">
+                              {event.title}
+                            </span>
+                          </div>
+                          <Badge className="text-xs">
+                            {EVENT_TYPES[event.type as keyof typeof EVENT_TYPES]?.label || event.type}
+                          </Badge>
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {format(new Date(event.start_date), 'HH:mm', { locale: fr })} - {format(new Date(event.end_date), 'HH:mm', { locale: fr })}
+                        </div>
+                        {event.description && (
+                          <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                            {event.description}
+                          </p>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
             ) : (
-              getEventsForDate(selectedDate).map(event => (
-                <EventCard
-                  key={event.id}
-                  event={event}
-                  compact
-                />
-              ))
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 text-center">
+                <CalendarIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                <h3 className="font-medium text-gray-900 mb-2">Sélectionnez une date</h3>
+                <p className="text-sm text-gray-500">
+                  Cliquez sur un jour dans le calendrier pour voir les événements
+                </p>
+              </div>
             )}
           </div>
         </div>
-      )}
-    </div>
-  );
+      </div>
+    );
+  };
 
   const renderAgendaView = () => {
     const upcomingEvents = getUpcomingEvents(30);

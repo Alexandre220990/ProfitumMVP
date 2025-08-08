@@ -560,4 +560,165 @@ router.get('/test-auth', enhancedAuthMiddleware, async (req, res) => {
   }
 });
 
+// ===== NOUVELLES ROUTES POUR LES SECTIONS =====
+
+/**
+ * GET /api/enhanced-client-documents/sections
+ * Récupérer toutes les sections disponibles
+ */
+router.get('/sections', enhancedAuthMiddleware, async (req: AuthenticatedRequest, res) => {
+  try {
+    const user = req.user as AuthUser;
+    
+    const sectionsResponse = await documentStorageService.getDocumentSections({
+      user_id: user.database_id,
+      user_type: user.user_type
+    });
+
+    if (!sectionsResponse.success) {
+      return res.status(500).json({
+        success: false,
+        message: sectionsResponse.error
+      });
+    }
+
+    return res.json({
+      success: true,
+      sections: sectionsResponse.sections
+    });
+
+  } catch (error) {
+    console.error('Erreur récupération sections:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des sections'
+    });
+  }
+});
+
+/**
+ * GET /api/enhanced-client-documents/sections/:sectionName/files
+ * Récupérer les fichiers d'une section spécifique
+ */
+router.get('/sections/:sectionName/files', enhancedAuthMiddleware, async (req: AuthenticatedRequest, res) => {
+  try {
+    const user = req.user as AuthUser;
+    const { sectionName } = req.params;
+    const { status, limit, offset } = req.query;
+
+    const filesResponse = await documentStorageService.getSectionFiles({
+      section_name: sectionName,
+      user_id: user.database_id,
+      user_type: user.user_type,
+      filters: {
+        status: status as string,
+        limit: limit ? parseInt(limit as string) : undefined,
+        offset: offset ? parseInt(offset as string) : undefined
+      }
+    });
+
+    if (!filesResponse.success) {
+      return res.status(500).json({
+        success: false,
+        message: filesResponse.error
+      });
+    }
+
+    return res.json({
+      success: true,
+      files: filesResponse.files,
+      total: filesResponse.total
+    });
+
+  } catch (error) {
+    console.error('Erreur récupération fichiers section:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des fichiers de la section'
+    });
+  }
+});
+
+/**
+ * POST /api/enhanced-client-documents/sections/:sectionName/upload
+ * Upload un fichier dans une section spécifique
+ */
+router.post('/sections/:sectionName/upload', enhancedAuthMiddleware, upload.single('file'), async (req: AuthenticatedRequest, res) => {
+  try {
+    const user = req.user as AuthUser;
+    const { sectionName } = req.params;
+    const file = req.file;
+    
+    if (!file) {
+      return res.status(400).json({
+        success: false,
+        message: 'Aucun fichier fourni'
+      });
+    }
+
+    const {
+      clientId,
+      expertId,
+      auditId,
+      description,
+      tags,
+      accessLevel = 'private',
+      expiresAt
+    } = req.body;
+
+    // Déterminer l'ID cible selon le type d'utilisateur
+    let targetId: string;
+    let userType: string;
+    
+    if (user.user_type === 'client') {
+      targetId = user.database_id;
+      userType = 'client';
+    } else if (user.user_type === 'expert') {
+      targetId = user.database_id;
+      userType = 'expert';
+    } else {
+      targetId = user.database_id;
+      userType = 'admin';
+    }
+
+    const uploadResponse = await documentStorageService.uploadFileToSection({
+      file: file.buffer,
+      section_name: sectionName,
+      client_id: userType === 'client' ? targetId : undefined,
+      expert_id: userType === 'expert' ? targetId : undefined,
+      audit_id: auditId,
+      category: 'autre', // Sera déterminé par la section
+      description,
+      tags: tags ? JSON.parse(tags) : [],
+      access_level: accessLevel as any,
+      expires_at: expiresAt ? new Date(expiresAt) : undefined,
+      uploaded_by: user.database_id,
+      user_type: userType
+    });
+
+    if (!uploadResponse.success) {
+      return res.status(500).json({
+        success: false,
+        message: uploadResponse.error
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: 'Fichier uploadé avec succès dans la section',
+      data: {
+        file_id: uploadResponse.file_id,
+        file_url: uploadResponse.file_path
+      }
+    });
+
+  } catch (error) {
+    console.error('Erreur upload section:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de l\'upload vers la section'
+    });
+  }
+});
+
 export default router; 

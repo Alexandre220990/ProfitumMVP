@@ -1,294 +1,93 @@
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/hooks/use-auth';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useToast } from '@/hooks/use-toast';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Progress } from '@/components/ui/progress';
+import { Switch } from '@/components/ui/switch';
+import { useDocumentSections, DocumentSection, DocumentFile } from '../hooks/use-document-sections';
+import { useAuth } from '../hooks/use-auth';
+import { useToast } from '../hooks/use-toast';
 import { 
-  FileText, 
   Upload, 
-  Grid, 
-  List, 
   Download, 
+  Eye, 
   Trash2, 
-  Share2, 
-  Eye,
-  FolderOpen,
-  Calendar,
-  Tag,
-  BarChart3,
-  RefreshCw,
+  FileText, 
+  FileImage, 
+  FilePdf, 
+  FileSpreadsheet,
+  FileVideo,
+  FileAudio,
+  FileArchive,
+  GraduationCap,
+  Folder,
+  Receipt,
+  Search,
+  Filter,
   Plus,
+  Calendar,
   Clock,
+  User,
   CheckCircle,
+  XCircle,
   AlertCircle,
-  Info,
-  Building,
-  X
+  Archive
 } from 'lucide-react';
-import HeaderClient from '@/components/HeaderClient';
-import DocumentUpload from '@/components/DocumentUpload';
-import DocumentStats from '@/components/documents/DocumentStats';
-import api from '../lib/api'; // Importer l'instance axios configurée
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
-// ============================================================================
-// ESPACE DOCUMENTAIRE CLIENT UNIFIÉ ET OPTIMISÉ
-// ============================================================================
-// Architecture modulaire et évolutive
-// Réutilisation optimale des composants existants
-// Utilisation des nouvelles API enhanced-client-documents
+// Composant pour afficher une icône de fichier selon le type
+const FileIcon = ({ mimeType, extension }: { mimeType: string; extension: string }) => {
+  if (mimeType.includes('pdf')) return <FilePdf className="h-5 w-5 text-red-500" />;
+  if (mimeType.includes('image')) return <FileImage className="h-5 w-5 text-green-500" />;
+  if (mimeType.includes('spreadsheet') || extension === 'xls' || extension === 'xlsx') {
+    return <FileSpreadsheet className="h-5 w-5 text-green-600" />;
+  }
+  if (mimeType.includes('video')) return <FileVideo className="h-5 w-5 text-purple-500" />;
+  if (mimeType.includes('audio')) return <FileAudio className="h-5 w-5 text-blue-500" />;
+  if (mimeType.includes('zip') || mimeType.includes('rar')) return <FileArchive className="h-5 w-5 text-orange-500" />;
+  return <FileText className="h-5 w-5 text-gray-500" />;
+};
 
-interface DocumentFile {
-  id: string;
-  original_filename: string;
-  file_size: number;
-  mime_type: string;
-  category: string;
-  document_type: string;
-  description?: string;
-  status: 'uploaded' | 'validated' | 'rejected' | 'archived' | 'deleted';
-  validation_status: 'pending' | 'approved' | 'rejected' | 'requires_revision';
-  access_level: 'public' | 'private' | 'restricted' | 'confidential';
-  created_at: string;
-  updated_at: string;
-  uploaded_by?: string;
-  download_count: number;
-  last_downloaded?: string;
-  dossier_id?: string;
-  product_type?: string;
-  bucket_name?: string;
-  file_path?: string;
-}
-
-interface DocumentStats {
-  total_files: number;
-  total_size: number;
-  recent_uploads: number;
-  files_by_category: Record<string, number>;
-  files_by_status: Record<string, number>;
-  files_by_product: Record<string, number>;
-  storage_usage: {
-    used: number;
-    limit: number;
-    percentage: number;
-  };
-}
-
-interface DossierInfo {
-  id: string;
-  product_name: string;
-  status: string;
-  created_at: string;
-  documents_count: number;
-}
-
-export default function DocumentsClientPage() {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  
-  // États principaux
-  const [activeTab, setActiveTab] = useState('overview');
-  const [documents, setDocuments] = useState<DocumentFile[]>([]);
-  const [dossiers, setDossiers] = useState<DossierInfo[]>([]);
-  const [stats, setStats] = useState<DocumentStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [showUploadModal, setShowUploadModal] = useState(false);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [selectedStatus, setSelectedStatus] = useState<string>('all');
-  const [selectedProduct, setSelectedProduct] = useState<string>('all');
-  const [selectedDossier, setSelectedDossier] = useState<string>('');
-
-  // Chargement initial
-  useEffect(() => {
-    if (user?.id) {
-      // Test d'authentification avant de charger les données
-      testAuthentication();
-      loadAllData();
-    }
-  }, [user?.id]);
-
-  // Test d'authentification
-  const testAuthentication = async () => {
-    try {
-      console.log('🧪 Test d\'authentification...');
-      const response = await api.get('/api/enhanced-client-documents/test-auth');
-      console.log('✅ Test d\'authentification réussi:', response.data);
-    } catch (error) {
-      console.error('❌ Test d\'authentification échoué:', error);
-      toast({
-        title: "Erreur d'authentification",
-        description: "Impossible de s'authentifier avec le serveur",
-        variant: "destructive"
-      });
+// Composant pour afficher le statut d'un fichier
+const FileStatus = ({ status, validationStatus }: { status: string; validationStatus: string }) => {
+  const getStatusConfig = () => {
+    switch (status) {
+      case 'validated':
+        return { icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50', text: 'Validé' };
+      case 'rejected':
+        return { icon: XCircle, color: 'text-red-600', bg: 'bg-red-50', text: 'Rejeté' };
+      case 'archived':
+        return { icon: Archive, color: 'text-gray-600', bg: 'bg-gray-50', text: 'Archivé' };
+      case 'deleted':
+        return { icon: Trash2, color: 'text-red-600', bg: 'bg-red-50', text: 'Supprimé' };
+      default:
+        return { icon: AlertCircle, color: 'text-yellow-600', bg: 'bg-yellow-50', text: 'En attente' };
     }
   };
 
-  // Filtrage des documents
-  const filteredDocuments = documents.filter(doc => {
-    const matchesSearch = !searchTerm || 
-      doc.original_filename.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      doc.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      doc.category.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = selectedStatus === 'all' || doc.status === selectedStatus;
-    const matchesCategory = selectedCategory === 'all' || doc.category === selectedCategory;
-    const matchesProduct = selectedProduct === 'all' || doc.product_type === selectedProduct;
-    
-    return matchesSearch && matchesStatus && matchesCategory && matchesProduct;
-  });
+  const config = getStatusConfig();
+  const Icon = config.icon;
 
-  // Chargement de toutes les données
-  const loadAllData = async () => {
-    setLoading(true);
-    try {
-      await Promise.all([
-        loadDocuments(),
-        loadDossiers(),
-        loadStats()
-      ]);
-    } catch (error) {
-      console.error('Erreur chargement données:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger les données",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  return (
+    <Badge variant="secondary" className={`${config.bg} ${config.color} border-0`}>
+      <Icon className="h-3 w-3 mr-1" />
+      {config.text}
+    </Badge>
+  );
+};
 
-  // Chargement des documents via la nouvelle API enhanced-client-documents
-  const loadDocuments = async () => {
-    try {
-      const response = await api.get(`/api/enhanced-client-documents/client/${user?.id}`);
-      
-      if (response.data.success) {
-        setDocuments(response.data.data.files || []);
-      } else {
-        throw new Error(response.data.message);
-      }
-    } catch (error) {
-      console.error('Erreur chargement documents:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger les documents",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const loadDossiers = async () => {
-    try {
-      const response = await api.get(`/api/dossiers/client/${user?.id}`);
-      
-      if (response.data.success) {
-        setDossiers(response.data.data.dossiers || []);
-      }
-    } catch (error) {
-      console.error('Erreur chargement dossiers:', error);
-    }
-  };
-
-  // Chargement des statistiques via la nouvelle API enhanced-client-documents
-  const loadStats = async () => {
-    try {
-      const response = await api.get(`/api/enhanced-client-documents/stats/${user?.id}`);
-      
-      if (response.data.success) {
-        setStats(response.data.data);
-      }
-    } catch (error) {
-      console.error('Erreur chargement stats:', error);
-    }
-  };
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await loadAllData();
-    setRefreshing(false);
-    toast({
-      title: "Actualisé",
-      description: "Les données ont été actualisées"
-    });
-  };
-
-  const handleDocumentUpload = async (success: boolean) => {
-    if (success) {
-      await loadDocuments();
-      await loadStats();
-      setShowUploadModal(false);
-      toast({
-        title: "Succès",
-        description: "Document uploadé avec succès"
-      });
-    }
-  };
-
-  // Suppression de document via la nouvelle API
-  const handleDocumentDelete = async (documentId: string) => {
-    try {
-      const response = await api.delete(`/api/enhanced-client-documents/${documentId}`);
-      
-      if (response.data.success) {
-        await loadDocuments();
-        await loadStats();
-        toast({
-          title: "Succès",
-          description: "Document supprimé avec succès"
-        });
-      } else {
-        throw new Error(response.data.message);
-      }
-    } catch (error) {
-      console.error('Erreur suppression document:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de supprimer le document",
-        variant: "destructive"
-      });
-    }
-  };
-
-  // Téléchargement de document via la nouvelle API
-  const handleDocumentDownload = async (docFile: DocumentFile) => {
-    try {
-      const response = await api.get(`/api/enhanced-client-documents/download/${docFile.id}`, {
-        responseType: 'blob'
-      });
-      
-      // Créer un lien de téléchargement
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', docFile.original_filename);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-      
-      toast({
-        title: "Téléchargement",
-        description: "Document téléchargé avec succès"
-      });
-    } catch (error) {
-      console.error('Erreur téléchargement document:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de télécharger le document",
-        variant: "destructive"
-      });
-    }
-  };
-
+// Composant pour afficher un fichier
+const FileCard = ({ file, onDownload, onView, onDelete }: {
+  file: DocumentFile;
+  onDownload: (file: DocumentFile) => void;
+  onView: (file: DocumentFile) => void;
+  onDelete: (file: DocumentFile) => void;
+}) => {
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -297,536 +96,342 @@ export default function DocumentsClientPage() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const getStatusColor = (status: string) => {
-    const colors = {
-      uploaded: 'bg-blue-100 text-blue-800',
-      validated: 'bg-green-100 text-green-800',
-      rejected: 'bg-red-100 text-red-800',
-      archived: 'bg-gray-100 text-gray-800',
-      deleted: 'bg-red-100 text-red-800'
-    };
-    return colors[status as keyof typeof colors] || colors.uploaded;
-  };
+  return (
+    <Card className="hover:shadow-md transition-shadow duration-200">
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between">
+          <div className="flex items-start space-x-3 flex-1">
+            <FileIcon mimeType={file.mime_type} extension={file.file_extension} />
+            <div className="flex-1 min-w-0">
+              <h4 className="font-medium text-sm truncate">{file.original_filename}</h4>
+              <p className="text-xs text-gray-500 mt-1">
+                {formatFileSize(file.file_size)} • {file.file_extension.toUpperCase()}
+              </p>
+              {file.description && (
+                <p className="text-xs text-gray-600 mt-1 line-clamp-2">{file.description}</p>
+              )}
+              <div className="flex items-center space-x-2 mt-2">
+                <FileStatus status={file.status} validationStatus={file.validation_status} />
+                <span className="text-xs text-gray-400">
+                  {format(new Date(file.created_at), 'dd/MM/yyyy', { locale: fr })}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center space-x-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onView(file)}
+              className="h-8 w-8 p-0"
+            >
+              <Eye className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onDownload(file)}
+              className="h-8 w-8 p-0"
+            >
+              <Download className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onDelete(file)}
+              className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'validated':
-        return <CheckCircle className="h-4 w-4" />;
-      case 'rejected':
-        return <AlertCircle className="h-4 w-4" />;
-      case 'uploaded':
-        return <Clock className="h-4 w-4" />;
-      default:
-        return <Info className="h-4 w-4" />;
+// Composant pour l'upload de fichiers
+const UploadDialog = ({ 
+  sectionName, 
+  isOpen, 
+  onClose, 
+  onUpload 
+}: {
+  sectionName: string;
+  isOpen: boolean;
+  onClose: () => void;
+  onUpload: (file: File, description?: string) => void;
+}) => {
+  const [file, setFile] = useState<File | null>(null);
+  const [description, setDescription] = useState('');
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setFile(e.target.files[0]);
     }
   };
 
-  const getFileIcon = (mimeType: string) => {
-    if (mimeType.startsWith('image/')) return <FileText className="h-5 w-5" />;
-    if (mimeType.includes('pdf')) return <FileText className="h-5 w-5" />;
-    if (mimeType.includes('word')) return <FileText className="h-5 w-5" />;
-    if (mimeType.includes('excel')) return <FileText className="h-5 w-5" />;
-    return <FileText className="h-5 w-5" />;
+  const handleUpload = () => {
+    if (file) {
+      onUpload(file, description);
+      setFile(null);
+      setDescription('');
+      onClose();
+    }
   };
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <HeaderClient />
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              Connexion requise
-            </h3>
-            <p className="text-gray-500">
-              Veuillez vous connecter pour accéder à vos documents
-            </p>
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Uploader un fichier</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">Fichier</label>
+            <Input
+              type="file"
+              onChange={handleFileChange}
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.txt,.csv,.zip,.rar"
+            />
           </div>
+          <div>
+            <label className="block text-sm font-medium mb-2">Description (optionnel)</label>
+            <Input
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Description du fichier..."
+            />
+          </div>
+          <div className="flex justify-end space-x-2">
+            <Button variant="outline" onClick={onClose}>
+              Annuler
+            </Button>
+            <Button onClick={handleUpload} disabled={!file}>
+              Uploader
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// Page principale des documents client
+const DocumentsClientPage = () => {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [selectedSection, setSelectedSection] = useState<string>('formation');
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+
+  const {
+    sections,
+    sectionsLoading,
+    uploadToSection,
+    useSectionFiles
+  } = useDocumentSections();
+
+  const {
+    data: sectionFiles,
+    isLoading: filesLoading,
+    refetch: refetchFiles
+  } = useSectionFiles(selectedSection, {
+    status: statusFilter === 'all' ? undefined : statusFilter
+  });
+
+  // Gestion de l'upload
+  const handleUpload = useCallback(async (file: File, description?: string) => {
+    const result = await uploadToSection.mutateAsync({
+      sectionName: selectedSection,
+      file,
+      description
+    });
+
+    if (result.success) {
+      refetchFiles();
+    }
+  }, [selectedSection, uploadToSection, refetchFiles]);
+
+  // Gestion du téléchargement
+  const handleDownload = useCallback((file: DocumentFile) => {
+    // Implémentation du téléchargement
+    toast({
+      title: 'Téléchargement',
+      description: `Téléchargement de ${file.original_filename}...`,
+    });
+  }, [toast]);
+
+  // Gestion de la visualisation
+  const handleView = useCallback((file: DocumentFile) => {
+    // Implémentation de la visualisation
+    toast({
+      title: 'Visualisation',
+      description: `Ouverture de ${file.original_filename}...`,
+    });
+  }, [toast]);
+
+  // Gestion de la suppression
+  const handleDelete = useCallback((file: DocumentFile) => {
+    // Implémentation de la suppression
+    toast({
+      title: 'Suppression',
+      description: `Suppression de ${file.original_filename}...`,
+    });
+  }, [toast]);
+
+  // Filtrage des fichiers selon la recherche
+  const filteredFiles = sectionFiles?.files?.filter(file =>
+    file.original_filename.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (file.description && file.description.toLowerCase().includes(searchTerm.toLowerCase()))
+  ) || [];
+
+  if (sectionsLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-2 text-gray-600">Chargement des sections...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <HeaderClient />
-      
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* En-tête de la page */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                Espace Documentaire
-              </h1>
-              <p className="text-gray-600">
-                Gérez tous vos documents et suivez vos dossiers
-              </p>
-            </div>
-            <div className="flex items-center space-x-3">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRefresh}
-                disabled={refreshing}
-              >
-                <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-                Actualiser
-              </Button>
-              <Button
-                onClick={() => setShowUploadModal(true)}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Nouveau Document
-              </Button>
-            </div>
+    <div className="container mx-auto p-6">
+      <div className="flex gap-6">
+        {/* Contenu principal (3/4) */}
+        <div className="flex-1">
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+              {sections?.find(s => s.name === selectedSection)?.display_name || 'Documents'}
+            </h1>
+            <p className="text-gray-600">
+              {sections?.find(s => s.name === selectedSection)?.description || 'Gérez vos documents'}
+            </p>
           </div>
+
+          {/* Barre d'outils */}
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center space-x-4 flex-1">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  placeholder="Rechercher des fichiers..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Statut" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous les statuts</SelectItem>
+                  <SelectItem value="uploaded">Uploadé</SelectItem>
+                  <SelectItem value="validated">Validé</SelectItem>
+                  <SelectItem value="rejected">Rejeté</SelectItem>
+                  <SelectItem value="archived">Archivé</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button onClick={() => setUploadDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Ajouter un fichier
+            </Button>
+          </div>
+
+          {/* Liste des fichiers */}
+          {filesLoading ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                <p className="mt-2 text-gray-600">Chargement des fichiers...</p>
+              </div>
+            </div>
+          ) : filteredFiles.length === 0 ? (
+            <Card>
+              <CardContent className="p-8 text-center">
+                <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun fichier trouvé</h3>
+                <p className="text-gray-600 mb-4">
+                  {searchTerm 
+                    ? 'Aucun fichier ne correspond à votre recherche.'
+                    : 'Commencez par ajouter votre premier fichier.'
+                  }
+                </p>
+                <Button onClick={() => setUploadDialogOpen(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Ajouter un fichier
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4">
+              {filteredFiles.map((file) => (
+                <FileCard
+                  key={file.id}
+                  file={file}
+                  onDownload={handleDownload}
+                  onView={handleView}
+                  onDelete={handleDelete}
+                />
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Statistiques rapides */}
-        {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center">
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <FileText className="h-6 w-6 text-blue-600" />
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Total Documents</p>
-                    <p className="text-2xl font-bold text-gray-900">{stats.total_files}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center">
-                  <div className="p-2 bg-green-100 rounded-lg">
-                    <BarChart3 className="h-6 w-6 text-green-600" />
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Espace Utilisé</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {formatFileSize(stats.total_size)}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center">
-                  <div className="p-2 bg-purple-100 rounded-lg">
-                    <Upload className="h-6 w-6 text-purple-600" />
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Récemment Ajoutés</p>
-                    <p className="text-2xl font-bold text-gray-900">{stats.recent_uploads}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center">
-                  <div className="p-2 bg-orange-100 rounded-lg">
-                    <FolderOpen className="h-6 w-6 text-orange-600" />
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Dossiers Actifs</p>
-                    <p className="text-2xl font-bold text-gray-900">{dossiers.length}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        {/* Onglets principaux */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
-            <TabsTrigger value="documents">Mes Documents</TabsTrigger>
-            <TabsTrigger value="dossiers">Mes Dossiers</TabsTrigger>
-            <TabsTrigger value="stats">Statistiques</TabsTrigger>
-          </TabsList>
-
-          {/* Vue d'ensemble */}
-          <TabsContent value="overview" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Documents récents */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <FileText className="h-5 w-5 mr-2" />
-                    Documents Récents
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {documents.slice(0, 5).length > 0 ? (
-                    <div className="space-y-3">
-                      {documents.slice(0, 5).map((doc) => (
-                        <div key={doc.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                          <div className="flex items-center space-x-3">
-                            {getFileIcon(doc.mime_type)}
-                            <div>
-                              <p className="font-medium text-sm">{doc.original_filename}</p>
-                              <p className="text-xs text-gray-500">
-                                {formatFileSize(doc.file_size)} • {new Date(doc.created_at).toLocaleDateString()}
-                              </p>
-                            </div>
-                          </div>
-                          <Badge className={getStatusColor(doc.status)}>
-                            {getStatusIcon(doc.status)}
-                            <span className="ml-1">{doc.status}</span>
-                          </Badge>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8">
-                      <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                      <p className="text-gray-500">Aucun document récent</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Dossiers actifs */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <FolderOpen className="h-5 w-5 mr-2" />
-                    Dossiers Actifs
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {dossiers.length > 0 ? (
-                    <div className="space-y-3">
-                      {dossiers.map((dossier) => (
-                        <div key={dossier.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                          <div className="flex items-center space-x-3">
-                            <Building className="h-5 w-5 text-blue-600" />
-                            <div>
-                              <p className="font-medium text-sm">{dossier.product_name}</p>
-                              <p className="text-xs text-gray-500">
-                                {dossier.documents_count} documents • {new Date(dossier.created_at).toLocaleDateString()}
-                              </p>
-                            </div>
-                          </div>
-                          <Badge variant="outline">{dossier.status}</Badge>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8">
-                      <FolderOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                      <p className="text-gray-500">Aucun dossier actif</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          {/* Mes Documents */}
-          <TabsContent value="documents" className="space-y-6">
-            {/* Filtres et recherche */}
-            <Card>
-              <CardContent className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                  <div className="md:col-span-2">
-                    <Input
-                      placeholder="Rechercher un document..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full"
-                    />
-                  </div>
-                  <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Statut" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Tous les statuts</SelectItem>
-                      <SelectItem value="uploaded">Uploadé</SelectItem>
-                      <SelectItem value="validated">Validé</SelectItem>
-                      <SelectItem value="rejected">Rejeté</SelectItem>
-                      <SelectItem value="archived">Archivé</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Catégorie" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Toutes les catégories</SelectItem>
-                      <SelectItem value="identity">Identité</SelectItem>
-                      <SelectItem value="financial">Financier</SelectItem>
-                      <SelectItem value="legal">Juridique</SelectItem>
-                      <SelectItem value="technical">Technique</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select value={selectedProduct} onValueChange={setSelectedProduct}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Produit" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Tous les produits</SelectItem>
-                      <SelectItem value="TICPE">TICPE</SelectItem>
-                      <SelectItem value="URSSAF">URSSAF</SelectItem>
-                      <SelectItem value="FONCIER">FONCIER</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Contrôles d'affichage */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant={viewMode === 'grid' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setViewMode('grid')}
-                >
-                  <Grid className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant={viewMode === 'list' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setViewMode('list')}
-                >
-                  <List className="h-4 w-4" />
-                </Button>
-              </div>
-              <p className="text-sm text-gray-500">
-                {filteredDocuments.length} document{filteredDocuments.length !== 1 ? 's' : ''}
-              </p>
-            </div>
-
-            {/* Liste des documents */}
-            {loading ? (
-              <div className="flex items-center justify-center h-64">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                  <p className="text-gray-600">Chargement des documents...</p>
-                </div>
-              </div>
-            ) : filteredDocuments.length > 0 ? (
-              <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' : 'space-y-4'}>
-                {filteredDocuments.map((doc) => (
-                  <Card key={doc.id} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-6">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-center space-x-3">
-                          {getFileIcon(doc.mime_type)}
-                          <div>
-                            <h3 className="font-medium text-sm truncate max-w-48">
-                              {doc.original_filename}
-                            </h3>
-                            <p className="text-xs text-gray-500">
-                              {formatFileSize(doc.file_size)}
-                            </p>
-                          </div>
-                        </div>
-                        <Badge className={getStatusColor(doc.status)}>
-                          {getStatusIcon(doc.status)}
-                        </Badge>
+        {/* Sidebar avec onglets (1/4) */}
+        <div className="w-80">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Sections</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {sections?.map((section) => (
+                  <Button
+                    key={section.name}
+                    variant={selectedSection === section.name ? "default" : "ghost"}
+                    className="w-full justify-start h-auto p-3"
+                    onClick={() => setSelectedSection(section.name)}
+                  >
+                    <div className="flex items-center space-x-3 w-full">
+                      <div 
+                        className="p-2 rounded-lg"
+                        style={{ backgroundColor: `${section.color}20` }}
+                      >
+                        {section.icon === 'graduation-cap' && <GraduationCap className="h-4 w-4" style={{ color: section.color }} />}
+                        {section.icon === 'folder' && <Folder className="h-4 w-4" style={{ color: section.color }} />}
+                        {section.icon === 'file-text' && <FileText className="h-4 w-4" style={{ color: section.color }} />}
+                        {section.icon === 'receipt' && <Receipt className="h-4 w-4" style={{ color: section.color }} />}
                       </div>
-                      
-                      <div className="space-y-2 mb-4">
-                        <div className="flex items-center text-xs text-gray-500">
-                          <Tag className="h-3 w-3 mr-1" />
-                          {doc.category}
-                        </div>
-                        <div className="flex items-center text-xs text-gray-500">
-                          <Calendar className="h-3 w-3 mr-1" />
-                          {new Date(doc.created_at).toLocaleDateString()}
-                        </div>
-                        {doc.product_type && (
-                          <div className="flex items-center text-xs text-gray-500">
-                            <Building className="h-3 w-3 mr-1" />
-                            {doc.product_type}
-                          </div>
+                      <div className="flex-1 text-left">
+                        <div className="font-medium">{section.display_name}</div>
+                        {section.description && (
+                          <div className="text-xs text-gray-500 truncate">{section.description}</div>
                         )}
                       </div>
-
-                      <div className="flex items-center justify-between">
-                        <div className="flex space-x-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDocumentDownload(doc)}
-                          >
-                            <Download className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                          >
-                            <Share2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDocumentDelete(doc.id)}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </Button>
                 ))}
               </div>
-            ) : (
-              <Card>
-                <CardContent className="p-12">
-                  <div className="text-center">
-                    <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">
-                      Aucun document trouvé
-                    </h3>
-                    <p className="text-gray-500 mb-6">
-                      {searchTerm || selectedStatus !== 'all' || selectedCategory !== 'all' || selectedProduct !== 'all'
-                        ? "Aucun document ne correspond à vos critères de recherche"
-                        : "Vous n'avez pas encore uploadé de documents"
-                      }
-                    </p>
-                    <Button onClick={() => setShowUploadModal(true)}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Uploader un document
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-
-          {/* Mes Dossiers */}
-          <TabsContent value="dossiers" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <FolderOpen className="h-5 w-5 mr-2" />
-                  Mes Dossiers
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {dossiers.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {dossiers.map((dossier) => (
-                      <Card key={dossier.id} className="hover:shadow-md transition-shadow">
-                        <CardContent className="p-6">
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center space-x-3">
-                              <Building className="h-8 w-8 text-blue-600" />
-                              <div>
-                                <h3 className="font-medium">{dossier.product_name}</h3>
-                                <p className="text-sm text-gray-500">
-                                  {dossier.documents_count} documents
-                                </p>
-                              </div>
-                            </div>
-                            <Badge variant="outline">{dossier.status}</Badge>
-                          </div>
-                          
-                          <div className="space-y-2 mb-4">
-                            <div className="flex items-center text-xs text-gray-500">
-                              <Calendar className="h-3 w-3 mr-1" />
-                              Créé le {new Date(dossier.created_at).toLocaleDateString()}
-                            </div>
-                          </div>
-
-                          <div className="flex space-x-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => navigate(`/dashboard/client/${user.id}?dossier=${dossier.id}`)}
-                              className="flex-1"
-                            >
-                              <Eye className="h-4 w-4 mr-2" />
-                              Voir
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedDossier(dossier.id);
-                                setShowUploadModal(true);
-                              }}
-                            >
-                              <Plus className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-12">
-                    <FolderOpen className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">
-                      Aucun dossier
-                    </h3>
-                    <p className="text-gray-500 mb-6">
-                      Vous n'avez pas encore de dossiers actifs
-                    </p>
-                    <Button onClick={() => navigate('/simulateur-eligibilite')}>
-                      Créer un dossier
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Statistiques */}
-          <TabsContent value="stats" className="space-y-6">
-            {stats && <DocumentStats userId={user.id} />}
-          </TabsContent>
-        </Tabs>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
-      {/* Modal d'upload */}
-      {showUploadModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold">Uploader un document</h2>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowUploadModal(false)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            
-            <DocumentUpload
-              clientProduitId={selectedDossier || ''}
-              onUploadComplete={handleDocumentUpload}
-              showDossierSelector={!selectedDossier}
-              dossiers={dossiers}
-              onDossierSelect={setSelectedDossier}
-            />
-          </div>
-        </div>
-      )}
+      {/* Dialog d'upload */}
+      <UploadDialog
+        sectionName={selectedSection}
+        isOpen={uploadDialogOpen}
+        onClose={() => setUploadDialogOpen(false)}
+        onUpload={handleUpload}
+      />
     </div>
   );
-} 
+};
+
+export default DocumentsClientPage; 

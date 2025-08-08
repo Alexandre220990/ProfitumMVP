@@ -1,0 +1,19 @@
+{
+  "name": "financialtracker-guides-converter",
+  "version": "1.0.0",
+  "description": "Script pour convertir les guides Markdown en PDF et les uploader dans Supabase",
+  "main": "convert-and-upload-guides.js",
+  "scripts": {
+    "convert": "node convert-and-upload-guides.js",
+    "install-deps": "npm install"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.38.0",
+    "puppeteer": "^21.5.0",
+    "markdown-pdf": "^11.0.0"
+  },
+  "devDependencies": {},
+  "keywords": ["pdf", "markdown", "supabase", "guides"],
+  "author": "FinancialTracker",
+  "license": "MIT"
+}
