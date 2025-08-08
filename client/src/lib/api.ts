@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { ApiResponse } from "@/types/api";
+import { supabase } from './supabase';
 
 // Configuration de base d'Axios
 // Support IPv6 et IPv4 avec fallback intelligent
@@ -35,13 +36,16 @@ api.interceptors.request.use(async (config) => {
     // Si pas de token, essayer de rafraîchir la session Supabase
     if (!supabaseToken) {
       console.log('🔄 Tentative de rafraîchissement de la session Supabase...');
-      const { supabase } = await import('./supabase');
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session?.access_token) {
-        supabaseToken = session.access_token;
-        localStorage.setItem('supabase_token', session.access_token);
-        console.log('✅ Session Supabase rafraîchie');
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.access_token) {
+          supabaseToken = session.access_token;
+          localStorage.setItem('supabase_token', session.access_token);
+          console.log('✅ Session Supabase rafraîchie');
+        }
+      } catch (error) {
+        console.error('Erreur lors du rafraîchissement de la session:', error);
       }
     }
     
@@ -70,7 +74,6 @@ api.interceptors.response.use(
       console.log('🔐 Erreur d\'authentification détectée, tentative de rafraîchissement...');
       
       try {
-        const { supabase } = await import('./supabase');
         const { data: { session }, error: refreshError } = await supabase.auth.refreshSession();
         
         if (session?.access_token && !refreshError) {
