@@ -366,6 +366,89 @@ app.get('/api/admin-diagnostic', async (req, res) => {
   }
 });
 
+// Route pour corriger automatiquement la situation admin
+app.post('/api/admin-fix', async (req, res) => {
+  try {
+    const { email, name } = req.body;
+    
+    if (!email || !name) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email et nom requis'
+      });
+    }
+    
+    console.log('🔧 Correction admin:', { email, name });
+    
+    // Vérifier si l'admin existe déjà dans la table Admin
+    const { data: existingAdmin } = await supabase
+      .from('Admin')
+      .select('id, email, name')
+      .eq('email', email)
+      .single();
+    
+    if (existingAdmin) {
+      return res.json({
+        success: true,
+        message: 'Admin existe déjà dans la table Admin',
+        admin: existingAdmin
+      });
+    }
+    
+    // Vérifier si l'utilisateur existe dans Client ou Expert
+    const { data: clientUser } = await supabase
+      .from('Client')
+      .select('id, email, name, created_at')
+      .eq('email', email)
+      .single();
+    
+    const { data: expertUser } = await supabase
+      .from('Expert')
+      .select('id, email, name, created_at')
+      .eq('email', email)
+      .single();
+    
+    // Créer l'admin dans la table Admin
+    const { data: newAdmin, error } = await supabase
+      .from('Admin')
+      .insert({
+        email,
+        name,
+        created_at: clientUser?.created_at || expertUser?.created_at || new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .select('id, email, name, created_at')
+      .single();
+    
+    if (error) {
+      console.error('❌ Erreur création admin:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la création de l\'admin',
+        error: error.message
+      });
+    }
+    
+    console.log('✅ Admin créé avec succès:', newAdmin);
+    
+    return res.json({
+      success: true,
+      message: 'Admin créé avec succès',
+      admin: newAdmin,
+      wasInClient: !!clientUser,
+      wasInExpert: !!expertUser
+    });
+    
+  } catch (error) {
+    console.error('❌ Erreur correction admin:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la correction',
+      error: error instanceof Error ? error.message : 'Erreur inconnue'
+    });
+  }
+});
+
 // Routes audit - PROTÉGÉES
 app.use('/api/audit', enhancedAuthMiddleware, auditRoutes);
 
