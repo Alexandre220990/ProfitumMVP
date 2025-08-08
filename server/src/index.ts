@@ -8,6 +8,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import { createServer } from 'http';
+import cookieParser from 'cookie-parser';
 import authRoutes from './routes/auth';
 import auditsRouter from './routes/audits';
 import simulationsRoutes from './routes/simulations';
@@ -115,6 +116,7 @@ app.use(logSupabaseRequest);
 // app.use(addSupabaseAuth);
 
 app.use(express.json());
+app.use(cookieParser()); // Ajout du middleware cookie-parser
 app.use(helmet());
 app.use(morgan('dev'));
 

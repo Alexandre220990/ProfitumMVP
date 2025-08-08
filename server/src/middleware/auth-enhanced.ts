@@ -151,8 +151,35 @@ export const enhancedAuthMiddleware = async (
   const userAgent = req.headers['user-agent'] || 'unknown';
   
   try {
-    // 1. Vérification du token d'authentification
-    const token = req.headers.authorization?.replace('Bearer ', '');
+    // 1. Vérification du token d'authentification (header Authorization OU cookies Supabase)
+    let token = req.headers.authorization?.replace('Bearer ', '');
+    
+    // Si pas de token dans le header, vérifier les cookies Supabase
+    if (!token) {
+      // Vérifier les cookies de session Supabase
+      const supabaseAccessToken = req.cookies?.sb_access_token || req.cookies?.supabase_access_token;
+      const supabaseRefreshToken = req.cookies?.sb_refresh_token || req.cookies?.supabase_refresh_token;
+      
+      if (supabaseAccessToken) {
+        token = supabaseAccessToken;
+        console.log('🔐 Token trouvé dans les cookies Supabase');
+      } else if (supabaseRefreshToken) {
+        // Si on a un refresh token mais pas d'access token, essayer de le rafraîchir
+        console.log('🔄 Refresh token trouvé, tentative de rafraîchissement...');
+        try {
+          const { data: { session }, error } = await supabase.auth.refreshSession({
+            refresh_token: supabaseRefreshToken
+          });
+          
+          if (session?.access_token && !error) {
+            token = session.access_token;
+            console.log('✅ Token rafraîchi avec succès');
+          }
+        } catch (refreshError) {
+          console.log('❌ Erreur lors du rafraîchissement du token:', refreshError);
+        }
+      }
+    }
     
     if (!token) {
       await logAccess({
@@ -164,7 +191,7 @@ export const enhancedAuthMiddleware = async (
         ipAddress: ipAddress as string,
         userAgent,
         success: false,
-        errorMessage: 'Token manquant'
+        errorMessage: 'Token manquant (header Authorization et cookies Supabase)'
       });
       
       // S'assurer que les headers CORS sont présents avant d'envoyer la réponse
@@ -186,6 +213,7 @@ export const enhancedAuthMiddleware = async (
       const { data: { user: sessionUser }, error: sessionError } = await supabase.auth.getUser(token);
       if (sessionUser && !sessionError) {
         user = sessionUser;
+        console.log('✅ Utilisateur authentifié via Supabase:', sessionUser.email);
       } else {
         // Si ça échoue, essayer de décoder le token JWT personnalisé
         try {
@@ -199,12 +227,15 @@ export const enhancedAuthMiddleware = async (
             }
           };
           jwtUserData = decoded; // Stocker les données décodées pour plus tard
+          console.log('✅ Utilisateur authentifié via JWT personnalisé:', decoded.email);
         } catch (jwtError) {
           authError = jwtError;
+          console.log('❌ Erreur décodage JWT:', jwtError.message);
         }
       }
     } catch (error) {
       authError = error;
+      console.log('❌ Erreur validation token Supabase:', error);
     }
     
     if (authError || !user) {
