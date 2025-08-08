@@ -315,35 +315,45 @@ app.get('/api/admin-diagnostic', async (req, res) => {
     
     console.log('✅ Token valide pour utilisateur:', user.email);
     
-    // Vérifier si l'utilisateur existe dans la table Admin
-    const { data: adminUser, error: adminError } = await supabase
-      .from('Admin')
-      .select('id, email, name, created_at')
+    // Vérifier dans quelle table se trouve l'utilisateur
+    const { data: clientUser } = await supabase
+      .from('Client')
+      .select('id, email, name')
       .eq('email', user.email)
       .single();
     
-    if (adminError || !adminUser) {
-      return res.json({
-        success: false,
-        message: 'Utilisateur non trouvé dans la table Admin',
-        userEmail: user.email,
-        adminError: adminError?.message,
-        isAdmin: false
-      });
-    }
+    const { data: expertUser } = await supabase
+      .from('Expert')
+      .select('id, email, name')
+      .eq('email', user.email)
+      .single();
     
-    console.log('✅ Admin trouvé:', adminUser);
+    const { data: adminUser } = await supabase
+      .from('Admin')
+      .select('id, email, name')
+      .eq('email', user.email)
+      .single();
+    
+    const userLocation = {
+      client: clientUser ? { id: clientUser.id, email: clientUser.email, name: clientUser.name } : null,
+      expert: expertUser ? { id: expertUser.id, email: expertUser.email, name: expertUser.name } : null,
+      admin: adminUser ? { id: adminUser.id, email: adminUser.email, name: adminUser.name } : null
+    };
+    
+    console.log('📍 Localisation utilisateur:', userLocation);
     
     return res.json({
       success: true,
-      message: 'Authentification admin réussie',
+      message: 'Diagnostic terminé',
       user: {
         id: user.id,
         email: user.email,
-        adminId: adminUser.id,
-        adminName: adminUser.name
+        user_metadata: user.user_metadata
       },
-      isAdmin: true
+      userLocation,
+      isAdmin: !!adminUser,
+      isClient: !!clientUser,
+      isExpert: !!expertUser
     });
     
   } catch (error) {
