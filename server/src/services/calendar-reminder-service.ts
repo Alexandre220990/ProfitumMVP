@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { NotificationService, NotificationType } from './notification-service';
+import { NotificationService } from './NotificationService';
 
 // Configuration Supabase
 const supabaseUrl = process.env.SUPABASE_URL!;
@@ -7,10 +7,8 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 export class CalendarReminderService {
-  private notificationService: NotificationService;
-
   constructor() {
-    this.notificationService = new NotificationService();
+    // Initialisation simplifiée
   }
 
   /**
@@ -108,10 +106,10 @@ export class CalendarReminderService {
       const recipients = await this.getEventRecipients(event);
 
       for (const recipient of recipients) {
-        await this.notificationService.sendNotification(
+        await NotificationService.sendSystemNotification(
           recipient.user_id,
-          recipient.user_type as 'client' | 'expert' | 'admin' | 'profitum',
-          NotificationType.CLIENT_CALENDAR_EVENT_REMINDER,
+          'Rappel événement calendrier',
+          `Rappel pour l'événement "${event.title}" dans ${this.formatReminderTime(timeUntilEvent)}`,
           {
             event_title: event.title,
             event_date: eventStart.toLocaleDateString('fr-FR'),
@@ -304,10 +302,10 @@ export class CalendarReminderService {
       const recipients = await this.getEventRecipients(event);
 
       for (const recipient of recipients) {
-        await this.notificationService.sendNotification(
+        await NotificationService.sendSystemNotification(
           recipient.user_id,
-          recipient.user_type as 'client' | 'expert' | 'admin' | 'profitum',
-          NotificationType.CLIENT_CALENDAR_EVENT_REMINDER,
+          'Événement terminé',
+          `L'événement "${event.title}" est maintenant terminé.`,
           {
             event_title: event.title,
             event_date: new Date(event.start_date).toLocaleDateString('fr-FR'),

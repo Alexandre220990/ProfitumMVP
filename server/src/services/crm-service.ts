@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { NotificationService, NotificationType } from './notification-service';
+import { NotificationService } from './NotificationService';
 
 // Configuration Supabase
 const supabaseUrl = process.env.SUPABASE_URL!;
@@ -140,10 +140,8 @@ export interface DashboardMetrics {
 }
 
 export class CRMService {
-  private notificationService: NotificationService;
-
   constructor() {
-    this.notificationService = new NotificationService();
+    // Initialisation simplifiée
   }
 
   // ===== GESTION DES CONTACTS =====
@@ -186,10 +184,10 @@ export class CRMService {
 
       // Envoyer notification si assigné
       if (contactData.assigned_to) {
-        await this.notificationService.sendNotification(
+        await NotificationService.sendSystemNotification(
           contactData.assigned_to,
-          'admin',
-          NotificationType.ADMIN_NEW_CLIENT_REGISTRATION,
+          'Nouveau contact enregistré',
+          `Nouveau contact : ${contactData.first_name} ${contactData.last_name} (${contactData.company_name})`,
           {
             contact_name: `${contactData.first_name} ${contactData.last_name}`,
             company_name: contactData.company_name,
@@ -415,10 +413,10 @@ export class CRMService {
 
       // Envoyer notification si assigné à quelqu'un d'autre
       if (taskData.assigned_to !== taskData.created_by) {
-        await this.notificationService.sendNotification(
+        await NotificationService.sendSystemNotification(
           taskData.assigned_to,
-          'admin',
-          NotificationType.CLIENT_DEADLINE_REMINDER,
+          'Nouvelle tâche assignée',
+          `Nouvelle tâche : ${taskData.title} (échéance : ${taskData.due_date})`,
           {
             task_title: taskData.title,
             due_date: taskData.due_date,
@@ -523,10 +521,10 @@ export class CRMService {
       if (error) throw error;
 
       // Envoyer notification
-      await this.notificationService.sendNotification(
+      await NotificationService.sendSystemNotification(
         opportunityData.assigned_to,
-        'admin',
-        NotificationType.EXPERT_NEW_ASSIGNMENT,
+        'Nouvelle opportunité assignée',
+        `Nouvelle opportunité : ${opportunityData.title} (valeur : ${opportunityData.value}€)`,
         {
           opportunity_title: opportunityData.title,
           value: opportunityData.value,

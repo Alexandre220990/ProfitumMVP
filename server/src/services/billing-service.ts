@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { NotificationService, NotificationType } from './notification-service';
+import { NotificationService } from './NotificationService';
 
 // Configuration Supabase
 const supabaseUrl = process.env.SUPABASE_URL!;
@@ -96,10 +96,8 @@ export interface BillingSettings {
 }
 
 export class BillingService {
-  private notificationService: NotificationService;
-
   constructor() {
-    this.notificationService = new NotificationService();
+    // Initialisation simplifiée
   }
 
   /**
@@ -176,10 +174,10 @@ export class BillingService {
       }
 
       // Envoyer notification
-      await this.notificationService.sendNotification(
+      await NotificationService.sendSystemNotification(
         invoiceData.client_id,
-        'client',
-        NotificationType.CLIENT_INVOICE_GENERATED,
+        'Facture générée',
+        `Votre facture ${invoiceNumber} a été générée pour un montant de ${totalAmount}€.`,
         {
           invoice_number: invoiceNumber,
           total_amount: totalAmount,
@@ -248,10 +246,10 @@ export class BillingService {
 
       if (invoice) {
         // Envoyer notification
-        await this.notificationService.sendNotification(
+        await NotificationService.sendSystemNotification(
           invoice.client_id,
-          'client',
-          NotificationType.CLIENT_INVOICE_GENERATED,
+          'Facture envoyée',
+          `Votre facture ${invoice.invoice_number} a été envoyée pour un montant de ${invoice.total_amount}€.`,
           {
             invoice_number: invoice.invoice_number,
             total_amount: invoice.total_amount,
@@ -354,10 +352,10 @@ export class BillingService {
 
       if (invoice) {
         // Envoyer notification de paiement reçu
-        await this.notificationService.sendNotification(
+        await NotificationService.sendSystemNotification(
           invoice.client_id,
-          'client',
-          NotificationType.CLIENT_PAYMENT_RECEIVED,
+          'Paiement reçu',
+          `Votre paiement de ${paymentData.amount}€ pour la facture ${invoice.invoice_number} a été reçu.`,
           {
             invoice_number: invoice.invoice_number,
             amount: paymentData.amount,
@@ -368,10 +366,10 @@ export class BillingService {
 
         // Si c'est une commission d'expert, notifier l'expert
         if (invoice.expert_id && invoice.billing_type === BillingType.EXPERT_COMMISSION) {
-                  await this.notificationService.sendNotification(
-          invoice.expert_id,
-          'expert',
-          NotificationType.EXPERT_PAYMENT_PROCESSED,
+          await NotificationService.sendSystemNotification(
+            invoice.expert_id,
+            'Commission traitée',
+            `Votre commission de ${paymentData.amount}€ pour la facture ${invoice.invoice_number} a été traitée.`,
             {
               invoice_number: invoice.invoice_number,
               amount: paymentData.amount,

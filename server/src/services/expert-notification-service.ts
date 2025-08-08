@@ -1,10 +1,4 @@
-import { NotificationService, NotificationType, NotificationPriority } from './notification-service';
-import { createClient } from '@supabase/supabase-js';
-
-// Configuration Supabase
-const supabaseUrl = process.env.SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+import { NotificationService } from './NotificationService';
 
 export interface ExpertNotificationData {
   expert_id: string;
@@ -33,21 +27,18 @@ export interface ExpertNotificationData {
 }
 
 export class ExpertNotificationService {
-  private notificationService: NotificationService;
-
   constructor() {
-    this.notificationService = new NotificationService();
+    // Initialisation simplifiée
   }
 
   /**
-   * Notifier l'admin d'une nouvelle demande de démo expert
+   * Notifier l'admin d'une nouvelle demande d'expert
    */
   async notifyAdminOfDemoRequest(data: ExpertNotificationData): Promise<string> {
     try {
-      // Obtenir l'ID admin (premier admin trouvé ou email spécifique)
       const adminId = await this.getAdminId();
       if (!adminId) {
-        throw new Error('Aucun admin trouvé pour la notification');
+        throw new Error('Aucun admin trouvé');
       }
 
       const notificationData = {
@@ -56,12 +47,11 @@ export class ExpertNotificationService {
         recipient_name: 'Administrateur'
       };
 
-      return await this.notificationService.sendNotification(
+      return await NotificationService.sendSystemNotification(
         adminId,
-        'admin',
-        NotificationType.ADMIN_NEW_EXPERT_APPLICATION,
-        notificationData,
-        NotificationPriority.HIGH
+        'Nouvelle demande d\'expert',
+        `Nouvelle demande d'expert : ${data.expert_name} (${data.expert_email})`,
+        notificationData
       );
     } catch (error) {
       console.error('Erreur notification admin demande démo:', error);
@@ -80,12 +70,11 @@ export class ExpertNotificationService {
         recipient_name: data.expert_name
       };
 
-      return await this.notificationService.sendNotification(
+      return await NotificationService.sendSystemNotification(
         data.expert_id,
-        'expert',
-        NotificationType.EXPERT_ACCOUNT_APPROVED,
-        notificationData,
-        NotificationPriority.HIGH
+        'Compte expert approuvé',
+        `Votre compte expert a été approuvé. Bienvenue ${data.expert_name} !`,
+        notificationData
       );
     } catch (error) {
       console.error('Erreur notification approbation expert:', error);
@@ -103,12 +92,11 @@ export class ExpertNotificationService {
         recipient_name: data.expert_name
       };
 
-      return await this.notificationService.sendNotification(
+      return await NotificationService.sendSystemNotification(
         data.expert_id,
-        'expert',
-        NotificationType.EXPERT_ACCOUNT_REJECTED,
-        notificationData,
-        NotificationPriority.MEDIUM
+        'Demande expert refusée',
+        `Votre demande d'expert a été refusée. Raison : ${data.rejection_reason}`,
+        notificationData
       );
     } catch (error) {
       console.error('Erreur notification refus expert:', error);
@@ -127,12 +115,11 @@ export class ExpertNotificationService {
         recipient_name: data.expert_name
       };
 
-      return await this.notificationService.sendNotification(
+      return await NotificationService.sendSystemNotification(
         data.expert_id,
-        'expert',
-        NotificationType.EXPERT_ACCOUNT_APPROVED,
-        notificationData,
-        NotificationPriority.HIGH
+        'Compte expert créé',
+        `Votre compte expert a été créé. Mot de passe temporaire : ${data.temp_password}`,
+        notificationData
       );
     } catch (error) {
       console.error('Erreur notification création compte expert:', error);
@@ -151,12 +138,11 @@ export class ExpertNotificationService {
         recipient_name: data.expert_name
       };
 
-      return await this.notificationService.sendNotification(
+      return await NotificationService.sendSystemNotification(
         data.expert_id,
-        'expert',
-        NotificationType.EXPERT_ACCOUNT_APPROVED,
-        notificationData,
-        NotificationPriority.MEDIUM
+        'Profil expert mis à jour',
+        `Votre profil expert a été mis à jour.`,
+        notificationData
       );
     } catch (error) {
       console.error('Erreur notification mise à jour profil expert:', error);
@@ -165,21 +151,21 @@ export class ExpertNotificationService {
   }
 
   /**
-   * Notifier l'expert du changement de statut de son compte
+   * Notifier l'expert d'un changement de statut
    */
   async notifyExpertStatusChanged(data: ExpertNotificationData): Promise<string> {
     try {
       const notificationData = {
         ...data,
+        expert_dashboard_url: `${process.env.FRONTEND_URL}/expert/dashboard`,
         recipient_name: data.expert_name
       };
 
-      return await this.notificationService.sendNotification(
+      return await NotificationService.sendSystemNotification(
         data.expert_id,
-        'expert',
-        NotificationType.EXPERT_ACCOUNT_SUSPENDED,
-        notificationData,
-        NotificationPriority.HIGH
+        'Statut expert modifié',
+        `Votre statut expert a été modifié de ${data.old_status} à ${data.new_status}.`,
+        notificationData
       );
     } catch (error) {
       console.error('Erreur notification changement statut expert:', error);
@@ -187,117 +173,38 @@ export class ExpertNotificationService {
     }
   }
 
-  /**
-   * Obtenir l'ID d'un admin pour les notifications
-   */
   private async getAdminId(): Promise<string | null> {
-    try {
-      // Essayer de trouver un admin dans la table Client
-      const { data: adminClient } = await supabase
-        .from('Client')
-        .select('id')
-        .eq('type', 'admin')
-        .limit(1)
-        .single();
-
-      if (adminClient) {
-        return adminClient.id;
-      }
-
-      // Si pas d'admin dans Client, utiliser un ID par défaut ou email
-      const adminEmail = process.env.ADMIN_EMAIL;
-      if (adminEmail) {
-        const { data: adminByEmail } = await supabase
-          .from('Client')
-          .select('id')
-          .eq('email', adminEmail)
-          .single();
-
-        if (adminByEmail) {
-          return adminByEmail.id;
-        }
-      }
-
-      return null;
-    } catch (error) {
-      console.error('Erreur recherche admin:', error);
-      return null;
-    }
+    // TODO: Implémenter la récupération de l'ID admin
+    return null;
   }
 
-  /**
-   * Générer un mot de passe temporaire sécurisé
-   */
+  // Méthodes utilitaires statiques
   static generateTempPassword(): string {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
-    let password = '';
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
     for (let i = 0; i < 12; i++) {
-      password += chars.charAt(Math.floor(Math.random() * chars.length));
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
     }
-    return password;
+    return result;
   }
 
-  /**
-   * Formater les champs mis à jour pour l'affichage
-   */
   static formatUpdatedFields(updatedFields: Record<string, any>): string {
-    const fieldLabels: Record<string, string> = {
-      name: 'Nom',
-      email: 'Email',
-      company_name: 'Nom de l\'entreprise',
-      siren: 'SIREN',
-      phone: 'Téléphone',
-      location: 'Localisation',
-      experience: 'Expérience',
-      specializations: 'Spécialisations',
-      languages: 'Langues',
-      website: 'Site web',
-      linkedin: 'LinkedIn',
-      compensation: 'Compensation',
-      max_clients: 'Limite de clients',
-      hourly_rate: 'Taux horaire',
-      availability: 'Disponibilité',
-      status: 'Statut',
-      approval_status: 'Statut d\'approbation',
-      abonnement: 'Abonnement',
-      description: 'Description'
-    };
-
-    return Object.entries(updatedFields)
-      .map(([field, value]) => {
-        const label = fieldLabels[field] || field;
-        let displayValue = value;
-        
-        if (Array.isArray(value)) {
-          displayValue = value.join(', ');
-        } else if (typeof value === 'boolean') {
-          displayValue = value ? 'Activé' : 'Désactivé';
-        }
-        
-        return `<li><strong>${label} :</strong> ${displayValue}</li>`;
-      })
-      .join('');
+    return Object.keys(updatedFields)
+      .map(field => field.replace(/_/g, ' '))
+      .join(', ');
   }
 
-  /**
-   * Obtenir l'impact d'un changement de statut
-   */
   static getStatusImpact(oldStatus: string, newStatus: string): string {
-    const impacts: Record<string, Record<string, string>> = {
-      'active': {
-        'inactive': 'Votre compte est maintenant inactif. Vous ne recevrez plus de nouvelles missions.',
-        'suspended': 'Votre compte a été suspendu temporairement. Contactez le support pour plus d\'informations.'
-      },
-      'inactive': {
-        'active': 'Votre compte est maintenant actif. Vous pouvez à nouveau recevoir des missions.',
-        'suspended': 'Votre compte a été suspendu. Contactez le support pour plus d\'informations.'
-      },
-      'suspended': {
-        'active': 'Votre compte a été réactivé. Vous pouvez à nouveau recevoir des missions.',
-        'inactive': 'Votre compte est maintenant inactif. Vous ne recevrez plus de nouvelles missions.'
-      }
+    const statusMap: Record<string, string> = {
+      'pending': 'En attente',
+      'active': 'Actif',
+      'suspended': 'Suspendu',
+      'inactive': 'Inactif'
     };
 
-    return impacts[oldStatus]?.[newStatus] || 'Le statut de votre compte a été modifié.';
+    const oldStatusFr = statusMap[oldStatus] || oldStatus;
+    const newStatusFr = statusMap[newStatus] || newStatus;
+
+    return `Changement de statut de ${oldStatusFr} à ${newStatusFr}`;
   }
-} 
+}

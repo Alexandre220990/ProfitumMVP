@@ -2,7 +2,7 @@ import express, { Request, Response } from 'express';
 import { supabase } from '../lib/supabase';
 import { AuthUser } from '../types/auth';
 import { enhancedAuthMiddleware, AuthenticatedRequest } from '../middleware/auth-enhanced';
-import { NotificationService } from '../services/notification-service';
+import { NotificationService } from '../services/NotificationService';
 
 const router = express.Router();
 

@@ -1,4 +1,4 @@
-import { NotificationService, NotificationType, NotificationPriority, NotificationChannel } from './notification-service';
+import { NotificationService } from './NotificationService';
 
 export enum FONCIERNotificationType {
   // Étapes du workflow FONCIER
@@ -39,68 +39,48 @@ export interface FONCIERWorkflowData {
   documents_count?: number;
   validation_deadline?: string;
   audit_date?: string;
-  property_address?: string;
-  property_type?: string;
 }
 
 export class FONCIERNotificationService {
-  private notificationService: NotificationService;
-
   constructor() {
-    this.notificationService = new NotificationService();
-    this.initializeFONCIERTemplates();
-  }
-
-  private initializeFONCIERTemplates(): void {
-    // Les templates sont gérés par le service de notification principal
-    // Nous utilisons les types de notification existants avec des données spécialisées
-    console.log('Service de notification FONCIER initialisé');
+    // Initialisation simplifiée
   }
 
   // Méthodes pour envoyer les notifications FONCIER
   async notifyEligibilityConfirmed(data: FONCIERWorkflowData): Promise<string> {
-    return this.notificationService.sendNotification(
+    return NotificationService.sendSystemNotification(
       data.client_id,
-      'client',
-      NotificationType.EXPERT_WORKFLOW_STEP_COMPLETED,
+      'Éligibilité FONCIER confirmée',
+      `Votre éligibilité au remboursement FONCIER a été confirmée. Montant estimé : ${data.estimated_amount}€`,
       {
         ...data,
-        product_type: 'FONCIER',
-        step_name: 'Éligibilité confirmée',
         dashboard_url: `${process.env.FRONTEND_URL}/dashboard/client-audit/${data.dossier_id}`
-      },
-      NotificationPriority.HIGH
+      }
     );
   }
 
   async notifyExpertSelected(data: FONCIERWorkflowData): Promise<string> {
     // Notification au client
-    await this.notificationService.sendNotification(
+    await NotificationService.sendSystemNotification(
       data.client_id,
-      'client',
-      NotificationType.EXPERT_NEW_ASSIGNMENT,
+      'Expert FONCIER sélectionné',
+      `${data.expert_name} a été sélectionné pour votre dossier FONCIER.`,
       {
         ...data,
-        product_type: 'FONCIER',
-        step_name: 'Expert sélectionné',
         dashboard_url: `${process.env.FRONTEND_URL}/dashboard/client-audit/${data.dossier_id}`
-      },
-      NotificationPriority.HIGH
+      }
     );
 
     // Notification à l'expert
     if (data.expert_id) {
-      await this.notificationService.sendNotification(
+      await NotificationService.sendSystemNotification(
         data.expert_id,
-        'expert',
-        NotificationType.EXPERT_NEW_ASSIGNMENT,
+        'Nouveau dossier FONCIER assigné',
+        `Vous avez été assigné au dossier FONCIER de ${data.client_name} (${data.company_name}).`,
         {
           ...data,
-          product_type: 'FONCIER',
-          step_name: 'Nouveau dossier assigné',
           dashboard_url: `${process.env.FRONTEND_URL}/expert/dossier/${data.dossier_id}`
-        },
-        NotificationPriority.HIGH
+        }
       );
     }
 
@@ -108,47 +88,38 @@ export class FONCIERNotificationService {
   }
 
   async notifyDocumentsCollected(data: FONCIERWorkflowData): Promise<string> {
-    return this.notificationService.sendNotification(
+    return NotificationService.sendSystemNotification(
       data.client_id,
-      'client',
-      NotificationType.CLIENT_DOCUMENT_UPLOADED,
+      'Documents FONCIER collectés',
+      `${data.documents_count} documents ont été collectés pour votre dossier FONCIER.`,
       {
         ...data,
-        product_type: 'FONCIER',
-        step_name: 'Documents collectés',
         dashboard_url: `${process.env.FRONTEND_URL}/dashboard/client-audit/${data.dossier_id}`
-      },
-      NotificationPriority.MEDIUM
+      }
     );
   }
 
   async notifyAuditCompleted(data: FONCIERWorkflowData): Promise<string> {
-    return this.notificationService.sendNotification(
+    return NotificationService.sendSystemNotification(
       data.client_id,
-      'client',
-      NotificationType.EXPERT_WORKFLOW_STEP_COMPLETED,
+      'Audit FONCIER terminé',
+      'L\'audit comptable de votre dossier FONCIER est terminé.',
       {
         ...data,
-        product_type: 'FONCIER',
-        step_name: 'Audit immobilier terminé',
         dashboard_url: `${process.env.FRONTEND_URL}/dashboard/client-audit/${data.dossier_id}`
-      },
-      NotificationPriority.HIGH
+      }
     );
   }
 
   async notifyValidationApproved(data: FONCIERWorkflowData): Promise<string> {
-    return this.notificationService.sendNotification(
+    return NotificationService.sendSystemNotification(
       data.client_id,
-      'client',
-      NotificationType.CLIENT_WORKFLOW_COMPLETED,
+      'Validation FONCIER approuvée',
+      'Votre dossier FONCIER a été validé avec succès.',
       {
         ...data,
-        product_type: 'FONCIER',
-        step_name: 'Validation approuvée',
         dashboard_url: `${process.env.FRONTEND_URL}/dashboard/client-audit/${data.dossier_id}`
-      },
-      NotificationPriority.URGENT
+      }
     );
   }
 
@@ -158,62 +129,22 @@ export class FONCIERNotificationService {
     const adminIds = await this.getAdminUserIds();
     
     for (const adminId of adminIds) {
-      await this.notificationService.sendNotification(
+      await NotificationService.sendSystemNotification(
         adminId,
-        'admin',
-        NotificationType.CLIENT_DOCUMENT_UPLOADED,
+        'Document FONCIER uploadé',
+        `Nouveau document uploadé pour le dossier FONCIER de ${data.client_name}.`,
         {
           ...data,
-          product_type: 'FONCIER',
-          step_name: 'Document uploadé',
           dashboard_url: `${process.env.FRONTEND_URL}/admin/documents/validate`
-        },
-        NotificationPriority.MEDIUM
+        }
       );
     }
 
     return 'admin_notifications_sent';
   }
 
-  // Notifications spécialisées FONCIER
-  async notifyPropertyInspectionScheduled(data: FONCIERWorkflowData & { inspection_date: string; inspector_name: string }): Promise<string> {
-    return this.notificationService.sendNotification(
-      data.client_id,
-      'client',
-      NotificationType.EXPERT_WORKFLOW_STEP_COMPLETED,
-      {
-        ...data,
-        product_type: 'FONCIER',
-        step_name: 'Inspection programmée',
-        inspection_date: data.inspection_date,
-        inspector_name: data.inspector_name,
-        dashboard_url: `${process.env.FRONTEND_URL}/dashboard/client-audit/${data.dossier_id}`
-      },
-      NotificationPriority.HIGH
-    );
-  }
-
-  async notifyTaxCalculationCompleted(data: FONCIERWorkflowData & { tax_benefit: number; eligible_expenses: number }): Promise<string> {
-    return this.notificationService.sendNotification(
-      data.client_id,
-      'client',
-      NotificationType.EXPERT_WORKFLOW_STEP_COMPLETED,
-      {
-        ...data,
-        product_type: 'FONCIER',
-        step_name: 'Calcul fiscal terminé',
-        tax_benefit: data.tax_benefit,
-        eligible_expenses: data.eligible_expenses,
-        dashboard_url: `${process.env.FRONTEND_URL}/dashboard/client-audit/${data.dossier_id}`
-      },
-      NotificationPriority.HIGH
-    );
-  }
-
-  // Méthode utilitaire pour récupérer les IDs des admins
   private async getAdminUserIds(): Promise<string[]> {
-    // Implémentation pour récupérer les IDs des utilisateurs admin
-    // À adapter selon votre structure de base de données
-    return ['admin-1', 'admin-2']; // Placeholder
+    // TODO: Implémenter la récupération des IDs admin
+    return [];
   }
-} 
+}

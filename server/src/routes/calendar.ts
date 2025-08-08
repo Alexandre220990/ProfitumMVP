@@ -9,10 +9,9 @@ import { supabase } from '../lib/supabase';
 import { asyncHandler } from '../utils/asyncHandler';
 import { rateLimit } from 'express-rate-limit';
 import Joi from 'joi';
-import { NotificationService, NotificationType } from '../services/notification-service';
+import { NotificationService } from '../services/NotificationService';
 
 const router = express.Router();
-const notificationService = new NotificationService();
 
 // ============================================================================
 // RATE LIMITING ET SÉCURITÉ
@@ -342,10 +341,10 @@ router.post('/events', calendarLimiter, validateEvent, asyncHandler(async (req: 
     // Envoyer les notifications aux participants
     try {
       // Notification pour l'organisateur
-      await notificationService.sendNotification(
+      await NotificationService.sendSystemNotification(
         authUser.id,
-        authUser.type,
-        NotificationType.CLIENT_CALENDAR_EVENT_REMINDER,
+        'Rappel événement calendrier',
+        `Rappel pour l'événement "${event.title}" le ${new Date(event.start_date).toLocaleDateString('fr-FR')} à ${new Date(event.start_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`,
         {
           event_title: event.title,
           event_date: new Date(event.start_date).toLocaleDateString('fr-FR'),
@@ -363,10 +362,10 @@ router.post('/events', calendarLimiter, validateEvent, asyncHandler(async (req: 
       if (eventData.participants && Array.isArray(eventData.participants)) {
         for (const participantId of eventData.participants) {
           if (participantId !== authUser.id) {
-            await notificationService.sendNotification(
+            await NotificationService.sendSystemNotification(
               participantId,
-              'client', // TODO: Déterminer le type dynamiquement
-              NotificationType.CLIENT_CALENDAR_EVENT_REMINDER,
+              'Invitation événement calendrier',
+              `Vous êtes invité à l'événement "${event.title}" le ${new Date(event.start_date).toLocaleDateString('fr-FR')} à ${new Date(event.start_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`,
               {
                 event_title: event.title,
                 event_date: new Date(event.start_date).toLocaleDateString('fr-FR'),
