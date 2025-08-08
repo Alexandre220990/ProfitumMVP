@@ -1,68 +1,61 @@
-import * as React from "react";
-import { useState, useCallback } from "react";
-import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, Users, FileText, AlertTriangle, Edit, Trash2, Bell, MapPin, Video, Grid, List, CalendarDays, Eye, RefreshCw } from "lucide-react";
-import { DayPicker } from "react-day-picker";
-import { format, isSameDay, startOfWeek, endOfWeek, eachDayOfInterval, addDays, subDays, startOfMonth, endOfMonth, addMinutes } from "date-fns";
-import { fr } from "date-fns/locale";
+import React, { useState, useCallback, useEffect } from 'react';
+import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, Users, FileText, AlertTriangle, Edit, Trash2, Bell, MapPin, Video, List, CalendarDays, RefreshCw, Eye, Grid } from 'lucide-react';
+import { format, isSameDay, startOfWeek, endOfWeek, addDays, subDays, startOfMonth, endOfMonth, addMinutes, addMonths, subMonths, getDay, getDate, isSameMonth, isToday } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 import { useCalendarEvents } from '@/hooks/use-calendar-events';
-import { CalendarEvent as ServiceCalendarEvent } from '@/services/calendar-service';
+import { CalendarEvent } from '@/services/calendar-service';
 
-import { cn } from "@/lib/utils";
-import { buttonVariants } from "@/components/ui/button";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Card, CardContent } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { motion } from 'framer-motion';
+import { DayPicker } from 'react-day-picker';
+import { buttonVariants } from '@/components/ui/button';
 
 // ============================================================================
 // TYPES ET INTERFACES
 // ============================================================================
 
-// Utiliser le type du service pour éviter les conflits
-export type CalendarEvent = ServiceCalendarEvent;
-
-export interface CalendarView {
+interface CalendarView {
   type: 'month' | 'week' | 'day' | 'agenda' | 'list';
   date: Date;
 }
 
-// ============================================================================
-// CONSTANTES ET CONFIGURATION
-// ============================================================================
+interface CalendarEvent {
+  id: string;
+  title: string;
+  description?: string;
+  start_date: string;
+  end_date: string;
+  type: 'appointment' | 'meeting' | 'reminder' | 'task';
+  category: 'personal' | 'work' | 'health' | 'social' | 'collaborative';
+  is_online?: boolean;
+  meeting_url?: string;
+  phone_number?: string;
+  location?: string;
+  participants?: string[];
+  reminders?: Array<{ type: 'email' | 'push'; time: number }>;
+  color?: string;
+  priority?: 'low' | 'medium' | 'high';
+  status?: 'pending' | 'confirmed' | 'cancelled';
+}
 
-const EVENT_TYPES = {
-  appointment: { icon: CalendarIcon, color: 'bg-blue-500', label: 'Rendez-vous' },
-  deadline: { icon: AlertTriangle, color: 'bg-red-500', label: 'Échéance' },
-  meeting: { icon: Users, color: 'bg-purple-500', label: 'Réunion' },
-  task: { icon: FileText, color: 'bg-green-500', label: 'Tâche' },
-  reminder: { icon: Bell, color: 'bg-yellow-500', label: 'Rappel' },
-  consultation: { icon: CalendarIcon, color: 'bg-blue-500', label: 'Consultation' },
-  audit: { icon: AlertTriangle, color: 'bg-red-500', label: 'Audit' },
-  presentation: { icon: Users, color: 'bg-purple-500', label: 'Présentation' },
-  follow_up: { icon: FileText, color: 'bg-green-500', label: 'Suivi' }
-} as const;
-
-const PRIORITY_COLORS = {
-  critical: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400',
-  high: 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400',
-  medium: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400',
-  low: 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400',
-  urgent: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
-} as const;
-
-const STATUS_COLORS = {
-  pending: 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400',
-  confirmed: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400',
-  completed: 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400',
-  cancelled: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
-} as const;
+interface EventDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  event?: CalendarEvent | null;
+  onSubmit: (event: Partial<CalendarEvent>) => void;
+  onCancel: () => void;
+}
 
 // ============================================================================
 // FONCTIONS UTILITAIRES
@@ -139,9 +132,12 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
   filters = {}
 }) => {
   
-  // État local
-  const [view, setView] = useState<CalendarView>({ type: defaultView, date: new Date() });
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  // État local avec date calibrée pour août 2024
+  const [view, setView] = useState<CalendarView>({ 
+    type: defaultView, 
+    date: new Date(2024, 7, 8, 13, 2) // 8 août 2024 à 13:02
+  });
+  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date(2024, 7, 8, 13, 2));
   const [showEventDialog, setShowEventDialog] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -170,8 +166,6 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
     }
   });
 
-
-
   // ========================================
   // GESTION DES ÉVÉNEMENTS
   // ========================================
@@ -183,24 +177,20 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
     }
   }, []);
 
-  const handleEventSubmit = useCallback(async (eventData: any) => {
+  const handleEventSubmit = useCallback(async (eventData: Partial<CalendarEvent>) => {
     try {
       if (selectedEvent) {
-        await updateEvent({ ...eventData, id: selectedEvent.id });
+        await updateEvent(selectedEvent.id, eventData);
       } else {
-        await createEvent({
-          ...eventData,
-          start_date: selectedDate?.toISOString() || new Date().toISOString(),
-          end_date: eventData.end_date || addDays(selectedDate || new Date(), 1).toISOString()
-        });
+        await createEvent(eventData);
       }
       setShowEventDialog(false);
       setSelectedEvent(null);
       setSelectedDate(null);
     } catch (error) {
-      console.error('Erreur création/mise à jour événement:', error);
+      console.error('Erreur lors de la sauvegarde de l\'événement:', error);
     }
-  }, [selectedEvent, selectedDate, createEvent, updateEvent]);
+  }, [selectedEvent, createEvent, updateEvent]);
 
   const handleEditEvent = useCallback((event: CalendarEvent) => {
     setSelectedEvent(event);
@@ -211,7 +201,7 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
     try {
       await deleteEvent(eventId);
     } catch (error) {
-      console.error('Erreur suppression événement:', error);
+      console.error('Erreur lors de la suppression de l\'événement:', error);
     }
   }, [deleteEvent]);
 
@@ -219,30 +209,163 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
   // RENDU DES VUES
   // ========================================
 
-  const renderMonthView = () => (
-    <div className="space-y-6">
-      <Calendar
-        mode="single"
-        selected={selectedDate || undefined}
-        onSelect={handleDateSelect}
-        month={view.date}
-        onMonthChange={(date) => setView(prev => ({ ...prev, date }))}
-        className="w-full"
-      />
-      
-      {/* Événements de la date sélectionnée */}
-      {selectedDate && (
-        <div className="mt-8 p-6 bg-gray-50 rounded-xl">
-          <h3 className="font-semibold text-gray-900 mb-4 text-lg">
-            Événements du {format(selectedDate, 'dd/MM/yyyy', { locale: fr })}
-          </h3>
-          <div className="space-y-4">
-            {getEventsForDate(selectedDate).length === 0 ? (
-              <p className="text-gray-500 text-center py-8">
-                Aucun événement prévu pour cette date
-              </p>
-            ) : (
-              getEventsForDate(selectedDate).map(event => (
+  const renderMonthView = () => {
+    const startDate = startOfMonth(view.date);
+    const endDate = endOfMonth(view.date);
+    const startDay = getDay(startDate);
+    const daysInMonth = getDate(endDate);
+    
+    const days = [];
+    const firstDayOfMonth = new Date(2024, 7, 1); // 1er août 2024
+    const lastDayOfMonth = new Date(2024, 7, 31); // 31 août 2024
+    
+    // Ajouter les jours du mois précédent pour remplir la première semaine
+    for (let i = startDay; i > 0; i--) {
+      const date = subDays(firstDayOfMonth, i);
+      days.push({ date, isCurrentMonth: false });
+    }
+    
+    // Ajouter tous les jours du mois actuel
+    for (let i = 1; i <= daysInMonth; i++) {
+      const date = new Date(2024, 7, i);
+      days.push({ date, isCurrentMonth: true });
+    }
+    
+    // Ajouter les jours du mois suivant pour remplir la dernière semaine
+    const remainingDays = 42 - days.length; // 6 semaines * 7 jours
+    for (let i = 1; i <= remainingDays; i++) {
+      const date = addDays(lastDayOfMonth, i);
+      days.push({ date, isCurrentMonth: false });
+    }
+
+    return (
+      <div className="space-y-6">
+        {/* Navigation du mois */}
+        <div className="flex items-center justify-between">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setView(prev => ({ ...prev, date: subMonths(prev.date, 1) }))}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          
+          <h2 className="text-xl font-semibold text-gray-900">
+            {format(view.date, 'MMMM yyyy', { locale: fr })}
+          </h2>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setView(prev => ({ ...prev, date: addMonths(prev.date, 1) }))}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {/* Grille du calendrier */}
+        <div className="grid grid-cols-7 gap-1">
+          {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map(day => (
+            <div key={day} className="p-2 text-center text-sm font-medium text-gray-500">
+              {day}
+            </div>
+          ))}
+          
+          {days.map(({ date, isCurrentMonth }, index) => {
+            const dayEvents = getEventsForDate(date);
+            const isSelected = selectedDate && isSameDay(date, selectedDate);
+            const isCurrentDay = isToday(date);
+            
+            return (
+              <div
+                key={index}
+                className={cn(
+                  "p-2 min-h-[80px] border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors",
+                  !isCurrentMonth && "bg-gray-50 text-gray-400",
+                  isCurrentDay && "bg-blue-50 border-blue-300",
+                  isSelected && "bg-blue-100 border-blue-400"
+                )}
+                onClick={() => handleDateSelect(date)}
+              >
+                <div className={cn(
+                  "text-sm font-medium",
+                  isCurrentDay && "text-blue-600 font-bold"
+                )}>
+                  {format(date, 'd')}
+                </div>
+                {dayEvents.length > 0 && (
+                  <div className="mt-1">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full mx-auto"></div>
+                    <div className="text-xs text-gray-500 mt-1">{dayEvents.length} événement(s)</div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        
+        {/* Événements de la date sélectionnée */}
+        {selectedDate && (
+          <div className="mt-8 p-6 bg-gray-50 rounded-xl">
+            <h3 className="font-semibold text-gray-900 mb-4 text-lg">
+              Événements du {format(selectedDate, 'dd/MM/yyyy', { locale: fr })}
+            </h3>
+            <div className="space-y-4">
+              {getEventsForDate(selectedDate).length === 0 ? (
+                <p className="text-gray-500 text-center py-8">
+                  Aucun événement prévu pour cette date
+                </p>
+              ) : (
+                getEventsForDate(selectedDate).map(event => (
+                  <EventCard
+                    key={event.id}
+                    event={event}
+                    onEdit={handleEditEvent}
+                    onDelete={handleDeleteEvent}
+                    compact
+                  />
+                ))
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderWeekView = () => {
+    const weekStart = startOfWeek(view.date, { locale: fr });
+    const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+    
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold text-gray-900">
+            Semaine du {format(weekStart, 'dd/MM/yyyy', { locale: fr })}
+          </h2>
+          <Button onClick={() => setShowEventDialog(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nouvel événement
+          </Button>
+        </div>
+        
+        <div className="grid grid-cols-8 gap-1">
+          <div className="p-2"></div>
+          {weekDays.map(day => (
+            <div key={day.toISOString()} className="p-2 text-center">
+              <div className="text-sm font-medium text-gray-900">
+                {format(day, 'EEE', { locale: fr })}
+              </div>
+              <div className="text-lg font-bold text-gray-700">
+                {format(day, 'd')}
+              </div>
+            </div>
+          ))}
+          
+          <div className="p-2 text-sm font-medium text-gray-500">Heure</div>
+          {weekDays.map(day => (
+            <div key={day.toISOString()} className="min-h-[400px] border border-gray-200 p-2">
+              {getEventsForDate(day).map(event => (
                 <EventCard
                   key={event.id}
                   event={event}
@@ -250,66 +373,6 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
                   onDelete={handleDeleteEvent}
                   compact
                 />
-              ))
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-
-  const renderWeekView = () => {
-    const weekStart = startOfWeek(view.date, { locale: fr });
-    const weekDays = eachDayOfInterval({
-      start: weekStart,
-      end: endOfWeek(view.date, { locale: fr })
-    });
-
-    return (
-      <div className="space-y-4">
-        {/* En-tête de la semaine */}
-        <div className="grid grid-cols-8 gap-2 text-sm font-medium text-gray-500">
-          <div></div>
-          {weekDays.map(day => (
-            <div key={day.toISOString()} className="text-center p-2">
-              <div>{format(day, 'EEE', { locale: fr })}</div>
-              <div className={cn(
-                "text-lg font-bold",
-                isSameDay(day, new Date()) && "text-blue-600"
-              )}>
-                {format(day, 'd')}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Grille des événements */}
-        <div className="grid grid-cols-8 gap-2 min-h-[600px]">
-          <div className="space-y-2">
-            {Array.from({ length: 24 }, (_, hour) => (
-              <div key={hour} className="h-8 text-xs text-gray-400 text-right pr-2">
-                {hour}:00
-              </div>
-            ))}
-          </div>
-          
-          {weekDays.map(day => (
-            <div key={day.toISOString()} className="border-l border-gray-200 relative">
-              {getEventsForDate(day).map(event => (
-                <div
-                  key={event.id}
-                  className="absolute left-1 right-1 p-1 text-xs bg-blue-100 border border-blue-200 rounded cursor-pointer hover:bg-blue-200"
-                  style={{
-                    top: `${new Date(event.start_date).getHours() * 32}px`,
-                    height: `${Math.max(32, (new Date(event.end_date).getTime() - new Date(event.start_date).getTime()) / (1000 * 60 * 60) * 32)}px`
-                  }}
-                  onClick={() => handleEditEvent(event)}
-                >
-                  <div className="font-medium truncate">{event.title}</div>
-                  <div className="text-gray-600">
-                    {format(new Date(event.start_date), 'HH:mm')}
-                  </div>
-                </div>
               ))}
             </div>
           ))}
@@ -323,26 +386,24 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
     
     return (
       <div className="space-y-4">
-        <div className="text-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">
-            {format(view.date, 'EEEE d MMMM yyyy', { locale: fr })}
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold text-gray-900">
+            {format(view.date, 'EEEE dd MMMM yyyy', { locale: fr })}
           </h2>
+          <Button onClick={() => setShowEventDialog(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nouvel événement
+          </Button>
         </div>
-
+        
         <div className="space-y-4">
           {dayEvents.length === 0 ? (
             <div className="text-center py-12 text-gray-500">
               <CalendarIcon className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">Aucun événement</h3>
+              <h3 className="mt-2 text-sm font-medium text-gray-900">Aucun événement aujourd'hui</h3>
               <p className="mt-1 text-sm text-gray-500">
-                Commencez par ajouter un événement pour cette journée.
+                Créez votre premier événement pour commencer.
               </p>
-              <div className="mt-6">
-                <Button onClick={() => setShowEventDialog(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Ajouter un événement
-                </Button>
-              </div>
             </div>
           ) : (
             dayEvents.map(event => (
@@ -396,77 +457,398 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
     );
   };
 
-  const renderListView = () => (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">Liste des événements</h2>
-        <Button onClick={() => setShowEventDialog(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nouvel événement
-        </Button>
-      </div>
-
-      {/* Filtres et recherche */}
-      <div className="flex gap-4 mb-6">
-        <Input
-          placeholder="Rechercher un événement..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="max-w-sm"
-        />
-        <Select value={currentFilter} onValueChange={setCurrentFilter}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Filtrer par type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tous les types</SelectItem>
-            <SelectItem value="appointment">Rendez-vous</SelectItem>
-            <SelectItem value="meeting">Réunion</SelectItem>
-            <SelectItem value="task">Tâche</SelectItem>
-            <SelectItem value="deadline">Échéance</SelectItem>
-            <SelectItem value="reminder">Rappel</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
+  const renderListView = () => {
+    const allEvents = filteredEvents || [];
+    
+    return (
       <div className="space-y-4">
-        {filteredEvents.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">
-            <CalendarIcon className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">Aucun événement trouvé</h3>
-            <p className="mt-1 text-sm text-gray-500">
-              Essayez de modifier vos filtres ou créez un nouvel événement.
-            </p>
-          </div>
-        ) : (
-          filteredEvents.map(event => (
-            <EventCard
-              key={event.id}
-              event={event}
-              onEdit={handleEditEvent}
-              onDelete={handleDeleteEvent}
-            />
-          ))
-        )}
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-gray-900">Liste des événements</h2>
+          <Button onClick={() => setShowEventDialog(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nouvel événement
+          </Button>
+        </div>
+
+        <div className="space-y-4">
+          {allEvents.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              <CalendarIcon className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900">Aucun événement</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                Créez votre premier événement pour commencer.
+              </p>
+            </div>
+          ) : (
+            allEvents.map(event => (
+              <EventCard
+                key={event.id}
+                event={event}
+                onEdit={handleEditEvent}
+                onDelete={handleDeleteEvent}
+              />
+            ))
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
+
+  // ========================================
+  // COMPOSANT CARTE D'ÉVÉNEMENT
+  // ========================================
+
+  const EventCard: React.FC<{ 
+    event: CalendarEvent; 
+    compact?: boolean;
+    onEdit?: (event: CalendarEvent) => void;
+    onDelete?: (eventId: string) => void;
+  }> = ({ event, compact = false, onEdit, onDelete }) => {
+    const getEventIcon = () => {
+      switch (event.type) {
+        case 'appointment': return CalendarIcon;
+        case 'meeting': return Users;
+        case 'reminder': return Bell;
+        case 'task': return FileText;
+        default: return CalendarIcon;
+      }
+    };
+
+    const getEventColor = () => {
+      switch (event.type) {
+        case 'appointment': return 'bg-blue-500';
+        case 'meeting': return 'bg-purple-500';
+        case 'reminder': return 'bg-yellow-500';
+        case 'task': return 'bg-green-500';
+        default: return 'bg-gray-500';
+      }
+    };
+
+    const Icon = getEventIcon();
+    const colorClass = getEventColor();
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className={cn(
+          "p-4 bg-white rounded-lg border border-gray-200 hover:shadow-md transition-all",
+          compact && "p-3"
+        )}
+      >
+        <div className="flex items-start justify-between">
+          <div className="flex items-start gap-3 flex-1">
+            <div className={cn("p-2 rounded-lg", colorClass)}>
+              <Icon className="w-4 h-4 text-white" />
+            </div>
+            
+            <div className="flex-1 min-w-0">
+              <h3 className="font-semibold text-gray-900 truncate">
+                {event.title}
+              </h3>
+              
+              {event.description && (
+                <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                  {event.description}
+                </p>
+              )}
+              
+              <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                <div className="flex items-center gap-1">
+                  <Clock className="w-3 h-3" />
+                  <span>
+                    {format(new Date(event.start_date), 'HH:mm')} - {format(new Date(event.end_date), 'HH:mm')}
+                  </span>
+                </div>
+                
+                {event.location && (
+                  <div className="flex items-center gap-1">
+                    <MapPin className="w-3 h-3" />
+                    <span>{event.location}</span>
+                  </div>
+                )}
+                
+                {event.is_online && (
+                  <div className="flex items-center gap-1">
+                    <Video className="w-3 h-3" />
+                    <span>En ligne</span>
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex items-center gap-2 mt-2">
+                <Badge variant="secondary" className="text-xs">
+                  {event.category}
+                </Badge>
+                {event.priority && (
+                  <Badge 
+                    variant={event.priority === 'high' ? 'destructive' : 'secondary'}
+                    className="text-xs"
+                  >
+                    {event.priority}
+                  </Badge>
+                )}
+                {event.status && (
+                  <Badge 
+                    variant={event.status === 'confirmed' ? 'default' : 'secondary'}
+                    className="text-xs"
+                  >
+                    {event.status}
+                  </Badge>
+                )}
+              </div>
+            </div>
+          </div>
+          
+          {!compact && (onEdit || onDelete) && (
+            <div className="flex items-center gap-1">
+              {onEdit && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onEdit(event)}
+                  className="h-8 w-8 p-0"
+                >
+                  <Edit className="w-4 h-4" />
+                </Button>
+              )}
+              {onDelete && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onDelete(event.id)}
+                  className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+      </motion.div>
+    );
+  };
+
+  // ========================================
+  // COMPOSANT DIALOG D'ÉVÉNEMENT
+  // ========================================
+
+  const EventDialog: React.FC<EventDialogProps> = ({
+    open,
+    onOpenChange,
+    event,
+    onSubmit,
+    onCancel
+  }) => {
+    const [formData, setFormData] = useState<Partial<CalendarEvent>>({
+      title: '',
+      description: '',
+      start_date: '',
+      end_date: '',
+      type: 'appointment',
+      category: 'personal',
+      location: '',
+      is_online: false,
+      priority: 'medium',
+      status: 'pending'
+    });
+
+    useEffect(() => {
+      if (event) {
+        setFormData({
+          title: event.title,
+          description: event.description,
+          start_date: event.start_date,
+          end_date: event.end_date,
+          type: event.type,
+          category: event.category,
+          location: event.location,
+          is_online: event.is_online,
+          priority: event.priority,
+          status: event.status
+        });
+      } else {
+        setFormData({
+          title: '',
+          description: '',
+          start_date: selectedDate?.toISOString() || new Date().toISOString(),
+          end_date: selectedDate ? addMinutes(selectedDate, 60).toISOString() : addMinutes(new Date(), 60).toISOString(),
+          type: 'appointment',
+          category: 'personal',
+          location: '',
+          is_online: false,
+          priority: 'medium',
+          status: 'pending'
+        });
+      }
+    }, [event, selectedDate]);
+
+    const handleSubmit = (e: React.FormEvent) => {
+      e.preventDefault();
+      onSubmit(formData);
+    };
+
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {event ? 'Modifier l\'événement' : 'Nouvel événement'}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="title">Titre</Label>
+                <Input
+                  id="title"
+                  value={formData.title}
+                  onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                  required
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="type">Type</Label>
+                <Select
+                  value={formData.type}
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, type: value as any }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="appointment">Rendez-vous</SelectItem>
+                    <SelectItem value="meeting">Réunion</SelectItem>
+                    <SelectItem value="reminder">Rappel</SelectItem>
+                    <SelectItem value="task">Tâche</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div>
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                value={formData.description}
+                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                rows={3}
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="start_date">Début</Label>
+                <Input
+                  id="start_date"
+                  type="datetime-local"
+                  value={formData.start_date ? format(new Date(formData.start_date), "yyyy-MM-dd'T'HH:mm") : ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, start_date: new Date(e.target.value).toISOString() }))}
+                  required
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="end_date">Fin</Label>
+                <Input
+                  id="end_date"
+                  type="datetime-local"
+                  value={formData.end_date ? format(new Date(formData.end_date), "yyyy-MM-dd'T'HH:mm") : ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, end_date: new Date(e.target.value).toISOString() }))}
+                  required
+                />
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="category">Catégorie</Label>
+                <Select
+                  value={formData.category}
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, category: value as any }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="personal">Personnel</SelectItem>
+                    <SelectItem value="work">Travail</SelectItem>
+                    <SelectItem value="health">Santé</SelectItem>
+                    <SelectItem value="social">Social</SelectItem>
+                    <SelectItem value="collaborative">Collaboratif</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <Label htmlFor="priority">Priorité</Label>
+                <Select
+                  value={formData.priority}
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, priority: value as any }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Faible</SelectItem>
+                    <SelectItem value="medium">Moyenne</SelectItem>
+                    <SelectItem value="high">Élevée</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div>
+              <Label htmlFor="location">Lieu</Label>
+              <Input
+                id="location"
+                value={formData.location}
+                onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+                placeholder="Adresse ou lieu de l'événement"
+              />
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="is_online"
+                checked={formData.is_online}
+                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_online: checked }))}
+              />
+              <Label htmlFor="is_online">Événement en ligne</Label>
+            </div>
+            
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={onCancel}>
+                Annuler
+              </Button>
+              <Button type="submit">
+                {event ? 'Modifier' : 'Créer'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+    );
+  };
 
   // ========================================
   // RENDU PRINCIPAL
   // ========================================
 
   return (
-    <div className={cn("w-full", className)}>
-      {/* Header */}
+    <div className={cn("space-y-6", className)}>
+      {/* Header avec navigation */}
       {showHeader && (
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <h1 className="text-2xl font-bold text-gray-900">Calendrier</h1>
-            {isConnected && (
-              <Badge variant="outline" className="text-green-600 border-green-600">
-                Connecté
-              </Badge>
+            {loading && (
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                Chargement...
+              </div>
             )}
           </div>
           
@@ -479,33 +861,19 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
               Aujourd'hui
             </Button>
             
-            <div className="flex border rounded-md">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setView(prev => ({ 
-                  ...prev, 
-                  date: subDays(prev.date, 1) 
-                }))}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setView(prev => ({ 
-                  ...prev, 
-                  date: addDays(prev.date, 1) 
-                }))}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowEventDialog(true)}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Nouvel événement
+            </Button>
           </div>
         </div>
       )}
 
-      {/* Sélecteur de vue */}
+      {/* Navigation des vues */}
       <div className="flex items-center gap-2 mb-6">
         <Tabs value={view.type} onValueChange={(value) => setView(prev => ({ ...prev, type: value as any }))}>
           <TabsList>
@@ -569,385 +937,6 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
         }}
       />
     </div>
-  );
-};
-
-// ============================================================================
-// COMPOSANTS UTILITAIRES
-// ============================================================================
-
-interface EventCardProps {
-  event: CalendarEvent;
-  onEdit: (event: CalendarEvent) => void;
-  onDelete: (id: string) => void;
-  compact?: boolean;
-}
-
-const EventCard: React.FC<EventCardProps> = ({ event, onEdit, onDelete, compact = false }) => {
-  const formatTime = (date: Date) => format(date, 'HH:mm', { locale: fr });
-  const formatDate = (date: Date) => format(date, 'dd/MM/yyyy', { locale: fr });
-
-  const getEventIcon = () => {
-    const eventType = EVENT_TYPES[event.type];
-    const Icon = eventType.icon;
-    return <Icon className="h-4 w-4" />;
-  };
-
-  const getPriorityColor = () => {
-    return PRIORITY_COLORS[event.priority] || PRIORITY_COLORS.medium;
-  };
-
-  const getStatusColor = () => {
-    return STATUS_COLORS[event.status] || STATUS_COLORS.pending;
-  };
-
-  if (compact) {
-    return (
-      <div 
-        className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
-        onClick={() => onEdit(event)}
-      >
-        <div className="flex items-center gap-3">
-          <div className={cn("p-2 rounded-full", EVENT_TYPES[event.type].color)}>
-            {getEventIcon()}
-          </div>
-          <div className="flex-1 min-w-0">
-            <h4 className="font-medium text-gray-900 truncate">{event.title}</h4>
-            <p className="text-sm text-gray-500">
-              {formatTime(new Date(event.start_date))} - {formatTime(new Date(event.end_date))}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge className={getPriorityColor()}>
-            {event.priority}
-          </Badge>
-          <Badge className={getStatusColor()}>
-            {event.status}
-          </Badge>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <Card className="hover:shadow-md transition-shadow">
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between">
-          <div className="flex items-start gap-3 flex-1">
-            <div className={cn("p-2 rounded-full mt-1", EVENT_TYPES[event.type].color)}>
-              {getEventIcon()}
-            </div>
-            
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-2">
-                <h3 className="font-semibold text-gray-900 truncate">{event.title}</h3>
-                <Badge className={getPriorityColor()}>
-                  {event.priority}
-                </Badge>
-                <Badge className={getStatusColor()}>
-                  {event.status}
-                </Badge>
-              </div>
-              
-              {event.description && (
-                <p className="text-sm text-gray-600 mb-2 line-clamp-2">
-                  {event.description}
-                </p>
-              )}
-              
-              <div className="flex items-center gap-4 text-sm text-gray-500">
-                <div className="flex items-center gap-1">
-                  <Clock className="h-4 w-4" />
-                  <span>{formatDate(new Date(event.start_date))} à {formatTime(new Date(event.start_date))}</span>
-                </div>
-                
-                {event.location && (
-                  <div className="flex items-center gap-1">
-                    <MapPin className="h-4 w-4" />
-                    <span>{event.location}</span>
-                  </div>
-                )}
-                
-                {event.is_online && (
-                  <div className="flex items-center gap-1">
-                    <Video className="h-4 w-4" />
-                    <span>En ligne</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onEdit(event)}
-            >
-              <Edit className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onDelete(event.id)}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
-
-// ============================================================================
-// FORMULAIRE D'ÉVÉNEMENT
-// ============================================================================
-
-interface EventFormProps {
-  event?: CalendarEvent | null;
-  onSubmit: (event: Omit<CalendarEvent, 'id'>) => void;
-  onCancel: () => void;
-}
-
-const EventForm: React.FC<EventFormProps> = ({ event, onSubmit, onCancel }) => {
-
-  
-  // Fonction pour obtenir l'heure actuelle
-  const getCurrentTime = () => {
-    return new Date();
-  };
-  
-  // Fonction pour formater l'heure en format datetime-local
-  const formatDateTimeLocal = (date: Date) => {
-    return format(date, "yyyy-MM-dd'T'HH:mm");
-  };
-  
-  // Fonction pour obtenir l'heure de fin par défaut (30 minutes après)
-  const getDefaultEndTime = (startDate: Date) => {
-    return addMinutes(startDate, 30);
-  };
-
-  const [formData, setFormData] = useState({
-    title: event?.title || '',
-    description: event?.description || '',
-    start_date: event?.start_date 
-      ? formatDateTimeLocal(new Date(event.start_date))
-      : formatDateTimeLocal(getCurrentTime()),
-    end_date: event?.end_date 
-      ? formatDateTimeLocal(new Date(event.end_date))
-      : formatDateTimeLocal(getDefaultEndTime(getCurrentTime())),
-    type: event?.type || 'appointment',
-    priority: event?.priority || 'medium',
-    status: event?.status || 'pending',
-    category: event?.category || 'client',
-    location: event?.location || '',
-    is_online: event?.is_online || false,
-    meeting_url: event?.meeting_url || '',
-    color: event?.color || '#3B82F6'
-  });
-
-  // Effet pour mettre à jour automatiquement l'heure de fin quand l'heure de début change
-  React.useEffect(() => {
-    if (formData.start_date && !event) { // Seulement pour les nouveaux événements
-      const startDate = new Date(formData.start_date);
-      const endDate = getDefaultEndTime(startDate);
-      setFormData(prev => ({
-        ...prev,
-        end_date: formatDateTimeLocal(endDate)
-      }));
-    }
-  }, [formData.start_date, event]);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Utiliser les dates directement
-    const startDate = new Date(formData.start_date);
-    const endDate = formData.end_date 
-      ? new Date(formData.end_date)
-      : getDefaultEndTime(startDate);
-    
-    const eventData = {
-      ...formData,
-      start_date: startDate.toISOString(),
-      end_date: endDate.toISOString()
-    };
-    
-    onSubmit(eventData);
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="title">Titre *</Label>
-          <Input
-            id="title"
-            value={formData.title}
-            onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-            required
-          />
-        </div>
-        
-        <div>
-          <Label htmlFor="type">Type *</Label>
-          <Select value={formData.type} onValueChange={(value) => setFormData(prev => ({ ...prev, type: value as any }))}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="appointment">Rendez-vous</SelectItem>
-              <SelectItem value="meeting">Réunion</SelectItem>
-              <SelectItem value="task">Tâche</SelectItem>
-              <SelectItem value="deadline">Échéance</SelectItem>
-              <SelectItem value="reminder">Rappel</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <div>
-        <Label htmlFor="description">Description</Label>
-        <Textarea
-          id="description"
-          value={formData.description}
-          onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-          rows={3}
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="start_date">Date et heure de début *</Label>
-          <Input
-            id="start_date"
-            type="datetime-local"
-            value={formData.start_date}
-            onChange={(e) => setFormData(prev => ({ ...prev, start_date: e.target.value }))}
-            required
-          />
-        </div>
-        
-        <div>
-          <Label htmlFor="end_date">Date et heure de fin *</Label>
-          <Input
-            id="end_date"
-            type="datetime-local"
-            value={formData.end_date}
-            onChange={(e) => setFormData(prev => ({ ...prev, end_date: e.target.value }))}
-            required
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="priority">Priorité</Label>
-          <Select value={formData.priority} onValueChange={(value) => setFormData(prev => ({ ...prev, priority: value as any }))}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="low">Faible</SelectItem>
-              <SelectItem value="medium">Moyenne</SelectItem>
-              <SelectItem value="high">Élevée</SelectItem>
-              <SelectItem value="critical">Critique</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        
-        <div>
-          <Label htmlFor="status">Statut</Label>
-          <Select value={formData.status} onValueChange={(value) => setFormData(prev => ({ ...prev, status: value as any }))}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="pending">En attente</SelectItem>
-              <SelectItem value="confirmed">Confirmé</SelectItem>
-              <SelectItem value="completed">Terminé</SelectItem>
-              <SelectItem value="cancelled">Annulé</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <div>
-        <Label htmlFor="location">Lieu</Label>
-        <Input
-          id="location"
-          value={formData.location}
-          onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
-        />
-      </div>
-
-      <div className="flex items-center space-x-2">
-        <Switch
-          id="is_online"
-          checked={formData.is_online}
-          onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_online: checked }))}
-        />
-        <Label htmlFor="is_online">Événement en ligne</Label>
-      </div>
-
-      {formData.is_online && (
-        <div>
-          <Label htmlFor="meeting_url">URL de réunion</Label>
-          <Input
-            id="meeting_url"
-            value={formData.meeting_url}
-            onChange={(e) => setFormData(prev => ({ ...prev, meeting_url: e.target.value }))}
-            placeholder="https://meet.google.com/..."
-          />
-        </div>
-      )}
-
-      <div className="flex justify-end gap-2">
-        <Button type="button" variant="outline" onClick={onCancel}>
-          Annuler
-        </Button>
-        <Button type="submit">
-          {event ? 'Mettre à jour' : 'Créer'}
-        </Button>
-      </div>
-    </form>
-  );
-};
-
-// ============================================================================
-// DIALOG D'ÉVÉNEMENT
-// ============================================================================
-
-interface EventDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  event?: CalendarEvent | null;
-  onSubmit: (event: Omit<CalendarEvent, 'id'>) => void;
-  onCancel: () => void;
-}
-
-const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, onSubmit, onCancel }) => {
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>
-            {event ? 'Modifier l\'événement' : 'Créer un événement'}
-          </DialogTitle>
-          <DialogDescription>
-            {event ? 'Modifiez les détails de votre événement.' : 'Créez un nouvel événement dans votre calendrier.'}
-          </DialogDescription>
-        </DialogHeader>
-        
-        <EventForm
-          event={event}
-          onSubmit={onSubmit}
-          onCancel={onCancel}
-        />
-      </DialogContent>
-    </Dialog>
   );
 };
 
