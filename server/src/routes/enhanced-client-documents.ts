@@ -566,13 +566,13 @@ router.get('/test-auth', enhancedAuthMiddleware, async (req, res) => {
  * GET /api/enhanced-client-documents/sections
  * Récupérer toutes les sections disponibles
  */
-router.get('/sections', enhancedAuthMiddleware, async (req: AuthenticatedRequest, res) => {
+router.get('/sections', enhancedAuthMiddleware, async (req: any, res) => {
   try {
     const user = req.user as AuthUser;
     
     const sectionsResponse = await documentStorageService.getDocumentSections({
-      user_id: user.database_id,
-      user_type: user.user_type
+      user_id: user.id,
+      user_type: user.user_metadata?.type || 'client'
     });
 
     if (!sectionsResponse.success) {
@@ -600,7 +600,7 @@ router.get('/sections', enhancedAuthMiddleware, async (req: AuthenticatedRequest
  * GET /api/enhanced-client-documents/sections/:sectionName/files
  * Récupérer les fichiers d'une section spécifique
  */
-router.get('/sections/:sectionName/files', enhancedAuthMiddleware, async (req: AuthenticatedRequest, res) => {
+router.get('/sections/:sectionName/files', enhancedAuthMiddleware, async (req: any, res) => {
   try {
     const user = req.user as AuthUser;
     const { sectionName } = req.params;
@@ -608,8 +608,8 @@ router.get('/sections/:sectionName/files', enhancedAuthMiddleware, async (req: A
 
     const filesResponse = await documentStorageService.getSectionFiles({
       section_name: sectionName,
-      user_id: user.database_id,
-      user_type: user.user_type,
+      user_id: user.id,
+      user_type: user.user_metadata?.type || 'client',
       filters: {
         status: status as string,
         limit: limit ? parseInt(limit as string) : undefined,
@@ -643,7 +643,7 @@ router.get('/sections/:sectionName/files', enhancedAuthMiddleware, async (req: A
  * POST /api/enhanced-client-documents/sections/:sectionName/upload
  * Upload un fichier dans une section spécifique
  */
-router.post('/sections/:sectionName/upload', enhancedAuthMiddleware, upload.single('file'), async (req: AuthenticatedRequest, res) => {
+router.post('/sections/:sectionName/upload', enhancedAuthMiddleware, upload.single('file'), async (req: any, res) => {
   try {
     const user = req.user as AuthUser;
     const { sectionName } = req.params;
@@ -670,14 +670,16 @@ router.post('/sections/:sectionName/upload', enhancedAuthMiddleware, upload.sing
     let targetId: string;
     let userType: string;
     
-    if (user.user_type === 'client') {
-      targetId = user.database_id;
+    const userTypeFromMetadata = user.user_metadata?.type || 'client';
+    
+    if (userTypeFromMetadata === 'client') {
+      targetId = user.id;
       userType = 'client';
-    } else if (user.user_type === 'expert') {
-      targetId = user.database_id;
+    } else if (userTypeFromMetadata === 'expert') {
+      targetId = user.id;
       userType = 'expert';
     } else {
-      targetId = user.database_id;
+      targetId = user.id;
       userType = 'admin';
     }
 
@@ -692,8 +694,8 @@ router.post('/sections/:sectionName/upload', enhancedAuthMiddleware, upload.sing
       tags: tags ? JSON.parse(tags) : [],
       access_level: accessLevel as any,
       expires_at: expiresAt ? new Date(expiresAt) : undefined,
-      uploaded_by: user.database_id,
-      user_type: userType
+      uploaded_by: user.id,
+      user_type: userType as 'client' | 'expert' | 'admin'
     });
 
     if (!uploadResponse.success) {
