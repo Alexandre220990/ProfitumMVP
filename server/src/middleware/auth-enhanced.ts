@@ -230,7 +230,7 @@ export const enhancedAuthMiddleware = async (
           console.log('✅ Utilisateur authentifié via JWT personnalisé:', decoded.email);
         } catch (jwtError) {
           authError = jwtError;
-          console.log('❌ Erreur décodage JWT:', jwtError.message);
+          console.log('❌ Erreur décodage JWT:', jwtError instanceof Error ? jwtError.message : 'Erreur JWT inconnue');
         }
       }
     } catch (error) {
