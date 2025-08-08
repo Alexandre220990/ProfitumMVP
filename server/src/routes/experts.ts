@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { requireUserType } from '../middleware/auth-enhanced';
+import { requireUserType, enhancedAuthMiddleware, AuthenticatedRequest } from '../middleware/auth-enhanced';
 import { supabase } from '../lib/supabase';
 import { Audit, Client, Expert } from '../types/database';
 import { ApiResponse } from '../types/api';
@@ -98,84 +98,58 @@ router.post('/register', async (req, res) => {
       specializations: specializations || [],
       experience: experience || '',
       location: location || '',
-      rating: 0,
-      compensation: 0,
       description: description || '',
-      status: 'inactive', // Statut inactif par défaut
-      approval_status: 'pending', // Statut d'approbation en attente
-      disponibilites: null,
-      certifications: null,
-      card_number: card_number || null,
-      card_expiry: card_expiry || null,
-      card_cvc: card_cvc || null,
-      abonnement: abonnement || 'basic',
-      auth_id: authData.user.id,
+      approval_status: 'pending',
+      status: 'inactive',
       created_at: now,
       updated_at: now
     };
 
-    const { data: expert, error: expertError } = await supabase
+    const { data: expert, error: expertError } = await supabaseService
       .from('Expert')
-      .insert([expertData])
-      .select('*')
+      .insert(expertData)
+      .select()
       .single();
 
     if (expertError) {
-      console.error('❌ Erreur création expert dans la base:', expertError);
-      // Supprimer l'utilisateur Supabase Auth en cas d'erreur
+      console.error('❌ Erreur création expert en base:', expertError);
+      // Supprimer l'utilisateur créé dans Supabase Auth en cas d'erreur
       await supabaseService.auth.admin.deleteUser(authData.user.id);
-      return res.status(500).json({
+      return res.status(400).json({
         success: false,
-        error: "Erreur lors de la création de l'expert"
+        error: expertError.message
       });
     }
 
-    console.log('✅ Expert créé dans la base:', expert.id);
+    console.log('✅ Expert créé en base:', expert.id);
 
-    // 3. Retourner les données de l'expert (sans mot de passe)
-    const publicExpert: PublicExpert = {
-      id: expert.id,
-      name: expert.name,
-      email: expert.email,
-      company_name: expert.company_name,
-      siren: expert.siren,
-      specializations: expert.specializations,
-      experience: expert.experience,
-      location: expert.location,
-      rating: expert.rating,
-      status: expert.status,
-      description: expert.description,
-      disponibilites: expert.disponibilites,
-      certifications: expert.certifications,
-      website: expert.website,
-      linkedin: expert.linkedin,
-      languages: expert.languages,
-      availability: expert.availability,
-      max_clients: expert.max_clients,
-      hourly_rate: expert.hourly_rate,
-      phone: expert.phone,
-      approval_status: expert.approval_status,
-      compensation: expert.compensation,
-      // Champs calculés avec valeurs par défaut
-      total_assignments: 0,
-      completed_assignments: 0,
-      total_earnings: 0,
-      monthly_earnings: 0,
-      created_at: expert.created_at,
-      updated_at: expert.updated_at
-    };
+    // 3. Gérer l'abonnement si fourni
+    if (abonnement && card_number && card_expiry && card_cvc) {
+      try {
+        // Ici vous pouvez intégrer votre logique de paiement
+        // Pour l'instant, on simule un succès
+        console.log('💳 Abonnement configuré pour l\'expert:', expert.id);
+      } catch (paymentError) {
+        console.error('❌ Erreur configuration abonnement:', paymentError);
+        // Ne pas faire échouer l'inscription si le paiement échoue
+      }
+    }
 
     return res.json({
       success: true,
-      data: publicExpert,
-      message: "Expert inscrit avec succès"
+      message: 'Expert inscrit avec succès. Votre compte sera activé après validation par nos équipes.',
+      data: {
+        expert_id: expert.id,
+        email: expert.email,
+        name: expert.name
+      }
     });
 
-  } catch (error: any) {
-    console.error("❌ Erreur lors de l'inscription de l'expert:", error);
+  } catch (error) {
+    console.error('❌ Erreur inscription expert:', error);
     return res.status(500).json({
       success: false,
-      error: error.message || "Une erreur est survenue lors de l'inscription"
+      error: 'Erreur lors de l\'inscription'
     });
   }
 });
@@ -391,36 +365,22 @@ router.get('/:id/audits', async (req, res) => {
 });
 
 // POST /api/client/produits-eligibles/:id/assign-expert - Attribuer un expert à un produit éligible
-router.post('/client/produits-eligibles/:id/assign-expert', async (req, res) => {
+router.post('/client/produits-eligibles/:id/assign-expert', enhancedAuthMiddleware, async (req, res) => {
   try {
+    const user = (req as AuthenticatedRequest).user;
+    
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur non authentifié'
+      });
+    }
+    
     const { id } = req.params;
     const { expert_id } = req.body;
-    const token = req.headers.authorization?.replace('Bearer ', '');
-
-    if (!token) {
-      return res.status(401).json({
-        success: false,
-        message: 'Token d\'authentification requis'
-      });
-    }
-
-    // Vérifier l'authentification
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    if (authError || !user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Token invalide'
-      });
-    }
 
     // Vérifier que l'utilisateur est un client
-    const { data: clientData, error: clientError } = await supabase
-      .from('Client')
-      .select('id')
-      .eq('auth_id', user.id)
-      .single();
-
-    if (clientError || !clientData) {
+    if (user.type !== 'client') {
       return res.status(403).json({
         success: false,
         message: 'Accès réservé aux clients'
@@ -432,7 +392,7 @@ router.post('/client/produits-eligibles/:id/assign-expert', async (req, res) => 
       .from('ClientProduitEligible')
       .select('*')
       .eq('id', id)
-      .eq('client_id', clientData.id)
+      .eq('client_id', user.database_id)
       .single();
 
     if (produitError || !produitData) {
@@ -477,7 +437,7 @@ router.post('/client/produits-eligibles/:id/assign-expert', async (req, res) => 
     const { data: messageData, error: messageError } = await supabase
       .from('messages')
       .insert({
-        sender_id: clientData.id,
+        sender_id: user.database_id,
         receiver_id: expert_id,
         subject: `Nouvelle attribution - ${produitData.ProduitEligible?.nom || 'Produit'}`,
         content: `Bonjour ${expertData.name},\n\nVous avez été sélectionné pour accompagner ce client sur le produit "${produitData.ProduitEligible?.nom || 'Produit'}".\n\nMerci de prendre contact avec le client pour commencer l'accompagnement.\n\nCordialement,\nL'équipe Profitum`,

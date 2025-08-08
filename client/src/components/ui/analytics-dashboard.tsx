@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "./card";
-import { Button } from "./button";
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { TrendingUp, TrendingDown, Clock, XCircle } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./select";
-import { TrendingUp, TrendingDown, Clock, DollarSign, BarChart3, AlertTriangle, XCircle, RefreshCw, Download, Target, Users } from "lucide-react";
+import { BarChart3, AlertTriangle, RefreshCw, Download, Target, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // Types pour les métriques
@@ -58,92 +59,17 @@ export const AnalyticsDashboard: React.FC = () => {
   useEffect(() => {
     loadAnalyticsData(); }, [timeRange, refreshKey]);
 
-  const loadAnalyticsData = async () => { try {
+  const loadAnalyticsData = async () => { 
+    try {
       setLoading(true);
       
       // TODO: Remplacer par l'appel API réel
-      const mockData: AnalyticsData = {
-        metrics: [
-          {
-            id: 'conversion-rate',
-            name: 'Taux de conversion',
-            value: 23.5,
-            change: 2.1,
-            changeType: 'increase',
-            format: 'percentage',
-            icon: <TrendingUp className="w-4 h-4" />,
-            color: 'text-green-600'
-          },
-          {
-            id: 'avg-time-to-expert',
-            name: 'Temps moyen jusqu\'à l\'expert',
-            value: 2.3,
-            change: -0.5,
-            changeType: 'decrease',
-            format: 'duration',
-            icon: <Clock className="w-4 h-4" />,
-            color: 'text-blue-600'
-          },
-          {
-            id: 'abandonment-rate',
-            name: 'Taux d\'abandon',
-            value: 12.8,
-            change: -1.2,
-            changeType: 'decrease',
-            format: 'percentage',
-            icon: <XCircle className="w-4 h-4" />,
-            color: 'text-red-600'
-          },
-          {
-            id: 'revenue',
-            name: 'Revenus générés',
-            value: 45600,
-            change: 8.3,
-            changeType: 'increase',
-            format: 'currency',
-            icon: <DollarSign className="w-4 h-4" />,
-            color: 'text-green-600'
-          }
-        ],
-        conversionData: [
-          { step: 'Signature charte', conversions: 100, dropoffs: 15, rate: 85.0 },
-          { step: 'Sélection expert', conversions: 85, dropoffs: 12, rate: 85.9 },
-          { step: 'Complétion dossier', conversions: 73, dropoffs: 8, rate: 89.0 },
-          { step: 'Validation admin', conversions: 65, dropoffs: 5, rate: 92.3 },
-          { step: 'Dossier finalisé', conversions: 60, dropoffs: 3, rate: 95.4 }
-        ],
-        timeData: [
-          { step: 'Signature charte', averageTime: 1.2, medianTime: 0.8, totalTime: 120 },
-          { step: 'Sélection expert', averageTime: 2.1, medianTime: 1.5, totalTime: 178 },
-          { step: 'Complétion dossier', averageTime: 3.5, medianTime: 2.8, totalTime: 255 },
-          { step: 'Validation admin', averageTime: 1.8, medianTime: 1.2, totalTime: 108 },
-          { step: 'Dossier finalisé', averageTime: 0.5, medianTime: 0.3, totalTime: 30 }
-        ],
-        abandonmentPoints: [
-          { step: 'Signature charte', abandonmentRate: 15.0, totalUsers: 100, abandonedUsers: 15 },
-          { step: 'Sélection expert', abandonmentRate: 14.1, totalUsers: 85, abandonedUsers: 12 },
-          { step: 'Complétion dossier', abandonmentRate: 11.0, totalUsers: 73, abandonedUsers: 8 },
-          { step: 'Validation admin', abandonmentRate: 7.7, totalUsers: 65, abandonedUsers: 5 },
-          { step: 'Dossier finalisé', abandonmentRate: 4.6, totalUsers: 60, abandonedUsers: 3 }
-        ],
-        topProducts: [
-          { name: 'URSSAF', conversions: 25, revenue: 12500 },
-          { name: 'TICPE', conversions: 20, revenue: 9800 },
-          { name: 'CEE', conversions: 15, revenue: 7200 },
-          { name: 'DFS', conversions: 12, revenue: 5800 },
-          { name: 'Audit Énergétique', conversions: 8, revenue: 3900 }
-        ],
-        expertPerformance: [
-          { name: 'Expert A', assignments: 15, successRate: 93.3 },
-          { name: 'Expert B', assignments: 12, successRate: 91.7 },
-          { name: 'Expert C', assignments: 10, successRate: 90.0 },
-          { name: 'Expert D', assignments: 8, successRate: 87.5 },
-          { name: 'Expert E', assignments: 6, successRate: 83.3 }
-        ]
-      };
-
-      setData(mockData);
-    } catch (error) { console.error('Erreur lors du chargement des analytics: ', error); } finally { setLoading(false); }
+      setData(null);
+    } catch (error) {
+      console.error('Erreur lors du chargement des analytics:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const formatValue = (value: number, format: string) => {
@@ -237,7 +163,7 @@ export const AnalyticsDashboard: React.FC = () => {
       </div>
 
       { /* Métriques principales */ }
-      <div className="grid grid-cols-1 md: grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         { data.metrics.map((metric) => (
           <Card key={metric.id}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -295,7 +221,7 @@ export const AnalyticsDashboard: React.FC = () => {
                         <span>{ step.conversions } utilisateurs</span>
                         <span className="text-green-600">{ step.rate }%</span>
                       </div>
-                      <div className="w-full bg-gray-200 dark: bg-gray-700 rounded-full h-2">
+                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                         <div
                           className="bg-green-500 h-2 rounded-full transition-all duration-300"
                           style={ { width: `${step.rate}%` }}
@@ -330,7 +256,7 @@ export const AnalyticsDashboard: React.FC = () => {
                       <h4 className="font-medium text-gray-900 dark:text-gray-100">
                         { step.step }
                       </h4>
-                      <p className="text-sm text-gray-600 dark: text-gray-400">
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
                         Moyenne: { step.averageTime.toFixed(1) } jours | Médiane: { step.medianTime.toFixed(1) } jours
                       </p>
                     </div>
@@ -338,7 +264,7 @@ export const AnalyticsDashboard: React.FC = () => {
                       <div className="text-lg font-bold text-gray-900 dark:text-gray-100">
                         { step.totalTime }h
                       </div>
-                      <div className="text-sm text-gray-600 dark: text-gray-400">
+                      <div className="text-sm text-gray-600 dark:text-gray-400">
                         Temps total
                       </div>
                     </div>
@@ -374,7 +300,7 @@ export const AnalyticsDashboard: React.FC = () => {
                       <div className="text-lg font-bold text-red-600">
                         { point.abandonmentRate.toFixed(1) }%
                       </div>
-                      <div className="text-sm text-gray-600 dark: text-gray-400">
+                      <div className="text-sm text-gray-600 dark:text-gray-400">
                         Taux d'abandon
                       </div>
                     </div>
@@ -411,7 +337,7 @@ export const AnalyticsDashboard: React.FC = () => {
                         { new Intl.NumberFormat('fr-FR', {
                           style: 'currency', currency: 'EUR' }).format(product.revenue)}
                       </div>
-                      <div className="text-sm text-gray-600 dark: text-gray-400">
+                      <div className="text-sm text-gray-600 dark:text-gray-400">
                         Revenus générés
                       </div>
                     </div>
@@ -447,7 +373,7 @@ export const AnalyticsDashboard: React.FC = () => {
                       <div className="text-lg font-bold text-green-600">
                         { expert.successRate.toFixed(1) }%
                       </div>
-                      <div className="text-sm text-gray-600 dark: text-gray-400">
+                      <div className="text-sm text-gray-600 dark:text-gray-400">
                         Taux de succès
                       </div>
                     </div>

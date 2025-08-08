@@ -14,14 +14,8 @@ import {
   Clock, 
   AlertCircle,
   Info,
-  TrendingUp,
-  Shield,
   Award,
-  Euro,
-  Building2,
-  Handshake,
   Target,
-  BarChart3,
   Zap
 } from "lucide-react";
 import { get } from "@/lib/api";

@@ -2,6 +2,8 @@ import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   MessageSquare, 
+  Send, 
+  Paperclip, 
   Search,
   ArrowLeft,
   ArrowRight
@@ -11,24 +13,15 @@ import { Conversation } from '@/types/messaging';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/hooks/use-auth';
-import { ConversationDetails } from './ConversationDetails';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 
 // ============================================================================
-// MESSAGERIE CLIENT OPTIMISÉE - COMPOSANT UNIFIÉ DESIGN 2025
+// MESSAGERIE CLIENT OPTIMISÉE - DESIGN MODERNE 2025
 // ============================================================================
-// Fonctionnalités intégrées :
-// ✅ Conversations automatiques avec experts validés
-// ✅ Bouton proposition RDV (30min par défaut)
-// ✅ Notifications push pour nouveaux messages
-// ✅ Chiffrement AES-256 des messages
-// ✅ Intégration calendrier interne + Google Calendar
-// ✅ Gestion des dossiers clients
-// ✅ Performance optimisée (< 2s chargement, < 100ms temps réel)
 
 interface OptimizedMessagingAppProps {
   className?: string;
-  theme?: 'blue' | 'green' | 'purple';
   showHeader?: boolean;
 }
 
@@ -40,6 +33,8 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
   // État local optimisé
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [messageInput, setMessageInput] = useState('');
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   
   // Nouveaux états pour les colonnes métier
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
@@ -56,13 +51,29 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
   });
 
   // ========================================
-  // GESTION DES CONVERSATIONS AVEC COLONNES MÉTIER
+  // GESTION DES CONVERSATIONS
   // ========================================
 
   const handleConversationSelect = useCallback((conversation: Conversation) => {
     setSelectedConversation(conversation);
     messaging.selectConversation(conversation);
   }, [messaging]);
+
+  // ========================================
+  // GESTION DES MESSAGES
+  // ========================================
+
+  const handleSendMessage = useCallback(async () => {
+    if (!messageInput.trim() && selectedFiles.length === 0) return;
+
+    try {
+      await messaging.sendMessage(messageInput, selectedFiles);
+      setMessageInput('');
+      setSelectedFiles([]);
+    } catch (error) {
+      console.error('Erreur envoi message:', error);
+    }
+  }, [messageInput, selectedFiles, messaging]);
 
   // ========================================
   // RENDU PRINCIPAL AVEC DESIGN MODERNE
@@ -166,10 +177,90 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
       {/* Zone principale de messagerie */}
       <div className="flex-1 flex flex-col bg-gradient-to-br from-slate-50 to-white">
         {selectedConversation ? (
-          <ConversationDetails
-            conversation={selectedConversation}
-            userType={user?.type || 'client'}
-          />
+          <div className="h-full flex flex-col">
+            {/* Header de conversation */}
+            <div className="p-4 border-b border-slate-200/60 bg-white/80 backdrop-blur-sm">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Avatar className="w-10 h-10">
+                    <AvatarImage src={selectedConversation.avatar} />
+                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
+                      {selectedConversation.title?.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <h3 className="font-semibold text-slate-900">{selectedConversation.title}</h3>
+                    <p className="text-sm text-slate-500">En ligne</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Zone des messages */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              <AnimatePresence>
+                {messaging.messages?.map((message, index) => (
+                  <motion.div
+                    key={message.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    className={`flex ${message.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div className={`max-w-xs lg:max-w-md p-3 rounded-lg ${
+                      message.sender_id === user?.id 
+                        ? 'bg-blue-500 text-white' 
+                        : 'bg-white border border-slate-200'
+                    }`}>
+                      <p className="text-sm">{message.content}</p>
+                      <p className={`text-xs mt-1 ${
+                        message.sender_id === user?.id ? 'text-blue-100' : 'text-slate-500'
+                      }`}>
+                        {new Date(message.created_at).toLocaleTimeString()}
+                      </p>
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+
+            {/* Zone de saisie */}
+            <div className="p-4 border-t border-slate-200/60 bg-white/80 backdrop-blur-sm">
+              <div className="flex items-end gap-2">
+                <div className="flex-1">
+                  <Input
+                    placeholder="Tapez votre message..."
+                    value={messageInput}
+                    onChange={(e) => setMessageInput(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendMessage();
+                      }
+                    }}
+                    className="min-h-[44px]"
+                  />
+                </div>
+                
+                <Button
+                  onClick={() => console.log('Upload fichier')}
+                  variant="outline"
+                  size="sm"
+                  className="h-[44px] px-3"
+                >
+                  <Paperclip className="w-4 h-4" />
+                </Button>
+                
+                <Button
+                  onClick={handleSendMessage}
+                  disabled={!messageInput.trim() && selectedFiles.length === 0}
+                  className="h-[44px] px-4 bg-blue-500 hover:bg-blue-600"
+                >
+                  <Send className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
         ) : (
           <motion.div 
             className="flex-1 flex items-center justify-center"

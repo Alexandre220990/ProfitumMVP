@@ -1,24 +1,13 @@
 
 import React from "react";
-import { MessageSquare, Sparkles, Shield, Zap, Users, Clock, Star, Bell, Video, Phone, Calendar, FileText, Send, Search, Filter, MoreVertical } from "lucide-react";
+import { MessageSquare, Sparkles, Shield, Zap } from "lucide-react";
 import HeaderClient from "@/components/HeaderClient";
 import { OptimizedMessagingApp } from "@/components/messaging/OptimizedMessagingApp";
-import { motion, AnimatePresence } from "framer-motion";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { motion } from "framer-motion";
 
 // ============================================================================
 // PAGE MESSAGERIE CLIENT - DESIGN MODERNE 2025
 // ============================================================================
-// Fonctionnalités intégrées :
-// ✅ Conversations automatiques avec experts validés
-// ✅ Bouton proposition RDV (30min par défaut)
-// ✅ Notifications push pour nouveaux messages
-// ✅ Chiffrement AES-256 des messages
-// ✅ Intégration calendrier interne + Google Calendar
-// ✅ Gestion des dossiers clients
-// ✅ Performance optimisée (< 2s chargement, < 100ms temps réel)
 
 export default function MessagerieClient() {
   return (
@@ -98,62 +87,6 @@ export default function MessagerieClient() {
                 </motion.div>
               </div>
             </div>
-            
-            {/* Statistiques rapides */}
-            <motion.div 
-              className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-            >
-              <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <Users className="w-5 h-5 text-blue-600" />
-                    <div>
-                      <p className="text-sm text-blue-600 font-medium">Experts actifs</p>
-                      <p className="text-2xl font-bold text-blue-900">12</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <Clock className="w-5 h-5 text-green-600" />
-                    <div>
-                      <p className="text-sm text-green-600 font-medium">Temps de réponse</p>
-                      <p className="text-2xl font-bold text-green-900">2min</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card className="bg-gradient-to-br from-purple-50 to-violet-50 border-purple-200">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <Star className="w-5 h-5 text-purple-600" />
-                    <div>
-                      <p className="text-sm text-purple-600 font-medium">Satisfaction</p>
-                      <p className="text-2xl font-bold text-purple-900">98%</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              <Card className="bg-gradient-to-br from-orange-50 to-amber-50 border-orange-200">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <Bell className="w-5 h-5 text-orange-600" />
-                    <div>
-                      <p className="text-sm text-orange-600 font-medium">Messages</p>
-                      <p className="text-2xl font-bold text-orange-900">156</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
           </div>
         </motion.div>
 

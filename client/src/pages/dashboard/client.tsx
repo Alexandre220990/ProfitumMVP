@@ -1,34 +1,60 @@
-import { useCallback, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/hooks/use-auth";
-import { config } from "@/config/env";
-import { Loader2, PiggyBank, Rocket, RefreshCw, FolderOpen, DollarSign, BarChart3, AlertCircle, TrendingUp, CheckCircle } from "lucide-react";
-import Button from "@/components/ui/design-system/Button";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, StatCard } from "@/components/ui/design-system/Card";
-import Badge from "@/components/ui/design-system/Badge";
-import HeaderClient from "@/components/HeaderClient";
+import { useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { 
+  Loader2, 
+  RefreshCw, 
+  AlertCircle, 
+  Rocket,
+  FolderOpen,
+  TrendingUp,
+  CheckCircle,
+  Clock
+} from 'lucide-react';
+import HeaderClient from '@/components/HeaderClient';
+import { useAuth } from '@/hooks/use-auth';
+import { useClientProducts } from '@/hooks/use-client-products';
 import { SectionTitle } from "@/components/dashboard/SectionTitle";
-import { AuditTable } from "@/components/dashboard/AuditTable";
-import { EmptyAuditState } from "@/components/dashboard/EmptyAuditState";
-import { useDashboardClientEffects } from "@/hooks/useDashboardClientEffects";
-import { useKpiData } from "@/hooks/useKpiData";
-import { useClientProducts } from "@/hooks/use-client-products";
-import "react-circular-progressbar/dist/styles.css";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Audit } from "@/types/audit";
 import { EmptyEligibleProductsState } from "@/components/empty-eligible-products-state";
+
+// Composant StatCard pour les KPIs
+interface StatCardProps {
+  title: string;
+  value: string;
+  icon: React.ReactNode;
+  className?: string;
+}
+
+const StatCard = ({ title, value, icon, className = "" }: StatCardProps) => (
+  <Card className={`p-4 ${className}`}>
+    <CardContent className="p-0">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-gray-600">{title}</p>
+          <p className="text-2xl font-bold text-gray-900">{value}</p>
+        </div>
+        <div className="text-blue-600">
+          {icon}
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+);
 
 export default function DashboardClient() {
   const navigate = useNavigate();
   const { user } = useAuth();
   
-  const { showSimulationDialog, setShowSimulationDialog, loadingTooLong, useFallbackData, setUseFallbackData, audits, isLoadingAudits, auditsError, refreshAudits, hasRecentSimulation } = useDashboardClientEffects();
-  
   // Hook pour les produits éligibles du client
-  const { produits, loading: loadingProducts, error: productsError, hasProducts, totalProducts } = useClientProducts();
-
-  const kpiData = useKpiData(audits as Audit[]);
+  const { 
+    produits, 
+    loading: loadingProducts, 
+    error: productsError, 
+    hasProducts,
+    inProgressProducts
+  } = useClientProducts();
 
   // Redirection automatique vers le simulateur si le client n'a pas de produits éligibles
   useEffect(() => {
@@ -38,46 +64,14 @@ export default function DashboardClient() {
     }
   }, [loadingProducts, hasProducts, productsError, navigate]);
 
-  // Mapping des types d'audit vers les URLs des pages de produits
-  const auditTypeToProductUrl = (auditType: string, clientProduitId: string): string => {
-    const mapping: Record<string, string> = {
-      'TICPE': `/produits/ticpe/${clientProduitId}`,
-      'URSSAF': `/produits/urssaf/${clientProduitId}`,
-      'DFS': `/produits/dfs/${clientProduitId}`,
-      'FONCIER': `/produits/foncier/${clientProduitId}`,
-      'MSA': `/produits/msa/${clientProduitId}`,
-      'CIR': `/produits/cir/${clientProduitId}`,
-      'SOCIAL': `/produits/social/${clientProduitId}`,
-      'AUDIT_ENERGETIQUE': `/produits/audit_energetique/${clientProduitId}`,
-    };
-    
-    // Normaliser le type d'audit (majuscules, supprimer les espaces)
-    const normalizedType = auditType.toUpperCase().replace(/\s+/g, '_');
-    
-    return mapping[normalizedType] || `/dossier-client/${auditType}/${clientProduitId}`;
-  };
-
-  const handleCloseDialog = useCallback(() => {
-    setShowSimulationDialog(false);
-    if (user?.id) {
-      localStorage.removeItem(`hasRecentSimulation_${user.id}`);
-    }
-  }, [user, setShowSimulationDialog]);
-
   const handleSimulation = useCallback(async () => {
     try {
-      const response = await fetch(`${config.API_URL}/api/simulations/check-recent/${user?.id}`);
-      const data = await response.json();
-      
-      if (data.success && data.data.simulation) {
-        navigate(`/simulateur?simulationID=${data.data.simulation.id}`);
-      } else {
-        navigate('/simulateur');
-      }
+      // Logique de simulation simplifiée
+      navigate('/simulateur');
     } catch (error) {
       navigate('/simulateur');
     }
-  }, [user, navigate]);
+  }, [navigate]);
 
   const handleNavigation = useCallback((path: string) => {
     navigate(path);
@@ -93,29 +87,32 @@ export default function DashboardClient() {
     handleRefresh();
   }, [handleRefresh]);
 
-  const filteredAudits = useFallbackData ? [
-    { id: "1", client_id: user?.id || "", expert_id: "1", audit_type: "TICPE", status: "en_cours", current_step: 2, potential_gain: 25000, obtained_gain: 0, reliability: 0, progress: 45, description: "Optimisation de la taxe intérieure sur les produits énergétiques", is_eligible_product: true, charter_signed: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), tauxFinal: 0.02, dureeFinale: 12 }
-  ] : audits;
+  // Calcul des vraies données KPI depuis ClientProduitEligible
+  const kpiData = {
+    dossiersEnCours: inProgressProducts,
+    gainsPotentiels: produits
+      .filter(p => p.montantFinal && p.montantFinal > 0)
+      .reduce((sum, p) => sum + (p.montantFinal || 0), 0)
+      .toLocaleString('fr-FR') + ' €',
+    gainsObtenus: produits
+      .filter(p => p.statut === 'termine' && p.montantFinal && p.montantFinal > 0)
+      .reduce((sum, p) => sum + (p.montantFinal || 0), 0)
+      .toLocaleString('fr-FR') + ' €',
+    progression: produits.length > 0 
+      ? Math.round(produits.reduce((sum, p) => sum + (p.progress || 0), 0) / produits.length) + '%'
+      : '0%'
+  };
 
-  if (isLoadingAudits && !loadingTooLong) {
+  if (loadingProducts) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex flex-col items-center justify-center">
-        <Card variant="glass" className="p-8 text-center">
+        <Card className="p-8 text-center">
           <CardContent>
             <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
             <CardTitle className="text-xl mb-2">Chargement de votre tableau de bord...</CardTitle>
             <CardDescription>
               Nous préparons vos données personnalisées
             </CardDescription>
-            {isLoadingAudits && (
-              <Button 
-                variant="secondary" 
-                className="mt-4"
-                onClick={() => setUseFallbackData(true)}
-              >
-                Utiliser des données de démonstration
-              </Button>
-            )}
           </CardContent>
         </Card>
       </div>
@@ -152,7 +149,7 @@ export default function DashboardClient() {
     );
   }
 
-  if (auditsError && !useFallbackData) {
+  if (productsError) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
         <HeaderClient />
@@ -163,14 +160,14 @@ export default function DashboardClient() {
             <CardHeader>
               <CardTitle className="text-2xl text-red-600">Problème de chargement des données</CardTitle>
               <CardDescription>
-                Une erreur est survenue lors du chargement des audits
+                Une erreur est survenue lors du chargement des données
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Alert className="mb-6">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
-                  Message d'erreur : {auditsError}
+                  Message d'erreur : {productsError}
                 </AlertDescription>
               </Alert>
               
@@ -180,15 +177,8 @@ export default function DashboardClient() {
               
               <div className="flex flex-col gap-4">
                 <div className="flex gap-4">
-                  <Button onClick={refreshAudits} className="flex-1">
+                  <Button onClick={handleRefresh} className="flex-1">
                     <RefreshCw className="mr-2 h-4 w-4" /> Réessayer
-                  </Button>
-                  <Button 
-                    onClick={() => setUseFallbackData(true)}
-                    variant="secondary"
-                    className="flex-1"
-                  >
-                    <PiggyBank className="mr-2 h-4 w-4" /> Utiliser des données de démonstration
                   </Button>
                 </div>
                 
@@ -207,7 +197,7 @@ export default function DashboardClient() {
     );
   }
 
-  if (Array.isArray(audits) && audits.length === 0) {
+  if (!hasProducts) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 pb-16">
         <HeaderClient />
@@ -222,29 +212,6 @@ export default function DashboardClient() {
 
           <EmptyEligibleProductsState />
         </div>
-
-        <Dialog open={showSimulationDialog} onOpenChange={setShowSimulationDialog}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Simulation récente détectée</DialogTitle>
-              <DialogDescription>
-                Nous avons détecté une simulation récente. Voulez-vous la continuer ou en créer une nouvelle ?
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="flex flex-col sm:flex-row gap-2">
-              <Button onClick={handleSimulation} className="w-full sm:w-auto">
-                Continuer la simulation
-              </Button>
-              <Button 
-                variant="secondary" 
-                onClick={handleCloseDialog}
-                className="w-full sm:w-auto"
-              >
-                Créer une nouvelle simulation
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       </div>
     );
   }
@@ -296,144 +263,104 @@ export default function DashboardClient() {
           
           <StatCard
             title="Gains potentiels"
-            value={`${kpiData.gainsPotentiels.toLocaleString()} €`}
-            change={`${kpiData.gainsObtenus.toLocaleString()} € obtenus`}
-            trend="up"
-            icon={<DollarSign className="w-4 h-4" />}
+            value={kpiData.gainsPotentiels}
+            icon={<TrendingUp className="w-4 h-4" />}
             className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200"
           />
           
           <StatCard
-            title="Audits finalisés"
-            value={kpiData.auditsFinalises.toString()}
+            title="Gains obtenus"
+            value={kpiData.gainsObtenus}
             icon={<CheckCircle className="w-4 h-4" />}
-            className="bg-gradient-to-br from-purple-50 to-indigo-50 border-purple-200"
+            className="bg-gradient-to-br from-purple-50 to-violet-50 border-purple-200"
           />
           
           <StatCard
-            title="Avancement global"
-            value={`${kpiData.avancementGlobal.toFixed(0)}%`}
-            icon={<TrendingUp className="w-4 h-4" />}
+            title="Progression"
+            value={kpiData.progression}
+            icon={<Clock className="w-4 h-4" />}
             className="bg-gradient-to-br from-orange-50 to-amber-50 border-orange-200"
           />
         </div>
 
-        {/* Section des produits éligibles */}
-        {!loadingProducts && !productsError && hasProducts && (
-          <Card className="mb-6">
-            <CardHeader className="pb-4">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <CheckCircle className="w-5 h-5 text-green-600" />
-                Vos Produits Éligibles
-                <Badge variant="primary" className="ml-2">
-                  {totalProducts}
-                </Badge>
-              </CardTitle>
+        {/* Contenu principal */}
+        <div className="grid gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Bienvenue sur votre tableau de bord</CardTitle>
               <CardDescription>
-                Produits identifiés lors de votre simulation
+                Gérez vos optimisations fiscales et suivez vos gains en temps réel.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {produits.map((produit) => (
-                  <div key={produit.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-semibold text-gray-900">{produit.ProduitEligible.nom}</h3>
-                      <Badge variant={produit.statut === 'eligible' ? 'success' : 'warning'}>
-                        {produit.statut}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-gray-600 mb-3">{produit.ProduitEligible.description}</p>
-                    <div className="flex justify-between items-center">
-                      <span className="text-lg font-bold text-green-600">
-                        {produit.montantFinal.toLocaleString()} €
-                      </span>
-                      <Button 
-                        variant="secondary" 
-                        size="sm"
-                        onClick={() => {
-                          const productUrl = auditTypeToProductUrl(produit.ProduitEligible.nom, produit.id);
-                          handleNavigation(productUrl);
-                        }}
-                      >
-                        Voir détails
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <p>Votre contenu principal sera affiché ici.</p>
             </CardContent>
           </Card>
-        )}
 
-        {/* Section des audits compacte */}
-        {!isLoadingAudits && !auditsError && filteredAudits.length === 0 ? (
-          <Card>
-            <CardContent className="p-6 text-center">
-              <EmptyAuditState hasRecentSimulation={hasRecentSimulation} />
-            </CardContent>
-          </Card>
-        ) : (
-          <Card>
-            <CardHeader className="pb-4">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <BarChart3 className="w-5 h-5" />
-                Vos Audits
-                <Badge variant="primary" className="ml-2">
-                  {filteredAudits.length}
-                </Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <AuditTable
-                activeTab="opportunities"
-                allDossiers={filteredAudits}
-                user={user}
-                onNewSimulation={handleSimulation}
-                onViewDossier={(id, auditType) => {
-                  const produitNom = auditType || 'TICPE';
-                  const productUrl = auditTypeToProductUrl(produitNom, id);
-                  console.log('🔗 Redirection vers:', productUrl, 'pour le produit:', produitNom);
-                  handleNavigation(productUrl);
-                }}
-                // onViewAudit={(id) => {
-                //   console.log('🔍 Voir audit:', id);
-                //   // Pour l'instant, rediriger vers la même page que onViewDossier
-                //   const audit = filteredAudits.find(a => a.id.toString() === id);
-                //   if (audit) {
-                //     const productUrl = auditTypeToProductUrl(audit.audit_type, id);
-                //     handleNavigation(productUrl);
-                //   }
-                // }}
-              />
-            </CardContent>
-          </Card>
-        )}
+          {/* Section des produits éligibles */}
+          {produits.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Vos produits éligibles</CardTitle>
+                <CardDescription>
+                  {produits.length} produit(s) éligible(s) trouvé(s)
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {produits.map((produit) => (
+                    <div key={produit.id} className="border rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-medium">
+                          {produit.ProduitEligible?.nom || 'Produit non défini'}
+                        </h4>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          produit.statut === 'termine' ? 'bg-green-100 text-green-800' :
+                          produit.statut === 'en_cours' ? 'bg-blue-100 text-blue-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {produit.statut}
+                        </span>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                        <div>
+                          <span className="text-gray-600">Montant :</span>
+                          <p className="font-medium">
+                            {produit.montantFinal ? produit.montantFinal.toLocaleString('fr-FR') + ' €' : 'Non défini'}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">Taux :</span>
+                          <p className="font-medium">
+                            {produit.tauxFinal ? (produit.tauxFinal * 100).toFixed(2) + '%' : 'Non défini'}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">Durée :</span>
+                          <p className="font-medium">
+                            {produit.dureeFinale ? produit.dureeFinale + ' jours' : 'Non définie'}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">Progression :</span>
+                          <p className="font-medium">{produit.progress || 0}%</p>
+                        </div>
+                      </div>
+                      
+                      {produit.ProduitEligible?.description && (
+                        <p className="text-sm text-gray-600 mt-2">
+                          {produit.ProduitEligible.description}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </div>
-
-      {/* Dialog de simulation - Amélioré */}
-      <Dialog open={showSimulationDialog} onOpenChange={setShowSimulationDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Simulation récente détectée</DialogTitle>
-            <DialogDescription>
-              Nous avons détecté une simulation récente. Voulez-vous la continuer ou en créer une nouvelle ?
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex flex-col sm:flex-row gap-2">
-            <Button onClick={handleSimulation} className="w-full sm:w-auto">
-              Continuer la simulation
-            </Button>
-            <Button 
-              variant="secondary" 
-              onClick={handleCloseDialog}
-              className="w-full sm:w-auto"
-            >
-              Créer une nouvelle simulation
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

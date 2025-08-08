@@ -1,229 +1,32 @@
-import express, { Router, Request, Response } from 'express';
-import { createClient } from '@supabase/supabase-js';
-import { asyncHandler } from '../utils/asyncHandler';
+import express, { Request, Response } from 'express';
+import { supabase } from '../lib/supabase';
 import { AuthUser } from '../types/auth';
-import { NotificationService } from '../services/NotificationService';
-
+import { enhancedAuthMiddleware, AuthenticatedRequest } from '../middleware/auth-enhanced';
+import { NotificationService } from '../services/notification-service';
 
 const router = express.Router();
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
-// Route pour obtenir le profil client
-router.get('/profile', async (req: Request, res: Response) => {
-  try {
-    if (!req.user) {
-      return res.status(401).json({ success: false, message: 'Non authentifié' });
-    }
-
-    const authUser = req.user as AuthUser;
-    
-    // Vérifier que l'utilisateur est client
-    if (authUser.type !== 'client') {
-      return res.status(403).json({ success: false, message: 'Accès non autorisé' });
-    }
-
-    // Récupérer le profil client
-    const { data: client, error } = await supabase
-      .from('Client')
-      .select('*')
-      .eq('id', authUser.id)
-      .single();
-
-    if (error) {
-      console.error('Erreur lors de la récupération du profil client:', error);
-      return res.status(500).json({ success: false, message: 'Erreur serveur' });
-    }
-
-    return res.json({
-      success: true,
-      data: client
-    });
-  } catch (error) {
-    console.error('Erreur lors de la récupération du profil client:', error);
-    return res.status(500).json({ success: false, message: 'Erreur serveur' });
-  }
-});
-
-// Route pour mettre à jour le profil client
-router.put('/profile', async (req: Request, res: Response) => {
-  try {
-    if (!req.user) {
-      return res.status(401).json({ success: false, message: 'Non authentifié' });
-    }
-
-    const authUser = req.user as AuthUser;
-    const { nom, prenom, telephone, adresse, ville, code_postal } = req.body;
-    
-    // Vérifier que l'utilisateur est client
-    if (authUser.type !== 'client') {
-      return res.status(403).json({ success: false, message: 'Accès non autorisé' });
-    }
-
-    // Mettre à jour le profil client
-    const { data: client, error } = await supabase
-      .from('Client')
-      .update({
-        nom,
-        prenom,
-        telephone,
-        adresse,
-        ville,
-        code_postal,
-        updatedAt: new Date().toISOString()
-      })
-      .eq('id', authUser.id)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Erreur lors de la mise à jour du profil client:', error);
-      return res.status(500).json({ success: false, message: 'Erreur serveur' });
-    }
-
-    return res.json({
-      success: true,
-      data: client
-    });
-  } catch (error) {
-    console.error('Erreur lors de la mise à jour du profil client:', error);
-    return res.status(500).json({ success: false, message: 'Erreur serveur' });
-  }
-});
-
-// GET /api/client/produits-eligibles - Récupérer les produits éligibles du client (OPTIMISÉ)
-router.get('/produits-eligibles', async (req: Request, res: Response) => {
-  try {
-    console.log('🔍 Route /api/client/produits-eligibles appelée');
-    
-    if (!req.user) {
-      console.log('❌ Utilisateur non authentifié');
-      return res.status(401).json({ success: false, message: 'Non authentifié' });
-    }
-
-    const authUser = req.user as AuthUser;
-    console.log('🔍 Utilisateur authentifié:', { 
-      id: authUser.id, 
-      email: authUser.email, 
-      type: authUser.type 
-    });
-    
-    // Vérifier que l'utilisateur est client
-    if (authUser.type !== 'client') {
-      console.log('❌ Type utilisateur incorrect:', authUser.type);
-      return res.status(403).json({ success: false, message: 'Accès non autorisé' });
-    }
-
-    // Pagination optimisée
-    const page = parseInt(req.query.page as string) || 1;
-    const pageSize = parseInt(req.query.pageSize as string) || 20;
-    const offset = (page - 1) * pageSize;
-
-    // Récupérer d'abord le client par auth_id pour obtenir l'ID client
-    const { data: client, error: clientError } = await supabase
-      .from('Client')
-      .select('id')
-      .eq('auth_id', authUser.id)
-      .single();
-
-    if (clientError || !client) {
-      console.error('❌ Client non trouvé pour auth_id:', authUser.id);
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Profil client non trouvé. Veuillez contacter le support.' 
-      });
-    }
-
-    console.log('🔍 Client trouvé:', { clientId: client.id, authId: authUser.id });
-
-    // Requête optimisée avec jointure directe et sélection de champs spécifiques
-    const { data: produitsData, error: produitsError, count } = await supabase
-      .from('ClientProduitEligible')
-      .select(`
-        id,
-        clientId,
-        produitId,
-        statut,
-        expert_id,
-        montantFinal,
-        tauxFinal,
-        dureeFinale,
-        current_step,
-        progress,
-        created_at,
-        updated_at,
-        ProduitEligible!inner (
-          id,
-          nom,
-          description,
-          category
-        )
-      `, { count: 'exact' })
-      .eq('clientId', client.id) // Utiliser l'ID du client
-      .order('created_at', { ascending: false })
-      .range(offset, offset + pageSize - 1);
-
-    if (produitsError) {
-      console.error('❌ Erreur lors de la récupération des produits:', produitsError);
-      throw produitsError;
-    }
-
-    console.log(`✅ ${produitsData?.length || 0} produits récupérés pour la page ${page}`);
-
-    return res.json({
-      success: true,
-      data: produitsData || [],
-      pagination: {
-        page,
-        pageSize,
-        total: count || 0,
-        totalPages: count ? Math.ceil(count / pageSize) : 1
-      }
-    });
-
-  } catch (error) {
-    console.error('❌ Erreur lors de la récupération des produits:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Erreur lors de la récupération des produits',
-      error: error instanceof Error ? error.message : 'Erreur inconnue'
-    });
-  }
-});
+// ============================================================================
+// ROUTES CLIENT - AUTHENTIFICATION UNIFIÉE
+// ============================================================================
 
 // PUT /api/client/produits-eligibles/:id/assign-expert - Attribuer un expert à un produit éligible
-router.put('/produits-eligibles/:id/assign-expert', async (req, res) => {
+router.put('/produits-eligibles/:id/assign-expert', enhancedAuthMiddleware, async (req, res) => {
   try {
+    const user = (req as AuthenticatedRequest).user;
+    
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur non authentifié'
+      });
+    }
+    
     const { id } = req.params;
     const { expert_id } = req.body;
-    const token = req.headers.authorization?.replace('Bearer ', '');
-
-    if (!token) {
-      return res.status(401).json({
-        success: false,
-        message: 'Token d\'authentification requis'
-      });
-    }
-
-    // Vérifier l'authentification
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    if (authError || !user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Token invalide'
-      });
-    }
 
     // Vérifier que l'utilisateur est un client
-    const { data: clientData, error: clientError } = await supabase
-      .from('Client')
-      .select('id, company_name')
-      .eq('email', user.email)
-      .single();
-
-    if (clientError || !clientData) {
+    if (user.type !== 'client') {
       return res.status(403).json({
         success: false,
         message: 'Accès réservé aux clients'
@@ -235,7 +38,7 @@ router.put('/produits-eligibles/:id/assign-expert', async (req, res) => {
       .from('ClientProduitEligible')
       .select('*')
       .eq('id', id)
-      .eq('clientId', clientData.id)
+      .eq('clientId', user.database_id)
       .single();
 
     if (produitError || !produitData) {
@@ -280,7 +83,7 @@ router.put('/produits-eligibles/:id/assign-expert', async (req, res) => {
     try {
       await NotificationService.sendPreselectionNotification(
         expert_id,
-        clientData.company_name || 'Client',
+        user.user_metadata.company_name || 'Client',
         produitData.ProduitEligible?.nom || 'Produit',
         produitData.montant_final
       );

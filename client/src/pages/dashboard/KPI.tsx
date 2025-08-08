@@ -26,7 +26,7 @@ const KPIPage: React.FC = () => { // Données fictives pour les graphiques
       <HeaderClient />
       <div className="container mx-auto p-4 mt-20">
         <h1 className="text-3xl font-bold mb-6 text-blue-900">Analytique & KPI</h1>
-        <div className="grid grid-cols-1 md: grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <Card className="p-6 flex flex-col items-center">
             <h2 className="text-xl font-semibold mb-4 text-blue-700">Évolution des gains</h2>
             <Bar data={ barData } options={ {

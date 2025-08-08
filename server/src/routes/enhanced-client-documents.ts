@@ -2,7 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import { EnhancedDocumentStorageService } from '../services/enhanced-document-storage-service';
 import { AuthUser } from '../types/auth';
-import { enhancedAuthMiddleware } from '../middleware/auth-enhanced';
+import { enhancedAuthMiddleware, AuthenticatedRequest } from '../middleware/auth-enhanced';
 
 const router = express.Router();
 const documentStorageService = new EnhancedDocumentStorageService();
@@ -48,7 +48,15 @@ const upload = multer({
  */
 router.post('/upload', enhancedAuthMiddleware, upload.single('file'), async (req, res) => {
   try {
-    const user = (req as any).user as AuthUser;
+    const user = (req as AuthenticatedRequest).user;
+    
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur non authentifié'
+      });
+    }
+    
     const { clientId, expertId, auditId, category, description, tags, accessLevel, expiresAt } = req.body;
     const file = (req as any).file;
 
@@ -72,17 +80,17 @@ router.post('/upload', enhancedAuthMiddleware, upload.single('file'), async (req
 
     if (user.type === 'admin') {
       userType = 'admin';
-      targetId = user.id;
+      targetId = user.database_id;
     } else if (user.type === 'expert') {
       userType = 'expert';
-      targetId = expertId || user.id;
+      targetId = expertId || user.database_id;
     } else {
       userType = 'client';
-      targetId = clientId || user.id;
+      targetId = clientId || user.database_id;
     }
 
     // Vérifier les permissions
-    if (user.type === 'client' && clientId && clientId !== user.id) {
+    if (user.type === 'client' && clientId && clientId !== user.database_id) {
       return res.status(403).json({
         success: false,
         message: 'Vous ne pouvez uploader que vos propres documents'
@@ -99,7 +107,7 @@ router.post('/upload', enhancedAuthMiddleware, upload.single('file'), async (req
       tags: tags ? JSON.parse(tags) : [],
       access_level: accessLevel as any,
       expires_at: expiresAt ? new Date(expiresAt) : undefined,
-      uploaded_by: user.id,
+      uploaded_by: user.database_id,
       user_type: userType
     });
 
@@ -114,17 +122,16 @@ router.post('/upload', enhancedAuthMiddleware, upload.single('file'), async (req
       success: true,
       message: 'Fichier uploadé avec succès',
       data: {
-        id: uploadResponse.file_id,
-        file_path: uploadResponse.file_path,
-        metadata: uploadResponse.metadata
+        file_id: uploadResponse.file_id,
+        file_url: uploadResponse.file_path
       }
     });
 
   } catch (error) {
-    console.error('Erreur upload fichier:', error);
+    console.error('Erreur upload:', error);
     return res.status(500).json({
       success: false,
-      message: 'Erreur lors de l\'upload du fichier'
+      message: 'Erreur lors de l\'upload'
     });
   }
 });
@@ -137,12 +144,20 @@ router.post('/upload', enhancedAuthMiddleware, upload.single('file'), async (req
  */
 router.get('/download/:fileId', enhancedAuthMiddleware, async (req, res) => {
   try {
-    const user = (req as any).user as AuthUser;
+    const user = (req as AuthenticatedRequest).user;
+    
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur non authentifié'
+      });
+    }
+    
     const { fileId } = req.params;
 
     const downloadResponse = await documentStorageService.downloadFile(
-      fileId, 
-      user.id, 
+      fileId,
+      user.database_id,
       user.type
     );
 
@@ -153,10 +168,13 @@ router.get('/download/:fileId', enhancedAuthMiddleware, async (req, res) => {
       });
     }
 
-    // Envoyer le fichier
+    // Définir les headers pour le téléchargement
     res.setHeader('Content-Type', downloadResponse.metadata?.mime_type || 'application/octet-stream');
     res.setHeader('Content-Disposition', `attachment; filename="${downloadResponse.metadata?.original_filename || 'download'}"`);
-    return res.send(downloadResponse.file_data);
+    res.setHeader('Content-Length', (downloadResponse.file_data?.length || 0).toString());
+
+    // Envoyer le fichier
+    return res.send(downloadResponse.file_data || Buffer.alloc(0));
 
   } catch (error) {
     console.error('Erreur téléchargement:', error);
@@ -175,12 +193,20 @@ router.get('/download/:fileId', enhancedAuthMiddleware, async (req, res) => {
  */
 router.get('/client/:clientId', enhancedAuthMiddleware, async (req, res) => {
   try {
-    const user = (req as any).user as AuthUser;
+    const user = (req as AuthenticatedRequest).user;
+    
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur non authentifié'
+      });
+    }
+    
     const { clientId } = req.params;
     const { category, status, limit, offset } = req.query;
 
     // Vérifier les permissions
-    if (user.type !== 'admin' && user.type !== 'expert' && user.id !== clientId) {
+    if (user.type !== 'admin' && user.type !== 'expert' && user.database_id !== clientId) {
       return res.status(403).json({
         success: false,
         message: 'Accès non autorisé'
@@ -189,7 +215,7 @@ router.get('/client/:clientId', enhancedAuthMiddleware, async (req, res) => {
 
     const listResponse = await documentStorageService.listClientFiles(
       clientId,
-      user.id,
+      user.database_id,
       user.type,
       {
         category: category as string,
@@ -229,12 +255,20 @@ router.get('/client/:clientId', enhancedAuthMiddleware, async (req, res) => {
  */
 router.get('/expert/:expertId', enhancedAuthMiddleware, async (req, res) => {
   try {
-    const user = (req as any).user as AuthUser;
+    const user = (req as AuthenticatedRequest).user;
+    
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur non authentifié'
+      });
+    }
+    
     const { expertId } = req.params;
     const { category, status, limit, offset } = req.query;
 
     // Vérifier les permissions
-    if (user.type !== 'admin' && user.id !== expertId) {
+    if (user.type !== 'admin' && user.database_id !== expertId) {
       return res.status(403).json({
         success: false,
         message: 'Accès non autorisé'
@@ -243,7 +277,7 @@ router.get('/expert/:expertId', enhancedAuthMiddleware, async (req, res) => {
 
     const listResponse = await documentStorageService.listExpertFiles(
       expertId,
-      user.id,
+      user.database_id,
       user.type,
       {
         category: category as string,
@@ -285,34 +319,33 @@ router.get('/expert/:expertId', enhancedAuthMiddleware, async (req, res) => {
  */
 router.post('/validate/:fileId', enhancedAuthMiddleware, async (req, res) => {
   try {
-    const user = (req as any).user as AuthUser;
+    const user = (req as AuthenticatedRequest).user;
+    
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur non authentifié'
+      });
+    }
+    
     const { fileId } = req.params;
     const { status, comment } = req.body;
 
-    if (!status || !['approved', 'rejected', 'requires_revision'].includes(status)) {
+    if (!status) {
       return res.status(400).json({
         success: false,
-        message: 'Statut de validation invalide'
+        message: 'Le statut est requis'
       });
     }
 
-    // Seuls les admins et experts peuvent valider
-    if (user.type !== 'admin' && user.type !== 'expert') {
-      return res.status(403).json({
-        success: false,
-        message: 'Seuls les admins et experts peuvent valider les documents'
-      });
-    }
-
-    const success = await documentStorageService.validateFile(
+    const validateResponse = await documentStorageService.validateFile(
       fileId,
-      user.id,
-      user.type,
-      status as any,
+      user.database_id,
+      status,
       comment
     );
 
-    if (!success) {
+    if (!validateResponse) {
       return res.status(500).json({
         success: false,
         message: 'Erreur lors de la validation'
@@ -321,7 +354,7 @@ router.post('/validate/:fileId', enhancedAuthMiddleware, async (req, res) => {
 
     return res.json({
       success: true,
-      message: 'Document validé avec succès'
+      message: 'Fichier validé avec succès'
     });
 
   } catch (error) {
@@ -341,19 +374,27 @@ router.post('/validate/:fileId', enhancedAuthMiddleware, async (req, res) => {
  */
 router.delete('/:fileId', enhancedAuthMiddleware, async (req, res) => {
   try {
-    const user = (req as any).user as AuthUser;
+    const user = (req as AuthenticatedRequest).user;
+    
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur non authentifié'
+      });
+    }
+    
     const { fileId } = req.params;
 
-    const success = await documentStorageService.deleteFile(
+    const deleteResponse = await documentStorageService.deleteFile(
       fileId,
-      user.id,
+      user.database_id,
       user.type
     );
 
-    if (!success) {
-      return res.status(403).json({
+    if (!deleteResponse) {
+      return res.status(500).json({
         success: false,
-        message: 'Vous n\'avez pas les permissions pour supprimer ce fichier'
+        message: 'Erreur lors de la suppression'
       });
     }
 
@@ -379,7 +420,15 @@ router.delete('/:fileId', enhancedAuthMiddleware, async (req, res) => {
  */
 router.post('/share/:fileId', enhancedAuthMiddleware, async (req, res) => {
   try {
-    const user = (req as any).user as AuthUser;
+    const user = (req as AuthenticatedRequest).user;
+    
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur non authentifié'
+      });
+    }
+    
     const { fileId } = req.params;
     const { email, permissions, expiresAt } = req.body;
 
@@ -392,7 +441,7 @@ router.post('/share/:fileId', enhancedAuthMiddleware, async (req, res) => {
 
     const shareResponse = await documentStorageService.shareFile(
       fileId,
-      user.id,
+      user.database_id,
       email,
       permissions,
       expiresAt ? new Date(expiresAt) : undefined
@@ -430,11 +479,19 @@ router.post('/share/:fileId', enhancedAuthMiddleware, async (req, res) => {
  */
 router.get('/stats/:clientId', enhancedAuthMiddleware, async (req, res) => {
   try {
-    const user = (req as any).user as AuthUser;
+    const user = (req as AuthenticatedRequest).user;
+    
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur non authentifié'
+      });
+    }
+    
     const { clientId } = req.params;
 
     // Vérifier les permissions
-    if (user.type !== 'admin' && user.type !== 'expert' && user.id !== clientId) {
+    if (user.type !== 'admin' && user.type !== 'expert' && user.database_id !== clientId) {
       return res.status(403).json({
         success: false,
         message: 'Accès non autorisé'

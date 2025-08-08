@@ -211,32 +211,17 @@ export const ClientProvider: React.FC<ClientProviderProps> = ({ children }) => {
   const [error, setError] = useState<string | null>(null);
 
   // Charger les dossiers
-  const loadDossiers = async () => { setLoading(true);
+  const loadDossiers = async () => { 
+    setLoading(true);
     try {
       // TODO: Remplacer par l'API réelle
-      const mockDossiers: ClientDossier[] = [
-        {
-          id: '1', productType: 'TICPE', status: 'in_progress', priority: 'high', createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), updatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), deadline: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(), estimatedCompletion: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), progress: 65, expertId: 'expert1', expertName: 'Marie Martin', documents: [
-            {
-              id: 'doc1', name: 'Contrat TICPE', type: 'contract', status: 'validated', uploadedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), validatedAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(), fileSize: 24576, required: true },
-            { id: 'doc2', name: 'Justificatifs fiscaux', type: 'form', status: 'pending', required: true, description: 'Documents fiscaux de l\'année en cours' }
-          ],
-          notes: 'Dossier en cours de traitement par l\'expert,',
-          estimatedSavings: 500, actualSavings: 320, fees: 400
-       
-},
-        { id: '2', productType: 'URSSAF', status: 'submitted', priority: 'medium', createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), progress: 25, documents: [
-            {
-              id: 'doc3', name: 'Déclaration URSSAF', type: 'form', status: 'uploaded', uploadedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), fileSize: 15678, required: true }
-          ],
-          estimatedSavings: 300, fees: 300
-       
-}
-      ];
-
-      setDossiers(mockDossiers);
-    } catch (error) { setError('Erreur lors du chargement des dossiers');
-      console.error('Erreur loadDossiers: ', error); } finally { setLoading(false); }
+      setDossiers([]);
+    } catch (error) { 
+      setError('Erreur lors du chargement des dossiers');
+      console.error('Erreur loadDossiers: ', error); 
+    } finally { 
+      setLoading(false); 
+    }
   };
 
   // Charger les workflows
@@ -320,22 +305,14 @@ export const ClientProvider: React.FC<ClientProviderProps> = ({ children }) => {
   };
 
   // Charger les analytics
-  const loadAnalytics = async () => { try {
-      const mockAnalytics: ClientAnalytics = {
-        totalDossiers: 8, activeDossiers: 3, completedDossiers: 5, totalSavings: 2500, averageSavings: 312.5, totalFees: 280, satisfactionScore: 4.8, responseTime: 2.5, topProducts: [
-          { name: 'TICPE', count: 3, savings: 15000 },
-          { name: 'URSSAF', count: 2, savings: 6000 },
-          { name: 'DFS', count: 1, savings: 4000 }
-        ],
-        recentActivity: [
-          { type: 'dossier_created, ', description: 'Nouveau dossier URSSAF créé, ', timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
-          { type: 'dossier_completed, ', description: 'Dossier DFS terminé - Économies de 4000€, ', timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString() }
-        ]
-      };
-
-      setAnalytics(mockAnalytics);
-    } catch (error) { setError('Erreur lors du chargement des analytics');
-      console.error('Erreur loadAnalytics: ', error); }
+  const loadAnalytics = async () => { 
+    try {
+      // TODO: Remplacer par l'API réelle
+      setAnalytics(null);
+    } catch (error) { 
+      setError('Erreur lors du chargement des analytics');
+      console.error('Erreur loadAnalytics: ', error); 
+    }
   };
 
   // Charger les préférences

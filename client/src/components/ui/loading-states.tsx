@@ -1,74 +1,30 @@
-import { Loader2, RefreshCw, CheckCircle, AlertCircle } from 'lucide-react';
-import { Card, CardContent, CardTitle, CardDescription } from './design-system/Card';
-import Button from './design-system/Button';
+import React from 'react';
 
 interface LoadingStateProps {
   title?: string;
   description?: string;
-  showFallbackButton?: boolean;
-  onFallbackClick?: () => void;
-  variant?: 'default' | 'success' | 'error' | 'pulse';
-  size?: 'sm' | 'md' | 'lg';
+  showSpinner?: boolean;
+  size?: 'small' | 'default' | 'large';
 }
 
-export function LoadingState({
-  title = "Chargement en cours...",
-  description = "Veuillez patienter pendant que nous préparons vos données",
-  showFallbackButton = false,
-  onFallbackClick,
-  variant = 'default',
-  size = 'md'
-}: LoadingStateProps) {
-  const sizeClasses = {
-    sm: 'h-8 w-8',
-    md: 'h-12 w-12',
-    lg: 'h-16 w-16'
-  };
-
-  const getIcon = () => {
-    switch (variant) {
-      case 'success':
-        return <CheckCircle className={`${sizeClasses[size]} text-green-600`} />;
-      case 'error':
-        return <AlertCircle className={`${sizeClasses[size]} text-red-600`} />;
-      case 'pulse':
-        return <RefreshCw className={`${sizeClasses[size]} animate-spin text-blue-600`} />;
-      default:
-        return <Loader2 className={`${sizeClasses[size]} animate-spin text-blue-600`} />;
-    }
-  };
-
+export const LoadingState: React.FC<LoadingStateProps> = ({ 
+  title = "Chargement en cours...", 
+  description = "Veuillez patienter pendant que nous récupérons vos données.",
+  showSpinner = true,
+  size = "default"
+}) => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex flex-col items-center justify-center p-4">
-      <Card variant="glass" className="p-8 text-center animate-fade-in">
-        <CardContent className="space-y-6">
-          <div className="flex justify-center">
-            {getIcon()}
-          </div>
-          
-          <div className="space-y-2">
-            <CardTitle className="text-xl font-semibold text-slate-900">
-              {title}
-            </CardTitle>
-            <CardDescription className="text-slate-600 max-w-md">
-              {description}
-            </CardDescription>
-          </div>
-
-          {showFallbackButton && onFallbackClick && (
-            <Button 
-              variant="secondary" 
-              onClick={onFallbackClick}
-              className="mt-4 hover:shadow-md transition-all duration-300"
-            >
-              Utiliser des données de démonstration
-            </Button>
-          )}
-        </CardContent>
-      </Card>
+    <div className="flex flex-col items-center justify-center p-8">
+      {showSpinner && (
+        <div className={`animate-spin rounded-full border-2 border-gray-300 border-t-blue-600 ${
+          size === "small" ? "h-6 w-6" : size === "large" ? "h-16 w-16" : "h-12 w-12"
+        }`} />
+      )}
+      <h3 className="mt-4 text-lg font-semibold text-gray-900">{title}</h3>
+      <p className="mt-2 text-sm text-gray-600 text-center max-w-md">{description}</p>
     </div>
   );
-}
+};
 
 interface SkeletonProps {
   className?: string;
@@ -101,8 +57,8 @@ export function Skeleton({
 
 export function SkeletonCard() {
   return (
-    <Card className="animate-fade-in">
-      <CardContent className="p-6 space-y-4">
+    <div className="animate-fade-in">
+      <div className="p-6 space-y-4">
         <div className="flex items-center space-x-4">
           <Skeleton variant="circular" width="3rem" height="3rem" />
           <div className="space-y-2 flex-1">
@@ -115,8 +71,8 @@ export function SkeletonCard() {
           <Skeleton variant="text" />
           <Skeleton variant="text" />
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
