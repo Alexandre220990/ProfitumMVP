@@ -260,133 +260,144 @@ export const enhancedAuthMiddleware = async (
       });
     }
 
-    // 3. Vérification du type d'utilisateur en base de données
-    let userData: any = null;
-    let userType: 'client' | 'expert' | 'admin' = 'client';
+    // 3. Recherche de l'utilisateur dans les tables métier
+    let userData: any;
+    let userType: 'client' | 'expert' | 'admin';
 
-    console.log('🔍 Vérification du type d\'utilisateur pour:', {
-      userId: user.id,
-      userEmail: user.email,
-      route: req.path
-    });
-
-    // Vérifier d'abord par auth_id (plus fiable)
-    console.log('🔍 Recherche client par auth_id:', user.id);
-    const { data: clientDataByAuthId, error: authIdError } = await supabase
-      .from('Client')
-      .select('id, email, company_name, name, auth_id')
-      .eq('auth_id', user.id)
-      .single();
-
-    if (authIdError) {
-      console.log('⚠️ Erreur recherche par auth_id:', authIdError.message);
-    }
-
-    if (clientDataByAuthId) {
-      userData = clientDataByAuthId;
-      userType = 'client';
-      console.log('✅ Client trouvé par auth_id:', { clientId: clientDataByAuthId.id, email: clientDataByAuthId.email });
-    } else {
-      console.log('❌ Client non trouvé par auth_id, recherche par email...');
-      // Fallback : vérifier par email
-      const { data: clientDataByEmail, error: emailError } = await supabase
-        .from('Client')
-        .select('id, email, company_name, name, auth_id')
+    // Pour les routes admin, chercher d'abord dans la table Admin
+    if (req.path.startsWith('/api/admin')) {
+      console.log('🔍 Recherche admin prioritaire...');
+      
+      // Chercher d'abord dans Admin
+      const { data: adminData, error: adminError } = await supabase
+        .from('Admin')
+        .select('id, email, name')
         .eq('email', user.email)
         .single();
-
-      if (emailError) {
-        console.log('⚠️ Erreur recherche par email:', emailError.message);
-      }
-
-      if (clientDataByEmail) {
-        userData = clientDataByEmail;
-        userType = 'client';
-        console.log('✅ Client trouvé par email:', { clientId: clientDataByEmail.id, email: clientDataByEmail.email });
-      }
-    }
-
-    if (!userData) {
-      console.log('❌ Client non trouvé, recherche expert...');
-      // Vérifier si c'est un expert par email
-      const { data: expertData, error: expertError } = await supabase
-        .from('Expert')
-        .select('id, email, name, approval_status')
-        .eq('email', user.email)
-        .single();
-
-      if (expertError) {
-        console.log('⚠️ Erreur recherche expert:', expertError.message);
-      }
-
-      if (expertData) {
-        userData = expertData;
-        userType = 'expert';
-        console.log('✅ Expert trouvé:', { expertId: expertData.id, email: expertData.email, status: expertData.approval_status });
-        
-        // Vérifier le statut d'approbation de l'expert
-        if (expertData.approval_status !== 'approved') {
-          console.log('❌ Expert non approuvé:', expertData.approval_status);
-          await logAccess({
-            timestamp: new Date(),
-            userId: user.id,
-            userType: 'expert',
-            action: req.method,
-            resource: req.path,
-            ipAddress: ipAddress as string,
-            userAgent,
-            success: false,
-            errorMessage: 'Expert non approuvé'
-          });
-          
-          // S'assurer que les headers CORS sont présents avant d'envoyer la réponse
-          addCorsHeaders(req, res);
-          
-          return res.status(403).json({
-            success: false,
-            message: 'Votre compte est en cours d\'approbation par les équipes Profitum. Vous recevrez un email dès que votre compte sera validé.',
-            approval_status: expertData.approval_status
-          });
-        }
+      
+      if (adminData) {
+        userData = adminData;
+        userType = 'admin';
+        console.log('✅ Admin trouvé:', { adminId: adminData.id, email: adminData.email });
       } else {
-        console.log('❌ Expert non trouvé, recherche admin...');
-        // Vérifier si c'est un admin par email
-        const { data: adminData, error: adminError } = await supabase
-          .from('Admin')
+        console.log('❌ Admin non trouvé, recherche dans les autres tables...');
+        
+        // Chercher dans Client
+        const { data: clientData, error: clientError } = await supabase
+          .from('Client')
           .select('id, email, name')
           .eq('email', user.email)
           .single();
         
-        if (adminError) {
-          console.log('⚠️ Erreur recherche admin:', adminError.message);
-        }
-        
-        if (adminData) {
-          userData = adminData;
-          userType = 'admin';
-          console.log('✅ Admin trouvé:', { adminId: adminData.id, email: adminData.email });
+        if (clientData) {
+          userData = clientData;
+          userType = 'client';
+          console.log('✅ Client trouvé:', { clientId: clientData.id, email: clientData.email });
         } else {
-          console.log('❌ Utilisateur non trouvé dans aucune table');
-          // Utilisateur non trouvé dans aucune table
-          await logAccess({
-            timestamp: new Date(),
-            userId: user.id,
-            userType: 'unknown',
-            action: req.method,
-            resource: req.path,
-            ipAddress: ipAddress as string,
-            userAgent,
-            success: false,
-            errorMessage: 'Utilisateur non trouvé en base'
-          });
+          // Chercher dans Expert
+          const { data: expertData, error: expertError } = await supabase
+            .from('Expert')
+            .select('id, email, name')
+            .eq('email', user.email)
+            .single();
           
-          // S'assurer que les headers CORS sont présents avant d'envoyer la réponse
-          addCorsHeaders(req, res);
+          if (expertData) {
+            userData = expertData;
+            userType = 'expert';
+            console.log('✅ Expert trouvé:', { expertId: expertData.id, email: expertData.email });
+          } else {
+            console.log('❌ Utilisateur non trouvé dans aucune table');
+            // Utilisateur non trouvé dans aucune table
+            await logAccess({
+              timestamp: new Date(),
+              userId: user.id,
+              userType: 'unknown',
+              action: req.method,
+              resource: req.path,
+              ipAddress: ipAddress as string,
+              userAgent,
+              success: false,
+              errorMessage: 'Utilisateur non trouvé en base'
+            });
+            
+            // S'assurer que les headers CORS sont présents avant d'envoyer la réponse
+            addCorsHeaders(req, res);
+            
+            return res.status(403).json({
+              success: false,
+              message: 'Utilisateur non autorisé'
+            });
+          }
+        }
+      }
+    } else {
+      // Pour les autres routes, garder l'ordre original
+      console.log('🔍 Recherche standard...');
+      
+      // Chercher d'abord dans Client
+      const { data: clientData, error: clientError } = await supabase
+        .from('Client')
+        .select('id, email, name')
+        .eq('email', user.email)
+        .single();
+      
+      if (clientData) {
+        userData = clientData;
+        userType = 'client';
+        console.log('✅ Client trouvé:', { clientId: clientData.id, email: clientData.email });
+      } else {
+        console.log('❌ Client non trouvé, recherche expert...');
+        // Chercher dans Expert
+        const { data: expertData, error: expertError } = await supabase
+          .from('Expert')
+          .select('id, email, name')
+          .eq('email', user.email)
+          .single();
+        
+        if (expertData) {
+          userData = expertData;
+          userType = 'expert';
+          console.log('✅ Expert trouvé:', { expertId: expertData.id, email: expertData.email });
+        } else {
+          console.log('❌ Expert non trouvé, recherche admin...');
+          // Vérifier si c'est un admin par email
+          const { data: adminData, error: adminError } = await supabase
+            .from('Admin')
+            .select('id, email, name')
+            .eq('email', user.email)
+            .single();
           
-          return res.status(403).json({
-            success: false,
-            message: 'Utilisateur non autorisé'
-          });
+          if (adminError) {
+            console.log('⚠️ Erreur recherche admin:', adminError.message);
+          }
+          
+          if (adminData) {
+            userData = adminData;
+            userType = 'admin';
+            console.log('✅ Admin trouvé:', { adminId: adminData.id, email: adminData.email });
+          } else {
+            console.log('❌ Utilisateur non trouvé dans aucune table');
+            // Utilisateur non trouvé dans aucune table
+            await logAccess({
+              timestamp: new Date(),
+              userId: user.id,
+              userType: 'unknown',
+              action: req.method,
+              resource: req.path,
+              ipAddress: ipAddress as string,
+              userAgent,
+              success: false,
+              errorMessage: 'Utilisateur non trouvé en base'
+            });
+            
+            // S'assurer que les headers CORS sont présents avant d'envoyer la réponse
+            addCorsHeaders(req, res);
+            
+            return res.status(403).json({
+              success: false,
+              message: 'Utilisateur non autorisé'
+            });
+          }
         }
       }
     }
