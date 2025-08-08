@@ -33,7 +33,7 @@ import {
 import HeaderClient from '@/components/HeaderClient';
 import DocumentUpload from '@/components/DocumentUpload';
 import DocumentStats from '@/components/documents/DocumentStats';
-import api from '../../lib/api'; // Importer l'instance axios configurée
+import api from '../lib/api'; // Importer l'instance axios configurée
 
 // ============================================================================
 // ESPACE DOCUMENTAIRE CLIENT UNIFIÉ ET OPTIMISÉ
