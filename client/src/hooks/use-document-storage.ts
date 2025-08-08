@@ -174,7 +174,8 @@ export const useDocumentStorage = () => {
     setLoading(true);
 
     try {
-      const response = await fetch(`/api/client-documents/download/${fileId}`, {
+      const baseUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
+      const response = await fetch(`${baseUrl}/api/client-documents/download/${fileId}`, {
         method: 'GET',
         credentials: 'include'
       });
@@ -227,7 +228,8 @@ export const useDocumentStorage = () => {
       // Récupérer le token depuis localStorage
       const token = localStorage.getItem('token');
 
-      const response = await fetch(`/api/client-documents/client/${clientId}?${params}`, {
+      const baseUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
+      const response = await fetch(`${baseUrl}/api/client-documents/client/${clientId}?${params}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -266,7 +268,8 @@ export const useDocumentStorage = () => {
       const token = localStorage.getItem('token');
       
       // Utiliser l'URL relative correcte au lieu de l'URL hardcodée
-      const response = await fetch(`/api/client-documents/client/${clientId}`, {
+      const baseUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
+      const response = await fetch(`${baseUrl}/api/client-documents/client/${clientId}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -311,7 +314,8 @@ export const useDocumentStorage = () => {
     setLoading(true);
 
     try {
-      const response = await fetch(`/api/client-documents/validate/${fileId}`, {
+      const baseUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
+      const response = await fetch(`${baseUrl}/api/client-documents/validate/${fileId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
@@ -358,7 +362,8 @@ export const useDocumentStorage = () => {
     setLoading(true);
 
     try {
-      const response = await fetch(`/api/client-documents/${fileId}`, {
+      const baseUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
+      const response = await fetch(`${baseUrl}/api/client-documents/${fileId}`, {
         method: 'DELETE',
         credentials: 'include'
       });
@@ -406,7 +411,8 @@ export const useDocumentStorage = () => {
     setLoading(true);
 
     try {
-      const response = await fetch(`/api/client-documents/share/${fileId}`, {
+      const baseUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
+      const response = await fetch(`${baseUrl}/api/client-documents/share/${fileId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -453,7 +459,8 @@ export const useDocumentStorage = () => {
     setLoading(true);
 
     try {
-      const response = await fetch(`/api/client-documents/stats/${clientId}`, {
+      const baseUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
+      const response = await fetch(`${baseUrl}/api/client-documents/stats/${clientId}`, {
         method: 'GET',
         credentials: 'include'
       });

@@ -176,7 +176,8 @@ export const useUnifiedDocuments = () => {
       const cached = documentCache.get(cacheKey);
       if (cached) return cached;
 
-      const response = await fetch(`/api/unified-documents/stats/${user?.id}`, {
+      const baseUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
+      const response = await fetch(`${baseUrl}/api/unified-documents/stats/${user?.id}`, {
         credentials: 'include'
       });
 
@@ -240,7 +241,8 @@ export const useUnifiedDocuments = () => {
           formData.append('auditId', options.auditId);
         }
 
-        const response = await fetch('/api/unified-documents/upload', {
+        const baseUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
+        const response = await fetch(`${baseUrl}/api/unified-documents/upload`, {
           method: 'POST',
           body: formData,
           credentials: 'include'
@@ -307,7 +309,8 @@ export const useUnifiedDocuments = () => {
   // Mutation pour la suppression
   const deleteMutation = useMutation({
     mutationFn: async (fileId: string) => {
-      const response = await fetch(`/api/unified-documents/delete/${fileId}`, {
+      const baseUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
+      const response = await fetch(`${baseUrl}/api/unified-documents/delete/${fileId}`, {
         method: 'DELETE',
         credentials: 'include'
       });
@@ -346,7 +349,8 @@ export const useUnifiedDocuments = () => {
   // Mutation pour le partage
   const shareMutation = useMutation({
     mutationFn: async ({ fileId, options }: { fileId: string; options: ShareOptions }) => {
-      const response = await fetch(`/api/unified-documents/share/${fileId}`, {
+      const baseUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
+      const response = await fetch(`${baseUrl}/api/unified-documents/share/${fileId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(options),
@@ -411,7 +415,8 @@ export const useUnifiedDocuments = () => {
   // Téléchargement optimisé
   const downloadFile = useCallback(async (fileId: string, filename: string) => {
     try {
-      const response = await fetch(`/api/unified-documents/download/${fileId}`, {
+      const baseUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
+      const response = await fetch(`${baseUrl}/api/unified-documents/download/${fileId}`, {
         credentials: 'include'
       });
 

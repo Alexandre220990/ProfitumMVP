@@ -87,11 +87,14 @@ export class MessagingDocumentIntegration { /**
     sharedWith: string
   ): Promise<{ success: boolean; error?: string }> { try {
       // 1. Partager le document via API directe
-      const response = await fetch(`/api/client-documents/share/${documentId }`, { method: 'POST', headers: {
-          'Content-Type': 'application/json' },
+      const baseUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
+      const response = await fetch(`${baseUrl}/api/client-documents/share/${documentId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
         credentials: 'include',
-        body: JSON.stringify({ sharedWithEmail: sharedWith, permissions: { view: true, download: true }
-        })
+        body: JSON.stringify({ sharedWithEmail: sharedWith, permissions: { view: true, download: true } })
       });
 
       const result = await response.json();
