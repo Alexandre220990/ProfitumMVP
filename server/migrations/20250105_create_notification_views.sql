@@ -88,7 +88,7 @@ SELECT
     nm.*,
     n.title,
     n.message,
-    n.notification_type,
+    n.notification_type,        
     n.priority,
     n.user_id,
     n.user_type,

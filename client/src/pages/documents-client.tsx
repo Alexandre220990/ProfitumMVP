@@ -33,6 +33,7 @@ import {
 import HeaderClient from '@/components/HeaderClient';
 import DocumentUpload from '@/components/DocumentUpload';
 import DocumentStats from '@/components/documents/DocumentStats';
+import { api } from '@/lib/api'; // Importer l'instance axios configurée
 
 // ============================================================================
 // ESPACE DOCUMENTAIRE CLIENT UNIFIÉ ET OPTIMISÉ
@@ -108,9 +109,27 @@ export default function DocumentsClientPage() {
   // Chargement initial
   useEffect(() => {
     if (user?.id) {
+      // Test d'authentification avant de charger les données
+      testAuthentication();
       loadAllData();
     }
   }, [user?.id]);
+
+  // Test d'authentification
+  const testAuthentication = async () => {
+    try {
+      console.log('🧪 Test d\'authentification...');
+      const response = await api.get('/api/enhanced-client-documents/test-auth');
+      console.log('✅ Test d\'authentification réussi:', response.data);
+    } catch (error) {
+      console.error('❌ Test d\'authentification échoué:', error);
+      toast({
+        title: "Erreur d'authentification",
+        description: "Impossible de s'authentifier avec le serveur",
+        variant: "destructive"
+      });
+    }
+  };
 
   // Filtrage des documents
   const filteredDocuments = documents.filter(doc => {
@@ -150,15 +169,12 @@ export default function DocumentsClientPage() {
   // Chargement des documents via la nouvelle API enhanced-client-documents
   const loadDocuments = async () => {
     try {
-      const response = await fetch(`/api/enhanced-client-documents/client/${user?.id}`, {
-        credentials: 'include'
-      });
-      const result = await response.json();
+      const response = await api.get(`/api/enhanced-client-documents/client/${user?.id}`);
       
-      if (result.success) {
-        setDocuments(result.data.files || []);
+      if (response.data.success) {
+        setDocuments(response.data.data.files || []);
       } else {
-        throw new Error(result.message);
+        throw new Error(response.data.message);
       }
     } catch (error) {
       console.error('Erreur chargement documents:', error);
@@ -172,13 +188,10 @@ export default function DocumentsClientPage() {
 
   const loadDossiers = async () => {
     try {
-      const response = await fetch(`/api/dossiers/client/${user?.id}`, {
-        credentials: 'include'
-      });
-      const result = await response.json();
+      const response = await api.get(`/api/dossiers/client/${user?.id}`);
       
-      if (result.success) {
-        setDossiers(result.data.dossiers || []);
+      if (response.data.success) {
+        setDossiers(response.data.data.dossiers || []);
       }
     } catch (error) {
       console.error('Erreur chargement dossiers:', error);
@@ -188,13 +201,10 @@ export default function DocumentsClientPage() {
   // Chargement des statistiques via la nouvelle API enhanced-client-documents
   const loadStats = async () => {
     try {
-      const response = await fetch(`/api/enhanced-client-documents/stats/${user?.id}`, {
-        credentials: 'include'
-      });
-      const result = await response.json();
+      const response = await api.get(`/api/enhanced-client-documents/stats/${user?.id}`);
       
-      if (result.success) {
-        setStats(result.data);
+      if (response.data.success) {
+        setStats(response.data.data);
       }
     } catch (error) {
       console.error('Erreur chargement stats:', error);
@@ -226,22 +236,17 @@ export default function DocumentsClientPage() {
   // Suppression de document via la nouvelle API
   const handleDocumentDelete = async (documentId: string) => {
     try {
-      const response = await fetch(`/api/enhanced-client-documents/${documentId}`, {
-        method: 'DELETE',
-        credentials: 'include'
-      });
+      const response = await api.delete(`/api/enhanced-client-documents/${documentId}`);
       
-      const result = await response.json();
-      
-      if (result.success) {
+      if (response.data.success) {
         await loadDocuments();
         await loadStats();
         toast({
-          title: "Supprimé",
+          title: "Succès",
           description: "Document supprimé avec succès"
         });
       } else {
-        throw new Error(result.message);
+        throw new Error(response.data.message);
       }
     } catch (error) {
       console.error('Erreur suppression document:', error);
@@ -256,28 +261,24 @@ export default function DocumentsClientPage() {
   // Téléchargement de document via la nouvelle API
   const handleDocumentDownload = async (docFile: DocumentFile) => {
     try {
-      const response = await fetch(`/api/enhanced-client-documents/download/${docFile.id}`, {
-        credentials: 'include'
+      const response = await api.get(`/api/enhanced-client-documents/download/${docFile.id}`, {
+        responseType: 'blob'
       });
       
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = docFile.original_filename;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        
-        toast({
-          title: "Téléchargé",
-          description: "Document téléchargé avec succès"
-        });
-      } else {
-        throw new Error('Erreur lors du téléchargement');
-      }
+      // Créer un lien de téléchargement
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', docFile.original_filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Téléchargement",
+        description: "Document téléchargé avec succès"
+      });
     } catch (error) {
       console.error('Erreur téléchargement document:', error);
       toast({

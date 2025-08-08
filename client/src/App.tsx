@@ -25,6 +25,7 @@ const ProfileClient = React.lazy(() => import('./pages/profile/client'));
 const ProfileExpert = React.lazy(() => import('./pages/profile/expert'));
 const MessagerieClient = React.lazy(() => import('./pages/messagerie-client'));
 const ClientDocuments = React.lazy(() => import('./pages/dashboard/client-documents'));
+const DocumentsClient = React.lazy(() => import('./pages/documents-client'));
 const NotificationCenter = React.lazy(() => import('./pages/notification-center'));
 const Settings = React.lazy(() => import('./pages/settings'));
 const Experts = React.lazy(() => import('./pages/marketplace-experts'));
@@ -175,7 +176,7 @@ function App() {
                       <Route index element={<ClientDocuments />} />
                     </Route>
                     <Route path="/documents-client" element={<ProtectedRoute requiredType="client" />}>
-                      <Route index element={<ClientDocuments />} />
+                      <Route index element={<DocumentsClient />} />
                     </Route>
                     <Route path="/settings" element={<ProtectedRoute requiredType="client" />}>
                       <Route index element={<Settings />} />

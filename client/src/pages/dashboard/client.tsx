@@ -56,6 +56,41 @@ export default function DashboardClient() {
     inProgressProducts
   } = useClientProducts();
 
+  // Test d'authentification et de chargement
+  useEffect(() => {
+    const testAPI = async () => {
+      try {
+        console.log('🧪 Test API dashboard client...');
+        
+        // Test d'authentification
+        const authResponse = await fetch('/api/client/test-auth', {
+          credentials: 'include'
+        });
+        console.log('✅ Test auth dashboard client:', authResponse.status, authResponse.ok);
+        if (!authResponse.ok) {
+          const errorData = await authResponse.json();
+          console.error('❌ Erreur auth dashboard client:', errorData);
+        }
+        
+        // Test des produits éligibles
+        const produitsResponse = await fetch('/api/client/produits-eligibles', {
+          credentials: 'include'
+        });
+        console.log('✅ Test produits dashboard client:', produitsResponse.status, produitsResponse.ok);
+        if (!produitsResponse.ok) {
+          const errorData = await produitsResponse.json();
+          console.error('❌ Erreur produits dashboard client:', errorData);
+        }
+      } catch (error) {
+        console.error('❌ Erreur test API dashboard client:', error);
+      }
+    };
+    
+    if (user?.id) {
+      testAPI();
+    }
+  }, [user?.id]);
+
   // Redirection automatique vers le simulateur si le client n'a pas de produits éligibles
   useEffect(() => {
     if (!loadingProducts && !hasProducts && !productsError) {
