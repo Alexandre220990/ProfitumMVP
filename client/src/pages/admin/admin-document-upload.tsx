@@ -30,7 +30,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import AdvancedTargetSelector, { Target as TargetType } from "@/components/admin/AdvancedTargetSelector";
-import api from '@/lib/api';
+import api from '../../../lib/api';
 
 interface AdminDocument {
   id?: string;

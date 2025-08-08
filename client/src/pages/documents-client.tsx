@@ -23,17 +23,17 @@ import {
   BarChart3,
   RefreshCw,
   Plus,
+  Clock,
   CheckCircle,
   AlertCircle,
-  Clock,
-  Building2,
   Info,
+  Building,
   X
 } from 'lucide-react';
 import HeaderClient from '@/components/HeaderClient';
 import DocumentUpload from '@/components/DocumentUpload';
 import DocumentStats from '@/components/documents/DocumentStats';
-import { api } from '@/lib/api'; // Importer l'instance axios configurée
+import api from '../../lib/api'; // Importer l'instance axios configurée
 
 // ============================================================================
 // ESPACE DOCUMENTAIRE CLIENT UNIFIÉ ET OPTIMISÉ
@@ -512,7 +512,7 @@ export default function DocumentsClientPage() {
                       {dossiers.map((dossier) => (
                         <div key={dossier.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                           <div className="flex items-center space-x-3">
-                            <Building2 className="h-5 w-5 text-blue-600" />
+                            <Building className="h-5 w-5 text-blue-600" />
                             <div>
                               <p className="font-medium text-sm">{dossier.product_name}</p>
                               <p className="text-xs text-gray-500">
@@ -652,7 +652,7 @@ export default function DocumentsClientPage() {
                         </div>
                         {doc.product_type && (
                           <div className="flex items-center text-xs text-gray-500">
-                            <Building2 className="h-3 w-3 mr-1" />
+                            <Building className="h-3 w-3 mr-1" />
                             {doc.product_type}
                           </div>
                         )}
@@ -734,7 +734,7 @@ export default function DocumentsClientPage() {
                         <CardContent className="p-6">
                           <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center space-x-3">
-                              <Building2 className="h-8 w-8 text-blue-600" />
+                              <Building className="h-8 w-8 text-blue-600" />
                               <div>
                                 <h3 className="font-medium">{dossier.product_name}</h3>
                                 <p className="text-sm text-gray-500">

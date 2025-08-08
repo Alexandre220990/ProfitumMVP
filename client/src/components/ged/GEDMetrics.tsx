@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, Clock, Activity, BarChart3, FileText, Star, Users } from "lucide-react";
-import api from '@/lib/api';
+import api from '../../lib/api';
 
 interface GEDMetrics {
   totalDocuments: number;

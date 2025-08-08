@@ -16,7 +16,7 @@ import {
   Loader2
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import api from "@/lib/api";
+import api from "../lib/api";
 import { toast } from "@/hooks/use-toast";
 
 interface User {
