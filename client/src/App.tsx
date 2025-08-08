@@ -1,6 +1,5 @@
 import React, { Suspense, useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
-import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './contexts/AuthContext';
 import { ClientProvider } from './contexts/ClientContext';
 import { AdminProvider } from './contexts/AdminContext';
