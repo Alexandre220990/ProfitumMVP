@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from "@/hooks/use-auth";
 import { Navigate } from "react-router-dom";
 import { useBusinessKPIs } from "@/hooks/use-business-kpis";
@@ -49,6 +49,42 @@ const AdminDashboardOptimized: React.FC = () => {
     formatPercentage,
     formatNumber
   } = useBusinessKPIs();
+
+  // Test d'authentification admin
+  useEffect(() => {
+    const testAdminAuth = async () => {
+      try {
+        console.log('🧪 Test authentification admin...');
+        
+        // Test de base
+        const testResponse = await fetch('/api/admin/test', {
+          credentials: 'include'
+        });
+        console.log('✅ Test admin de base:', testResponse.status, testResponse.ok);
+        
+        // Test de diagnostic détaillé
+        const diagnosticResponse = await fetch('/api/admin/diagnostic', {
+          credentials: 'include'
+        });
+        console.log('✅ Test diagnostic admin:', diagnosticResponse.status, diagnosticResponse.ok);
+        
+        if (diagnosticResponse.ok) {
+          const diagnosticData = await diagnosticResponse.json();
+          console.log('📊 Diagnostic admin:', diagnosticData);
+        } else {
+          const errorData = await diagnosticResponse.json();
+          console.error('❌ Erreur diagnostic admin:', errorData);
+        }
+        
+      } catch (error) {
+        console.error('❌ Erreur test admin auth:', error);
+      }
+    };
+    
+    if (user?.id && user.type === 'admin') {
+      testAdminAuth();
+    }
+  }, [user?.id, user?.type]);
 
   // ===== GESTION DES PERMISSIONS =====
   

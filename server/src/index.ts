@@ -223,6 +223,139 @@ app.use('/api/expert', enhancedAuthMiddleware, requireUserType('expert'), expert
 // Routes admin - PROTÉGÉES avec permissions spécifiques
 app.use('/api/admin', enhancedAuthMiddleware, requireUserType('admin'), adminRoutes);
 
+// Route temporaire pour créer un admin (SANS AUTHENTIFICATION)
+app.post('/api/admin-setup', async (req, res) => {
+  try {
+    const { email, name } = req.body;
+    
+    if (!email || !name) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email et nom requis'
+      });
+    }
+    
+    console.log('🔧 Création admin de test:', { email, name });
+    
+    // Créer l'admin directement
+    const { data: newAdmin, error } = await supabase
+      .from('Admin')
+      .insert({
+        email,
+        name,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .select('id, email, name, created_at')
+      .single();
+    
+    if (error) {
+      console.error('❌ Erreur création admin:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la création de l\'admin',
+        error: error.message
+      });
+    }
+    
+    console.log('✅ Admin créé avec succès:', newAdmin);
+    return res.json({
+      success: true,
+      message: 'Admin créé avec succès',
+      admin: newAdmin
+    });
+    
+  } catch (error) {
+    console.error('❌ Erreur création admin:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la création de l\'admin'
+    });
+  }
+});
+
+// Route temporaire pour diagnostiquer l'authentification admin (SANS MIDDLEWARE)
+app.get('/api/admin-diagnostic', async (req, res) => {
+  try {
+    console.log('🔍 Diagnostic authentification admin (sans middleware)...');
+    
+    // Vérifier les headers d'authentification
+    const authHeader = req.headers.authorization;
+    const cookies = req.cookies;
+    
+    console.log('📋 Headers auth:', authHeader);
+    console.log('🍪 Cookies:', Object.keys(cookies));
+    
+    // Vérifier si un token existe
+    const token = authHeader?.replace('Bearer ', '') || cookies.token || cookies.supabase_token;
+    
+    if (!token) {
+      return res.json({
+        success: false,
+        message: 'Aucun token trouvé',
+        headers: authHeader ? 'Présent' : 'Absent',
+        cookies: Object.keys(cookies),
+        hasToken: false
+      });
+    }
+    
+    console.log('✅ Token trouvé:', token.substring(0, 20) + '...');
+    
+    // Vérifier la validité du token avec Supabase
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    
+    if (error || !user) {
+      return res.json({
+        success: false,
+        message: 'Token invalide',
+        error: error?.message,
+        hasValidToken: false
+      });
+    }
+    
+    console.log('✅ Token valide pour utilisateur:', user.email);
+    
+    // Vérifier si l'utilisateur existe dans la table Admin
+    const { data: adminUser, error: adminError } = await supabase
+      .from('Admin')
+      .select('id, email, name, created_at')
+      .eq('email', user.email)
+      .single();
+    
+    if (adminError || !adminUser) {
+      return res.json({
+        success: false,
+        message: 'Utilisateur non trouvé dans la table Admin',
+        userEmail: user.email,
+        adminError: adminError?.message,
+        isAdmin: false
+      });
+    }
+    
+    console.log('✅ Admin trouvé:', adminUser);
+    
+    return res.json({
+      success: true,
+      message: 'Authentification admin réussie',
+      user: {
+        id: user.id,
+        email: user.email,
+        adminId: adminUser.id,
+        adminName: adminUser.name
+      },
+      isAdmin: true
+    });
+    
+  } catch (error) {
+    console.error('❌ Erreur diagnostic admin:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors du diagnostic',
+      error: error instanceof Error ? error.message : 'Erreur inconnue'
+    });
+  }
+});
+
 // Routes audit - PROTÉGÉES
 app.use('/api/audit', enhancedAuthMiddleware, auditRoutes);
 

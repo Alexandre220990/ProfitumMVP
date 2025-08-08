@@ -28,6 +28,160 @@ interface UpdateData {
   commentaire?: string;
 }
 
+// Route de test pour vérifier que les routes admin fonctionnent
+router.get('/test', asyncHandler(async (req, res) => {
+  try {
+    console.log('🧪 Test route admin appelée');
+    return res.json({
+      success: true,
+      message: 'Route admin fonctionne',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Erreur test route admin:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors du test de la route admin'
+    });
+  }
+}));
+
+// Route de diagnostic pour l'authentification admin
+router.get('/diagnostic', asyncHandler(async (req, res) => {
+  try {
+    console.log('🔍 Diagnostic authentification admin...');
+    
+    // Vérifier si l'utilisateur est authentifié
+    const user = (req as any).user;
+    console.log('👤 Utilisateur dans la requête:', user);
+    
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur non authentifié',
+        diagnostic: {
+          hasUser: false,
+          authMiddleware: 'failed'
+        }
+      });
+    }
+    
+    // Vérifier le type d'utilisateur
+    if (user.type !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux administrateurs',
+        diagnostic: {
+          hasUser: true,
+          userType: user.type,
+          expectedType: 'admin',
+          authMiddleware: 'success'
+        }
+      });
+    }
+    
+    // Vérifier si l'admin existe en base
+    const { data: adminData, error: adminError } = await supabaseClient
+      .from('Admin')
+      .select('id, email, name')
+      .eq('email', user.email)
+      .single();
+    
+    console.log('🔍 Recherche admin en base:', { adminData, adminError });
+    
+    return res.json({
+      success: true,
+      message: 'Admin authentifié avec succès',
+      diagnostic: {
+        hasUser: true,
+        userType: user.type,
+        email: user.email,
+        databaseId: user.database_id,
+        adminInDatabase: !!adminData,
+        adminError: adminError?.message || null,
+        authMiddleware: 'success'
+      },
+      user: {
+        id: user.id,
+        type: user.type,
+        email: user.email,
+        database_id: user.database_id
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Erreur diagnostic admin:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors du diagnostic',
+      error: error instanceof Error ? error.message : 'Erreur inconnue'
+    });
+  }
+}));
+
+// Route de test pour vérifier l'authentification admin
+router.get('/test-auth', asyncHandler(async (req, res) => {
+  try {
+    console.log('🧪 Test authentification admin appelée');
+    const user = (req as any).user;
+    
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur non authentifié'
+      });
+    }
+    
+    return res.json({
+      success: true,
+      message: 'Admin authentifié avec succès',
+      data: {
+        user: {
+          id: user.id,
+          type: user.type,
+          email: user.email
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Erreur test auth admin:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors du test d\'authentification admin'
+    });
+  }
+}));
+
+// Route de test pour vérifier les clients
+router.get('/test-clients', asyncHandler(async (req, res) => {
+  try {
+    console.log('🧪 Test route clients appelée');
+    const { data: clients, error } = await supabaseClient
+      .from('Client')
+      .select('id, email, company_name')
+      .limit(5);
+    
+    if (error) {
+      throw error;
+    }
+    
+    return res.json({
+      success: true,
+      message: 'Route clients fonctionne',
+      data: {
+        clients: clients || [],
+        count: clients?.length || 0
+      }
+    });
+  } catch (error) {
+    console.error('Erreur test route clients:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors du test de la route clients'
+    });
+  }
+}));
+
 // GET /api/admin/dashboard - Dashboard principal avec KPIs
 router.get('/dashboard', asyncHandler(async (req, res) => {
   try {
@@ -1486,20 +1640,6 @@ router.get('/dossiers', async (req, res) => {
   }
 });
 
-// Route de test pour vérifier l'authentification admin
-router.get('/test', async (req, res) => {
-  try {
-    return res.json({
-      success: true,
-      message: 'Admin authentifié avec succès',
-      admin: (req as any).admin
-    });
-  } catch (error) {
-    console.error('❌ Erreur route test admin:', error);
-    return res.status(500).json({ error: 'Erreur serveur' });
-  }
-});
-
 // Route pour récupérer les statistiques des dossiers
 router.get('/dossiers/stats', async (req, res) => {
   try {
@@ -2309,5 +2449,217 @@ router.get('/stats', async (req: Request, res: Response) => {
 
 // Routes pour les messages admin
 router.use('/messages', messagesRouter);
+
+// Route pour créer un admin de test (temporaire)
+router.post('/create-test-admin', asyncHandler(async (req, res) => {
+  try {
+    const { email, name } = req.body;
+    
+    if (!email || !name) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email et nom requis'
+      });
+    }
+    
+    // Vérifier si l'admin existe déjà
+    const { data: existingAdmin } = await supabaseClient
+      .from('Admin')
+      .select('id, email')
+      .eq('email', email)
+      .single();
+    
+    if (existingAdmin) {
+      return res.json({
+        success: true,
+        message: 'Admin existe déjà',
+        admin: existingAdmin
+      });
+    }
+    
+    // Créer l'admin
+    const { data: newAdmin, error } = await supabaseClient
+      .from('Admin')
+      .insert({
+        email,
+        name,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('Erreur création admin:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la création de l\'admin',
+        error: error.message
+      });
+    }
+    
+    return res.json({
+      success: true,
+      message: 'Admin créé avec succès',
+      admin: newAdmin
+    });
+    
+  } catch (error) {
+    console.error('Erreur création admin:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+}));
+
+// Route temporaire pour créer un admin de test (SANS AUTHENTIFICATION)
+router.post('/create-test-admin-temp', asyncHandler(async (req, res) => {
+  try {
+    const { email, name } = req.body;
+    
+    if (!email || !name) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email et nom requis'
+      });
+    }
+    
+    console.log('🔧 Création admin de test:', { email, name });
+    
+    // Vérifier si l'admin existe déjà
+    const { data: existingAdmin } = await supabaseClient
+      .from('Admin')
+      .select('id, email, name')
+      .eq('email', email)
+      .single();
+    
+    if (existingAdmin) {
+      console.log('✅ Admin existe déjà:', existingAdmin);
+      return res.json({
+        success: true,
+        message: 'Admin existe déjà',
+        admin: existingAdmin
+      });
+    }
+    
+    // Créer l'admin
+    const { data: newAdmin, error } = await supabaseClient
+      .from('Admin')
+      .insert({
+        email,
+        name,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .select('id, email, name, created_at')
+      .single();
+    
+    if (error) {
+      console.error('❌ Erreur création admin:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la création de l\'admin',
+        error: error.message
+      });
+    }
+    
+    console.log('✅ Admin créé avec succès:', newAdmin);
+    return res.json({
+      success: true,
+      message: 'Admin créé avec succès',
+      admin: newAdmin
+    });
+    
+  } catch (error) {
+    console.error('❌ Erreur création admin:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la création de l\'admin'
+    });
+  }
+}));
+
+// Route de diagnostic pour l'authentification admin (SANS MIDDLEWARE)
+router.get('/diagnostic-no-auth', asyncHandler(async (req, res) => {
+  try {
+    console.log('🔍 Diagnostic authentification admin (sans middleware)...');
+    
+    // Vérifier les headers d'authentification
+    const authHeader = req.headers.authorization;
+    const cookies = req.cookies;
+    
+    console.log('📋 Headers auth:', authHeader);
+    console.log('🍪 Cookies:', Object.keys(cookies));
+    
+    // Vérifier si un token existe
+    const token = authHeader?.replace('Bearer ', '') || cookies.token || cookies.supabase_token;
+    
+    if (!token) {
+      return res.json({
+        success: false,
+        message: 'Aucun token trouvé',
+        headers: authHeader ? 'Présent' : 'Absent',
+        cookies: Object.keys(cookies),
+        hasToken: false
+      });
+    }
+    
+    console.log('✅ Token trouvé:', token.substring(0, 20) + '...');
+    
+    // Vérifier la validité du token avec Supabase
+    const { data: { user }, error } = await supabaseClient.auth.getUser(token);
+    
+    if (error || !user) {
+      return res.json({
+        success: false,
+        message: 'Token invalide',
+        error: error?.message,
+        hasValidToken: false
+      });
+    }
+    
+    console.log('✅ Token valide pour utilisateur:', user.email);
+    
+    // Vérifier si l'utilisateur existe dans la table Admin
+    const { data: adminUser, error: adminError } = await supabaseClient
+      .from('Admin')
+      .select('id, email, name, created_at')
+      .eq('email', user.email)
+      .single();
+    
+    if (adminError || !adminUser) {
+      return res.json({
+        success: false,
+        message: 'Utilisateur non trouvé dans la table Admin',
+        userEmail: user.email,
+        adminError: adminError?.message,
+        isAdmin: false
+      });
+    }
+    
+    console.log('✅ Admin trouvé:', adminUser);
+    
+    return res.json({
+      success: true,
+      message: 'Authentification admin réussie',
+      user: {
+        id: user.id,
+        email: user.email,
+        adminId: adminUser.id,
+        adminName: adminUser.name
+      },
+      isAdmin: true
+    });
+    
+  } catch (error) {
+    console.error('❌ Erreur diagnostic admin:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors du diagnostic',
+      error: error instanceof Error ? error.message : 'Erreur inconnue'
+    });
+  }
+}));
 
 export default router;
