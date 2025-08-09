@@ -10,7 +10,7 @@ import { useNavigate, Navigate } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from '@/hooks/use-auth';
-import { supabase } from '@/lib/supabase';
+import { get } from '@/lib/api';
 
 // Configuration Supabase - Utilise l'instance importée depuis @/lib/supabase
 
@@ -136,27 +136,14 @@ const MonitoringPage = () => {
     // Charger les données de monitoring
     const fetchMonitoringData = async () => {
         try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) {
-                console.log('Session expirée, redirection vers connect-admin');
-                navigate('/connect-admin');
-                return;
-            }
-
-            const response = await fetch('/api/monitoring/dashboard', {
-                headers: {
-                    'Authorization': `Bearer ${session.access_token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            if (!response.ok) {
+            const response = await get('/monitoring/dashboard');
+            
+            if (response.success && response.data) {
+                setMonitoringData(response.data as any);
+                setLastUpdate(new Date());
+            } else {
                 throw new Error('Erreur lors du chargement des données de monitoring');
             }
-
-            const data = await response.json();
-            setMonitoringData(data);
-            setLastUpdate(new Date());
         } catch (err) {
             setError('Erreur lors du chargement du monitoring');
             console.error('Erreur monitoring: ', err);
@@ -169,27 +156,16 @@ const MonitoringPage = () => {
     const fetchNetworkServerStatus = async () => {
         try {
             setNetworkServerLoading(true);
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) {
-                console.log('Session expirée lors de la vérification du serveur réseau');
-                navigate('/connect-admin');
-                return;
-            }
-
-            const res = await fetch('/api/monitoring/network-server/status', {
-                headers: {
-                    'Authorization': `Bearer ${session.access_token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
             
-            if (!res.ok) {
-                throw new Error('Erreur d\'authentification');
-            }
+            const response = await get('/monitoring/network-server/status');
             
-            const data = await res.json();
-            setNetworkServerOn(data.on === true);
-            setNetworkServerIp(data.ip || '');
+            if (response.success && response.data) {
+                const data = response.data as any;
+                setNetworkServerOn(data.on === true);
+                setNetworkServerIp(data.ip || '');
+            } else {
+                setNetworkServerOn(false);
+            }
         } catch (e) {
             setNetworkServerOn(false);
             console.error('Erreur fetchNetworkServerStatus: ', e);
@@ -202,29 +178,22 @@ const MonitoringPage = () => {
     const toggleNetworkServer = async () => {
         setNetworkServerLoading(true);
         try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) {
-                console.log('Session expirée lors du changement d\'état du serveur');
-                navigate('/connect-admin');
-                return;
-            }
-
             const url = networkServerOn
-                ? 'http://localhost:5004/api/monitoring/network-server/off'
-                : 'http://localhost:5004/api/monitoring/network-server/on';
-            const res = await fetch(url, {
+                ? '/monitoring/network-server/off'
+                : '/monitoring/network-server/on';
+                
+            const response = await fetch(`https://profitummvp-production.up.railway.app${url}`, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${session.access_token}`,
                     'Content-Type': 'application/json'
                 }
             });
             
-            if (!res.ok) {
+            if (!response.ok) {
                 throw new Error('Erreur lors du changement d\'état');
             }
             
-            const data = await res.json();
+            const data = await response.json();
             setNetworkServerOn(data.on === true);
             setNetworkServerIp(data.ip || '');
             toast({
@@ -233,11 +202,10 @@ const MonitoringPage = () => {
             });
         } catch (e) {
             toast({
+                variant: 'destructive',
                 title: 'Erreur',
-                description: 'Impossible de changer l\'état du serveur partagé',
-                variant: 'destructive'
+                description: 'Impossible de changer l\'état du serveur partagé'
             });
-            console.error('Erreur toggleNetworkServer: ', e);
         } finally {
             setNetworkServerLoading(false);
         }

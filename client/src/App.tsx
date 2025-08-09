@@ -65,6 +65,8 @@ const TermsPage = React.lazy(() => import('./pages/terms'));
 const AdminDashboard = React.lazy(() => import('./pages/admin/dashboard'));
 const AdminDashboardOptimized = React.lazy(() => import('./pages/admin/dashboard-optimized'));
 const AdminClientDetails = React.lazy(() => import('./pages/admin/client-details'));
+const AdminExpertDetails = React.lazy(() => import('./pages/admin/expert-details'));
+const AdminDocuments = React.lazy(() => import('./pages/admin/enhanced-admin-documents'));
 const AdminDocumentationNew = React.lazy(() => import('./pages/admin/documentation-new'));
 const AdminGestionDossiers = React.lazy(() => import('./pages/admin/gestion-dossiers'));
 const AdminGestionExperts = React.lazy(() => import('./pages/admin/gestion-experts'));
@@ -244,7 +246,9 @@ function App() {
                       <Route path="dashboard" element={<AdminDashboard />} />
                       <Route path="dashboard-optimized" element={<AdminDashboardOptimized />} />
                       <Route path="client-details/:id" element={<AdminClientDetails />} />
+                      <Route path="expert-details/:id" element={<AdminExpertDetails />} />
                       <Route path="documentation-new" element={<AdminDocumentationNew />} />
+                      <Route path="enhanced-admin-documents" element={<AdminDocuments />} />
                       <Route path="gestion-dossiers" element={<AdminGestionDossiers />} />
                       <Route path="gestion-experts" element={<AdminGestionExperts />} />
                       <Route path="gestion-clients" element={<AdminGestionClients />} />

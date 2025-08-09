@@ -31,7 +31,7 @@ export default function HeaderAdmin() {
         <div onClick={() => navigate("/admin/gestion-clients")} className="flex items-center space-x-2 hover:text-blue-600 transition-colors cursor-pointer">
           <Users className="h-5 w-5" /> <span>Utilisateurs</span>
         </div>
-        <div onClick={() => navigate("/admin/gestion-dossiers")} className="flex items-center space-x-2 hover:text-blue-600 transition-colors cursor-pointer">
+        <div onClick={() => navigate("/admin/enhanced-admin-documents")} className="flex items-center space-x-2 hover:text-blue-600 transition-colors cursor-pointer">
           <FileText className="h-5 w-5" /> <span>Documents</span>
         </div>
         <div onClick={() => navigate("/admin/monitoring")} className="flex items-center space-x-2 hover:text-blue-600 transition-colors cursor-pointer">

@@ -1467,7 +1467,7 @@ router.get('/dossiers', async (req, res) => {
   try {
     const { page = 1, limit = 10, status, client, produit, expert, sortBy = 'created_at', sortOrder = 'desc' } = req.query;
     
-    console.log('✅ Admin authentifié:', (req as any).admin.id);
+    console.log('✅ Admin authentifié:', (req as any).user?.id);
 
     // Requête pour récupérer les dossiers avec jointures
     let query = supabaseClient
@@ -1576,18 +1576,24 @@ router.get('/dossiers', async (req, res) => {
     })) || [];
 
     return res.json({
-      dossiers: dossiersTransformes,
-      pagination: {
-        page: parseInt(page as string),
-        limit: parseInt(limit as string),
-        total: count || 0,
-        totalPages: Math.ceil((count || 0) / parseInt(limit as string))
+      success: true,
+      data: {
+        dossiers: dossiersTransformes,
+        pagination: {
+          page: parseInt(page as string),
+          limit: parseInt(limit as string),
+          total: count || 0,
+          totalPages: Math.ceil((count || 0) / parseInt(limit as string))
+        }
       }
     });
 
   } catch (error) {
     console.error('❌ Erreur route dossiers:', error);
-    return res.status(500).json({ error: 'Erreur serveur' });
+    return res.status(500).json({ 
+      success: false,
+      message: 'Erreur lors de la récupération des dossiers' 
+    });
   }
 });
 
@@ -1660,18 +1666,24 @@ router.get('/dossiers/stats', async (req, res) => {
     console.log('✅ Statistiques calculées avec succès');
 
     return res.json({
-      totalDossiers: statusStats?.length || 0,
-      dossiersAvecExpert: dossiersWithExperts?.length || 0,
-      dossiersSansExpert: (statusStats?.length || 0) - (dossiersWithExperts?.length || 0),
-      repartitionStatut: statusCount,
-      repartitionProduit: produitCount,
-      totalMontant,
-      montantMoyen: Math.round(montantMoyen * 100) / 100
+      success: true,
+      data: {
+        statusStats: statusCount,
+        produitStats: produitCount,
+        dossiersWithExperts: dossiersWithExperts?.length || 0,
+        totalDossiers: statusStats?.length || 0,
+        totalMontant,
+        montantMoyen,
+        dossiersSansExpert: (statusStats?.length || 0) - (dossiersWithExperts?.length || 0)
+      }
     });
 
   } catch (error) {
-    console.error('❌ Erreur récupération statistiques dossiers:', error);
-    return res.status(500).json({ error: 'Erreur lors de la récupération des statistiques des dossiers' });
+    console.error('❌ Erreur route dossiers/stats:', error);
+    return res.status(500).json({ 
+      success: false,
+      message: 'Erreur lors de la récupération des statistiques' 
+    });
   }
 });
 
@@ -3086,6 +3098,128 @@ router.get('/dossiers/all', asyncHandler(async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération de tous les ClientProduitEligible'
+    });
+  }
+}));
+
+// GET /api/admin/experts/:id/assignments - Assignations d'un expert
+router.get('/experts/:id/assignments', asyncHandler(async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const { data: assignments, error } = await supabaseClient
+      .from('ClientProduitEligible')
+      .select(`
+        id,
+        clientId,
+        produitId,
+        statut,
+        created_at,
+        updated_at,
+        montantFinal,
+        tauxFinal,
+        progress,
+        Client(
+          id,
+          company_name,
+          email,
+          phone_number
+        ),
+        ProduitEligible(
+          id,
+          nom,
+          description,
+          categorie
+        )
+      `)
+      .eq('expert_id', id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('❌ Erreur récupération assignations:', error);
+      throw error;
+    }
+
+    console.log(`✅ ${assignments?.length || 0} assignations trouvées pour l'expert ${id}`);
+
+    return res.json({
+      success: true,
+      data: {
+        assignments: assignments || []
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route experts/:id/assignments:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des assignations'
+    });
+  }
+}));
+
+// PUT /api/admin/experts/:id/status - Mettre à jour le statut d'un expert
+router.put('/experts/:id/status', asyncHandler(async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, comment, admin_id } = req.body;
+
+    if (!status || !['approved', 'rejected'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Statut invalide'
+      });
+    }
+
+    const updateData: any = {
+      approval_status: status,
+      updated_at: new Date().toISOString()
+    };
+
+    if (status === 'approved') {
+      updateData.approved_by = admin_id;
+      updateData.approved_at = new Date().toISOString();
+      updateData.status = 'active';
+    }
+
+    const { data: expert, error } = await supabaseClient
+      .from('Expert')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('❌ Erreur mise à jour expert:', error);
+      throw error;
+    }
+
+    // Log de l'action
+    await supabaseClient
+      .from('AdminAuditLog')
+      .insert({
+        admin_id,
+        action: `expert_${status}`,
+        target_id: id,
+        target_type: 'expert',
+        details: comment || `Expert ${status === 'approved' ? 'approuvé' : 'rejeté'}`,
+        timestamp: new Date().toISOString()
+      });
+
+    console.log(`✅ Expert ${id} ${status} avec succès`);
+
+    return res.json({
+      success: true,
+      data: {
+        expert
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route experts/:id/status:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la mise à jour du statut'
     });
   }
 }));
