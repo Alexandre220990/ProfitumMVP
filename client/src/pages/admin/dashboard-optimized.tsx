@@ -10,11 +10,7 @@ import HeaderAdmin from "@/components/HeaderAdmin";
 import { 
   Users, 
   UserCheck, 
-  FileText, 
-  DollarSign, 
   TrendingUp, 
-  CheckCircle, 
-  Clock,
   AlertTriangle,
   BarChart3,
   Settings,
@@ -22,9 +18,53 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Minus,
-  Plus,
-  Trash2
+  Eye,
+  Edit,
+  X,
+  Check,
+  UserPlus,
+  Building,
+  ClipboardList
 } from "lucide-react";
+
+// ============================================================================
+// TYPES ET INTERFACES
+// ============================================================================
+
+interface Expert {
+  id: string;
+  name: string;
+  email: string;
+  specializations: string[];
+  status: 'pending' | 'active' | 'rejected';
+  created_at: string;
+  documents?: string[];
+}
+
+interface Client {
+  id: string;
+  company_name: string;
+  email: string;
+  statut: string;
+  created_at: string;
+  produits_eligibles?: ClientProduitEligible[];
+}
+
+interface ClientProduitEligible {
+  id: string;
+  clientId: string;
+  produitId: string;
+  statut: 'pending' | 'validated' | 'rejected' | 'in_progress';
+  progress: number;
+  montantFinal?: number;
+  tauxFinal?: number;
+  documents_sent?: string[];
+  expert_id?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+type ActiveSection = 'overview' | 'experts' | 'clients' | 'dossiers';
 
 // ============================================================================
 // DASHBOARD ADMIN OPTIMISÉ - VUE MÉTIER PURE
@@ -34,13 +74,19 @@ import {
 const AdminDashboardOptimized: React.FC = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeSection, setActiveSection] = useState<ActiveSection>('overview');
+  const [sectionData, setSectionData] = useState({
+    experts: [] as Expert[],
+    clients: [] as Client[],
+    dossiers: [] as ClientProduitEligible[]
+  });
+  const [loading, setLoading] = useState(false);
 
   const { addToast } = useToast();
 
   // Hook pour les KPIs métier
   const {
     businessKPIs,
-    userData,
     isLoading,
     error,
     lastUpdated,
@@ -49,6 +95,65 @@ const AdminDashboardOptimized: React.FC = () => {
     formatPercentage,
     formatNumber
   } = useBusinessKPIs();
+
+  // ========================================
+  // CHARGEMENT DES DONNÉES PAR SECTION
+  // ========================================
+
+  const loadSectionData = async (section: ActiveSection) => {
+    if (section === 'overview') return;
+    
+    setLoading(true);
+    try {
+      let response;
+      
+      switch (section) {
+        case 'experts':
+          response = await fetch('/api/admin/experts/pending', {
+            credentials: 'include'
+          });
+          if (response.ok) {
+            const data = await response.json();
+            setSectionData(prev => ({ ...prev, experts: data.experts || [] }));
+          }
+          break;
+          
+        case 'clients':
+          response = await fetch('/api/admin/clients/waiting', {
+            credentials: 'include'
+          });
+          if (response.ok) {
+            const data = await response.json();
+            setSectionData(prev => ({ ...prev, clients: data.clients || [] }));
+          }
+          break;
+          
+        case 'dossiers':
+          response = await fetch('/api/admin/dossiers/pending', {
+            credentials: 'include'
+          });
+          if (response.ok) {
+            const data = await response.json();
+            setSectionData(prev => ({ ...prev, dossiers: data.dossiers || [] }));
+          }
+          break;
+      }
+    } catch (error) {
+      console.error(`Erreur chargement ${section}:`, error);
+      addToast({
+        type: 'error',
+        title: 'Erreur',
+        message: `Impossible de charger les données ${section}`
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Charger les données quand la section change
+  useEffect(() => {
+    loadSectionData(activeSection);
+  }, [activeSection]);
 
   // Test d'authentification admin
   useEffect(() => {
@@ -98,24 +203,32 @@ const AdminDashboardOptimized: React.FC = () => {
     } else if (user.type === 'expert') {
       return <Navigate to="/expert" replace />;
     } else {
-      return <Navigate to="/connect-admin" replace />;
+      return <Navigate to="/" replace />;
     }
   }
 
-  // ===== ACTIONS =====
-  
+  // ========================================
+  // FONCTIONS UTILITAIRES
+  // ========================================
+
   const handleRefresh = async () => {
     await refreshData();
+    await loadSectionData(activeSection);
     addToast({
       type: 'success',
-      title: 'Données actualisées',
-      message: 'Les métriques ont été mises à jour',
-      duration: 3000
+      title: 'Actualisé',
+      message: 'Données mises à jour'
     });
   };
 
-  // ===== COMPOSANTS DE MÉTRIQUES =====
-  
+  const handleSectionChange = (section: ActiveSection) => {
+    setActiveSection(section);
+  };
+
+  // ========================================
+  // COMPOSANTS UI
+  // ========================================
+
   const KPICard = ({ 
     title, 
     value, 
@@ -124,105 +237,102 @@ const AdminDashboardOptimized: React.FC = () => {
     icon: Icon, 
     color, 
     format = 'number',
-    subtitle
+    subtitle,
+    onClick
   }: any) => (
-    <Card className="hover:shadow-lg transition-all duration-300">
+    <Card 
+      className={`cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 ${
+        onClick ? 'hover:bg-gray-50' : ''
+      }`}
+      onClick={onClick}
+    >
       <CardContent className="p-6">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className={`p-3 rounded-lg bg-gradient-to-r ${color}`}>
-              <Icon className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">{title}</p>
-              {subtitle && <p className="text-xs text-gray-500">{subtitle}</p>}
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="text-2xl font-bold text-gray-900">
-              {format === 'currency' 
-                ? formatCurrency(value)
-                : format === 'percentage'
-                ? formatPercentage(value)
-                : formatNumber(value)
-              }
-            </div>
-            {change && (
-              <div className={`flex items-center text-sm ${
-                changeType === 'positive' ? 'text-green-600' : 
+          <div>
+            <p className="text-sm font-medium text-gray-600">{title}</p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">
+              {format === 'currency' ? formatCurrency(value) : formatNumber(value)}
+            </p>
+            {subtitle && (
+              <p className="text-xs text-gray-500 mt-1">{subtitle}</p>
+            )}
+            <div className="flex items-center mt-2">
+              {changeType === 'positive' && <ArrowUpRight className="w-4 h-4 text-green-600" />}
+              {changeType === 'negative' && <ArrowDownRight className="w-4 h-4 text-red-600" />}
+              {changeType === 'neutral' && <Minus className="w-4 h-4 text-gray-600" />}
+              <span className={`text-sm ml-1 ${
+                changeType === 'positive' ? 'text-green-600' :
                 changeType === 'negative' ? 'text-red-600' : 'text-gray-600'
               }`}>
-                {changeType === 'positive' ? <ArrowUpRight className="w-4 h-4" /> :
-                 changeType === 'negative' ? <ArrowDownRight className="w-4 h-4" /> :
-                 <Minus className="w-4 h-4" />}
-                <span className="ml-1">{change}</span>
-              </div>
-            )}
+                {change}
+              </span>
+            </div>
+          </div>
+          <div className={`p-3 rounded-lg bg-gradient-to-r ${color}`}>
+            <Icon className="w-6 h-6 text-white" />
           </div>
         </div>
       </CardContent>
     </Card>
   );
 
-  // ===== COMPOSANT SIDEBAR =====
-  
   const AdminSidebar = () => (
-    <div className="w-64 bg-white border-r border-gray-200 h-screen">
-      <div className="p-6">
-        <h2 className="text-xl font-bold text-gray-900 mb-6">Administration</h2>
-        
-        <nav className="space-y-2">
-          <button
-            onClick={() => setActiveTab('dashboard')}
-            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${
-              activeTab === 'dashboard' 
-                ? 'bg-blue-50 text-blue-700 border border-blue-200' 
-                : 'text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <BarChart3 className="w-5 h-5" />
-            <div>
-              <div className="font-medium">Dashboard</div>
-              <div className="text-sm text-gray-500">Vue métier et pilotage</div>
-            </div>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('users')}
-            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${
-              activeTab === 'users' 
-                ? 'bg-blue-50 text-blue-700 border border-blue-200' 
-                : 'text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <Users className="w-5 h-5" />
-            <div>
-              <div className="font-medium">Gestion Utilisateurs</div>
-              <div className="text-sm text-gray-500">Clients, experts, validations</div>
-            </div>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('analytics')}
-            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${
-              activeTab === 'analytics' 
-                ? 'bg-blue-50 text-blue-700 border border-blue-200' 
-                : 'text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <TrendingUp className="w-5 h-5" />
-            <div>
-              <div className="font-medium">Analytics</div>
-              <div className="text-sm text-gray-500">Statistiques et monitoring</div>
-            </div>
-          </button>
-        </nav>
+    <div className="w-64 bg-white border-r border-gray-200 p-6">
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Administration</h2>
+          <nav className="space-y-2">
+            <button
+              onClick={() => setActiveTab('dashboard')}
+              className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${
+                activeTab === 'dashboard' 
+                  ? 'bg-blue-100 text-blue-700' 
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <BarChart3 className="w-4 h-4" />
+                <span>Dashboard</span>
+              </div>
+            </button>
+            
+            <button
+              onClick={() => setActiveTab('users')}
+              className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${
+                activeTab === 'users' 
+                  ? 'bg-blue-100 text-blue-700' 
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <Users className="w-4 h-4" />
+                <span>Utilisateurs</span>
+              </div>
+            </button>
+            
+            <button
+              onClick={() => setActiveTab('analytics')}
+              className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${
+                activeTab === 'analytics' 
+                  ? 'bg-blue-100 text-blue-700' 
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <TrendingUp className="w-4 h-4" />
+                <span>Analytics</span>
+              </div>
+            </button>
+          </nav>
+        </div>
       </div>
     </div>
   );
 
-  // ===== COMPOSANT DASHBOARD PRINCIPAL =====
-  
+  // ========================================
+  // SECTIONS DYNAMIQUES
+  // ========================================
+
   const BusinessKPIsDashboard = () => {
     if (!businessKPIs) return null;
 
@@ -253,48 +363,89 @@ const AdminDashboardOptimized: React.FC = () => {
           </div>
         )}
 
-        {/* KPIs Principaux */}
+        {/* KPIs Principaux - TUILES INTERACTIVES */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <KPICard
-            title="Clients Actifs"
-            value={businessKPIs.activeClients}
+            title="Nouvel Utilisateur"
+            value={businessKPIs.newClientsThisMonth}
             change={`+${businessKPIs.newClientsThisMonth} ce mois`}
             changeType="positive"
-            icon={Users}
+            icon={UserPlus}
             color="from-blue-500 to-blue-600"
             subtitle={`${businessKPIs.totalClients} total`}
+            onClick={() => handleSectionChange('clients')}
           />
           
           <KPICard
-            title="Experts en Attente"
+            title="Experts à valider"
             value={businessKPIs.pendingExperts}
             change={`${businessKPIs.activeExperts} actifs`}
             changeType="neutral"
             icon={UserCheck}
             color="from-orange-500 to-orange-600"
             subtitle={`${businessKPIs.totalExperts} total`}
+            onClick={() => handleSectionChange('experts')}
           />
           
           <KPICard
-            title="Dossiers Opportunités"
+            title="Clients en attente"
             value={businessKPIs.dossiersOpportunites}
             change={`${businessKPIs.dossiersEnCours} en cours`}
             changeType="neutral"
-            icon={FileText}
+            icon={Building}
             color="from-green-500 to-green-600"
             subtitle={`${businessKPIs.totalDossiers} total`}
+            onClick={() => handleSectionChange('clients')}
           />
           
           <KPICard
-            title="Montant Éligible"
-            value={businessKPIs.montantTotalEligible}
-            format="currency"
+            title="Dossiers à traiter"
+            value={businessKPIs.dossiersEnCours}
             change={`${formatCurrency(businessKPIs.gainsRealises)} réalisés`}
             changeType="positive"
-            icon={DollarSign}
+            icon={ClipboardList}
             color="from-purple-500 to-purple-600"
             subtitle={`${formatCurrency(businessKPIs.gainsPotentiels)} potentiels`}
+            onClick={() => handleSectionChange('dossiers')}
           />
+        </div>
+
+        {/* Section dynamique en dessous des tuiles */}
+        <div className="mt-8">
+          {activeSection === 'overview' && (
+            <div className="bg-gray-50 rounded-lg p-8 text-center">
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                Vue d'ensemble
+              </h3>
+              <p className="text-gray-600">
+                Cliquez sur une tuile ci-dessus pour voir les détails
+              </p>
+            </div>
+          )}
+
+          {activeSection === 'experts' && (
+            <ExpertsValidationSection 
+              experts={sectionData.experts} 
+              loading={loading}
+              onRefresh={() => loadSectionData('experts')}
+            />
+          )}
+
+          {activeSection === 'clients' && (
+            <ClientsWaitingSection 
+              clients={sectionData.clients} 
+              loading={loading}
+              onRefresh={() => loadSectionData('clients')}
+            />
+          )}
+
+          {activeSection === 'dossiers' && (
+            <DossiersProcessingSection 
+              dossiers={sectionData.dossiers} 
+              loading={loading}
+              onRefresh={() => loadSectionData('dossiers')}
+            />
+          )}
         </div>
 
         {/* Métriques de Performance */}
@@ -322,182 +473,224 @@ const AdminDashboardOptimized: React.FC = () => {
               </div>
             </CardContent>
           </Card>
+        </div>
+      </div>
+    );
+  };
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Clock className="w-5 h-5 text-orange-600" />
-                <span>Actions en Attente</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
-                  <div className="flex items-center space-x-2">
-                    <UserCheck className="w-4 h-4 text-orange-600" />
-                    <span className="text-sm font-medium">Experts à valider</span>
+  // ========================================
+  // COMPOSANTS DE SECTIONS
+  // ========================================
+
+  const ExpertsValidationSection = ({ experts, loading, onRefresh }: any) => (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <UserCheck className="w-5 h-5 text-orange-600" />
+            <span>Experts à valider ({experts.length})</span>
+          </div>
+          <Button variant="secondary" size="sm" onClick={onRefresh} disabled={loading}>
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          </Button>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <div className="text-center py-8">
+            <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-gray-400" />
+            <p className="text-gray-600">Chargement des experts...</p>
+          </div>
+        ) : experts.length === 0 ? (
+          <div className="text-center py-8">
+            <UserCheck className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-600">Aucun expert en attente de validation</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {experts.map((expert: Expert) => (
+              <div key={expert.id} className="flex items-center justify-between p-4 border rounded-lg">
+                <div className="flex items-center space-x-4">
+                  <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+                    <UserCheck className="w-5 h-5 text-orange-600" />
                   </div>
-                  <Badge variant="warning">{businessKPIs.pendingExperts}</Badge>
+                  <div>
+                    <h4 className="font-medium text-gray-900">{expert.name}</h4>
+                    <p className="text-sm text-gray-600">{expert.email}</p>
+                    <div className="flex space-x-2 mt-1">
+                      {expert.specializations?.map((spec, index) => (
+                        <Badge key={index} variant="primary" className="text-xs">
+                          {spec}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex space-x-2">
+                  <Button size="sm" variant="success" className="text-white">
+                    <Check className="w-4 h-4 mr-1" />
+                    Valider
+                  </Button>
+                  <Button size="sm" variant="error" className="text-white">
+                    <X className="w-4 h-4 mr-1" />
+                    Refuser
+                  </Button>
+                  <Button size="sm" variant="secondary">
+                    <Eye className="w-4 h-4 mr-1" />
+                    Voir
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+
+  const ClientsWaitingSection = ({ clients, loading, onRefresh }: any) => (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <Building className="w-5 h-5 text-green-600" />
+            <span>Clients en attente ({clients.length})</span>
+          </div>
+          <Button variant="secondary" size="sm" onClick={onRefresh} disabled={loading}>
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          </Button>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <div className="text-center py-8">
+            <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-gray-400" />
+            <p className="text-gray-600">Chargement des clients...</p>
+          </div>
+        ) : clients.length === 0 ? (
+          <div className="text-center py-8">
+            <Building className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-600">Aucun client en attente</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {clients.map((client: Client) => (
+              <div key={client.id} className="flex items-center justify-between p-4 border rounded-lg">
+                <div className="flex items-center space-x-4">
+                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                    <Building className="w-5 h-5 text-green-600" />
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-gray-900">{client.company_name}</h4>
+                    <p className="text-sm text-gray-600">{client.email}</p>
+                    <p className="text-xs text-gray-500">Statut: {client.statut}</p>
+                  </div>
+                </div>
+                <div className="flex space-x-2">
+                  <Button size="sm" variant="secondary">
+                    <Eye className="w-4 h-4 mr-1" />
+                    Voir dossiers
+                  </Button>
+                  <Button size="sm" variant="secondary">
+                    <Edit className="w-4 h-4 mr-1" />
+                    Contacter
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+
+  const DossiersProcessingSection = ({ dossiers, loading, onRefresh }: any) => (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <ClipboardList className="w-5 h-5 text-purple-600" />
+            <span>Dossiers à traiter ({dossiers.length})</span>
+          </div>
+          <Button variant="secondary" size="sm" onClick={onRefresh} disabled={loading}>
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          </Button>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <div className="text-center py-8">
+            <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-gray-400" />
+            <p className="text-gray-600">Chargement des dossiers...</p>
+          </div>
+        ) : dossiers.length === 0 ? (
+          <div className="text-center py-8">
+            <ClipboardList className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-600">Aucun dossier à traiter</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {dossiers.map((dossier: ClientProduitEligible) => (
+              <div key={dossier.id} className="p-4 border rounded-lg">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                      <ClipboardList className="w-5 h-5 text-purple-600" />
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-gray-900">Dossier #{dossier.id}</h4>
+                      <p className="text-sm text-gray-600">Client: {dossier.clientId}</p>
+                      <p className="text-xs text-gray-500">Produit: {dossier.produitId}</p>
+                    </div>
+                  </div>
+                  <Badge 
+                    variant={dossier.statut === 'pending' ? 'warning' : 
+                           dossier.statut === 'validated' ? 'success' : 'error'}
+                  >
+                    {dossier.statut}
+                  </Badge>
                 </div>
                 
-                <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                  <div className="flex items-center space-x-2">
-                    <FileText className="w-4 h-4 text-blue-600" />
-                    <span className="text-sm font-medium">Dossiers à traiter</span>
+                {/* Barre de progression */}
+                <div className="mb-3">
+                  <div className="flex justify-between text-sm text-gray-600 mb-1">
+                    <span>Progression</span>
+                    <span>{dossier.progress}%</span>
                   </div>
-                  <Badge variant="primary">{businessKPIs.dossiersOpportunites}</Badge>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <DollarSign className="w-5 h-5 text-purple-600" />
-                <span>Gains Financiers</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div>
-                  <div className="text-sm text-gray-600">Gains Potentiels</div>
-                  <div className="text-xl font-bold text-purple-600">
-                    {formatCurrency(businessKPIs.gainsPotentiels)}
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className="bg-purple-600 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${dossier.progress}%` }}
+                    ></div>
                   </div>
                 </div>
-                <div>
-                  <div className="text-sm text-gray-600">Gains Réalisés</div>
-                  <div className="text-xl font-bold text-green-600">
-                    {formatCurrency(businessKPIs.gainsRealises)}
-                  </div>
-                </div>
-                <div className="pt-2 border-t">
-                  <div className="text-sm text-gray-600">Taux de Réalisation</div>
-                  <div className="text-lg font-bold text-blue-600">
-                    {businessKPIs.gainsPotentiels > 0 
-                      ? formatPercentage((businessKPIs.gainsRealises / businessKPIs.gainsPotentiels) * 100)
-                      : '0%'
-                    }
-                  </div>
+
+                {/* Actions */}
+                <div className="flex space-x-2">
+                  <Button size="sm" variant="success" className="text-white">
+                    <Check className="w-4 h-4 mr-1" />
+                    Valider
+                  </Button>
+                  <Button size="sm" variant="error" className="text-white">
+                    <X className="w-4 h-4 mr-1" />
+                    Refuser
+                  </Button>
+                  <Button size="sm" variant="secondary">
+                    <Eye className="w-4 h-4 mr-1" />
+                    Voir détails
+                  </Button>
+                  <Button size="sm" variant="secondary">
+                    <Edit className="w-4 h-4 mr-1" />
+                    Assigner expert
+                  </Button>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  };
-
-  // ===== COMPOSANT GESTION UTILISATEURS =====
-  
-  const UserManagementPanel = () => {
-    if (!userData) return null;
-
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-gray-900">Gestion Utilisateurs</h1>
-          <Button className="flex items-center space-x-2">
-            <Plus className="w-4 h-4" />
-            <span>Nouvel Utilisateur</span>
-          </Button>
-        </div>
-
-        {/* Actions Rapides */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="hover:shadow-lg transition-all duration-300 cursor-pointer">
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-3">
-                <div className="p-3 bg-orange-100 rounded-lg">
-                  <UserCheck className="w-6 h-6 text-orange-600" />
-                </div>
-                <div>
-                  <div className="text-lg font-semibold">{userData.validations.pendingExperts.length}</div>
-                  <div className="text-sm text-gray-600">Experts à valider</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="hover:shadow-lg transition-all duration-300 cursor-pointer">
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-3">
-                <div className="p-3 bg-blue-100 rounded-lg">
-                  <Users className="w-6 h-6 text-blue-600" />
-                </div>
-                <div>
-                  <div className="text-lg font-semibold">{userData.validations.pendingClients.length}</div>
-                  <div className="text-sm text-gray-600">Clients en attente</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="hover:shadow-lg transition-all duration-300 cursor-pointer">
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-3">
-                <div className="p-3 bg-green-100 rounded-lg">
-                  <FileText className="w-6 h-6 text-green-600" />
-                </div>
-                <div>
-                  <div className="text-lg font-semibold">{userData.validations.pendingDossiers.length}</div>
-                  <div className="text-sm text-gray-600">Dossiers à traiter</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Liste des Experts en Attente */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <UserCheck className="w-5 h-5 text-orange-600" />
-              <span>Experts en Attente de Validation</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {userData.validations.pendingExperts.length > 0 ? (
-                userData.validations.pendingExperts.map((expert) => (
-                  <div key={expert.id} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-                        <span className="text-sm font-medium">{expert.name.split(' ').map((n: string) => n[0]).join('')}</span>
-                      </div>
-                      <div>
-                        <div className="font-medium">{expert.name}</div>
-                        <div className="text-sm text-gray-600">{expert.email}</div>
-                        <div className="text-xs text-gray-500">
-                          Spécialisations: {expert.specializations.join(', ')}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Button size="sm" variant="secondary" className="text-green-600 border-green-600 hover:bg-green-50">
-                        <CheckCircle className="w-4 h-4 mr-1" />
-                        Approuver
-                      </Button>
-                      <Button size="sm" variant="secondary" className="text-red-600 border-red-600 hover:bg-red-50">
-                        <Trash2 className="w-4 h-4 mr-1" />
-                        Rejeter
-                      </Button>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <UserCheck className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                  <p>Aucun expert en attente de validation</p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  };
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
 
   // ===== COMPOSANT ANALYTICS =====
   
@@ -548,7 +741,7 @@ const AdminDashboardOptimized: React.FC = () => {
           ) : (
             <>
               {activeTab === 'dashboard' && <BusinessKPIsDashboard />}
-              {activeTab === 'users' && <UserManagementPanel />}
+              {activeTab === 'users' && <AnalyticsDashboard />}
               {activeTab === 'analytics' && <AnalyticsDashboard />}
             </>
           )}

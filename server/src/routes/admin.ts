@@ -2613,4 +2613,324 @@ router.get('/diagnostic-no-auth', asyncHandler(async (req, res) => {
   }
 }));
 
+// GET /api/admin/experts/pending - Experts en attente de validation
+router.get('/experts/pending', asyncHandler(async (req, res) => {
+  try {
+    console.log('🔍 Récupération experts en attente...');
+    
+    const { data: experts, error } = await supabaseClient
+      .from('Expert')
+      .select(`
+        id,
+        name,
+        email,
+        company_name,
+        specializations,
+        status,
+        approval_status,
+        created_at,
+        experience,
+        documents
+      `)
+      .eq('approval_status', 'pending')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('❌ Erreur récupération experts pending:', error);
+      throw error;
+    }
+
+    console.log(`✅ ${experts?.length || 0} experts en attente trouvés`);
+
+    return res.json({
+      success: true,
+      data: {
+        experts: experts || []
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route experts/pending:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des experts en attente'
+    });
+  }
+}));
+
+// GET /api/admin/clients/waiting - Clients en attente avec leurs produits éligibles
+router.get('/clients/waiting', asyncHandler(async (req, res) => {
+  try {
+    console.log('🔍 Récupération clients en attente...');
+    
+    // Récupérer les clients avec leurs produits éligibles en attente
+    const { data: clients, error } = await supabaseClient
+      .from('Client')
+      .select(`
+        id,
+        company_name,
+        email,
+        statut,
+        created_at,
+        produits_eligibles!inner(
+          id,
+          produitId,
+          statut,
+          progress,
+          montantFinal,
+          tauxFinal,
+          created_at,
+          updated_at
+        )
+      `)
+      .eq('produits_eligibles.statut', 'pending')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('❌ Erreur récupération clients waiting:', error);
+      throw error;
+    }
+
+    console.log(`✅ ${clients?.length || 0} clients en attente trouvés`);
+
+    return res.json({
+      success: true,
+      data: {
+        clients: clients || []
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route clients/waiting:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des clients en attente'
+    });
+  }
+}));
+
+// GET /api/admin/dossiers/pending - Dossiers à traiter (ClientProduitEligible)
+router.get('/dossiers/pending', asyncHandler(async (req, res) => {
+  try {
+    console.log('🔍 Récupération dossiers à traiter...');
+    
+    const { data: dossiers, error } = await supabaseClient
+      .from('ClientProduitEligible')
+      .select(`
+        id,
+        clientId,
+        produitId,
+        statut,
+        progress,
+        montantFinal,
+        tauxFinal,
+        documents_sent,
+        expert_id,
+        created_at,
+        updated_at,
+        Client!inner(
+          id,
+          company_name,
+          email,
+          statut
+        ),
+        ProduitEligible!inner(
+          id,
+          nom,
+          description,
+          montant,
+          taux
+        )
+      `)
+      .in('statut', ['pending', 'in_progress'])
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('❌ Erreur récupération dossiers pending:', error);
+      throw error;
+    }
+
+    console.log(`✅ ${dossiers?.length || 0} dossiers à traiter trouvés`);
+
+    return res.json({
+      success: true,
+      data: {
+        dossiers: dossiers || []
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route dossiers/pending:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des dossiers à traiter'
+    });
+  }
+}));
+
+// POST /api/admin/experts/:id/validate - Valider un expert
+router.post('/experts/:id/validate', asyncHandler(async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { commentaire } = req.body;
+    const user = (req as any).user;
+
+    console.log(`✅ Validation expert ${id} par admin ${user.id}`);
+
+    const { data, error } = await supabaseClient
+      .from('Expert')
+      .update({
+        approval_status: 'approved',
+        approved_at: new Date().toISOString(),
+        approved_by: user.id,
+        commentaire_admin: commentaire
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('❌ Erreur validation expert:', error);
+      throw error;
+    }
+
+    return res.json({
+      success: true,
+      message: 'Expert validé avec succès',
+      data
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route validation expert:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la validation de l\'expert'
+    });
+  }
+}));
+
+// POST /api/admin/experts/:id/reject - Rejeter un expert
+router.post('/experts/:id/reject', asyncHandler(async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { commentaire } = req.body;
+    const user = (req as any).user;
+
+    console.log(`❌ Rejet expert ${id} par admin ${user.id}`);
+
+    const { data, error } = await supabaseClient
+      .from('Expert')
+      .update({
+        approval_status: 'rejected',
+        rejected_at: new Date().toISOString(),
+        rejected_by: user.id,
+        commentaire_admin: commentaire
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('❌ Erreur rejet expert:', error);
+      throw error;
+    }
+
+    return res.json({
+      success: true,
+      message: 'Expert rejeté',
+      data
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route rejet expert:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors du rejet de l\'expert'
+    });
+  }
+}));
+
+// POST /api/admin/dossiers/:id/validate - Valider un dossier
+router.post('/dossiers/:id/validate', asyncHandler(async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { expert_id, commentaire } = req.body;
+    const user = (req as any).user;
+
+    console.log(`✅ Validation dossier ${id} par admin ${user.id}`);
+
+    const { data, error } = await supabaseClient
+      .from('ClientProduitEligible')
+      .update({
+        statut: 'validated',
+        validated_at: new Date().toISOString(),
+        validated_by: user.id,
+        expert_id: expert_id || null,
+        commentaire_admin: commentaire
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('❌ Erreur validation dossier:', error);
+      throw error;
+    }
+
+    return res.json({
+      success: true,
+      message: 'Dossier validé avec succès',
+      data
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route validation dossier:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la validation du dossier'
+    });
+  }
+}));
+
+// POST /api/admin/dossiers/:id/reject - Rejeter un dossier
+router.post('/dossiers/:id/reject', asyncHandler(async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { commentaire } = req.body;
+    const user = (req as any).user;
+
+    console.log(`❌ Rejet dossier ${id} par admin ${user.id}`);
+
+    const { data, error } = await supabaseClient
+      .from('ClientProduitEligible')
+      .update({
+        statut: 'rejected',
+        rejected_at: new Date().toISOString(),
+        rejected_by: user.id,
+        commentaire_admin: commentaire
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('❌ Erreur rejet dossier:', error);
+      throw error;
+    }
+
+    return res.json({
+      success: true,
+      message: 'Dossier rejeté',
+      data
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route rejet dossier:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors du rejet du dossier'
+    });
+  }
+}));
+
 export default router;

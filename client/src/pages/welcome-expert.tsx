@@ -44,7 +44,10 @@ const formSchema = z.object({
   name: z.string().min(2, 'Le nom doit contenir au moins 2 caractères'),
   email: z.string().email('Format d\'email invalide'),
   company_name: z.string().min(2, 'Le nom de l\'entreprise est requis'),
-  siren: z.string().length(9, 'Le SIREN doit contenir exactement 9 chiffres').regex(/^\d{9}$/, 'Le SIREN ne doit contenir que des chiffres'),
+  siren: z.string()
+    .transform((val) => val.replace(/\s/g, '')) // Supprimer les espaces
+    .refine((val) => val.length === 9, 'Le SIREN doit contenir exactement 9 chiffres')
+    .refine((val) => /^\d{9}$/.test(val), 'Le SIREN ne doit contenir que des chiffres'),
   specializations: z.array(z.string()).min(1, 'Au moins une spécialisation est requise'),
   experience: z.string().min(1, 'L\'expérience est requise'),
   location: z.string().min(2, 'La localisation est requise'),
@@ -214,11 +217,20 @@ const WelcomeExpert = () => {
   };
 
   const formatSiren = (value: string) => {
+    // Supprimer tous les caractères non numériques
     const numbers = value.replace(/\D/g, '');
-    if (numbers.length <= 9) {
-      return numbers.replace(/(\d{3})(\d{3})(\d{3})/, '$1 $2 $3');
+    
+    // Limiter à 9 chiffres maximum
+    const limitedNumbers = numbers.slice(0, 9);
+    
+    // Formater avec des espaces tous les 3 chiffres
+    if (limitedNumbers.length >= 6) {
+      return limitedNumbers.replace(/(\d{3})(\d{3})(\d{3})/, '$1 $2 $3');
+    } else if (limitedNumbers.length >= 3) {
+      return limitedNumbers.replace(/(\d{3})(\d{3})/, '$1 $2');
+    } else {
+      return limitedNumbers;
     }
-    return value;
   };
 
   // ============================================================================

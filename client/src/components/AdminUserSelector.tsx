@@ -93,6 +93,8 @@ const AdminUserSelector: React.FC<AdminUserSelectorProps> = ({
         }
       });
 
+      console.log('📡 Réponse API clients:', response.data);
+
       if (response.data.success) {
         // Transformer les données clients pour correspondre à l'interface User
         const clientUsers = response.data.data.clients.map((client: any) => ({
@@ -101,20 +103,46 @@ const AdminUserSelector: React.FC<AdminUserSelectorProps> = ({
           email: client.email,
           company: client.company_name,
           type: 'client' as const,
-          status: client.statut,
+          status: client.statut || 'active',
           created_at: client.created_at
         }));
         
+        console.log('✅ Utilisateurs transformés:', clientUsers.length);
         setUsers(clientUsers);
       } else {
         throw new Error(response.data.message || 'Erreur lors du chargement');
       }
     } catch (error) {
       console.error('❌ Erreur chargement utilisateurs:', error);
+      
+      // Afficher des données de test en cas d'erreur
+      const fallbackUsers: User[] = [
+        {
+          id: '1',
+          name: 'Client Test 1',
+          email: 'client1@test.com',
+          company: 'Entreprise Test 1',
+          type: 'client',
+          status: 'active',
+          created_at: new Date().toISOString()
+        },
+        {
+          id: '2',
+          name: 'Client Test 2',
+          email: 'client2@test.com',
+          company: 'Entreprise Test 2',
+          type: 'client',
+          status: 'active',
+          created_at: new Date().toISOString()
+        }
+      ];
+      
+      setUsers(fallbackUsers);
+      
       toast({
         variant: 'destructive',
-        title: 'Erreur',
-        description: 'Impossible de charger les utilisateurs. Vérifiez votre connexion.'
+        title: 'Erreur de connexion',
+        description: 'Utilisation des données de test. Vérifiez votre connexion.'
       });
     } finally {
       setLoading(false);
@@ -142,7 +170,7 @@ const AdminUserSelector: React.FC<AdminUserSelectorProps> = ({
           email: client.email,
           company: client.company_name,
           type: 'client' as const,
-          status: client.statut,
+          status: client.statut || 'active',
           created_at: client.created_at
         }));
         
@@ -153,6 +181,11 @@ const AdminUserSelector: React.FC<AdminUserSelectorProps> = ({
       }
     } catch (error) {
       console.error('❌ Erreur recherche utilisateurs:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Erreur de recherche',
+        description: 'Impossible de rechercher les utilisateurs.'
+      });
     } finally {
       setSearching(false);
     }
