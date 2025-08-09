@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import { supabaseClient } from '../config/supabase';
 import { enhancedAuthMiddleware, AuthenticatedRequest } from '../middleware/auth-enhanced';
 import { asyncHandler } from '../utils/asyncHandler';
@@ -36,9 +36,10 @@ interface ClientSimulationResponse {
  * POST /api/client/simulation/update
  * Met à jour la simulation d'un client connecté avec fusion intelligente
  */
-router.post('/update', enhancedAuthMiddleware, asyncHandler(async (req: AuthenticatedRequest, res) => {
+router.post('/update', enhancedAuthMiddleware, asyncHandler(async (req: Request, res: Response) => {
   try {
-    const user = req.user;
+    const authReq = req as AuthenticatedRequest;
+    const user = authReq.user;
     
     if (!user || user.type !== 'client') {
       return res.status(403).json({
@@ -95,7 +96,7 @@ router.post('/update', enhancedAuthMiddleware, asyncHandler(async (req: Authenti
     const mergeResult = await mergeClientProducts(
       user.database_id,
       simulation.id,
-      pythonResponse.eligibleProducts
+      pythonResponse.eligibleProducts || []
     );
 
     // 4. Mettre à jour la simulation avec les résultats
@@ -144,9 +145,10 @@ router.post('/update', enhancedAuthMiddleware, asyncHandler(async (req: Authenti
  * GET /api/client/simulation/history
  * Récupère l'historique des simulations d'un client
  */
-router.get('/history', enhancedAuthMiddleware, asyncHandler(async (req: AuthenticatedRequest, res) => {
+router.get('/history', enhancedAuthMiddleware, asyncHandler(async (req: Request, res: Response) => {
   try {
-    const user = req.user;
+    const authReq = req as AuthenticatedRequest;
+    const user = authReq.user;
     
     if (!user || user.type !== 'client') {
       return res.status(403).json({
@@ -189,9 +191,10 @@ router.get('/history', enhancedAuthMiddleware, asyncHandler(async (req: Authenti
  * GET /api/client/simulation/status
  * Vérifie le statut de la dernière simulation
  */
-router.get('/status', enhancedAuthMiddleware, asyncHandler(async (req: AuthenticatedRequest, res) => {
+router.get('/status', enhancedAuthMiddleware, asyncHandler(async (req: Request, res: Response) => {
   try {
-    const user = req.user;
+    const authReq = req as AuthenticatedRequest;
+    const user = authReq.user;
     
     if (!user || user.type !== 'client') {
       return res.status(403).json({
