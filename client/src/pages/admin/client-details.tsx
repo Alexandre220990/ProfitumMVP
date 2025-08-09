@@ -15,7 +15,7 @@ import {
   ArrowLeft, Building, Mail, Phone, MapPin, Calendar, FileText, TrendingUp, 
   CheckCircle, AlertCircle, Download, Power, PowerOff, MessageSquare, 
   Edit, Eye, Clock, Activity, Users, Euro, Send, Paperclip, UserPlus,
-  FileImage, FileText as FileTextIcon, Plus
+  Image, FileText as FileTextIcon, Plus
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
@@ -615,7 +615,7 @@ const ClientDetails = () => {
 
   const getFileIcon = useCallback((type: string) => {
     if (type.includes('pdf')) return <FileTextIcon className="h-4 w-4 text-red-500" />;
-    if (type.includes('image')) return <FileImage className="h-4 w-4 text-green-500" />;
+    if (type.includes('image')) return <Image className="h-4 w-4 text-green-500" />;
     return <FileTextIcon className="h-4 w-4 text-blue-500" />;
   }, []);
 

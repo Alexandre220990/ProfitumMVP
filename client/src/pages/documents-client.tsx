@@ -2,40 +2,32 @@ import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Progress } from '@/components/ui/progress';
-import { Switch } from '@/components/ui/switch';
-import { useDocumentSections, DocumentSection, DocumentFile } from '../hooks/use-document-sections';
-import { useAuth } from '../hooks/use-auth';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useDocumentSections, DocumentFile } from '../hooks/use-document-sections';
 import { useToast } from '../hooks/use-toast';
 import { 
-  Upload, 
   Download, 
   Eye, 
   Trash2, 
   FileText, 
-  FileImage, 
-  FilePdf, 
-  FileSpreadsheet,
-  FileVideo,
-  FileAudio,
-  FileArchive,
+  Image, 
+  FileText as FilePdf, 
+  Table,
+  Video,
+  Music,
+  Archive,
   GraduationCap,
   Folder,
   Receipt,
   Search,
-  Filter,
   Plus,
-  Calendar,
-  Clock,
-  User,
   CheckCircle,
   XCircle,
   AlertCircle,
-  Archive
+  Archive as ArchiveIcon
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -43,18 +35,18 @@ import { fr } from 'date-fns/locale';
 // Composant pour afficher une icône de fichier selon le type
 const FileIcon = ({ mimeType, extension }: { mimeType: string; extension: string }) => {
   if (mimeType.includes('pdf')) return <FilePdf className="h-5 w-5 text-red-500" />;
-  if (mimeType.includes('image')) return <FileImage className="h-5 w-5 text-green-500" />;
+  if (mimeType.includes('image')) return <Image className="h-5 w-5 text-green-500" />;
   if (mimeType.includes('spreadsheet') || extension === 'xls' || extension === 'xlsx') {
-    return <FileSpreadsheet className="h-5 w-5 text-green-600" />;
+    return <Table className="h-5 w-5 text-green-600" />;
   }
-  if (mimeType.includes('video')) return <FileVideo className="h-5 w-5 text-purple-500" />;
-  if (mimeType.includes('audio')) return <FileAudio className="h-5 w-5 text-blue-500" />;
-  if (mimeType.includes('zip') || mimeType.includes('rar')) return <FileArchive className="h-5 w-5 text-orange-500" />;
+  if (mimeType.includes('video')) return <Video className="h-5 w-5 text-purple-500" />;
+  if (mimeType.includes('audio')) return <Music className="h-5 w-5 text-blue-500" />;
+  if (mimeType.includes('zip') || mimeType.includes('rar')) return <Archive className="h-5 w-5 text-orange-500" />;
   return <FileText className="h-5 w-5 text-gray-500" />;
 };
 
 // Composant pour afficher le statut d'un fichier
-const FileStatus = ({ status, validationStatus }: { status: string; validationStatus: string }) => {
+const FileStatus = ({ status }: { status: string }) => {
   const getStatusConfig = () => {
     switch (status) {
       case 'validated':
@@ -62,7 +54,7 @@ const FileStatus = ({ status, validationStatus }: { status: string; validationSt
       case 'rejected':
         return { icon: XCircle, color: 'text-red-600', bg: 'bg-red-50', text: 'Rejeté' };
       case 'archived':
-        return { icon: Archive, color: 'text-gray-600', bg: 'bg-gray-50', text: 'Archivé' };
+        return { icon: ArchiveIcon, color: 'text-gray-600', bg: 'bg-gray-50', text: 'Archivé' };
       case 'deleted':
         return { icon: Trash2, color: 'text-red-600', bg: 'bg-red-50', text: 'Supprimé' };
       default:
@@ -111,7 +103,7 @@ const FileCard = ({ file, onDownload, onView, onDelete }: {
                 <p className="text-xs text-gray-600 mt-1 line-clamp-2">{file.description}</p>
               )}
               <div className="flex items-center space-x-2 mt-2">
-                <FileStatus status={file.status} validationStatus={file.validation_status} />
+                <FileStatus status={file.status} />
                 <span className="text-xs text-gray-400">
                   {format(new Date(file.created_at), 'dd/MM/yyyy', { locale: fr })}
                 </span>
@@ -152,12 +144,10 @@ const FileCard = ({ file, onDownload, onView, onDelete }: {
 
 // Composant pour l'upload de fichiers
 const UploadDialog = ({ 
-  sectionName, 
   isOpen, 
   onClose, 
   onUpload 
 }: {
-  sectionName: string;
   isOpen: boolean;
   onClose: () => void;
   onUpload: (file: File, description?: string) => void;
@@ -219,7 +209,6 @@ const UploadDialog = ({
 
 // Page principale des documents client
 const DocumentsClientPage = () => {
-  const { user } = useAuth();
   const { toast } = useToast();
   const [selectedSection, setSelectedSection] = useState<string>('formation');
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
@@ -424,12 +413,11 @@ const DocumentsClientPage = () => {
       </div>
 
       {/* Dialog d'upload */}
-      <UploadDialog
-        sectionName={selectedSection}
-        isOpen={uploadDialogOpen}
-        onClose={() => setUploadDialogOpen(false)}
-        onUpload={handleUpload}
-      />
+              <UploadDialog
+          isOpen={uploadDialogOpen}
+          onClose={() => setUploadDialogOpen(false)}
+          onUpload={handleUpload}
+        />
     </div>
   );
 };

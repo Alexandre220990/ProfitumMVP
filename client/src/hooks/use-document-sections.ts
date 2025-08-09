@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from './use-auth';
 import { useToast } from './use-toast';
@@ -69,7 +69,7 @@ export const useDocumentSections = () => {
     error: sectionsError,
     refetch: refetchSections
   } = useQuery({
-    queryKey: ['document-sections', user?.database_id],
+    queryKey: ['document-sections', user?.id],
     queryFn: async (): Promise<DocumentSection[]> => {
       if (!user) throw new Error('Utilisateur non authentifié');
 
