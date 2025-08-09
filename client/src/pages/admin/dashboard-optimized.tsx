@@ -7,6 +7,7 @@ import Button from "@/components/ui/design-system/Button";
 import Badge from "@/components/ui/design-system/Badge";
 import { useToast } from "@/components/ui/toast-notifications";
 import HeaderAdmin from "@/components/HeaderAdmin";
+import { get } from "@/lib/api";
 import { 
   Users, 
   UserCheck, 
@@ -115,39 +116,29 @@ const AdminDashboardOptimized: React.FC = () => {
     
     setLoading(true);
     try {
-      let response;
       
       switch (section) {
         case 'experts':
           // Charger TOUS les experts de la plateforme
-          response = await fetch('/api/admin/experts/all', {
-            credentials: 'include'
-          });
-          if (response.ok) {
-            const data = await response.json();
-            setSectionData(prev => ({ ...prev, experts: data.experts || [] }));
+          const expertsResponse = await get('/admin/experts/all');
+          if (expertsResponse.success) {
+            setSectionData(prev => ({ ...prev, experts: (expertsResponse.data as any)?.experts || [] }));
           }
           break;
           
         case 'clients':
           // Charger TOUS les clients de la plateforme
-          response = await fetch('/api/admin/clients/all', {
-            credentials: 'include'
-          });
-          if (response.ok) {
-            const data = await response.json();
-            setSectionData(prev => ({ ...prev, clients: data.clients || [] }));
+          const clientsResponse = await get('/admin/clients/all');
+          if (clientsResponse.success) {
+            setSectionData(prev => ({ ...prev, clients: (clientsResponse.data as any)?.clients || [] }));
           }
           break;
           
         case 'dossiers':
           // Charger TOUS les ClientProduitEligible de la plateforme
-          response = await fetch('/api/admin/dossiers/all', {
-            credentials: 'include'
-          });
-          if (response.ok) {
-            const data = await response.json();
-            setSectionData(prev => ({ ...prev, dossiers: data.dossiers || [] }));
+          const dossiersResponse = await get('/admin/dossiers/all');
+          if (dossiersResponse.success) {
+            setSectionData(prev => ({ ...prev, dossiers: (dossiersResponse.data as any)?.dossiers || [] }));
           }
           break;
       }
@@ -175,23 +166,17 @@ const AdminDashboardOptimized: React.FC = () => {
         console.log('🧪 Test authentification admin...');
         
         // Test de base
-        const testResponse = await fetch('/api/admin/test', {
-          credentials: 'include'
-        });
-        console.log('✅ Test admin de base:', testResponse.status, testResponse.ok);
+        const testResponse = await get('/admin/test');
+        console.log('✅ Test admin de base:', testResponse.success);
         
         // Test de diagnostic détaillé
-        const diagnosticResponse = await fetch('/api/admin/diagnostic', {
-          credentials: 'include'
-        });
-        console.log('✅ Test diagnostic admin:', diagnosticResponse.status, diagnosticResponse.ok);
+        const diagnosticResponse = await get('/admin/diagnostic');
+        console.log('✅ Test diagnostic admin:', diagnosticResponse.success);
         
-        if (diagnosticResponse.ok) {
-          const diagnosticData = await diagnosticResponse.json();
-          console.log('📊 Diagnostic admin:', diagnosticData);
+        if (diagnosticResponse.success) {
+          console.log('📊 Diagnostic admin:', diagnosticResponse.data);
         } else {
-          const errorData = await diagnosticResponse.json();
-          console.error('❌ Erreur diagnostic admin:', errorData);
+          console.error('❌ Erreur diagnostic admin:', diagnosticResponse.message);
         }
         
       } catch (error) {
