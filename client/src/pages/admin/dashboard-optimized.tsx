@@ -116,34 +116,44 @@ const AdminDashboardOptimized: React.FC = () => {
     
     setLoading(true);
     try {
+      console.log(`🔍 Chargement section: ${section}`);
       
       switch (section) {
         case 'experts':
-          // Charger TOUS les experts de la plateforme
-          const expertsResponse = await get('/admin/experts/all');
+          console.log('📡 Appel API /admin/experts...');
+          const expertsResponse = await get('/admin/experts');
+          console.log('📦 Réponse experts:', expertsResponse);
           if (expertsResponse.success) {
             setSectionData(prev => ({ ...prev, experts: (expertsResponse.data as any)?.experts || [] }));
+          } else {
+            console.error('❌ Erreur experts:', expertsResponse.message);
           }
           break;
           
         case 'clients':
-          // Charger TOUS les clients de la plateforme
-          const clientsResponse = await get('/admin/clients/all');
+          console.log('📡 Appel API /admin/clients...');
+          const clientsResponse = await get('/admin/clients');
+          console.log('📦 Réponse clients:', clientsResponse);
           if (clientsResponse.success) {
             setSectionData(prev => ({ ...prev, clients: (clientsResponse.data as any)?.clients || [] }));
+          } else {
+            console.error('❌ Erreur clients:', clientsResponse.message);
           }
           break;
           
         case 'dossiers':
-          // Charger TOUS les ClientProduitEligible de la plateforme
-          const dossiersResponse = await get('/admin/dossiers/all');
+          console.log('📡 Appel API /admin/dossiers...');
+          const dossiersResponse = await get('/admin/dossiers');
+          console.log('📦 Réponse dossiers:', dossiersResponse);
           if (dossiersResponse.success) {
             setSectionData(prev => ({ ...prev, dossiers: (dossiersResponse.data as any)?.dossiers || [] }));
+          } else {
+            console.error('❌ Erreur dossiers:', dossiersResponse.message);
           }
           break;
       }
     } catch (error) {
-      console.error(`Erreur chargement ${section}:`, error);
+      console.error(`❌ Erreur chargement ${section}:`, error);
       addToast({
         type: 'error',
         title: 'Erreur',
