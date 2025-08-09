@@ -12,17 +12,15 @@ import {
   Save, 
   Edit3, 
   X, 
-  Shield, 
-  TrendingUp,
   Phone,
   Mail,
   Home,
   Building,
   Euro,
-  Calendar,
   Target,
   Users2,
-  Clock
+  Clock,
+  TrendingUp
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -109,7 +107,7 @@ const ClientProfile = () => {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center">
         <div className="text-center">
           <div className="text-red-600 mb-4">
-            <Shield className="w-12 h-12 mx-auto" />
+            <Users className="w-12 h-12 mx-auto" />
           </div>
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Erreur</h2>
           <p className="text-gray-600 mb-4">{error}</p>
@@ -150,13 +148,36 @@ const ClientProfile = () => {
                     </div>
                     <div className="absolute -top-2 -right-2 w-5 h-5 bg-green-500 rounded-full border-3 border-white animate-pulse shadow-lg"></div>
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <h1 className="text-4xl font-bold bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 bg-clip-text text-transparent">
                       Mon Profil
                     </h1>
                     <p className="text-lg text-slate-600 font-medium">
                       Gérez vos informations personnelles et professionnelles
                     </p>
+                    
+                    {/* Statut du compte - Version compacte */}
+                    <div className="flex items-center gap-6 pt-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        <span className="text-sm text-slate-600">Compte vérifié</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
+                          {profile.statut}
+                        </Badge>
+                        <span className="text-sm text-slate-600">Actif</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-slate-600">
+                          Membre depuis {new Date(profile.created_at).toLocaleDateString('fr-FR', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric'
+                          })}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <div className="flex gap-4">
@@ -190,9 +211,9 @@ const ClientProfile = () => {
             </div>
           </div>
           
-          <div className="grid lg:grid-cols-3 gap-8">
-            {/* Informations principales */}
-            <div className="lg:col-span-2 space-y-6">
+                      <div className="grid lg:grid-cols-1 gap-8">
+              {/* Informations principales */}
+              <div className="space-y-6">
               {/* Informations personnelles */}
               <Card className="bg-gradient-to-br from-white via-blue-50/20 to-indigo-50/30 backdrop-blur-xl border border-white/40 shadow-2xl hover:shadow-3xl transition-all duration-500">
                 <CardHeader className="pb-6">
@@ -521,93 +542,7 @@ const ClientProfile = () => {
 
             </div>
 
-            {/* Sidebar moderne */}
-            <div className="space-y-8">
-              {/* Statut du compte - Design premium */}
-              <Card className="bg-gradient-to-br from-white via-blue-50/30 to-indigo-50/50 backdrop-blur-xl border border-white/40 shadow-2xl hover:shadow-3xl transition-all duration-500">
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-xl flex items-center gap-3">
-                    <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl shadow-lg">
-                      <Shield className="w-6 h-6 text-white" />
-                    </div>
-                    <span className="bg-gradient-to-r from-slate-900 to-blue-900 bg-clip-text text-transparent">
-                      Statut du compte
-                    </span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl border border-green-200/50 shadow-sm">
-                    <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-md">
-                      <CheckCircle className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                      <div className="font-semibold text-sm text-slate-900">Compte vérifié</div>
-                      <div className="text-sm text-slate-600">Email confirmé</div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl border border-blue-200/50 shadow-sm">
-                    <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-md">
-                      <Badge variant="secondary" className="bg-white text-blue-600 font-semibold">
-                        {profile.statut}
-                      </Badge>
-                    </div>
-                    <div>
-                      <div className="font-semibold text-sm text-slate-900">Statut</div>
-                      <div className="text-sm text-slate-600">Actif</div>
-                    </div>
-                  </div>
 
-                  <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-purple-50 to-violet-50 rounded-2xl border border-purple-200/50 shadow-sm">
-                    <div className="p-3 bg-gradient-to-br from-purple-500 to-violet-600 rounded-xl shadow-md">
-                      <Calendar className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                      <div className="font-semibold text-sm text-slate-900">Membre depuis</div>
-                      <div className="text-sm text-slate-600">
-                        {new Date(profile.created_at).toLocaleDateString('fr-FR', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Statistiques rapides */}
-              <Card className="bg-gradient-to-br from-white via-slate-50/30 to-gray-50/50 backdrop-blur-xl border border-white/40 shadow-2xl hover:shadow-3xl transition-all duration-500">
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-xl flex items-center gap-3">
-                    <div className="p-3 bg-gradient-to-br from-slate-500 to-gray-600 rounded-2xl shadow-lg">
-                      <TrendingUp className="w-6 h-6 text-white" />
-                    </div>
-                    <span className="bg-gradient-to-r from-slate-900 to-gray-900 bg-clip-text text-transparent">
-                      Aperçu
-                    </span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
-                      <div className="text-2xl font-bold text-blue-600">12</div>
-                      <div className="text-xs text-slate-600">Documents</div>
-                    </div>
-                    <div className="text-center p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-100">
-                      <div className="text-2xl font-bold text-green-600">3</div>
-                      <div className="text-xs text-slate-600">Experts</div>
-                    </div>
-                  </div>
-                  <div className="text-center p-4 bg-gradient-to-br from-purple-50 to-violet-50 rounded-xl border border-purple-100">
-                    <div className="text-2xl font-bold text-purple-600">€45,000</div>
-                    <div className="text-xs text-slate-600">Économies estimées</div>
-                  </div>
-                </CardContent>
-              </Card>
-
-
-            </div>
           </div>
         </div>
       </div>

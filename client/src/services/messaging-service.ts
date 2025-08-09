@@ -13,6 +13,37 @@ import {
   ReportConversationRequest,
 } from '@/types/messaging';
 
+// Types pour les données utilisateur
+interface ClientData {
+  id: string;
+  name: string;
+  email: string;
+  company_name?: string;
+}
+
+interface ExpertData {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  company_name?: string;
+}
+
+// Type pour les données de conversation
+interface ConversationData {
+  type: string;
+  participant_ids: string[];
+  title: string;
+  description: string;
+  status: string;
+  priority: string;
+  category: string;
+  created_at: string;
+  updated_at: string;
+  client_id?: string;
+  expert_id?: string;
+}
+
 // ============================================================================
 // SERVICE DE MESSAGERIE UNIFIÉ OPTIMISÉ
 // ============================================================================
@@ -238,6 +269,77 @@ class MessagingService {
 
       if (error) throw error;
 
+      // Pour les clients et experts, créer automatiquement une conversation admin si elle n'existe pas
+      if (this.currentUserType === 'client' || this.currentUserType === 'expert') {
+        await this.ensureAdminSupportConversation();
+      }
+
+      // Pour les admins, récupérer toutes les conversations admin_support
+      if (this.currentUserType === 'admin') {
+        const { data: adminConversations, error: adminError } = await supabase
+          .from('conversations')
+          .select(`
+            *,
+            messages:messages(
+              id,
+              content,
+              created_at,
+              sender_id,
+              sender_type
+            )
+          `)
+          .eq('type', 'admin_support')
+          .order('last_message_at', { ascending: false });
+
+        if (!adminError && adminConversations) {
+          // Enrichir les conversations admin
+          const enrichedAdminConversations = await Promise.all(
+            adminConversations.map(async (conv) => {
+              const participantId = conv.participant_ids.find((id: string) => id !== this.currentUserId);
+              let participantData = null;
+              let participantType = 'client';
+              
+              // Déterminer le type de participant et récupérer les données
+              if (conv.client_id && participantId === conv.client_id) {
+                const { data } = await supabase
+                  .from('Client')
+                  .select('id, name, email, company_name')
+                  .eq('id', participantId)
+                  .single();
+                participantData = data as ClientData;
+                participantType = 'client';
+              } else if (conv.expert_id && participantId === conv.expert_id) {
+                const { data } = await supabase
+                  .from('Expert')
+                  .select('id, first_name, last_name, email, company_name')
+                  .eq('id', participantId)
+                  .single();
+                participantData = data as ExpertData;
+                participantType = 'expert';
+              }
+              
+              const participantName = participantType === 'expert' 
+                ? `${(participantData as ExpertData)?.first_name || ''} ${(participantData as ExpertData)?.last_name || ''}`.trim()
+                : (participantData as ClientData)?.name || (participantData as ClientData)?.company_name || 'Utilisateur';
+              
+              return {
+                ...conv,
+                otherParticipant: {
+                  id: participantId,
+                  type: participantType as 'client' | 'expert',
+                  name: participantName,
+                  isOnline: await this.isUserOnline(participantId)
+                },
+                last_message: conv.messages?.[0] || null,
+                unread_count: await this.getUnreadCount(conv.id)
+              };
+            })
+          );
+
+          return enrichedAdminConversations;
+        }
+      }
+
       // Enrichir avec les informations des participants en utilisant les nouvelles colonnes métier
       const enrichedConversations = await Promise.all(
         data.map(async (conv) => {
@@ -252,17 +354,17 @@ class MessagingService {
               .eq('id', conv.client_id)
               .single();
             otherParticipant = {
-              ...clientData,
+              ...(clientData as ClientData),
               type: 'client' as const
             };
           } else if (conv.expert_id && otherParticipantId === conv.expert_id) {
             const { data: expertData } = await supabase
               .from('Expert')
-              .select('id, name, email, company_name')
+              .select('id, first_name, last_name, email, company_name')
               .eq('id', conv.expert_id)
               .single();
             otherParticipant = {
-              ...expertData,
+              ...(expertData as ExpertData),
               type: 'expert' as const
             };
           } else {
@@ -284,11 +386,41 @@ class MessagingService {
         })
       );
 
-      return enrichedConversations;
+      // Organiser les conversations en catégories et trier
+      return this.organizeConversationsByCategory(enrichedConversations);
     } catch (error) {
       console.error('Erreur récupération conversations:', error);
       throw error;
     }
+  }
+
+  // Organiser les conversations en catégories avec tri intelligent
+  private organizeConversationsByCategory(conversations: Conversation[]): Conversation[] {
+    // Séparer les conversations par type
+    const adminSupportConversations = conversations.filter(conv => conv.type === 'admin_support');
+    const otherConversations = conversations.filter(conv => conv.type !== 'admin_support');
+
+    // Fonction de tri : messages non lus en premier, puis ordre alphabétique
+    const sortConversations = (convs: Conversation[]) => {
+      return convs.sort((a, b) => {
+        // D'abord par nombre de messages non lus (décroissant)
+        if (a.unread_count !== b.unread_count) {
+          return b.unread_count - a.unread_count;
+        }
+        
+        // Puis par ordre alphabétique du nom du participant
+        const nameA = a.otherParticipant?.name || '';
+        const nameB = b.otherParticipant?.name || '';
+        return nameA.localeCompare(nameB, 'fr', { sensitivity: 'base' });
+      });
+    };
+
+    // Trier chaque catégorie
+    const sortedAdminSupport = sortConversations(adminSupportConversations);
+    const sortedOther = sortConversations(otherConversations);
+
+    // Retourner les conversations organisées
+    return [...sortedAdminSupport, ...sortedOther];
   }
 
   // ========================================
@@ -345,6 +477,83 @@ class MessagingService {
 
     if (error || !data) return null;
     return data;
+  }
+
+  // Créer automatiquement une conversation admin pour les clients et experts
+  private async ensureAdminSupportConversation(): Promise<void> {
+    if (!this.currentUserId || (this.currentUserType !== 'client' && this.currentUserType !== 'expert')) return;
+
+    try {
+      // Vérifier si une conversation admin existe déjà
+      const { data: existingConversation, error: checkError } = await supabase
+        .from('conversations')
+        .select('*')
+        .contains('participant_ids', [this.currentUserId])
+        .eq('type', 'admin_support')
+        .single();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        console.error('Erreur vérification conversation admin:', checkError);
+        return;
+      }
+
+      // Si la conversation n'existe pas, la créer
+      if (!existingConversation) {
+        // Récupérer un admin (premier admin trouvé)
+        const { data: adminData, error: adminError } = await supabase
+          .from('Admin')
+          .select('id, name, email')
+          .limit(1)
+          .single();
+
+        if (adminError || !adminData) {
+          console.error('Aucun admin trouvé pour créer la conversation support');
+          return;
+        }
+
+        // Créer la conversation admin
+        const conversationData: ConversationData = {
+          type: 'admin_support',
+          participant_ids: [this.currentUserId, adminData.id],
+          title: 'Support Administratif',
+          description: 'Conversation de support avec l\'équipe administrative',
+          status: 'active',
+          priority: 'medium',
+          category: 'support',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+
+        // Ajouter les colonnes spécifiques selon le type d'utilisateur
+        if (this.currentUserType === 'client') {
+          conversationData.client_id = this.currentUserId;
+        } else if (this.currentUserType === 'expert') {
+          conversationData.expert_id = this.currentUserId;
+        }
+
+        const { data: newConversation, error: createError } = await supabase
+          .from('conversations')
+          .insert(conversationData)
+          .select()
+          .single();
+
+        if (createError) {
+          console.error('Erreur création conversation admin:', createError);
+          return;
+        }
+
+        console.log(`✅ Conversation admin créée automatiquement pour le ${this.currentUserType}:`, this.currentUserId);
+
+        // Envoyer un message de bienvenue automatique
+        await this.sendMessage({
+          conversation_id: newConversation.id,
+          content: 'Bonjour ! Je suis l\'équipe de support administratif. Comment puis-je vous aider aujourd\'hui ?',
+          message_type: 'text'
+        });
+      }
+    } catch (error) {
+      console.error('Erreur création conversation admin automatique:', error);
+    }
   }
 
   private async createAutoConversation(assignment: any): Promise<Conversation> {

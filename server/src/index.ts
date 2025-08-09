@@ -229,6 +229,7 @@ app.use('/api/enhanced-client-documents', enhancedAuthMiddleware, enhancedClient
 app.use('/api/expert', enhancedAuthMiddleware, requireUserType('expert'), expertRoutes);
 
 // Routes admin - PROTÉGÉES avec permissions spécifiques
+// Routes admin avec authentification
 app.use('/api/admin', enhancedAuthMiddleware, requireUserType('admin'), adminRoutes);
 
 // Route temporaire pour créer un admin (SANS AUTHENTIFICATION)

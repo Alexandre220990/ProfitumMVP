@@ -45,7 +45,7 @@ const AdminUserSelector: React.FC<AdminUserSelectorProps> = ({
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<User[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [userType, setUserType] = useState<'all' | 'client' | 'expert'>('all');
+  const [userType, setUserType] = useState<'all' | 'client' | 'expert'>('client');
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
 
@@ -84,15 +84,28 @@ const AdminUserSelector: React.FC<AdminUserSelectorProps> = ({
   const loadUsers = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/unified-messaging/admin/users', {
+      
+      // Utiliser la route admin existante pour les clients
+      const response = await api.get('/admin/clients', {
         params: { 
           limit: 100,
-          type: userType === 'all' ? undefined : userType
+          page: 1
         }
       });
 
       if (response.data.success) {
-        setUsers(response.data.data.users);
+        // Transformer les données clients pour correspondre à l'interface User
+        const clientUsers = response.data.data.clients.map((client: any) => ({
+          id: client.id,
+          name: client.company_name || client.email,
+          email: client.email,
+          company: client.company_name,
+          type: 'client' as const,
+          status: client.statut,
+          created_at: client.created_at
+        }));
+        
+        setUsers(clientUsers);
       } else {
         throw new Error(response.data.message || 'Erreur lors du chargement');
       }
@@ -113,16 +126,27 @@ const AdminUserSelector: React.FC<AdminUserSelectorProps> = ({
 
     try {
       setSearching(true);
-      const response = await api.get('/unified-messaging/admin/users', {
+      const response = await api.get('/admin/clients', {
         params: { 
           search: searchQuery,
-          type: userType === 'all' ? undefined : userType,
+          page: 1,
           limit: 50
         }
       });
 
       if (response.data.success) {
-        const newUsers = response.data.data.users.filter((user: User) => 
+        // Transformer les données clients pour correspondre à l'interface User
+        const clientUsers = response.data.data.clients.map((client: any) => ({
+          id: client.id,
+          name: client.company_name || client.email,
+          email: client.email,
+          company: client.company_name,
+          type: 'client' as const,
+          status: client.statut,
+          created_at: client.created_at
+        }));
+        
+        const newUsers = clientUsers.filter((user: User) => 
           !users.some(existing => existing.id === user.id)
         );
         setUsers(prev => [...prev, ...newUsers]);
@@ -195,7 +219,7 @@ const AdminUserSelector: React.FC<AdminUserSelectorProps> = ({
         <div>
           <h2 className="text-2xl font-bold">Sélectionner des utilisateurs</h2>
           <p className="text-slate-600">
-            Choisissez les clients ou experts à contacter
+            Choisissez les clients à contacter
           </p>
         </div>
         <Button variant="outline" onClick={onCancel}>
@@ -259,16 +283,9 @@ const AdminUserSelector: React.FC<AdminUserSelectorProps> = ({
                 />
               </div>
             </div>
-            <Select value={userType} onValueChange={(value: any) => setUserType(value)}>
-              <SelectTrigger className="w-48">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tous les types</SelectItem>
-                <SelectItem value="client">Clients uniquement</SelectItem>
-                <SelectItem value="expert">Experts uniquement</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="w-48 flex items-center justify-center px-3 py-2 bg-slate-100 rounded-md">
+              <span className="text-sm text-slate-600">Clients uniquement</span>
+            </div>
             <Button onClick={handleSearch} disabled={searching}>
               {searching ? (
                 <Loader2 className="w-4 h-4 animate-spin" />

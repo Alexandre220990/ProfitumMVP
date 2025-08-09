@@ -84,6 +84,126 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
     }
   }, [messageInput, selectedFiles, messaging]);
 
+  // Organiser et afficher les conversations par catégorie
+  const renderConversationsByCategory = useCallback((conversations: Conversation[]) => {
+    // Séparer les conversations par type
+    const adminSupportConversations = conversations.filter(conv => conv.type === 'admin_support');
+    const otherConversations = conversations.filter(conv => conv.type !== 'admin_support');
+
+    const renderConversationItem = (conversation: Conversation, index: number) => (
+      <motion.div
+        key={conversation.id}
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: index * 0.1 }}
+        whileHover={{ backgroundColor: 'rgb(241 245 249)' }}
+        className={`p-4 cursor-pointer transition-colors border-b border-slate-100 ${
+          selectedConversation?.id === conversation.id ? 'bg-blue-50 border-blue-200' : ''
+        }`}
+        onClick={() => handleConversationSelect(conversation)}
+      >
+        <div className="flex items-start gap-3">
+          <Avatar className="w-12 h-12 flex-shrink-0">
+            <AvatarImage src={conversation.avatar} />
+            <AvatarFallback className={`text-white font-semibold ${
+              conversation.type === 'admin_support' 
+                ? 'bg-gradient-to-br from-purple-500 to-violet-600' 
+                : 'bg-gradient-to-br from-blue-500 to-indigo-600'
+            }`}>
+              {conversation.type === 'admin_support' ? '🛠️' : conversation.title?.charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          
+          {isSidebarOpen && (
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="font-semibold text-slate-900 text-sm truncate">
+                  {cleanConversationTitle(conversation.title)}
+                </h3>
+                {conversation.unread_count > 0 && (
+                  <Badge className="bg-red-500 text-white text-xs px-2 py-0.5">
+                    {conversation.unread_count}
+                  </Badge>
+                )}
+              </div>
+              <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed">
+                {typeof conversation.last_message === 'string' 
+                  ? conversation.last_message 
+                  : 'Aucun message récent'
+                }
+              </p>
+              <p className="text-xs text-slate-400 mt-1">
+                {conversation.updated_at 
+                  ? new Date(conversation.updated_at).toLocaleDateString('fr-FR', {
+                      day: 'numeric',
+                      month: 'short',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })
+                  : 'Récemment'
+                }
+              </p>
+            </div>
+          )}
+        </div>
+      </motion.div>
+    );
+
+    return (
+      <>
+        {/* Catégorie Support Administratif */}
+        {adminSupportConversations.length > 0 && (
+          <div className="mb-4">
+            <div className="px-4 py-2 bg-gradient-to-r from-purple-50 to-violet-50 border-b border-purple-200">
+              <h3 className="text-sm font-semibold text-purple-800 flex items-center gap-2">
+                <span>🛠️</span>
+                Support Administratif
+                {adminSupportConversations.some(conv => conv.unread_count > 0) && (
+                  <Badge variant="destructive" className="ml-auto text-xs">
+                    {adminSupportConversations.reduce((sum, conv) => sum + conv.unread_count, 0)}
+                  </Badge>
+                )}
+              </h3>
+            </div>
+            {adminSupportConversations.map((conversation, index) => 
+              renderConversationItem(conversation, index)
+            )}
+          </div>
+        )}
+
+        {/* Catégorie Autres Conversations */}
+        {otherConversations.length > 0 && (
+          <div>
+            <div className="px-4 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-200">
+              <h3 className="text-sm font-semibold text-blue-800 flex items-center gap-2">
+                <span>💬</span>
+                Autres Conversations
+                {otherConversations.some(conv => conv.unread_count > 0) && (
+                  <Badge variant="destructive" className="ml-auto text-xs">
+                    {otherConversations.reduce((sum, conv) => sum + conv.unread_count, 0)}
+                  </Badge>
+                )}
+              </h3>
+            </div>
+            {otherConversations.map((conversation, index) => 
+              renderConversationItem(conversation, adminSupportConversations.length + index)
+            )}
+          </div>
+        )}
+
+        {/* État vide */}
+        {conversations.length === 0 && (
+          <div className="flex items-center justify-center h-32 text-slate-500">
+            <div className="text-center">
+              <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
+              <p className="text-sm">Aucune conversation</p>
+            </div>
+          </div>
+        )}
+      </>
+    );
+  }, [selectedConversation, isSidebarOpen, handleConversationSelect, cleanConversationTitle]);
+
   // ========================================
   // RENDU PRINCIPAL - DESIGN MESSAGERIE MODERNE
   // ========================================
@@ -139,63 +259,10 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
             )}
           </div>
 
-          {/* Liste des conversations */}
+          {/* Liste des conversations organisées par catégorie */}
           <div className="flex-1 overflow-y-auto">
             <AnimatePresence>
-              {messaging.conversations?.map((conversation, index) => (
-                <motion.div
-                  key={conversation.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  whileHover={{ backgroundColor: 'rgb(241 245 249)' }}
-                  className={`p-4 cursor-pointer transition-colors border-b border-slate-100 ${
-                    selectedConversation?.id === conversation.id ? 'bg-blue-50 border-blue-200' : ''
-                  }`}
-                  onClick={() => handleConversationSelect(conversation)}
-                >
-                  <div className="flex items-start gap-3">
-                    <Avatar className="w-12 h-12 flex-shrink-0">
-                      <AvatarImage src={conversation.avatar} />
-                      <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-semibold">
-                        {conversation.title?.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    
-                    {isSidebarOpen && (
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-1">
-                          <h3 className="font-semibold text-slate-900 text-sm truncate">
-                            {cleanConversationTitle(conversation.title)}
-                          </h3>
-                          {conversation.unread_count > 0 && (
-                            <Badge className="bg-red-500 text-white text-xs px-2 py-0.5">
-                              {conversation.unread_count}
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed">
-                          {typeof conversation.last_message === 'string' 
-                            ? conversation.last_message 
-                            : 'Aucun message récent'
-                          }
-                        </p>
-                        <p className="text-xs text-slate-400 mt-1">
-                          {conversation.updated_at 
-                            ? new Date(conversation.updated_at).toLocaleDateString('fr-FR', {
-                                day: 'numeric',
-                                month: 'short',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })
-                            : 'Récemment'
-                          }
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-              ))}
+              {renderConversationsByCategory(messaging.conversations || [])}
             </AnimatePresence>
           </div>
         </div>

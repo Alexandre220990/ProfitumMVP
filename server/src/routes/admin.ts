@@ -32,10 +32,20 @@ interface UpdateData {
 router.get('/test', asyncHandler(async (req, res) => {
   try {
     console.log('🧪 Test route admin appelée');
+    
+    // Vérifier si l'utilisateur est authentifié
+    const user = (req as any).user;
+    console.log('👤 Utilisateur dans la requête:', user);
+    
     return res.json({
       success: true,
       message: 'Route admin fonctionne',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      user: user ? {
+        id: user.id,
+        type: user.type,
+        email: user.email
+      } : null
     });
   } catch (error) {
     console.error('Erreur test route admin:', error);
