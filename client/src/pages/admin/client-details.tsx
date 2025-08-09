@@ -10,14 +10,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-// import { createClient } from "@supabase/supabase-js";
+import { get } from "@/lib/api";
 import { 
   ArrowLeft, Building, Mail, Phone, MapPin, Calendar, FileText, TrendingUp, 
   CheckCircle, AlertCircle, Download, Power, PowerOff, MessageSquare, 
   Edit, Eye, Clock, Activity, Users, Euro, Send, Paperclip, UserPlus,
   Image, FileText as FileTextIcon, Plus
 } from "lucide-react";
-import { supabase } from "@/lib/supabase";
 
 // Configuration Supabase - Utilise l'instance importée depuis @/lib/supabase
 
@@ -181,52 +180,42 @@ const ClientDetails = () => {
   const fetchClientData = useCallback(async () => {
     try {
       setLoading(true);
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        console.log('Session expirée, redirection vers connect-admin');
-        navigate('/connect-admin');
-        return;
+      
+      const response = await get(`/admin/clients/${id}`);
+      
+      if (!response.success) {
+        throw new Error(response.message || 'Client non trouvé');
       }
 
-      const response = await fetch(`/api/admin/clients/${id}`, {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Client non trouvé');
-      }
-
-      const data = await response.json();
-      setClient(data.data.client);
-      setProduitsEligibles(data.data.produitsEligibles);
-      setAudits(data.data.audits);
-      setCharteSignature(data.data.charteSignature);
-      setStats(data.data.stats);
-      setClientActions(data.data.actions || []);
-      setExperts(data.data.experts || []);
-      setMessages(data.data.messages || []);
-      setDocuments(data.data.documents || []);
+      const data = response.data as any;
+      setClient(data.client);
+      setProduitsEligibles(data.produitsEligibles);
+      setAudits(data.audits);
+      setCharteSignature(data.charteSignature);
+      setStats(data.stats);
+      setClientActions(data.actions || []);
+      setExperts(data.experts || []);
+      setMessages(data.messages || []);
+      setDocuments(data.documents || []);
     } catch (err: any) {
       setError(err.message);
       console.error('Erreur chargement client: ', err);
+      toast({
+        variant: 'destructive',
+        title: 'Erreur',
+        description: 'Impossible de charger les données du client'
+      });
     } finally {
       setLoading(false);
     }
-  }, [id, navigate]);
+  }, [id, toast]);
 
   // Assigner un expert à un audit
   const assignExpertToAudit = async (auditId: string, expertId: string) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
       const response = await fetch(`/api/admin/audits/${auditId}/assign-expert`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ expert_id: expertId })
@@ -236,16 +225,17 @@ const ClientDetails = () => {
         fetchClientData(); // Recharger les données
         toast({
           title: 'Expert assigné',
-          description: 'L\'expert a été assigné avec succès',
-          variant: 'default'
+          description: 'L\'expert a été assigné avec succès'
         });
+      } else {
+        throw new Error('Erreur lors de l\'assignation');
       }
     } catch (err) {
       console.error('Erreur assignation expert: ', err);
       toast({
+        variant: 'destructive',
         title: 'Erreur',
-        description: 'Erreur lors de l\'assignation de l\'expert',
-        variant: 'destructive'
+        description: 'Erreur lors de l\'assignation de l\'expert'
       });
     }
   };
@@ -253,13 +243,9 @@ const ClientDetails = () => {
   // Mettre à jour le statut d'un audit
   const updateAuditStatus = async (auditId: string, status: string) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
       const response = await fetch(`/api/admin/audits/${auditId}/status`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ status })
@@ -269,16 +255,17 @@ const ClientDetails = () => {
         fetchClientData(); // Recharger les données
         toast({
           title: 'Statut mis à jour',
-          description: 'Le statut de l\'audit a été mis à jour',
-          variant: 'default'
+          description: 'Le statut de l\'audit a été mis à jour'
         });
+      } else {
+        throw new Error('Erreur lors de la mise à jour');
       }
     } catch (err) {
       console.error('Erreur mise à jour statut: ', err);
       toast({
+        variant: 'destructive',
         title: 'Erreur',
-        description: 'Erreur lors de la mise à jour du statut',
-        variant: 'destructive'
+        description: 'Erreur lors de la mise à jour du statut'
       });
     }
   };
@@ -286,13 +273,9 @@ const ClientDetails = () => {
   // Ajouter un commentaire à un audit
   const addAuditComment = async (auditId: string, comment: string) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
       const response = await fetch(`/api/admin/audits/${auditId}/comment`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ comment })
@@ -302,16 +285,17 @@ const ClientDetails = () => {
         fetchClientData(); // Recharger les données
         toast({
           title: 'Commentaire ajouté',
-          description: 'Le commentaire a été ajouté avec succès',
-          variant: 'default'
+          description: 'Le commentaire a été ajouté avec succès'
         });
+      } else {
+        throw new Error('Erreur lors de l\'ajout du commentaire');
       }
     } catch (err) {
       console.error('Erreur ajout commentaire: ', err);
       toast({
+        variant: 'destructive',
         title: 'Erreur',
-        description: 'Erreur lors de l\'ajout du commentaire',
-        variant: 'destructive'
+        description: 'Erreur lors de l\'ajout du commentaire'
       });
     }
   };
@@ -319,19 +303,9 @@ const ClientDetails = () => {
   // Charger les messages du client
   const loadMessages = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
-      const response = await fetch(`/api/admin/clients/${client?.id}/messages`, {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setMessages(data.data || []);
+      const response = await get(`/admin/clients/${client?.id}/messages`);
+      if (response.success) {
+        setMessages(response.data as any);
       }
     } catch (err) {
       console.error('Erreur chargement messages: ', err);
@@ -340,23 +314,16 @@ const ClientDetails = () => {
 
   // Envoyer un message au client
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !client?.id) return;
+    if (!newMessage.trim() || !client) return;
 
     try {
       setActionLoading('send-message');
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
       const response = await fetch(`/api/admin/clients/${client.id}/messages`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ 
-          message: newMessage,
-          expediteur_type: 'admin'
-        })
+        body: JSON.stringify({ message: newMessage })
       });
 
       if (response.ok) {
@@ -364,32 +331,29 @@ const ClientDetails = () => {
         loadMessages(); // Recharger les messages
         toast({
           title: 'Message envoyé',
-          description: 'Le message a été envoyé au client',
-          variant: 'default'
+          description: 'Le message a été envoyé au client'
         });
+      } else {
+        throw new Error('Erreur lors de l\'envoi');
       }
     } catch (err) {
       console.error('Erreur envoi message: ', err);
       toast({
+        variant: 'destructive',
         title: 'Erreur',
-        description: 'Erreur lors de l\'envoi du message',
-        variant: 'destructive'
+        description: 'Erreur lors de l\'envoi du message'
       });
     } finally {
-      setActionLoading("");
+      setActionLoading('');
     }
   };
 
   // Valider un document
   const validateDocument = async (documentId: string) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
       const response = await fetch(`/api/admin/documents/${documentId}/validate`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json'
         }
       });
@@ -398,16 +362,17 @@ const ClientDetails = () => {
         fetchClientData(); // Recharger les données
         toast({
           title: 'Document validé',
-          description: 'Le document a été validé avec succès',
-          variant: 'default'
+          description: 'Le document a été validé avec succès'
         });
+      } else {
+        throw new Error('Erreur lors de la validation');
       }
     } catch (err) {
       console.error('Erreur validation document: ', err);
       toast({
+        variant: 'destructive',
         title: 'Erreur',
-        description: 'Erreur lors de la validation du document',
-        variant: 'destructive'
+        description: 'Erreur lors de la validation du document'
       });
     }
   };
@@ -415,13 +380,9 @@ const ClientDetails = () => {
   // Demander un document au client
   const requestDocument = async (documentType: string) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
       const response = await fetch(`/api/admin/clients/${client?.id}/request-document`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ document_type: documentType })
@@ -430,16 +391,17 @@ const ClientDetails = () => {
       if (response.ok) {
         toast({
           title: 'Demande envoyée',
-          description: 'La demande de document a été envoyée au client',
-          variant: 'default'
+          description: 'La demande de document a été envoyée au client'
         });
+      } else {
+        throw new Error('Erreur lors de l\'envoi de la demande');
       }
     } catch (err) {
       console.error('Erreur demande document: ', err);
       toast({
+        variant: 'destructive',
         title: 'Erreur',
-        description: 'Erreur lors de l\'envoi de la demande',
-        variant: 'destructive'
+        description: 'Erreur lors de l\'envoi de la demande'
       });
     }
   };
@@ -447,13 +409,9 @@ const ClientDetails = () => {
   // Mettre à jour le statut du client
   const updateClientStatus = async (status: string) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
       const response = await fetch(`/api/admin/clients/${client?.id}/status`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ status })
@@ -463,16 +421,17 @@ const ClientDetails = () => {
         fetchClientData(); // Recharger les données
         toast({
           title: 'Statut mis à jour',
-          description: 'Le statut du client a été mis à jour',
-          variant: 'default'
+          description: 'Le statut du client a été mis à jour'
         });
+      } else {
+        throw new Error('Erreur lors de la mise à jour');
       }
     } catch (err) {
-      console.error('Erreur mise à jour statut client: ', err);
+      console.error('Erreur mise à jour statut: ', err);
       toast({
+        variant: 'destructive',
         title: 'Erreur',
-        description: 'Erreur lors de la mise à jour du statut',
-        variant: 'destructive'
+        description: 'Erreur lors de la mise à jour du statut'
       });
     }
   };
@@ -480,12 +439,8 @@ const ClientDetails = () => {
   // Exporter les données du client
   const exportClientData = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
       const response = await fetch(`/api/admin/clients/${client?.id}/export`, {
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json'
         }
       });
@@ -495,38 +450,35 @@ const ClientDetails = () => {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `client-${client?.id}-${new Date().toISOString().split('T')[0]}.json`;
+        a.download = `client-${client?.id}.json`;
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
-
+        
         toast({
           title: 'Export réussi',
-          description: 'Les données du client ont été exportées',
-          variant: 'default'
+          description: 'Les données du client ont été exportées'
         });
+      } else {
+        throw new Error('Erreur lors de l\'export');
       }
     } catch (err) {
       console.error('Erreur export: ', err);
       toast({
+        variant: 'destructive',
         title: 'Erreur',
-        description: 'Erreur lors de l\'export des données',
-        variant: 'destructive'
+        description: 'Erreur lors de l\'export des données'
       });
     }
   };
 
-  // Envoyer une notification au client
+  // Notifier le client
   const notifyClient = async (message: string) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-
       const response = await fetch(`/api/admin/clients/${client?.id}/notify`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ message })
@@ -535,16 +487,17 @@ const ClientDetails = () => {
       if (response.ok) {
         toast({
           title: 'Notification envoyée',
-          description: 'La notification a été envoyée au client',
-          variant: 'default'
+          description: 'La notification a été envoyée au client'
         });
+      } else {
+        throw new Error('Erreur lors de l\'envoi');
       }
     } catch (err) {
       console.error('Erreur notification: ', err);
       toast({
+        variant: 'destructive',
         title: 'Erreur',
-        description: 'Erreur lors de l\'envoi de la notification',
-        variant: 'destructive'
+        description: 'Erreur lors de l\'envoi de la notification'
       });
     }
   };

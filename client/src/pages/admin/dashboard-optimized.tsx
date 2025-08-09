@@ -1,31 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from "@/hooks/use-auth";
+import { useState, useEffect } from 'react';
 import { Navigate } from "react-router-dom";
-import { useBusinessKPIs } from "@/hooks/use-business-kpis";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/design-system/Card";
-import Button from "@/components/ui/design-system/Button";
-import Badge from "@/components/ui/design-system/Badge";
-import { useToast } from "@/components/ui/toast-notifications";
-import HeaderAdmin from "@/components/HeaderAdmin";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 import { get } from "@/lib/api";
+import HeaderAdmin from "@/components/HeaderAdmin";
 import { 
-  Users, 
-  Building, 
-  UserPlus, 
-  RefreshCw, 
-  Eye,
-  Edit,
-  ClipboardList,
-  FileText,
-  ArrowUpRight,
-  ArrowDownRight,
-  Minus,
-  AlertTriangle,
-  Check,
-  X
+  RefreshCw, UserPlus, Users, Building, FileText, 
+  Eye, ClipboardList, Edit, Check, X
 } from "lucide-react";
 import { motion } from "framer-motion";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 // ============================================================================
 // TYPES ET INTERFACES
@@ -60,6 +47,8 @@ type ActiveSection = 'overview' | 'experts' | 'clients' | 'dossiers';
 
 const AdminDashboardOptimized: React.FC = () => {
   const { user } = useAuth();
+  const { toast } = useToast();
+  
   // ===== ÉTATS LOCAUX =====
   const [activeSection, setActiveSection] = useState<ActiveSection>('overview');
   const [sectionData, setSectionData] = useState<SectionData>({
@@ -68,6 +57,8 @@ const AdminDashboardOptimized: React.FC = () => {
     dossiers: []
   });
   const [loading, setLoading] = useState(false);
+  
+  // ===== DONNÉES KPI =====
   const [kpiData, setKpiData] = useState({
     totalClients: 0,
     clientsThisMonth: 0,
@@ -80,79 +71,22 @@ const AdminDashboardOptimized: React.FC = () => {
     montantRealise: 0
   });
 
-  const { addToast } = useToast();
-
-  // Hook pour les KPIs métier
-  const {
-    businessKPIs,
-    isLoading,
-    error,
-    lastUpdated,
-    formatCurrency,
-    formatNumber
-  } = useBusinessKPIs();
-
-  // ========================================
-  // CHARGEMENT DES DONNÉES PAR SECTION
-  // ========================================
-
-  const loadSectionData = async (section: ActiveSection) => {
-    if (section === 'overview') return;
-    
-    setLoading(true);
-    try {
-      console.log(`🔍 Chargement section: ${section}`);
-      
-      switch (section) {
-        case 'experts':
-          console.log('📡 Appel API /admin/experts...');
-          const expertsResponse = await get('/admin/experts');
-          console.log('📦 Réponse experts:', expertsResponse);
-          if (expertsResponse.success) {
-            setSectionData((prev: SectionData) => ({ ...prev, experts: (expertsResponse.data as any)?.experts || [] }));
-          } else {
-            console.error('❌ Erreur experts:', expertsResponse.message);
-          }
-          break;
-          
-        case 'clients':
-          console.log('📡 Appel API /admin/clients...');
-          const clientsResponse = await get('/admin/clients');
-          console.log('📦 Réponse clients:', clientsResponse);
-          if (clientsResponse.success) {
-            setSectionData((prev: SectionData) => ({ ...prev, clients: (clientsResponse.data as any)?.clients || [] }));
-          } else {
-            console.error('❌ Erreur clients:', clientsResponse.message);
-          }
-          break;
-          
-        case 'dossiers':
-          console.log('📡 Appel API /admin/dossiers...');
-          const dossiersResponse = await get('/admin/dossiers');
-          console.log('📦 Réponse dossiers:', dossiersResponse);
-          if (dossiersResponse.success) {
-            setSectionData((prev: SectionData) => ({ ...prev, dossiers: (dossiersResponse.data as any)?.dossiers || [] }));
-          } else {
-            console.error('❌ Erreur dossiers:', dossiersResponse.message);
-          }
-          break;
-      }
-    } catch (error) {
-      console.error(`❌ Erreur chargement ${section}:`, error);
-      addToast({
-        type: 'error',
-        title: 'Erreur',
-        message: `Impossible de charger les données ${section}`
-      });
-    } finally {
-      setLoading(false);
-    }
+  // Fonction utilitaire pour formater les montants
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('fr-FR', {
+      style: 'currency',
+      currency: 'EUR'
+    }).format(amount);
   };
 
-  // Charger les données quand la section change
+  // ========================================
+  // CHARGEMENT DES DONNÉES
+  // ========================================
+
   useEffect(() => {
-    loadSectionData(activeSection);
-  }, [activeSection]);
+    loadKPIData();
+    loadSectionData('overview');
+  }, []);
 
   // Test d'authentification admin
   useEffect(() => {
@@ -258,12 +192,62 @@ const AdminDashboardOptimized: React.FC = () => {
     }
   };
 
-  // Charger les KPIs au montage du composant
-  useEffect(() => {
-    if (user?.id && user.type === 'admin') {
-      loadKPIData();
+  // ========================================
+  // CHARGEMENT DES DONNÉES PAR SECTION
+  // ========================================
+
+  const loadSectionData = async (section: ActiveSection) => {
+    if (section === 'overview') return;
+    
+    setLoading(true);
+    try {
+      console.log(`🔍 Chargement section: ${section}`);
+      
+      switch (section) {
+        case 'experts':
+          console.log('📡 Appel API /admin/experts...');
+          const expertsResponse = await get('/admin/experts');
+          console.log('📦 Réponse experts:', expertsResponse);
+          if (expertsResponse.success) {
+            setSectionData((prev: SectionData) => ({ ...prev, experts: (expertsResponse.data as any)?.experts || [] }));
+          } else {
+            console.error('❌ Erreur experts:', expertsResponse.message);
+          }
+          break;
+          
+        case 'clients':
+          console.log('📡 Appel API /admin/clients...');
+          const clientsResponse = await get('/admin/clients');
+          console.log('📦 Réponse clients:', clientsResponse);
+          if (clientsResponse.success) {
+            setSectionData((prev: SectionData) => ({ ...prev, clients: (clientsResponse.data as any)?.clients || [] }));
+          } else {
+            console.error('❌ Erreur clients:', clientsResponse.message);
+          }
+          break;
+          
+        case 'dossiers':
+          console.log('📡 Appel API /admin/dossiers...');
+          const dossiersResponse = await get('/admin/dossiers');
+          console.log('📦 Réponse dossiers:', dossiersResponse);
+          if (dossiersResponse.success) {
+            setSectionData((prev: SectionData) => ({ ...prev, dossiers: (dossiersResponse.data as any)?.dossiers || [] }));
+          } else {
+            console.error('❌ Erreur dossiers:', dossiersResponse.message);
+          }
+          break;
+      }
+    } catch (error) {
+      console.error(`❌ Erreur chargement ${section}:`, error);
+      toast({
+        title: 'Erreur',
+        description: `Impossible de charger les données ${section}`,
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
     }
-  }, [user?.id, user?.type]);
+  };
 
   // ===== GESTION DES PERMISSIONS =====
   
@@ -285,13 +269,6 @@ const AdminDashboardOptimized: React.FC = () => {
   // GESTION DES ACTIONS
   // ========================================
 
-  const handleRefresh = async () => {
-    await loadKPIData();
-    if (activeSection !== 'overview') {
-      await loadSectionData(activeSection);
-    }
-  };
-
   // ========================================
   // COMPOSANTS UI
   // ========================================
@@ -303,159 +280,41 @@ const AdminDashboardOptimized: React.FC = () => {
     changeType, 
     icon: Icon, 
     color, 
-    format = 'number',
     subtitle,
     onClick
   }: any) => (
     <Card 
-      className={`cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 ${
+      className={`cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-105 ${
         onClick ? 'hover:bg-gray-50' : ''
       }`}
       onClick={onClick}
     >
       <CardContent className="p-6">
         <div className="flex items-center justify-between">
-          <div>
+          <div className="flex-1">
             <p className="text-sm font-medium text-gray-600">{title}</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">
-              {format === 'currency' ? formatCurrency(value) : formatNumber(value)}
-            </p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
             {subtitle && (
-              <p className="text-xs text-gray-500 mt-1">{subtitle}</p>
+              <p className="text-sm text-gray-500 mt-1">{subtitle}</p>
             )}
-            <div className="flex items-center mt-2">
-              {changeType === 'positive' && <ArrowUpRight className="w-4 h-4 text-green-600" />}
-              {changeType === 'negative' && <ArrowDownRight className="w-4 h-4 text-red-600" />}
-              {changeType === 'neutral' && <Minus className="w-4 h-4 text-gray-600" />}
-              <span className={`text-sm ml-1 ${
-                changeType === 'positive' ? 'text-green-600' :
-                changeType === 'negative' ? 'text-red-600' : 'text-gray-600'
-              }`}>
-                {change}
-              </span>
-            </div>
+            {change && (
+              <div className="flex items-center mt-2">
+                <span className={`text-sm font-medium ${
+                  changeType === 'increase' ? 'text-green-600' : 
+                  changeType === 'decrease' ? 'text-red-600' : 'text-gray-600'
+                }`}>
+                  {change}
+                </span>
+              </div>
+            )}
           </div>
-          <div className={`p-3 rounded-lg bg-gradient-to-r ${color}`}>
-            <Icon className="w-6 h-6 text-white" />
+          <div className={`p-3 rounded-full bg-${color}-100`}>
+            <Icon className={`w-6 h-6 text-${color}-600`} />
           </div>
         </div>
       </CardContent>
     </Card>
   );
-
-  // ========================================
-  // SECTIONS DYNAMIQUES
-  // ========================================
-
-  const BusinessKPIsDashboard = () => {
-    if (!businessKPIs) return null;
-
-    return (
-      <div className="space-y-6">
-        {/* En-tête avec actions */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Dashboard Métier</h1>
-            <p className="text-gray-600 mt-1">
-              Vue d'ensemble de l'activité - Dernière mise à jour : {lastUpdated?.toLocaleTimeString('fr-FR')}
-            </p>
-          </div>
-          <Button variant="secondary" onClick={handleRefresh} className="flex items-center space-x-2">
-            <RefreshCw className="w-4 h-4" />
-            <span>Actualiser</span>
-          </Button>
-        </div>
-
-        {/* Message d'erreur */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <div className="flex items-center space-x-2">
-              <AlertTriangle className="w-5 h-5 text-red-600" />
-              <span className="text-red-800 font-medium">Erreur de chargement</span>
-            </div>
-            <p className="text-red-700 mt-1">{error}</p>
-          </div>
-        )}
-
-        {/* KPIs PRINCIPAUX */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {/* Nouvel Utilisateur */}
-          <KPICard
-            title="Nouvel Utilisateur"
-            value={kpiData.clientsThisMonth}
-            total={kpiData.totalClients}
-            change={`+${kpiData.clientsThisMonth} ce mois`}
-            icon={UserPlus}
-            color="blue"
-            onClick={() => setActiveSection('clients')}
-          />
-
-          {/* Experts */}
-          <KPICard
-            title="Experts"
-            value={kpiData.activeExperts}
-            total={kpiData.totalExperts}
-            change={`${kpiData.pendingExperts} en attente`}
-            icon={Users}
-            color="green"
-            onClick={() => setActiveSection('experts')}
-          />
-
-          {/* Clients en attente */}
-          <KPICard
-            title="Clients en attente"
-            value={kpiData.pendingDossiers}
-            total={kpiData.totalDossiers}
-            change={`${kpiData.pendingDossiers} en cours`}
-            icon={Building}
-            color="orange"
-            onClick={() => setActiveSection('clients')}
-          />
-
-          {/* Dossiers à traiter */}
-          <KPICard
-            title="Dossiers à traiter"
-            value={kpiData.montantPotentiel.toLocaleString('fr-FR')}
-            total={`${kpiData.montantRealise.toLocaleString('fr-FR')} € réalisés`}
-            change={`${kpiData.totalDossiers} dossiers`}
-            icon={FileText}
-            color="purple"
-            onClick={() => setActiveSection('dossiers')}
-          />
-        </div>
-
-        {/* Section dynamique en dessous des tuiles */}
-        <div className="mt-8">
-          {activeSection === 'overview' && (
-            <div className="bg-gray-50 rounded-lg p-8 text-center">
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                Vue d'ensemble
-              </h3>
-              <p className="text-gray-600">
-                Cliquez sur une tuile ci-dessus pour voir les détails
-              </p>
-            </div>
-          )}
-
-          {activeSection === 'experts' && (
-            <ExpertsAllSection />
-          )}
-
-          {activeSection === 'clients' && (
-            <ClientsAllSection />
-          )}
-
-          {activeSection === 'dossiers' && (
-            <DossiersProcessingSection 
-              dossiers={sectionData.dossiers} 
-              loading={loading}
-              onRefresh={() => loadSectionData('dossiers')}
-            />
-          )}
-        </div>
-      </div>
-    );
-  };
 
   // ========================================
   // COMPOSANTS DE SECTIONS
@@ -533,7 +392,7 @@ const AdminDashboardOptimized: React.FC = () => {
                     </td>
                     <td className="px-6 py-4">
                       <Badge 
-                        variant={client.statut === 'actif' ? 'success' : 'warning'}
+                        variant={client.statut === 'actif' ? 'default' : 'secondary'}
                         className="text-xs"
                       >
                         {client.statut || 'actif'}
@@ -552,7 +411,7 @@ const AdminDashboardOptimized: React.FC = () => {
                           Voir détails
                         </Button>
                         <Button
-                          variant="primary"
+                          variant="default"
                           size="sm"
                           onClick={() => window.open(`/admin/messagerie-admin?user=${client.id}`, '_blank')}
                         >
@@ -671,12 +530,12 @@ const AdminDashboardOptimized: React.FC = () => {
                     <td className="px-6 py-4">
                       <div className="flex flex-wrap gap-1">
                         {expert.specializations?.slice(0, 2).map((spec: string, index: number) => (
-                          <Badge key={index} variant="primary" className="text-xs">
+                          <Badge key={index} variant="secondary" className="text-xs">
                             {spec}
                           </Badge>
                         ))}
                         {expert.specializations?.length > 2 && (
-                          <Badge variant="primary" className="text-xs">
+                          <Badge variant="secondary" className="text-xs">
                             +{expert.specializations.length - 2}
                           </Badge>
                         )}
@@ -685,8 +544,8 @@ const AdminDashboardOptimized: React.FC = () => {
                     <td className="px-6 py-4">
                       <Badge 
                         variant={
-                          expert.approval_status === 'approved' ? 'success' : 
-                          expert.approval_status === 'pending' ? 'warning' : 'error'
+                          expert.approval_status === 'approved' ? 'default' : 
+                          expert.approval_status === 'pending' ? 'secondary' : 'destructive'
                         }
                         className="text-xs"
                       >
@@ -707,7 +566,7 @@ const AdminDashboardOptimized: React.FC = () => {
                           Voir détails
                         </Button>
                         <Button
-                          variant="primary"
+                          variant="default"
                           size="sm"
                           onClick={() => window.open(`/admin/messagerie-admin?user=${expert.id}`, '_blank')}
                         >
@@ -780,9 +639,9 @@ const AdminDashboardOptimized: React.FC = () => {
                     </div>
                     <div className="text-right">
                       <Badge 
-                        variant={dossier.statut === 'pending' ? 'warning' : 
-                               dossier.statut === 'validated' ? 'success' : 
-                               dossier.statut === 'rejected' ? 'error' : 'primary'}
+                        variant={dossier.statut === 'pending' ? 'secondary' : 
+                               dossier.statut === 'validated' ? 'default' : 
+                               dossier.statut === 'rejected' ? 'destructive' : 'secondary'}
                       >
                         {dossier.statut}
                       </Badge>
@@ -820,11 +679,11 @@ const AdminDashboardOptimized: React.FC = () => {
                     </Button>
                     {dossier.statut === 'pending' && (
                       <>
-                        <Button size="sm" variant="success" className="text-white">
+                        <Button size="sm" variant="default" className="text-white">
                           <Check className="w-4 h-4 mr-1" />
                           Valider
                         </Button>
-                        <Button size="sm" variant="error" className="text-white">
+                        <Button size="sm" variant="destructive" className="text-white">
                           <X className="w-4 h-4 mr-1" />
                           Refuser
                         </Button>
@@ -965,9 +824,8 @@ const AdminDashboardOptimized: React.FC = () => {
       <HeaderAdmin />
       
       <div className="flex flex-1 pt-16">
-        
         <div className="flex-1 p-6">
-          {isLoading ? (
+          {loading ? (
             <div className="flex items-center justify-center h-64">
               <div className="text-center">
                 <RefreshCw className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-4" />
@@ -976,18 +834,83 @@ const AdminDashboardOptimized: React.FC = () => {
             </div>
           ) : (
             <>
-              {activeSection === 'overview' && <BusinessKPIsDashboard />}
-              {activeSection === 'experts' && (
-                <ExpertsAllSection />
-              )}
-              {activeSection === 'clients' && <ClientsAllSection />}
-              {activeSection === 'dossiers' && (
-                <DossiersProcessingSection 
-                  dossiers={sectionData.dossiers} 
-                  loading={loading}
-                  onRefresh={() => loadSectionData('dossiers')}
+              {/* Tuiles KPI toujours visibles en haut */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                {/* Nouvel Utilisateur */}
+                <KPICard
+                  title="Nouvel Utilisateur"
+                  value={kpiData.clientsThisMonth}
+                  total={`${kpiData.clientsThisMonth} ce mois`}
+                  change={`+${kpiData.clientsThisMonth} ce mois`}
+                  changeType="increase"
+                  icon={UserPlus}
+                  color="blue"
+                  onClick={() => setActiveSection('clients')}
                 />
-              )}
+
+                {/* Experts */}
+                <KPICard
+                  title="Experts"
+                  value={kpiData.totalExperts}
+                  total={`${kpiData.pendingExperts} en attente`}
+                  change={`${kpiData.activeExperts} actifs`}
+                  icon={Users}
+                  color="green"
+                  onClick={() => setActiveSection('experts')}
+                />
+
+                {/* Clients en attente */}
+                <KPICard
+                  title="Clients en attente"
+                  value={kpiData.pendingDossiers}
+                  total={`${kpiData.totalDossiers} en cours`}
+                  change={`${kpiData.pendingDossiers} en cours`}
+                  icon={Building}
+                  color="orange"
+                  onClick={() => setActiveSection('clients')}
+                />
+
+                {/* Dossiers à traiter */}
+                <KPICard
+                  title="Dossiers à traiter"
+                  value={kpiData.montantPotentiel.toLocaleString('fr-FR')}
+                  total={`${kpiData.montantRealise.toLocaleString('fr-FR')} € réalisés`}
+                  change={`${kpiData.totalDossiers} dossiers`}
+                  icon={FileText}
+                  color="purple"
+                  onClick={() => setActiveSection('dossiers')}
+                />
+              </div>
+
+              {/* Section dynamique en dessous des tuiles */}
+              <div className="mt-8">
+                {activeSection === 'overview' && (
+                  <div className="bg-gray-50 rounded-lg p-8 text-center">
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                      Vue d'ensemble
+                    </h3>
+                    <p className="text-gray-600">
+                      Cliquez sur une tuile ci-dessus pour voir les détails
+                    </p>
+                  </div>
+                )}
+
+                {activeSection === 'experts' && (
+                  <ExpertsAllSection />
+                )}
+
+                {activeSection === 'clients' && (
+                  <ClientsAllSection />
+                )}
+
+                {activeSection === 'dossiers' && (
+                  <DossiersProcessingSection 
+                    dossiers={sectionData.dossiers} 
+                    loading={loading}
+                    onRefresh={() => loadSectionData('dossiers')}
+                  />
+                )}
+              </div>
             </>
           )}
         </div>
