@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { 
   Loader2, 
   RefreshCw, 
@@ -30,6 +29,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useClientProducts } from '@/hooks/use-client-products';
 import { SectionTitle } from "@/components/dashboard/SectionTitle";
 import { EmptyEligibleProductsState } from "@/components/empty-eligible-products-state";
+import { toast } from '@/hooks/use-toast';
 
 // Composant StatCard pour les KPIs
 interface StatCardProps {
@@ -68,12 +68,12 @@ interface ProductCardProps {
 const ProductCard = ({ produit, onClick }: ProductCardProps) => {
   const getProductIcon = (nom: string) => {
     const nomLower = nom.toLowerCase();
-    if (nomLower.includes('ticpe')) return <Zap className="w-5 h-5" />;
-    if (nomLower.includes('urssaf')) return <Target className="w-5 h-5" />;
-    if (nomLower.includes('foncier')) return <Calendar className="w-5 h-5" />;
-    if (nomLower.includes('dfs') || nomLower.includes('dsf')) return <Euro className="w-5 h-5" />;
-    if (nomLower.includes('msa')) return <Percent className="w-5 h-5" />;
-    return <FolderOpen className="w-5 h-5" />;
+    if (nomLower.includes('ticpe')) return <Zap className="w-6 h-6" />;
+    if (nomLower.includes('urssaf')) return <Target className="w-6 h-6" />;
+    if (nomLower.includes('foncier')) return <Calendar className="w-6 h-6" />;
+    if (nomLower.includes('dfs') || nomLower.includes('dsf')) return <Euro className="w-6 h-6" />;
+    if (nomLower.includes('msa')) return <Percent className="w-6 h-6" />;
+    return <FolderOpen className="w-6 h-6" />;
   };
 
   const getStatusConfig = (statut: string) => {
@@ -91,65 +91,83 @@ const ProductCard = ({ produit, onClick }: ProductCardProps) => {
 
   const statusConfig = getStatusConfig(produit.statut);
 
+  // Fonction pour obtenir la description courte du produit
+  const getProductDescription = (nom: string) => {
+    const nomLower = nom.toLowerCase();
+    if (nomLower.includes('ticpe')) return 'Remboursement de la Taxe Intérieure de Consommation sur les Produits Énergétiques';
+    if (nomLower.includes('urssaf')) return 'Optimisation de Charges Sociales';
+    if (nomLower.includes('foncier')) return 'Optimisation de la Taxe Foncière';
+    if (nomLower.includes('dfs') || nomLower.includes('dsf')) return 'Optimisation de la Taxe sur les Salaires';
+    if (nomLower.includes('msa')) return 'Optimisation des Cotisations MSA';
+    return 'Optimisation fiscale et sociale';
+  };
+
   return (
-    <Card 
-      className="hover:shadow-xl transition-all duration-300 cursor-pointer group border-2 hover:border-blue-300"
-      onClick={onClick}
-    >
-      <CardContent className="p-6">
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
-              {getProductIcon(produit.ProduitEligible?.nom)}
-            </div>
-            <div>
-              <h3 className="font-semibold text-lg text-gray-900 group-hover:text-blue-600 transition-colors">
-                {produit.ProduitEligible?.nom || 'Produit non défini'}
-              </h3>
-              <p className="text-sm text-gray-600">
-                {produit.ProduitEligible?.description || 'Aucune description'}
-              </p>
-            </div>
+    <Card className="h-full flex flex-col hover:shadow-xl transition-all duration-300 cursor-pointer group border-2 hover:border-blue-300">
+      <CardContent className="p-6 flex flex-col h-full">
+        {/* En-tête avec titre centré et icône */}
+        <div className="text-center mb-4">
+          <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-50 rounded-xl mb-3 text-blue-600">
+            {getProductIcon(produit.ProduitEligible?.nom)}
           </div>
-          <Badge className={`${statusConfig.color} flex items-center gap-1`}>
+          <h3 className="font-bold text-xl text-gray-900 group-hover:text-blue-600 transition-colors mb-2">
+            {produit.ProduitEligible?.nom || 'Produit non défini'}
+          </h3>
+          <p className="text-sm text-gray-600 leading-relaxed line-clamp-2">
+            {getProductDescription(produit.ProduitEligible?.nom)}
+          </p>
+        </div>
+
+        {/* Badge de statut */}
+        <div className="flex justify-center mb-4">
+          <Badge className={`${statusConfig.color} flex items-center gap-1 px-3 py-1`}>
             {statusConfig.icon}
-            {produit.statut}
+            {produit.statut === 'en_cours' ? 'En cours' : 
+             produit.statut === 'en_attente' ? 'En attente' : 
+             produit.statut === 'termine' ? 'Terminé' : produit.statut}
           </Badge>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <div className="bg-gray-50 p-3 rounded-lg">
-            <p className="text-xs text-gray-600 mb-1">Montant estimé</p>
-            <p className="font-bold text-lg text-gray-900">
-              {produit.montantFinal ? produit.montantFinal.toLocaleString('fr-FR') + ' €' : 'Non défini'}
-            </p>
-          </div>
-          <div className="bg-gray-50 p-3 rounded-lg">
-            <p className="text-xs text-gray-600 mb-1">Taux d'optimisation</p>
-            <p className="font-bold text-lg text-gray-900">
-              {produit.tauxFinal ? (produit.tauxFinal * 100).toFixed(2) + '%' : 'Non défini'}
-            </p>
-          </div>
+        {/* Montant estimé */}
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg mb-4 text-center">
+          <p className="text-xs text-gray-600 mb-1 font-medium">Montant estimé</p>
+          <p className="font-bold text-2xl text-gray-900">
+            {produit.montantFinal ? produit.montantFinal.toLocaleString('fr-FR') + ' €' : 'Non défini'}
+          </p>
         </div>
 
+        {/* Section Expert */}
         <div className="mb-4">
-          <div className="flex justify-between text-sm text-gray-600 mb-2">
-            <span>Progression</span>
-            <span>{produit.progress || 0}%</span>
-          </div>
-          <Progress value={produit.progress || 0} className="h-2" />
+          {produit.expert_id ? (
+            <div className="bg-green-50 p-3 rounded-lg border border-green-200">
+              <p className="text-xs text-green-700 mb-1 font-medium">Expert sélectionné</p>
+              <p className="text-sm text-green-800 font-semibold">
+                {produit.Expert?.name || 'Expert assigné'}
+              </p>
+            </div>
+          ) : (
+            <div className="bg-orange-50 p-3 rounded-lg border border-orange-200">
+              <p className="text-xs text-orange-700 mb-1 font-medium">Experts disponibles</p>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-orange-700 hover:text-orange-800 hover:bg-orange-100 p-0 h-auto"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  // TODO: Ouvrir modal pour afficher les experts
+                  console.log('Afficher les experts pour:', produit.id);
+                }}
+              >
+                Voir les experts →
+              </Button>
+            </div>
+          )}
         </div>
 
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <Clock className="w-4 h-4" />
-            <span>
-              {produit.dureeFinale ? produit.dureeFinale + ' jours' : 'Durée non définie'}
-            </span>
-          </div>
+        {/* Bouton Continuer - toujours aligné en bas */}
+        <div className="mt-auto pt-4">
           <Button 
-            size="sm" 
-            className="group-hover:bg-blue-600 transition-colors"
+            className="w-full group-hover:bg-blue-600 transition-colors"
             onClick={(e) => {
               e.stopPropagation();
               onClick();
@@ -177,40 +195,7 @@ export default function DashboardClient() {
     inProgressProducts
   } = useClientProducts();
 
-  // Test d'authentification et de chargement
-  useEffect(() => {
-    const testAPI = async () => {
-      try {
-        console.log('🧪 Test API dashboard client...');
-        
-        // Test d'authentification
-        const authResponse = await fetch('/api/client/test-auth', {
-          credentials: 'include'
-        });
-        console.log('✅ Test auth dashboard client:', authResponse.status, authResponse.ok);
-        if (!authResponse.ok) {
-          const errorData = await authResponse.json();
-          console.error('❌ Erreur auth dashboard client:', errorData);
-        }
-        
-        // Test des produits éligibles
-        const produitsResponse = await fetch('/api/client/produits-eligibles', {
-          credentials: 'include'
-        });
-        console.log('✅ Test produits dashboard client:', produitsResponse.status, produitsResponse.ok);
-        if (!produitsResponse.ok) {
-          const errorData = await produitsResponse.json();
-          console.error('❌ Erreur produits dashboard client:', errorData);
-        }
-      } catch (error) {
-        console.error('❌ Erreur test API dashboard client:', error);
-      }
-    };
-    
-    if (user?.id) {
-      testAPI();
-    }
-  }, [user?.id]);
+  // Suppression des tests d'authentification inutiles - l'authentification est gérée par les hooks
 
   // Redirection automatique vers le simulateur si le client n'a pas de produits éligibles
   useEffect(() => {
@@ -222,9 +207,34 @@ export default function DashboardClient() {
 
   const handleSimulation = useCallback(async () => {
     try {
-      // Logique de simulation simplifiée
-      navigate('/simulateur');
+      // Vérifier si l'utilisateur peut faire une nouvelle simulation
+      const response = await fetch('/api/client/simulation/status', {
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data.canRunNewSimulation) {
+          // Rediriger vers le simulateur en mode client connecté
+          navigate('/simulateur?mode=client');
+        } else {
+          // Afficher un message d'information
+          toast({
+            title: "Simulation en cours",
+            description: "Une simulation est déjà en cours. Veuillez attendre qu'elle se termine.",
+            variant: "default",
+          });
+        }
+      } else {
+        // En cas d'erreur, rediriger vers le simulateur public
+        navigate('/simulateur');
+      }
     } catch (error) {
+      console.error('Erreur vérification statut simulation:', error);
+      // En cas d'erreur, rediriger vers le simulateur public
       navigate('/simulateur');
     }
   }, [navigate]);
@@ -502,45 +512,77 @@ export default function DashboardClient() {
           </div>
         )}
 
-        {/* Section d'actions rapides */}
-        <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
-          <CardHeader>
-            <CardTitle className="text-xl">Actions rapides</CardTitle>
-            <CardDescription>
-              Accédez rapidement aux fonctionnalités principales
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Button 
-                variant="outline" 
-                className="h-16 flex flex-col items-center justify-center gap-2 hover:bg-blue-50"
-                onClick={() => navigate('/documents-client')}
-              >
-                <FolderOpen className="w-6 h-6" />
-                <span>Mes documents</span>
-              </Button>
-              
-              <Button 
-                variant="outline" 
-                className="h-16 flex flex-col items-center justify-center gap-2 hover:bg-blue-50"
-                onClick={() => navigate('/agenda-client')}
-              >
-                <Calendar className="w-6 h-6" />
-                <span>Mon agenda</span>
-              </Button>
-              
-              <Button 
-                variant="outline" 
-                className="h-16 flex flex-col items-center justify-center gap-2 hover:bg-blue-50"
-                onClick={() => navigate('/messagerie-client')}
-              >
-                <AlertCircle className="w-6 h-6" />
-                <span>Messagerie</span>
-              </Button>
+        {/* Footer élégant et design */}
+        <footer className="mt-12 bg-gradient-to-r from-slate-50 via-blue-50 to-indigo-50 border-t border-slate-200 rounded-xl overflow-hidden">
+          <div className="px-6 py-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {/* Section Documents */}
+              <div className="text-center">
+                <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-xl mb-4">
+                  <FolderOpen className="w-6 h-6 text-blue-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Mes documents</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Gérez vos documents et suivez vos dossiers
+                </p>
+                <Button 
+                  variant="ghost" 
+                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                  onClick={() => navigate('/documents-client')}
+                >
+                  Accéder →
+                </Button>
+              </div>
+
+              {/* Section Agenda */}
+              <div className="text-center">
+                <div className="inline-flex items-center justify-center w-12 h-12 bg-green-100 rounded-xl mb-4">
+                  <Calendar className="w-6 h-6 text-green-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Mon agenda</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Consultez vos rendez-vous et événements
+                </p>
+                <Button 
+                  variant="ghost" 
+                  className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                  onClick={() => navigate('/agenda-client')}
+                >
+                  Accéder →
+                </Button>
+              </div>
+
+              {/* Section Messagerie */}
+              <div className="text-center">
+                <div className="inline-flex items-center justify-center w-12 h-12 bg-purple-100 rounded-xl mb-4">
+                  <AlertCircle className="w-6 h-6 text-purple-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Messagerie</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Communiquez avec vos experts
+                </p>
+                <Button 
+                  variant="ghost" 
+                  className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                  onClick={() => navigate('/messagerie-client')}
+                >
+                  Accéder →
+                </Button>
+              </div>
             </div>
-          </CardContent>
-        </Card>
+
+            {/* Ligne de séparation décorative */}
+            <div className="mt-8 pt-6 border-t border-slate-200">
+              <div className="flex items-center justify-center space-x-6 text-sm text-gray-500">
+                <span>© 2024 Profitum</span>
+                <span>•</span>
+                <span>Optimisation fiscale & sociale</span>
+                <span>•</span>
+                <span>Support disponible 24/7</span>
+              </div>
+            </div>
+          </div>
+        </footer>
       </div>
     </div>
   );

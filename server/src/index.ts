@@ -26,6 +26,7 @@ import { addSupabaseAuth } from './middleware/supabase-auth';
 import { checkDatabaseConnection, checkRLSPolicies } from './utils/databaseCheck';
 import simulationRoutes from './routes/simulationRoutes';
 import clientRoutes from './routes/client';
+import clientSimulationRoutes from './routes/client-simulation';
 import expertRoutes from './routes/expert';
 import adminRoutes from './routes/admin';
 import auditRoutes from './routes/audit';
@@ -66,6 +67,7 @@ import {
 import expertNotificationsRoutes from './routes/expert/notifications';
 import sessionMigrationRoutes from './routes/session-migration';
 import clientDocumentsRoutes from './routes/client-documents';
+import enhancedClientDocumentsRoutes from './routes/enhanced-client-documents';
 import analyticsRoutes from './routes/analytics';
 import googleCalendarRoutes from './routes/google-calendar';
 import debugRoutes from './routes/debug';
@@ -216,6 +218,12 @@ app.use('/api/simulation', enhancedAuthMiddleware, simulationRoutes);
 
 // Routes client - PROTÉGÉES avec permissions spécifiques
 app.use('/api/client', enhancedAuthMiddleware, requireUserType('client'), clientRoutes);
+
+// Routes simulation client - PROTÉGÉES
+app.use('/api/client/simulation', enhancedAuthMiddleware, requireUserType('client'), clientSimulationRoutes);
+
+// Routes documents client améliorées - PROTÉGÉES
+app.use('/api/enhanced-client-documents', enhancedAuthMiddleware, enhancedClientDocumentsRoutes);
 
 // Routes expert - PROTÉGÉES avec permissions spécifiques  
 app.use('/api/expert', enhancedAuthMiddleware, requireUserType('expert'), expertRoutes);

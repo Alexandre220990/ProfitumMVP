@@ -387,8 +387,8 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
           <div className="sticky top-4">
             {selectedDate ? (
               <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold text-gray-900 text-lg">
+                <div className="mb-4">
+                  <h3 className="font-semibold text-gray-900 text-lg mb-3">
                     {format(selectedDate, 'EEEE dd MMMM yyyy', { locale: fr })}
                   </h3>
                   <Button

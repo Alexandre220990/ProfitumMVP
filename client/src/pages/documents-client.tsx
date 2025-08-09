@@ -2,12 +2,12 @@ import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useDocumentSections, DocumentFile } from '../hooks/use-document-sections';
 import { useToast } from '../hooks/use-toast';
+import HeaderClient from '@/components/HeaderClient';
 import { 
   Download, 
   Eye, 
@@ -278,146 +278,156 @@ const DocumentsClientPage = () => {
 
   if (sectionsLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-2 text-gray-600">Chargement des sections...</p>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+        <HeaderClient />
+        <div className="pt-20">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+              <p className="mt-2 text-gray-600">Chargement des sections...</p>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="flex gap-6">
-        {/* Contenu principal (3/4) */}
-        <div className="flex-1">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">
-              {sections?.find(s => s.name === selectedSection)?.display_name || 'Documents'}
-            </h1>
-            <p className="text-gray-600">
-              {sections?.find(s => s.name === selectedSection)?.description || 'Gérez vos documents'}
-            </p>
-          </div>
-
-          {/* Barre d'outils */}
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center space-x-4 flex-1">
-              <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Rechercher des fichiers..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Statut" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tous les statuts</SelectItem>
-                  <SelectItem value="uploaded">Uploadé</SelectItem>
-                  <SelectItem value="validated">Validé</SelectItem>
-                  <SelectItem value="rejected">Rejeté</SelectItem>
-                  <SelectItem value="archived">Archivé</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <Button onClick={() => setUploadDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Ajouter un fichier
-            </Button>
-          </div>
-
-          {/* Liste des fichiers */}
-          {filesLoading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                <p className="mt-2 text-gray-600">Chargement des fichiers...</p>
-              </div>
-            </div>
-          ) : filteredFiles.length === 0 ? (
-            <Card>
-              <CardContent className="p-8 text-center">
-                <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun fichier trouvé</h3>
-                <p className="text-gray-600 mb-4">
-                  {searchTerm 
-                    ? 'Aucun fichier ne correspond à votre recherche.'
-                    : 'Commencez par ajouter votre premier fichier.'
-                  }
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+      <HeaderClient />
+      <div className="pt-20">
+        <div className="container mx-auto px-4 py-6">
+          <div className="flex gap-6">
+            {/* Contenu principal (3/4) */}
+            <div className="flex-1">
+              <div className="mb-6">
+                <h1 className="text-2xl font-bold text-gray-900 mb-2">
+                  {sections?.find(s => s.name === selectedSection)?.display_name || 'Documents'}
+                </h1>
+                <p className="text-gray-600">
+                  {sections?.find(s => s.name === selectedSection)?.description || 'Gérez vos documents'}
                 </p>
+              </div>
+
+              {/* Barre d'outils */}
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center space-x-4 flex-1">
+                  <div className="relative flex-1 max-w-md">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <Input
+                      placeholder="Rechercher des fichiers..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-40">
+                      <SelectValue placeholder="Statut" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tous les statuts</SelectItem>
+                      <SelectItem value="uploaded">Uploadé</SelectItem>
+                      <SelectItem value="validated">Validé</SelectItem>
+                      <SelectItem value="rejected">Rejeté</SelectItem>
+                      <SelectItem value="archived">Archivé</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <Button onClick={() => setUploadDialogOpen(true)}>
                   <Plus className="h-4 w-4 mr-2" />
                   Ajouter un fichier
                 </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid gap-4">
-              {filteredFiles.map((file) => (
-                <FileCard
-                  key={file.id}
-                  file={file}
-                  onDownload={handleDownload}
-                  onView={handleView}
-                  onDelete={handleDelete}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Sidebar avec onglets (1/4) */}
-        <div className="w-80">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Sections</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {sections?.map((section) => (
-                  <Button
-                    key={section.name}
-                    variant={selectedSection === section.name ? "default" : "ghost"}
-                    className="w-full justify-start h-auto p-3"
-                    onClick={() => setSelectedSection(section.name)}
-                  >
-                    <div className="flex items-center space-x-3 w-full">
-                      <div 
-                        className="p-2 rounded-lg"
-                        style={{ backgroundColor: `${section.color}20` }}
-                      >
-                        {section.icon === 'graduation-cap' && <GraduationCap className="h-4 w-4" style={{ color: section.color }} />}
-                        {section.icon === 'folder' && <Folder className="h-4 w-4" style={{ color: section.color }} />}
-                        {section.icon === 'file-text' && <FileText className="h-4 w-4" style={{ color: section.color }} />}
-                        {section.icon === 'receipt' && <Receipt className="h-4 w-4" style={{ color: section.color }} />}
-                      </div>
-                      <div className="flex-1 text-left">
-                        <div className="font-medium">{section.display_name}</div>
-                        {section.description && (
-                          <div className="text-xs text-gray-500 truncate">{section.description}</div>
-                        )}
-                      </div>
-                    </div>
-                  </Button>
-                ))}
               </div>
-            </CardContent>
-          </Card>
+
+              {/* Liste des fichiers */}
+              {filesLoading ? (
+                <div className="flex items-center justify-center h-64">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                    <p className="mt-2 text-gray-600">Chargement des fichiers...</p>
+                  </div>
+                </div>
+              ) : filteredFiles.length === 0 ? (
+                <Card>
+                  <CardContent className="p-8 text-center">
+                    <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun fichier trouvé</h3>
+                    <p className="text-gray-600 mb-4">
+                      {searchTerm 
+                        ? 'Aucun fichier ne correspond à votre recherche.'
+                        : 'Commencez par ajouter votre premier fichier.'
+                      }
+                    </p>
+                    <Button onClick={() => setUploadDialogOpen(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Ajouter un fichier
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid gap-4">
+                  {filteredFiles.map((file) => (
+                    <FileCard
+                      key={file.id}
+                      file={file}
+                      onDownload={handleDownload}
+                      onView={handleView}
+                      onDelete={handleDelete}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Sidebar avec onglets (1/4) */}
+            <div className="w-80">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Sections</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {sections?.map((section) => (
+                      <Button
+                        key={section.name}
+                        variant={selectedSection === section.name ? "default" : "ghost"}
+                        className="w-full justify-start h-auto p-3"
+                        onClick={() => setSelectedSection(section.name)}
+                      >
+                        <div className="flex items-center space-x-3 w-full">
+                          <div 
+                            className="p-2 rounded-lg"
+                            style={{ backgroundColor: `${section.color}20` }}
+                          >
+                            {section.icon === 'graduation-cap' && <GraduationCap className="h-4 w-4" style={{ color: section.color }} />}
+                            {section.icon === 'folder' && <Folder className="h-4 w-4" style={{ color: section.color }} />}
+                            {section.icon === 'file-text' && <FileText className="h-4 w-4" style={{ color: section.color }} />}
+                            {section.icon === 'receipt' && <Receipt className="h-4 w-4" style={{ color: section.color }} />}
+                          </div>
+                          <div className="flex-1 text-left">
+                            <div className="font-medium">{section.display_name}</div>
+                            {section.description && (
+                              <div className="text-xs text-gray-500 truncate">{section.description}</div>
+                            )}
+                          </div>
+                        </div>
+                      </Button>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Dialog d'upload */}
-              <UploadDialog
-          isOpen={uploadDialogOpen}
-          onClose={() => setUploadDialogOpen(false)}
-          onUpload={handleUpload}
-        />
+      <UploadDialog
+        isOpen={uploadDialogOpen}
+        onClose={() => setUploadDialogOpen(false)}
+        onUpload={handleUpload}
+      />
     </div>
   );
 };

@@ -10,39 +10,7 @@ const router = express.Router();
 // ROUTES CLIENT - AUTHENTIFICATION UNIFIÉE
 // ============================================================================
 
-// GET /api/client/test-auth - Endpoint de test pour vérifier l'authentification
-router.get('/test-auth', enhancedAuthMiddleware, async (req, res) => {
-  try {
-    const user = (req as AuthenticatedRequest).user;
-    
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Utilisateur non authentifié'
-      });
-    }
-    
-    return res.json({
-      success: true,
-      message: 'Authentification réussie pour client',
-      data: {
-        user: {
-          id: user.id,
-          type: user.type,
-          email: user.email,
-          database_id: user.database_id
-        }
-      }
-    });
-
-  } catch (error) {
-    console.error('Erreur test authentification client:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Erreur lors du test d\'authentification'
-    });
-  }
-});
+// Route de test d'authentification supprimée - l'authentification est gérée par le middleware enhancedAuthMiddleware
 
 // GET /api/client/produits-eligibles - Récupérer les produits éligibles du client connecté
 router.get('/produits-eligibles', enhancedAuthMiddleware, async (req, res) => {
@@ -314,6 +282,94 @@ router.put('/produits-eligibles/:id/workflow', async (req, res) => {
   } catch (error) {
     console.error('Erreur lors de la mise à jour du workflow:', error);
     return res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// GET /api/client/produits-eligibles/:id - Récupérer un produit éligible spécifique
+router.get('/produits-eligibles/:id', enhancedAuthMiddleware, async (req, res) => {
+  try {
+    const user = (req as AuthenticatedRequest).user;
+    
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur non authentifié'
+      });
+    }
+    
+    // Vérifier que l'utilisateur est un client
+    if (user.type !== 'client') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux clients'
+      });
+    }
+
+    const { id } = req.params;
+
+    console.log('🔍 Récupération du produit éligible:', {
+      produitId: id,
+      userId: user.id,
+      databaseId: user.database_id
+    });
+
+    // Récupérer le produit éligible spécifique
+    const { data: produit, error } = await supabase
+      .from('ClientProduitEligible')
+      .select(`
+        *,
+        ProduitEligible (
+          id,
+          nom,
+          description,
+          category,
+          montant_min,
+          montant_max,
+          taux_min,
+          taux_max,
+          duree_min,
+          duree_max
+        ),
+        Expert (
+          id,
+          name,
+          email,
+          company_name,
+          specializations
+        )
+      `)
+      .eq('id', id)
+      .eq('clientId', user.database_id)
+      .single();
+
+    if (error) {
+      console.error('❌ Erreur récupération produit éligible:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la récupération du produit éligible'
+      });
+    }
+
+    if (!produit) {
+      return res.status(404).json({
+        success: false,
+        message: 'Produit éligible non trouvé'
+      });
+    }
+
+    console.log('✅ Produit éligible récupéré:', produit.id);
+
+    return res.json({
+      success: true,
+      data: produit
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route produit éligible spécifique:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
   }
 });
 

@@ -523,42 +523,7 @@ router.get('/stats/:clientId', enhancedAuthMiddleware, async (req, res) => {
 
 // ===== ENDPOINT DE TEST =====
 
-/**
- * GET /api/enhanced-client-documents/test-auth
- * Endpoint de test pour vérifier l'authentification
- */
-router.get('/test-auth', enhancedAuthMiddleware, async (req, res) => {
-  try {
-    const user = (req as AuthenticatedRequest).user;
-    
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Utilisateur non authentifié'
-      });
-    }
-    
-    return res.json({
-      success: true,
-      message: 'Authentification réussie',
-      data: {
-        user: {
-          id: user.id,
-          type: user.type,
-          email: user.email,
-          database_id: user.database_id
-        }
-      }
-    });
-
-  } catch (error) {
-    console.error('Erreur test authentification:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Erreur lors du test d\'authentification'
-    });
-  }
-});
+// Route de test d'authentification supprimée - l'authentification est gérée par le middleware enhancedAuthMiddleware
 
 // ===== NOUVELLES ROUTES POUR LES SECTIONS =====
 

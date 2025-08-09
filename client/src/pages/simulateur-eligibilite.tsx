@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, Clock, Calculator, Building2, Truck, Home, DollarSign, Check, Target, Zap, ArrowRight, CheckCircle } from "lucide-react";
+import { ChevronLeft, Clock, Calculator, Building2, Truck, Home, DollarSign, Check, Target, Zap, ArrowRight, CheckCircle, User } from "lucide-react";
 import { config } from "@/config/env";
 import PublicHeader from '@/components/PublicHeader';
+import HeaderClient from '@/components/HeaderClient';
+import { useAuth } from '@/hooks/use-auth';
 
 interface QuestionOptions {
   choix?: string[];
@@ -54,7 +56,24 @@ interface EligibilityResult {
 
 const SimulateurEligibilite = () => { 
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
+  const { user } = useAuth();
+  
+  // Détecter le mode client connecté
+  const isClientMode = searchParams.get('mode') === 'client' && user;
+  
+  // Redirection si mode client sans authentification
+  useEffect(() => {
+    if (searchParams.get('mode') === 'client' && !user) {
+      toast({
+        title: "Authentification requise",
+        description: "Vous devez être connecté pour accéder au mode client",
+        variant: "destructive"
+      });
+      navigate('/connexion-client');
+    }
+  }, [searchParams, user, navigate, toast]);
   
   // États du simulateur
   const [currentStep, setCurrentStep] = useState(1);
@@ -71,6 +90,15 @@ const SimulateurEligibilite = () => {
   // Nouveaux états pour la validation
   const [currentResponse, setCurrentResponse] = useState<any>(null);
   const [isValidating, setIsValidating] = useState(false);
+  
+  // États pour le mode client
+  const [isUpdatingExisting, setIsUpdatingExisting] = useState(false);
+  const [updateProgress, setUpdateProgress] = useState<{
+    productsUpdated: number;
+    productsCreated: number;
+    productsProtected: number;
+    totalSavings: number;
+  } | null>(null);
 
   // Tracking analytics
   const trackEvent = (eventName: string, data: Record<string, unknown> = {}) => { 
@@ -166,33 +194,19 @@ const SimulateurEligibilite = () => {
 
   const initializeSimulator = async () => { 
     try {
-      console.log('🚀 Initialisation du simulateur...');
+      console.log('🚀 Initialisation du simulateur...', { isClientMode });
       setSessionStartTime(Date.now()); // Initialiser le temps de session
       
-      // Créer une session temporaire avec données client
-      const sessionResponse = await fetch(`${config.API_URL}/api/simulator/session`, { 
-        method: 'POST', 
-        headers: {
-          'Content-Type': 'application/json' 
-        },
-        body: JSON.stringify({
-          client_data: {
-            // Données temporaires qui seront migrées plus tard
-            temp_id: `temp_${Date.now()}`,
-            created_at: new Date().toISOString()
-          }
-        })
-      });
-      
-      if (sessionResponse.ok) { 
-        const sessionData = await sessionResponse.json();
-        setSessionToken(sessionData.session_token);
-        console.log('✅ Session créée:', sessionData.session_token);
+      if (isClientMode) {
+        // Mode client connecté - pas besoin de session temporaire
+        console.log('👤 Mode client connecté détecté');
+        setSessionToken(`client_${user?.id}_${Date.now()}`);
         
-        // Tracking début de session (après avoir défini sessionToken)
+        // Tracking début de session client
         setTimeout(() => {
-          trackEvent('simulator_session_start', {
-            timestamp: new Date().toISOString() 
+          trackEvent('simulator_client_session_start', {
+            timestamp: new Date().toISOString(),
+            client_id: user?.id
           });
         }, 100);
         
@@ -200,7 +214,39 @@ const SimulateurEligibilite = () => {
         console.log('📋 Chargement des questions...');
         await loadQuestions();
       } else {
-        console.error('❌ Erreur création session:', sessionResponse.status);
+        // Mode public - créer une session temporaire
+        const sessionResponse = await fetch(`${config.API_URL}/api/simulator/session`, { 
+          method: 'POST', 
+          headers: {
+            'Content-Type': 'application/json' 
+          },
+          body: JSON.stringify({
+            client_data: {
+              // Données temporaires qui seront migrées plus tard
+              temp_id: `temp_${Date.now()}`,
+              created_at: new Date().toISOString()
+            }
+          })
+        });
+        
+        if (sessionResponse.ok) { 
+          const sessionData = await sessionResponse.json();
+          setSessionToken(sessionData.session_token);
+          console.log('✅ Session créée:', sessionData.session_token);
+          
+          // Tracking début de session (après avoir défini sessionToken)
+          setTimeout(() => {
+            trackEvent('simulator_session_start', {
+              timestamp: new Date().toISOString() 
+            });
+          }, 100);
+          
+          // Charger les questions
+          console.log('📋 Chargement des questions...');
+          await loadQuestions();
+        } else {
+          console.error('❌ Erreur création session:', sessionResponse.status);
+        }
       }
     } catch (error) { 
       console.error('Erreur lors de l\'initialisation: ', error);
@@ -257,6 +303,16 @@ const SimulateurEligibilite = () => {
 
   const validateAndProceed = async (response: string | number | string[] | null) => { 
     if (!currentQuestion) return;
+    
+    // Validation des données avant envoi
+    if (response === null || response === undefined || response === '') {
+      toast({
+        title: "Réponse manquante",
+        description: "Veuillez répondre à la question avant de continuer",
+        variant: "destructive"
+      });
+      return;
+    }
     
     try {
       setIsValidating(true);
@@ -332,37 +388,108 @@ const SimulateurEligibilite = () => {
 
   const calculateResults = async () => { 
     try {
-      const response = await fetch(`${config.API_URL}/api/simulator/calculate-eligibility`, { 
-        method: 'POST', 
-        headers: {
-          'Content-Type': 'application/json' 
-        },
-        body: JSON.stringify({ 
-          session_token: sessionToken 
-        })
-      });
-
-      if (response.ok) { 
-        const results = await response.json();
-        console.log('🔍 Résultats reçus du backend:', results);
+      if (isClientMode) {
+        // Mode client connecté - utiliser la nouvelle API
+        console.log('👤 Calcul des résultats en mode client...');
+        setIsUpdatingExisting(true);
         
-        // Le backend retourne {success: true, eligibility_results: [...]}
-        const eligibilityResults = results.eligibility_results || results || [];
-        setEligibilityResults(eligibilityResults);
-        setShowResults(true);
-        
-        console.log('✅ Résultats d\'éligibilité:', eligibilityResults);
-        
-        // Tracking résultats
-        const resultsArray = Array.isArray(eligibilityResults) ? eligibilityResults : [];
-        trackEvent('simulator_completed', {
-          total_questions: totalSteps,
-          session_duration: Date.now() - sessionStartTime,
-          results_count: resultsArray.length,
-          total_savings: resultsArray.reduce((sum: number, r: any) => sum + (r.estimated_savings || 0), 0)
+        const response = await fetch(`${config.API_URL}/api/client/simulation/update`, { 
+          method: 'POST', 
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          credentials: 'include',
+          body: JSON.stringify({ 
+            responses: responses,
+            simulationType: 'update'
+          })
         });
+
+        if (response.ok) { 
+          const results = await response.json();
+          console.log('🔍 Résultats client reçus:', results);
+          
+          if (results.success) {
+            // Afficher les résultats de fusion
+            setUpdateProgress({
+              productsUpdated: results.data.productsUpdated,
+              productsCreated: results.data.productsCreated,
+              productsProtected: results.data.productsProtected,
+              totalSavings: results.data.totalSavings
+            });
+            
+            // Simuler des résultats d'éligibilité pour l'affichage
+            const mockResults = [
+              {
+                produit_id: 'ticpe',
+                eligibility_score: 85,
+                estimated_savings: results.data.totalSavings,
+                confidence_level: 'high',
+                recommendations: ['Produits mis à jour avec succès']
+              }
+            ];
+            
+            setEligibilityResults(mockResults);
+            setShowResults(true);
+            
+            // Tracking résultats client
+            trackEvent('simulator_client_completed', {
+              total_questions: totalSteps,
+              session_duration: Date.now() - sessionStartTime,
+              products_updated: results.data.productsUpdated,
+              products_created: results.data.productsCreated,
+              products_protected: results.data.productsProtected,
+              total_savings: results.data.totalSavings
+            });
+            
+            toast({
+              title: "Simulation mise à jour !",
+              description: `${results.data.productsCreated} nouveaux produits créés, ${results.data.productsUpdated} produits mis à jour${results.data.productsProtected > 0 ? `, ${results.data.productsProtected} produits protégés` : ''}`,
+              variant: "default"
+            });
+          } else {
+            throw new Error(results.message || 'Erreur lors de la mise à jour');
+          }
+        } else {
+          console.error('❌ Erreur mise à jour client:', response.status, response.statusText);
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || 'Erreur lors de la mise à jour de la simulation');
+        }
       } else {
-        console.error('❌ Erreur calcul éligibilité:', response.status, response.statusText);
+        // Mode public - utiliser l'API existante
+        const response = await fetch(`${config.API_URL}/api/simulator/calculate-eligibility`, { 
+          method: 'POST', 
+          headers: {
+            'Content-Type': 'application/json' 
+          },
+          body: JSON.stringify({ 
+            session_token: sessionToken 
+          })
+        });
+
+        if (response.ok) { 
+          const results = await response.json();
+          console.log('🔍 Résultats reçus du backend:', results);
+          
+          // Le backend retourne {success: true, eligibility_results: [...]}
+          const eligibilityResults = results.eligibility_results || results || [];
+          setEligibilityResults(eligibilityResults);
+          setShowResults(true);
+          
+          console.log('✅ Résultats d\'éligibilité:', eligibilityResults);
+          
+          // Tracking résultats
+          const resultsArray = Array.isArray(eligibilityResults) ? eligibilityResults : [];
+          trackEvent('simulator_completed', {
+            total_questions: totalSteps,
+            session_duration: Date.now() - sessionStartTime,
+            results_count: resultsArray.length,
+            total_savings: resultsArray.reduce((sum: number, r: any) => sum + (r.estimated_savings || 0), 0)
+          });
+        } else {
+          console.error('❌ Erreur calcul éligibilité:', response.status, response.statusText);
+        }
       }
     } catch (error) { 
       console.error('Erreur lors du calcul des résultats: ', error);
@@ -371,6 +498,8 @@ const SimulateurEligibilite = () => {
         description: "Impossible de calculer vos résultats", 
         variant: "destructive" 
       });
+    } finally {
+      setIsUpdatingExisting(false);
     }
   };
 
@@ -392,7 +521,7 @@ const SimulateurEligibilite = () => {
     });
 
     // Naviguer vers la page d'inscription existante avec les données
-    navigate('/register-client', {
+    navigate('/inscription-simulateur', {
       state: {
         fromSimulator: true,
         sessionToken: sessionToken,
@@ -458,7 +587,7 @@ const SimulateurEligibilite = () => {
   if (showWelcomeScreen) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
-        <PublicHeader />
+        {isClientMode ? <HeaderClient /> : <PublicHeader />}
         
         <div className="max-w-6xl mx-auto px-4 py-16">
           <div className="text-center space-y-8">
@@ -467,11 +596,26 @@ const SimulateurEligibilite = () => {
                 <Calculator className="w-12 h-12 text-white" />
               </div>
               <h1 className="text-4xl md:text-6xl font-bold text-slate-800">
-                Simulateur d'Éligibilité
+                {isClientMode ? 'Mise à jour de votre simulation' : 'Simulateur d\'Éligibilité'}
               </h1>
               <p className="text-xl text-slate-600 max-w-2xl mx-auto">
-                Découvrez en 2 minutes vos opportunités d'optimisation fiscale et vos économies potentielles
+                {isClientMode 
+                  ? 'Actualisez vos opportunités d\'optimisation avec vos nouvelles données'
+                  : 'Découvrez en 2 minutes vos opportunités d\'optimisation fiscale et vos économies potentielles'
+                }
               </p>
+              
+              {isClientMode && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-md mx-auto">
+                  <div className="flex items-center gap-2 text-blue-700">
+                    <User className="w-5 h-5" />
+                    <span className="font-medium">Mode client connecté</span>
+                  </div>
+                  <p className="text-sm text-blue-600 mt-1">
+                    Vos produits existants seront mis à jour intelligemment
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
@@ -677,61 +821,121 @@ const SimulateurEligibilite = () => {
           </div>
 
           {/* CTA Section - Conversion optimisée */}
-          <div className="bg-gradient-to-r from-blue-50/80 to-indigo-50/80 backdrop-blur-sm rounded-3xl p-10 border border-blue-200/60">
-            <div className="text-center space-y-8 max-w-4xl mx-auto">
-              <div className="space-y-4">
-                <h3 className="text-2xl font-bold text-blue-900">
-                  🎁 Offre spéciale simulation
-                </h3>
-                <p className="text-lg text-blue-700 font-light max-w-2xl mx-auto leading-relaxed">
-                  Transformez ces opportunités en économies réelles. Créez votre compte gratuitement 
-                  et accédez à nos experts certifiés pour maximiser vos gains.
-                </p>
-              </div>
-              
-              {/* Avantages en grille */}
-              <div className="grid md:grid-cols-3 gap-8">
-                <div className="text-center group">
-                  <div className="w-16 h-16 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                    <span className="text-2xl font-bold text-white">100%</span>
-                  </div>
-                  <div className="text-sm font-medium text-blue-700">Gratuit</div>
-                  <div className="text-xs text-blue-600 mt-1">Aucun engagement</div>
+          {isClientMode && updateProgress ? (
+            // Affichage des résultats de mise à jour pour le mode client
+            <div className="bg-gradient-to-r from-blue-50/80 to-indigo-50/80 backdrop-blur-sm rounded-3xl p-10 border border-blue-200/60">
+              <div className="text-center space-y-8 max-w-4xl mx-auto">
+                <div className="space-y-4">
+                  <h3 className="text-2xl font-bold text-blue-900">
+                    ✅ Simulation mise à jour avec succès !
+                  </h3>
+                  <p className="text-lg text-blue-700 font-light max-w-2xl mx-auto leading-relaxed">
+                    Vos opportunités d'optimisation ont été actualisées intelligemment. 
+                    Les produits en cours de traitement ont été préservés.
+                  </p>
                 </div>
-                <div className="text-center group">
-                  <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-2xl mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                    <span className="text-2xl font-bold text-white">24h</span>
+                
+                {/* Statistiques de mise à jour */}
+                <div className="grid md:grid-cols-3 gap-8">
+                  <div className="text-center group">
+                    <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                      <span className="text-2xl font-bold text-white">{updateProgress.productsCreated}</span>
+                    </div>
+                    <div className="text-sm font-medium text-blue-700">Nouveaux produits</div>
+                    <div className="text-xs text-blue-600 mt-1">Créés</div>
                   </div>
-                  <div className="text-sm font-medium text-blue-700">Mise en relation</div>
-                  <div className="text-xs text-blue-600 mt-1">Expert dédié</div>
-                </div>
-                <div className="text-center group">
-                  <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-600 rounded-2xl mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                    <span className="text-2xl font-bold text-white">500+</span>
+                  <div className="text-center group">
+                    <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-2xl mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                      <span className="text-2xl font-bold text-white">{updateProgress.productsUpdated}</span>
+                    </div>
+                    <div className="text-sm font-medium text-blue-700">Produits mis à jour</div>
+                    <div className="text-xs text-blue-600 mt-1">Actualisés</div>
                   </div>
-                  <div className="text-sm font-medium text-blue-700">Experts certifiés</div>
-                  <div className="text-xs text-blue-600 mt-1">Sélectionnés</div>
+                  <div className="text-center group">
+                    <div className="w-16 h-16 bg-gradient-to-r from-orange-500 to-amber-600 rounded-2xl mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                      <span className="text-2xl font-bold text-white">{updateProgress.productsProtected}</span>
+                    </div>
+                    <div className="text-sm font-medium text-blue-700">Produits protégés</div>
+                    <div className="text-xs text-blue-600 mt-1">En cours</div>
+                  </div>
                 </div>
-              </div>
 
-              {/* Bouton d'action principal */}
-              <div className="pt-4">
-                <button
-                  onClick={handleInscription}
-                  className="group relative bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold py-4 px-8 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
-                  <span className="relative flex items-center justify-center">
-                    Créer mon compte gratuitement
-                    <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
-                  </span>
-                </button>
-                <p className="text-sm text-blue-600 mt-4 font-medium">
-                  💰 Inscription gratuite • 💰 Économies immédiates • 💰 Satisfaction garantie
-                </p>
+                {/* Bouton d'action principal */}
+                <div className="pt-4">
+                  <button
+                    onClick={() => navigate('/dashboard/client')}
+                    className="group relative bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-4 px-8 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
+                    <span className="relative flex items-center justify-center">
+                      Voir mon tableau de bord
+                      <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
+                    </span>
+                  </button>
+                  <p className="text-sm text-blue-600 mt-4 font-medium">
+                    💰 Économies totales : {updateProgress?.totalSavings?.toLocaleString('fr-FR') || '0'}€ • ✅ Mise à jour sécurisée
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
+          ) : (
+            // Affichage normal pour le mode public
+            <div className="bg-gradient-to-r from-blue-50/80 to-indigo-50/80 backdrop-blur-sm rounded-3xl p-10 border border-blue-200/60">
+              <div className="text-center space-y-8 max-w-4xl mx-auto">
+                <div className="space-y-4">
+                  <h3 className="text-2xl font-bold text-blue-900">
+                    🎁 Offre spéciale simulation
+                  </h3>
+                  <p className="text-lg text-blue-700 font-light max-w-2xl mx-auto leading-relaxed">
+                    Transformez ces opportunités en économies réelles. Créez votre compte gratuitement 
+                    et accédez à nos experts certifiés pour maximiser vos gains.
+                  </p>
+                </div>
+              
+                {/* Avantages en grille */}
+                <div className="grid md:grid-cols-3 gap-8">
+                  <div className="text-center group">
+                    <div className="w-16 h-16 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                      <span className="text-2xl font-bold text-white">100%</span>
+                    </div>
+                    <div className="text-sm font-medium text-blue-700">Gratuit</div>
+                    <div className="text-xs text-blue-600 mt-1">Aucun engagement</div>
+                  </div>
+                  <div className="text-center group">
+                    <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-2xl mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                      <span className="text-2xl font-bold text-white">24h</span>
+                    </div>
+                    <div className="text-sm font-medium text-blue-700">Mise en relation</div>
+                    <div className="text-xs text-blue-600 mt-1">Expert dédié</div>
+                  </div>
+                  <div className="text-center group">
+                    <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-600 rounded-2xl mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                      <span className="text-2xl font-bold text-white">500+</span>
+                    </div>
+                    <div className="text-sm font-medium text-blue-700">Experts certifiés</div>
+                    <div className="text-xs text-blue-600 mt-1">Sélectionnés</div>
+                  </div>
+                </div>
+
+                {/* Bouton d'action principal */}
+                <div className="pt-4">
+                  <button
+                    onClick={handleInscription}
+                    className="group relative bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold py-4 px-8 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
+                    <span className="relative flex items-center justify-center">
+                      Créer mon compte gratuitement
+                      <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
+                    </span>
+                  </button>
+                  <p className="text-sm text-blue-600 mt-4 font-medium">
+                    💰 Inscription gratuite • 💰 Économies immédiates • 💰 Satisfaction garantie
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -741,7 +945,7 @@ const SimulateurEligibilite = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
       {/* Header de la page d'accueil */}
-      <PublicHeader />
+      {isClientMode ? <HeaderClient /> : <PublicHeader />}
       {/* 🎯 BANDEAU FIXE - Simulateur d'Éligibilité */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-6 px-8 shadow-lg">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between">
@@ -750,27 +954,38 @@ const SimulateurEligibilite = () => {
               <Calculator className="w-8 h-8 text-yellow-300" />
             </div>
             <div>
-              <h2 className="text-xl font-semibold">🎯 Simulateur d'Éligibilité Fiscale</h2>
+              <h2 className="text-xl font-semibold">
+                {isClientMode ? '🔄 Mise à jour de votre simulation' : '🎯 Simulateur d\'Éligibilité Fiscale'}
+              </h2>
               <p className="text-blue-100 text-sm font-light">
-                Découvrez vos opportunités d'optimisation en 2 minutes • 100% gratuit
+                {isClientMode 
+                  ? 'Actualisez vos opportunités avec vos nouvelles données • Mode client connecté'
+                  : 'Découvrez vos opportunités d\'optimisation en 2 minutes • 100% gratuit'
+                }
               </p>
             </div>
           </div>
           
-          <div className="flex items-center space-x-8 text-sm">
-            <div className="flex items-center space-x-2">
-              <CheckCircle className="w-4 h-4 text-green-300" />
-              <span>Étape {currentStep} sur {totalSteps}</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Clock className="w-4 h-4 text-yellow-300" />
-              <span>2 min restantes</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Target className="w-4 h-4 text-red-300" />
-              <span>Gain moyen : 15 000€</span>
-            </div>
-          </div>
+                        <div className="flex items-center space-x-8 text-sm">
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="w-4 h-4 text-green-300" />
+                  <span>Étape {currentStep} sur {totalSteps}</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Clock className="w-4 h-4 text-yellow-300" />
+                  <span>2 min restantes</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Target className="w-4 h-4 text-red-300" />
+                  <span>Gain moyen : 15 000€</span>
+                </div>
+                {isClientMode && (
+                  <div className="flex items-center space-x-2">
+                    <User className="w-4 h-4 text-blue-300" />
+                    <span>Mode client connecté</span>
+                  </div>
+                )}
+              </div>
         </div>
       </div>
 
@@ -894,7 +1109,7 @@ const SimulateurEligibilite = () => {
                 <div className="flex justify-center pt-8">
                   <Button
                     onClick={handleValidate}
-                    disabled={!currentResponse || isValidating}
+                    disabled={!currentResponse || isValidating || isUpdatingExisting}
                     className={`group relative px-10 py-4 text-lg font-semibold rounded-full transition-all duration-300 ${
                       isValidating 
                         ? 'bg-slate-400 cursor-not-allowed' 
@@ -902,15 +1117,15 @@ const SimulateurEligibilite = () => {
                   >
                     <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full opacity-0 group-hover:opacity-20 transition-opacity duration-300 blur-xl"></div>
                     <span className="relative flex items-center">
-                      {isValidating ? (
+                      {isValidating || isUpdatingExisting ? (
                         <>
                           <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
-                          Validation en cours...
+                          {isClientMode ? 'Mise à jour...' : 'Validation en cours...'}
                         </>
                       ) : (
                         <>
                           <Check className="w-5 h-5 mr-3" />
-                          Valider ma réponse
+                          {isClientMode ? 'Mettre à jour ma simulation' : 'Valider ma réponse'}
                           <ArrowRight className="w-5 h-5 ml-3 group-hover:translate-x-1 transition-transform duration-300" />
                         </>
                       )}
@@ -940,7 +1155,14 @@ const SimulateurEligibilite = () => {
         ) : (
           <div className="text-center py-16">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-            <p className="text-slate-600">Chargement des questions...</p>
+            <p className="text-slate-600">
+              {isClientMode ? 'Chargement de votre simulation...' : 'Chargement des questions...'}
+            </p>
+            {isClientMode && (
+              <p className="text-sm text-slate-500 mt-2">
+                Préparation de la mise à jour de vos produits éligibles
+              </p>
+            )}
           </div>
         )}
       </div>

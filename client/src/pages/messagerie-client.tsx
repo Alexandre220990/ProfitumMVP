@@ -1,6 +1,6 @@
 
 import React from "react";
-import { MessageSquare, Sparkles, Shield, Zap } from "lucide-react";
+import { MessageSquare } from "lucide-react";
 import HeaderClient from "@/components/HeaderClient";
 import { OptimizedMessagingApp } from "@/components/messaging/OptimizedMessagingApp";
 import { motion } from "framer-motion";
@@ -51,41 +51,8 @@ export default function MessagerieClient() {
                 </div>
               </div>
               
-              {/* Badges de fonctionnalités avec animations */}
-              <div className="flex items-center gap-4">
-                <motion.div 
-                  className="flex items-center gap-2 px-4 py-2 bg-green-50 rounded-full border border-green-200"
-                  whileHover={{ scale: 1.05 }}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.2 }}
-                >
-                  <Shield className="w-4 h-4 text-green-600" />
-                  <span className="text-sm font-semibold text-green-700">Chiffré</span>
-                </motion.div>
-                
-                <motion.div 
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-full border border-blue-200"
-                  whileHover={{ scale: 1.05 }}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.3 }}
-                >
-                  <Zap className="w-4 h-4 text-blue-600" />
-                  <span className="text-sm font-semibold text-blue-700">Temps réel</span>
-                </motion.div>
-                
-                <motion.div 
-                  className="flex items-center gap-2 px-4 py-2 bg-purple-50 rounded-full border border-purple-200"
-                  whileHover={{ scale: 1.05 }}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.4 }}
-                >
-                  <Sparkles className="w-4 h-4 text-purple-600" />
-                  <span className="text-sm font-semibold text-purple-700">IA</span>
-                </motion.div>
-              </div>
+              {/* Espace réservé pour alignement */}
+              <div></div>
             </div>
           </div>
         </motion.div>

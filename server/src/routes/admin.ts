@@ -119,68 +119,9 @@ router.get('/diagnostic', asyncHandler(async (req, res) => {
   }
 }));
 
-// Route de test pour vérifier l'authentification admin
-router.get('/test-auth', asyncHandler(async (req, res) => {
-  try {
-    console.log('🧪 Test authentification admin appelée');
-    const user = (req as any).user;
-    
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Utilisateur non authentifié'
-      });
-    }
-    
-    return res.json({
-      success: true,
-      message: 'Admin authentifié avec succès',
-      data: {
-        user: {
-          id: user.id,
-          type: user.type,
-          email: user.email
-        }
-      }
-    });
-  } catch (error) {
-    console.error('Erreur test auth admin:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Erreur lors du test d\'authentification admin'
-    });
-  }
-}));
+// Route de test d'authentification admin supprimée - l'authentification est gérée par le middleware
 
-// Route de test pour vérifier les clients
-router.get('/test-clients', asyncHandler(async (req, res) => {
-  try {
-    console.log('🧪 Test route clients appelée');
-    const { data: clients, error } = await supabaseClient
-      .from('Client')
-      .select('id, email, company_name')
-      .limit(5);
-    
-    if (error) {
-      throw error;
-    }
-    
-    return res.json({
-      success: true,
-      message: 'Route clients fonctionne',
-      data: {
-        clients: clients || [],
-        count: clients?.length || 0
-      }
-    });
-  } catch (error) {
-    console.error('Erreur test route clients:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Erreur lors du test de la route clients'
-    });
-  }
-}));
+// Route de test clients supprimée - les routes de production sont suffisantes
 
 // GET /api/admin/dashboard - Dashboard principal avec KPIs
 router.get('/dashboard', asyncHandler(async (req, res) => {
