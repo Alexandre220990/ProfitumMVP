@@ -1490,7 +1490,7 @@ router.get('/dossiers', async (req, res) => {
         notes,
         priorite,
         dateEligibilite,
-        Client:Client!inner(
+        Client(
           id,
           email,
           company_name,
@@ -1501,7 +1501,7 @@ router.get('/dossiers', async (req, res) => {
           nombreEmployes,
           revenuAnnuel
         ),
-        ProduitEligible:ProduitEligible!inner(
+        ProduitEligible(
           id,
           nom,
           description,
@@ -1513,7 +1513,7 @@ router.get('/dossiers', async (req, res) => {
           duree_min,
           duree_max
         ),
-        Simulation:Simulation(
+        Simulation(
           id,
           created_at
         )

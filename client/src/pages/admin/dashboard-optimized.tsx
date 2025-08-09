@@ -10,55 +10,33 @@ import HeaderAdmin from "@/components/HeaderAdmin";
 import { get } from "@/lib/api";
 import { 
   Users, 
-  UserCheck, 
+  Building, 
+  UserPlus, 
+  RefreshCw, 
   TrendingUp, 
-  AlertTriangle,
-  BarChart3,
-  Settings,
-  RefreshCw,
+  Eye,
+  Edit,
+  ClipboardList,
+  FileText,
   ArrowUpRight,
   ArrowDownRight,
   Minus,
-  Eye,
-  Edit,
-  X,
+  BarChart3,
+  AlertTriangle,
   Check,
-  UserPlus,
-  Building,
-  ClipboardList,
-  Star,
-  Coins,
-  MapPin,
-  Clock
+  X,
+  Settings
 } from "lucide-react";
+import { motion } from "framer-motion";
 
 // ============================================================================
 // TYPES ET INTERFACES
 // ============================================================================
 
-interface Expert {
-  id: string;
-  name: string;
-  email: string;
-  specializations: string[];
-  status: 'pending' | 'active' | 'rejected';
-  created_at: string;
-  documents?: string[];
-  approval_status?: 'approved' | 'pending' | 'rejected';
-  rating?: number;
-  compensation?: number;
-  location?: string;
-  experience?: number;
-  company_name?: string;
-}
-
-interface Client {
-  id: string;
-  company_name: string;
-  email: string;
-  statut: string;
-  created_at: string;
-  produits_eligibles?: ClientProduitEligible[];
+interface SectionData {
+  experts: any[];
+  clients: any[];
+  dossiers: any[];
 }
 
 interface ClientProduitEligible {
@@ -85,13 +63,25 @@ type ActiveSection = 'overview' | 'experts' | 'clients' | 'dossiers';
 const AdminDashboardOptimized: React.FC = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
+  // ===== ÉTATS LOCAUX =====
   const [activeSection, setActiveSection] = useState<ActiveSection>('overview');
-  const [sectionData, setSectionData] = useState({
-    experts: [] as Expert[],
-    clients: [] as Client[],
-    dossiers: [] as ClientProduitEligible[]
+  const [sectionData, setSectionData] = useState<SectionData>({
+    experts: [],
+    clients: [],
+    dossiers: []
   });
   const [loading, setLoading] = useState(false);
+  const [kpiData, setKpiData] = useState({
+    totalClients: 0,
+    clientsThisMonth: 0,
+    totalExperts: 0,
+    activeExperts: 0,
+    pendingExperts: 0,
+    totalDossiers: 0,
+    pendingDossiers: 0,
+    montantPotentiel: 0,
+    montantRealise: 0
+  });
 
   const { addToast } = useToast();
 
@@ -101,7 +91,6 @@ const AdminDashboardOptimized: React.FC = () => {
     isLoading,
     error,
     lastUpdated,
-    refreshData,
     formatCurrency,
     formatPercentage,
     formatNumber
@@ -124,7 +113,7 @@ const AdminDashboardOptimized: React.FC = () => {
           const expertsResponse = await get('/admin/experts');
           console.log('📦 Réponse experts:', expertsResponse);
           if (expertsResponse.success) {
-            setSectionData(prev => ({ ...prev, experts: (expertsResponse.data as any)?.experts || [] }));
+            setSectionData((prev: SectionData) => ({ ...prev, experts: (expertsResponse.data as any)?.experts || [] }));
           } else {
             console.error('❌ Erreur experts:', expertsResponse.message);
           }
@@ -135,7 +124,7 @@ const AdminDashboardOptimized: React.FC = () => {
           const clientsResponse = await get('/admin/clients');
           console.log('📦 Réponse clients:', clientsResponse);
           if (clientsResponse.success) {
-            setSectionData(prev => ({ ...prev, clients: (clientsResponse.data as any)?.clients || [] }));
+            setSectionData((prev: SectionData) => ({ ...prev, clients: (clientsResponse.data as any)?.clients || [] }));
           } else {
             console.error('❌ Erreur clients:', clientsResponse.message);
           }
@@ -146,7 +135,7 @@ const AdminDashboardOptimized: React.FC = () => {
           const dossiersResponse = await get('/admin/dossiers');
           console.log('📦 Réponse dossiers:', dossiersResponse);
           if (dossiersResponse.success) {
-            setSectionData(prev => ({ ...prev, dossiers: (dossiersResponse.data as any)?.dossiers || [] }));
+            setSectionData((prev: SectionData) => ({ ...prev, dossiers: (dossiersResponse.data as any)?.dossiers || [] }));
           } else {
             console.error('❌ Erreur dossiers:', dossiersResponse.message);
           }
@@ -199,6 +188,87 @@ const AdminDashboardOptimized: React.FC = () => {
     }
   }, [user?.id, user?.type]);
 
+  // ========================================
+  // CHARGEMENT DES DONNÉES KPI
+  // ========================================
+  
+  const loadKPIData = async () => {
+    try {
+      console.log('📊 Chargement des données KPI...');
+      
+      // Charger les clients
+      const clientsResponse = await get('/admin/clients');
+      const clients = clientsResponse.success ? (clientsResponse.data as any)?.clients || [] : [];
+      
+      // Charger les experts
+      const expertsResponse = await get('/admin/experts');
+      const experts = expertsResponse.success ? (expertsResponse.data as any)?.experts || [] : [];
+      
+      // Charger les dossiers
+      const dossiersResponse = await get('/admin/dossiers');
+      const dossiers = dossiersResponse.success ? (dossiersResponse.data as any)?.dossiers || [] : [];
+      
+      // Calculer les KPIs
+      const totalClients = clients.length;
+      const clientsThisMonth = clients.filter((client: any) => {
+        const clientDate = new Date(client.created_at);
+        const now = new Date();
+        return clientDate.getMonth() === now.getMonth() && clientDate.getFullYear() === now.getFullYear();
+      }).length;
+      
+      const totalExperts = experts.length;
+      const activeExperts = experts.filter((expert: any) => expert.approval_status === 'approved').length;
+      const pendingExperts = experts.filter((expert: any) => expert.approval_status === 'pending').length;
+      
+      const totalDossiers = dossiers.length;
+      const pendingDossiers = dossiers.filter((dossier: any) => dossier.statut === 'pending').length;
+      
+      const montantPotentiel = dossiers.reduce((sum: number, dossier: any) => {
+        return sum + (dossier.montantFinal || 0);
+      }, 0);
+      
+      const montantRealise = dossiers.filter((dossier: any) => dossier.statut === 'validated')
+        .reduce((sum: number, dossier: any) => {
+          return sum + (dossier.montantFinal || 0);
+        }, 0);
+      
+      // Mettre à jour les KPIs
+      setKpiData({
+        totalClients,
+        clientsThisMonth,
+        totalExperts,
+        activeExperts,
+        pendingExperts,
+        totalDossiers,
+        pendingDossiers,
+        montantPotentiel,
+        montantRealise
+      });
+      
+      console.log('✅ KPIs mis à jour:', {
+        totalClients,
+        clientsThisMonth,
+        totalExperts,
+        activeExperts,
+        pendingExperts,
+        totalDossiers,
+        pendingDossiers,
+        montantPotentiel,
+        montantRealise
+      });
+      
+    } catch (error) {
+      console.error('❌ Erreur chargement KPIs:', error);
+    }
+  };
+
+  // Charger les KPIs au montage du composant
+  useEffect(() => {
+    if (user?.id && user.type === 'admin') {
+      loadKPIData();
+    }
+  }, [user?.id, user?.type]);
+
   // ===== GESTION DES PERMISSIONS =====
   
   if (!user) {
@@ -216,21 +286,14 @@ const AdminDashboardOptimized: React.FC = () => {
   }
 
   // ========================================
-  // FONCTIONS UTILITAIRES
+  // GESTION DES ACTIONS
   // ========================================
 
   const handleRefresh = async () => {
-    await refreshData();
-    await loadSectionData(activeSection);
-    addToast({
-      type: 'success',
-      title: 'Actualisé',
-      message: 'Données mises à jour'
-    });
-  };
-
-  const handleSectionChange = (section: ActiveSection) => {
-    setActiveSection(section);
+    await loadKPIData();
+    if (activeSection !== 'overview') {
+      await loadSectionData(activeSection);
+    }
   };
 
   // ========================================
@@ -371,50 +434,50 @@ const AdminDashboardOptimized: React.FC = () => {
           </div>
         )}
 
-        {/* KPIs Principaux - TUILES INTERACTIVES */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* KPIs PRINCIPAUX */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {/* Nouvel Utilisateur */}
           <KPICard
             title="Nouvel Utilisateur"
-            value={businessKPIs.newClientsThisMonth}
-            change={`+${businessKPIs.newClientsThisMonth} ce mois`}
-            changeType="positive"
+            value={kpiData.clientsThisMonth}
+            total={kpiData.totalClients}
+            change={`+${kpiData.clientsThisMonth} ce mois`}
             icon={UserPlus}
-            color="from-blue-500 to-blue-600"
-            subtitle={`${businessKPIs.totalClients} total`}
-            onClick={() => handleSectionChange('clients')}
+            color="blue"
+            onClick={() => setActiveSection('clients')}
           />
-          
+
+          {/* Experts */}
           <KPICard
             title="Experts"
-            value={businessKPIs.activeExperts}
-            change={`${businessKPIs.pendingExperts} en attente`}
-            changeType="neutral"
-            icon={UserCheck}
-            color="from-orange-500 to-orange-600"
-            subtitle={`${businessKPIs.totalExperts} total`}
-            onClick={() => handleSectionChange('experts')}
+            value={kpiData.activeExperts}
+            total={kpiData.totalExperts}
+            change={`${kpiData.pendingExperts} en attente`}
+            icon={Users}
+            color="green"
+            onClick={() => setActiveSection('experts')}
           />
-          
+
+          {/* Clients en attente */}
           <KPICard
             title="Clients en attente"
-            value={businessKPIs.dossiersOpportunites}
-            change={`${businessKPIs.dossiersEnCours} en cours`}
-            changeType="neutral"
+            value={kpiData.pendingDossiers}
+            total={kpiData.totalDossiers}
+            change={`${kpiData.pendingDossiers} en cours`}
             icon={Building}
-            color="from-green-500 to-green-600"
-            subtitle={`${businessKPIs.totalDossiers} total`}
-            onClick={() => handleSectionChange('clients')}
+            color="orange"
+            onClick={() => setActiveSection('clients')}
           />
-          
+
+          {/* Dossiers à traiter */}
           <KPICard
             title="Dossiers à traiter"
-            value={businessKPIs.dossiersEnCours}
-            change={`${formatCurrency(businessKPIs.gainsRealises)} réalisés`}
-            changeType="positive"
-            icon={ClipboardList}
-            color="from-purple-500 to-purple-600"
-            subtitle={`${formatCurrency(businessKPIs.gainsPotentiels)} potentiels`}
-            onClick={() => handleSectionChange('dossiers')}
+            value={kpiData.montantPotentiel.toLocaleString('fr-FR')}
+            total={`${kpiData.montantRealise.toLocaleString('fr-FR')} € réalisés`}
+            change={`${kpiData.totalDossiers} dossiers`}
+            icon={FileText}
+            color="purple"
+            onClick={() => setActiveSection('dossiers')}
           />
         </div>
 
@@ -432,19 +495,11 @@ const AdminDashboardOptimized: React.FC = () => {
           )}
 
           {activeSection === 'experts' && (
-            <ExpertsAllSection 
-              experts={sectionData.experts} 
-              loading={loading}
-              onRefresh={() => loadSectionData('experts')}
-            />
+            <ExpertsAllSection />
           )}
 
           {activeSection === 'clients' && (
-            <ClientsWaitingSection 
-              clients={sectionData.clients} 
-              loading={loading}
-              onRefresh={() => loadSectionData('clients')}
-            />
+            <ClientsAllSection />
           )}
 
           {activeSection === 'dossiers' && (
@@ -490,172 +545,244 @@ const AdminDashboardOptimized: React.FC = () => {
   // COMPOSANTS DE SECTIONS
   // ========================================
 
-  const ExpertsAllSection = ({ experts, loading, onRefresh }: any) => (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Users className="w-5 h-5 text-blue-600" />
-            <span>Tous les Experts de la plateforme ({experts.length})</span>
+  // ========================================
+  // SECTION CLIENTS - TABLEAU VISUEL
+  // ========================================
+  
+  const ClientsAllSection = () => {
+    const clients = sectionData.clients || [];
+    
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="space-y-6"
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-2xl font-bold text-slate-900">
+              Tous les clients de la plateforme ({clients.length})
+            </h3>
+            <p className="text-slate-600 mt-1">
+              Gestion complète des entreprises inscrites
+            </p>
           </div>
-          <Button variant="secondary" size="sm" onClick={onRefresh} disabled={loading}>
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </Button>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        {loading ? (
-          <div className="text-center py-8">
-            <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-gray-400" />
-            <p className="text-gray-600">Chargement des experts...</p>
-          </div>
-        ) : experts.length === 0 ? (
-          <div className="text-center py-8">
-            <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600">Aucun expert trouvé sur la plateforme</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {experts.map((expert: Expert) => (
-              <Card key={expert.id} className="hover:shadow-lg transition-shadow">
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <CardTitle className="text-lg">{expert.name}</CardTitle>
-                      <p className="text-sm text-gray-600 flex items-center gap-1">
-                        <Building className="w-4 h-4" />
-                        {expert.company_name}
-                      </p>
-                    </div>
-                    <Badge 
-                      variant={expert.approval_status === 'approved' ? 'success' : 
-                             expert.approval_status === 'pending' ? 'warning' : 'error'}
-                    >
-                      {expert.approval_status === 'approved' ? 'Validé' : 
-                       expert.approval_status === 'pending' ? 'En cours' : 'Rejeté'}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                
-                <CardContent className="space-y-3">
-                  {/* Spécialisations */}
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-700 mb-2">Spécialisations</h4>
-                    <div className="flex flex-wrap gap-1">
-                      {expert.specializations?.slice(0, 3).map((spec, index) => (
-                        <Badge key={index} variant="primary" className="text-xs">
-                          {spec}
-                        </Badge>
-                      ))}
-                      {expert.specializations?.length > 3 && (
-                        <Badge variant="primary" className="text-xs">
-                          +{expert.specializations.length - 3}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
+        </div>
 
-                  {/* Informations clés */}
-                  <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div className="flex items-center gap-2">
-                      <Star className="w-4 h-4 text-yellow-500" />
-                      <span>{expert.rating || 0}/5</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Coins className="w-4 h-4 text-green-500" />
-                      <span>{expert.compensation || 0}%</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-blue-500" />
-                      <span>{expert.location || "Non spécifié"}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-purple-500" />
-                      <span>{expert.experience || "0"} ans</span>
-                    </div>
-                  </div>
+        {/* Tableau des clients */}
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-slate-50 border-b border-slate-200">
+                <tr>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">
+                    Entreprise
+                  </th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">
+                    Contact
+                  </th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">
+                    Statut
+                  </th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">
+                    Inscription
+                  </th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {clients.map((client: any) => (
+                  <tr key={client.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-6 py-4">
+                      <div>
+                        <div className="font-medium text-slate-900">
+                          {client.company_name || 'Entreprise Temporaire'}
+                        </div>
+                        {client.siren && (
+                          <div className="text-sm text-slate-500">
+                            SIREN: {client.siren}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div>
+                        <div className="text-sm text-slate-900">{client.email}</div>
+                        {client.phone_number && (
+                          <div className="text-sm text-slate-500">{client.phone_number}</div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <Badge 
+                        variant={client.statut === 'actif' ? 'success' : 'warning'}
+                        className="text-xs"
+                      >
+                        {client.statut || 'actif'}
+                      </Badge>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-slate-600">
+                      {new Date(client.created_at).toLocaleDateString('fr-FR')}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => window.open(`/admin/client-details/${client.id}`, '_blank')}
+                        >
+                          Voir détails
+                        </Button>
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={() => window.open(`/admin/messagerie-admin?user=${client.id}`, '_blank')}
+                        >
+                          Contacter
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </motion.div>
+    );
+  };
 
-                  {/* Date d'inscription */}
-                  <div className="text-xs text-gray-500">
-                    Inscrit le: {new Date(expert.created_at).toLocaleDateString('fr-FR')}
-                  </div>
+  // ========================================
+  // SECTION EXPERTS - TABLEAU VISUEL
+  // ========================================
+  
+  const ExpertsAllSection = () => {
+    const experts = sectionData.experts || [];
+    
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="space-y-6"
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-2xl font-bold text-slate-900">
+              Tous les experts de la plateforme ({experts.length})
+            </h3>
+            <p className="text-slate-600 mt-1">
+              Gestion complète des experts inscrits
+            </p>
+          </div>
+        </div>
 
-                  {/* Actions */}
-                  <div className="flex space-x-2 pt-2">
-                    <Button size="sm" variant="secondary" className="flex-1">
-                      <Eye className="w-4 h-4 mr-1" />
-                      Voir profil
-                    </Button>
-                    <Button size="sm" variant="secondary" className="flex-1">
-                      <Edit className="w-4 h-4 mr-1" />
-                      Modifier
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+        {/* Tableau des experts */}
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-slate-50 border-b border-slate-200">
+                <tr>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">
+                    Expert
+                  </th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">
+                    Contact
+                  </th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">
+                    Spécialisations
+                  </th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">
+                    Statut
+                  </th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">
+                    Inscription
+                  </th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {experts.map((expert: any) => (
+                  <tr key={expert.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-6 py-4">
+                      <div>
+                        <div className="font-medium text-slate-900">
+                          {expert.name || expert.company_name}
+                        </div>
+                        {expert.company_name && expert.name && (
+                          <div className="text-sm text-slate-500">
+                            {expert.company_name}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div>
+                        <div className="text-sm text-slate-900">{expert.email}</div>
+                        {expert.location && (
+                          <div className="text-sm text-slate-500">{expert.location}</div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-wrap gap-1">
+                        {expert.specializations?.slice(0, 2).map((spec: string, index: number) => (
+                          <Badge key={index} variant="primary" className="text-xs">
+                            {spec}
+                          </Badge>
+                        ))}
+                        {expert.specializations?.length > 2 && (
+                          <Badge variant="primary" className="text-xs">
+                            +{expert.specializations.length - 2}
+                          </Badge>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <Badge 
+                        variant={
+                          expert.approval_status === 'approved' ? 'success' : 
+                          expert.approval_status === 'pending' ? 'warning' : 'error'
+                        }
+                        className="text-xs"
+                      >
+                        {expert.approval_status === 'approved' ? 'Validé' : 
+                         expert.approval_status === 'pending' ? 'En cours' : 'Rejeté'}
+                      </Badge>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-slate-600">
+                      {new Date(expert.created_at).toLocaleDateString('fr-FR')}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => window.open(`/admin/expert-details/${expert.id}`, '_blank')}
+                        >
+                          Voir détails
+                        </Button>
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={() => window.open(`/admin/messagerie-admin?user=${expert.id}`, '_blank')}
+                        >
+                          Contacter
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-
-  const ClientsWaitingSection = ({ clients, loading, onRefresh }: any) => (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Building className="w-5 h-5 text-green-600" />
-            <span>Tous les clients de la plateforme ({clients.length})</span>
-          </div>
-          <Button variant="secondary" size="sm" onClick={onRefresh} disabled={loading}>
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </Button>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        {loading ? (
-          <div className="text-center py-8">
-            <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-gray-400" />
-            <p className="text-gray-600">Chargement des clients...</p>
-          </div>
-        ) : clients.length === 0 ? (
-          <div className="text-center py-8">
-            <Building className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600">Aucun client inscrit sur la plateforme</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {clients.map((client: Client) => (
-              <div key={client.id} className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="flex items-center space-x-4">
-                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                    <Building className="w-5 h-5 text-green-600" />
-                  </div>
-                  <div>
-                    <h4 className="font-medium text-gray-900">{client.company_name}</h4>
-                    <p className="text-sm text-gray-600">{client.email}</p>
-                    <p className="text-xs text-gray-500">Statut: {client.statut}</p>
-                    <p className="text-xs text-gray-400">Inscrit le: {new Date(client.created_at).toLocaleDateString('fr-FR')}</p>
-                  </div>
-                </div>
-                <div className="flex space-x-2">
-                  <Button size="sm" variant="secondary">
-                    <Eye className="w-4 h-4 mr-1" />
-                    Voir dossiers
-                  </Button>
-                  <Button size="sm" variant="secondary">
-                    <Edit className="w-4 h-4 mr-1" />
-                    Contacter
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
+        </div>
+      </motion.div>
+    );
+  };
 
   const DossiersProcessingSection = ({ dossiers, loading, onRefresh }: any) => {
     // Calculer les statistiques
