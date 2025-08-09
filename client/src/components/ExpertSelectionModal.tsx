@@ -67,10 +67,10 @@ export default function ExpertSelectionModal({
   const [selecting, setSelecting] = useState(false);
   const [filters, setFilters] = useState<ExpertFilters>({
     search: '',
-    speciality: '',
-    experience: '',
-    rating: '',
-    availability: ''
+    speciality: 'all',
+    experience: 'all',
+    rating: 'all',
+    availability: 'all'
   });
 
   // Charger les experts disponibles
@@ -94,26 +94,26 @@ export default function ExpertSelectionModal({
     }
 
     // Filtre par spécialité
-    if (filters.speciality) {
+    if (filters.speciality && filters.speciality !== 'all') {
       filtered = filtered.filter(expert =>
         expert.specialites.includes(filters.speciality)
       );
     }
 
     // Filtre par expérience
-    if (filters.experience) {
+    if (filters.experience && filters.experience !== 'all') {
       const minYears = parseInt(filters.experience);
       filtered = filtered.filter(expert => expert.experience_years >= minYears);
     }
 
     // Filtre par note
-    if (filters.rating) {
+    if (filters.rating && filters.rating !== 'all') {
       const minRating = parseFloat(filters.rating);
       filtered = filtered.filter(expert => expert.rating >= minRating);
     }
 
     // Filtre par disponibilité
-    if (filters.availability) {
+    if (filters.availability && filters.availability !== 'all') {
       filtered = filtered.filter(expert => expert.availability === filters.availability);
     }
 
@@ -126,10 +126,10 @@ export default function ExpertSelectionModal({
       
       // Construire les paramètres de requête
       const params = new URLSearchParams();
-      if (filters.speciality) params.append('speciality', filters.speciality);
-      if (filters.experience) params.append('experience', filters.experience);
-      if (filters.rating) params.append('rating', filters.rating);
-      if (filters.availability) params.append('availability', filters.availability);
+      if (filters.speciality && filters.speciality !== 'all') params.append('speciality', filters.speciality);
+      if (filters.experience && filters.experience !== 'all') params.append('experience', filters.experience);
+      if (filters.rating && filters.rating !== 'all') params.append('rating', filters.rating);
+      if (filters.availability && filters.availability !== 'all') params.append('availability', filters.availability);
       
       const response = await fetch(`${config.API_URL}/api/experts?${params.toString()}`, {
         headers: {
@@ -293,7 +293,7 @@ export default function ExpertSelectionModal({
                 <SelectValue placeholder="Spécialité" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Toutes les spécialités</SelectItem>
+                <SelectItem value="all">Toutes les spécialités</SelectItem>
                 <SelectItem value="TICPE">TICPE</SelectItem>
                 <SelectItem value="Fiscal">Fiscal</SelectItem>
                 <SelectItem value="Comptable">Comptable</SelectItem>
@@ -306,7 +306,7 @@ export default function ExpertSelectionModal({
                 <SelectValue placeholder="Expérience" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Toute expérience</SelectItem>
+                <SelectItem value="all">Toute expérience</SelectItem>
                 <SelectItem value="5">5+ ans</SelectItem>
                 <SelectItem value="10">10+ ans</SelectItem>
                 <SelectItem value="15">15+ ans</SelectItem>
@@ -318,7 +318,7 @@ export default function ExpertSelectionModal({
                 <SelectValue placeholder="Note" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Toutes notes</SelectItem>
+                <SelectItem value="all">Toutes notes</SelectItem>
                 <SelectItem value="4">4+ étoiles</SelectItem>
                 <SelectItem value="4.5">4.5+ étoiles</SelectItem>
                 <SelectItem value="5">5 étoiles</SelectItem>
@@ -330,7 +330,7 @@ export default function ExpertSelectionModal({
                 <SelectValue placeholder="Disponibilité" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Toute disponibilité</SelectItem>
+                <SelectItem value="all">Toute disponibilité</SelectItem>
                 <SelectItem value="available">Disponible</SelectItem>
                 <SelectItem value="busy">Occupé</SelectItem>
               </SelectContent>
