@@ -1,9 +1,11 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+
+import ExpertSelectionModal from '@/components/ExpertSelectionModal';
 import { 
   Loader2, 
   RefreshCw, 
@@ -22,7 +24,11 @@ import {
   Play,
   CheckCircle2,
   AlertTriangle,
-  Clock3
+  Clock3,
+  Award,
+  FileText,
+  Shield,
+  Users
 } from 'lucide-react';
 import HeaderClient from '@/components/HeaderClient';
 import { useAuth } from '@/hooks/use-auth';
@@ -59,13 +65,131 @@ const StatCard = ({ title, value, icon, className = "", trend }: StatCardProps) 
   </Card>
 );
 
+// Composant ProgressBar haute couture
+interface ProgressBarProps {
+  progress: number;
+  status: string;
+  expert_id?: string;
+  current_step: number;
+}
+
+const ProgressBar = ({ progress, status, expert_id, current_step }: ProgressBarProps) => {
+  // Calcul intelligent de la couleur selon la progression et le statut
+  const getProgressColor = () => {
+    if (progress === 100 || status === 'termine') return 'bg-gradient-to-r from-green-500 to-emerald-500';
+    if (progress >= 75 || current_step >= 4) return 'bg-gradient-to-r from-blue-500 to-indigo-500';
+    if (progress >= 50 || current_step >= 3) return 'bg-gradient-to-r from-yellow-500 to-orange-500';
+    if (progress >= 25 || current_step >= 2) return 'bg-gradient-to-r from-orange-500 to-red-500';
+    return 'bg-gradient-to-r from-gray-300 to-gray-400';
+  };
+
+  // Texte contextuel selon la progression et le statut
+  const getProgressText = () => {
+    if (progress === 100 || status === 'termine') return 'Remboursement obtenu';
+    if (progress >= 75 || current_step >= 4) return 'Validation finale en cours';
+    if (progress >= 50 || current_step >= 3) return 'Audit technique en cours';
+    if (progress >= 25 || current_step >= 2) return 'Documents collectés';
+    if (expert_id) return 'Expert sélectionné';
+    return 'En attente d\'expert';
+  };
+
+  // Icône selon l'étape et le statut
+  const getProgressIcon = () => {
+    if (progress === 100 || status === 'termine') return <Award className="w-4 h-4" />;
+    if (progress >= 75 || current_step >= 4) return <Shield className="w-4 h-4" />;
+    if (progress >= 50 || current_step >= 3) return <FileText className="w-4 h-4" />;
+    if (progress >= 25 || current_step >= 2) return <CheckCircle className="w-4 h-4" />;
+    if (expert_id) return <Users className="w-4 h-4" />;
+    return <Clock className="w-4 h-4" />;
+  };
+
+  return (
+    <div className="space-y-3">
+      {/* En-tête avec pourcentage et icône */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          {getProgressIcon()}
+          <span className="text-sm font-medium text-gray-700">Progression</span>
+        </div>
+        <span className="text-sm font-bold text-gray-900">{progress}%</span>
+      </div>
+      
+      {/* Barre de progression avec animation */}
+      <div className="relative">
+        <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+          <div 
+            className={`h-full rounded-full transition-all duration-700 ease-out ${getProgressColor()} shadow-sm`}
+            style={{ 
+              width: `${progress}%`,
+              transition: 'width 0.7s cubic-bezier(0.4, 0, 0.2, 1)'
+            }}
+          />
+        </div>
+        {/* Indicateur de progression avec glow effect */}
+        {progress > 0 && (
+          <div 
+            className="absolute top-0 right-0 w-1 h-2.5 bg-white rounded-full shadow-lg"
+            style={{ 
+              left: `calc(${progress}% - 2px)`,
+              transition: 'left 0.7s cubic-bezier(0.4, 0, 0.2, 1)'
+            }}
+          />
+        )}
+      </div>
+      
+      {/* Texte explicatif */}
+      <p className="text-xs text-gray-500 text-center font-medium">
+        {getProgressText()}
+      </p>
+    </div>
+  );
+};
+
+// Fonction de calcul intelligent de la progression
+const calculateProgress = (produit: any): number => {
+  // Base : 0% si pas d'expert
+  if (!produit.expert_id) return 0;
+  
+  // Si le dossier est terminé, 100%
+  if (produit.statut === 'termine') return 100;
+  
+  // Utiliser le progress existant ou calculer basé sur current_step
+  let baseProgress = produit.progress || 0;
+  
+  // Ajustements selon le statut
+  switch (produit.statut) {
+    case 'en_cours':
+      baseProgress = Math.max(baseProgress, 25);
+      break;
+    case 'en_attente':
+      baseProgress = Math.max(baseProgress, 10);
+      break;
+    case 'eligible':
+      baseProgress = Math.max(baseProgress, 15);
+      break;
+  }
+  
+  // Bonus pour expert sélectionné
+  if (produit.expert_id) {
+    baseProgress = Math.max(baseProgress, 10);
+  }
+  
+  // Bonus pour étapes avancées
+  if (produit.current_step >= 3) baseProgress = Math.max(baseProgress, 50);
+  if (produit.current_step >= 4) baseProgress = Math.max(baseProgress, 75);
+  if (produit.current_step >= 5) baseProgress = Math.max(baseProgress, 90);
+  
+  return Math.min(100, Math.max(0, baseProgress));
+};
+
 // Composant ProductCard moderne
 interface ProductCardProps {
   produit: any;
   onClick: () => void;
+  onExpertSelection?: (produitId: string) => void;
 }
 
-const ProductCard = ({ produit, onClick }: ProductCardProps) => {
+const ProductCard = ({ produit, onClick, onExpertSelection }: ProductCardProps) => {
   const getProductIcon = (nom: string) => {
     const nomLower = nom.toLowerCase();
     if (nomLower.includes('ticpe')) return <Zap className="w-6 h-6" />;
@@ -113,7 +237,7 @@ const ProductCard = ({ produit, onClick }: ProductCardProps) => {
           <h3 className="font-bold text-xl text-gray-900 group-hover:text-blue-600 transition-colors mb-2">
             {produit.ProduitEligible?.nom || 'Produit non défini'}
           </h3>
-          <p className="text-sm text-gray-600 leading-relaxed line-clamp-2">
+          <p className="text-sm text-gray-600 leading-relaxed line-clamp-2 min-h-[2.5rem]">
             {getProductDescription(produit.ProduitEligible?.nom)}
           </p>
         </div>
@@ -136,8 +260,18 @@ const ProductCard = ({ produit, onClick }: ProductCardProps) => {
           </p>
         </div>
 
-        {/* Section Expert */}
+        {/* Barre de progression haute couture */}
         <div className="mb-4">
+          <ProgressBar 
+            progress={calculateProgress(produit)}
+            status={produit.statut}
+            expert_id={produit.expert_id}
+            current_step={produit.current_step || 0}
+          />
+        </div>
+
+        {/* Section Expert - hauteur fixe pour alignement */}
+        <div className="mb-4 min-h-[3.5rem] flex flex-col justify-center">
           {produit.expert_id ? (
             <div className="bg-green-50 p-3 rounded-lg border border-green-200">
               <p className="text-xs text-green-700 mb-1 font-medium">Expert sélectionné</p>
@@ -154,8 +288,9 @@ const ProductCard = ({ produit, onClick }: ProductCardProps) => {
                 className="text-orange-700 hover:text-orange-800 hover:bg-orange-100 p-0 h-auto"
                 onClick={(e) => {
                   e.stopPropagation();
-                  // TODO: Ouvrir modal pour afficher les experts
-                  console.log('Afficher les experts pour:', produit.id);
+                  if (onExpertSelection) {
+                    onExpertSelection(produit.id);
+                  }
                 }}
               >
                 Voir les experts →
@@ -185,6 +320,8 @@ const ProductCard = ({ produit, onClick }: ProductCardProps) => {
 export default function DashboardClient() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [selectedProduitId, setSelectedProduitId] = useState<string | null>(null);
+  const [isExpertModalOpen, setIsExpertModalOpen] = useState(false);
   
   // Hook pour les produits éligibles du client
   const { 
@@ -279,6 +416,30 @@ export default function DashboardClient() {
       navigate(`/dossier-client/${produit.id}`);
     }
   }, [navigate]);
+
+  // Fonction pour ouvrir le modal de sélection d'expert
+  const handleExpertSelection = useCallback((produitId: string) => {
+    setSelectedProduitId(produitId);
+    setIsExpertModalOpen(true);
+  }, []);
+
+  // Fonction pour fermer le modal
+  const handleCloseExpertModal = useCallback(() => {
+    setIsExpertModalOpen(false);
+    setSelectedProduitId(null);
+  }, []);
+
+  // Fonction appelée quand un expert est sélectionné
+  const handleExpertSelected = useCallback((expert: any) => {
+    toast({
+      title: "Expert sélectionné",
+      description: `${expert.name} a été assigné à votre dossier.`,
+      variant: "default",
+    });
+    handleCloseExpertModal();
+    // Optionnel : rafraîchir les données
+    window.location.reload();
+  }, [handleCloseExpertModal]);
 
   // Calcul des vraies données KPI depuis ClientProduitEligible
   const kpiData = {
@@ -506,83 +667,31 @@ export default function DashboardClient() {
                   key={produit.id}
                   produit={produit}
                   onClick={() => handleProductClick(produit)}
+                  onExpertSelection={handleExpertSelection}
                 />
               ))}
             </div>
           </div>
-        )}
+                )}
 
-        {/* Footer élégant et design */}
-        <footer className="mt-12 bg-gradient-to-r from-slate-50 via-blue-50 to-indigo-50 border-t border-slate-200 rounded-xl overflow-hidden">
-          <div className="px-6 py-8">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {/* Section Documents */}
-              <div className="text-center">
-                <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-xl mb-4">
-                  <FolderOpen className="w-6 h-6 text-blue-600" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Mes documents</h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  Gérez vos documents et suivez vos dossiers
-                </p>
-                <Button 
-                  variant="ghost" 
-                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                  onClick={() => navigate('/documents-client')}
-                >
-                  Accéder →
-                </Button>
-              </div>
-
-              {/* Section Agenda */}
-              <div className="text-center">
-                <div className="inline-flex items-center justify-center w-12 h-12 bg-green-100 rounded-xl mb-4">
-                  <Calendar className="w-6 h-6 text-green-600" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Mon agenda</h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  Consultez vos rendez-vous et événements
-                </p>
-                <Button 
-                  variant="ghost" 
-                  className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                  onClick={() => navigate('/agenda-client')}
-                >
-                  Accéder →
-                </Button>
-              </div>
-
-              {/* Section Messagerie */}
-              <div className="text-center">
-                <div className="inline-flex items-center justify-center w-12 h-12 bg-purple-100 rounded-xl mb-4">
-                  <AlertCircle className="w-6 h-6 text-purple-600" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Messagerie</h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  Communiquez avec vos experts
-                </p>
-                <Button 
-                  variant="ghost" 
-                  className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
-                  onClick={() => navigate('/messagerie-client')}
-                >
-                  Accéder →
-                </Button>
-              </div>
-            </div>
-
-            {/* Ligne de séparation décorative */}
-            <div className="mt-8 pt-6 border-t border-slate-200">
-              <div className="flex items-center justify-center space-x-6 text-sm text-gray-500">
-                <span>© 2024 Profitum</span>
-                <span>•</span>
-                <span>Optimisation fiscale & sociale</span>
-                <span>•</span>
-                <span>Support disponible 24/7</span>
-              </div>
-            </div>
+        {/* Footer simple avec informations */}
+        <footer className="mt-12 pt-6 border-t border-slate-200">
+          <div className="flex items-center justify-center space-x-6 text-sm text-gray-500">
+            <span>© 2024 Profitum</span>
+            <span>•</span>
+            <span>Optimisation fiscale & sociale</span>
+            <span>•</span>
+            <span>Support disponible 24/7</span>
           </div>
         </footer>
+
+        {/* Modal de sélection d'expert */}
+        <ExpertSelectionModal
+          isOpen={isExpertModalOpen}
+          onClose={handleCloseExpertModal}
+          dossierId={selectedProduitId || ''}
+          onExpertSelected={handleExpertSelected}
+        />
       </div>
     </div>
   );

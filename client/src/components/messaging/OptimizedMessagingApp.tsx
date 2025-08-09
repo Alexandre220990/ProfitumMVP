@@ -33,6 +33,12 @@ interface OptimizedMessagingAppProps {
 export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
   className = ''
 }) => {
+  // Fonction utilitaire pour nettoyer les titres des conversations
+  const cleanConversationTitle = (title?: string): string => {
+    if (!title) return 'Conversation';
+    // Supprimer les emails et garder seulement le nom de l'interlocuteur
+    return title.replace(/\s*-\s*[^\s@]+@[^\s@]+\.[^\s@]+/g, '').trim();
+  };
   const { user } = useAuth();
   
   // État local optimisé
@@ -160,7 +166,7 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-1">
                           <h3 className="font-semibold text-slate-900 text-sm truncate">
-                            {conversation.title}
+                            {cleanConversationTitle(conversation.title)}
                           </h3>
                           {conversation.unread_count > 0 && (
                             <Badge className="bg-red-500 text-white text-xs px-2 py-0.5">
@@ -210,7 +216,9 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <h3 className="font-semibold text-slate-900">{selectedConversation.title}</h3>
+                    <h3 className="font-semibold text-slate-900">
+                      {cleanConversationTitle(selectedConversation.title)}
+                    </h3>
                     <p className="text-sm text-green-600 flex items-center gap-1">
                       <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                       En ligne

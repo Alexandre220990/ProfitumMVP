@@ -59,7 +59,7 @@ export default function NosServices() { return (
           <p className="text-lg mb-10 opacity-90 animate-fade-in delay-200">
             L'expertise simplifiée, la transparence garantie et l'efficacité au bout des doigts.
           </p>
-          <div className="grid grid-cols-1 md: grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             { advantages.map((adv, index) => (
               <div key={index } className="p-6 bg-white text-gray-900 rounded-xl shadow-lg transform transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 flex flex-col items-center">
                 <adv.icon className="w-14 h-14 text-blue-600 mb-4" />
@@ -74,7 +74,7 @@ export default function NosServices() { return (
       { /* Section Services */ }
       <section className="py-6 px-6 container mx-auto text-center">
         <h2 className="text-3xl font-bold mb-8">Des compétences dans de nombreux domaines :</h2>
-        <div className="grid grid-cols-1 md: grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           { services.map((service, index) => {
             const IconComponent = service.icon;
             return (

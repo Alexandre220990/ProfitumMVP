@@ -1,11 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useClientProfile, ClientProfileUpdate } from "@/hooks/use-client-profile";
+import HeaderClient from "@/components/HeaderClient";
 import { Button } from "@/components/ui/button";
 import { 
   Building2, 
-  FileText, 
-  MessageSquare, 
   CheckCircle, 
   MapPin, 
   Briefcase, 
@@ -13,7 +12,6 @@ import {
   Save, 
   Edit3, 
   X, 
-  ArrowRight, 
   Shield, 
   TrendingUp,
   Phone,
@@ -137,109 +135,58 @@ const ClientProfile = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-7xl mx-auto">
-          {/* Header avec actions rapides */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-4">
-                <div className="relative">
-                  <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-4 rounded-2xl shadow-lg">
-                    <Users className="w-8 h-8 text-white" />
+      <HeaderClient />
+      
+      <div className="pt-20">
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-7xl mx-auto">
+            {/* Header moderne avec design 2025 */}
+            <div className="mb-12">
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-6">
+                  <div className="relative">
+                    <div className="bg-gradient-to-br from-blue-500 via-indigo-600 to-purple-600 p-5 rounded-3xl shadow-2xl">
+                      <Users className="w-10 h-10 text-white" />
+                    </div>
+                    <div className="absolute -top-2 -right-2 w-5 h-5 bg-green-500 rounded-full border-3 border-white animate-pulse shadow-lg"></div>
                   </div>
-                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white animate-pulse"></div>
+                  <div className="space-y-2">
+                    <h1 className="text-4xl font-bold bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 bg-clip-text text-transparent">
+                      Mon Profil
+                    </h1>
+                    <p className="text-lg text-slate-600 font-medium">
+                      Gérez vos informations personnelles et professionnelles
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h1 className="text-3xl font-bold text-slate-900">Profil Client</h1>
-                  <p className="text-slate-600">Gérez vos informations personnelles et professionnelles</p>
+                <div className="flex gap-4">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => navigate('/dashboard/client')}
+                    className="hover:shadow-lg transition-all duration-300 hover:-translate-y-1 border-2 border-slate-200 hover:border-blue-300"
+                  >
+                    <Briefcase className="w-5 h-5 mr-3" />
+                    Tableau de bord
+                  </Button>
+                  <Button 
+                    variant={isEditing ? "destructive" : "default"}
+                    onClick={() => setIsEditing(!isEditing)}
+                    className="hover:shadow-lg transition-all duration-300 hover:-translate-y-1 group px-8"
+                  >
+                    {isEditing ? (
+                      <>
+                        <X className="w-5 h-5 mr-3 group-hover:rotate-90 transition-transform duration-300" />
+                        Annuler
+                      </>
+                    ) : (
+                      <>
+                        <Edit3 className="w-5 h-5 mr-3 group-hover:rotate-12 transition-transform duration-300" />
+                        Modifier
+                      </>
+                    )}
+                  </Button>
                 </div>
               </div>
-              <div className="flex gap-3">
-                <Button 
-                  variant="outline" 
-                  onClick={() => navigate('/dashboard')}
-                  className="hover:shadow-md transition-all duration-200 hover:-translate-y-0.5"
-                >
-                  <Briefcase className="w-4 h-4 mr-2" />
-                  Tableau de bord
-                </Button>
-                <Button 
-                  variant={isEditing ? "destructive" : "default"}
-                  onClick={() => setIsEditing(!isEditing)}
-                  className="hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group"
-                >
-                  {isEditing ? (
-                    <>
-                      <X className="w-4 h-4 mr-2 group-hover:rotate-90 transition-transform duration-200" />
-                      Annuler
-                    </>
-                  ) : (
-                    <>
-                      <Edit3 className="w-4 h-4 mr-2 group-hover:rotate-12 transition-transform duration-200" />
-                      Modifier
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-
-            {/* Actions rapides - Tuiles bien alignées */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-              <Card className="bg-white/80 backdrop-blur-sm border border-white/20 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer group" onClick={() => navigate('/documents-client')}>
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-3">
-                    <div className="p-3 bg-blue-100 rounded-xl group-hover:bg-blue-200 transition-colors">
-                      <FileText className="w-6 h-6 text-blue-600" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-slate-900 group-hover:text-blue-600 transition-colors">Documents</h3>
-                      <p className="text-sm text-slate-600">Gérer vos fichiers</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-white/80 backdrop-blur-sm border border-white/20 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer group" onClick={() => navigate('/messagerie-client')}>
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-3">
-                    <div className="p-3 bg-green-100 rounded-xl group-hover:bg-green-200 transition-colors">
-                      <MessageSquare className="w-6 h-6 text-green-600" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-slate-900 group-hover:text-green-600 transition-colors">Messages</h3>
-                      <p className="text-sm text-slate-600">Communiquer avec les experts</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-white/80 backdrop-blur-sm border border-white/20 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer group" onClick={() => navigate('/marketplace-experts')}>
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-3">
-                    <div className="p-3 bg-purple-100 rounded-xl group-hover:bg-purple-200 transition-colors">
-                      <Users2 className="w-6 h-6 text-purple-600" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-slate-900 group-hover:text-purple-600 transition-colors">Experts</h3>
-                      <p className="text-sm text-slate-600">Trouver un expert</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-white/80 backdrop-blur-sm border border-white/20 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer group" onClick={() => navigate('/agenda-client')}>
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-3">
-                    <div className="p-3 bg-orange-100 rounded-xl group-hover:bg-orange-200 transition-colors">
-                      <Calendar className="w-6 h-6 text-orange-600" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-slate-900 group-hover:text-orange-600 transition-colors">Agenda</h3>
-                      <p className="text-sm text-slate-600">Gérer vos rendez-vous</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
             </div>
           </div>
           
@@ -247,13 +194,15 @@ const ClientProfile = () => {
             {/* Informations principales */}
             <div className="lg:col-span-2 space-y-6">
               {/* Informations personnelles */}
-              <Card className="bg-white/80 backdrop-blur-sm border border-white/20 shadow-xl hover:shadow-2xl transition-all duration-300">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <div className="p-2 bg-blue-100 rounded-lg">
-                      <Users className="w-5 h-5 text-blue-600" />
+              <Card className="bg-gradient-to-br from-white via-blue-50/20 to-indigo-50/30 backdrop-blur-xl border border-white/40 shadow-2xl hover:shadow-3xl transition-all duration-500">
+                <CardHeader className="pb-6">
+                  <CardTitle className="text-xl flex items-center gap-3">
+                    <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl shadow-lg">
+                      <Users className="w-6 h-6 text-white" />
                     </div>
-                    Informations personnelles
+                    <span className="bg-gradient-to-r from-slate-900 to-blue-900 bg-clip-text text-transparent">
+                      Informations personnelles
+                    </span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -326,13 +275,15 @@ const ClientProfile = () => {
               </Card>
 
               {/* Informations entreprise */}
-              <Card className="bg-white/80 backdrop-blur-sm border border-white/20 shadow-xl hover:shadow-2xl transition-all duration-300">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <div className="p-2 bg-green-100 rounded-lg">
-                      <Building2 className="w-5 h-5 text-green-600" />
+              <Card className="bg-gradient-to-br from-white via-green-50/20 to-emerald-50/30 backdrop-blur-xl border border-white/40 shadow-2xl hover:shadow-3xl transition-all duration-500">
+                <CardHeader className="pb-6">
+                  <CardTitle className="text-xl flex items-center gap-3">
+                    <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl shadow-lg">
+                      <Building2 className="w-6 h-6 text-white" />
                     </div>
-                    Informations entreprise
+                    <span className="bg-gradient-to-r from-slate-900 to-green-900 bg-clip-text text-transparent">
+                      Informations entreprise
+                    </span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -472,13 +423,15 @@ const ClientProfile = () => {
               </Card>
 
               {/* Adresse */}
-              <Card className="bg-white/80 backdrop-blur-sm border border-white/20 shadow-xl hover:shadow-2xl transition-all duration-300">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <div className="p-2 bg-purple-100 rounded-lg">
-                      <Home className="w-5 h-5 text-purple-600" />
+              <Card className="bg-gradient-to-br from-white via-purple-50/20 to-violet-50/30 backdrop-blur-xl border border-white/40 shadow-2xl hover:shadow-3xl transition-all duration-500">
+                <CardHeader className="pb-6">
+                  <CardTitle className="text-xl flex items-center gap-3">
+                    <div className="p-3 bg-gradient-to-br from-purple-500 to-violet-600 rounded-2xl shadow-lg">
+                      <Home className="w-6 h-6 text-white" />
                     </div>
-                    Adresse
+                    <span className="bg-gradient-to-r from-slate-900 to-purple-900 bg-clip-text text-transparent">
+                      Adresse
+                    </span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -533,29 +486,29 @@ const ClientProfile = () => {
 
               {/* Actions */}
               {isEditing && (
-                <Card className="bg-white/80 backdrop-blur-sm border border-white/20 shadow-xl">
-                  <CardContent className="p-6">
-                    <div className="flex gap-3 justify-end">
+                <Card className="bg-gradient-to-br from-white via-orange-50/20 to-amber-50/30 backdrop-blur-xl border border-white/40 shadow-2xl">
+                  <CardContent className="p-8">
+                    <div className="flex gap-4 justify-end">
                       <Button 
                         variant="outline" 
                         onClick={handleCancel}
-                        className="hover:shadow-md transition-all duration-200 hover:-translate-y-0.5"
+                        className="hover:shadow-lg transition-all duration-300 hover:-translate-y-1 border-2 border-slate-200 hover:border-red-300 px-6"
                       >
                         Annuler
                       </Button>
                       <Button 
                         onClick={handleSave}
                         disabled={isSaving}
-                        className="flex items-center gap-2 hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5"
+                        className="flex items-center gap-3 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 px-8 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700"
                       >
                         {isSaving ? (
                           <>
-                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                             Sauvegarde...
                           </>
                         ) : (
                           <>
-                            <Save className="w-4 h-4" />
+                            <Save className="w-5 h-5" />
                             Sauvegarder
                           </>
                         )}
@@ -565,131 +518,95 @@ const ClientProfile = () => {
                 </Card>
               )}
 
-              {/* Navigation rapide */}
-              <Card className="bg-white/80 backdrop-blur-sm border border-white/20 shadow-xl hover:shadow-2xl transition-all duration-300">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <div className="p-2 bg-indigo-100 rounded-lg">
-                      <FileText className="w-5 h-5 text-indigo-600" />
-                    </div>
-                    Accès rapide
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <div className="group cursor-pointer" onClick={() => navigate('/documents')}>
-                      <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100 hover:border-blue-200 hover:shadow-md transition-all duration-300 group-hover:-translate-y-1">
-                        <div className="p-3 bg-blue-500 rounded-lg group-hover:scale-110 transition-transform duration-200">
-                          <FileText className="w-6 h-6 text-white" />
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="font-medium text-slate-900">Documents</h4>
-                          <p className="text-sm text-slate-600">Gérez vos documents</p>
-                        </div>
-                        <ArrowRight className="w-4 h-4 text-blue-500 group-hover:translate-x-1 transition-transform duration-200" />
-                      </div>
-                    </div>
-                    
-                    <div className="group cursor-pointer" onClick={() => navigate('/messagerie')}>
-                      <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100 hover:border-green-200 hover:shadow-md transition-all duration-300 group-hover:-translate-y-1">
-                        <div className="p-3 bg-green-500 rounded-lg group-hover:scale-110 transition-transform duration-200">
-                          <MessageSquare className="w-6 h-6 text-white" />
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="font-medium text-slate-900">Messages</h4>
-                          <p className="text-sm text-slate-600">Consultez vos conversations</p>
-                        </div>
-                        <ArrowRight className="w-4 h-4 text-green-500 group-hover:translate-x-1 transition-transform duration-200" />
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+
             </div>
 
-            {/* Sidebar */}
-            <div className="space-y-6">
-              {/* Statut du compte */}
-              <Card className="bg-white/80 backdrop-blur-sm border border-white/20 shadow-xl hover:shadow-2xl transition-all duration-300">
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Shield className="w-5 h-5 text-blue-600" />
-                    Statut du compte
+            {/* Sidebar moderne */}
+            <div className="space-y-8">
+              {/* Statut du compte - Design premium */}
+              <Card className="bg-gradient-to-br from-white via-blue-50/30 to-indigo-50/50 backdrop-blur-xl border border-white/40 shadow-2xl hover:shadow-3xl transition-all duration-500">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-xl flex items-center gap-3">
+                    <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl shadow-lg">
+                      <Shield className="w-6 h-6 text-white" />
+                    </div>
+                    <span className="bg-gradient-to-r from-slate-900 to-blue-900 bg-clip-text text-transparent">
+                      Statut du compte
+                    </span>
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg border border-green-100">
-                    <div className="p-2 bg-green-500 rounded-lg">
-                      <CheckCircle className="w-4 h-4 text-white" />
+                <CardContent className="space-y-6">
+                  <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl border border-green-200/50 shadow-sm">
+                    <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-md">
+                      <CheckCircle className="w-5 h-5 text-white" />
                     </div>
                     <div>
-                      <div className="font-medium text-sm text-slate-900">Compte vérifié</div>
+                      <div className="font-semibold text-sm text-slate-900">Compte vérifié</div>
                       <div className="text-sm text-slate-600">Email confirmé</div>
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
-                    <div className="p-2 bg-blue-500 rounded-lg">
-                      <Badge variant="default">{profile.statut}</Badge>
+                  <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl border border-blue-200/50 shadow-sm">
+                    <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-md">
+                      <Badge variant="secondary" className="bg-white text-blue-600 font-semibold">
+                        {profile.statut}
+                      </Badge>
                     </div>
                     <div>
-                      <div className="font-medium text-sm text-slate-900">Statut</div>
+                      <div className="font-semibold text-sm text-slate-900">Statut</div>
                       <div className="text-sm text-slate-600">Actif</div>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 p-3 bg-purple-50 rounded-lg border border-purple-100">
-                    <div className="p-2 bg-purple-500 rounded-lg">
-                      <Calendar className="w-4 h-4 text-white" />
+                  <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-purple-50 to-violet-50 rounded-2xl border border-purple-200/50 shadow-sm">
+                    <div className="p-3 bg-gradient-to-br from-purple-500 to-violet-600 rounded-xl shadow-md">
+                      <Calendar className="w-5 h-5 text-white" />
                     </div>
                     <div>
-                      <div className="font-medium text-sm text-slate-900">Membre depuis</div>
+                      <div className="font-semibold text-sm text-slate-900">Membre depuis</div>
                       <div className="text-sm text-slate-600">
-                        {new Date(profile.created_at).toLocaleDateString('fr-FR')}
+                        {new Date(profile.created_at).toLocaleDateString('fr-FR', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
                       </div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Actions rapides */}
-              <Card className="bg-white/80 backdrop-blur-sm border border-white/20 shadow-xl hover:shadow-2xl transition-all duration-300">
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5 text-indigo-600" />
-                    Actions rapides
+              {/* Statistiques rapides */}
+              <Card className="bg-gradient-to-br from-white via-slate-50/30 to-gray-50/50 backdrop-blur-xl border border-white/40 shadow-2xl hover:shadow-3xl transition-all duration-500">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-xl flex items-center gap-3">
+                    <div className="p-3 bg-gradient-to-br from-slate-500 to-gray-600 rounded-2xl shadow-lg">
+                      <TrendingUp className="w-6 h-6 text-white" />
+                    </div>
+                    <span className="bg-gradient-to-r from-slate-900 to-gray-900 bg-clip-text text-transparent">
+                      Aperçu
+                    </span>
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  <Button 
-                    variant="outline" 
-                    className="w-full justify-start group hover:shadow-md transition-all duration-200 hover:-translate-y-0.5"
-                    onClick={() => navigate('/produits')}
-                  >
-                    <Briefcase className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform duration-200" />
-                    Voir les produits
-                    <ArrowRight className="w-4 h-4 ml-auto group-hover:translate-x-1 transition-transform duration-200" />
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className="w-full justify-start group hover:shadow-md transition-all duration-200 hover:-translate-y-0.5"
-                    onClick={() => navigate('/experts')}
-                  >
-                    <Users className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform duration-200" />
-                    Trouver un expert
-                    <ArrowRight className="w-4 h-4 ml-auto group-hover:translate-x-1 transition-transform duration-200" />
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className="w-full justify-start group hover:shadow-md transition-all duration-200 hover:-translate-y-0.5"
-                    onClick={() => navigate('/aide')}
-                  >
-                    <MessageSquare className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform duration-200" />
-                    Support client
-                    <ArrowRight className="w-4 h-4 ml-auto group-hover:translate-x-1 transition-transform duration-200" />
-                  </Button>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
+                      <div className="text-2xl font-bold text-blue-600">12</div>
+                      <div className="text-xs text-slate-600">Documents</div>
+                    </div>
+                    <div className="text-center p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-100">
+                      <div className="text-2xl font-bold text-green-600">3</div>
+                      <div className="text-xs text-slate-600">Experts</div>
+                    </div>
+                  </div>
+                  <div className="text-center p-4 bg-gradient-to-br from-purple-50 to-violet-50 rounded-xl border border-purple-100">
+                    <div className="text-2xl font-bold text-purple-600">€45,000</div>
+                    <div className="text-xs text-slate-600">Économies estimées</div>
+                  </div>
                 </CardContent>
               </Card>
+
+
             </div>
           </div>
         </div>
