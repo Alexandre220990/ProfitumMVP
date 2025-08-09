@@ -24,7 +24,11 @@ import {
   Check,
   UserPlus,
   Building,
-  ClipboardList
+  ClipboardList,
+  Star,
+  Coins,
+  MapPin,
+  Clock
 } from "lucide-react";
 
 // ============================================================================
@@ -39,6 +43,12 @@ interface Expert {
   status: 'pending' | 'active' | 'rejected';
   created_at: string;
   documents?: string[];
+  approval_status?: 'approved' | 'pending' | 'rejected';
+  rating?: number;
+  compensation?: number;
+  location?: string;
+  experience?: number;
+  company_name?: string;
 }
 
 interface Client {
@@ -109,7 +119,8 @@ const AdminDashboardOptimized: React.FC = () => {
       
       switch (section) {
         case 'experts':
-          response = await fetch('/api/admin/experts/pending', {
+          // Charger TOUS les experts de la plateforme
+          response = await fetch('/api/admin/experts/all', {
             credentials: 'include'
           });
           if (response.ok) {
@@ -119,7 +130,8 @@ const AdminDashboardOptimized: React.FC = () => {
           break;
           
         case 'clients':
-          response = await fetch('/api/admin/clients/waiting', {
+          // Charger TOUS les clients de la plateforme
+          response = await fetch('/api/admin/clients/all', {
             credentials: 'include'
           });
           if (response.ok) {
@@ -129,7 +141,8 @@ const AdminDashboardOptimized: React.FC = () => {
           break;
           
         case 'dossiers':
-          response = await fetch('/api/admin/dossiers/pending', {
+          // Charger TOUS les ClientProduitEligible de la plateforme
+          response = await fetch('/api/admin/dossiers/all', {
             credentials: 'include'
           });
           if (response.ok) {
@@ -377,9 +390,9 @@ const AdminDashboardOptimized: React.FC = () => {
           />
           
           <KPICard
-            title="Experts à valider"
-            value={businessKPIs.pendingExperts}
-            change={`${businessKPIs.activeExperts} actifs`}
+            title="Experts"
+            value={businessKPIs.activeExperts}
+            change={`${businessKPIs.pendingExperts} en attente`}
             changeType="neutral"
             icon={UserCheck}
             color="from-orange-500 to-orange-600"
@@ -424,7 +437,7 @@ const AdminDashboardOptimized: React.FC = () => {
           )}
 
           {activeSection === 'experts' && (
-            <ExpertsValidationSection 
+            <ExpertsAllSection 
               experts={sectionData.experts} 
               loading={loading}
               onRefresh={() => loadSectionData('experts')}
@@ -482,13 +495,13 @@ const AdminDashboardOptimized: React.FC = () => {
   // COMPOSANTS DE SECTIONS
   // ========================================
 
-  const ExpertsValidationSection = ({ experts, loading, onRefresh }: any) => (
+  const ExpertsAllSection = ({ experts, loading, onRefresh }: any) => (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <UserCheck className="w-5 h-5 text-orange-600" />
-            <span>Experts à valider ({experts.length})</span>
+            <Users className="w-5 h-5 text-blue-600" />
+            <span>Tous les Experts de la plateforme ({experts.length})</span>
           </div>
           <Button variant="secondary" size="sm" onClick={onRefresh} disabled={loading}>
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -503,44 +516,88 @@ const AdminDashboardOptimized: React.FC = () => {
           </div>
         ) : experts.length === 0 ? (
           <div className="text-center py-8">
-            <UserCheck className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600">Aucun expert en attente de validation</p>
+            <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-600">Aucun expert trouvé sur la plateforme</p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {experts.map((expert: Expert) => (
-              <div key={expert.id} className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="flex items-center space-x-4">
-                  <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
-                    <UserCheck className="w-5 h-5 text-orange-600" />
+              <Card key={expert.id} className="hover:shadow-lg transition-shadow">
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <CardTitle className="text-lg">{expert.name}</CardTitle>
+                      <p className="text-sm text-gray-600 flex items-center gap-1">
+                        <Building className="w-4 h-4" />
+                        {expert.company_name}
+                      </p>
+                    </div>
+                    <Badge 
+                      variant={expert.approval_status === 'approved' ? 'success' : 
+                             expert.approval_status === 'pending' ? 'warning' : 'error'}
+                    >
+                      {expert.approval_status === 'approved' ? 'Validé' : 
+                       expert.approval_status === 'pending' ? 'En cours' : 'Rejeté'}
+                    </Badge>
                   </div>
+                </CardHeader>
+                
+                <CardContent className="space-y-3">
+                  {/* Spécialisations */}
                   <div>
-                    <h4 className="font-medium text-gray-900">{expert.name}</h4>
-                    <p className="text-sm text-gray-600">{expert.email}</p>
-                    <div className="flex space-x-2 mt-1">
-                      {expert.specializations?.map((spec, index) => (
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">Spécialisations</h4>
+                    <div className="flex flex-wrap gap-1">
+                      {expert.specializations?.slice(0, 3).map((spec, index) => (
                         <Badge key={index} variant="primary" className="text-xs">
                           {spec}
                         </Badge>
                       ))}
+                      {expert.specializations?.length > 3 && (
+                        <Badge variant="primary" className="text-xs">
+                          +{expert.specializations.length - 3}
+                        </Badge>
+                      )}
                     </div>
                   </div>
-                </div>
-                <div className="flex space-x-2">
-                  <Button size="sm" variant="success" className="text-white">
-                    <Check className="w-4 h-4 mr-1" />
-                    Valider
-                  </Button>
-                  <Button size="sm" variant="error" className="text-white">
-                    <X className="w-4 h-4 mr-1" />
-                    Refuser
-                  </Button>
-                  <Button size="sm" variant="secondary">
-                    <Eye className="w-4 h-4 mr-1" />
-                    Voir
-                  </Button>
-                </div>
-              </div>
+
+                  {/* Informations clés */}
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="flex items-center gap-2">
+                      <Star className="w-4 h-4 text-yellow-500" />
+                      <span>{expert.rating || 0}/5</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Coins className="w-4 h-4 text-green-500" />
+                      <span>{expert.compensation || 0}%</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-blue-500" />
+                      <span>{expert.location || "Non spécifié"}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-purple-500" />
+                      <span>{expert.experience || "0"} ans</span>
+                    </div>
+                  </div>
+
+                  {/* Date d'inscription */}
+                  <div className="text-xs text-gray-500">
+                    Inscrit le: {new Date(expert.created_at).toLocaleDateString('fr-FR')}
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex space-x-2 pt-2">
+                    <Button size="sm" variant="secondary" className="flex-1">
+                      <Eye className="w-4 h-4 mr-1" />
+                      Voir profil
+                    </Button>
+                    <Button size="sm" variant="secondary" className="flex-1">
+                      <Edit className="w-4 h-4 mr-1" />
+                      Modifier
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
         )}
@@ -554,7 +611,7 @@ const AdminDashboardOptimized: React.FC = () => {
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Building className="w-5 h-5 text-green-600" />
-            <span>Clients en attente ({clients.length})</span>
+            <span>Tous les clients de la plateforme ({clients.length})</span>
           </div>
           <Button variant="secondary" size="sm" onClick={onRefresh} disabled={loading}>
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -570,7 +627,7 @@ const AdminDashboardOptimized: React.FC = () => {
         ) : clients.length === 0 ? (
           <div className="text-center py-8">
             <Building className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600">Aucun client en attente</p>
+            <p className="text-gray-600">Aucun client inscrit sur la plateforme</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -584,6 +641,7 @@ const AdminDashboardOptimized: React.FC = () => {
                     <h4 className="font-medium text-gray-900">{client.company_name}</h4>
                     <p className="text-sm text-gray-600">{client.email}</p>
                     <p className="text-xs text-gray-500">Statut: {client.statut}</p>
+                    <p className="text-xs text-gray-400">Inscrit le: {new Date(client.created_at).toLocaleDateString('fr-FR')}</p>
                   </div>
                 </div>
                 <div className="flex space-x-2">
@@ -604,93 +662,120 @@ const AdminDashboardOptimized: React.FC = () => {
     </Card>
   );
 
-  const DossiersProcessingSection = ({ dossiers, loading, onRefresh }: any) => (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <ClipboardList className="w-5 h-5 text-purple-600" />
-            <span>Dossiers à traiter ({dossiers.length})</span>
-          </div>
-          <Button variant="secondary" size="sm" onClick={onRefresh} disabled={loading}>
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </Button>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        {loading ? (
-          <div className="text-center py-8">
-            <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-gray-400" />
-            <p className="text-gray-600">Chargement des dossiers...</p>
-          </div>
-        ) : dossiers.length === 0 ? (
-          <div className="text-center py-8">
-            <ClipboardList className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600">Aucun dossier à traiter</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {dossiers.map((dossier: ClientProduitEligible) => (
-              <div key={dossier.id} className="p-4 border rounded-lg">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                      <ClipboardList className="w-5 h-5 text-purple-600" />
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-gray-900">Dossier #{dossier.id}</h4>
-                      <p className="text-sm text-gray-600">Client: {dossier.clientId}</p>
-                      <p className="text-xs text-gray-500">Produit: {dossier.produitId}</p>
-                    </div>
-                  </div>
-                  <Badge 
-                    variant={dossier.statut === 'pending' ? 'warning' : 
-                           dossier.statut === 'validated' ? 'success' : 'error'}
-                  >
-                    {dossier.statut}
-                  </Badge>
-                </div>
-                
-                {/* Barre de progression */}
-                <div className="mb-3">
-                  <div className="flex justify-between text-sm text-gray-600 mb-1">
-                    <span>Progression</span>
-                    <span>{dossier.progress}%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div 
-                      className="bg-purple-600 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${dossier.progress}%` }}
-                    ></div>
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="flex space-x-2">
-                  <Button size="sm" variant="success" className="text-white">
-                    <Check className="w-4 h-4 mr-1" />
-                    Valider
-                  </Button>
-                  <Button size="sm" variant="error" className="text-white">
-                    <X className="w-4 h-4 mr-1" />
-                    Refuser
-                  </Button>
-                  <Button size="sm" variant="secondary">
-                    <Eye className="w-4 h-4 mr-1" />
-                    Voir détails
-                  </Button>
-                  <Button size="sm" variant="secondary">
-                    <Edit className="w-4 h-4 mr-1" />
-                    Assigner expert
-                  </Button>
-                </div>
+  const DossiersProcessingSection = ({ dossiers, loading, onRefresh }: any) => {
+    // Calculer les statistiques
+    const totalDossiers = dossiers.length;
+    const montantCumule = dossiers.reduce((sum: number, dossier: ClientProduitEligible) => {
+      return sum + (dossier.montantFinal || 0);
+    }, 0);
+    
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <ClipboardList className="w-5 h-5 text-purple-600" />
+              <span>Tous les dossiers ClientProduitEligible ({totalDossiers})</span>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="text-right">
+                <p className="text-sm text-gray-600">Montant cumulé</p>
+                <p className="text-lg font-bold text-purple-600">{formatCurrency(montantCumule)}</p>
               </div>
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
+              <Button variant="secondary" size="sm" onClick={onRefresh} disabled={loading}>
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="text-center py-8">
+              <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-gray-400" />
+              <p className="text-gray-600">Chargement des dossiers...</p>
+            </div>
+          ) : dossiers.length === 0 ? (
+            <div className="text-center py-8">
+              <ClipboardList className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600">Aucun dossier ClientProduitEligible trouvé</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {dossiers.map((dossier: ClientProduitEligible) => (
+                <div key={dossier.id} className="p-4 border rounded-lg">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                        <ClipboardList className="w-5 h-5 text-purple-600" />
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-gray-900">Dossier #{dossier.id}</h4>
+                        <p className="text-sm text-gray-600">Client: {dossier.clientId}</p>
+                        <p className="text-xs text-gray-500">Produit: {dossier.produitId}</p>
+                        <p className="text-xs text-gray-400">Créé le: {new Date(dossier.created_at).toLocaleDateString('fr-FR')}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <Badge 
+                        variant={dossier.statut === 'pending' ? 'warning' : 
+                               dossier.statut === 'validated' ? 'success' : 
+                               dossier.statut === 'rejected' ? 'error' : 'primary'}
+                      >
+                        {dossier.statut}
+                      </Badge>
+                      {dossier.montantFinal && (
+                        <p className="text-sm font-medium text-purple-600 mt-1">
+                          {formatCurrency(dossier.montantFinal)}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Barre de progression */}
+                  <div className="mb-3">
+                    <div className="flex justify-between text-sm text-gray-600 mb-1">
+                      <span>Progression</span>
+                      <span>{dossier.progress}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-purple-600 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${dossier.progress}%` }}
+                      ></div>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex space-x-2">
+                    <Button size="sm" variant="secondary">
+                      <Eye className="w-4 h-4 mr-1" />
+                      Voir détails
+                    </Button>
+                    <Button size="sm" variant="secondary">
+                      <Edit className="w-4 h-4 mr-1" />
+                      Modifier
+                    </Button>
+                    {dossier.statut === 'pending' && (
+                      <>
+                        <Button size="sm" variant="success" className="text-white">
+                          <Check className="w-4 h-4 mr-1" />
+                          Valider
+                        </Button>
+                        <Button size="sm" variant="error" className="text-white">
+                          <X className="w-4 h-4 mr-1" />
+                          Refuser
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
 
   // ===== COMPOSANT ANALYTICS =====
   

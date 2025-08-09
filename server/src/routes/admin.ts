@@ -2933,4 +2933,161 @@ router.post('/dossiers/:id/reject', asyncHandler(async (req, res) => {
   }
 }));
 
+// GET /api/admin/clients/all - Tous les clients de la plateforme
+router.get('/clients/all', asyncHandler(async (req, res) => {
+  try {
+    console.log('🔍 Récupération de tous les clients...');
+    
+    const { data: clients, error } = await supabaseClient
+      .from('Client')
+      .select(`
+        id,
+        company_name,
+        email,
+        statut,
+        created_at,
+        updated_at,
+        produits_eligibles(
+          id,
+          produitId,
+          statut,
+          progress,
+          montantFinal,
+          tauxFinal,
+          created_at,
+          updated_at
+        )
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('❌ Erreur récupération tous les clients:', error);
+      throw error;
+    }
+
+    console.log(`✅ ${clients?.length || 0} clients trouvés sur la plateforme`);
+
+    return res.json({
+      success: true,
+      data: {
+        clients: clients || []
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route clients/all:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération de tous les clients'
+    });
+  }
+}));
+
+// GET /api/admin/experts/all - Tous les experts de la plateforme
+router.get('/experts/all', asyncHandler(async (req, res) => {
+  try {
+    console.log('🔍 Récupération de tous les experts...');
+    
+    const { data: experts, error } = await supabaseClient
+      .from('Expert')
+      .select(`
+        id,
+        name,
+        email,
+        company_name,
+        specializations,
+        experience,
+        location,
+        rating,
+        compensation,
+        status,
+        approval_status,
+        created_at,
+        approved_at,
+        approved_by,
+        description
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('❌ Erreur récupération tous les experts:', error);
+      throw error;
+    }
+
+    console.log(`✅ ${experts?.length || 0} experts trouvés sur la plateforme`);
+
+    return res.json({
+      success: true,
+      data: {
+        experts: experts || []
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route experts/all:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération de tous les experts'
+    });
+  }
+}));
+
+// GET /api/admin/dossiers/all - Tous les ClientProduitEligible de la plateforme
+router.get('/dossiers/all', asyncHandler(async (req, res) => {
+  try {
+    console.log('🔍 Récupération de tous les ClientProduitEligible...');
+    
+    const { data: dossiers, error } = await supabaseClient
+      .from('ClientProduitEligible')
+      .select(`
+        id,
+        clientId,
+        produitId,
+        statut,
+        progress,
+        montantFinal,
+        tauxFinal,
+        documents_sent,
+        expert_id,
+        created_at,
+        updated_at,
+        Client(
+          id,
+          company_name,
+          email,
+          statut
+        ),
+        ProduitEligible(
+          id,
+          nom,
+          description,
+          montant,
+          taux
+        )
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('❌ Erreur récupération tous les dossiers:', error);
+      throw error;
+    }
+
+    console.log(`✅ ${dossiers?.length || 0} ClientProduitEligible trouvés sur la plateforme`);
+
+    return res.json({
+      success: true,
+      data: {
+        dossiers: dossiers || []
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route dossiers/all:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération de tous les ClientProduitEligible'
+    });
+  }
+}));
+
 export default router;
