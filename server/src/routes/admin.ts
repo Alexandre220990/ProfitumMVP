@@ -3045,9 +3045,10 @@ router.get('/experts/all', asyncHandler(async (req, res) => {
 }));
 
 // GET /api/admin/dossiers/all - Tous les ClientProduitEligible de la plateforme
-router.get('/dossiers/all', asyncHandler(async (req, res) => {
+router.get('/dossiers/all', async (req, res) => {
   try {
     console.log('🔍 Récupération de tous les ClientProduitEligible...');
+    console.log('✅ Admin authentifié:', (req as any).user?.id);
     
     const { data: dossiers, error } = await supabaseClient
       .from('ClientProduitEligible')
@@ -3081,7 +3082,10 @@ router.get('/dossiers/all', asyncHandler(async (req, res) => {
 
     if (error) {
       console.error('❌ Erreur récupération tous les dossiers:', error);
-      throw error;
+      return res.status(500).json({ 
+        success: false,
+        message: 'Erreur lors de la récupération de tous les ClientProduitEligible' 
+      });
     }
 
     console.log(`✅ ${dossiers?.length || 0} ClientProduitEligible trouvés sur la plateforme`);
@@ -3100,7 +3104,7 @@ router.get('/dossiers/all', asyncHandler(async (req, res) => {
       message: 'Erreur lors de la récupération de tous les ClientProduitEligible'
     });
   }
-}));
+});
 
 // GET /api/admin/experts/:id/assignments - Assignations d'un expert
 router.get('/experts/:id/assignments', asyncHandler(async (req, res) => {
