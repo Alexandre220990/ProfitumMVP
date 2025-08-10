@@ -27,10 +27,10 @@ interface Expert {
   name: string;
   email: string;
   company_name?: string;
-  phone_number?: string;
+  phone?: string; // Corrigé : phone_number -> phone
   location?: string;
   specializations?: string[];
-  experience?: number;
+  experience?: string; // Corrigé : number -> string (comme en base)
   rating?: number;
   compensation?: number;
   status: string;
@@ -38,18 +38,22 @@ interface Expert {
   created_at: string;
   approved_at?: string;
   approved_by?: string;
+  approved_by_name?: string; // Ajouté pour la jointure Admin
   description?: string;
   documents?: string[];
-  availability?: boolean;
+  availability?: string; // Corrigé : boolean -> string (comme en base)
 }
 
 interface Assignment {
   id: string;
   expert_id: string;
-  client_id: string;
-  produit_id: string;
-  status: string;
+  clientId: string; // Corrigé : client_id -> clientId
+  produitId: string; // Corrigé : produit_id -> produitId
+  statut: string; // Corrigé : status -> statut
   created_at: string;
+  montantFinal?: number;
+  tauxFinal?: number;
+  progress?: number;
   Client: {
     company_name: string;
     email: string;
@@ -539,7 +543,7 @@ const ExpertDetails = () => {
               <Button 
                 variant="outline" 
                 className="flex flex-col items-center space-y-1 h-auto py-3"
-                onClick={() => window.open(`tel:${expert?.phone_number}`, '_blank')}
+                                        onClick={() => window.open(`tel:${expert?.phone}`, '_blank')}
               >
                 <PhoneIcon className="w-5 h-5" />
                 <span className="text-xs">Appeler</span>
@@ -578,12 +582,12 @@ const ExpertDetails = () => {
                       </div>
                     </div>
                     
-                    {expert.phone_number && (
+                    {expert.phone && (
                       <div className="flex items-center space-x-3">
                         <Phone className="w-4 h-4 text-gray-400" />
                         <div>
                           <p className="text-sm text-gray-500">Téléphone</p>
-                          <p className="font-medium">{expert.phone_number}</p>
+                          <p className="font-medium">{expert.phone}</p>
                         </div>
                       </div>
                     )}

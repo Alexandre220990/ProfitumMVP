@@ -613,7 +613,14 @@ router.get('/experts/:id', asyncHandler(async (req, res) => {
     return res.json({
       success: true,
       data: {
-        expert,
+        expert: {
+          ...expert,
+          // S'assurer que les champs correspondent au frontend
+          phone: expert.phone || null,
+          experience: expert.experience || null,
+          availability: expert.availability || null,
+          approved_by_name: expert.approved_by_name || null
+        },
         stats
       }
     });
