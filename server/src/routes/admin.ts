@@ -579,12 +579,10 @@ router.get('/experts/:id', asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
 
+    // Récupérer l'expert
     const { data: expert, error } = await supabaseClient
       .from('Expert')
-      .select(`
-        *,
-        Admin!Expert_approved_by_fkey(name as approved_by_name)
-      `)
+      .select('*')
       .eq('id', id)
       .single();
 
@@ -595,19 +593,30 @@ router.get('/experts/:id', asyncHandler(async (req, res) => {
       });
     }
 
-    // Récupérer les statistiques de l'expert
-    const { data: audits } = await supabaseClient
-      .from('Audit')
+    // Récupérer le nom de l'admin qui a approuvé l'expert
+    let approved_by_name = null;
+    if (expert.approved_by) {
+      const { data: adminData } = await supabaseClient
+        .from('Admin')
+        .select('name')
+        .eq('id', expert.approved_by)
+        .single();
+      approved_by_name = adminData?.name || null;
+    }
+
+    // Récupérer les statistiques de l'expert (utiliser ClientProduitEligible au lieu d'Audit)
+    const { data: assignments } = await supabaseClient
+      .from('ClientProduitEligible')
       .select('*')
       .eq('expert_id', id);
 
     const stats = {
-      totalAudits: audits && audits.length ? audits.length : 0,
-      completedAudits: audits && audits.length ? audits.filter(a => a.status === 'terminé').length : 0,
-      activeAudits: audits && audits.length ? audits.filter(a => a.status === 'en_cours').length : 0,
-      totalGains: audits && audits.length ? audits.reduce((sum, a) => sum + (a.obtained_gain || 0), 0) : 0,
-      successRate: audits && audits.length > 0 ?
-        (audits.filter(a => a.status === 'terminé').length || 0) / audits.length * 100 : 0
+      totalAudits: assignments && assignments.length ? assignments.length : 0,
+      completedAudits: assignments && assignments.length ? assignments.filter(a => a.statut === 'validated').length : 0,
+      activeAudits: assignments && assignments.length ? assignments.filter(a => a.statut === 'in_progress').length : 0,
+      totalGains: assignments && assignments.length ? assignments.reduce((sum, a) => sum + (a.montantFinal || 0), 0) : 0,
+      successRate: assignments && assignments.length > 0 ?
+        (assignments.filter(a => a.statut === 'validated').length || 0) / assignments.length * 100 : 0
     };
 
     return res.json({
@@ -615,11 +624,7 @@ router.get('/experts/:id', asyncHandler(async (req, res) => {
       data: {
         expert: {
           ...expert,
-          // S'assurer que les champs correspondent au frontend
-          phone: expert.phone || null,
-          experience: expert.experience || null,
-          availability: expert.availability || null,
-          approved_by_name: expert.approved_by_name || null
+          approved_by_name
         },
         stats
       }
