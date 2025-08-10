@@ -587,7 +587,7 @@ const ClientDetails = () => {
 
   // Gestionnaires d'événements optimisés
   const handleBackToList = useCallback(() => {
-    navigate('/admin/gestion-clients');
+    navigate('/admin/dashboard-optimized');
   }, [navigate]);
 
   const handleEditClient = useCallback(() => {

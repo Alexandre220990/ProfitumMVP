@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { get } from "@/lib/api";
 import HeaderAdmin from "@/components/HeaderAdmin";
 import { 
-  RefreshCw, UserPlus, Users, Building, FileText, 
+  RefreshCw, UserPlus, Users, FileText, 
   Eye, ClipboardList, Edit, Check, X
 } from "lucide-react";
 import { motion } from "framer-motion";
@@ -846,10 +846,10 @@ const AdminDashboardOptimized: React.FC = () => {
           ) : (
             <>
               {/* Tuiles KPI toujours visibles en haut */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                {/* Nouvel Utilisateur */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                {/* Clients */}
                 <KPICard
-                  title="Nouvel Utilisateur"
+                  title="Clients"
                   value={kpiData.clientsThisMonth}
                   total={`${kpiData.clientsThisMonth} ce mois`}
                   change={`+${kpiData.clientsThisMonth} ce mois`}
@@ -868,17 +868,6 @@ const AdminDashboardOptimized: React.FC = () => {
                   icon={Users}
                   color="green"
                   onClick={() => setActiveSection('experts')}
-                />
-
-                {/* Clients en attente */}
-                <KPICard
-                  title="Clients en attente"
-                  value={kpiData.pendingDossiers}
-                  total={`${kpiData.totalDossiers} en cours`}
-                  change={`${kpiData.pendingDossiers} en cours`}
-                  icon={Building}
-                  color="orange"
-                  onClick={() => setActiveSection('clients')}
                 />
 
                 {/* Dossiers à traiter */}

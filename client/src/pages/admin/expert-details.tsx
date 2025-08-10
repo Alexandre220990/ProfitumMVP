@@ -164,7 +164,7 @@ const ExpertDetails = () => {
       const response = await fetch(`/api/admin/experts/${id}/status`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           status,
@@ -198,7 +198,7 @@ const ExpertDetails = () => {
       const response = await fetch(`/api/admin/messages/send`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           recipient_id: id,
@@ -232,7 +232,7 @@ const ExpertDetails = () => {
       const response = await fetch(`/api/admin/email/send`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           recipient_email: expert?.email,
@@ -266,7 +266,7 @@ const ExpertDetails = () => {
       const response = await fetch(`/api/admin/meetings/schedule`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           expert_id: id,
