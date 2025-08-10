@@ -36,6 +36,19 @@ interface ClientProduitEligible {
   expert_id?: string;
   created_at: string;
   updated_at: string;
+  Client?: {
+    id: string;
+    company_name: string;
+    email: string;
+    statut: string;
+  };
+  ProduitEligible?: {
+    id: string;
+    nom: string;
+    description: string;
+    montant: number;
+    taux: number;
+  };
 }
 
 type ActiveSection = 'overview' | 'experts' | 'clients' | 'dossiers';
@@ -236,8 +249,8 @@ const AdminDashboardOptimized: React.FC = () => {
           break;
           
         case 'dossiers':
-          console.log('📡 Appel API /admin/dossiers...');
-          const dossiersResponse = await get('/admin/dossiers');
+          console.log('📡 Appel API /admin/dossiers/all...');
+          const dossiersResponse = await get('/admin/dossiers/all');
           console.log('📦 Réponse dossiers:', dossiersResponse);
           if (dossiersResponse.success) {
             setSectionData((prev: SectionData) => ({ ...prev, dossiers: (dossiersResponse.data as any)?.dossiers || [] }));
@@ -643,8 +656,8 @@ const AdminDashboardOptimized: React.FC = () => {
                       </div>
                       <div>
                         <h4 className="font-medium text-gray-900">Dossier #{dossier.id}</h4>
-                        <p className="text-sm text-gray-600">Client: {dossier.clientId}</p>
-                        <p className="text-xs text-gray-500">Produit: {dossier.produitId}</p>
+                        <p className="text-sm text-gray-600">Client: {dossier.Client?.company_name || dossier.clientId}</p>
+                        <p className="text-xs text-gray-500">Produit: {dossier.ProduitEligible?.nom || dossier.produitId}</p>
                         <p className="text-xs text-gray-400">Créé le: {new Date(dossier.created_at).toLocaleDateString('fr-FR')}</p>
                       </div>
                     </div>
@@ -853,7 +866,7 @@ const AdminDashboardOptimized: React.FC = () => {
                   value={kpiData.clientsThisMonth}
                   total={`${kpiData.clientsThisMonth} ce mois`}
                   change={`+${kpiData.clientsThisMonth} ce mois`}
-                  changeType="increase"
+                  changeType="increase" 
                   icon={UserPlus}
                   color="blue"
                   onClick={() => setActiveSection('clients')}
