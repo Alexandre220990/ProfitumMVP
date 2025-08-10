@@ -588,7 +588,7 @@ router.get('/experts/:id', asyncHandler(async (req, res) => {
       .eq('id', id)
       .single();
 
-    if (error) {
+    if (error || !expert) {
       return res.status(404).json({
         success: false,
         message: 'Expert non trouvé'
