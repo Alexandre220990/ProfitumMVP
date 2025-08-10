@@ -88,6 +88,15 @@ const AdminDashboardOptimized: React.FC = () => {
     loadSectionData('overview');
   }, []);
 
+  // Charger les données quand la section change
+  useEffect(() => {
+    console.log('🔄 Section changée:', activeSection);
+    if (activeSection !== 'overview') {
+      console.log('📡 Chargement des données pour:', activeSection);
+      loadSectionData(activeSection);
+    }
+  }, [activeSection]);
+
   // Test d'authentification admin
   useEffect(() => {
     const testAdminAuth = async () => {
@@ -326,6 +335,7 @@ const AdminDashboardOptimized: React.FC = () => {
   
   const ClientsAllSection = () => {
     const clients = sectionData.clients || [];
+    console.log('👥 Clients dans la section:', clients.length, clients);
     
     return (
       <motion.div
@@ -436,6 +446,7 @@ const AdminDashboardOptimized: React.FC = () => {
   const ExpertsAllSection = () => {
     const experts = sectionData.experts || [];
     const [statusFilter, setStatusFilter] = useState<string>('all');
+    console.log('👨‍💼 Experts dans la section:', experts.length, experts);
     
     // Filtrer les experts par statut
     const filteredExperts = experts.filter((expert: any) => {
