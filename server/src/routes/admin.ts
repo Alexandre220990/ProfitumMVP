@@ -1547,7 +1547,10 @@ router.get('/dossiers', async (req, res) => {
 
     if (error) {
       console.error('❌ Erreur récupération dossiers:', error);
-      return res.status(500).json({ error: 'Erreur lors de la récupération des dossiers' });
+      return res.status(500).json({ 
+        success: false,
+        message: 'Erreur lors de la récupération des dossiers' 
+      });
     }
 
     console.log('✅ Dossiers récupérés:', dossiers?.length || 0);
@@ -1609,7 +1612,10 @@ router.get('/dossiers/stats', async (req, res) => {
 
     if (statusError) {
       console.error('❌ Erreur récupération stats statut:', statusError);
-      return res.status(500).json({ error: 'Erreur lors de la récupération des statistiques' });
+      return res.status(500).json({ 
+        success: false,
+        message: 'Erreur lors de la récupération des statistiques' 
+      });
     }
 
     const statusCount: StatusCount = {};
@@ -1628,7 +1634,10 @@ router.get('/dossiers/stats', async (req, res) => {
 
     if (produitError) {
       console.error('❌ Erreur récupération stats produit:', produitError);
-      return res.status(500).json({ error: 'Erreur lors de la récupération des statistiques produits' });
+      return res.status(500).json({ 
+        success: false,
+        message: 'Erreur lors de la récupération des statistiques produits' 
+      });
     }
 
     const produitCount: ProduitCount = {};
@@ -1647,7 +1656,10 @@ router.get('/dossiers/stats', async (req, res) => {
 
     if (expertsError) {
       console.error('❌ Erreur récupération stats experts:', expertsError);
-      return res.status(500).json({ error: 'Erreur lors de la récupération des statistiques experts' });
+      return res.status(500).json({ 
+        success: false,
+        message: 'Erreur lors de la récupération des statistiques experts' 
+      });
     }
 
     // Statistiques financières
@@ -1657,7 +1669,10 @@ router.get('/dossiers/stats', async (req, res) => {
 
     if (montantsError) {
       console.error('❌ Erreur récupération montants:', montantsError);
-      return res.status(500).json({ error: 'Erreur lors de la récupération des montants' });
+      return res.status(500).json({ 
+        success: false,
+        message: 'Erreur lors de la récupération des montants' 
+      });
     }
 
     const totalMontant = montants?.reduce((sum, item) => sum + (item.montantFinal || 0), 0) || 0;
