@@ -1,29 +1,23 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { 
-  FileSignature, 
   CheckCircle, 
-  Clock, 
   Users, 
   FileText, 
   Shield, 
   Play, 
   AlertCircle, 
   DollarSign,
-  Building2,
-  Truck,
-  ArrowRight,
-  Check,
-  X
+  ArrowRight
 } from 'lucide-react';
-import DocumentUpload from './DocumentUpload';
+
+import TICPEUploadStep from './TICPEUploadStep';
 import ExpertSelectionModal from './ExpertSelectionModal';
 import { useDossierSteps } from '@/hooks/use-dossier-steps';
-import { config } from '@/config/env';
 
 interface TICPEWorkflowProps {
   clientProduitId: string;
@@ -58,7 +52,7 @@ export default function TICPEWorkflow({
   clientProduitId,
   companyName,
   estimatedAmount,
-  onWorkflowComplete,
+
   className = ""
 }: TICPEWorkflowProps) {
   const { toast } = useToast();
@@ -68,17 +62,14 @@ export default function TICPEWorkflow({
   const [documents, setDocuments] = useState<DocumentFile[]>([]);
   const [selectedExpert, setSelectedExpert] = useState<Expert | null>(null);
   const [showExpertModal, setShowExpertModal] = useState(false);
-  const [isValidatingEligibility, setIsValidatingEligibility] = useState(false);
+
   const [eligibilityValidated, setEligibilityValidated] = useState(false);
 
   // Hook pour les étapes du dossier
   const {
     steps,
     loading: stepsLoading,
-    error: stepsError,
     generateSteps,
-    updateStep,
-    refreshSteps,
     overallProgress
   } = useDossierSteps(clientProduitId);
 
@@ -223,57 +214,7 @@ export default function TICPEWorkflow({
     });
   }, [toast]);
 
-  const handleValidateEligibility = async () => {
-    if (!hasRequiredDocuments()) {
-      toast({
-        title: "Documents manquants",
-        description: "Veuillez uploader tous les documents requis",
-        variant: "destructive"
-      });
-      return;
-    }
 
-    try {
-      setIsValidatingEligibility(true);
-      
-      const response = await fetch(`${config.API_URL}/api/dossier-steps/eligibility/validate`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          dossier_id: clientProduitId,
-          is_eligible: true,
-          admin_notes: 'Éligibilité confirmée après vérification des documents'
-        })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          setEligibilityValidated(true);
-          toast({
-            title: "Éligibilité confirmée",
-            description: "Votre éligibilité TICPE a été validée",
-          });
-        } else {
-          throw new Error(data.message);
-        }
-      } else {
-        throw new Error('Erreur lors de la validation');
-      }
-    } catch (error) {
-      console.error('❌ Erreur validation éligibilité:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de valider l'éligibilité",
-        variant: "destructive"
-      });
-    } finally {
-      setIsValidatingEligibility(false);
-    }
-  };
 
   const getStepIcon = (step: any) => {
     const Icon = step.icon;
@@ -310,44 +251,14 @@ export default function TICPEWorkflow({
     switch (currentWorkflowStep.component) {
       case 'documents':
         return (
-          <div className="space-y-6">
-            <div className="text-center mb-6">
-              <h3 className="text-xl font-semibold text-gray-800 mb-2">
-                Confirmer votre éligibilité TICPE
-              </h3>
-              <p className="text-gray-600">
-                Uploadez votre KBIS et vos certificats d'immatriculation pour valider votre éligibilité
-              </p>
-            </div>
-            
-            <DocumentUpload
-              dossierId={clientProduitId}
-              onDocumentsComplete={handleDocumentsComplete}
-            />
-            
-            {hasRequiredDocuments() && !eligibilityValidated && (
-              <div className="text-center">
-                <Button
-                  onClick={handleValidateEligibility}
-                  disabled={isValidatingEligibility}
-                  size="lg"
-                  className="bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700"
-                >
-                  {isValidatingEligibility ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Validation en cours...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle className="w-4 h-4 mr-2" />
-                      Valider l'éligibilité
-                    </>
-                  )}
-                </Button>
-              </div>
-            )}
-          </div>
+          <TICPEUploadStep
+            clientProduitId={clientProduitId}
+            onStepComplete={() => {
+              setEligibilityValidated(true);
+              setCurrentStep(2);
+            }}
+            onDocumentsUploaded={handleDocumentsComplete}
+          />
         );
 
       case 'expert':
@@ -454,7 +365,7 @@ export default function TICPEWorkflow({
 
       {/* Étapes du workflow */}
       <div className="grid gap-4">
-        {workflowSteps.map((step, index) => (
+        {workflowSteps.map((step) => (
           <Card 
             key={step.id}
             className={`transition-all duration-200 ${getStepStatusColor(step.status)} ${

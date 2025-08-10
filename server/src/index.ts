@@ -68,6 +68,7 @@ import expertNotificationsRoutes from './routes/expert/notifications';
 import sessionMigrationRoutes from './routes/session-migration';
 import clientDocumentsRoutes from './routes/client-documents';
 import enhancedClientDocumentsRoutes from './routes/enhanced-client-documents';
+import adminNotificationsRoutes from './routes/admin-notifications';
 import analyticsRoutes from './routes/analytics';
 import googleCalendarRoutes from './routes/google-calendar';
 import debugRoutes from './routes/debug';
@@ -231,6 +232,9 @@ app.use('/api/expert', enhancedAuthMiddleware, requireUserType('expert'), expert
 // Routes admin - PROTÉGÉES avec permissions spécifiques
 // Routes admin avec authentification
 app.use('/api/admin', enhancedAuthMiddleware, requireUserType('admin'), adminRoutes);
+
+// Routes de notifications admin - PROTÉGÉES
+app.use('/api/notifications', enhancedAuthMiddleware, adminNotificationsRoutes);
 
 // Route temporaire pour créer un admin (SANS AUTHENTIFICATION)
 app.post('/api/admin-setup', async (req, res) => {
