@@ -14,14 +14,8 @@ import {
   Clock, 
   AlertCircle,
   Info,
-  TrendingUp,
-  Shield,
   Award,
-  Euro,
-  Calculator,
-  Handshake,
   Target,
-  BarChart3,
   Home,
   MapPin
 } from "lucide-react";
@@ -77,7 +71,7 @@ const FoncierProductPage = () => {
   const loadClientProduit = async () => {
     try {
       setLoading(true);
-      const response = await get(`/api/client-produits-eligibles/${id}`);
+      const response = await get(`/api/client/produits-eligibles/${id}`);
       
       if (response.success) {
         setClientProduit(response.data as ClientProduitEligible);

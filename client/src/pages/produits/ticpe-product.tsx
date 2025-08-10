@@ -72,7 +72,7 @@ const TICPEProductPage = () => {
   const loadClientProduit = async () => {
     try {
       setLoading(true);
-      const response = await get(`/api/client-produits-eligibles/${id}`);
+      const response = await get(`/api/client/produits-eligibles/${id}`);
       
       if (response.success) {
         setClientProduit(response.data as ClientProduitEligible);

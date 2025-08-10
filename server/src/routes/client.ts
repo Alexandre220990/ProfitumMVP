@@ -131,6 +131,13 @@ router.get('/produits-eligibles/:id', enhancedAuthMiddleware, async (req, res) =
           taux_max,
           duree_min,
           duree_max
+        ),
+        Expert (
+          id,
+          name,
+          email,
+          company_name,
+          specializations
         )
       `)
       .eq('id', id)
@@ -365,93 +372,7 @@ router.put('/produits-eligibles/:id/workflow', async (req, res) => {
   }
 });
 
-// GET /api/client/produits-eligibles/:id - Récupérer un produit éligible spécifique
-router.get('/produits-eligibles/:id', enhancedAuthMiddleware, async (req, res) => {
-  try {
-    const user = (req as AuthenticatedRequest).user;
-    
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Utilisateur non authentifié'
-      });
-    }
-    
-    // Vérifier que l'utilisateur est un client
-    if (user.type !== 'client') {
-      return res.status(403).json({
-        success: false,
-        message: 'Accès réservé aux clients'
-      });
-    }
 
-    const { id } = req.params;
-
-    console.log('🔍 Récupération du produit éligible:', {
-      produitId: id,
-      userId: user.id,
-      databaseId: user.database_id
-    });
-
-    // Récupérer le produit éligible spécifique
-    const { data: produit, error } = await supabase
-      .from('ClientProduitEligible')
-      .select(`
-        *,
-        ProduitEligible (
-          id,
-          nom,
-          description,
-          category,
-          montant_min,
-          montant_max,
-          taux_min,
-          taux_max,
-          duree_min,
-          duree_max
-        ),
-        Expert (
-          id,
-          name,
-          email,
-          company_name,
-          specializations
-        )
-      `)
-      .eq('id', id)
-      .eq('clientId', user.database_id)
-      .single();
-
-    if (error) {
-      console.error('❌ Erreur récupération produit éligible:', error);
-      return res.status(500).json({
-        success: false,
-        message: 'Erreur lors de la récupération du produit éligible'
-      });
-    }
-
-    if (!produit) {
-      return res.status(404).json({
-        success: false,
-        message: 'Produit éligible non trouvé'
-      });
-    }
-
-    console.log('✅ Produit éligible récupéré:', produit.id);
-
-    return res.json({
-      success: true,
-      data: produit
-    });
-
-  } catch (error) {
-    console.error('❌ Erreur route produit éligible spécifique:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Erreur serveur'
-    });
-  }
-});
 
 // Route pour obtenir les assignations d'un client
 router.get('/:clientId/assignments', async (req: Request, res: Response) => {

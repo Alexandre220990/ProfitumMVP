@@ -25,6 +25,11 @@ interface ExpertSelectionModalProps {
   onClose: () => void;
   dossierId: string;
   onExpertSelected?: (expert: Expert) => void;
+  produitEligible?: {
+    id: string;
+    nom: string;
+    description?: string;
+  };
 }
 
 interface Expert {
@@ -57,7 +62,8 @@ export default function ExpertSelectionModal({
   isOpen,
   onClose,
   dossierId,
-  onExpertSelected
+  onExpertSelected,
+  produitEligible
 }: ExpertSelectionModalProps) {
   const { toast } = useToast();
   const [experts, setExperts] = useState<Expert[]>([]);
@@ -83,6 +89,55 @@ export default function ExpertSelectionModal({
   // Filtrer les experts
   useEffect(() => {
     let filtered = experts;
+
+    // Filtre automatique par produit éligible
+    if (produitEligible?.nom) {
+      const produitNom = produitEligible.nom.toLowerCase();
+      filtered = filtered.filter(expert =>
+        expert.specialites.some(spec => {
+          const specLower = spec.toLowerCase();
+          return (
+            // Correspondance directe avec le nom du produit
+            specLower.includes(produitNom) ||
+            // Correspondances spécifiques par produit
+            (produitNom.includes('ticpe') && (
+              specLower.includes('transport') ||
+              specLower.includes('carburant') ||
+              specLower.includes('véhicule') ||
+              specLower.includes('ticpe')
+            )) ||
+            (produitNom.includes('urssaf') && (
+              specLower.includes('social') ||
+              specLower.includes('urssaf') ||
+              specLower.includes('cotisation') ||
+              specLower.includes('salaire')
+            )) ||
+            (produitNom.includes('foncier') && (
+              specLower.includes('fiscal') ||
+              specLower.includes('foncier') ||
+              specLower.includes('immobilier') ||
+              specLower.includes('taxe')
+            )) ||
+            (produitNom.includes('dfs') && (
+              specLower.includes('social') ||
+              specLower.includes('dfs') ||
+              specLower.includes('déduction')
+            )) ||
+            (produitNom.includes('cir') && (
+              specLower.includes('fiscal') ||
+              specLower.includes('cir') ||
+              specLower.includes('recherche') ||
+              specLower.includes('innovation')
+            )) ||
+            (produitNom.includes('audit') && (
+              specLower.includes('energetique') ||
+              specLower.includes('audit') ||
+              specLower.includes('énergie')
+            ))
+          );
+        })
+      );
+    }
 
     // Filtre par recherche
     if (filters.search) {
@@ -118,7 +173,7 @@ export default function ExpertSelectionModal({
     }
 
     setFilteredExperts(filtered);
-  }, [experts, filters]);
+  }, [experts, filters, produitEligible]);
 
   const loadExperts = async () => {
     try {
@@ -268,15 +323,22 @@ export default function ExpertSelectionModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Users className="w-5 h-5" />
-            Sélectionner un expert pour votre dossier TICPE
+            Sélectionner un expert pour votre dossier {produitEligible?.nom || 'TICPE'}
           </DialogTitle>
           <DialogDescription>
-            Choisissez l'expert qui vous accompagnera dans votre démarche de remboursement TICPE.
+            Choisissez l'expert qui vous accompagnera dans votre démarche de {produitEligible?.nom || 'TICPE'}.
           </DialogDescription>
         </DialogHeader>
 
         {/* Filtres */}
         <div className="space-y-4">
+          {produitEligible?.nom && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-sm text-blue-800">
+                <strong>Filtrage automatique :</strong> Seuls les experts spécialisés en <strong>{produitEligible.nom}</strong> sont affichés.
+              </p>
+            </div>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />

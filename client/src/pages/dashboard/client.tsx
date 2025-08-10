@@ -186,7 +186,7 @@ const calculateProgress = (produit: any): number => {
 interface ProductCardProps {
   produit: any;
   onClick: () => void;
-  onExpertSelection?: (produitId: string) => void;
+  onExpertSelection?: (produitId: string, produit: any) => void;
 }
 
 const ProductCard = ({ produit, onClick, onExpertSelection }: ProductCardProps) => {
@@ -289,7 +289,7 @@ const ProductCard = ({ produit, onClick, onExpertSelection }: ProductCardProps) 
                 onClick={(e) => {
                   e.stopPropagation();
                   if (onExpertSelection) {
-                    onExpertSelection(produit.id);
+                    onExpertSelection(produit.id, produit);
                   }
                 }}
               >
@@ -321,6 +321,7 @@ export default function DashboardClient() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [selectedProduitId, setSelectedProduitId] = useState<string | null>(null);
+  const [selectedProduit, setSelectedProduit] = useState<any>(null);
   const [isExpertModalOpen, setIsExpertModalOpen] = useState(false);
   
   // Hook pour les produits éligibles du client
@@ -418,8 +419,9 @@ export default function DashboardClient() {
   }, [navigate]);
 
   // Fonction pour ouvrir le modal de sélection d'expert
-  const handleExpertSelection = useCallback((produitId: string) => {
+  const handleExpertSelection = useCallback((produitId: string, produit: any) => {
     setSelectedProduitId(produitId);
+    setSelectedProduit(produit);
     setIsExpertModalOpen(true);
   }, []);
 
@@ -427,6 +429,7 @@ export default function DashboardClient() {
   const handleCloseExpertModal = useCallback(() => {
     setIsExpertModalOpen(false);
     setSelectedProduitId(null);
+    setSelectedProduit(null);
   }, []);
 
   // Fonction appelée quand un expert est sélectionné
@@ -691,6 +694,7 @@ export default function DashboardClient() {
           onClose={handleCloseExpertModal}
           dossierId={selectedProduitId || ''}
           onExpertSelected={handleExpertSelected}
+          produitEligible={selectedProduit?.ProduitEligible}
         />
       </div>
     </div>
