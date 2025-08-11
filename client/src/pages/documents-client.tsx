@@ -233,14 +233,21 @@ const DocumentsClientPage = () => {
 
   // Gestion de l'upload
   const handleUpload = useCallback(async (file: File, description?: string) => {
+    console.log('🔍 [DEBUG] handleUpload appelé:', { file: file.name, description, section: selectedSection });
+    
     const result = await uploadToSection.mutateAsync({
       sectionName: selectedSection,
       file,
       description
     });
 
+    console.log('🔍 [DEBUG] Résultat upload:', result);
+
     if (result.success) {
+      console.log('✅ [DEBUG] Upload réussi, rafraîchissement des fichiers');
       refetchFiles();
+    } else {
+      console.log('❌ [DEBUG] Upload échoué:', result.error);
     }
   }, [selectedSection, uploadToSection, refetchFiles]);
 

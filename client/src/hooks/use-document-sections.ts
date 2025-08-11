@@ -164,11 +164,14 @@ export const useDocumentSections = () => {
         });
 
         const result = response.data;
+        console.log('🔍 [DEBUG] Réponse upload:', result);
 
         if (!result.success) {
+          console.error('❌ [DEBUG] Upload échoué:', result.message);
           return { success: false, error: result.message };
         }
 
+        console.log('✅ [DEBUG] Upload réussi, file_id:', result.data?.file_id);
         return {
           success: true,
           fileId: result.data?.file_id
@@ -183,17 +186,22 @@ export const useDocumentSections = () => {
       }
     },
     onSuccess: (data, variables) => {
+      console.log('🔍 [DEBUG] onSuccess appelé:', { data, variables });
+      
       if (data.success) {
+        console.log('✅ [DEBUG] Affichage toast de succès');
         toast({
           title: 'Succès',
           description: 'Fichier uploadé avec succès',
         });
         
-        // Invalider le cache pour cette section
+        console.log('🔄 [DEBUG] Invalidation du cache pour section:', variables.sectionName);
+        // Invalider le cache pour cette section (avec et sans filtres)
         queryClient.invalidateQueries({
           queryKey: ['section-files', variables.sectionName]
         });
       } else {
+        console.log('❌ [DEBUG] Affichage toast d\'erreur:', data.error);
         toast({
           title: 'Erreur',
           description: data.error || 'Erreur lors de l\'upload',
