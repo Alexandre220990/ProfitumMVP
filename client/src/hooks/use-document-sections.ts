@@ -73,7 +73,7 @@ export const useDocumentSections = () => {
     queryFn: async (): Promise<DocumentSection[]> => {
       if (!user) throw new Error('Utilisateur non authentifié');
 
-      const response = await api.get('/enhanced-client-documents/sections');
+      const response = await api.get('/api/enhanced-client-documents/sections');
       const data: SectionsResponse = response.data;
 
       if (!data.success) {
@@ -106,7 +106,7 @@ export const useDocumentSections = () => {
       if (filters?.limit) params.append('limit', filters.limit.toString());
       if (filters?.offset) params.append('offset', filters.offset.toString());
 
-      const response = await api.get(`/enhanced-client-documents/sections/${sectionName}/files?${params}`);
+      const response = await api.get(`/api/enhanced-client-documents/sections/${sectionName}/files?${params}`);
       return response.data;
     } catch (error) {
       console.error('Erreur récupération fichiers section:', error);
@@ -157,7 +157,7 @@ export const useDocumentSections = () => {
           formData.append('expiresAt', expiresAt.toISOString());
         }
 
-        const response = await api.post(`/enhanced-client-documents/sections/${sectionName}/upload`, formData, {
+        const response = await api.post(`/api/enhanced-client-documents/sections/${sectionName}/upload`, formData, {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
