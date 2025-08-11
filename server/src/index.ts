@@ -509,6 +509,7 @@ app.use('/api/diagnostic', diagnosticRoutes);
 
 // Route de gestion des étapes de dossier
 app.use('/api/dossier-steps', dossierStepsRoutes);
+console.log('🔧 Routes dossier-steps montées sur /api/dossier-steps');
 
 // Routes documents - PROTÉGÉES avec authentification
 app.use('/api/documents', documentsRoutes);

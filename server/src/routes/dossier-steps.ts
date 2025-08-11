@@ -5,6 +5,8 @@ import { enhancedAuthMiddleware } from '../middleware/auth-enhanced';
 
 const router = Router();
 
+console.log('🔧 Module dossier-steps chargé');
+
 // POST /api/dossier-steps/generate - Générer les étapes pour un dossier spécifique
 router.post('/generate', enhancedAuthMiddleware, async (req: Request, res: Response) => {
   try {
@@ -213,7 +215,16 @@ router.post('/eligibility/validate', enhancedAuthMiddleware, async (req: Request
   }
 });
 
+// OPTIONS /api/dossier-steps/expert/select - Preflight request
+router.options('/expert/select', (req: Request, res: Response) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.status(200).send();
+});
+
 // POST /api/dossier/expert/select - Sélection d'un expert par le client
+console.log('🔧 Route /expert/select définie');
 router.post('/expert/select', enhancedAuthMiddleware, async (req: Request, res: Response) => {
   try {
     console.log('🔍 [DEBUG] Endpoint /expert/select appelé');
