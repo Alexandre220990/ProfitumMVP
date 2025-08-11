@@ -532,28 +532,40 @@ router.get('/stats/:clientId', enhancedAuthMiddleware, async (req, res) => {
  * Récupérer toutes les sections disponibles
  */
 router.get('/sections', enhancedAuthMiddleware, async (req: any, res) => {
+  console.log('🔍 [DEBUG] Endpoint /sections appelé');
+  console.log('🔍 [DEBUG] User:', req.user);
+  
   try {
     const user = req.user as AuthUser;
+    
+    console.log('🔍 [DEBUG] Appel getDocumentSections avec:', {
+      user_id: user.id,
+      user_type: user.user_metadata?.type || 'client'
+    });
     
     const sectionsResponse = await documentStorageService.getDocumentSections({
       user_id: user.id,
       user_type: user.user_metadata?.type || 'client'
     });
 
+    console.log('🔍 [DEBUG] Réponse getDocumentSections:', sectionsResponse);
+
     if (!sectionsResponse.success) {
+      console.error('❌ [DEBUG] Erreur getDocumentSections:', sectionsResponse.error);
       return res.status(500).json({
         success: false,
         message: sectionsResponse.error
       });
     }
 
+    console.log('✅ [DEBUG] Sections récupérées avec succès:', sectionsResponse.sections?.length);
     return res.json({
       success: true,
       sections: sectionsResponse.sections
     });
 
   } catch (error) {
-    console.error('Erreur récupération sections:', error);
+    console.error('❌ [DEBUG] Erreur récupération sections:', error);
     return res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération des sections'
@@ -566,10 +578,21 @@ router.get('/sections', enhancedAuthMiddleware, async (req: any, res) => {
  * Récupérer les fichiers d'une section spécifique
  */
 router.get('/sections/:sectionName/files', enhancedAuthMiddleware, async (req: any, res) => {
+  console.log('🔍 [DEBUG] Endpoint /sections/:sectionName/files appelé');
+  console.log('🔍 [DEBUG] Section:', req.params.sectionName);
+  console.log('🔍 [DEBUG] Query:', req.query);
+  
   try {
     const user = req.user as AuthUser;
     const { sectionName } = req.params;
     const { status, limit, offset } = req.query;
+
+    console.log('🔍 [DEBUG] Appel getSectionFiles avec:', {
+      section_name: sectionName,
+      user_id: user.id,
+      user_type: user.user_metadata?.type || 'client',
+      filters: { status, limit, offset }
+    });
 
     const filesResponse = await documentStorageService.getSectionFiles({
       section_name: sectionName,
@@ -582,13 +605,17 @@ router.get('/sections/:sectionName/files', enhancedAuthMiddleware, async (req: a
       }
     });
 
+    console.log('🔍 [DEBUG] Réponse getSectionFiles:', filesResponse);
+
     if (!filesResponse.success) {
+      console.error('❌ [DEBUG] Erreur getSectionFiles:', filesResponse.error);
       return res.status(500).json({
         success: false,
         message: filesResponse.error
       });
     }
 
+    console.log('✅ [DEBUG] Fichiers récupérés avec succès:', filesResponse.files?.length);
     return res.json({
       success: true,
       files: filesResponse.files,
@@ -596,7 +623,7 @@ router.get('/sections/:sectionName/files', enhancedAuthMiddleware, async (req: a
     });
 
   } catch (error) {
-    console.error('Erreur récupération fichiers section:', error);
+    console.error('❌ [DEBUG] Erreur récupération fichiers section:', error);
     return res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération des fichiers de la section'
@@ -609,12 +636,18 @@ router.get('/sections/:sectionName/files', enhancedAuthMiddleware, async (req: a
  * Upload un fichier dans une section spécifique
  */
 router.post('/sections/:sectionName/upload', enhancedAuthMiddleware, upload.single('file'), async (req: any, res) => {
+  console.log('🔍 [DEBUG] Endpoint /sections/:sectionName/upload appelé');
+  console.log('🔍 [DEBUG] Section:', req.params.sectionName);
+  console.log('🔍 [DEBUG] File:', req.file);
+  console.log('🔍 [DEBUG] Body:', req.body);
+  
   try {
     const user = req.user as AuthUser;
     const { sectionName } = req.params;
     const file = req.file;
     
     if (!file) {
+      console.error('❌ [DEBUG] Aucun fichier fourni');
       return res.status(400).json({
         success: false,
         message: 'Aucun fichier fourni'
@@ -648,6 +681,13 @@ router.post('/sections/:sectionName/upload', enhancedAuthMiddleware, upload.sing
       userType = 'admin';
     }
 
+    console.log('🔍 [DEBUG] Appel uploadFileToSection avec:', {
+      section_name: sectionName,
+      file_size: file.size,
+      user_type: userType,
+      target_id: targetId
+    });
+
     const uploadResponse = await documentStorageService.uploadFileToSection({
       file: file.buffer,
       section_name: sectionName,
@@ -663,27 +703,31 @@ router.post('/sections/:sectionName/upload', enhancedAuthMiddleware, upload.sing
       user_type: userType as 'client' | 'expert' | 'admin'
     });
 
+    console.log('🔍 [DEBUG] Réponse uploadFileToSection:', uploadResponse);
+
     if (!uploadResponse.success) {
+      console.error('❌ [DEBUG] Erreur uploadFileToSection:', uploadResponse.error);
       return res.status(500).json({
         success: false,
         message: uploadResponse.error
       });
     }
 
+    console.log('✅ [DEBUG] Upload réussi, file_id:', uploadResponse.file_id);
     return res.json({
       success: true,
-      message: 'Fichier uploadé avec succès dans la section',
+      message: 'Fichier uploadé avec succès',
       data: {
         file_id: uploadResponse.file_id,
-        file_url: uploadResponse.file_path
+        file_path: uploadResponse.file_path
       }
     });
 
   } catch (error) {
-    console.error('Erreur upload section:', error);
+    console.error('❌ [DEBUG] Erreur upload section:', error);
     return res.status(500).json({
       success: false,
-      message: 'Erreur lors de l\'upload vers la section'
+      message: 'Erreur lors de l\'upload du fichier'
     });
   }
 });

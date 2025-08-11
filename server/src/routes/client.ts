@@ -175,6 +175,92 @@ router.get('/produits-eligibles/:id', enhancedAuthMiddleware, async (req, res) =
   }
 });
 
+// PUT /api/client/produits-eligibles/:id - Mettre à jour un produit éligible
+router.put('/produits-eligibles/:id', enhancedAuthMiddleware, async (req, res) => {
+  try {
+    const user = (req as AuthenticatedRequest).user;
+    
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur non authentifié'
+      });
+    }
+    
+    const { id } = req.params;
+    const { statut, notes, current_step, progress } = req.body;
+
+    // Vérifier que l'utilisateur est un client
+    if (user.type !== 'client') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux clients'
+      });
+    }
+
+    // Vérifier que le produit éligible appartient au client
+    const { data: produitData, error: produitError } = await supabase
+      .from('ClientProduitEligible')
+      .select('*')
+      .eq('id', id)
+      .eq('clientId', user.database_id)
+      .single();
+
+    if (produitError || !produitData) {
+      return res.status(404).json({
+        success: false,
+        message: 'Produit éligible non trouvé'
+      });
+    }
+
+    // Préparer les données de mise à jour
+    const updateData: any = {
+      updated_at: new Date().toISOString()
+    };
+
+    if (statut !== undefined) {
+      updateData.statut = statut;
+    }
+
+    if (notes !== undefined) {
+      updateData.notes = notes;
+    }
+
+    if (current_step !== undefined) {
+      updateData.current_step = current_step;
+    }
+
+    if (progress !== undefined) {
+      updateData.progress = progress;
+    }
+
+    // Mettre à jour le produit éligible
+    const { data: updatedProduit, error: updateError } = await supabase
+      .from('ClientProduitEligible')
+      .update(updateData)
+      .eq('id', id)
+      .select('*')
+      .single();
+
+    if (updateError) {
+      throw updateError;
+    }
+
+    return res.json({
+      success: true,
+      message: 'Produit éligible mis à jour avec succès',
+      data: updatedProduit
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur mise à jour produit éligible:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la mise à jour'
+    });
+  }
+});
+
 // PUT /api/client/produits-eligibles/:id/assign-expert - Attribuer un expert à un produit éligible
 router.put('/produits-eligibles/:id/assign-expert', enhancedAuthMiddleware, async (req, res) => {
   try {

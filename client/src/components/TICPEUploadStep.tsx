@@ -10,7 +10,6 @@ import {
   CheckCircle, 
   X, 
   Eye, 
-  Download,
   AlertCircle,
   Shield,
   Car,
@@ -146,8 +145,10 @@ export default function TICPEUploadStep({
       // Upload vers l'API
       const response = await fetch(`${config.API_URL}/api/documents/upload`, {
         method: 'POST',
-        body: formData,
-        credentials: 'include'
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: formData
       });
 
       const result = await response.json();
@@ -244,6 +245,25 @@ export default function TICPEUploadStep({
 
       // Notifier le parent des documents uploadés
       onDocumentsUploaded(uploadedDocuments);
+
+      // Mettre à jour le statut du dossier vers eligible_confirmed
+      const updateResponse = await fetch(`${config.API_URL}/api/client/produits-eligibles/${clientProduitId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          statut: 'eligible_confirmed',
+          notes: 'Documents d\'éligibilité validés par le client',
+          current_step: 2,
+          progress: 25
+        })
+      });
+
+      if (!updateResponse.ok) {
+        console.error('Erreur mise à jour statut dossier:', updateResponse.status);
+      }
 
       // Envoyer la notification à l'admin
       const response = await fetch(`${config.API_URL}/api/notifications/admin/document-validation`, {
@@ -383,7 +403,7 @@ export default function TICPEUploadStep({
                         {uploadedDoc?.original_filename}
                       </span>
                       <Badge variant="secondary" className="text-xs">
-                        {(uploadedDoc?.file_size / 1024 / 1024).toFixed(2)} MB
+                        {uploadedDoc?.file_size ? (uploadedDoc.file_size / 1024 / 1024).toFixed(2) : '0'} MB
                       </Badge>
                     </div>
                     <div className="flex items-center gap-2">

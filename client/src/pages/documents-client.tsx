@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { debugAuth, forceRefreshSession } from '@/utils/debug-auth';
 
 // Composant pour afficher une icône de fichier selon le type
 const FileIcon = ({ mimeType, extension }: { mimeType: string; extension: string }) => {
@@ -270,6 +271,15 @@ const DocumentsClientPage = () => {
     });
   }, [toast]);
 
+  // Fonctions de débogage
+  const handleDebugAuth = useCallback(() => {
+    debugAuth();
+  }, []);
+
+  const handleForceRefresh = useCallback(async () => {
+    await forceRefreshSession();
+  }, []);
+
   // Filtrage des fichiers selon la recherche
   const filteredFiles = sectionFiles?.files?.filter(file =>
     file.original_filename.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -334,10 +344,18 @@ const DocumentsClientPage = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                <Button onClick={() => setUploadDialogOpen(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Ajouter un fichier
-                </Button>
+                <div className="flex items-center space-x-2">
+                  <Button variant="outline" onClick={handleDebugAuth} size="sm">
+                    🔍 Debug Auth
+                  </Button>
+                  <Button variant="outline" onClick={handleForceRefresh} size="sm">
+                    🔄 Refresh
+                  </Button>
+                  <Button onClick={() => setUploadDialogOpen(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Ajouter un fichier
+                  </Button>
+                </div>
               </div>
 
               {/* Liste des fichiers */}
