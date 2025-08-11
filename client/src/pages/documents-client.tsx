@@ -34,20 +34,20 @@ import { fr } from 'date-fns/locale';
 import { debugAuth, forceRefreshSession } from '@/utils/debug-auth';
 
 // Composant pour afficher une icône de fichier selon le type
-const FileIcon = ({ mimeType, extension }: { mimeType: string; extension: string }) => {
-  if (mimeType.includes('pdf')) return <FilePdf className="h-5 w-5 text-red-500" />;
-  if (mimeType.includes('image')) return <Image className="h-5 w-5 text-green-500" />;
-  if (mimeType.includes('spreadsheet') || extension === 'xls' || extension === 'xlsx') {
+const FileIcon = ({ mimeType, extension }: { mimeType?: string; extension?: string }) => {
+  if (mimeType?.includes('pdf')) return <FilePdf className="h-5 w-5 text-red-500" />;
+  if (mimeType?.includes('image')) return <Image className="h-5 w-5 text-green-500" />;
+  if (mimeType?.includes('spreadsheet') || extension === 'xls' || extension === 'xlsx') {
     return <Table className="h-5 w-5 text-green-600" />;
   }
-  if (mimeType.includes('video')) return <Video className="h-5 w-5 text-purple-500" />;
-  if (mimeType.includes('audio')) return <Music className="h-5 w-5 text-blue-500" />;
-  if (mimeType.includes('zip') || mimeType.includes('rar')) return <Archive className="h-5 w-5 text-orange-500" />;
+  if (mimeType?.includes('video')) return <Video className="h-5 w-5 text-purple-500" />;
+  if (mimeType?.includes('audio')) return <Music className="h-5 w-5 text-blue-500" />;
+  if (mimeType?.includes('zip') || mimeType?.includes('rar')) return <Archive className="h-5 w-5 text-orange-500" />;
   return <FileText className="h-5 w-5 text-gray-500" />;
 };
 
 // Composant pour afficher le statut d'un fichier
-const FileStatus = ({ status }: { status: string }) => {
+const FileStatus = ({ status }: { status?: string }) => {
   const getStatusConfig = () => {
     switch (status) {
       case 'validated':
@@ -96,9 +96,9 @@ const FileCard = ({ file, onDownload, onView, onDelete }: {
           <div className="flex items-start space-x-3 flex-1">
             <FileIcon mimeType={file.mime_type} extension={file.file_extension} />
             <div className="flex-1 min-w-0">
-              <h4 className="font-medium text-sm truncate">{file.original_filename}</h4>
+              <h4 className="font-medium text-sm truncate">{file.original_filename || 'Fichier sans nom'}</h4>
               <p className="text-xs text-gray-500 mt-1">
-                {formatFileSize(file.file_size)} • {file.file_extension.toUpperCase()}
+                {formatFileSize(file.file_size || 0)} • {file.file_extension?.toUpperCase() || 'N/A'}
               </p>
               {file.description && (
                 <p className="text-xs text-gray-600 mt-1 line-clamp-2">{file.description}</p>
@@ -106,7 +106,7 @@ const FileCard = ({ file, onDownload, onView, onDelete }: {
               <div className="flex items-center space-x-2 mt-2">
                 <FileStatus status={file.status} />
                 <span className="text-xs text-gray-400">
-                  {format(new Date(file.created_at), 'dd/MM/yyyy', { locale: fr })}
+                  {file.created_at ? format(new Date(file.created_at), 'dd/MM/yyyy', { locale: fr }) : 'Date inconnue'}
                 </span>
               </div>
             </div>
@@ -282,7 +282,7 @@ const DocumentsClientPage = () => {
 
   // Filtrage des fichiers selon la recherche
   const filteredFiles = sectionFiles?.files?.filter(file =>
-    file.original_filename.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (file.original_filename && file.original_filename.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (file.description && file.description.toLowerCase().includes(searchTerm.toLowerCase()))
   ) || [];
 
