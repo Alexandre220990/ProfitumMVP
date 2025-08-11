@@ -688,8 +688,16 @@ router.post('/sections/:sectionName/upload', enhancedAuthMiddleware, upload.sing
       target_id: targetId
     });
 
+    // Créer un objet File-like pour le service
+    const fileObject = {
+      buffer: file.buffer,
+      size: file.size,
+      type: file.mimetype,
+      name: file.originalname
+    };
+
     const uploadResponse = await documentStorageService.uploadFileToSection({
-      file: file.buffer,
+      file: fileObject as any,
       section_name: sectionName,
       client_id: userType === 'client' ? targetId : undefined,
       expert_id: userType === 'expert' ? targetId : undefined,

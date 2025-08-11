@@ -789,15 +789,22 @@ export class EnhancedDocumentStorageService {
       const bucketName = this.getBucketName(uploadRequest.user_type, uploadRequest.uploaded_by);
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}`;
       const fileExtension = uploadRequest.file instanceof File ? 
-        uploadRequest.file.name.split('.').pop() || 'bin' : 'bin';
+        uploadRequest.file.name.split('.').pop() || 'bin' : 
+        (uploadRequest.file as any).name?.split('.').pop() || 'bin';
       const fullFileName = `${fileName}.${fileExtension}`;
       
       console.log('🔍 [DEBUG] Upload vers bucket:', { bucketName, fullFileName });
       
+      // Utiliser le buffer pour l'upload vers Supabase Storage
+      const fileBuffer = uploadRequest.file instanceof File ? 
+        await uploadRequest.file.arrayBuffer() : 
+        (uploadRequest.file as any).buffer || uploadRequest.file;
+
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from(bucketName)
-        .upload(fullFileName, uploadRequest.file, {
-          contentType: uploadRequest.file instanceof File ? uploadRequest.file.type : 'application/octet-stream'
+        .upload(fullFileName, fileBuffer, {
+          contentType: uploadRequest.file instanceof File ? uploadRequest.file.type : 
+            (uploadRequest.file as any).type || 'application/octet-stream'
         });
 
       if (uploadError) {
