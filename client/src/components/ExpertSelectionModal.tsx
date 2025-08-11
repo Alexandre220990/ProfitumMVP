@@ -69,8 +69,8 @@ export default function ExpertSelectionModal({
   const [experts, setExperts] = useState<Expert[]>([]);
   const [filteredExperts, setFilteredExperts] = useState<Expert[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedExpert, setSelectedExpert] = useState<Expert | null>(null);
   const [selecting, setSelecting] = useState(false);
+  const [tempSelectedExpert, setTempSelectedExpert] = useState<Expert | null>(null);
   const [filters, setFilters] = useState<ExpertFilters>({
     search: '',
     speciality: 'all',
@@ -231,6 +231,13 @@ export default function ExpertSelectionModal({
   };
 
   const handleExpertSelection = async (expert: Expert) => {
+    // Sélection temporaire - l'expert se met en surbrillance
+    setTempSelectedExpert(expert);
+  };
+
+  const handleExpertValidation = async () => {
+    if (!tempSelectedExpert) return;
+    
     try {
       setSelecting(true);
       
@@ -242,25 +249,24 @@ export default function ExpertSelectionModal({
         },
         body: JSON.stringify({
           dossier_id: dossierId,
-          expert_id: expert.id
+          expert_id: tempSelectedExpert.id
         })
       });
 
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
-          setSelectedExpert(expert);
-          onExpertSelected?.(expert);
+          onExpertSelected?.(tempSelectedExpert);
           
           toast({
             title: "Succès",
-            description: `${expert.name} a été sélectionné pour votre dossier`,
+            description: `${tempSelectedExpert.name} a été sélectionné pour votre dossier`,
           });
 
           // Fermer le modal après un délai
           setTimeout(() => {
             onClose();
-            setSelectedExpert(null);
+            setTempSelectedExpert(null);
           }, 2000);
         } else {
           throw new Error(data.message);
@@ -417,7 +423,14 @@ export default function ExpertSelectionModal({
         ) : (
           <div className="grid gap-4">
             {filteredExperts.map((expert) => (
-              <Card key={expert.id} className="hover:shadow-md transition-shadow">
+              <Card 
+                key={expert.id} 
+                className={`hover:shadow-md transition-all duration-200 ${
+                  tempSelectedExpert?.id === expert.id 
+                    ? 'ring-2 ring-blue-500 bg-blue-50 border-blue-300' 
+                    : 'hover:shadow-md'
+                }`}
+              >
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -429,6 +442,12 @@ export default function ExpertSelectionModal({
                           <h3 className="font-semibold text-lg text-gray-900">{expert.name}</h3>
                           {expert.company_name && (
                             <p className="text-sm text-gray-600">{expert.company_name}</p>
+                          )}
+                          {tempSelectedExpert?.id === expert.id && (
+                            <div className="flex items-center gap-1 mt-1">
+                              <CheckCircle className="w-4 h-4 text-blue-600" />
+                              <span className="text-sm font-medium text-blue-600">Expert sélectionné</span>
+                            </div>
                           )}
                         </div>
                         <Badge className={getAvailabilityColor(expert.availability)}>
@@ -500,23 +519,44 @@ export default function ExpertSelectionModal({
                         </div>
                       )}
                       
-                      <Button
-                        onClick={() => handleExpertSelection(expert)}
-                        disabled={selecting || expert.availability === 'unavailable'}
-                        className="min-w-[120px]"
-                      >
-                        {selecting && selectedExpert?.id === expert.id ? (
-                          <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                            Sélection...
-                          </>
-                        ) : (
-                          <>
-                            <CheckCircle className="w-4 h-4 mr-2" />
-                            Sélectionner
-                          </>
-                        )}
-                      </Button>
+                      {tempSelectedExpert?.id === expert.id ? (
+                        <div className="flex flex-col gap-2">
+                          <Button
+                            onClick={handleExpertValidation}
+                            disabled={selecting}
+                            className="min-w-[120px] bg-green-600 hover:bg-green-700"
+                          >
+                            {selecting ? (
+                              <>
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                Validation...
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle className="w-4 h-4 mr-2" />
+                                Valider
+                              </>
+                            )}
+                          </Button>
+                          <Button
+                            onClick={() => setTempSelectedExpert(null)}
+                            variant="outline"
+                            size="sm"
+                            className="min-w-[120px]"
+                          >
+                            Annuler
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button
+                          onClick={() => handleExpertSelection(expert)}
+                          disabled={selecting || expert.availability === 'unavailable'}
+                          className="min-w-[120px]"
+                        >
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                          Sélectionner
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </CardContent>

@@ -269,6 +269,23 @@ router.post('/expert/select', enhancedAuthMiddleware, async (req: Request, res: 
       });
     }
 
+    // Mettre à jour l'expert_id dans ClientProduitEligible
+    const { error: updateError } = await supabase
+      .from('ClientProduitEligible')
+      .update({
+        expert_id: expert_id,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', dossier_id);
+
+    if (updateError) {
+      console.error('❌ Erreur mise à jour expert_id:', updateError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la mise à jour du dossier'
+      });
+    }
+
     // Créer l'assignation d'expert
     const { data: assignment, error: assignError } = await supabase
       .from('ExpertAssignment')
