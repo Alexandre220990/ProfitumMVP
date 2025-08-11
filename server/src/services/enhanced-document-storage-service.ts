@@ -758,7 +758,10 @@ export class EnhancedDocumentStorageService {
     try {
       const { section_name, ...uploadRequest } = request;
       
-      console.log('🔍 [DEBUG] uploadFileToSection appelé:', { section_name, file_size: uploadRequest.file?.length });
+      console.log('🔍 [DEBUG] uploadFileToSection appelé:', { 
+        section_name, 
+        file_size: uploadRequest.file instanceof File ? uploadRequest.file.size : (uploadRequest.file as Buffer)?.length 
+      });
       
       // Déterminer la catégorie selon la section
       let category: string;
