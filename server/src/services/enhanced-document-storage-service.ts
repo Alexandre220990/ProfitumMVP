@@ -758,6 +758,8 @@ export class EnhancedDocumentStorageService {
     try {
       const { section_name, ...uploadRequest } = request;
       
+      console.log('🔍 [DEBUG] uploadFileToSection appelé:', { section_name, file_size: uploadRequest.file?.length });
+      
       // Déterminer la catégorie selon la section
       let category: string;
       switch (section_name) {
@@ -780,15 +782,40 @@ export class EnhancedDocumentStorageService {
           };
       }
 
-      // Créer le document dans GEDDocument
+      // 1. Upload du fichier vers Supabase Storage
+      const bucketName = this.getBucketName(uploadRequest.user_type, uploadRequest.uploaded_by);
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}`;
+      const fileExtension = uploadRequest.file instanceof File ? 
+        uploadRequest.file.name.split('.').pop() || 'bin' : 'bin';
+      const fullFileName = `${fileName}.${fileExtension}`;
+      
+      console.log('🔍 [DEBUG] Upload vers bucket:', { bucketName, fullFileName });
+      
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from(bucketName)
+        .upload(fullFileName, uploadRequest.file, {
+          contentType: uploadRequest.file instanceof File ? uploadRequest.file.type : 'application/octet-stream'
+        });
+
+      if (uploadError) {
+        console.error('❌ [DEBUG] Erreur upload storage:', uploadError);
+        return {
+          success: false,
+          error: `Erreur upload storage: ${uploadError.message}`
+        };
+      }
+
+      console.log('✅ [DEBUG] Fichier uploadé vers storage:', uploadData);
+
+      // 2. Créer le document dans GEDDocument
       const { data: documentData, error: dbError } = await supabase
         .from('GEDDocument')
         .insert({
           title: uploadRequest.description || 'Document uploadé',
           description: uploadRequest.description,
-          content: 'Contenu du document', // À adapter selon le type de fichier
+          content: 'Contenu du document',
           category: category,
-          file_path: uploadRequest.file_path || '', // Valeur par défaut si undefined
+          file_path: `${bucketName}/${fullFileName}`,
           created_by: uploadRequest.uploaded_by,
           is_active: true,
           read_time: 5,
@@ -798,25 +825,27 @@ export class EnhancedDocumentStorageService {
         .single();
 
       if (dbError) {
-        console.error('Erreur base de données:', dbError);
+        console.error('❌ [DEBUG] Erreur base de données:', dbError);
         return {
           success: false,
           error: `Erreur base de données: ${dbError.message}`
         };
       }
 
-      // Enregistrer l'activité
+      console.log('✅ [DEBUG] Document créé en base:', documentData);
+
+      // 3. Enregistrer l'activité
       await this.logFileActivity(documentData.id, uploadRequest.uploaded_by, 'upload');
 
       return {
         success: true,
         file_id: documentData.id,
-        file_path: uploadRequest.file_path || '',
+        file_path: `${bucketName}/${fullFileName}`,
         metadata: documentData
       };
 
     } catch (error) {
-      console.error('Erreur uploadFileToSection:', error);
+      console.error('❌ [DEBUG] Erreur uploadFileToSection:', error);
       return {
         success: false,
         error: 'Erreur lors de l\'upload vers la section'

@@ -157,17 +157,23 @@ const UploadDialog = ({
   const [description, setDescription] = useState('');
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('🔍 [DEBUG] Fichier sélectionné:', e.target.files?.[0]?.name);
     if (e.target.files && e.target.files[0]) {
       setFile(e.target.files[0]);
+      console.log('✅ [DEBUG] Fichier défini dans l\'état:', e.target.files[0].name);
     }
   };
 
   const handleUpload = () => {
+    console.log('🔍 [DEBUG] UploadDialog.handleUpload appelé:', { file: file?.name, description });
     if (file) {
+      console.log('✅ [DEBUG] Appel onUpload avec fichier:', file.name);
       onUpload(file, description);
       setFile(null);
       setDescription('');
       onClose();
+    } else {
+      console.log('❌ [DEBUG] Aucun fichier sélectionné');
     }
   };
 
