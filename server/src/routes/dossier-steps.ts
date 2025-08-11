@@ -216,10 +216,15 @@ router.post('/eligibility/validate', enhancedAuthMiddleware, async (req: Request
 // POST /api/dossier/expert/select - Sélection d'un expert par le client
 router.post('/expert/select', enhancedAuthMiddleware, async (req: Request, res: Response) => {
   try {
+    console.log('🔍 [DEBUG] Endpoint /expert/select appelé');
+    console.log('🔍 [DEBUG] Body:', req.body);
+    console.log('🔍 [DEBUG] User:', req.user);
+    
     const { dossier_id, expert_id } = req.body;
     const user = req.user;
 
     if (!dossier_id || !expert_id) {
+      console.error('❌ [DEBUG] Paramètres manquants:', { dossier_id, expert_id });
       return res.status(400).json({
         success: false,
         message: 'Paramètres manquants'
@@ -247,10 +252,13 @@ router.post('/expert/select', enhancedAuthMiddleware, async (req: Request, res: 
       });
     }
 
-    if (dossier.statut !== 'eligible_confirmed') {
+    console.log('🔍 [DEBUG] Dossier trouvé:', { clientId: dossier.clientId, statut: dossier.statut });
+    
+    if (dossier.statut !== 'eligible' && dossier.statut !== 'en_cours') {
+      console.error('❌ [DEBUG] Statut dossier incorrect:', dossier.statut);
       return res.status(400).json({
         success: false,
-        message: 'L\'éligibilité doit être confirmée avant la sélection d\'expert'
+        message: 'Le dossier doit être éligible ou en cours pour sélectionner un expert'
       });
     }
 

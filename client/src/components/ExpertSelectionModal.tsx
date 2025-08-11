@@ -15,8 +15,7 @@ import {
   Search, 
   MapPin,
   Mail,
-  Phone,
-  Building2
+  Phone
 } from 'lucide-react';
 import { config } from '@/config/env';
 
@@ -241,16 +240,24 @@ export default function ExpertSelectionModal({
     try {
       setSelecting(true);
       
+      const requestBody = {
+        dossier_id: dossierId,
+        expert_id: tempSelectedExpert.id
+      };
+      
+      console.log('🔍 [DEBUG] Envoi requête sélection expert:', {
+        url: `${config.API_URL}/api/dossier-steps/expert/select`,
+        body: requestBody,
+        token: localStorage.getItem('token') ? 'Présent' : 'Absent'
+      });
+      
       const response = await fetch(`${config.API_URL}/api/dossier-steps/expert/select`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          dossier_id: dossierId,
-          expert_id: tempSelectedExpert.id
-        })
+        body: JSON.stringify(requestBody)
       });
 
       if (response.ok) {
@@ -421,103 +428,134 @@ export default function ExpertSelectionModal({
             <p className="text-gray-600">Aucun expert ne correspond à vos critères de recherche.</p>
           </div>
         ) : (
-          <div className="grid gap-4">
+          <div className="grid gap-6">
             {filteredExperts.map((expert) => (
               <Card 
                 key={expert.id} 
-                className={`hover:shadow-md transition-all duration-200 ${
+                className={`transition-all duration-300 hover:shadow-lg ${
                   tempSelectedExpert?.id === expert.id 
-                    ? 'ring-2 ring-blue-500 bg-blue-50 border-blue-300' 
-                    : 'hover:shadow-md'
+                    ? 'ring-2 ring-blue-500 bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-300 shadow-lg' 
+                    : 'hover:shadow-lg border-gray-200'
                 }`}
               >
                 <CardContent className="p-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                          <Building2 className="w-6 h-6 text-blue-600" />
+                  {/* Header avec avatar et infos principales */}
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-4">
+                      <div className="relative">
+                        <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-lg">
+                          {expert.name.split(' ').map(n => n[0]).join('').toUpperCase()}
                         </div>
-                        <div>
-                          <h3 className="font-semibold text-lg text-gray-900">{expert.name}</h3>
-                          {expert.company_name && (
-                            <p className="text-sm text-gray-600">{expert.company_name}</p>
-                          )}
-                          {tempSelectedExpert?.id === expert.id && (
-                            <div className="flex items-center gap-1 mt-1">
-                              <CheckCircle className="w-4 h-4 text-blue-600" />
-                              <span className="text-sm font-medium text-blue-600">Expert sélectionné</span>
-                            </div>
-                          )}
-                        </div>
-                        <Badge className={getAvailabilityColor(expert.availability)}>
-                          {getAvailabilityText(expert.availability)}
-                        </Badge>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                        <div>
-                          <div className="flex items-center gap-2 mb-2">
-                            <Star className="w-4 h-4 text-yellow-400" />
-                            <span className="text-sm font-medium">{expert.rating}/5</span>
-                            <div className="flex">{renderStars(expert.rating)}</div>
-                          </div>
-                          <div className="flex items-center gap-4 text-sm text-gray-600">
-                            <div className="flex items-center gap-1">
-                              <Clock className="w-4 h-4" />
-                              <span>{expert.experience_years} ans d'expérience</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Award className="w-4 h-4" />
-                              <span>{expert.completed_projects} projets</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div>
-                          <div className="flex flex-wrap gap-1 mb-2">
-                            {expert.specialites.map((speciality) => (
-                              <Badge key={speciality} variant="outline" className="text-xs">
-                                {speciality}
-                              </Badge>
-                            ))}
-                          </div>
-                          {expert.location && (
-                            <div className="flex items-center gap-1 text-sm text-gray-600">
-                              <MapPin className="w-4 h-4" />
-                              <span>{expert.location}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {expert.description && (
-                        <p className="text-sm text-gray-600 mb-4">{expert.description}</p>
-                      )}
-
-                      <div className="flex items-center gap-4 text-sm text-gray-600">
-                        {expert.email && (
-                          <div className="flex items-center gap-1">
-                            <Mail className="w-4 h-4" />
-                            <span>{expert.email}</span>
+                        {tempSelectedExpert?.id === expert.id && (
+                          <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                            <CheckCircle className="w-4 h-4 text-white" />
                           </div>
                         )}
-                        {expert.phone && (
-                          <div className="flex items-center gap-1">
-                            <Phone className="w-4 h-4" />
-                            <span>{expert.phone}</span>
+                      </div>
+                      
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-1">
+                          <h3 className="font-bold text-xl text-gray-900">{expert.name}</h3>
+                          <Badge className={getAvailabilityColor(expert.availability)}>
+                            {getAvailabilityText(expert.availability)}
+                          </Badge>
+                        </div>
+                        
+                        {expert.company_name && (
+                          <p className="text-sm font-medium text-gray-700 mb-1">{expert.company_name}</p>
+                        )}
+                        
+                        {tempSelectedExpert?.id === expert.id && (
+                          <div className="flex items-center gap-1 mt-2">
+                            <CheckCircle className="w-4 h-4 text-green-600" />
+                            <span className="text-sm font-semibold text-green-700">Expert sélectionné</span>
                           </div>
                         )}
                       </div>
                     </div>
+                    
+                    {/* Compensation */}
+                    {expert.hourly_rate && (
+                      <div className="text-right">
+                        <p className="text-xs text-gray-500 uppercase tracking-wide">Compensation</p>
+                        <p className="font-bold text-2xl text-blue-600">{expert.hourly_rate}€</p>
+                        <p className="text-xs text-gray-500">/heure</p>
+                      </div>
+                    )}
+                  </div>
 
-                    <div className="flex flex-col items-end gap-3">
-                      {expert.hourly_rate && (
-                        <div className="text-right">
-                          <p className="text-sm text-gray-600">Tarif horaire</p>
-                          <p className="font-semibold text-lg text-blue-600">{expert.hourly_rate}€/h</p>
+                  {/* Informations détaillées */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                    {/* Colonne gauche - Note et expérience */}
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1">
+                          <Star className="w-5 h-5 text-yellow-400 fill-current" />
+                          <span className="font-semibold text-lg">{expert.rating}</span>
+                          <span className="text-gray-500">/5</span>
+                        </div>
+                        <div className="flex">{renderStars(expert.rating)}</div>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm text-gray-700">
+                          <Clock className="w-4 h-4 text-blue-500" />
+                          <span className="font-medium">{expert.experience_years} ans d'expérience</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-gray-700">
+                          <Award className="w-4 h-4 text-purple-500" />
+                          <span className="font-medium">{expert.completed_projects} projets réalisés</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Colonne droite - Spécialités et localisation */}
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Spécialités</p>
+                        <div className="flex flex-wrap gap-1">
+                          {expert.specialites.map((speciality) => (
+                            <Badge key={speciality} variant="outline" className="text-xs bg-blue-50 border-blue-200 text-blue-700">
+                              {speciality}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      {expert.location && (
+                        <div className="flex items-center gap-2 text-sm text-gray-700">
+                          <MapPin className="w-4 h-4 text-red-500" />
+                          <span className="font-medium">{expert.location}</span>
                         </div>
                       )}
+                    </div>
+                  </div>
+
+                  {/* Description */}
+                  {expert.description && (
+                    <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                      <p className="text-sm text-gray-700 leading-relaxed">{expert.description}</p>
+                    </div>
+                  )}
+
+                  {/* Contact */}
+                  <div className="flex items-center gap-6 text-sm text-gray-600 mb-4">
+                    {expert.email && (
+                      <div className="flex items-center gap-2">
+                        <Mail className="w-4 h-4 text-gray-400" />
+                        <span className="font-medium">{expert.email}</span>
+                      </div>
+                    )}
+                    {expert.phone && (
+                      <div className="flex items-center gap-2">
+                        <Phone className="w-4 h-4 text-gray-400" />
+                        <span className="font-medium">{expert.phone}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Boutons d'action */}
+                  <div className="flex justify-end">
                       
                       {tempSelectedExpert?.id === expert.id ? (
                         <div className="flex flex-col gap-2">
@@ -557,7 +595,6 @@ export default function ExpertSelectionModal({
                           Sélectionner
                         </Button>
                       )}
-                    </div>
                   </div>
                 </CardContent>
               </Card>
