@@ -223,11 +223,23 @@ router.options('/expert/select', (req: Request, res: Response) => {
   res.status(200).send();
 });
 
+// GET /api/dossier-steps/expert/select - Route temporaire pour debug
+router.get('/expert/select', (req: Request, res: Response) => {
+  console.log('🔍 [DEBUG] GET request reçue sur /expert/select');
+  res.status(405).json({
+    success: false,
+    message: 'Méthode GET non autorisée. Utilisez POST.',
+    allowedMethods: ['POST', 'OPTIONS']
+  });
+});
+
 // POST /api/dossier/expert/select - Sélection d'un expert par le client
 console.log('🔧 Route /expert/select définie');
 router.post('/expert/select', enhancedAuthMiddleware, async (req: Request, res: Response) => {
   try {
     console.log('🔍 [DEBUG] Endpoint /expert/select appelé');
+    console.log('🔍 [DEBUG] Method:', req.method);
+    console.log('🔍 [DEBUG] Headers:', req.headers);
     console.log('🔍 [DEBUG] Body:', req.body);
     console.log('🔍 [DEBUG] User:', req.user);
     

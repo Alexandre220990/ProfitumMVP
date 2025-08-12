@@ -245,10 +245,13 @@ export default function ExpertSelectionModal({
         expert_id: tempSelectedExpert.id
       };
       
+      const token = localStorage.getItem('token');
       console.log('🔍 [DEBUG] Envoi requête sélection expert:', {
         url: `${config.API_URL}/api/dossier-steps/expert/select`,
         body: requestBody,
-        token: localStorage.getItem('token') ? 'Présent' : 'Absent'
+        token: token ? 'Présent' : 'Absent',
+        tokenLength: token?.length || 0,
+        method: 'POST'
       });
       
       const response = await fetch(`${config.API_URL}/api/dossier-steps/expert/select`, {
@@ -262,6 +265,7 @@ export default function ExpertSelectionModal({
 
       if (response.ok) {
         const data = await response.json();
+        console.log('🔍 [DEBUG] Données reçues:', data);
         if (data.success) {
           onExpertSelected?.(tempSelectedExpert);
           
@@ -279,7 +283,13 @@ export default function ExpertSelectionModal({
           throw new Error(data.message);
         }
       } else {
-        throw new Error('Erreur lors de la sélection de l\'expert');
+        const errorText = await response.text();
+        console.error('❌ [DEBUG] Erreur HTTP:', {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorText
+        });
+        throw new Error(`Erreur lors de la sélection de l'expert: ${response.status} ${response.statusText}`);
       }
     } catch (error) {
       console.error('❌ Erreur sélection expert:', error);
