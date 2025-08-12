@@ -132,34 +132,85 @@ router.post('/upload', enhancedAuthMiddleware, upload.single('file'), async (req
       .from(bucketName)
       .getPublicUrl(filePath);
 
-    // Enregistrer en base de données
+    // Enregistrer en base de données GED
     const { data: document, error: dbError } = await supabase
-      .from('DocumentFile')
+      .from('GEDDocument')
       .insert({
-        client_id: user.id,
-        original_filename: originalName,
-        stored_filename: storedFilename,
-        file_path: filePath,
-        bucket_name: bucketName,
-        file_size: req.file.size,
-        mime_type: req.file.mimetype,
-        file_extension: extension,
-        category: category,
-        document_type: document_type,
+        title: originalName,
         description: description || `Document ${document_type} pour dossier TICPE`,
-        status: 'uploaded',
-        validation_status: 'pending',
-        access_level: 'private',
-        metadata: {
-          dossier_id: dossier_id,
-          product_type: 'TICPE',
-          uploaded_by: user.id,
-          upload_date: new Date().toISOString(),
-          user_type: user_type
-        }
+        content: `dossier_id:${dossier_id}`, // Stocker l'ID du dossier dans content
+        category: category,
+        file_path: filePath,
+        created_by: user.id,
+        is_active: true,
+        version: 1
       })
       .select()
       .single();
+
+    if (dbError) {
+      console.error('❌ Erreur enregistrement DB:', dbError);
+      // Supprimer le fichier uploadé en cas d'erreur DB
+      await supabase.storage.from(bucketName).remove([filePath]);
+      
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de l\'enregistrement du document'
+      });
+    }
+
+    // Récupérer le label correspondant
+    const { data: label, error: labelError } = await supabase
+      .from('GEDDocumentLabel')
+      .select('id')
+      .eq('name', document_type)
+      .single();
+
+    if (labelError) {
+      console.error('❌ Erreur récupération label:', labelError);
+      // Supprimer le document créé
+      await supabase.from('GEDDocument').delete().eq('id', document.id);
+      await supabase.storage.from(bucketName).remove([filePath]);
+      
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la récupération du label'
+      });
+    }
+
+    // Créer la relation document-label
+    const { error: relationError } = await supabase
+      .from('GEDDocumentLabelRelation')
+      .insert({
+        document_id: document.id,
+        label_id: label.id,
+        created_at: new Date().toISOString()
+      });
+
+    if (relationError) {
+      console.error('❌ Erreur création relation:', relationError);
+      // Supprimer le document créé
+      await supabase.from('GEDDocument').delete().eq('id', document.id);
+      await supabase.storage.from(bucketName).remove([filePath]);
+      
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la création de la relation'
+      });
+    }
+
+    // Créer les permissions pour le client
+    const { error: permissionError } = await supabase
+      .from('GEDDocumentPermission')
+      .insert({
+        document_id: document.id,
+        user_type: user_type,
+        can_read: true,
+        can_write: true,
+        can_delete: true,
+        can_share: false,
+        created_at: new Date().toISOString()
+      });
 
     if (dbError) {
       console.error('❌ Erreur enregistrement DB:', dbError);
@@ -225,11 +276,21 @@ router.get('/:dossierId', enhancedAuthMiddleware, async (req: Request, res: Resp
       });
     }
 
-    // Récupérer les documents
+    // Récupérer les documents GED
     const { data: documents, error } = await supabase
-      .from('DocumentFile')
-      .select('*')
-      .eq('metadata->>dossier_id', dossierId)
+      .from('GEDDocument')
+      .select(`
+        *,
+        GEDDocumentLabelRelation(
+          GEDDocumentLabel(
+            id,
+            name,
+            description
+          )
+        )
+      `)
+      .like('content', `dossier_id:${dossierId}%`)
+      .eq('category', 'eligibilite_ticpe')
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -343,9 +404,9 @@ router.get('/stats/:clientId', enhancedAuthMiddleware, async (req: Request, res:
 
     // Récupérer tous les documents du client
     const { data: documents, error } = await supabase
-      .from('DocumentFile')
+      .from('GEDDocument')
       .select('*')
-      .eq('client_id', clientId);
+      .eq('created_by', clientId);
 
     if (error) {
       console.error('❌ Erreur récupération documents pour stats:', error);
@@ -511,7 +572,7 @@ router.delete('/:documentId', enhancedAuthMiddleware, async (req: Request, res: 
 
     // Récupérer les informations du document
     const { data: document, error: docError } = await supabase
-      .from('DocumentFile')
+      .from('GEDDocument')
       .select('*')
       .eq('id', documentId)
       .single();
@@ -524,26 +585,49 @@ router.delete('/:documentId', enhancedAuthMiddleware, async (req: Request, res: 
     }
 
     // Vérifier les permissions
-    if (document.client_id !== user.id && user.type !== 'admin') {
+    if (document.created_by !== user.id && user.type !== 'admin') {
       return res.status(403).json({
         success: false,
         message: 'Accès non autorisé'
       });
     }
 
-    // Supprimer le fichier de Supabase Storage
-    const { error: storageError } = await supabase.storage
-      .from(document.bucket_name)
-      .remove([document.file_path]);
+    // Supprimer les relations avec les labels
+    const { error: relationError } = await supabase
+      .from('GEDDocumentLabelRelation')
+      .delete()
+      .eq('document_id', documentId);
 
-    if (storageError) {
-      console.error('❌ Erreur suppression fichier storage:', storageError);
-      // Continuer même si le fichier n'existe pas en storage
+    if (relationError) {
+      console.error('❌ Erreur suppression relations:', relationError);
+    }
+
+    // Supprimer les permissions
+    const { error: permissionError } = await supabase
+      .from('GEDDocumentPermission')
+      .delete()
+      .eq('document_id', documentId);
+
+    if (permissionError) {
+      console.error('❌ Erreur suppression permissions:', permissionError);
+    }
+
+    // Supprimer le fichier de Supabase Storage (si file_path existe)
+    if (document.file_path) {
+      const bucketName = `client-${document.created_by}`;
+      const { error: storageError } = await supabase.storage
+        .from(bucketName)
+        .remove([document.file_path]);
+
+      if (storageError) {
+        console.error('❌ Erreur suppression fichier storage:', storageError);
+        // Continuer même si le fichier n'existe pas en storage
+      }
     }
 
     // Supprimer l'enregistrement de la base de données
     const { error: dbError } = await supabase
-      .from('DocumentFile')
+      .from('GEDDocument')
       .delete()
       .eq('id', documentId);
 

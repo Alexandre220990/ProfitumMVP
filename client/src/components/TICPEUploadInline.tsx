@@ -142,12 +142,12 @@ export default function TICPEUploadInline({
       // Ajouter le document à la liste
       const newDocument: DocumentFile = {
         id: result.data.id,
-        original_filename: file.name,
+        original_filename: result.data.title,
         file_size: file.size,
         mime_type: file.type,
         document_type: documentType,
         status: 'uploaded',
-        created_at: new Date().toISOString(),
+        created_at: result.data.created_at,
         file_url: result.data.public_url
       };
 
