@@ -139,14 +139,25 @@ export default function TICPEWorkflow({
     }
   }, [steps, documents, selectedExpert, eligibilityValidated]);
 
+  // S'assurer que l'étape 1 est toujours accessible au début
+  useEffect(() => {
+    if (!eligibilityValidated && currentStep !== 1) {
+      setCurrentStep(1);
+    }
+  }, [eligibilityValidated, currentStep]);
+
   const updateWorkflowSteps = useCallback(() => {
     const updatedSteps = workflowSteps.map(step => {
       let status = 'pending';
       
       switch (step.id) {
         case 1: // Confirmer l'éligibilité
-          if (documents.length >= 2 && hasRequiredDocuments()) {
-            status = eligibilityValidated ? 'completed' : 'in_progress';
+          if (eligibilityValidated) {
+            status = 'completed';
+          } else if (documents.length >= 2 && hasRequiredDocuments()) {
+            status = 'in_progress';
+          } else {
+            status = 'in_progress'; // Toujours in_progress par défaut pour permettre l'upload
           }
           break;
         case 2: // Sélection de l'expert
@@ -404,7 +415,7 @@ export default function TICPEWorkflow({
               </div>
 
               {/* Contenu intégré pour l'étape 1 */}
-              {step.id === 1 && step.status === 'in_progress' && (
+              {step.id === 1 && (
                 <div className="mt-4 pt-4 border-t border-gray-200">
                   <TICPEUploadInline
                     clientProduitId={clientProduitId}
