@@ -1,9 +1,8 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { 
-  FileText, 
   Upload, 
   CheckCircle, 
   X, 
@@ -71,6 +70,8 @@ export default function TICPEUploadInline({
   const [uploadProgress, setUploadProgress] = useState<UploadProgress>({});
   const [isUploading, setIsUploading] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
+  const [showViewer, setShowViewer] = useState(false);
+  const [selectedDocument, setSelectedDocument] = useState<DocumentFile | null>(null);
 
   // Vérifier si tous les documents requis sont uploadés
   const hasAllRequiredDocuments = useCallback(() => {
@@ -124,11 +125,8 @@ export default function TICPEUploadInline({
       formData.append('user_type', 'client');
 
       // Upload vers l'API
-      const response = await fetch(`${config.API_URL}/api/documents/upload`, {
+      const response = await fetch('/api/documents/upload', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
         body: formData
       });
 
@@ -150,7 +148,7 @@ export default function TICPEUploadInline({
         document_type: documentType,
         status: 'uploaded',
         created_at: new Date().toISOString(),
-        file_url: result.data.file_url
+        file_url: result.data.public_url
       };
 
       setUploadedDocuments(prev => [...prev, newDocument]);
@@ -185,18 +183,39 @@ export default function TICPEUploadInline({
   }, [clientProduitId, toast]);
 
   // Supprimer un document
-  const removeDocument = useCallback((documentId: string) => {
-    setUploadedDocuments(prev => prev.filter(doc => doc.id !== documentId));
-    toast({
-      title: "Document supprimé",
-      description: "Le document a été supprimé de la liste"
-    });
+  const removeDocument = useCallback(async (documentId: string) => {
+    try {
+      // Appel API pour supprimer le document
+      const response = await fetch(`/api/documents/${documentId}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) {
+        throw new Error('Erreur lors de la suppression');
+      }
+
+      // Supprimer de la liste locale
+      setUploadedDocuments(prev => prev.filter(doc => doc.id !== documentId));
+      
+      toast({
+        title: "Document supprimé",
+        description: "Le document a été supprimé avec succès"
+      });
+    } catch (error) {
+      console.error('Erreur suppression document:', error);
+      toast({
+        title: "Erreur",
+        description: "Erreur lors de la suppression du document",
+        variant: "destructive"
+      });
+    }
   }, [toast]);
 
   // Visualiser un document
   const viewDocument = useCallback((document: DocumentFile) => {
     if (document.file_url) {
-      window.open(document.file_url, '_blank');
+      setSelectedDocument(document);
+      setShowViewer(true);
     } else {
       toast({
         title: "Erreur",
@@ -261,6 +280,27 @@ export default function TICPEUploadInline({
     }
   }, [hasAllRequiredDocuments, uploadedDocuments, clientProduitId, onDocumentsUploaded, onStepComplete, toast]);
 
+  // Charger les documents existants au montage du composant
+  useEffect(() => {
+    const loadExistingDocuments = async () => {
+      try {
+        const response = await fetch(`/api/documents/${clientProduitId}`);
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.data) {
+            setUploadedDocuments(result.data);
+          }
+        }
+      } catch (error) {
+        console.error('Erreur chargement documents existants:', error);
+      }
+    };
+
+    if (clientProduitId) {
+      loadExistingDocuments();
+    }
+  }, [clientProduitId]);
+
   return (
     <div className="space-y-4">
       {/* Documents requis - Design compact */}
@@ -313,6 +353,12 @@ export default function TICPEUploadInline({
                         )}
                       </Button>
                     </label>
+                    {/* Affichage du progress */}
+                    {Object.keys(uploadProgress).length > 0 && (
+                      <div className="text-xs text-blue-600">
+                        {Object.values(uploadProgress)[0]}%
+                      </div>
+                    )}
                   </>
                 ) : (
                   <>
@@ -374,6 +420,46 @@ export default function TICPEUploadInline({
           </div>
         </div>
       </div>
+
+      {/* Modal de visualisation de document */}
+      {showViewer && selectedDocument && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-4xl max-h-[90vh] overflow-hidden">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">
+                {selectedDocument.original_filename}
+              </h3>
+              <button
+                onClick={() => setShowViewer(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="overflow-auto max-h-[70vh]">
+              {selectedDocument.mime_type?.startsWith('image/') ? (
+                <img 
+                  src={selectedDocument.file_url} 
+                  alt={selectedDocument.original_filename}
+                  className="max-w-full h-auto"
+                />
+              ) : (
+                <iframe
+                  src={selectedDocument.file_url}
+                  title={selectedDocument.original_filename}
+                  className="w-full h-[70vh] border-0"
+                />
+              )}
+            </div>
+            
+            <div className="mt-4 flex justify-between items-center text-sm text-gray-600">
+              <span>Taille: {(selectedDocument.file_size / 1024 / 1024).toFixed(2)} MB</span>
+              <span>Type: {selectedDocument.mime_type}</span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
