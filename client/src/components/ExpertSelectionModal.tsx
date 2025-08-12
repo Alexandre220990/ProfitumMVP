@@ -254,14 +254,19 @@ export default function ExpertSelectionModal({
         method: 'POST'
       });
       
-      const response = await fetch(`${config.API_URL}/api/dossier-steps/expert/select`, {
+      const fetchOptions = {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
         body: JSON.stringify(requestBody)
-      });
+      };
+      
+      console.log('🔍 [DEBUG] Options fetch:', fetchOptions);
+      
+      const response = await fetch(`${config.API_URL}/api/dossier-steps/expert/select`, fetchOptions);
 
       if (response.ok) {
         const data = await response.json();
