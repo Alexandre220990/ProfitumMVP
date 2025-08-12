@@ -15,7 +15,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 
-import TICPEUploadStep from './TICPEUploadStep';
+import TICPEUploadInline from './TICPEUploadInline';
 import ExpertSelectionModal from './ExpertSelectionModal';
 import { useDossierSteps } from '@/hooks/use-dossier-steps';
 
@@ -249,18 +249,6 @@ export default function TICPEWorkflow({
     if (!currentWorkflowStep) return null;
 
     switch (currentWorkflowStep.component) {
-      case 'documents':
-        return (
-          <TICPEUploadStep
-            clientProduitId={clientProduitId}
-            onStepComplete={() => {
-              setEligibilityValidated(true);
-              setCurrentStep(2);
-            }}
-            onDocumentsUploaded={handleDocumentsComplete}
-          />
-        );
-
       case 'expert':
         return (
           <div className="space-y-6">
@@ -414,23 +402,39 @@ export default function TICPEWorkflow({
                   )}
                 </div>
               </div>
+
+              {/* Contenu intégré pour l'étape 1 */}
+              {step.id === 1 && step.status === 'in_progress' && (
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <TICPEUploadInline
+                    clientProduitId={clientProduitId}
+                    onDocumentsUploaded={handleDocumentsComplete}
+                    onStepComplete={() => {
+                      setEligibilityValidated(true);
+                      setCurrentStep(2);
+                    }}
+                  />
+                </div>
+              )}
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Contenu de l'étape courante */}
-      <Card className="border-2 border-blue-200 bg-blue-50">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ArrowRight className="w-5 h-5 text-blue-600" />
-            Étape {currentStep} : {workflowSteps.find(s => s.id === currentStep)?.name}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {renderStepContent()}
-        </CardContent>
-      </Card>
+      {/* Contenu de l'étape courante - seulement pour les étapes autres que l'étape 1 */}
+      {currentStep !== 1 && (
+        <Card className="border-2 border-blue-200 bg-blue-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ArrowRight className="w-5 h-5 text-blue-600" />
+              Étape {currentStep} : {workflowSteps.find(s => s.id === currentStep)?.name}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {renderStepContent()}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Modal de sélection d'expert */}
       <ExpertSelectionModal
