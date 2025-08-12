@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { supabase } from '../lib/supabase';
 import { DossierStepGenerator } from '../services/dossierStepGenerator';
 import { enhancedAuthMiddleware } from '../middleware/auth-enhanced';
+import jwt from 'jsonwebtoken';
 
 const router = Router();
 
@@ -237,7 +238,7 @@ router.get('/expert/select', (req: Request, res: Response) => {
   });
 });
 
-// POST /api/dossier/expert/select - Sélection d'un expert par le client
+// POST /api/dossier-steps/expert/select - Sélection d'un expert par le client
 console.log('🔧 Route /expert/select définie');
 router.post('/expert/select', enhancedAuthMiddleware, async (req: Request, res: Response) => {
   try {
@@ -258,14 +259,26 @@ router.post('/expert/select', enhancedAuthMiddleware, async (req: Request, res: 
       });
     }
 
+    console.log('🔍 [DEBUG] Paramètres reçus:', { dossier_id, expert_id, userId: user?.id, userType: user?.type });
+
     // Vérifier que l'utilisateur est le propriétaire du dossier
+    console.log('🔍 [DEBUG] Recherche dossier:', dossier_id);
     const { data: dossier, error: dossierError } = await supabase
       .from('ClientProduitEligible')
       .select('clientId, statut')
       .eq('id', dossier_id)
       .single();
 
-    if (dossierError || !dossier) {
+    if (dossierError) {
+      console.error('❌ [DEBUG] Erreur recherche dossier:', dossierError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la recherche du dossier'
+      });
+    }
+
+    if (!dossier) {
+      console.error('❌ [DEBUG] Dossier non trouvé:', dossier_id);
       return res.status(404).json({
         success: false,
         message: 'Dossier non trouvé'
@@ -391,9 +404,11 @@ router.post('/expert/select', enhancedAuthMiddleware, async (req: Request, res: 
 
   } catch (error) {
     console.error('❌ Erreur sélection expert:', error);
+    console.error('❌ Stack trace:', error instanceof Error ? error.stack : 'Pas de stack trace');
     return res.status(500).json({
       success: false,
-      message: 'Erreur serveur'
+      message: 'Erreur lors de la sélection de l\'expert',
+      error: error instanceof Error ? error.message : 'Erreur inconnue'
     });
   }
 });
