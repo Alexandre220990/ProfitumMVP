@@ -157,7 +157,10 @@ export default function ExpertSelectionModal({
     // Filtre par expérience
     if (filters.experience && filters.experience !== 'all') {
       const minYears = parseInt(filters.experience);
-      filtered = filtered.filter(expert => expert.experience_years >= minYears);
+      filtered = filtered.filter(expert => {
+        const experienceYears = expert.experience_years || 0;
+        return experienceYears >= minYears;
+      });
     }
 
     // Filtre par note
@@ -201,7 +204,7 @@ export default function ExpertSelectionModal({
             email: expert.email,
             company_name: expert.company_name,
             specialites: expert.specializations || [],
-            experience_years: expert.experience || 0,
+            experience_years: expert.experience ? parseInt(expert.experience.split(' ')[0]) || 0 : 0,
             rating: expert.rating || 0,
             completed_projects: expert.completed_projects || 0,
             location: expert.location,

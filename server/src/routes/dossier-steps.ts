@@ -323,12 +323,12 @@ router.post('/expert/select', enhancedAuthMiddleware, async (req: Request, res: 
 
     // Créer l'assignation d'expert
     const { data: assignment, error: assignError } = await supabase
-      .from('ExpertAssignment')
+      .from('expertassignment')
       .insert({
         expert_id: expert_id,
         client_id: user?.id,
-        client_produit_id: dossier_id,
-        status: 'pending',
+        client_produit_eligible_id: dossier_id,
+        statut: 'pending',
         assignment_date: new Date().toISOString(),
         notes: `Assignation pour dossier TICPE ${dossier_id}`
       })
