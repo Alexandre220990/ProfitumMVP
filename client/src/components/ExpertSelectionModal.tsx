@@ -29,6 +29,7 @@ interface ExpertSelectionModalProps {
     nom: string;
     description?: string;
   };
+  currentExpert?: Expert | null; // Expert actuellement assigné
 }
 
 interface Expert {
@@ -62,7 +63,8 @@ export default function ExpertSelectionModal({
   onClose,
   dossierId,
   onExpertSelected,
-  produitEligible
+  produitEligible,
+  currentExpert
 }: ExpertSelectionModalProps) {
   const { toast } = useToast();
   const [experts, setExperts] = useState<Expert[]>([]);
@@ -483,10 +485,12 @@ export default function ExpertSelectionModal({
                           <p className="text-sm font-medium text-gray-700 mb-1">{expert.company_name}</p>
                         )}
                         
-                        {tempSelectedExpert?.id === expert.id && (
+                        {(tempSelectedExpert?.id === expert.id || currentExpert?.id === expert.id) && (
                           <div className="flex items-center gap-1 mt-2">
                             <CheckCircle className="w-4 h-4 text-green-600" />
-                            <span className="text-sm font-semibold text-green-700">Expert sélectionné</span>
+                            <span className="text-sm font-semibold text-green-700">
+                              {tempSelectedExpert?.id === expert.id ? 'Expert sélectionné' : 'Expert actuellement assigné'}
+                            </span>
                           </div>
                         )}
                       </div>
@@ -601,6 +605,26 @@ export default function ExpertSelectionModal({
                             className="min-w-[120px]"
                           >
                             Annuler
+                          </Button>
+                        </div>
+                      ) : currentExpert?.id === expert.id ? (
+                        <div className="flex flex-col gap-2">
+                          <Button
+                            variant="outline"
+                            disabled
+                            className="min-w-[120px] bg-green-50 border-green-200 text-green-700"
+                          >
+                            <CheckCircle className="w-4 h-4 mr-2" />
+                            Actuellement assigné
+                          </Button>
+                          <Button
+                            onClick={() => handleExpertSelection(expert)}
+                            disabled={selecting}
+                            variant="outline"
+                            size="sm"
+                            className="min-w-[120px]"
+                          >
+                            Changer d'expert
                           </Button>
                         </div>
                       ) : (

@@ -735,6 +735,7 @@ export default function DashboardClient() {
           dossierId={selectedProduitId || ''}
           onExpertSelected={handleExpertSelected}
           produitEligible={selectedProduit?.ProduitEligible}
+          currentExpert={selectedProduit?.Expert || null}
         />
       </div>
     </div>
