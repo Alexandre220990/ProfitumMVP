@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Upload TICPE</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+        .error { color: red; }
+        .success { color: green; }
+        button { padding: 10px 20px; margin: 5px; }
+        input[type="file"] { margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Upload Documents TICPE</h1>
+    
+    <div class="test-section">
+        <h2>1. Vérification Configuration</h2>
+        <div id="config-status">Chargement...</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. Vérification Authentification</h2>
+        <div id="auth-status">Chargement...</div>
+        <button onclick="checkAuth()">Vérifier Auth</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. Test Upload Simple</h2>
+        <input type="file" id="testFile" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+        <button onclick="testUpload()">Tester Upload</button>
+        <div id="upload-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>4. Test API Direct</h2>
+        <button onclick="testAPI()">Tester API Documents</button>
+        <div id="api-result"></div>
+    </div>
+
+    <script>
+        // Configuration
+        const API_URL = 'https://profitummvp-production.up.railway.app';
+        
+        // 1. Vérification Configuration
+        function checkConfig() {
+            const configDiv = document.getElementById('config-status');
+            configDiv.innerHTML = `
+                <div class="success">✅ API_URL: ${API_URL}</div>
+                <div class="success">✅ Page de test chargée</div>
+            `;
+        }
+        
+        // 2. Vérification Authentification
+        async function checkAuth() {
+            const authDiv = document.getElementById('auth-status');
+            authDiv.innerHTML = 'Vérification en cours...';
+            
+            try {
+                const token = localStorage.getItem('token');
+                const supabaseToken = localStorage.getItem('supabase_token');
+                
+                authDiv.innerHTML = `
+                    <div>Token localStorage: ${token ? '✅ Présent' : '❌ Absent'}</div>
+                    <div>Token Supabase: ${supabaseToken ? '✅ Présent' : '❌ Absent'}</div>
+                    <div>Token utilisé: ${token || supabaseToken || 'Aucun'}</div>
+                `;
+            } catch (error) {
+                authDiv.innerHTML = `<div class="error">❌ Erreur: ${error.message}</div>`;
+            }
+        }
+        
+        // 3. Test Upload
+        async function testUpload() {
+            const resultDiv = document.getElementById('upload-result');
+            const fileInput = document.getElementById('testFile');
+            
+            if (!fileInput.files[0]) {
+                resultDiv.innerHTML = '<div class="error">❌ Veuillez sélectionner un fichier</div>';
+                return;
+            }
+            
+            resultDiv.innerHTML = 'Upload en cours...';
+            
+            try {
+                const file = fileInput.files[0];
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('dossier_id', '93374842-cca6-4873-b16e-0ada92e97004');
+                formData.append('document_type', 'kbis');
+                formData.append('category', 'eligibilite_ticpe');
+                formData.append('description', 'Test upload debug');
+                formData.append('user_type', 'client');
+                
+                const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+                
+                if (!token) {
+                    resultDiv.innerHTML = '<div class="error">❌ Token manquant</div>';
+                    return;
+                }
+                
+                console.log('🔍 Tentative upload:', {
+                    url: `${API_URL}/api/documents/upload`,
+                    file: file.name,
+                    size: file.size,
+                    type: file.type
+                });
+                
+                const response = await fetch(`${API_URL}/api/documents/upload`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                    },
+                    body: formData,
+                });
+                
+                console.log('📊 Réponse:', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    ok: response.ok
+                });
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    resultDiv.innerHTML = `<div class="error">❌ Erreur ${response.status}: ${errorText}</div>`;
+                } else {
+                    const result = await response.json();
+                    resultDiv.innerHTML = `<div class="success">✅ Upload réussi: ${JSON.stringify(result, null, 2)}</div>`;
+                }
+                
+            } catch (error) {
+                console.error('❌ Erreur upload:', error);
+                resultDiv.innerHTML = `<div class="error">❌ Erreur: ${error.message}</div>`;
+            }
+        }
+        
+        // 4. Test API Direct
+        async function testAPI() {
+            const resultDiv = document.getElementById('api-result');
+            resultDiv.innerHTML = 'Test API en cours...';
+            
+            try {
+                const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+                
+                if (!token) {
+                    resultDiv.innerHTML = '<div class="error">❌ Token manquant</div>';
+                    return;
+                }
+                
+                const response = await fetch(`${API_URL}/api/documents/93374842-cca6-4873-b16e-0ada92e97004`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                    },
+                });
+                
+                resultDiv.innerHTML = `
+                    <div>Status: ${response.status}</div>
+                    <div>OK: ${response.ok}</div>
+                    <div>Headers: ${JSON.stringify(Object.fromEntries(response.headers.entries()))}</div>
+                `;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Erreur API: ${error.message}</div>`;
+            }
+        }
+        
+        // Initialisation
+        checkConfig();
+        checkAuth();
+    </script>
+</body>
+</html>

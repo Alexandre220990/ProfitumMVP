@@ -64,7 +64,7 @@ router.post('/upload', enhancedAuthMiddleware, upload.single('file'), async (req
     // Vérifier que l'utilisateur est le propriétaire du dossier
     const { data: dossier, error: dossierError } = await supabase
       .from('ClientProduitEligible')
-      .select('clientId, ProduitEligible(nom)')
+      .select('"clientId", ProduitEligible(nom)')
       .eq('id', dossier_id)
       .single();
 
@@ -78,9 +78,9 @@ router.post('/upload', enhancedAuthMiddleware, upload.single('file'), async (req
     // Utiliser l'ID de la base de données métier au lieu de l'ID Supabase
     const userDatabaseId = (user as any).database_id || user.id;
     
-    if (dossier.clientId !== userDatabaseId) {
+    if (dossier['clientId'] !== userDatabaseId) {
       console.log('❌ Accès refusé:', { 
-        dossierClientId: dossier.clientId, 
+        dossierClientId: dossier['clientId'], 
         userId: userDatabaseId,
         userType: (user as any).type 
       });

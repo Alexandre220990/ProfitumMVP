@@ -428,6 +428,23 @@ export const enhancedAuthMiddleware = async (
       created_at: user.created_at || new Date().toISOString()
     };
 
+    // 6. Définir les paramètres RLS pour Supabase
+    try {
+      await supabase.rpc('set_config', {
+        key: 'app.user_type',
+        value: userType
+      });
+      
+      await supabase.rpc('set_config', {
+        key: 'app.user_id',
+        value: userData.id
+      });
+      
+      console.log('🔐 Paramètres RLS définis:', { userType, userId: userData.id });
+    } catch (error) {
+      console.log('⚠️ Erreur définition paramètres RLS:', error);
+    }
+
     (req as unknown as AuthenticatedRequest).user = authenticatedUser;
 
     // Log pour debug
