@@ -136,13 +136,9 @@ export default function TICPEUploadInline({
       formData.append('description', `Document ${documentType} pour éligibilité TICPE`);
       formData.append('user_type', 'client');
 
-      // Upload vers l'API avec authentification
-      const token = localStorage.getItem('token');
+      // Upload vers l'API avec authentification par cookies
       const response = await fetch(`${config.API_URL}/api/documents/upload`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
         body: formData,
         credentials: 'include'
       });
@@ -203,12 +199,8 @@ export default function TICPEUploadInline({
   const removeDocument = useCallback(async (documentId: string) => {
     try {
       // Appel API pour supprimer le document
-      const token = localStorage.getItem('token');
       const response = await fetch(`${config.API_URL}/api/documents/${documentId}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
         credentials: 'include'
       });
 
@@ -268,7 +260,6 @@ export default function TICPEUploadInline({
       const updateResponse = await fetch(`${config.API_URL}/api/client/produits-eligibles/${clientProduitId}`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -276,7 +267,8 @@ export default function TICPEUploadInline({
           notes: 'Documents d\'éligibilité validés par le client',
           current_step: 2,
           progress: 25
-        })
+        }),
+        credentials: 'include'
       });
 
       if (!updateResponse.ok) {
@@ -306,11 +298,7 @@ export default function TICPEUploadInline({
   useEffect(() => {
     const loadExistingDocuments = async () => {
       try {
-        const token = localStorage.getItem('token');
         const response = await fetch(`${config.API_URL}/api/documents/${clientProduitId}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
           credentials: 'include'
         });
         if (response.ok) {
