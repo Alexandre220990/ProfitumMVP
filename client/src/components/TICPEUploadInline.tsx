@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/use-auth';
 import { 
   Upload, 
   CheckCircle, 
@@ -66,6 +67,7 @@ export default function TICPEUploadInline({
   onStepComplete
 }: TICPEUploadInlineProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [uploadedDocuments, setUploadedDocuments] = useState<DocumentFile[]>([]);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress>({});
   const [isUploading, setIsUploading] = useState(false);
@@ -96,6 +98,16 @@ export default function TICPEUploadInline({
     const file = event.target.files?.[0];
     if (!file) return;
 
+    // Vérifier l'authentification
+    if (!user) {
+      toast({
+        title: "Erreur d'authentification",
+        description: "Vous devez être connecté pour uploader des documents",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsUploading(true);
     const fileId = `${file.name}-${Date.now()}`;
     
@@ -124,10 +136,15 @@ export default function TICPEUploadInline({
       formData.append('description', `Document ${documentType} pour éligibilité TICPE`);
       formData.append('user_type', 'client');
 
-      // Upload vers l'API
+      // Upload vers l'API avec authentification
+      const token = localStorage.getItem('token');
       const response = await fetch(`${config.API_URL}/api/documents/upload`, {
         method: 'POST',
-        body: formData
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+        credentials: 'include'
       });
 
       const result = await response.json();
@@ -186,8 +203,13 @@ export default function TICPEUploadInline({
   const removeDocument = useCallback(async (documentId: string) => {
     try {
       // Appel API pour supprimer le document
+      const token = localStorage.getItem('token');
       const response = await fetch(`${config.API_URL}/api/documents/${documentId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        credentials: 'include'
       });
 
       if (!response.ok) {
@@ -284,7 +306,13 @@ export default function TICPEUploadInline({
   useEffect(() => {
     const loadExistingDocuments = async () => {
       try {
-        const response = await fetch(`${config.API_URL}/api/documents/${clientProduitId}`);
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${config.API_URL}/api/documents/${clientProduitId}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+          credentials: 'include'
+        });
         if (response.ok) {
           const result = await response.json();
           if (result.success && result.data) {
