@@ -140,12 +140,28 @@ router.post('/upload', enhancedAuthMiddleware, upload.single('file'), async (req
       .from(bucketName)
       .getPublicUrl(filePath);
 
+    // Vérifier si un document KBIS existe déjà pour ce client
+    let existingKbisDocument = null;
+    if (document_type === 'kbis') {
+      const { data: existingKbis } = await supabase
+        .from('GEDDocument')
+        .select('*')
+        .like('content', `dossier_id:%`)
+        .eq('category', 'eligibilite_ticpe')
+        .eq('created_by', userDatabaseId)
+        .single();
+      
+      if (existingKbis) {
+        existingKbisDocument = existingKbis;
+      }
+    }
+
     // Enregistrer en base de données GED
     const { data: document, error: dbError } = await supabase
       .from('GEDDocument')
       .insert({
         title: originalName,
-        description: description || `Document ${document_type} pour dossier TICPE`,
+        description: description || `Document ${document_type} pour ${category.replace('eligibilite_', '')}`,
         content: `dossier_id:${dossier_id}`, // Stocker l'ID du dossier dans content
         category: category,
         file_path: filePath,
@@ -284,7 +300,7 @@ router.get('/:dossierId', enhancedAuthMiddleware, async (req: Request, res: Resp
       });
     }
 
-    // Récupérer les documents GED
+    // Récupérer les documents GED pour toutes les catégories d'éligibilité
     const { data: documents, error } = await supabase
       .from('GEDDocument')
       .select(`
@@ -298,7 +314,7 @@ router.get('/:dossierId', enhancedAuthMiddleware, async (req: Request, res: Resp
         )
       `)
       .like('content', `dossier_id:${dossierId}%`)
-      .eq('category', 'eligibilite_ticpe')
+      .in('category', ['eligibilite_ticpe', 'eligibilite_urssaf', 'eligibilite_foncier'])
       .order('created_at', { ascending: false });
 
     if (error) {
