@@ -6,6 +6,9 @@ import { fileURLToPath } from "url";
 // Import des routes experts
 import expertRoutes from "./src/routes/experts/index.js";
 
+// Import des routes principales
+import apiRoutes from "./src/routes/index.js";
+
 const router = express.Router();
 
 // ✅ Gestion de `__dirname` en ES Module
@@ -26,6 +29,9 @@ router.get("/api/health", (req: Request, res: Response) => {
 
 // ✅ Routes experts marketplace
 router.use("/api/experts", expertRoutes);
+
+// ✅ Routes API principales (documents, auth, etc.)
+router.use("/api", apiRoutes);
 
 // ✅ Route pour inscrire un utilisateur et créer son fichier JSON
 router.post("/api/register", async (req: Request, res: Response) => {

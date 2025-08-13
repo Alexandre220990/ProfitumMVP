@@ -7,25 +7,7 @@ export const supabase = createClient<Database>(config.SUPABASE_URL, config.SUPAB
   auth: {
     persistSession: true, 
     autoRefreshToken: true, 
-    detectSessionInUrl: true,
-    storage: {
-      getItem: (key: string) => {
-        if (typeof window !== 'undefined') {
-          return localStorage.getItem(key);
-        }
-        return null;
-      },
-      setItem: (key: string, value: string) => {
-        if (typeof window !== 'undefined') {
-          localStorage.setItem(key, value);
-        }
-      },
-      removeItem: (key: string) => {
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem(key);
-        }
-      }
-    }
+    detectSessionInUrl: true
   }
 });
 
@@ -41,6 +23,23 @@ export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
       'apikey': config.SUPABASE_ANON_KEY, 
       'Authorization': token ? `Bearer ${token}` : '',
       'Content-Type': 'application/json'
+    },
+    credentials: 'include'
+  });
+};
+
+// Fonction utilitaire pour les uploads de fichiers avec authentification
+export const fetchWithAuthForUpload = async (url: string, options: RequestInit = {}) => { 
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+
+  return fetch(url, { 
+    ...options, 
+    headers: {
+      ...options.headers, 
+      'apikey': config.SUPABASE_ANON_KEY, 
+      'Authorization': token ? `Bearer ${token}` : ''
+      // Ne pas forcer Content-Type pour permettre multipart/form-data
     },
     credentials: 'include'
   });

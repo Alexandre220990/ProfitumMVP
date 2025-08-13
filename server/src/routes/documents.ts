@@ -75,10 +75,13 @@ router.post('/upload', enhancedAuthMiddleware, upload.single('file'), async (req
       });
     }
 
-    if (dossier.clientId !== user.id) {
+    // Utiliser l'ID de la base de données métier au lieu de l'ID Supabase
+    const userDatabaseId = (user as any).database_id || user.id;
+    
+    if (dossier.clientId !== userDatabaseId) {
       console.log('❌ Accès refusé:', { 
         dossierClientId: dossier.clientId, 
-        userId: user.id,
+        userId: userDatabaseId,
         userType: (user as any).type 
       });
       return res.status(403).json({
@@ -91,7 +94,7 @@ router.post('/upload', enhancedAuthMiddleware, upload.single('file'), async (req
     let bucketName: string;
     switch (user_type) {
       case 'client':
-        bucketName = `client-${user.id}`;
+        bucketName = `client-${userDatabaseId}`;
         break;
       case 'expert':
         bucketName = 'expert-documents';
@@ -146,7 +149,7 @@ router.post('/upload', enhancedAuthMiddleware, upload.single('file'), async (req
         content: `dossier_id:${dossier_id}`, // Stocker l'ID du dossier dans content
         category: category,
         file_path: filePath,
-        created_by: user.id,
+        created_by: userDatabaseId,
         is_active: true,
         version: 1
       })

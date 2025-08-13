@@ -134,7 +134,7 @@ export default function TICPEUploadInline({
       formData.append('document_type', documentType);
       formData.append('category', 'eligibilite_ticpe');
       formData.append('description', `Document ${documentType} pour éligibilité TICPE`);
-      formData.append('user_type', 'client');
+      formData.append('user_type', user?.type || 'client');
 
       // Upload vers l'API avec authentification par token
       const token = localStorage.getItem('token');
