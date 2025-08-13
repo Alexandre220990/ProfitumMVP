@@ -273,7 +273,17 @@ export default function TICPEWorkflow({
             </div>
             
             {selectedExpert ? (
-              <Card className="border-green-200 bg-green-50">
+              <Card 
+                className={`border-green-200 bg-green-50 transition-all duration-200 ${
+                  currentStep < 4 ? 'cursor-pointer hover:bg-green-100 hover:shadow-md' : ''
+                }`}
+                onClick={() => {
+                  // Permettre le changement d'expert seulement avant l'étape 4 (Audit technique)
+                  if (currentStep < 4) {
+                    setShowExpertModal(true);
+                  }
+                }}
+              >
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">
@@ -289,12 +299,26 @@ export default function TICPEWorkflow({
                           <span className="text-sm text-gray-600">{selectedExpert.experience_years} ans d'expérience</span>
                           <span className="text-sm text-gray-600">•</span>
                           <span className="text-sm text-gray-600">{selectedExpert.completed_projects} projets</span>
+                          {selectedExpert.specialites && (
+                            <>
+                              <span className="text-sm text-gray-600">•</span>
+                              <span className="text-sm text-gray-600">{selectedExpert.specialites.join(', ')}</span>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
                       <CheckCircle className="w-5 h-5 text-green-600" />
-                      <span className="text-sm font-medium text-green-800">Expert sélectionné</span>
+                      <div className="text-right">
+                        <span className="text-sm font-medium text-green-800">Expert sélectionné</span>
+                        {currentStep < 4 && (
+                          <p className="text-xs text-gray-500 mt-1">Cliquez pour changer</p>
+                        )}
+                        {currentStep >= 4 && (
+                          <p className="text-xs text-gray-500 mt-1">Verrouillé</p>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </CardContent>

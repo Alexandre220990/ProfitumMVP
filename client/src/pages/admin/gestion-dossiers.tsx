@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/lib/supabase";
 import { useNavigate } from "react-router-dom";
+import { config } from "@/config/env";
 import { Eye, Edit, Plus, ChevronsUpDown, Trash2, ChevronUp, ChevronDown, FolderOpen, Package, FileText, Users, TrendingUp } from "lucide-react";
 
 // Types pour les ProduitEligible
@@ -154,7 +155,7 @@ export default function GestionDossiers() { const { user } = useAuth();
       
       if (!session?.access_token) return;
 
-      const response = await fetch('/api/admin/dossiers/stats', {
+      const response = await fetch(`${config.API_URL}/api/admin/dossiers/stats`, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json'
@@ -173,7 +174,7 @@ export default function GestionDossiers() { const { user } = useAuth();
       
       if (!session?.access_token) { throw new Error('Token d\'authentification manquant'); }
 
-      const response = await fetch('/api/admin/produits', { headers: {
+      const response = await fetch(`${config.API_URL}/api/admin/produits`, { headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json'
         }
@@ -232,7 +233,7 @@ export default function GestionDossiers() { const { user } = useAuth();
       
       if (!session?.access_token) return;
 
-      const response = await fetch('/api/admin/produits', { method: 'POST', headers: {
+      const response = await fetch(`${config.API_URL}/api/admin/produits`, { method: 'POST', headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json'
         },
@@ -252,7 +253,7 @@ export default function GestionDossiers() { const { user } = useAuth();
       
       if (!session?.access_token) return;
 
-      const response = await fetch('/api/admin/dossiers', { method: 'POST', headers: {
+      const response = await fetch(`${config.API_URL}/api/admin/dossiers`, { method: 'POST', headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json'
         },

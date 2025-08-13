@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { config } from '@/config/env';
 import { 
   Upload, 
   FileText, 
@@ -142,7 +143,7 @@ export default function DocumentUpload({
         formData.append('user_type', 'client');
 
         // Upload vers l'API avec Supabase Storage
-        const response = await fetch('/api/documents/upload', {
+        const response = await fetch(`${config.API_URL}/api/documents/upload`, {
           method: 'POST',
           body: formData,
           credentials: 'include'

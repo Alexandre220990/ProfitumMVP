@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { config } from "@/config/env";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -71,7 +72,7 @@ const ComplianceDashboard: React.FC = () => {
       setLoading(true);
       
       // Charger les statistiques de conformité
-      const statsResponse = await fetch('/api/compliance/stats', {
+      const statsResponse = await fetch(`${config.API_URL}/api/compliance/stats`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       const stats = await statsResponse.json();
@@ -80,7 +81,7 @@ const ComplianceDashboard: React.FC = () => {
       }
 
       // Charger les contrôles de conformité
-      const controlsResponse = await fetch('/api/compliance/controls', {
+              const controlsResponse = await fetch(`${config.API_URL}/api/compliance/controls`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       const controlsData = await controlsResponse.json();
@@ -89,7 +90,7 @@ const ComplianceDashboard: React.FC = () => {
       }
 
       // Charger les workflows
-      const workflowsResponse = await fetch('/api/workflow/templates', {
+              const workflowsResponse = await fetch(`${config.API_URL}/api/workflow/templates`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       const workflowsData = await workflowsResponse.json();
@@ -98,7 +99,7 @@ const ComplianceDashboard: React.FC = () => {
       }
 
       // Charger les incidents récents
-      const incidentsResponse = await fetch('/api/compliance/incidents?limit=10', {
+              const incidentsResponse = await fetch(`${config.API_URL}/api/compliance/incidents?limit=10`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       const incidentsData = await incidentsResponse.json();

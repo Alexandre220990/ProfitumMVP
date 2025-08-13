@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
+import { config } from '@/config/env';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -133,7 +134,7 @@ export const CollaborativeEventManager: React.FC = () => {
 
     try {
       setLoading(true);
-      const response = await fetch('/api/collaborative-events', {
+      const response = await fetch(`${config.API_URL}/api/collaborative-events`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -160,7 +161,7 @@ export const CollaborativeEventManager: React.FC = () => {
     if (!user?.id) return;
 
     try {
-      const response = await fetch('/api/collaborative-events/stats', {
+      const response = await fetch(`${config.API_URL}/api/collaborative-events/stats`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -205,7 +206,7 @@ export const CollaborativeEventManager: React.FC = () => {
         }))
       };
 
-      const response = await fetch('/api/collaborative-events', {
+      const response = await fetch(`${config.API_URL}/api/collaborative-events`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,

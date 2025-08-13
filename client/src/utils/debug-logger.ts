@@ -1,3 +1,5 @@
+import { config } from '@/config/env';
+
 // Système de logs de débogage avancé
 export enum LogLevel {
   DEBUG = 0,
@@ -110,7 +112,7 @@ class DebugLogger {
 
   private async sendToServer(entry: LogEntry) {
     try {
-      await fetch('/api/logs', {
+              await fetch(`${config.API_URL}/api/logs`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(entry)

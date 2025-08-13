@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/use-auth';
+import { config } from '@/config/env';
 import { useToast } from '../components/ui/toast-notifications';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
@@ -80,7 +81,7 @@ export const ProgressiveMigrationFlow: React.FC<ProgressiveMigrationFlowProps> =
     
     try {
       // Migrer la session vers le compte client
-      const response = await fetch('/api/session-migration/migrate', {
+      const response = await fetch(`${config.API_URL}/api/session-migration/migrate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -97,7 +98,7 @@ export const ProgressiveMigrationFlow: React.FC<ProgressiveMigrationFlowProps> =
         setMigrationProgress(100);
         
         // Connexion automatique
-        const loginResponse = await fetch('/api/auth/login', {
+        const loginResponse = await fetch(`${config.API_URL}/api/auth/login`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'

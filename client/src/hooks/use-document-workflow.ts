@@ -148,7 +148,7 @@ export const useDocumentWorkflow = () => {
       formData.append('workflow', workflow);
       if (expertId) formData.append('expertId', expertId);
 
-      const response = await fetch('/api/documents/workflow/upload', {
+      const response = await fetch(`${config.API_URL}/api/documents/workflow/upload`, {
         method: 'POST', 
         body: formData 
       });

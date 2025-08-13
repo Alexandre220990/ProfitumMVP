@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { useAuth } from "./use-auth";
 import { useToast } from "./use-toast";
+import { config } from "@/config/env";
 
 // Types pour le stockage de documents
 export interface DocumentFile {
@@ -130,7 +131,7 @@ export const useDocumentStorage = () => {
         formData.append('expiresAt', request.expiresAt.toISOString());
       }
 
-      const response = await fetch('/api/client-documents/upload', {
+      const response = await fetch(`${config.API_URL}/api/client-documents/upload`, {
         method: 'POST',
         body: formData,
         credentials: 'include'

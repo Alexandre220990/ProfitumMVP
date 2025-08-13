@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useMemo } from "react";
 import { ProgressBar } from "./ProgressBar";
 import { Button } from "@/components/ui/button";
+import { config } from "@/config/env";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle, ArrowLeft, ArrowRight, Send } from "lucide-react";
 
@@ -199,7 +200,7 @@ const Questionnaire: React.FC = React.memo(() => {
     setSuccessMessage("");
 
     try {
-      const response = await fetch("/api/questionnaire", {
+      const response = await fetch(`${config.API_URL}/api/questionnaire`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 

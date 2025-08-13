@@ -14,6 +14,7 @@ import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
+import { config } from '@/config/env';
 
 // ============================================================================
 // SYSTÈME DOCUMENTAIRE UNIFIÉ RÉVOLUTIONNAIRE
@@ -81,7 +82,7 @@ const useDocumentUpload = () => {
         }
       });
 
-      const response = await fetch('/api/unified-documents/upload', {
+      const response = await fetch(`${config.API_URL}/api/unified-documents/upload`, {
         method: 'POST',
         body: formData,
         credentials: 'include'

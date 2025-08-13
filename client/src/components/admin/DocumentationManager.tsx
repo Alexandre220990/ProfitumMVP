@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import { config } from "@/config/env";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -65,7 +66,7 @@ const DocumentationManager: React.FC = () => {
   const loadDocuments = async () => { 
     try {
       setLoading(true);
-      const response = await fetch('/api/admin/documents', {
+      const response = await fetch(`${config.API_URL}/api/admin/documents`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Content-Type': 'application/json'
@@ -86,7 +87,7 @@ const DocumentationManager: React.FC = () => {
   // Charger les statistiques
   const loadStats = async () => { 
     try {
-      const response = await fetch('/api/admin/documents/stats', {
+      const response = await fetch(`${config.API_URL}/api/admin/documents/stats`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Content-Type': 'application/json'

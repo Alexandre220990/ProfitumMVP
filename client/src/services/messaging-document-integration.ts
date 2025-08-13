@@ -49,7 +49,7 @@ export class MessagingDocumentIntegration { /**
       formData.append('description', description || `Pièce jointe de conversation`);
       formData.append('tags', JSON.stringify(['messagerie']));
 
-      const response = await fetch('/api/client-documents/upload', { method: 'POST', body: formData, credentials: 'include' });
+      const response = await fetch(`${config.API_URL}/api/client-documents/upload`, { method: 'POST', body: formData, credentials: 'include' });
 
       const result = await response.json();
 

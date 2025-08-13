@@ -125,7 +125,7 @@ export default function TICPEUploadInline({
       formData.append('user_type', 'client');
 
       // Upload vers l'API
-      const response = await fetch('/api/documents/upload', {
+      const response = await fetch(`${config.API_URL}/api/documents/upload`, {
         method: 'POST',
         body: formData
       });
@@ -186,7 +186,7 @@ export default function TICPEUploadInline({
   const removeDocument = useCallback(async (documentId: string) => {
     try {
       // Appel API pour supprimer le document
-      const response = await fetch(`/api/documents/${documentId}`, {
+      const response = await fetch(`${config.API_URL}/api/documents/${documentId}`, {
         method: 'DELETE'
       });
 
@@ -284,7 +284,7 @@ export default function TICPEUploadInline({
   useEffect(() => {
     const loadExistingDocuments = async () => {
       try {
-        const response = await fetch(`/api/documents/${clientProduitId}`);
+        const response = await fetch(`${config.API_URL}/api/documents/${clientProduitId}`);
         if (response.ok) {
           const result = await response.json();
           if (result.success && result.data) {

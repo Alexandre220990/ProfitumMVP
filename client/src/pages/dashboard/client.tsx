@@ -36,6 +36,7 @@ import { useClientProducts } from '@/hooks/use-client-products';
 import { SectionTitle } from "@/components/dashboard/SectionTitle";
 import { EmptyEligibleProductsState } from "@/components/empty-eligible-products-state";
 import { toast } from '@/hooks/use-toast';
+import { config } from '@/config/env';
 
 // Composant StatCard pour les KPIs
 interface StatCardProps {
@@ -273,11 +274,50 @@ const ProductCard = ({ produit, onClick, onExpertSelection }: ProductCardProps) 
         {/* Section Expert - hauteur fixe pour alignement */}
         <div className="mb-4 min-h-[3.5rem] flex flex-col justify-center">
           {produit.expert_id ? (
-            <div className="bg-green-50 p-3 rounded-lg border border-green-200">
-              <p className="text-xs text-green-700 mb-1 font-medium">Expert sélectionné</p>
-              <p className="text-sm text-green-800 font-semibold">
-                {produit.Expert?.name || 'Expert assigné'}
-              </p>
+            <div 
+              className={`bg-green-50 p-3 rounded-lg border border-green-200 transition-all duration-200 ${
+                produit.current_step < 4 ? 'cursor-pointer hover:bg-green-100 hover:shadow-md' : ''
+              }`}
+              onClick={(e) => {
+                e.stopPropagation();
+                // Permettre le changement d'expert seulement avant l'étape 4 (Audit technique)
+                if (produit.current_step < 4 && onExpertSelection) {
+                  onExpertSelection(produit.id, produit);
+                }
+              }}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <p className="text-xs text-green-700 mb-1 font-medium">Expert sélectionné</p>
+                  <p className="text-sm text-green-800 font-semibold">
+                    {produit.Expert?.name || 'Expert assigné'}
+                  </p>
+                  {produit.Expert && (
+                    <div className="flex items-center gap-2 mt-1">
+                      {produit.Expert.specialites && produit.Expert.specialites.length > 0 && (
+                        <span className="text-xs text-green-600">
+                          {produit.Expert.specialites.slice(0, 2).join(', ')}
+                          {produit.Expert.specialites.length > 2 && '...'}
+                        </span>
+                      )}
+                      {produit.Expert.rating && (
+                        <>
+                          <span className="text-xs text-green-600">•</span>
+                          <span className="text-xs text-green-600">⭐ {produit.Expert.rating}</span>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <div className="text-right">
+                  {produit.current_step < 4 && (
+                    <p className="text-xs text-green-600">Cliquer pour changer</p>
+                  )}
+                  {produit.current_step >= 4 && (
+                    <p className="text-xs text-green-600">Verrouillé</p>
+                  )}
+                </div>
+              </div>
             </div>
           ) : (
             <div className="bg-orange-50 p-3 rounded-lg border border-orange-200">
@@ -346,7 +386,7 @@ export default function DashboardClient() {
   const handleSimulation = useCallback(async () => {
     try {
       // Vérifier si l'utilisateur peut faire une nouvelle simulation
-      const response = await fetch('/api/client/simulation/status', {
+      const response = await fetch(`${config.API_URL}/api/client/simulation/status`, {
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',

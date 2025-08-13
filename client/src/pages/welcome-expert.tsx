@@ -34,6 +34,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { config } from '@/config/env';
 import PublicHeader from '@/components/PublicHeader';
 
 // ============================================================================
@@ -277,7 +278,7 @@ const WelcomeExpert = () => {
     setIsSubmitting(true);
     
     try {
-      const response = await fetch('/api/expert/demo-request', {
+      const response = await fetch(`${config.API_URL}/api/expert/demo-request`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
