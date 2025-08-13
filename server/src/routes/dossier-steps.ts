@@ -265,7 +265,7 @@ router.post('/expert/select', enhancedAuthMiddleware, async (req: Request, res: 
     console.log('🔍 [DEBUG] Recherche dossier:', dossier_id);
     const { data: dossier, error: dossierError } = await supabase
       .from('ClientProduitEligible')
-      .select('clientId, statut')
+      .select('"clientId", statut')
       .eq('id', dossier_id)
       .single();
 
@@ -286,6 +286,11 @@ router.post('/expert/select', enhancedAuthMiddleware, async (req: Request, res: 
     }
 
     if (!user || dossier.clientId !== user.id) {
+      console.error('❌ [DEBUG] Accès refusé:', { 
+        dossierClientId: dossier.clientId, 
+        userId: user?.id,
+        match: dossier.clientId === user?.id 
+      });
       return res.status(403).json({
         success: false,
         message: 'Accès non autorisé'
@@ -342,7 +347,7 @@ router.post('/expert/select', enhancedAuthMiddleware, async (req: Request, res: 
         expert_id: expert_id,
         client_id: user?.id,
         client_produit_eligible_id: dossier_id,
-        statut: 'pending',
+        status: 'pending',  // Corrigé: statut → status
         assignment_date: new Date().toISOString(),
         notes: `Assignation pour dossier TICPE ${dossier_id}`
       })
