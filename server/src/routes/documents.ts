@@ -76,6 +76,11 @@ router.post('/upload', enhancedAuthMiddleware, upload.single('file'), async (req
     }
 
     if (dossier.clientId !== user.id) {
+      console.log('❌ Accès refusé:', { 
+        dossierClientId: dossier.clientId, 
+        userId: user.id,
+        userType: (user as any).type 
+      });
       return res.status(403).json({
         success: false,
         message: 'Accès non autorisé'

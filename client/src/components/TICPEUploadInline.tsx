@@ -136,12 +136,37 @@ export default function TICPEUploadInline({
       formData.append('description', `Document ${documentType} pour éligibilité TICPE`);
       formData.append('user_type', 'client');
 
-      // Upload vers l'API avec authentification par cookies
+      // Upload vers l'API avec authentification par token
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        console.error('❌ Token manquant dans localStorage');
+        toast({
+          title: "Erreur d'authentification",
+          description: "Token d'authentification manquant. Veuillez vous reconnecter.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      console.log('🔐 Token trouvé:', token.substring(0, 20) + '...');
+      console.log('🔍 Tentative d\'upload pour dossier:', clientProduitId);
+      
       const response = await fetch(`${config.API_URL}/api/documents/upload`, {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
         body: formData,
-        credentials: 'include'
       });
+
+      console.log('📡 Réponse upload:', response.status, response.statusText);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Erreur upload:', errorText);
+        throw new Error(`Erreur ${response.status}: ${errorText}`);
+      }
 
       const result = await response.json();
 
@@ -199,9 +224,12 @@ export default function TICPEUploadInline({
   const removeDocument = useCallback(async (documentId: string) => {
     try {
       // Appel API pour supprimer le document
+      const token = localStorage.getItem('token');
       const response = await fetch(`${config.API_URL}/api/documents/${documentId}`, {
         method: 'DELETE',
-        credentials: 'include'
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
       });
 
       if (!response.ok) {
@@ -257,9 +285,11 @@ export default function TICPEUploadInline({
       onDocumentsUploaded(uploadedDocuments);
 
       // Mettre à jour le statut du dossier vers eligible_confirmed
+      const token = localStorage.getItem('token');
       const updateResponse = await fetch(`${config.API_URL}/api/client/produits-eligibles/${clientProduitId}`, {
         method: 'PUT',
         headers: {
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -268,7 +298,6 @@ export default function TICPEUploadInline({
           current_step: 2,
           progress: 25
         }),
-        credentials: 'include'
       });
 
       if (!updateResponse.ok) {
@@ -298,8 +327,11 @@ export default function TICPEUploadInline({
   useEffect(() => {
     const loadExistingDocuments = async () => {
       try {
+        const token = localStorage.getItem('token');
         const response = await fetch(`${config.API_URL}/api/documents/${clientProduitId}`, {
-          credentials: 'include'
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
         });
         if (response.ok) {
           const result = await response.json();
