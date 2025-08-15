@@ -548,11 +548,11 @@ export class EligibilityEngine {
           Math.max(eligibility.product.dureeMin, 12)
         );
         
-        await pool.query(
+        const result = await pool.query(
           `INSERT INTO "ClientProduitEligible" (
             "clientId", "produitId", "statut", "tauxFinal", "montantFinal", 
             "dureeFinale", "simulationId", "created_at", "updated_at"
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())`,
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW()) RETURNING id`,
           [
             clientId,
             eligibility.product.id,
@@ -563,6 +563,23 @@ export class EligibilityEngine {
             Date.now() // simulationId temporaire
           ]
         );
+        
+        // 🔧 GÉNÉRATION AUTOMATIQUE DES ÉTAPES
+        if (result.rows[0]?.id) {
+          try {
+            const { DossierStepGenerator } = require('./dossierStepGenerator');
+            const stepsGenerated = await DossierStepGenerator.generateStepsForDossier(result.rows[0].id);
+            
+            if (stepsGenerated) {
+              console.log(`✅ Étapes générées automatiquement pour le dossier: ${result.rows[0].id}`);
+            } else {
+              console.warn(`⚠️ Échec de la génération automatique des étapes pour le dossier: ${result.rows[0].id}`);
+            }
+          } catch (stepError) {
+            console.error('❌ Erreur génération automatique des étapes:', stepError);
+            // Ne pas faire échouer l'attribution si la génération d'étapes échoue
+          }
+        }
       }
       
       console.log(`✅ ${eligibleProducts.length} produits assignés au client ${clientId}`);

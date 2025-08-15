@@ -1934,9 +1934,25 @@ router.post('/dossiers', async (req, res) => {
 
     console.log('✅ Dossier ajouté avec succès:', dossier.id);
 
+    // 🔧 GÉNÉRATION AUTOMATIQUE DES ÉTAPES
+    try {
+      const { DossierStepGenerator } = require('../services/dossierStepGenerator');
+      const stepsGenerated = await DossierStepGenerator.generateStepsForDossier(dossier.id);
+      
+      if (stepsGenerated) {
+        console.log('✅ Étapes générées automatiquement pour le dossier:', dossier.id);
+      } else {
+        console.warn('⚠️ Échec de la génération automatique des étapes pour le dossier:', dossier.id);
+      }
+    } catch (stepError) {
+      console.error('❌ Erreur génération automatique des étapes:', stepError);
+      // Ne pas faire échouer la création du dossier si la génération d'étapes échoue
+    }
+
     return res.json({
       success: true,
-      dossier
+      dossier,
+      steps_generated: true
     });
 
   } catch (error) {

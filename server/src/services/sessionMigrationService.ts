@@ -416,6 +416,21 @@ export class SessionMigrationService {
           continue;
         }
 
+        // 🔧 GÉNÉRATION AUTOMATIQUE DES ÉTAPES
+        try {
+          const { DossierStepGenerator } = require('./dossierStepGenerator');
+          const stepsGenerated = await DossierStepGenerator.generateStepsForDossier(cpe.id);
+          
+          if (stepsGenerated) {
+            console.log(`✅ Étapes générées automatiquement pour le dossier migré: ${cpe.id}`);
+          } else {
+            console.warn(`⚠️ Échec de la génération automatique des étapes pour le dossier migré: ${cpe.id}`);
+          }
+        } catch (stepError) {
+          console.error('❌ Erreur génération automatique des étapes:', stepError);
+          // Ne pas faire échouer la migration si la génération d'étapes échoue
+        }
+
         clientProduitEligibles.push(cpe);
       }
 

@@ -66,6 +66,9 @@ htmlcov/
 *.bak
 *.backup
 
+# Fichiers privés et confidentiels
+DATABASE_KNOWLEDGE_BASE.md
+
 dist
 .DS_Store
 server/public
