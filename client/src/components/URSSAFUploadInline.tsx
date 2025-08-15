@@ -60,6 +60,7 @@ export default function URSSAFUploadInline({
   onStepComplete
 }: URSSAFUploadInlineProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [uploadedDocuments, setUploadedDocuments] = useState<DocumentFile[]>([]);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress>({});
   const [isValidating, setIsValidating] = useState(false);
@@ -88,6 +89,16 @@ export default function URSSAFUploadInline({
   const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>, documentType: string) => {
     const file = event.target.files?.[0];
     if (!file) return;
+
+    // Vérifier l'authentification
+    if (!user) {
+      toast({
+        title: "Erreur d'authentification",
+        description: "Vous devez être connecté pour uploader des documents",
+        variant: "destructive"
+      });
+      return;
+    }
 
     setUploadProgress(prev => ({ ...prev, [documentType]: 0 }));
 
