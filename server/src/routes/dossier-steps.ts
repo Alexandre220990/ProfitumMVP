@@ -521,6 +521,13 @@ router.get('/:dossier_id', enhancedAuthMiddleware, async (req: Request, res: Res
   try {
     const { dossier_id } = req.params;
     
+    // Forcer le retour de données en évitant le cache
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
+    
     const { data: steps, error } = await supabase
       .from('DossierStep')
       .select('*')
@@ -535,9 +542,13 @@ router.get('/:dossier_id', enhancedAuthMiddleware, async (req: Request, res: Res
       });
     }
 
-    return res.json({
+    // Toujours retourner un tableau, même vide
+    return res.status(200).json({
       success: true,
-      data: steps || []
+      data: steps || [],
+      count: steps?.length || 0,
+      dossier_id: dossier_id,
+      timestamp: new Date().toISOString()
     });
   } catch (error) {
     console.error('❌ Erreur récupération étapes:', error);

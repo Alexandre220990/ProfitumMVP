@@ -15,42 +15,27 @@ interface Client {
   email: string;
 }
 
-// Configuration des étapes par type de produit
+// Configuration des étapes standardisées pour tous les produits
+const STANDARD_STEPS = [
+  { name: 'Confirmer l\'éligibilité', type: 'validation' as const, priority: 'critical' as const, duration: 60 },
+  { name: 'Sélection de l\'expert', type: 'expertise' as const, priority: 'high' as const, duration: 120 },
+  { name: 'Collecte des documents', type: 'documentation' as const, priority: 'high' as const, duration: 120 },
+  { name: 'Audit technique', type: 'expertise' as const, priority: 'critical' as const, duration: 240 },
+  { name: 'Validation finale', type: 'approval' as const, priority: 'high' as const, duration: 60 },
+  { name: 'Demande de remboursement', type: 'payment' as const, priority: 'medium' as const, duration: 120 }
+];
+
+// Configuration des étapes par type de produit (utilise les étapes standardisées)
 const PRODUCT_STEPS_CONFIG: Record<string, Array<{
   name: string;
   type: 'validation' | 'documentation' | 'expertise' | 'approval' | 'payment' | 'expert_selection';
   priority: 'low' | 'medium' | 'high' | 'critical';
   duration: number;
 }>> = {
-  'TICPE': [
-    { name: 'Confirmer l\'éligibilité', type: 'validation', priority: 'critical', duration: 60 },
-    { name: 'Sélection de l\'expert', type: 'expert_selection', priority: 'high', duration: 120 },
-    { name: 'Collecte des documents', type: 'documentation', priority: 'high', duration: 120 },
-    { name: 'Audit technique', type: 'expertise', priority: 'critical', duration: 240 },
-    { name: 'Validation finale', type: 'approval', priority: 'high', duration: 60 },
-    { name: 'Demande de remboursement', type: 'payment', priority: 'medium', duration: 120 }
-  ],
-  'CIR': [
-    { name: 'Vérification des critères', type: 'validation', priority: 'high', duration: 90 },
-    { name: 'Analyse des dépenses', type: 'documentation', priority: 'critical', duration: 180 },
-    { name: 'Expertise comptable', type: 'expertise', priority: 'critical', duration: 300 },
-    { name: 'Validation administrative', type: 'approval', priority: 'high', duration: 90 },
-    { name: 'Déclaration fiscale', type: 'payment', priority: 'medium', duration: 120 }
-  ],
-  'URSSAF': [
-    { name: 'Audit des cotisations', type: 'validation', priority: 'high', duration: 120 },
-    { name: 'Analyse des erreurs', type: 'documentation', priority: 'critical', duration: 180 },
-    { name: 'Expertise sociale', type: 'expertise', priority: 'critical', duration: 240 },
-    { name: 'Validation URSSAF', type: 'approval', priority: 'high', duration: 90 },
-    { name: 'Remboursement', type: 'payment', priority: 'medium', duration: 120 }
-  ],
-  'DFS': [
-    { name: 'Vérification des conditions', type: 'validation', priority: 'high', duration: 60 },
-    { name: 'Collecte des justificatifs', type: 'documentation', priority: 'high', duration: 120 },
-    { name: 'Expertise formation', type: 'expertise', priority: 'critical', duration: 180 },
-    { name: 'Validation OPCO', type: 'approval', priority: 'high', duration: 90 },
-    { name: 'Versement des fonds', type: 'payment', priority: 'medium', duration: 120 }
-  ]
+  'TICPE': STANDARD_STEPS,
+  'URSSAF': STANDARD_STEPS,
+  'CIR': STANDARD_STEPS,
+  'DFS': STANDARD_STEPS
 };
 
 // Étapes par défaut pour les produits non configurés

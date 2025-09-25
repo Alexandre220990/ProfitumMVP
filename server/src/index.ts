@@ -79,6 +79,11 @@ import { getCorsConfig, corsMiddleware } from './config/cors';
 import { startCalendarRemindersCron } from './cron/calendar-reminders';
 import routes from './routes';
 
+// Routes apporteurs d'affaires
+import apporteurRoutes from './routes/apporteur';
+import expertApporteurRoutes from './routes/expert-apporteur';
+import adminApporteurRoutes from './routes/admin-apporteur';
+
 // Créer l'application Express
 const app = express();
 
@@ -513,6 +518,16 @@ console.log('🔧 Routes dossier-steps montées sur /api/dossier-steps');
 
 // Routes documents - PROTÉGÉES avec authentification
 app.use('/api/documents', documentsRoutes);
+
+// ===== ROUTES APPORTEURS D'AFFAIRES =====
+// Routes apporteur d'affaires - PROTÉGÉES
+app.use('/api/apporteur', enhancedAuthMiddleware, apporteurRoutes);
+
+// Routes expert pour apporteurs - PROTÉGÉES
+app.use('/api/expert-apporteur', enhancedAuthMiddleware, expertApporteurRoutes);
+
+// Routes admin pour apporteurs - PROTÉGÉES
+app.use('/api/admin/apporteurs', enhancedAuthMiddleware, requireUserType('admin'), adminApporteurRoutes);
 
 // Router centralisé pour toutes les routes API
 app.use('/api', routes);

@@ -10,6 +10,7 @@ import { useToast } from "@/components/ui/toast-notifications";
 import AdvancedMetrics from "@/components/admin/AdvancedMetrics";
 import { BusinessPipelineDashboard } from "@/components/admin/BusinessPipelineDashboard";
 import { ValidationActionsDashboard } from "@/components/admin/ValidationActionsDashboard";
+import ApporteurManagement from "@/components/admin/ApporteurManagement";
 import '@/styles/admin-dashboard.css';
 import { 
   Users, 
@@ -422,7 +423,7 @@ const AdminDashboardPage: React.FC = () => {
 
         {/* Onglets révolutionnaires */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6 animate-slide-in">
-          <TabsList className="grid w-full grid-cols-7 bg-slate-100 p-1 rounded-lg">
+          <TabsList className="grid w-full grid-cols-8 bg-slate-100 p-1 rounded-lg">
             <TabsTrigger value="overview" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200">
               <BarChart3 className="w-4 h-4" />
               Vue d'ensemble
@@ -450,6 +451,10 @@ const AdminDashboardPage: React.FC = () => {
             <TabsTrigger value="documents" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200">
               <FileText className="w-4 h-4" />
               Documents
+            </TabsTrigger>
+            <TabsTrigger value="apporteurs" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200">
+              <UserCheck className="w-4 h-4" />
+              Apporteurs
             </TabsTrigger>
           </TabsList>
 
@@ -758,6 +763,11 @@ const AdminDashboardPage: React.FC = () => {
                 </div>
               ))}
             </div>
+          </TabsContent>
+
+          {/* Onglet Apporteurs d'Affaires */}
+          <TabsContent value="apporteurs" className="space-y-6">
+            <ApporteurManagement />
           </TabsContent>
         </Tabs>
       </div>

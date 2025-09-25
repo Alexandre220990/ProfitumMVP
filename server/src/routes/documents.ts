@@ -278,6 +278,13 @@ router.get('/:dossierId', enhancedAuthMiddleware, async (req: Request, res: Resp
       });
     }
 
+    // Forcer le retour de données en évitant le cache
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
+
     // Vérifier que l'utilisateur a accès au dossier
     const { data: dossier, error: dossierError } = await supabase
       .from('ClientProduitEligible')
@@ -325,9 +332,13 @@ router.get('/:dossierId', enhancedAuthMiddleware, async (req: Request, res: Resp
       });
     }
 
-    return res.json({
+    // Toujours retourner un tableau, même vide
+    return res.status(200).json({
       success: true,
-      data: documents || []
+      data: documents || [],
+      count: documents?.length || 0,
+      dossier_id: dossierId,
+      timestamp: new Date().toISOString()
     });
 
   } catch (error) {
