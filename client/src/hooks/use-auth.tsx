@@ -94,6 +94,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else if (user.type === 'admin') {
         console.log('➡️ Redirection vers dashboard admin optimisé');
         navigate("/admin/dashboard-optimized");
+      } else if (user.type === 'apporteur_affaires') {
+        console.log('➡️ Redirection vers dashboard apporteur');
+        navigate('/apporteur/dashboard');
       } else {
         console.warn('⚠️ Type utilisateur non reconnu:', user.type);
         console.log('➡️ Redirection par défaut vers dashboard client');

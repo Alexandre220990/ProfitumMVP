@@ -46,6 +46,7 @@ const SocialProduct = React.lazy(() => import('./pages/produits/social-product')
 // Pages d'authentification
 const ConnexionClient = React.lazy(() => import('./pages/connexion-client'));
 const ConnexionExpert = React.lazy(() => import('./pages/connexion-expert'));
+const ConnexionApporteur = React.lazy(() => import('./pages/connexion-apporteur'));
 const CreateAccountClient = React.lazy(() => import('./pages/create-account-client'));
 const CreateAccountExpert = React.lazy(() => import('./pages/create-account-expert'));
 const InscriptionClient = React.lazy(() => import('./pages/inscription-client'));
@@ -123,6 +124,7 @@ function App() {
                     <Route path="/experts/:id" element={<ExpertDetails />} />
                     <Route path="/connexion-client" element={<ConnexionClient />} />
                     <Route path="/connexion-expert" element={<ConnexionExpert />} />
+                    <Route path="/connexion-apporteur" element={<ConnexionApporteur />} />
                     <Route path="/connect-admin" element={<ConnectAdmin />} />
                     <Route path="/register-client" element={<CreateAccountClient />} />
                     <Route path="/inscription-client" element={<InscriptionClient />} />

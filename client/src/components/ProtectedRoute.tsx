@@ -2,7 +2,7 @@ import { Navigate, useLocation, Outlet } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 
 interface ProtectedRouteProps {
-  requiredType?: "client" | "expert" | "admin";
+  requiredType?: "client" | "expert" | "admin" | "apporteur_affaires";
 }
 
 export default function ProtectedRoute({ requiredType }: ProtectedRouteProps) {
@@ -23,6 +23,8 @@ export default function ProtectedRoute({ requiredType }: ProtectedRouteProps) {
       return <Navigate to="/connexion-expert" state={{ from: location }} replace />;
     } else if (requiredType === 'admin') {
       return <Navigate to="/connect-admin" state={{ from: location }} replace />;
+    } else if (requiredType === 'apporteur_affaires') {
+      return <Navigate to="/connexion-apporteur" state={{ from: location }} replace />;
     } else {
       return <Navigate to="/connexion-client" state={{ from: location }} replace />;
     }
