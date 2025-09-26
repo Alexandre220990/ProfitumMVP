@@ -75,7 +75,12 @@ export class ApporteurService {
                 : 0;
 
             // Top experts (simulation - à implémenter avec vraies données)
-            const topExperts = [];
+            const topExperts: Array<{
+                expert_id: string;
+                expert_name: string;
+                prospects_count: number;
+                conversion_rate: number;
+            }> = [];
 
             return {
                 total_prospects: totalProspects,

@@ -63,7 +63,7 @@ router.get('/', async (req: Request, res: Response) => {
 });
 
 // ===== DÉTAILS D'UN APPORTEUR =====
-router.get('/:apporteurId', async (req: Request, res: Response) => {
+router.get('/:apporteurId', async (req: Request, res: Response): Promise<void> => {
     try {
         const { apporteurId } = req.params;
         
@@ -89,10 +89,11 @@ router.get('/:apporteurId', async (req: Request, res: Response) => {
             .single();
 
         if (apporteurError || !apporteur) {
-            return res.status(404).json({ 
+            res.status(404).json({ 
                 success: false,
                 error: 'Apporteur non trouvé' 
             });
+            return;
         }
 
         res.json({ 
@@ -109,17 +110,18 @@ router.get('/:apporteurId', async (req: Request, res: Response) => {
 });
 
 // ===== ACTIVER/DÉSACTIVER UN APPORTEUR =====
-router.put('/:apporteurId/status', async (req: Request, res: Response) => {
+router.put('/:apporteurId/status', async (req: Request, res: Response): Promise<void> => {
     try {
         const { apporteurId } = req.params;
         const { status } = req.body;
         const adminId = (req as any).user.admin_id;
         
         if (!status || !['active', 'inactive', 'suspended'].includes(status)) {
-            return res.status(400).json({
+            res.status(400).json({
                 success: false,
                 error: 'Statut invalide. Valeurs autorisées: active, inactive, suspended'
             });
+            return;
         }
         
         const result = await AdminApporteurService.updateApporteurStatus(apporteurId, status, adminId);
@@ -145,17 +147,18 @@ router.put('/:apporteurId/status', async (req: Request, res: Response) => {
 });
 
 // ===== MODIFIER LE TAUX DE COMMISSION =====
-router.put('/:apporteurId/commission-rate', async (req: Request, res: Response) => {
+router.put('/:apporteurId/commission-rate', async (req: Request, res: Response): Promise<void> => {
     try {
         const { apporteurId } = req.params;
         const { commission_rate } = req.body;
         const adminId = (req as any).user.admin_id;
         
         if (typeof commission_rate !== 'number' || commission_rate < 0 || commission_rate > 100) {
-            return res.status(400).json({
+            res.status(400).json({
                 success: false,
                 error: 'Le taux de commission doit être un nombre entre 0 et 100'
             });
+            return;
         }
         
         const result = await AdminApporteurService.updateCommissionRate(apporteurId, commission_rate, adminId);
@@ -200,7 +203,7 @@ router.get('/stats/overview', async (req: Request, res: Response) => {
 });
 
 // ===== SUPPRIMER UN APPORTEUR =====
-router.delete('/:apporteurId', async (req: Request, res: Response) => {
+router.delete('/:apporteurId', async (req: Request, res: Response): Promise<void> => {
     try {
         const { apporteurId } = req.params;
         
@@ -215,10 +218,11 @@ router.delete('/:apporteurId', async (req: Request, res: Response) => {
             .single();
 
         if (fetchError || !apporteur) {
-            return res.status(404).json({
+            res.status(404).json({
                 success: false,
                 error: 'Apporteur non trouvé'
             });
+            return;
         }
 
         // Supprimer l'apporteur (cascade supprimera les prospects)

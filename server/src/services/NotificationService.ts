@@ -400,4 +400,106 @@ Voulez-vous accepter ce prospect ?`;
             throw new Error('Erreur lors de la récupération des statistiques');
         }
     }
+
+    // ===== MÉTHODES SYSTÈME MANQUANTES =====
+    
+    static async sendSystemNotification(
+        userId: string, 
+        title: string, 
+        message: string, 
+        type: string = 'system'
+    ): Promise<{ success: boolean; error?: string }> {
+        try {
+            const { createClient } = await import('@supabase/supabase-js');
+            const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!);
+
+            const { error } = await supabase
+                .from('notification')
+                .insert({
+                    user_id: userId,
+                    title,
+                    message,
+                    type,
+                    status: 'unread',
+                    created_at: new Date().toISOString()
+                });
+
+            if (error) {
+                console.error('Erreur envoi notification système:', error);
+                return { success: false, error: error.message };
+            }
+
+            return { success: true };
+        } catch (error) {
+            console.error('Erreur sendSystemNotification:', error);
+            return { success: false, error: 'Erreur lors de l\'envoi de la notification' };
+        }
+    }
+
+    static async sendPreselectionNotification(
+        expertId: string,
+        prospectId: string,
+        apporteurId: string
+    ): Promise<{ success: boolean; error?: string }> {
+        try {
+            const { createClient } = await import('@supabase/supabase-js');
+            const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!);
+
+            const { error } = await supabase
+                .from('ExpertNotification')
+                .insert({
+                    expert_id: expertId,
+                    prospect_id: prospectId,
+                    apporteur_id: apporteurId,
+                    notification_type: 'new_prospect_available',
+                    title: 'Nouveau prospect disponible',
+                    message: 'Un nouveau prospect vous a été assigné',
+                    priority: 'high',
+                    status: 'unread'
+                });
+
+            if (error) {
+                console.error('Erreur envoi notification présélection:', error);
+                return { success: false, error: error.message };
+            }
+
+            return { success: true };
+        } catch (error) {
+            console.error('Erreur sendPreselectionNotification:', error);
+            return { success: false, error: 'Erreur lors de l\'envoi de la notification' };
+        }
+    }
+
+    static async sendNotification(
+        userId: string,
+        title: string,
+        message: string,
+        type: string = 'general'
+    ): Promise<{ success: boolean; error?: string }> {
+        try {
+            const { createClient } = await import('@supabase/supabase-js');
+            const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!);
+
+            const { error } = await supabase
+                .from('notification')
+                .insert({
+                    user_id: userId,
+                    title,
+                    message,
+                    type,
+                    status: 'unread',
+                    created_at: new Date().toISOString()
+                });
+
+            if (error) {
+                console.error('Erreur envoi notification:', error);
+                return { success: false, error: error.message };
+            }
+
+            return { success: true };
+        } catch (error) {
+            console.error('Erreur sendNotification:', error);
+            return { success: false, error: 'Erreur lors de l\'envoi de la notification' };
+        }
+    }
 }
