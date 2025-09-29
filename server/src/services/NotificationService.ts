@@ -5,7 +5,7 @@ import {
     ApiResponse 
 } from '../types/apporteur';
 
-const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!);
+const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
 export class NotificationService {
     
@@ -408,7 +408,7 @@ Voulez-vous accepter ce prospect ?`;
     ): Promise<string> {
         try {
             const { createClient } = await import('@supabase/supabase-js');
-            const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!);
+            const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
             // Extraire les données selon le contexte
             const userId = data.user_id || data.recipient_id || data.expert_id;
@@ -446,7 +446,7 @@ Voulez-vous accepter ce prospect ?`;
     ): Promise<string> {
         try {
             const { createClient } = await import('@supabase/supabase-js');
-            const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!);
+            const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
             const { error } = await supabase
                 .from('ExpertNotification')
@@ -481,7 +481,7 @@ Voulez-vous accepter ce prospect ?`;
     ): Promise<string> {
         try {
             const { createClient } = await import('@supabase/supabase-js');
-            const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!);
+            const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
             const { error } = await supabase
                 .from('notification')
