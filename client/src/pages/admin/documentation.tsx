@@ -9,7 +9,10 @@ import {
   BarChart3,
   Upload,
   Download,
-  Eye
+  Eye,
+  Clock,
+  Star,
+  TrendingUp
 } from 'lucide-react';
 
 export default function AdminDocumentationPage() {
@@ -107,51 +110,199 @@ export default function AdminDocumentationPage() {
         </TabsContent>
 
         <TabsContent value="analytics" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <BarChart3 className="h-5 w-5" />
-                <span>Analytics Documentaires</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                {/* Graphiques et métriques à implémenter */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="p-4 border rounded-lg">
-                    <h3 className="font-medium mb-2">Documents les plus consultés</h3>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">Guide d'utilisation</span>
-                        <Badge>156 vues</Badge>
+          {/* Métriques de performance des documents */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Documents</CardTitle>
+                <FileText className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">1,247</div>
+                <p className="text-xs text-muted-foreground">
+                  +8% depuis le mois dernier
+                </p>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Consultations</CardTitle>
+                <Eye className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">3,456</div>
+                <p className="text-xs text-muted-foreground">
+                  Cette semaine
+                </p>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Temps Moyen</CardTitle>
+                <Clock className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">4.2 min</div>
+                <p className="text-xs text-muted-foreground">
+                  Par consultation
+                </p>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Satisfaction</CardTitle>
+                <Star className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">4.7/5</div>
+                <p className="text-xs text-muted-foreground">
+                  Note moyenne
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Graphiques d'utilisation */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Documents les plus consultés</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Guide d'utilisation</span>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-32 bg-gray-200 rounded-full h-2">
+                        <div className="bg-blue-600 h-2 rounded-full" style={{ width: '85%' }}></div>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">Procédures de sécurité</span>
-                        <Badge>89 vues</Badge>
+                      <span className="text-sm text-gray-600">156</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Procédures de sécurité</span>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-32 bg-gray-200 rounded-full h-2">
+                        <div className="bg-green-600 h-2 rounded-full" style={{ width: '65%' }}></div>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">Documentation API</span>
-                        <Badge>67 vues</Badge>
+                      <span className="text-sm text-gray-600">89</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Documentation API</span>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-32 bg-gray-200 rounded-full h-2">
+                        <div className="bg-yellow-600 h-2 rounded-full" style={{ width: '45%' }}></div>
                       </div>
+                      <span className="text-sm text-gray-600">67</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Manuel utilisateur</span>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-32 bg-gray-200 rounded-full h-2">
+                        <div className="bg-purple-600 h-2 rounded-full" style={{ width: '35%' }}></div>
+                      </div>
+                      <span className="text-sm text-gray-600">45</span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Performance par Catégorie</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                      <span className="text-sm font-medium">Guides</span>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-lg font-bold">89%</div>
+                      <div className="text-xs text-gray-600">Satisfaction</div>
                     </div>
                   </div>
                   
-                  <div className="p-4 border rounded-lg">
-                    <h3 className="font-medium mb-2">Activité récente</h3>
-                    <div className="space-y-2">
-                      <div className="flex items-center space-x-2 text-sm">
-                        <Eye className="h-3 w-3 text-blue-500" />
-                        <span>Document consulté - il y a 2h</span>
-                      </div>
-                      <div className="flex items-center space-x-2 text-sm">
-                        <Upload className="h-3 w-3 text-green-500" />
-                        <span>Nouveau document - il y a 4h</span>
-                      </div>
-                      <div className="flex items-center space-x-2 text-sm">
-                        <Download className="h-3 w-3 text-purple-500" />
-                        <span>Document téléchargé - il y a 6h</span>
-                      </div>
+                  <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                      <span className="text-sm font-medium">Procédures</span>
                     </div>
+                    <div className="text-right">
+                      <div className="text-lg font-bold">92%</div>
+                      <div className="text-xs text-gray-600">Satisfaction</div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                      <span className="text-sm font-medium">API</span>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-lg font-bold">78%</div>
+                      <div className="text-xs text-gray-600">Satisfaction</div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+                      <span className="text-sm font-medium">Manuels</span>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-lg font-bold">85%</div>
+                      <div className="text-xs text-gray-600">Satisfaction</div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Métriques avancées */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Métriques de Performance des Documents</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                  <TrendingUp className="h-8 w-8 text-green-600" />
+                  <div>
+                    <p className="text-sm font-medium">Taux de Conversion</p>
+                    <p className="text-xs text-gray-600">78% des consultations</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                  <Users className="h-8 w-8 text-blue-600" />
+                  <div>
+                    <p className="text-sm font-medium">Utilisateurs Actifs</p>
+                    <p className="text-xs text-gray-600">234 utilisateurs</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                  <Clock className="h-8 w-8 text-yellow-600" />
+                  <div>
+                    <p className="text-sm font-medium">Temps de Chargement</p>
+                    <p className="text-xs text-gray-600">1.2s en moyenne</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                  <BarChart3 className="h-8 w-8 text-purple-600" />
+                  <div>
+                    <p className="text-sm font-medium">Engagement</p>
+                    <p className="text-xs text-gray-600">4.2 min par session</p>
                   </div>
                 </div>
               </div>

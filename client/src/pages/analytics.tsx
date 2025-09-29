@@ -20,10 +20,17 @@ import {
   Minus,
   RefreshCw,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Download,
+  FileText,
+  Table
 } from 'lucide-react';
 import { useAnalytics } from '@/hooks/use-analytics';
 import { useExpertAnalytics } from '@/hooks/use-expert-analytics';
+import { useAdminAnalytics } from '@/hooks/use-admin-analytics';
+import { AdvancedMetrics } from '@/components/admin/AdvancedMetrics';
+import { BusinessPipelineDashboard } from '@/components/admin/BusinessPipelineDashboard';
+import { ValidationActionsDashboard } from '@/components/admin/ValidationActionsDashboard';
 import { cn } from '@/lib/utils';
 
 // Composants de graphiques Recharts
@@ -47,6 +54,12 @@ const AnalyticsPage: React.FC = () => {
   const { user } = useAuth();
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d' | '1y'>('30d');
   const [activeTab, setActiveTab] = useState('overview');
+  
+  // Filtres avancés pour admin
+  const [selectedProduct, setSelectedProduct] = useState<string>('all');
+  const [selectedExpert, setSelectedExpert] = useState<string>('all');
+  const [selectedApporteur, setSelectedApporteur] = useState<string>('all');
+  const [selectedAmount, setSelectedAmount] = useState<string>('all');
 
   // Vérifier les permissions (admin et expert uniquement)
   if (!user || (user.type !== 'admin' && user.type !== 'expert')) {
@@ -55,7 +68,18 @@ const AnalyticsPage: React.FC = () => {
 
   // Utiliser le hook approprié selon le type d'utilisateur
   const isExpert = user.type === 'expert';
+  const isAdmin = user.type === 'admin';
   
+  // Hook AdminAnalytics (révolutionnaire avec IA prédictive)
+  const {
+    metrics: adminAdvancedMetrics,
+    isLoading: adminAdvancedLoading,
+    error: adminAdvancedError,
+    lastUpdated: adminAdvancedLastUpdated,
+    refreshMetrics: adminAdvancedRefresh
+  } = useAdminAnalytics();
+
+  // Hook Analytics standard
   const {
     metrics: adminMetrics,
     topProducts: adminTopProducts,
@@ -66,6 +90,7 @@ const AnalyticsPage: React.FC = () => {
     refresh: adminRefresh
   } = useAnalytics({ timeRange });
 
+  // Hook ExpertAnalytics
   const {
     metrics: expertMetrics,
     performanceByMonth,
@@ -78,14 +103,14 @@ const AnalyticsPage: React.FC = () => {
     refresh: expertRefresh
   } = useExpertAnalytics({ timeRange });
 
-  // Utiliser les données appropriées
-  const metrics = isExpert ? expertMetrics : adminMetrics;
+  // Utiliser les données appropriées selon le type d'utilisateur
+  const metrics = isExpert ? expertMetrics : (isAdmin ? adminAdvancedMetrics : adminMetrics);
   const topProducts = isExpert ? expertTopProducts : adminTopProducts;
   const expertPerformance = isExpert ? performanceByMonth : adminExpertPerformance;
-  const loading = isExpert ? expertLoading : adminLoading;
-  const error = isExpert ? expertError : adminError;
-  const lastUpdated = isExpert ? expertLastUpdated : adminLastUpdated;
-  const refresh = isExpert ? expertRefresh : adminRefresh;
+  const loading = isExpert ? expertLoading : (isAdmin ? adminAdvancedLoading : adminLoading);
+  const error = isExpert ? expertError : (isAdmin ? adminAdvancedError : adminError);
+  const lastUpdated = isExpert ? expertLastUpdated : (isAdmin ? adminAdvancedLastUpdated : adminLastUpdated);
+  const refresh = isExpert ? expertRefresh : (isAdmin ? adminAdvancedRefresh : adminRefresh);
 
   // Formater les valeurs
   const formatValue = (value: number, format: string) => {
@@ -179,13 +204,109 @@ const AnalyticsPage: React.FC = () => {
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Actualiser
               </Button>
+
+              {/* Boutons d'export et rapports pour admin */}
+              {isAdmin && (
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm">
+                    <Download className="w-4 h-4 mr-2" />
+                    PDF
+                  </Button>
+                  <Button variant="outline" size="sm">
+                    <Table className="w-4 h-4 mr-2" />
+                    Excel
+                  </Button>
+                  <Button variant="outline" size="sm">
+                    <FileText className="w-4 h-4 mr-2" />
+                    CSV
+                  </Button>
+                  <Button variant="default" size="sm">
+                    <BarChart3 className="w-4 h-4 mr-2" />
+                    Rapport Personnalisé
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
+        {/* Filtres avancés pour admin */}
+        {isAdmin && (
+          <div className="mb-6">
+            <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+              <CardContent className="p-4">
+                <div className="flex flex-col lg:flex-row gap-4">
+                  <div className="flex-1">
+                    <label className="text-sm font-medium text-gray-700 mb-2 block">Produit</label>
+                    <Select value={selectedProduct} onValueChange={setSelectedProduct}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Tous les produits" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tous les produits</SelectItem>
+                        <SelectItem value="ticpe">TICPE</SelectItem>
+                        <SelectItem value="urssaf">URSSAF</SelectItem>
+                        <SelectItem value="dfs">DFS</SelectItem>
+                        <SelectItem value="foncier">Foncier</SelectItem>
+                        <SelectItem value="cir">CIR/CII/JEI</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="flex-1">
+                    <label className="text-sm font-medium text-gray-700 mb-2 block">Expert</label>
+                    <Select value={selectedExpert} onValueChange={setSelectedExpert}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Tous les experts" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tous les experts</SelectItem>
+                        <SelectItem value="expert1">Expert 1</SelectItem>
+                        <SelectItem value="expert2">Expert 2</SelectItem>
+                        <SelectItem value="expert3">Expert 3</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="flex-1">
+                    <label className="text-sm font-medium text-gray-700 mb-2 block">Apporteur</label>
+                    <Select value={selectedApporteur} onValueChange={setSelectedApporteur}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Tous les apporteurs" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tous les apporteurs</SelectItem>
+                        <SelectItem value="apporteur1">Apporteur 1</SelectItem>
+                        <SelectItem value="apporteur2">Apporteur 2</SelectItem>
+                        <SelectItem value="apporteur3">Apporteur 3</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="flex-1">
+                    <label className="text-sm font-medium text-gray-700 mb-2 block">Montant</label>
+                    <Select value={selectedAmount} onValueChange={setSelectedAmount}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Tous les montants" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tous les montants</SelectItem>
+                        <SelectItem value="0-15k">&lt; 15k€</SelectItem>
+                        <SelectItem value="15k-50k">15k€ - 50k€</SelectItem>
+                        <SelectItem value="50k-150k">50k€ - 150k€</SelectItem>
+                        <SelectItem value="150k+">&gt; 150k€</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         {/* KPIs Principaux */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {metrics.slice(0, 4).map((metric) => (
+          {metrics.slice(0, 4).map((metric: any) => (
             <Card key={metric.id} className="relative overflow-hidden">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
@@ -224,11 +345,18 @@ const AnalyticsPage: React.FC = () => {
 
         {/* Onglets détaillés */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-7' : 'grid-cols-4'}`}>
             <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
             <TabsTrigger value="performance">Performance</TabsTrigger>
             <TabsTrigger value="products">Produits</TabsTrigger>
             <TabsTrigger value="clients">Clients</TabsTrigger>
+            {isAdmin && (
+              <>
+                <TabsTrigger value="advanced">Métriques Avancées</TabsTrigger>
+                <TabsTrigger value="pipeline">Pipeline Business</TabsTrigger>
+                <TabsTrigger value="validations">Validations</TabsTrigger>
+              </>
+            )}
           </TabsList>
 
           {/* Onglet Vue d'ensemble */}
@@ -304,7 +432,7 @@ const AnalyticsPage: React.FC = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-                    {metrics.find(m => m.name.includes('Temps') || m.name.includes('Moyen'))?.value || 0} jours
+                    {metrics.find((m: any) => m.name.includes('Temps') || m.name.includes('Moyen'))?.value || 0} jours
                   </div>
                   <p className="text-sm text-gray-600">Temps moyen de traitement</p>
                 </CardContent>
@@ -319,7 +447,7 @@ const AnalyticsPage: React.FC = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-                    {metrics.find(m => m.name.includes('Conversion'))?.value || 0}%
+                    {metrics.find((m: any) => m.name.includes('Conversion'))?.value || 0}%
                   </div>
                   <p className="text-sm text-gray-600">Taux de conversion global</p>
                 </CardContent>
@@ -334,7 +462,7 @@ const AnalyticsPage: React.FC = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-                    {metrics.find(m => m.name.includes('Satisfaction'))?.value || 0}/5
+                    {metrics.find((m: any) => m.name.includes('Satisfaction'))?.value || 0}/5
                   </div>
                   <p className="text-sm text-gray-600">Note moyenne des clients</p>
                 </CardContent>
@@ -417,19 +545,19 @@ const AnalyticsPage: React.FC = () => {
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-600">En cours</span>
                       <Badge variant="secondary">
-                        {metrics.find(m => m.name.includes('En cours') || m.name.includes('Assignations'))?.value || 0}
+                        {metrics.find((m: any) => m.name.includes('En cours') || m.name.includes('Assignations'))?.value || 0}
                       </Badge>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-600">Terminés</span>
                       <Badge variant="default">
-                        {metrics.find(m => m.name.includes('Terminées'))?.value || 0}
+                        {metrics.find((m: any) => m.name.includes('Terminées'))?.value || 0}
                       </Badge>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-600">En attente</span>
                       <Badge variant="outline">
-                        {metrics.find(m => m.name.includes('Attente'))?.value || 0}
+                        {metrics.find((m: any) => m.name.includes('Attente'))?.value || 0}
                       </Badge>
                     </div>
                   </div>
@@ -476,11 +604,11 @@ const AnalyticsPage: React.FC = () => {
                   <ResponsiveContainer width="100%" height={300}>
                     <RechartsPieChart>
                       <Pie
-                        data={topProducts}
+                        data={topProducts as any[]}
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
+                        label={({ name, percent }: any) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
                         outerRadius={80}
                         fill="#8884d8"
                         dataKey="revenue"
@@ -517,7 +645,7 @@ const AnalyticsPage: React.FC = () => {
                       </div>
                       <div className="text-right">
                         <p className="text-2xl font-bold text-green-600">
-                          {metrics.find(m => m.name.includes('Nouveaux'))?.value || 0}
+                          {metrics.find((m: any) => m.name.includes('Nouveaux'))?.value || 0}
                         </p>
                       </div>
                     </div>
@@ -528,7 +656,7 @@ const AnalyticsPage: React.FC = () => {
                       </div>
                       <div className="text-right">
                         <p className="text-2xl font-bold text-blue-600">
-                          {metrics.find(m => m.name.includes('Actifs'))?.value || 0}
+                          {metrics.find((m: any) => m.name.includes('Actifs'))?.value || 0}
                         </p>
                       </div>
                     </div>
@@ -539,7 +667,7 @@ const AnalyticsPage: React.FC = () => {
                       </div>
                       <div className="text-right">
                         <p className="text-2xl font-bold text-purple-600">
-                          {metrics.find(m => m.name.includes('Satisfaits'))?.value || 0}%
+                          {metrics.find((m: any) => m.name.includes('Satisfaits'))?.value || 0}%
                         </p>
                       </div>
                     </div>
@@ -589,6 +717,63 @@ const AnalyticsPage: React.FC = () => {
               </Card>
             </div>
           </TabsContent>
+
+          {/* Onglet Métriques Avancées (Admin uniquement) */}
+          {isAdmin && (
+            <TabsContent value="advanced" className="space-y-6">
+              <div className="grid grid-cols-1 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <TrendingUp className="w-5 h-5" />
+                      <span>Métriques Avancées avec IA Prédictive</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <AdvancedMetrics />
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+          )}
+
+          {/* Onglet Pipeline Business (Admin uniquement) */}
+          {isAdmin && (
+            <TabsContent value="pipeline" className="space-y-6">
+              <div className="grid grid-cols-1 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <BarChart3 className="w-5 h-5" />
+                      <span>Pipeline Business avec Prédictions</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <BusinessPipelineDashboard />
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+          )}
+
+          {/* Onglet Validations (Admin uniquement) */}
+          {isAdmin && (
+            <TabsContent value="validations" className="space-y-6">
+              <div className="grid grid-cols-1 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <CheckCircle className="w-5 h-5" />
+                      <span>Actions de Validation et Workflows</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ValidationActionsDashboard />
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </div>

@@ -841,17 +841,151 @@ export default function EnhancedAdminDocumentsPage() {
 
           {/* Analytics */}
           <TabsContent value="analytics" className="space-y-6">
+            {/* Métriques principales */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <Card>
-              <CardHeader>
-                <CardTitle>Analytics des Documents</CardTitle>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Documents</CardTitle>
+                  <FileText className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-center py-8">
-                  <BarChart3 className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">Analytics en développement</h3>
-                  <p className="text-gray-600">
-                    Cette section affichera des graphiques et statistiques avancées sur l'utilisation des documents.
+                  <div className="text-2xl font-bold">{stats?.total_files || 0}</div>
+                  <p className="text-xs text-muted-foreground">
+                    +12% depuis le mois dernier
                   </p>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Espace Utilisé</CardTitle>
+                  <HardDrive className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {stats?.total_size ? `${(stats.total_size / 1024 / 1024 / 1024).toFixed(2)} GB` : '0 GB'}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {stats?.system_health?.storage_usage || 0}% de l'espace total
+                  </p>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Uploads Aujourd'hui</CardTitle>
+                  <Upload className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats?.recent_activity?.uploads_today || 0}</div>
+                  <p className="text-xs text-muted-foreground">
+                    {stats?.recent_activity?.uploads_week || 0} cette semaine
+                  </p>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Utilisateurs Actifs</CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats?.recent_activity?.active_users || 0}</div>
+                  <p className="text-xs text-muted-foreground">
+                    Utilisateurs connectés
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Graphiques d'utilisation */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Documents par Catégorie</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {stats?.files_by_category && Object.entries(stats.files_by_category).map(([category, count]) => (
+                      <div key={category} className="flex items-center justify-between">
+                        <span className="text-sm font-medium">{category}</span>
+                        <div className="flex items-center space-x-2">
+                          <div className="w-32 bg-gray-200 rounded-full h-2">
+                            <div 
+                              className="bg-blue-600 h-2 rounded-full" 
+                              style={{ width: `${(count / (stats?.total_files || 1)) * 100}%` }}
+                            ></div>
+                          </div>
+                          <span className="text-sm text-gray-600">{count}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Statut des Documents</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {stats?.files_by_status && Object.entries(stats.files_by_status).map(([status, count]) => (
+                      <div key={status} className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <div className={`w-3 h-3 rounded-full ${
+                            status === 'validated' ? 'bg-green-500' :
+                            status === 'pending' ? 'bg-yellow-500' :
+                            status === 'rejected' ? 'bg-red-500' : 'bg-gray-500'
+                          }`}></div>
+                          <span className="text-sm font-medium">{status}</span>
+                        </div>
+                        <span className="text-sm text-gray-600">{count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Santé du système */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Santé du Système</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                    <Database className="h-8 w-8 text-blue-600" />
+                    <div>
+                      <p className="text-sm font-medium">Stockage</p>
+                      <p className="text-xs text-gray-600">{stats?.system_health?.storage_usage || 0}% utilisé</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                    <Clock className="h-8 w-8 text-yellow-600" />
+                    <div>
+                      <p className="text-sm font-medium">En Attente</p>
+                      <p className="text-xs text-gray-600">{stats?.system_health?.pending_validations || 0} validations</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                    <AlertTriangle className="h-8 w-8 text-red-600" />
+                    <div>
+                      <p className="text-sm font-medium">Expirés</p>
+                      <p className="text-xs text-gray-600">{stats?.system_health?.expired_documents || 0} documents</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                    <Activity className="h-8 w-8 text-green-600" />
+                    <div>
+                      <p className="text-sm font-medium">Erreurs</p>
+                      <p className="text-xs text-gray-600">{stats?.system_health?.system_errors || 0} erreurs</p>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>

@@ -1,10 +1,9 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { User, Settings, LogOut, Users, FileText, HelpCircle, BarChart, MessageSquare, Bell } from "lucide-react";
+import { User, Settings, LogOut, FileText, BarChart, MessageSquare, Bell, Calendar, TrendingUp } from "lucide-react";
 import { useNotificationBadge } from "@/hooks/useNotificationBadge";
 
 export default function HeaderAdmin() { 
@@ -23,22 +22,36 @@ export default function HeaderAdmin() {
       <div onClick={() => navigate("/admin/dashboard-optimized")} className="cursor-pointer">
         <img src="/profitum_logo_texte.png" alt="Logo Profitum" className="h-14 cursor-pointer transition-transform hover:scale-105" />
       </div>
-      {/* NAVIGATION ADMIN */}
-      <nav className="flex space-x-10 text-gray-700 font-semibold text-lg">
-        <div onClick={() => navigate("/admin/dashboard-optimized")} className="flex items-center space-x-2 hover:text-blue-600 transition-colors cursor-pointer">
-          <BarChart className="h-5 w-5" /> <span>Tableau de bord</span>
+      {/* NAVIGATION ADMIN OPTIMISÉE - 5 SECTIONS PRINCIPALES */}
+      <nav className="flex space-x-8 text-gray-700 font-semibold text-lg">
+        {/* 1. Dashboard (page principale) */}
+        <div onClick={() => navigate("/admin/dashboard-optimized")} className="flex items-center space-x-2 hover:text-blue-600 transition-colors cursor-pointer relative group">
+          <BarChart className="h-5 w-5" /> <span>Dashboard</span>
+          <div className="absolute -bottom-1 left-0 w-full h-0.5 bg-blue-600 transform scale-x-0 group-hover:scale-x-100 transition-transform"></div>
         </div>
-        <div onClick={() => navigate("/admin/gestion-clients")} className="flex items-center space-x-2 hover:text-blue-600 transition-colors cursor-pointer">
-          <Users className="h-5 w-5" /> <span>Utilisateurs</span>
+        
+        {/* 2. Agenda */}
+        <div onClick={() => navigate("/admin/agenda-admin")} className="flex items-center space-x-2 hover:text-blue-600 transition-colors cursor-pointer relative group">
+          <Calendar className="h-5 w-5" /> <span>Agenda</span>
+          <div className="absolute -bottom-1 left-0 w-full h-0.5 bg-blue-600 transform scale-x-0 group-hover:scale-x-100 transition-transform"></div>
         </div>
-        <div onClick={() => navigate("/admin/enhanced-admin-documents")} className="flex items-center space-x-2 hover:text-blue-600 transition-colors cursor-pointer">
-          <FileText className="h-5 w-5" /> <span>Documents</span>
-        </div>
-        <div onClick={() => navigate("/admin/monitoring")} className="flex items-center space-x-2 hover:text-blue-600 transition-colors cursor-pointer">
-          <HelpCircle className="h-5 w-5" /> <span>Monitoring</span>
-        </div>
-        <div onClick={() => navigate("/admin/messagerie-admin")} className="flex items-center space-x-2 hover:text-blue-600 transition-colors cursor-pointer">
+        
+        {/* 3. Messagerie */}
+        <div onClick={() => navigate("/admin/messagerie-admin")} className="flex items-center space-x-2 hover:text-blue-600 transition-colors cursor-pointer relative group">
           <MessageSquare className="h-5 w-5" /> <span>Messagerie</span>
+          <div className="absolute -bottom-1 left-0 w-full h-0.5 bg-blue-600 transform scale-x-0 group-hover:scale-x-100 transition-transform"></div>
+        </div>
+        
+        {/* 4. GED (Gestion Électronique des Documents) */}
+        <div onClick={() => navigate("/admin/enhanced-admin-documents")} className="flex items-center space-x-2 hover:text-blue-600 transition-colors cursor-pointer relative group">
+          <FileText className="h-5 w-5" /> <span>GED</span>
+          <div className="absolute -bottom-1 left-0 w-full h-0.5 bg-blue-600 transform scale-x-0 group-hover:scale-x-100 transition-transform"></div>
+        </div>
+        
+        {/* 5. Analytics */}
+        <div onClick={() => navigate("/analytics")} className="flex items-center space-x-2 hover:text-blue-600 transition-colors cursor-pointer relative group">
+          <TrendingUp className="h-5 w-5" /> <span>Analytics</span>
+          <div className="absolute -bottom-1 left-0 w-full h-0.5 bg-blue-600 transform scale-x-0 group-hover:scale-x-100 transition-transform"></div>
         </div>
       </nav>
       {/* BOUTON PROFIL INTERACTIF + NOTIFICATIONS */}

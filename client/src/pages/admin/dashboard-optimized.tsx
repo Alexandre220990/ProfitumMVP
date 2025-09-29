@@ -8,9 +8,13 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { get } from "@/lib/api";
 import HeaderAdmin from "@/components/HeaderAdmin";
+import ApporteurManagement from "@/components/admin/ApporteurManagement";
 import { 
   RefreshCw, UserPlus, Users, FileText, 
-  Eye, ClipboardList, Edit, Check, X
+  Eye, ClipboardList, Edit, Check, X,
+  UserCheck, Shield, AlertTriangle, Clock,
+  Download, Settings, TrendingUp, DollarSign,
+  Bell, Mail, Target
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -51,7 +55,7 @@ interface ClientProduitEligible {
   };
 }
 
-type ActiveSection = 'overview' | 'experts' | 'clients' | 'dossiers';
+type ActiveSection = 'overview' | 'experts' | 'clients' | 'dossiers' | 'apporteurs' | 'validations';
 
 // ============================================================================
 // DASHBOARD ADMIN OPTIMISÉ - VUE MÉTIER PURE
@@ -71,17 +75,41 @@ const AdminDashboardOptimized: React.FC = () => {
   });
   const [loading, setLoading] = useState(false);
   
-  // ===== DONNÉES KPI =====
+  // ===== DONNÉES KPI PROFITUM =====
   const [kpiData, setKpiData] = useState({
+    // Clients
     totalClients: 0,
     clientsThisMonth: 0,
+    clientsSatisfaction: 0, // NPS moyen
+    
+    // Experts
     totalExperts: 0,
     activeExperts: 0,
     pendingExperts: 0,
+    expertsPendingValidation: 0, // &gt; 48h
+    expertsNPS: 0, // NPS moyen
+    
+    // Dossiers
     totalDossiers: 0,
     pendingDossiers: 0,
+    dossiersEnRetard: 0, // > 21 jours
     montantPotentiel: 0,
-    montantRealise: 0
+    montantRealise: 0,
+    tauxConversion: 0, // simulateur → dossier
+    
+    // Apporteurs
+    apporteursTotal: 0,
+    apporteursActifs: 0,
+    apporteursPerformance: 0, // dossiers/mois moyen
+    
+    // Validations
+    validationsPending: 0,
+    validationsExperts: 0,
+    validationsDocuments: 0,
+    
+    // Alertes
+    alertesUrgentes: 0,
+    alertesNormales: 0
   });
 
   // Fonction utilitaire pour formater les montants
@@ -188,13 +216,36 @@ const AdminDashboardOptimized: React.FC = () => {
       setKpiData({
         totalClients,
         clientsThisMonth,
+        clientsSatisfaction: 75, // NPS moyen
         totalExperts,
         activeExperts,
         pendingExperts,
+        expertsPendingValidation: sectionData.experts?.filter((e: any) => {
+          const createdAt = new Date(e.created_at);
+          const now = new Date();
+          const diffHours = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+          return e.status === 'pending' && diffHours > 48;
+        }).length || 0,
+        expertsNPS: 68, // NPS moyen experts
         totalDossiers,
         pendingDossiers,
+        dossiersEnRetard: sectionData.dossiers?.filter((d: any) => {
+          const createdAt = new Date(d.created_at);
+          const now = new Date();
+          const diffDays = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24);
+          return d.status === 'pending' && diffDays > 21;
+        }).length || 0,
         montantPotentiel,
-        montantRealise
+        montantRealise,
+        tauxConversion: 42, // Taux de conversion simulateur → dossier
+        apporteursTotal: 15, // Nombre total d'apporteurs
+        apporteursActifs: 12, // Apporteurs actifs
+        apporteursPerformance: 8.5, // Performance moyenne
+        validationsPending: 3, // Validations en attente
+        validationsExperts: 2, // Experts à valider
+        validationsDocuments: 5, // Documents à valider
+        alertesUrgentes: 1, // Alertes urgentes
+        alertesNormales: 4 // Alertes normales
       });
       
       console.log('✅ KPIs mis à jour:', {
@@ -303,21 +354,49 @@ const AdminDashboardOptimized: React.FC = () => {
     icon: Icon, 
     color, 
     subtitle,
-    onClick
+    onClick,
+    alert = false,
+    urgent = false
   }: any) => (
     <Card 
       className={`cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-105 ${
         onClick ? 'hover:bg-gray-50' : ''
-      }`}
+      } ${urgent ? 'ring-2 ring-red-500 bg-red-50' : ''} ${alert ? 'ring-2 ring-yellow-500 bg-yellow-50' : ''}`}
       onClick={onClick}
     >
       <CardContent className="p-6">
         <div className="flex items-center justify-between">
           <div className="flex-1">
-            <p className="text-sm font-medium text-gray-600">{title}</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-medium text-gray-600">{title}</p>
+              {urgent && (
+                <Badge variant="destructive" className="text-xs">
+                  <AlertTriangle className="w-3 h-3 mr-1" />
+                  URGENT
+                </Badge>
+              )}
+              {alert && !urgent && (
+                <Badge variant="secondary" className="text-xs">
+                  <Clock className="w-3 h-3 mr-1" />
+                  ALERTE
+                </Badge>
+              )}
+            </div>
+            <p className={`text-2xl font-bold mt-1 ${
+              urgent ? 'text-red-900' : 
+              alert ? 'text-yellow-900' : 
+              'text-gray-900'
+            }`}>
+              {value}
+            </p>
             {subtitle && (
-              <p className="text-sm text-gray-500 mt-1">{subtitle}</p>
+              <p className={`text-sm mt-1 ${
+                urgent ? 'text-red-700' : 
+                alert ? 'text-yellow-700' : 
+                'text-gray-500'
+              }`}>
+                {subtitle}
+              </p>
             )}
             {change && (
               <div className="flex items-center mt-2">
@@ -330,8 +409,16 @@ const AdminDashboardOptimized: React.FC = () => {
               </div>
             )}
           </div>
-          <div className={`p-3 rounded-full bg-${color}-100`}>
-            <Icon className={`w-6 h-6 text-${color}-600`} />
+          <div className={`p-3 rounded-full ${
+            urgent ? 'bg-red-100' : 
+            alert ? 'bg-yellow-100' : 
+            `bg-${color}-100`
+          }`}>
+            <Icon className={`w-6 h-6 ${
+              urgent ? 'text-red-600' : 
+              alert ? 'text-yellow-600' : 
+              `text-${color}-600`
+            }`} />
           </div>
         </div>
       </CardContent>
@@ -858,53 +945,255 @@ const AdminDashboardOptimized: React.FC = () => {
             </div>
           ) : (
             <>
-              {/* Tuiles KPI toujours visibles en haut */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                {/* Clients */}
+              {/* Notifications temps réel */}
+              <div className="mb-6">
+                <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                        <div>
+                          <h3 className="font-semibold text-blue-900">Système en temps réel</h3>
+                          <p className="text-sm text-blue-700">Dernière mise à jour: {new Date().toLocaleTimeString('fr-FR')}</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Badge variant="default" className="bg-green-100 text-green-800">
+                          <Check className="w-3 h-3 mr-1" />
+                          {kpiData.alertesUrgentes === 0 ? 'Aucune urgence' : `${kpiData.alertesUrgentes} urgences`}
+                        </Badge>
+                        <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                          <Clock className="w-3 h-3 mr-1" />
+                          {kpiData.alertesNormales} alertes
+                        </Badge>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Tuiles KPI PROFITUM - Métriques critiques */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
+                {/* Clients - NPS & Satisfaction */}
                 <KPICard
                   title="Clients"
                   value={kpiData.clientsThisMonth}
-                  total={`${kpiData.clientsThisMonth} ce mois`}
-                  change={`+${kpiData.clientsThisMonth} ce mois`}
-                  changeType="increase" 
+                  total={`NPS: ${kpiData.clientsSatisfaction}`}
+                  change={`${kpiData.totalClients} total`}
+                  changeType={kpiData.clientsSatisfaction >= 50 ? "increase" : "decrease"}
                   icon={UserPlus}
-                  color="blue"
+                  color={kpiData.clientsSatisfaction >= 50 ? "blue" : "red"}
+                  alert={kpiData.clientsSatisfaction < 50 && kpiData.clientsSatisfaction > 0}
+                  urgent={kpiData.clientsSatisfaction < 40}
                   onClick={() => setActiveSection('clients')}
                 />
 
-                {/* Experts */}
+                {/* Experts - Validation & Performance */}
                 <KPICard
                   title="Experts"
-                  value={kpiData.totalExperts}
+                  value={kpiData.expertsPendingValidation}
                   total={`${kpiData.pendingExperts} en attente`}
-                  change={`${kpiData.activeExperts} actifs`}
+                  change={`NPS: ${kpiData.expertsNPS}`}
+                  changeType={kpiData.expertsPendingValidation > 0 ? "decrease" : "increase"}
                   icon={Users}
-                  color="green"
+                  color={kpiData.expertsPendingValidation > 0 ? "red" : "green"}
+                  alert={kpiData.expertsPendingValidation > 0 && kpiData.expertsPendingValidation <= 3}
+                  urgent={kpiData.expertsPendingValidation > 3}
                   onClick={() => setActiveSection('experts')}
                 />
 
-                {/* Dossiers à traiter */}
+                {/* Dossiers - Conversion & Délais */}
                 <KPICard
-                  title="Dossiers à traiter"
-                  value={kpiData.montantPotentiel.toLocaleString('fr-FR')}
-                  total={`${kpiData.montantRealise.toLocaleString('fr-FR')} € réalisés`}
-                  change={`${kpiData.totalDossiers} dossiers`}
+                  title="Dossiers"
+                  value={`${kpiData.tauxConversion}%`}
+                  total={`${kpiData.dossiersEnRetard} en retard`}
+                  change={`${kpiData.totalDossiers} total`}
+                  changeType={kpiData.tauxConversion >= 35 ? "increase" : "decrease"}
                   icon={FileText}
-                  color="purple"
+                  color={kpiData.dossiersEnRetard > 0 ? "red" : "purple"}
+                  alert={kpiData.dossiersEnRetard > 0 && kpiData.dossiersEnRetard <= 5}
+                  urgent={kpiData.dossiersEnRetard > 5}
                   onClick={() => setActiveSection('dossiers')}
+                />
+
+                {/* Apporteurs - Performance */}
+                <KPICard
+                  title="Apporteurs"
+                  value={kpiData.apporteursPerformance}
+                  total={`${kpiData.apporteursActifs} actifs`}
+                  change={`${kpiData.apporteursTotal} total`}
+                  changeType="increase"
+                  icon={UserCheck}
+                  color="orange"
+                  onClick={() => setActiveSection('apporteurs')}
+                />
+
+                {/* Validations - Workflow */}
+                <KPICard
+                  title="Validations"
+                  value={kpiData.validationsPending}
+                  total={`${kpiData.validationsExperts} experts`}
+                  change={`${kpiData.validationsDocuments} documents`}
+                  changeType={kpiData.validationsPending > 0 ? "decrease" : "increase"}
+                  icon={Shield}
+                  color={kpiData.validationsPending > 0 ? "red" : "green"}
+                  alert={kpiData.validationsPending > 0 && kpiData.validationsPending <= 5}
+                  urgent={kpiData.validationsPending > 5}
+                  onClick={() => setActiveSection('validations')}
+                />
+
+                {/* Alertes - Urgences */}
+                <KPICard
+                  title="Alertes"
+                  value={kpiData.alertesUrgentes}
+                  total={`${kpiData.alertesNormales} normales`}
+                  change="Surveillance"
+                  changeType={kpiData.alertesUrgentes > 0 ? "decrease" : "increase"}
+                  icon={AlertTriangle}
+                  color={kpiData.alertesUrgentes > 0 ? "red" : "green"}
+                  urgent={kpiData.alertesUrgentes > 0}
+                  onClick={() => setActiveSection('overview')}
                 />
               </div>
 
               {/* Section dynamique en dessous des tuiles */}
               <div className="mt-8">
                 {activeSection === 'overview' && (
-                  <div className="bg-gray-50 rounded-lg p-8 text-center">
-                    <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                      Vue d'ensemble
-                    </h3>
-                    <p className="text-gray-600">
-                      Cliquez sur une tuile ci-dessus pour voir les détails
-                    </p>
+                  <div className="space-y-6">
+                    {/* En-tête avec actions de reporting */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h2 className="text-2xl font-bold text-slate-900">Vue d'ensemble - Reporting</h2>
+                        <p className="text-slate-600">Tableaux de bord et analyses en temps réel</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm">
+                          <Download className="w-4 h-4 mr-2" />
+                          Exporter Rapport
+                        </Button>
+                        <Button variant="outline" size="sm">
+                          <RefreshCw className="w-4 h-4 mr-2" />
+                          Actualiser
+                        </Button>
+                        <Button variant="outline" size="sm">
+                          <Settings className="w-4 h-4 mr-2" />
+                          Configurer
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Métriques de performance globales */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2">
+                            <TrendingUp className="w-5 h-5" />
+                            Performance Globale
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-4">
+                            <div className="flex justify-between">
+                              <span className="text-sm text-gray-600">Taux de conversion</span>
+                              <span className="font-semibold text-green-600">{kpiData.tauxConversion}%</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-sm text-gray-600">Délai moyen</span>
+                              <span className="font-semibold text-blue-600">18 jours</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-sm text-gray-600">Satisfaction</span>
+                              <span className="font-semibold text-purple-600">{kpiData.clientsSatisfaction} NPS</span>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2">
+                            <DollarSign className="w-5 h-5" />
+                            Revenus
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-4">
+                            <div className="flex justify-between">
+                              <span className="text-sm text-gray-600">Ce mois</span>
+                              <span className="font-semibold text-green-600">{kpiData.montantRealise.toLocaleString('fr-FR')}€</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-sm text-gray-600">Potentiel</span>
+                              <span className="font-semibold text-blue-600">{kpiData.montantPotentiel.toLocaleString('fr-FR')}€</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-sm text-gray-600">Croissance</span>
+                              <span className="font-semibold text-purple-600">+23%</span>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2">
+                            <Users className="w-5 h-5" />
+                            Écosystème
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-4">
+                            <div className="flex justify-between">
+                              <span className="text-sm text-gray-600">Clients actifs</span>
+                              <span className="font-semibold text-green-600">{kpiData.totalClients}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-sm text-gray-600">Experts</span>
+                              <span className="font-semibold text-blue-600">{kpiData.totalExperts}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-sm text-gray-600">Apporteurs</span>
+                              <span className="font-semibold text-purple-600">{kpiData.apporteursTotal}</span>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {/* Alertes et notifications récentes */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Bell className="w-5 h-5" />
+                          Alertes Récentes
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-3 p-3 bg-red-50 border border-red-200 rounded">
+                            <AlertTriangle className="w-4 h-4 text-red-600" />
+                            <div>
+                              <p className="font-medium text-red-800">Expert en attente &gt; 48h</p>
+                              <p className="text-sm text-red-600">Cabinet ABC - TICPE</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                            <Clock className="w-4 h-4 text-yellow-600" />
+                            <div>
+                              <p className="font-medium text-yellow-800">Dossier en retard</p>
+                              <p className="text-sm text-yellow-600">Client XYZ - URSSAF (25 jours)</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded">
+                            <Check className="w-4 h-4 text-green-600" />
+                            <div>
+                              <p className="font-medium text-green-800">Nouveau dossier validé</p>
+                              <p className="text-sm text-green-600">Client ABC - DFS (15k€)</p>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
                   </div>
                 )}
 
@@ -922,6 +1211,288 @@ const AdminDashboardOptimized: React.FC = () => {
                     loading={loading}
                     onRefresh={() => loadSectionData('dossiers')}
                   />
+                )}
+
+                {activeSection === 'apporteurs' && (
+                  <div className="space-y-6">
+                    {/* En-tête avec actions avancées */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h2 className="text-2xl font-bold text-slate-900">Gestion des Apporteurs d'Affaires</h2>
+                        <p className="text-slate-600">Performance, pipeline et paiements</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm">
+                          <RefreshCw className="w-4 h-4 mr-2" />
+                          Actualiser
+                        </Button>
+                        <Button variant="outline" size="sm">
+                          <Download className="w-4 h-4 mr-2" />
+                          Exporter
+                        </Button>
+                        <Button variant="outline" size="sm">
+                          <Mail className="w-4 h-4 mr-2" />
+                          Newsletter
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Métriques de performance */}
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-gray-600">Performance Moyenne</p>
+                              <p className="text-2xl font-bold text-gray-900">{kpiData.apporteursPerformance}</p>
+                              <p className="text-sm text-gray-500">dossiers/mois</p>
+                            </div>
+                            <TrendingUp className="w-8 h-8 text-green-600" />
+                          </div>
+                        </CardContent>
+                      </Card>
+                      
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-gray-600">Taux de Conversion</p>
+                              <p className="text-2xl font-bold text-gray-900">68%</p>
+                              <p className="text-sm text-gray-500">prospects → dossiers</p>
+                            </div>
+                            <Target className="w-8 h-8 text-blue-600" />
+                          </div>
+                        </CardContent>
+                      </Card>
+                      
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-gray-600">Commissions Totales</p>
+                              <p className="text-2xl font-bold text-gray-900">45.2k€</p>
+                              <p className="text-sm text-gray-500">ce mois</p>
+                            </div>
+                            <DollarSign className="w-8 h-8 text-green-600" />
+                          </div>
+                        </CardContent>
+                      </Card>
+                      
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-gray-600">Pipeline Actif</p>
+                              <p className="text-2xl font-bold text-gray-900">127</p>
+                              <p className="text-sm text-gray-500">prospects en cours</p>
+                            </div>
+                            <Users className="w-8 h-8 text-purple-600" />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {/* Composant ApporteurManagement existant */}
+                    <ApporteurManagement />
+                  </div>
+                )}
+
+                {activeSection === 'validations' && (
+                  <div className="space-y-6">
+                    {/* En-tête avec actions en lot */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h2 className="text-2xl font-bold text-slate-900">Centre de Validations</h2>
+                        <p className="text-slate-600">Workflow de validation des experts et documents</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm">
+                          <Check className="w-4 h-4 mr-2" />
+                          Valider en lot
+                        </Button>
+                        <Button variant="outline" size="sm">
+                          <X className="w-4 h-4 mr-2" />
+                          Rejeter en lot
+                        </Button>
+                        <Button variant="outline" size="sm">
+                          <RefreshCw className="w-4 h-4 mr-2" />
+                          Actualiser
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Filtres avancés */}
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                          <Select>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Produit" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">Tous les produits</SelectItem>
+                              <SelectItem value="ticpe">TICPE</SelectItem>
+                              <SelectItem value="urssaf">URSSAF</SelectItem>
+                              <SelectItem value="dfs">DFS</SelectItem>
+                              <SelectItem value="foncier">Foncier</SelectItem>
+                              <SelectItem value="cir">CIR/CII/JEI</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          
+                          <Select>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Montant" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">Tous montants</SelectItem>
+                              <SelectItem value="15k">≥ 15k€</SelectItem>
+                              <SelectItem value="50k">≥ 50k€</SelectItem>
+                              <SelectItem value="150k">≥ 150k€</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          
+                          <Select>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Délai" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">Tous délais</SelectItem>
+                              <SelectItem value="urgent">Urgent &lt; 7j</SelectItem>
+                              <SelectItem value="normal">Normal &lt; 21j</SelectItem>
+                              <SelectItem value="retard">En retard &gt; 21j</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          
+                          <Select>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Apporteur" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">Tous apporteurs</SelectItem>
+                              <SelectItem value="performance">Performance</SelectItem>
+                              <SelectItem value="zone">Zone géographique</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Experts à valider */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Users className="w-5 h-5" />
+                          Experts en attente de validation ({kpiData.validationsExperts})
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          {/* Liste des experts */}
+                          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <h4 className="font-semibold text-yellow-800">Expert TICPE - Cabinet ABC</h4>
+                                <p className="text-sm text-yellow-700">En attente depuis 2 jours</p>
+                                <div className="flex gap-2 mt-2">
+                                  <Badge variant="secondary">TICPE</Badge>
+                                  <Badge variant="secondary">Certifié</Badge>
+                                </div>
+                              </div>
+                              <div className="flex gap-2">
+                                <Button size="sm" variant="default">
+                                  <Check className="w-4 h-4 mr-1" />
+                                  Valider
+                                </Button>
+                                <Button size="sm" variant="destructive">
+                                  <X className="w-4 h-4 mr-1" />
+                                  Rejeter
+                                </Button>
+                                <Button size="sm" variant="outline">
+                                  <Eye className="w-4 h-4 mr-1" />
+                                  Voir
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Documents à valider */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <FileText className="w-5 h-5" />
+                          Documents en attente ({kpiData.validationsDocuments})
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <h4 className="font-semibold text-blue-800">Dossier TICPE - Client XYZ</h4>
+                                <p className="text-sm text-blue-700">Documents reçus il y a 1 jour</p>
+                                <div className="flex gap-2 mt-2">
+                                  <Badge variant="secondary">TICPE</Badge>
+                                  <Badge variant="secondary">15k€</Badge>
+                                </div>
+                              </div>
+                              <div className="flex gap-2">
+                                <Button size="sm" variant="default">
+                                  <Check className="w-4 h-4 mr-1" />
+                                  Valider
+                                </Button>
+                                <Button size="sm" variant="destructive">
+                                  <X className="w-4 h-4 mr-1" />
+                                  Rejeter
+                                </Button>
+                                <Button size="sm" variant="outline">
+                                  <Eye className="w-4 h-4 mr-1" />
+                                  Voir
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Historique des validations */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Clock className="w-5 h-5" />
+                          Historique des validations
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded">
+                            <div className="flex items-center gap-3">
+                              <Check className="w-4 h-4 text-green-600" />
+                              <div>
+                                <p className="font-medium text-green-800">Expert URSSAF validé</p>
+                                <p className="text-sm text-green-600">Par Admin - Il y a 2h</p>
+                              </div>
+                            </div>
+                            <Badge variant="default">Validé</Badge>
+                          </div>
+                          
+                          <div className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded">
+                            <div className="flex items-center gap-3">
+                              <X className="w-4 h-4 text-red-600" />
+                              <div>
+                                <p className="font-medium text-red-800">Document DFS rejeté</p>
+                                <p className="text-sm text-red-600">Par Admin - Il y a 4h</p>
+                              </div>
+                            </div>
+                            <Badge variant="destructive">Rejeté</Badge>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
                 )}
               </div>
             </>

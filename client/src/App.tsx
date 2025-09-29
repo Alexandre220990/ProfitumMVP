@@ -268,8 +268,8 @@ function App() {
                       <Route path=":id" element={<AdminDashboard />} />
                     </Route>
 
-                    {/* Route analytics */}
-                    <Route path="/analytics" element={<ProtectedRoute requiredType="expert" />}>
+                    {/* Route analytics - Admin et Expert */}
+                    <Route path="/analytics" element={<ProtectedRoute requiredType={["admin", "expert"]} />}>
                       <Route index element={<AnalyticsPage />} />
                     </Route>
                   </Routes>
