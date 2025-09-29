@@ -24,7 +24,7 @@ export default defineConfig({
     emptyOutDir: true,
     chunkSizeWarningLimit: 1000,
           rollupOptions: {
-        external: ['react-dropzone'],
+        external: ['react-dropzone', 'sonner'],
       output: {
         manualChunks: {
           'react-vendor': ['react', 'react-dom'],
@@ -60,13 +60,9 @@ export default defineConfig({
       'react-dom',
       'lucide-react',
       '@supabase/supabase-js',
-      'date-fns',
-      'sonner'
+      'date-fns'
     ],
-    exclude: ['react-dropzone'],
+    exclude: ['react-dropzone', 'sonner'],
     force: true
-  },
-  ssr: {
-    noExternal: ['sonner']
   }
 }); 
