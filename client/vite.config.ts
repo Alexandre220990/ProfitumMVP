@@ -11,9 +11,6 @@ export default defineConfig({
     },
     dedupe: ['react', 'react-dom']
   },
-  define: {
-    global: 'globalThis',
-  },
   // Configuration spécifique pour Vercel
   server: {
     port: 3000,
@@ -23,12 +20,12 @@ export default defineConfig({
     outDir: "dist",
     emptyOutDir: true,
     chunkSizeWarningLimit: 1000,
-          rollupOptions: {
-        external: ['react-dropzone', 'sonner'],
+    rollupOptions: {
+      external: ['react-dropzone'],
       output: {
         manualChunks: {
           'react-vendor': ['react', 'react-dom'],
-          'ui-vendor': ['lucide-react'],
+          'ui-vendor': ['lucide-react', 'sonner'],
           'supabase-vendor': ['@supabase/supabase-js'],
           'date-vendor': ['date-fns']
         },
@@ -60,9 +57,10 @@ export default defineConfig({
       'react-dom',
       'lucide-react',
       '@supabase/supabase-js',
-      'date-fns'
+      'date-fns',
+      'sonner'
     ],
-    exclude: ['react-dropzone', 'sonner'],
+    exclude: ['react-dropzone'],
     force: true
   }
 }); 
