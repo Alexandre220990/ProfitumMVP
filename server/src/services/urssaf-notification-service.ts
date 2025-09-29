@@ -48,79 +48,73 @@ export class URSSAFNotificationService {
 
   // Méthodes pour envoyer les notifications URSSAF
   async notifyEligibilityConfirmed(data: URSSAFWorkflowData): Promise<string> {
-    return NotificationService.sendSystemNotification(
-      data.client_id,
-      'Éligibilité URSSAF confirmée',
-      `Votre éligibilité au remboursement URSSAF a été confirmée. Montant estimé : ${data.estimated_amount}€`,
-      {
-        ...data,
-        dashboard_url: `${process.env.FRONTEND_URL}/dashboard/client-audit/${data.dossier_id}`
-      }
-    );
+    return NotificationService.sendSystemNotification({
+      user_id: data.client_id,
+      title: 'Éligibilité URSSAF confirmée',
+      message: `Votre éligibilité au remboursement URSSAF a été confirmée. Montant estimé : ${data.estimated_amount}€`,
+      type: 'system',
+      ...data,
+      dashboard_url: `${process.env.FRONTEND_URL}/dashboard/client-audit/${data.dossier_id}`
+    });
   }
 
   async notifyExpertSelected(data: URSSAFWorkflowData): Promise<string> {
     // Notification au client
-    await NotificationService.sendSystemNotification(
-      data.client_id,
-      'Expert URSSAF sélectionné',
-      `${data.expert_name} a été sélectionné pour votre dossier URSSAF.`,
-      {
-        ...data,
-        dashboard_url: `${process.env.FRONTEND_URL}/dashboard/client-audit/${data.dossier_id}`
-      }
-    );
+    await NotificationService.sendSystemNotification({
+      user_id: data.client_id,
+      title: 'Expert URSSAF sélectionné',
+      message: `${data.expert_name} a été sélectionné pour votre dossier URSSAF.`,
+      type: 'system',
+      ...data,
+      dashboard_url: `${process.env.FRONTEND_URL}/dashboard/client-audit/${data.dossier_id}`
+    });
 
     // Notification à l'expert
     if (data.expert_id) {
-      await NotificationService.sendSystemNotification(
-        data.expert_id,
-        'Nouveau dossier URSSAF assigné',
-        `Vous avez été assigné au dossier URSSAF de ${data.client_name} (${data.company_name}).`,
-        {
-          ...data,
-          dashboard_url: `${process.env.FRONTEND_URL}/expert/dossier/${data.dossier_id}`
-        }
-      );
+      await NotificationService.sendSystemNotification({
+        user_id: data.expert_id,
+        title: 'Nouveau dossier URSSAF assigné',
+        message: `Vous avez été assigné au dossier URSSAF de ${data.client_name} (${data.company_name}).`,
+        type: 'system',
+        ...data,
+        dashboard_url: `${process.env.FRONTEND_URL}/expert/dossier/${data.dossier_id}`
+      });
     }
 
     return 'notifications_sent';
   }
 
   async notifyDocumentsCollected(data: URSSAFWorkflowData): Promise<string> {
-    return NotificationService.sendSystemNotification(
-      data.client_id,
-      'Documents URSSAF collectés',
-      `${data.documents_count} documents ont été collectés pour votre dossier URSSAF.`,
-      {
-        ...data,
-        dashboard_url: `${process.env.FRONTEND_URL}/dashboard/client-audit/${data.dossier_id}`
-      }
-    );
+    return NotificationService.sendSystemNotification({
+      user_id: data.client_id,
+      title: 'Documents URSSAF collectés',
+      message: `${data.documents_count} documents ont été collectés pour votre dossier URSSAF.`,
+      type: 'system',
+      ...data,
+      dashboard_url: `${process.env.FRONTEND_URL}/dashboard/client-audit/${data.dossier_id}`
+    });
   }
 
   async notifyAuditCompleted(data: URSSAFWorkflowData): Promise<string> {
-    return NotificationService.sendSystemNotification(
-      data.client_id,
-      'Audit URSSAF terminé',
-      'L\'audit comptable de votre dossier URSSAF est terminé.',
-      {
-        ...data,
-        dashboard_url: `${process.env.FRONTEND_URL}/dashboard/client-audit/${data.dossier_id}`
-      }
-    );
+    return NotificationService.sendSystemNotification({
+      user_id: data.client_id,
+      title: 'Audit URSSAF terminé',
+      message: 'L\'audit comptable de votre dossier URSSAF est terminé.',
+      type: 'system',
+      ...data,
+      dashboard_url: `${process.env.FRONTEND_URL}/dashboard/client-audit/${data.dossier_id}`
+    });
   }
 
   async notifyValidationApproved(data: URSSAFWorkflowData): Promise<string> {
-    return NotificationService.sendSystemNotification(
-      data.client_id,
-      'Validation URSSAF approuvée',
-      'Votre dossier URSSAF a été validé avec succès.',
-      {
-        ...data,
-        dashboard_url: `${process.env.FRONTEND_URL}/dashboard/client-audit/${data.dossier_id}`
-      }
-    );
+    return NotificationService.sendSystemNotification({
+      user_id: data.client_id,
+      title: 'Validation URSSAF approuvée',
+      message: 'Votre dossier URSSAF a été validé avec succès.',
+      type: 'system',
+      ...data,
+      dashboard_url: `${process.env.FRONTEND_URL}/dashboard/client-audit/${data.dossier_id}`
+    });
   }
 
   // Notifications admin
@@ -129,15 +123,14 @@ export class URSSAFNotificationService {
     const adminIds = await this.getAdminUserIds();
     
     for (const adminId of adminIds) {
-      await NotificationService.sendSystemNotification(
-        adminId,
-        'Document URSSAF uploadé',
-        `Nouveau document uploadé pour le dossier URSSAF de ${data.client_name}.`,
-        {
-          ...data,
-          dashboard_url: `${process.env.FRONTEND_URL}/admin/documents/validate`
-        }
-      );
+      await NotificationService.sendSystemNotification({
+        user_id: adminId,
+        title: 'Document URSSAF uploadé',
+        message: `Nouveau document uploadé pour le dossier URSSAF de ${data.client_name}.`,
+        type: 'system',
+        ...data,
+        dashboard_url: `${process.env.FRONTEND_URL}/admin/documents/validate`
+      });
     }
 
     return 'admin_notifications_sent';

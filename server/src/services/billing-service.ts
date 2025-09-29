@@ -174,17 +174,16 @@ export class BillingService {
       }
 
       // Envoyer notification
-      await NotificationService.sendSystemNotification(
-        invoiceData.client_id,
-        'Facture générée',
-        `Votre facture ${invoiceNumber} a été générée pour un montant de ${totalAmount}€.`,
-        {
-          invoice_number: invoiceNumber,
-          total_amount: totalAmount,
-          due_date: invoice.due_date,
-          invoice_url: `/invoices/${invoice.id}`
-        }
-      );
+      await NotificationService.sendSystemNotification({
+        user_id: invoiceData.client_id,
+        title: 'Facture générée',
+        message: `Votre facture ${invoiceNumber} a été générée pour un montant de ${totalAmount}€.`,
+        type: 'system',
+        invoice_number: invoiceNumber,
+        total_amount: totalAmount,
+        due_date: invoice.due_date,
+        invoice_url: `/invoices/${invoice.id}`
+      });
 
       return invoice.id;
 
@@ -246,17 +245,16 @@ export class BillingService {
 
       if (invoice) {
         // Envoyer notification
-        await NotificationService.sendSystemNotification(
-          invoice.client_id,
-          'Facture envoyée',
-          `Votre facture ${invoice.invoice_number} a été envoyée pour un montant de ${invoice.total_amount}€.`,
-          {
-            invoice_number: invoice.invoice_number,
-            total_amount: invoice.total_amount,
-            due_date: invoice.due_date,
-            invoice_url: `/invoices/${invoice.id}`
-          }
-        );
+        await NotificationService.sendSystemNotification({
+          user_id: invoice.client_id,
+          title: 'Facture envoyée',
+          message: `Votre facture ${invoice.invoice_number} a été envoyée pour un montant de ${invoice.total_amount}€.`,
+          type: 'system',
+          invoice_number: invoice.invoice_number,
+          total_amount: invoice.total_amount,
+          due_date: invoice.due_date,
+          invoice_url: `/invoices/${invoice.id}`
+        });
 
         // Programmer les rappels
         await this.schedulePaymentReminders(invoice);
@@ -352,30 +350,28 @@ export class BillingService {
 
       if (invoice) {
         // Envoyer notification de paiement reçu
-        await NotificationService.sendSystemNotification(
-          invoice.client_id,
-          'Paiement reçu',
-          `Votre paiement de ${paymentData.amount}€ pour la facture ${invoice.invoice_number} a été reçu.`,
-          {
-            invoice_number: invoice.invoice_number,
-            amount: paymentData.amount,
-            payment_method: paymentData.payment_method,
-            payment_date: paymentData.payment_date
-          }
-        );
+        await NotificationService.sendSystemNotification({
+          user_id: invoice.client_id,
+          title: 'Paiement reçu',
+          message: `Votre paiement de ${paymentData.amount}€ pour la facture ${invoice.invoice_number} a été reçu.`,
+          type: 'system',
+          invoice_number: invoice.invoice_number,
+          amount: paymentData.amount,
+          payment_method: paymentData.payment_method,
+          payment_date: paymentData.payment_date
+        });
 
         // Si c'est une commission d'expert, notifier l'expert
         if (invoice.expert_id && invoice.billing_type === BillingType.EXPERT_COMMISSION) {
-          await NotificationService.sendSystemNotification(
-            invoice.expert_id,
-            'Commission traitée',
-            `Votre commission de ${paymentData.amount}€ pour la facture ${invoice.invoice_number} a été traitée.`,
-            {
-              invoice_number: invoice.invoice_number,
-              amount: paymentData.amount,
-              commission_type: 'expert_commission'
-            }
-          );
+          await NotificationService.sendSystemNotification({
+            user_id: invoice.expert_id,
+            title: 'Commission traitée',
+            message: `Votre commission de ${paymentData.amount}€ pour la facture ${invoice.invoice_number} a été traitée.`,
+            type: 'system',
+            invoice_number: invoice.invoice_number,
+            amount: paymentData.amount,
+            commission_type: 'expert_commission'
+          });
         }
       }
 

@@ -184,16 +184,15 @@ export class CRMService {
 
       // Envoyer notification si assigné
       if (contactData.assigned_to) {
-        await NotificationService.sendSystemNotification(
-          contactData.assigned_to,
-          'Nouveau contact enregistré',
-          `Nouveau contact : ${contactData.first_name} ${contactData.last_name} (${contactData.company_name})`,
-          {
-            contact_name: `${contactData.first_name} ${contactData.last_name}`,
-            company_name: contactData.company_name,
-            contact_type: contactData.type
-          }
-        );
+        await NotificationService.sendSystemNotification({
+          user_id: contactData.assigned_to,
+          title: 'Nouveau contact enregistré',
+          message: `Nouveau contact : ${contactData.first_name} ${contactData.last_name} (${contactData.company_name})`,
+          type: 'system',
+          contact_name: `${contactData.first_name} ${contactData.last_name}`,
+          company_name: contactData.company_name,
+          contact_type: contactData.type
+        });
       }
 
       return data.id;
@@ -413,17 +412,16 @@ export class CRMService {
 
       // Envoyer notification si assigné à quelqu'un d'autre
       if (taskData.assigned_to !== taskData.created_by) {
-        await NotificationService.sendSystemNotification(
-          taskData.assigned_to,
-          'Nouvelle tâche assignée',
-          `Nouvelle tâche : ${taskData.title} (échéance : ${taskData.due_date})`,
-          {
-            task_title: taskData.title,
-            due_date: taskData.due_date,
-            priority: taskData.priority,
-            contact_id: taskData.contact_id
-          }
-        );
+        await NotificationService.sendSystemNotification({
+          user_id: taskData.assigned_to,
+          title: 'Nouvelle tâche assignée',
+          message: `Nouvelle tâche : ${taskData.title} (échéance : ${taskData.due_date})`,
+          type: 'system',
+          task_title: taskData.title,
+          due_date: taskData.due_date,
+          priority: taskData.priority,
+          contact_id: taskData.contact_id
+        });
       }
 
       return data.id;
@@ -521,17 +519,16 @@ export class CRMService {
       if (error) throw error;
 
       // Envoyer notification
-      await NotificationService.sendSystemNotification(
-        opportunityData.assigned_to,
-        'Nouvelle opportunité assignée',
-        `Nouvelle opportunité : ${opportunityData.title} (valeur : ${opportunityData.value}€)`,
-        {
-          opportunity_title: opportunityData.title,
-          value: opportunityData.value,
-          stage: opportunityData.stage,
-          contact_id: opportunityData.contact_id
-        }
-      );
+      await NotificationService.sendSystemNotification({
+        user_id: opportunityData.assigned_to,
+        title: 'Nouvelle opportunité assignée',
+        message: `Nouvelle opportunité : ${opportunityData.title} (valeur : ${opportunityData.value}€)`,
+        type: 'system',
+        opportunity_title: opportunityData.title,
+        value: opportunityData.value,
+        stage: opportunityData.stage,
+        contact_id: opportunityData.contact_id
+      });
 
       return data.id;
 

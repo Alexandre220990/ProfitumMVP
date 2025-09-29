@@ -301,31 +301,21 @@ export class ReminderService {
   private async sendReminderNotifications(reminder: any, reminderData: ReminderItem): Promise<void> {
     try {
       // Notification au client
-      await NotificationService.sendNotification({
-        expert_id: reminderData.clientId,
-        type: 'system',
-        title: 'Relance - Action requise',
-        message: reminderData.message,
-        data: {
-          notification_type: 'reminder',
-          related_id: reminder.id,
-          priority: reminderData.priority
-        }
-      });
+      await NotificationService.sendNotification(
+        reminderData.clientId,
+        'Relance - Action requise',
+        reminderData.message,
+        'system'
+      );
 
       // Notification à l'expert si applicable
       if (reminderData.expertId) {
-        await NotificationService.sendNotification({
-          expert_id: reminderData.expertId,
-          type: 'system',
-          title: 'Relance - Action requise',
-          message: reminderData.message,
-          data: {
-            notification_type: 'reminder',
-            related_id: reminder.id,
-            priority: reminderData.priority
-          }
-        });
+        await NotificationService.sendNotification(
+          reminderData.expertId,
+          'Relance - Action requise',
+          reminderData.message,
+          'system'
+        );
       }
 
       // Notification admin pour les relances critiques
@@ -350,17 +340,12 @@ export class ReminderService {
       if (!admins) return;
 
       for (const admin of admins) {
-        await NotificationService.sendNotification({
-          expert_id: admin.auth_id,
-          type: 'system',
-          title: 'ALERTE - Relance critique',
-          message: `Relance critique: ${reminderData.message}`,
-          data: {
-            notification_type: 'reminder_critical',
-            related_id: reminder.id,
-            priority: 'critical'
-          }
-        });
+        await NotificationService.sendNotification(
+          admin.auth_id,
+          'ALERTE - Relance critique',
+          `Relance critique: ${reminderData.message}`,
+          'system'
+        );
       }
     } catch (error) {
       console.error('❌ Erreur notification admin:', error);

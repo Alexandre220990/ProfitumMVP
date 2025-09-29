@@ -334,9 +334,8 @@ router.put('/produits-eligibles/:id/assign-expert', enhancedAuthMiddleware, asyn
     try {
       await NotificationService.sendPreselectionNotification(
         expert_id,
-        user.user_metadata.company_name || 'Client',
-        produitData.ProduitEligible?.nom || 'Produit',
-        produitData.montant_final
+        'prospect_id_placeholder',
+        'apporteur_id_placeholder'
       );
     } catch (notificationError) {
       console.error('Erreur lors de l\'envoi de la notification:', notificationError);

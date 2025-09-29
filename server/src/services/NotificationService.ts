@@ -404,14 +404,17 @@ Voulez-vous accepter ce prospect ?`;
     // ===== MÉTHODES SYSTÈME MANQUANTES =====
     
     static async sendSystemNotification(
-        userId: string, 
-        title: string, 
-        message: string, 
-        type: string = 'system'
-    ): Promise<{ success: boolean; error?: string }> {
+        data: any
+    ): Promise<string> {
         try {
             const { createClient } = await import('@supabase/supabase-js');
             const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!);
+
+            // Extraire les données selon le contexte
+            const userId = data.user_id || data.recipient_id || data.expert_id;
+            const title = data.title || 'Notification système';
+            const message = data.message || 'Notification automatique';
+            const type = data.type || 'system';
 
             const { error } = await supabase
                 .from('notification')
@@ -426,13 +429,13 @@ Voulez-vous accepter ce prospect ?`;
 
             if (error) {
                 console.error('Erreur envoi notification système:', error);
-                return { success: false, error: error.message };
+                return 'Erreur lors de l\'envoi de la notification';
             }
 
-            return { success: true };
+            return 'Notification envoyée avec succès';
         } catch (error) {
             console.error('Erreur sendSystemNotification:', error);
-            return { success: false, error: 'Erreur lors de l\'envoi de la notification' };
+            return 'Erreur lors de l\'envoi de la notification';
         }
     }
 
@@ -440,7 +443,7 @@ Voulez-vous accepter ce prospect ?`;
         expertId: string,
         prospectId: string,
         apporteurId: string
-    ): Promise<{ success: boolean; error?: string }> {
+    ): Promise<string> {
         try {
             const { createClient } = await import('@supabase/supabase-js');
             const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!);
@@ -460,13 +463,13 @@ Voulez-vous accepter ce prospect ?`;
 
             if (error) {
                 console.error('Erreur envoi notification présélection:', error);
-                return { success: false, error: error.message };
+                return 'Erreur lors de l\'envoi de la notification';
             }
 
-            return { success: true };
+            return 'Notification de présélection envoyée';
         } catch (error) {
             console.error('Erreur sendPreselectionNotification:', error);
-            return { success: false, error: 'Erreur lors de l\'envoi de la notification' };
+            return 'Erreur lors de l\'envoi de la notification';
         }
     }
 
@@ -475,7 +478,7 @@ Voulez-vous accepter ce prospect ?`;
         title: string,
         message: string,
         type: string = 'general'
-    ): Promise<{ success: boolean; error?: string }> {
+    ): Promise<string> {
         try {
             const { createClient } = await import('@supabase/supabase-js');
             const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!);
@@ -493,13 +496,13 @@ Voulez-vous accepter ce prospect ?`;
 
             if (error) {
                 console.error('Erreur envoi notification:', error);
-                return { success: false, error: error.message };
+                return 'Erreur lors de l\'envoi de la notification';
             }
 
-            return { success: true };
+            return 'Notification envoyée avec succès';
         } catch (error) {
             console.error('Erreur sendNotification:', error);
-            return { success: false, error: 'Erreur lors de l\'envoi de la notification' };
+            return 'Erreur lors de l\'envoi de la notification';
         }
     }
 }

@@ -48,79 +48,73 @@ export class FONCIERNotificationService {
 
   // Méthodes pour envoyer les notifications FONCIER
   async notifyEligibilityConfirmed(data: FONCIERWorkflowData): Promise<string> {
-    return NotificationService.sendSystemNotification(
-      data.client_id,
-      'Éligibilité FONCIER confirmée',
-      `Votre éligibilité au remboursement FONCIER a été confirmée. Montant estimé : ${data.estimated_amount}€`,
-      {
-        ...data,
-        dashboard_url: `${process.env.FRONTEND_URL}/dashboard/client-audit/${data.dossier_id}`
-      }
-    );
+    return NotificationService.sendSystemNotification({
+      user_id: data.client_id,
+      title: 'Éligibilité FONCIER confirmée',
+      message: `Votre éligibilité au remboursement FONCIER a été confirmée. Montant estimé : ${data.estimated_amount}€`,
+      type: 'system',
+      ...data,
+      dashboard_url: `${process.env.FRONTEND_URL}/dashboard/client-audit/${data.dossier_id}`
+    });
   }
 
   async notifyExpertSelected(data: FONCIERWorkflowData): Promise<string> {
     // Notification au client
-    await NotificationService.sendSystemNotification(
-      data.client_id,
-      'Expert FONCIER sélectionné',
-      `${data.expert_name} a été sélectionné pour votre dossier FONCIER.`,
-      {
-        ...data,
-        dashboard_url: `${process.env.FRONTEND_URL}/dashboard/client-audit/${data.dossier_id}`
-      }
-    );
+    await NotificationService.sendSystemNotification({
+      user_id: data.client_id,
+      title: 'Expert FONCIER sélectionné',
+      message: `${data.expert_name} a été sélectionné pour votre dossier FONCIER.`,
+      type: 'system',
+      ...data,
+      dashboard_url: `${process.env.FRONTEND_URL}/dashboard/client-audit/${data.dossier_id}`
+    });
 
     // Notification à l'expert
     if (data.expert_id) {
-      await NotificationService.sendSystemNotification(
-        data.expert_id,
-        'Nouveau dossier FONCIER assigné',
-        `Vous avez été assigné au dossier FONCIER de ${data.client_name} (${data.company_name}).`,
-        {
-          ...data,
-          dashboard_url: `${process.env.FRONTEND_URL}/expert/dossier/${data.dossier_id}`
-        }
-      );
+      await NotificationService.sendSystemNotification({
+        user_id: data.expert_id,
+        title: 'Nouveau dossier FONCIER assigné',
+        message: `Vous avez été assigné au dossier FONCIER de ${data.client_name} (${data.company_name}).`,
+        type: 'system',
+        ...data,
+        dashboard_url: `${process.env.FRONTEND_URL}/expert/dossier/${data.dossier_id}`
+      });
     }
 
     return 'notifications_sent';
   }
 
   async notifyDocumentsCollected(data: FONCIERWorkflowData): Promise<string> {
-    return NotificationService.sendSystemNotification(
-      data.client_id,
-      'Documents FONCIER collectés',
-      `${data.documents_count} documents ont été collectés pour votre dossier FONCIER.`,
-      {
-        ...data,
-        dashboard_url: `${process.env.FRONTEND_URL}/dashboard/client-audit/${data.dossier_id}`
-      }
-    );
+    return NotificationService.sendSystemNotification({
+      user_id: data.client_id,
+      title: 'Documents FONCIER collectés',
+      message: `${data.documents_count} documents ont été collectés pour votre dossier FONCIER.`,
+      type: 'system',
+      ...data,
+      dashboard_url: `${process.env.FRONTEND_URL}/dashboard/client-audit/${data.dossier_id}`
+    });
   }
 
   async notifyAuditCompleted(data: FONCIERWorkflowData): Promise<string> {
-    return NotificationService.sendSystemNotification(
-      data.client_id,
-      'Audit FONCIER terminé',
-      'L\'audit comptable de votre dossier FONCIER est terminé.',
-      {
-        ...data,
-        dashboard_url: `${process.env.FRONTEND_URL}/dashboard/client-audit/${data.dossier_id}`
-      }
-    );
+    return NotificationService.sendSystemNotification({
+      user_id: data.client_id,
+      title: 'Audit FONCIER terminé',
+      message: 'L\'audit comptable de votre dossier FONCIER est terminé.',
+      type: 'system',
+      ...data,
+      dashboard_url: `${process.env.FRONTEND_URL}/dashboard/client-audit/${data.dossier_id}`
+    });
   }
 
   async notifyValidationApproved(data: FONCIERWorkflowData): Promise<string> {
-    return NotificationService.sendSystemNotification(
-      data.client_id,
-      'Validation FONCIER approuvée',
-      'Votre dossier FONCIER a été validé avec succès.',
-      {
-        ...data,
-        dashboard_url: `${process.env.FRONTEND_URL}/dashboard/client-audit/${data.dossier_id}`
-      }
-    );
+    return NotificationService.sendSystemNotification({
+      user_id: data.client_id,
+      title: 'Validation FONCIER approuvée',
+      message: 'Votre dossier FONCIER a été validé avec succès.',
+      type: 'system',
+      ...data,
+      dashboard_url: `${process.env.FRONTEND_URL}/dashboard/client-audit/${data.dossier_id}`
+    });
   }
 
   // Notifications admin
@@ -129,15 +123,14 @@ export class FONCIERNotificationService {
     const adminIds = await this.getAdminUserIds();
     
     for (const adminId of adminIds) {
-      await NotificationService.sendSystemNotification(
-        adminId,
-        'Document FONCIER uploadé',
-        `Nouveau document uploadé pour le dossier FONCIER de ${data.client_name}.`,
-        {
-          ...data,
-          dashboard_url: `${process.env.FRONTEND_URL}/admin/documents/validate`
-        }
-      );
+      await NotificationService.sendSystemNotification({
+        user_id: adminId,
+        title: 'Document FONCIER uploadé',
+        message: `Nouveau document uploadé pour le dossier FONCIER de ${data.client_name}.`,
+        type: 'system',
+        ...data,
+        dashboard_url: `${process.env.FRONTEND_URL}/admin/documents/validate`
+      });
     }
 
     return 'admin_notifications_sent';

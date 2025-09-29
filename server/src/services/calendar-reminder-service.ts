@@ -106,20 +106,19 @@ export class CalendarReminderService {
       const recipients = await this.getEventRecipients(event);
 
       for (const recipient of recipients) {
-        await NotificationService.sendSystemNotification(
-          recipient.user_id,
-          'Rappel événement calendrier',
-          `Rappel pour l'événement "${event.title}" dans ${this.formatReminderTime(timeUntilEvent)}`,
-          {
-            event_title: event.title,
-            event_date: eventStart.toLocaleDateString('fr-FR'),
-            event_time: eventStart.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
-            event_location: event.location || 'Non spécifié',
-            reminder_time: this.formatReminderTime(timeUntilEvent),
-            event_url: `${process.env.FRONTEND_URL}/calendar/event/${event.id}`,
-            recipient_name: recipient.name || 'Utilisateur'
-          }
-        );
+        await NotificationService.sendSystemNotification({
+          user_id: recipient.user_id,
+          title: 'Rappel événement calendrier',
+          message: `Rappel pour l'événement "${event.title}" dans ${this.formatReminderTime(timeUntilEvent)}`,
+          type: 'system',
+          event_title: event.title,
+          event_date: eventStart.toLocaleDateString('fr-FR'),
+          event_time: eventStart.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+          event_location: event.location || 'Non spécifié',
+          reminder_time: this.formatReminderTime(timeUntilEvent),
+          event_url: `${process.env.FRONTEND_URL}/calendar/event/${event.id}`,
+          recipient_name: recipient.name || 'Utilisateur'
+        });
       }
 
     } catch (error) {
@@ -302,20 +301,19 @@ export class CalendarReminderService {
       const recipients = await this.getEventRecipients(event);
 
       for (const recipient of recipients) {
-        await NotificationService.sendSystemNotification(
-          recipient.user_id,
-          'Événement terminé',
-          `L'événement "${event.title}" est maintenant terminé.`,
-          {
-            event_title: event.title,
-            event_date: new Date(event.start_date).toLocaleDateString('fr-FR'),
-            event_time: new Date(event.start_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
-            event_location: event.location || 'Non spécifié',
-            reminder_time: 'Événement terminé',
-            event_url: `${process.env.FRONTEND_URL}/calendar/event/${event.id}`,
-            recipient_name: recipient.name || 'Utilisateur'
-          }
-        );
+        await NotificationService.sendSystemNotification({
+          user_id: recipient.user_id,
+          title: 'Événement terminé',
+          message: `L'événement "${event.title}" est maintenant terminé.`,
+          type: 'system',
+          event_title: event.title,
+          event_date: new Date(event.start_date).toLocaleDateString('fr-FR'),
+          event_time: new Date(event.start_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+          event_location: event.location || 'Non spécifié',
+          reminder_time: 'Événement terminé',
+          event_url: `${process.env.FRONTEND_URL}/calendar/event/${event.id}`,
+          recipient_name: recipient.name || 'Utilisateur'
+        });
       }
 
       console.log(`✅ Événement marqué comme terminé: ${event.title}`);

@@ -47,12 +47,7 @@ export class ExpertNotificationService {
         recipient_name: 'Administrateur'
       };
 
-      return await NotificationService.sendSystemNotification(
-        adminId,
-        'Nouvelle demande d\'expert',
-        `Nouvelle demande d'expert : ${data.expert_name} (${data.expert_email})`,
-        notificationData
-      );
+      return await NotificationService.sendSystemNotification(notificationData);
     } catch (error) {
       console.error('Erreur notification admin demande démo:', error);
       throw error;
@@ -70,12 +65,7 @@ export class ExpertNotificationService {
         recipient_name: data.expert_name
       };
 
-      return await NotificationService.sendSystemNotification(
-        data.expert_id,
-        'Compte expert approuvé',
-        `Votre compte expert a été approuvé. Bienvenue ${data.expert_name} !`,
-        notificationData
-      );
+      return await NotificationService.sendSystemNotification(notificationData);
     } catch (error) {
       console.error('Erreur notification approbation expert:', error);
       throw error;
@@ -92,12 +82,7 @@ export class ExpertNotificationService {
         recipient_name: data.expert_name
       };
 
-      return await NotificationService.sendSystemNotification(
-        data.expert_id,
-        'Demande expert refusée',
-        `Votre demande d'expert a été refusée. Raison : ${data.rejection_reason}`,
-        notificationData
-      );
+      return await NotificationService.sendSystemNotification(notificationData);
     } catch (error) {
       console.error('Erreur notification refus expert:', error);
       throw error;
@@ -115,12 +100,7 @@ export class ExpertNotificationService {
         recipient_name: data.expert_name
       };
 
-      return await NotificationService.sendSystemNotification(
-        data.expert_id,
-        'Compte expert créé',
-        `Votre compte expert a été créé. Mot de passe temporaire : ${data.temp_password}`,
-        notificationData
-      );
+      return await NotificationService.sendSystemNotification(notificationData);
     } catch (error) {
       console.error('Erreur notification création compte expert:', error);
       throw error;
@@ -138,12 +118,7 @@ export class ExpertNotificationService {
         recipient_name: data.expert_name
       };
 
-      return await NotificationService.sendSystemNotification(
-        data.expert_id,
-        'Profil expert mis à jour',
-        `Votre profil expert a été mis à jour.`,
-        notificationData
-      );
+      return await NotificationService.sendSystemNotification(notificationData);
     } catch (error) {
       console.error('Erreur notification mise à jour profil expert:', error);
       throw error;
@@ -161,12 +136,7 @@ export class ExpertNotificationService {
         recipient_name: data.expert_name
       };
 
-      return await NotificationService.sendSystemNotification(
-        data.expert_id,
-        'Statut expert modifié',
-        `Votre statut expert a été modifié de ${data.old_status} à ${data.new_status}.`,
-        notificationData
-      );
+      return await NotificationService.sendSystemNotification(notificationData);
     } catch (error) {
       console.error('Erreur notification changement statut expert:', error);
       throw error;
