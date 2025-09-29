@@ -21,11 +21,11 @@ export default defineConfig({
     emptyOutDir: true,
     chunkSizeWarningLimit: 1000,
           rollupOptions: {
-        external: ['react-dropzone', 'sonner'],
+        external: ['react-dropzone'],
       output: {
         manualChunks: {
           'react-vendor': ['react', 'react-dom'],
-          'ui-vendor': ['lucide-react'],
+          'ui-vendor': ['lucide-react', 'sonner'],
           'supabase-vendor': ['@supabase/supabase-js'],
           'date-vendor': ['date-fns']
         },
