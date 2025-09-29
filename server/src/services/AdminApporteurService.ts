@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { ApporteurRegistrationData } from '../types/apporteur';
 
-const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!);
+const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
 export class AdminApporteurService {
     

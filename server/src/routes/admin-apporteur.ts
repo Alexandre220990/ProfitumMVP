@@ -69,7 +69,7 @@ router.get('/:apporteurId', async (req: Request, res: Response): Promise<void> =
         
         // Récupérer les détails de l'apporteur avec ses prospects
         const { createClient } = await import('@supabase/supabase-js');
-        const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!);
+        const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
         
         const { data: apporteur, error: apporteurError } = await supabase
             .from('ApporteurAffaires')
@@ -209,7 +209,7 @@ router.delete('/:apporteurId', async (req: Request, res: Response): Promise<void
         
         // Récupérer l'auth_id avant suppression
         const { createClient } = await import('@supabase/supabase-js');
-        const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!);
+        const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
         
         const { data: apporteur, error: fetchError } = await supabase
             .from('ApporteurAffaires')

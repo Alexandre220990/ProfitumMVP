@@ -81,7 +81,7 @@ router.get('/prospects', async (req: any, res: any): Promise<void> => {
         
         // Récupérer les prospects où l'expert est présélectionné
         const { createClient } = await import('@supabase/supabase-js');
-        const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!);
+        const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
         
         let query = supabase
             .from('Prospect')
@@ -126,7 +126,7 @@ router.get('/prospects/:prospectId', async (req: any, res: any): Promise<void> =
         
         // Vérifier que l'expert est bien assigné à ce prospect
         const { createClient } = await import('@supabase/supabase-js');
-        const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!);
+        const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
         
         const { data: prospect, error } = await supabase
             .from('Prospect')
@@ -168,7 +168,7 @@ router.post('/prospects/:prospectId/accept', async (req: any, res: any): Promise
         
         // Mettre à jour le statut du prospect
         const { createClient } = await import('@supabase/supabase-js');
-        const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!);
+        const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
         
         const { data: prospect, error: updateError } = await supabase
             .from('Prospect')
@@ -216,7 +216,7 @@ router.post('/prospects/:prospectId/decline', async (req: any, res: any): Promis
         
         // Mettre à jour le statut du prospect
         const { createClient } = await import('@supabase/supabase-js');
-        const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!);
+        const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
         
         const { data: prospect, error: updateError } = await supabase
             .from('Prospect')
@@ -265,7 +265,7 @@ router.post('/meetings', async (req: any, res: any): Promise<void> => {
         
         // Vérifier que l'expert est assigné au prospect
         const { createClient } = await import('@supabase/supabase-js');
-        const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!);
+        const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
         
         const { data: prospect, error: prospectError } = await supabase
             .from('Prospect')
@@ -328,7 +328,7 @@ router.get('/meetings', async (req: any, res: any): Promise<void> => {
         const { status, page = 1, limit = 20 } = req.query;
         
         const { createClient } = await import('@supabase/supabase-js');
-        const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!);
+        const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
         
         let query = supabase
             .from('ProspectMeeting')
@@ -373,7 +373,7 @@ router.put('/meetings/:meetingId', checkMeetingOwnership as any, async (req: any
         const updateData = req.body;
         
         const { createClient } = await import('@supabase/supabase-js');
-        const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!);
+        const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
         
         const { data: meeting, error } = await supabase
             .from('ProspectMeeting')
