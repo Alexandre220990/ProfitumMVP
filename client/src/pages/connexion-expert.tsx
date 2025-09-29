@@ -6,7 +6,7 @@ import Button from "@/components/ui/design-system/Button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/design-system/Card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/components/ui/toast-notifications";
+import { toast } from "sonner";
 
 export default function ConnexionExpert() {
   const [email, setEmail] = useState("");
@@ -17,7 +17,6 @@ export default function ConnexionExpert() {
   
   const { login } = useAuth();
   const navigate = useNavigate();
-  const { addToast } = useToast();
 
   const validateForm = () => {
     const newErrors: { email?: string; password?: string } = {};
@@ -42,12 +41,7 @@ export default function ConnexionExpert() {
     e.preventDefault();
     
     if (!validateForm()) {
-      addToast({
-        type: 'error',
-        title: 'Erreur de validation',
-        message: 'Veuillez corriger les erreurs dans le formulaire',
-        duration: 5000
-      });
+      toast.error('Veuillez corriger les erreurs dans le formulaire');
       return;
     }
 
@@ -59,21 +53,11 @@ export default function ConnexionExpert() {
         password,
         type: 'expert'
       });
-      addToast({
-        type: 'success',
-        title: 'Connexion réussie',
-        message: 'Bienvenue dans votre espace expert !',
-        duration: 3000
-      });
+      toast.success('Connexion réussie ! Bienvenue dans votre espace expert');
       navigate('/dashboard/expert');
     } catch (error) {
       console.error("Erreur de connexion:", error);
-      addToast({
-        type: 'error',
-        title: 'Erreur de connexion',
-        message: 'Email ou mot de passe incorrect',
-        duration: 5000
-      });
+      toast.error('Email ou mot de passe incorrect');
     } finally {
       setIsLoading(false);
     }

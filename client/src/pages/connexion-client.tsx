@@ -5,7 +5,7 @@ import { Eye, EyeOff, Loader2, CheckCircle, AlertCircle, ArrowRight, Shield, Zap
 import Button from "@/components/ui/design-system/Button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 export default function ConnexionClient() {
   const [email, setEmail] = useState("");
@@ -16,7 +16,6 @@ export default function ConnexionClient() {
   
   const { login } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   const validateForm = () => {
     const newErrors: { email?: string; password?: string } = {};
@@ -41,11 +40,7 @@ export default function ConnexionClient() {
     e.preventDefault();
     
     if (!validateForm()) {
-      toast({
-        variant: "destructive",
-        title: 'Erreur de validation',
-        description: 'Veuillez corriger les erreurs dans le formulaire'
-      });
+      toast.error('Veuillez corriger les erreurs dans le formulaire');
       return;
     }
 
@@ -57,18 +52,11 @@ export default function ConnexionClient() {
         password,
         type: 'client'
       });
-      toast({
-        title: 'Connexion réussie',
-        description: 'Bienvenue sur votre espace client !'
-      });
+      toast.success('Connexion réussie ! Bienvenue sur votre espace client');
       navigate(`/dashboard/client`);
     } catch (error) {
       console.error("Erreur de connexion:", error);
-      toast({
-        variant: "destructive",
-        title: 'Erreur de connexion',
-        description: 'Email ou mot de passe incorrect'
-      });
+      toast.error('Email ou mot de passe incorrect');
     } finally {
       setIsLoading(false);
     }

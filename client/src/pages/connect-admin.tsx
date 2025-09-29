@@ -6,7 +6,7 @@ import Button from "@/components/ui/design-system/Button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/design-system/Card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/components/ui/toast-notifications";
+import { toast } from "sonner";
 
 export default function ConnectAdmin() {
   const [email, setEmail] = useState("");

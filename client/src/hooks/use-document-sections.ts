@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from './use-auth';
-import { useToast } from './use-toast';
+import { toast } from 'sonner';
 import api from '../lib/api';
 
 // Types pour les sections de documents
@@ -58,7 +58,6 @@ export interface SectionsResponse {
 
 export const useDocumentSections = () => {
   const { user } = useAuth();
-  const { toast } = useToast();
   const queryClient = useQueryClient();
 
   // ===== RÉCUPÉRATION DES SECTIONS =====
@@ -190,10 +189,7 @@ export const useDocumentSections = () => {
       
       if (data.success) {
         console.log('✅ [DEBUG] Affichage toast de succès');
-        toast({
-          title: 'Succès',
-          description: 'Fichier uploadé avec succès',
-        });
+        toast.success('Fichier uploadé avec succès');
         
         console.log('🔄 [DEBUG] Invalidation du cache pour section:', variables.sectionName);
         // Invalider le cache pour cette section (avec et sans filtres)
@@ -202,19 +198,11 @@ export const useDocumentSections = () => {
         });
       } else {
         console.log('❌ [DEBUG] Affichage toast d\'erreur:', data.error);
-        toast({
-          title: 'Erreur',
-          description: data.error || 'Erreur lors de l\'upload',
-          variant: 'destructive',
-        });
+        toast.error(data.error || 'Erreur lors de l\'upload');
       }
     },
     onError: (error: any) => {
-      toast({
-        title: 'Erreur',
-        description: error.message || 'Erreur lors de l\'upload',
-        variant: 'destructive',
-      });
+      toast.error(error.message || 'Erreur lors de l\'upload');
     },
   });
 
