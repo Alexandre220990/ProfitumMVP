@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useDocumentSections, DocumentFile } from '../hooks/use-document-sections';
-import { useToast } from '../hooks/use-toast';
+import { toast } from 'sonner';
 import HeaderClient from '@/components/HeaderClient';
 import { 
   Download, 
@@ -216,7 +216,6 @@ const UploadDialog = ({
 
 // Page principale des documents client
 const DocumentsClientPage = () => {
-  const { toast } = useToast();
   const [selectedSection, setSelectedSection] = useState<string>('formation');
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -260,29 +259,20 @@ const DocumentsClientPage = () => {
   // Gestion du téléchargement
   const handleDownload = useCallback((file: DocumentFile) => {
     // Implémentation du téléchargement
-    toast({
-      title: 'Téléchargement',
-      description: `Téléchargement de ${file.original_filename}...`,
-    });
-  }, [toast]);
+    toast.success(`Téléchargement de ${file.original_filename}...`);
+  }, []);
 
   // Gestion de la visualisation
   const handleView = useCallback((file: DocumentFile) => {
     // Implémentation de la visualisation
-    toast({
-      title: 'Visualisation',
-      description: `Ouverture de ${file.original_filename}...`,
-    });
-  }, [toast]);
+    toast.info(`Ouverture de ${file.original_filename}...`);
+  }, []);
 
   // Gestion de la suppression
   const handleDelete = useCallback((file: DocumentFile) => {
     // Implémentation de la suppression
-    toast({
-      title: 'Suppression',
-      description: `Suppression de ${file.original_filename}...`,
-    });
-  }, [toast]);
+    toast.error(`Suppression de ${file.original_filename}...`);
+  }, []);
 
   // Fonctions de débogage
   const handleDebugAuth = useCallback(() => {

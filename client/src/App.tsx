@@ -6,8 +6,7 @@ import { AdminProvider } from './contexts/AdminContext';
 import { reminderService } from './services/reminder-service';
 import { queryClient } from './lib/queryClient';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { Toaster as UIToaster } from "./components/ui/toaster";
-import { ToastProvider } from "./components/ui/toast-notifications";
+import { Toaster } from "./components/ui/sonner";
 
 
 // Pages principales
@@ -106,13 +105,12 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ToastProvider>
-        <AuthProvider>
-          <ClientProvider>
-            <AdminProvider>
-              <Suspense fallback={<div>Chargement...</div>}>
-                <div className="min-h-screen bg-gray-50">
-                  <Routes>
+      <AuthProvider>
+        <ClientProvider>
+          <AdminProvider>
+            <Suspense fallback={<div>Chargement...</div>}>
+              <div className="min-h-screen bg-gray-50">
+                <Routes>
                     {/* Routes publiques */}
                     <Route path="/" element={<HomePage />} />
                     <Route path="/homepage-test" element={<HomepageTest />} />
@@ -269,18 +267,17 @@ function App() {
                     </Route>
 
                     {/* Route analytics - Admin et Expert */}
-                    <Route path="/analytics" element={<ProtectedRoute requiredType={["admin", "expert"]} />}>
+                    <Route path="/analytics" element={<ProtectedRoute requiredType="admin" />}>
                       <Route index element={<AnalyticsPage />} />
                     </Route>
                   </Routes>
                   <Analytics />
                 </div>
-                <UIToaster />
+                <Toaster />
               </Suspense>
             </AdminProvider>
           </ClientProvider>
         </AuthProvider>
-      </ToastProvider>
     </QueryClientProvider>
   );
 }
