@@ -341,11 +341,11 @@ router.post('/events', calendarLimiter, validateEvent, asyncHandler(async (req: 
     // Envoyer les notifications aux participants
     try {
       // Notification pour l'organisateur
-      await NotificationService.sendSystemNotification(
-        authUser.id,
-        'Rappel événement calendrier',
-        `Rappel pour l'événement "${event.title}" le ${new Date(event.start_date).toLocaleDateString('fr-FR')} à ${new Date(event.start_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`,
-        {
+      await NotificationService.sendSystemNotification({
+        userId: authUser.id,
+        title: 'Rappel événement calendrier',
+        message: `Rappel pour l'événement "${event.title}" le ${new Date(event.start_date).toLocaleDateString('fr-FR')} à ${new Date(event.start_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`,
+        metadata: {
           event_title: event.title,
           event_date: new Date(event.start_date).toLocaleDateString('fr-FR'),
           event_time: new Date(event.start_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
@@ -356,17 +356,17 @@ router.post('/events', calendarLimiter, validateEvent, asyncHandler(async (req: 
           event_url: `${process.env.FRONTEND_URL}/calendar/event/${event.id}`,
           recipient_name: (authUser as any).name || 'Utilisateur'
         }
-      );
+      });
 
       // Notifications pour les participants si spécifiés
       if (eventData.participants && Array.isArray(eventData.participants)) {
         for (const participantId of eventData.participants) {
           if (participantId !== authUser.id) {
-            await NotificationService.sendSystemNotification(
-              participantId,
-              'Invitation événement calendrier',
-              `Vous êtes invité à l'événement "${event.title}" le ${new Date(event.start_date).toLocaleDateString('fr-FR')} à ${new Date(event.start_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`,
-              {
+            await NotificationService.sendSystemNotification({
+              userId: participantId,
+              title: 'Invitation événement calendrier',
+              message: `Vous êtes invité à l'événement "${event.title}" le ${new Date(event.start_date).toLocaleDateString('fr-FR')} à ${new Date(event.start_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`,
+              metadata: {
                 event_title: event.title,
                 event_date: new Date(event.start_date).toLocaleDateString('fr-FR'),
                 event_time: new Date(event.start_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
@@ -377,7 +377,7 @@ router.post('/events', calendarLimiter, validateEvent, asyncHandler(async (req: 
                 decline_url: `${process.env.FRONTEND_URL}/calendar/event/${event.id}/decline`,
                 recipient_name: 'Participant' // TODO: Récupérer le nom du participant
               }
-            );
+            });
           }
         }
       }
