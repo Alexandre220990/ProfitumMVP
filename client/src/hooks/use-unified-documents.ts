@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/use-auth';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 
 // ============================================================================
 // HOOK DOCUMENTAIRE UNIFIÉ RÉVOLUTIONNAIRE
@@ -97,7 +97,6 @@ const documentCache = new DocumentCache();
 // Hook principal unifié
 export const useUnifiedDocuments = () => {
   const { user } = useAuth();
-  const { toast } = useToast();
   const queryClient = useQueryClient();
   
   // États optimisés
@@ -275,7 +274,7 @@ export const useUnifiedDocuments = () => {
           return newMap;
         });
 
-        toast({ title: 'Succès', description: 'Fichier uploadé avec succès' });
+        toast.success('Fichier uploadé avec succès');
         return result.data;
 
       } catch (error) {
@@ -290,11 +289,7 @@ export const useUnifiedDocuments = () => {
           return newMap;
         });
 
-        toast({
-          variant: 'destructive',
-          title: 'Erreur',
-          description: error instanceof Error ? error.message : 'Erreur lors de l\'upload'
-        });
+        toast.error(error instanceof Error ? error.message : 'Erreur lors de l\'upload');
         throw error;
       }
     },
@@ -335,14 +330,10 @@ export const useUnifiedDocuments = () => {
       // Invalider le cache des stats
       queryClient.invalidateQueries({ queryKey: ['unified-documents-stats', user?.id] });
 
-      toast({ title: 'Succès', description: 'Fichier supprimé avec succès' });
+      toast.success('Fichier supprimé avec succès');
     },
     onError: (error) => {
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: error instanceof Error ? error.message : 'Erreur lors de la suppression'
-      });
+      toast.error(error instanceof Error ? error.message : 'Erreur lors de la suppression');
     }
   });
 
@@ -366,14 +357,10 @@ export const useUnifiedDocuments = () => {
       return result.data;
     },
     onSuccess: () => {
-      toast({ title: 'Succès', description: 'Fichier partagé avec succès' });
+      toast.success('Fichier partagé avec succès');
     },
     onError: (error) => {
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: error instanceof Error ? error.message : 'Erreur lors du partage'
-      });
+      toast.error(error instanceof Error ? error.message : 'Erreur lors du partage');
     }
   });
 
@@ -438,16 +425,12 @@ export const useUnifiedDocuments = () => {
       link.click();
       document.body.removeChild(link);
 
-      toast({ title: 'Succès', description: 'Téléchargement démarré' });
+      toast.success('Téléchargement démarré');
 
     } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: error instanceof Error ? error.message : 'Erreur lors du téléchargement'
-      });
+      toast.error(error instanceof Error ? error.message : 'Erreur lors du téléchargement');
     }
-  }, [toast]);
+  }, []);
 
   // Suppression optimisée
   const deleteFile = useCallback(async (fileId: string) => {

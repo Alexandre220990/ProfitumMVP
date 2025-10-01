@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/use-auth';
 import { config } from '@/config/env';
-import { useToast } from '../components/ui/toast-notifications';
+import { toast } from 'sonner';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 import { Progress } from './ui/progress';
@@ -35,7 +35,6 @@ export const ProgressiveMigrationFlow: React.FC<ProgressiveMigrationFlowProps> =
 }) => {
   const navigate = useNavigate();
   const { setUser } = useAuth();
-  const { addToast } = useToast();
   
   const [currentStep, setCurrentStep] = useState(0);
   const [sessionData, setSessionData] = useState<SessionData | null>(null);
@@ -57,20 +56,12 @@ export const ProgressiveMigrationFlow: React.FC<ProgressiveMigrationFlowProps> =
       if (result.success) {
         setSessionData(result.data);
       } else {
-        addToast({
-          type: 'error',
-          title: "Erreur",
-          message: "Session expirée ou invalide"
-        });
+        toast.error("Session expirée ou invalide");
         navigate('/simulateur');
       }
     } catch (error) {
       console.error('Erreur chargement session:', error);
-      addToast({
-        type: 'error',
-        title: "Erreur",
-        message: "Impossible de charger les données de session"
-      });
+      toast.error("Impossible de charger les données de session");
     } finally {
       setIsLoading(false);
     }
@@ -115,11 +106,7 @@ export const ProgressiveMigrationFlow: React.FC<ProgressiveMigrationFlowProps> =
           localStorage.setItem('token', loginResult.data.token);
           setUser(loginResult.data.user);
 
-          addToast({
-            type: 'success',
-            title: "🎉 Compte créé avec succès !",
-            message: `Bienvenue ${registrationData.username} ! ${result.data.migratedProducts.length} produits éligibles ont été migrés.`
-          });
+          toast.success(`🎉 Compte créé avec succès ! Bienvenue ${registrationData.username} ! ${result.data.migratedProducts.length} produits éligibles ont été migrés.`);
 
           // Appeler le callback de complétion
           if (onComplete) {
@@ -136,11 +123,7 @@ export const ProgressiveMigrationFlow: React.FC<ProgressiveMigrationFlowProps> =
       console.error('Erreur migration:', error);
       setMigrationProgress(0);
       
-      addToast({
-        type: 'error',
-        title: "Erreur",
-        message: error instanceof Error ? error.message : "Erreur lors de la migration"
-      });
+      toast.error(error instanceof Error ? error.message : "Erreur lors de la migration");
     }
   };
 

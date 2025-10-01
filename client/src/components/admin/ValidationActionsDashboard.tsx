@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/design-system/Card';
 import Button from '@/components/ui/design-system/Button';
 import Badge from '@/components/ui/design-system/Badge';
-import { useToast } from '@/components/ui/toast-notifications';
+import { toast } from 'sonner';
 import { useValidationData } from '@/hooks/use-validation-data';
 import { 
   FileText, 
@@ -58,7 +58,6 @@ export const ValidationActionsDashboard: React.FC<ValidationActionsDashboardProp
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedItem, setSelectedItem] = useState<ValidationItem | null>(null);
 
-  const { addToast } = useToast();
 
   // Hook de données de validation
   const {
@@ -93,21 +92,11 @@ export const ValidationActionsDashboard: React.FC<ValidationActionsDashboardProp
         await rejectItem(itemId, item.type);
       }
 
-      addToast({
-        type: 'success',
-        title: 'Action réussie',
-        message: `Action ${action} effectuée avec succès`,
-        duration: 3000
-      });
+      toast.success(`Action ${action} effectuée avec succès`);
 
       onActionClick?.(action, itemId);
     } catch (error) {
-      addToast({
-        type: 'error',
-        title: 'Erreur',
-        message: `Erreur lors de l'action ${action}`,
-        duration: 5000
-      });
+      toast.error(`Erreur lors de l'action ${action}`);
     }
   };
 

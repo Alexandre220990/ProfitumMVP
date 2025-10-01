@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/use-auth";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { get } from "@/lib/api";
 import { 
   ArrowLeft, User, Mail, Phone, MapPin, Calendar, FileText, TrendingUp, 
@@ -81,7 +81,6 @@ const ExpertDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { toast } = useToast();
   
   const [expert, setExpert] = useState<Expert | null>(null);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -113,11 +112,7 @@ const ExpertDetails = () => {
       if (expertResponse.success) {
         setExpert(expertResponse.data as any);
       } else {
-        toast({
-          variant: 'destructive',
-          title: 'Erreur',
-          description: 'Impossible de charger les détails de l\'expert'
-        });
+        toast.error('Impossible de charger les détails de l\'expert');
         return;
       }
 
@@ -129,25 +124,21 @@ const ExpertDetails = () => {
 
       // Calculer les statistiques
       const assignmentsData = assignmentsResponse.success ? (assignmentsResponse.data as any)?.assignments || [] : [];
-      const completedAssignments = assignmentsData.filter((a: Assignment) => a.status === 'completed').length;
-      const activeAssignments = assignmentsData.filter((a: Assignment) => a.status === 'active').length;
+      const completedAssignments = assignmentsData.filter((a: Assignment) => a.statut === 'completed').length;
+      const activeAssignments = assignmentsData.filter((a: Assignment) => a.statut === 'active').length;
       
       setStats({
         totalAssignments: assignmentsData.length,
         completedAssignments,
         activeAssignments,
-        totalEarnings: assignmentsData.reduce((sum: number, a: Assignment) => sum + (a.status === 'completed' ? 100 : 0), 0),
+        totalEarnings: assignmentsData.reduce((sum: number, a: Assignment) => sum + (a.statut === 'completed' ? 100 : 0), 0),
         averageRating: (expertResponse.data as any)?.expert?.rating || 0,
         responseTime: 24 // En heures, à calculer selon les données réelles
       });
 
     } catch (error) {
       console.error('Erreur chargement expert:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: 'Erreur lors du chargement des données'
-      });
+      toast.error('Erreur lors du chargement des données');
     } finally {
       setLoading(false);
     }
@@ -178,10 +169,7 @@ const ExpertDetails = () => {
       });
 
       if (response.ok) {
-        toast({
-          title: 'Succès',
-          description: `Expert ${status === 'approved' ? 'approuvé' : 'rejeté'} avec succès`
-        });
+        toast.success(`Expert ${status === 'approved' ? 'approuvé' : 'rejeté'} avec succès`);
         setShowValidationDialog(false);
         loadExpertData(); // Recharger les données
       } else {
@@ -189,11 +177,7 @@ const ExpertDetails = () => {
       }
     } catch (error) {
       console.error('Erreur mise à jour statut:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: 'Impossible de mettre à jour le statut'
-      });
+      toast.error('Impossible de mettre à jour le statut');
     }
   };
 
@@ -212,10 +196,7 @@ const ExpertDetails = () => {
       });
 
       if (response.ok) {
-        toast({
-          title: 'Message envoyé',
-          description: 'Le message a été envoyé à l\'expert'
-        });
+        toast.success('Le message a été envoyé à l\'expert');
         setMessageContent('');
         setShowMessageDialog(false);
       } else {
@@ -223,11 +204,7 @@ const ExpertDetails = () => {
       }
     } catch (error) {
       console.error('Erreur envoi message:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: 'Impossible d\'envoyer le message'
-      });
+      toast.error('Impossible d\'envoyer le message');
     }
   };
 
@@ -246,10 +223,7 @@ const ExpertDetails = () => {
       });
 
       if (response.ok) {
-        toast({
-          title: 'Email envoyé',
-          description: 'L\'email a été envoyé à l\'expert'
-        });
+        toast.success('L\'email a été envoyé à l\'expert');
         setEmailContent('');
         setShowEmailDialog(false);
       } else {
@@ -257,11 +231,7 @@ const ExpertDetails = () => {
       }
     } catch (error) {
       console.error('Erreur envoi email:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: 'Impossible d\'envoyer l\'email'
-      });
+      toast.error('Impossible d\'envoyer l\'email');
     }
   };
 
@@ -281,10 +251,7 @@ const ExpertDetails = () => {
       });
 
       if (response.ok) {
-        toast({
-          title: 'Rendez-vous programmé',
-          description: 'Le rendez-vous a été programmé avec l\'expert'
-        });
+        toast.success('Le rendez-vous a été programmé avec l\'expert');
         setMeetingDate('');
         setMeetingTime('');
         setShowMeetingDialog(false);
@@ -293,11 +260,7 @@ const ExpertDetails = () => {
       }
     } catch (error) {
       console.error('Erreur programmation RDV:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: 'Impossible de programmer le rendez-vous'
-      });
+      toast.error('Impossible de programmer le rendez-vous');
     }
   };
 
@@ -729,12 +692,12 @@ const ExpertDetails = () => {
                           <TableCell>
                             <Badge 
                               variant={
-                                assignment.status === 'completed' ? 'default' : 
-                                assignment.status === 'active' ? 'secondary' : 'destructive'
+                                assignment.statut === 'completed' ? 'default' : 
+                                assignment.statut === 'active' ? 'secondary' : 'destructive'
                               }
                             >
-                              {assignment.status === 'completed' ? 'Terminé' : 
-                               assignment.status === 'active' ? 'En cours' : 'En attente'}
+                              {assignment.statut === 'completed' ? 'Terminé' : 
+                               assignment.statut === 'active' ? 'En cours' : 'En attente'}
                             </Badge>
                           </TableCell>
                           <TableCell>

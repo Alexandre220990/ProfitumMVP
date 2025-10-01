@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/use-auth';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { config } from '@/config/env';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -76,7 +76,6 @@ interface EventStats {
 
 export const CollaborativeEventManager: React.FC = () => {
   const { user } = useAuth();
-  const { toast } = useToast();
   
   const [events, setEvents] = useState<CollaborativeEvent[]>([]);
   const [stats, setStats] = useState<EventStats>({
@@ -146,15 +145,11 @@ export const CollaborativeEventManager: React.FC = () => {
       setEvents(data.data || []);
     } catch (error) {
       console.error('❌ Erreur chargement événements:', error);
-      toast({
-        title: 'Erreur',
-        description: 'Impossible de charger les événements',
-        variant: 'destructive'
-      });
+      toast.error('Impossible de charger les événements');
     } finally {
       setLoading(false);
     }
-  }, [user?.id, toast]);
+  }, [user?.id]);
 
   // Charger les statistiques
   const loadStats = useCallback(async () => {
@@ -179,13 +174,9 @@ export const CollaborativeEventManager: React.FC = () => {
       });
     } catch (error) {
       console.error('❌ Erreur chargement statistiques:', error);
-      toast({
-        title: 'Erreur',
-        description: 'Impossible de charger les statistiques',
-        variant: 'destructive'
-      });
+      toast.error('Impossible de charger les statistiques');
     }
-  }, [user?.id, toast]);
+  }, [user?.id]);
 
   // Créer un événement
   const createEvent = async () => {
@@ -217,11 +208,7 @@ export const CollaborativeEventManager: React.FC = () => {
 
       if (!response.ok) throw new Error('Erreur lors de la création');
 
-      toast({
-        title: 'Succès',
-        description: 'Événement créé avec succès',
-        variant: 'default'
-      });
+      toast.success('Événement créé avec succès');
 
       setShowCreateDialog(false);
       resetCreateForm();
@@ -229,11 +216,7 @@ export const CollaborativeEventManager: React.FC = () => {
       loadStats();
     } catch (error) {
       console.error('❌ Erreur création événement:', error);
-      toast({
-        title: 'Erreur',
-        description: 'Impossible de créer l\'événement',
-        variant: 'destructive'
-      });
+      toast.error('Impossible de créer l\'événement');
     }
   };
 
@@ -251,21 +234,13 @@ export const CollaborativeEventManager: React.FC = () => {
 
       if (!responseData.ok) throw new Error('Erreur lors de la réponse');
 
-      toast({
-        title: 'Succès',
-        description: 'Réponse enregistrée avec succès',
-        variant: 'default'
-      });
+      toast.success('Réponse enregistrée avec succès');
 
       loadEvents();
       loadStats();
     } catch (error) {
       console.error('❌ Erreur réponse invitation:', error);
-      toast({
-        title: 'Erreur',
-        description: 'Impossible d\'enregistrer la réponse',
-        variant: 'destructive'
-      });
+      toast.error('Impossible d\'enregistrer la réponse');
     }
   };
 
@@ -283,21 +258,13 @@ export const CollaborativeEventManager: React.FC = () => {
 
       if (!response.ok) throw new Error('Erreur lors de l\'annulation');
 
-      toast({
-        title: 'Succès',
-        description: 'Événement annulé avec succès',
-        variant: 'default'
-      });
+      toast.success('Événement annulé avec succès');
 
       loadEvents();
       loadStats();
     } catch (error) {
       console.error('❌ Erreur annulation événement:', error);
-      toast({
-        title: 'Erreur',
-        description: 'Impossible d\'annuler l\'événement',
-        variant: 'destructive'
-      });
+      toast.error('Impossible d\'annuler l\'événement');
     }
   };
 

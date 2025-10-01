@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/use-auth";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { get } from "@/lib/api";
 import { 
   ArrowLeft, Building, Mail, Phone, MapPin, Calendar, FileText, TrendingUp, 
@@ -124,7 +124,6 @@ interface Document {
 
 const ClientDetails = () => {
   const { user, isLoading: authLoading } = useAuth();
-  const { toast } = useToast();
   const navigate = useNavigate();
   const { id } = useParams();
 
@@ -200,15 +199,11 @@ const ClientDetails = () => {
     } catch (err: any) {
       setError(err.message);
       console.error('Erreur chargement client: ', err);
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: 'Impossible de charger les données du client'
-      });
+      toast.error('Impossible de charger les données du client');
     } finally {
       setLoading(false);
     }
-  }, [id, toast]);
+  }, [id]);
 
   // Assigner un expert à un audit
   const assignExpertToAudit = async (auditId: string, expertId: string) => {
@@ -223,20 +218,13 @@ const ClientDetails = () => {
 
       if (response.ok) {
         fetchClientData(); // Recharger les données
-        toast({
-          title: 'Expert assigné',
-          description: 'L\'expert a été assigné avec succès'
-        });
+        toast.success('L\'expert a été assigné avec succès');
       } else {
         throw new Error('Erreur lors de l\'assignation');
       }
     } catch (err) {
       console.error('Erreur assignation expert: ', err);
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: 'Erreur lors de l\'assignation de l\'expert'
-      });
+      toast.error('Erreur lors de l\'assignation de l\'expert');
     }
   };
 
@@ -253,20 +241,13 @@ const ClientDetails = () => {
 
       if (response.ok) {
         fetchClientData(); // Recharger les données
-        toast({
-          title: 'Statut mis à jour',
-          description: 'Le statut de l\'audit a été mis à jour'
-        });
+        toast.success('Le statut de l\'audit a été mis à jour');
       } else {
         throw new Error('Erreur lors de la mise à jour');
       }
     } catch (err) {
       console.error('Erreur mise à jour statut: ', err);
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: 'Erreur lors de la mise à jour du statut'
-      });
+      toast.error('Erreur lors de la mise à jour du statut');
     }
   };
 
@@ -283,20 +264,13 @@ const ClientDetails = () => {
 
       if (response.ok) {
         fetchClientData(); // Recharger les données
-        toast({
-          title: 'Commentaire ajouté',
-          description: 'Le commentaire a été ajouté avec succès'
-        });
+        toast.success('Le commentaire a été ajouté avec succès');
       } else {
         throw new Error('Erreur lors de l\'ajout du commentaire');
       }
     } catch (err) {
       console.error('Erreur ajout commentaire: ', err);
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: 'Erreur lors de l\'ajout du commentaire'
-      });
+      toast.error('Erreur lors de l\'ajout du commentaire');
     }
   };
 
@@ -329,20 +303,13 @@ const ClientDetails = () => {
       if (response.ok) {
         setNewMessage('');
         loadMessages(); // Recharger les messages
-        toast({
-          title: 'Message envoyé',
-          description: 'Le message a été envoyé au client'
-        });
+        toast.success('Le message a été envoyé au client');
       } else {
         throw new Error('Erreur lors de l\'envoi');
       }
     } catch (err) {
       console.error('Erreur envoi message: ', err);
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: 'Erreur lors de l\'envoi du message'
-      });
+      toast.error('Erreur lors de l\'envoi du message');
     } finally {
       setActionLoading('');
     }
@@ -360,20 +327,13 @@ const ClientDetails = () => {
 
       if (response.ok) {
         fetchClientData(); // Recharger les données
-        toast({
-          title: 'Document validé',
-          description: 'Le document a été validé avec succès'
-        });
+        toast.success('Le document a été validé avec succès');
       } else {
         throw new Error('Erreur lors de la validation');
       }
     } catch (err) {
       console.error('Erreur validation document: ', err);
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: 'Erreur lors de la validation du document'
-      });
+      toast.error('Erreur lors de la validation du document');
     }
   };
 
@@ -389,20 +349,13 @@ const ClientDetails = () => {
       });
 
       if (response.ok) {
-        toast({
-          title: 'Demande envoyée',
-          description: 'La demande de document a été envoyée au client'
-        });
+        toast.success('La demande de document a été envoyée au client');
       } else {
         throw new Error('Erreur lors de l\'envoi de la demande');
       }
     } catch (err) {
       console.error('Erreur demande document: ', err);
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: 'Erreur lors de l\'envoi de la demande'
-      });
+      toast.error('Erreur lors de l\'envoi de la demande');
     }
   };
 
@@ -419,20 +372,13 @@ const ClientDetails = () => {
 
       if (response.ok) {
         fetchClientData(); // Recharger les données
-        toast({
-          title: 'Statut mis à jour',
-          description: 'Le statut du client a été mis à jour'
-        });
+        toast.success('Le statut du client a été mis à jour');
       } else {
         throw new Error('Erreur lors de la mise à jour');
       }
     } catch (err) {
       console.error('Erreur mise à jour statut: ', err);
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: 'Erreur lors de la mise à jour du statut'
-      });
+      toast.error('Erreur lors de la mise à jour du statut');
     }
   };
 
@@ -456,20 +402,13 @@ const ClientDetails = () => {
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
         
-        toast({
-          title: 'Export réussi',
-          description: 'Les données du client ont été exportées'
-        });
+        toast.success('Les données du client ont été exportées');
       } else {
         throw new Error('Erreur lors de l\'export');
       }
     } catch (err) {
       console.error('Erreur export: ', err);
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: 'Erreur lors de l\'export des données'
-      });
+      toast.error('Erreur lors de l\'export des données');
     }
   };
 
@@ -485,20 +424,13 @@ const ClientDetails = () => {
       });
 
       if (response.ok) {
-        toast({
-          title: 'Notification envoyée',
-          description: 'La notification a été envoyée au client'
-        });
+        toast.success('La notification a été envoyée au client');
       } else {
         throw new Error('Erreur lors de l\'envoi');
       }
     } catch (err) {
       console.error('Erreur notification: ', err);
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: 'Erreur lors de l\'envoi de la notification'
-      });
+      toast.error('Erreur lors de l\'envoi de la notification');
     }
   };
 

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './use-auth';
 import { supabase } from '@/lib/supabase';
-import { useToast } from '@/components/ui/toast-notifications';
+import { toast } from 'sonner';
 
 // Types basés sur la structure de la base de données
 export interface ClientProfile {
@@ -43,7 +43,6 @@ export interface ClientProfileUpdate {
 
 export const useClientProfile = () => {
   const { user } = useAuth();
-  const { addToast } = useToast();
   
   const [profile, setProfile] = useState<ClientProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -109,12 +108,7 @@ export const useClientProfile = () => {
   // Mettre à jour le profil client
   const updateProfile = useCallback(async (updates: ClientProfileUpdate) => {
     if (!user?.id) {
-      addToast({
-        type: 'error',
-        title: 'Erreur',
-        message: 'Utilisateur non connecté',
-        duration: 5000
-      });
+      toast.error('Utilisateur non connecté');
       return false;
     }
 
@@ -136,40 +130,25 @@ export const useClientProfile = () => {
 
       if (updateError) {
         console.error('Erreur lors de la mise à jour du profil:', updateError);
-        addToast({
-          type: 'error',
-          title: 'Erreur',
-          message: updateError.message,
-          duration: 5000
-        });
+        toast.error(updateError.message);
         return false;
       }
 
       if (data) {
         setProfile(data as ClientProfile);
-        addToast({
-          type: 'success',
-          title: 'Profil mis à jour',
-          message: 'Vos informations ont été sauvegardées avec succès',
-          duration: 3000
-        });
+        toast.success('Profil mis à jour ! Vos informations ont été sauvegardées avec succès');
         return true;
       }
 
       return false;
     } catch (err) {
       console.error('Erreur lors de la mise à jour du profil:', err);
-      addToast({
-        type: 'error',
-        title: 'Erreur',
-        message: 'Erreur lors de la sauvegarde',
-        duration: 5000
-      });
+      toast.error('Erreur lors de la sauvegarde');
       return false;
     } finally {
       setIsSaving(false);
     }
-  }, [user?.id, addToast]);
+  }, [user?.id]);
 
   // Charger le profil au montage du composant
   useEffect(() => {

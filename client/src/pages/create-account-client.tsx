@@ -7,7 +7,7 @@ import { User, Mail, Lock, Building, Phone, MapPin, FileText, Loader2, CheckCirc
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { RegisterCredentials } from "@/types/api";
 
@@ -16,7 +16,6 @@ const formSchema = z.object({ username: z.string().optional(), email: z.string()
 type FormData = RegisterCredentials & { siren: string; };
 
 export default function CreateAccountClient() { 
-  const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
   const { setUser } = useAuth();
@@ -130,11 +129,7 @@ export default function CreateAccountClient() {
       const { token, user } = json.data;
 
       if (!token || !user) {
-        toast({
-          title: "Erreur",
-          description: "Données utilisateur incomplètes",
-          variant: "destructive"
-        });
+        toast.error("Données utilisateur incomplètes");
         return;
       }
 
@@ -148,12 +143,11 @@ export default function CreateAccountClient() {
         sessionStorage.clear();
       }
 
-      toast({
-        title: fromSimulator ? "🎉 Inscription réussie avec migration !" : "Inscription réussie",
-        description: fromSimulator 
-          ? `Bienvenue ${user.username || user.email} ! Votre compte a été créé avec ${resultsArray.length} produits éligibles.`
-          : `Bienvenue ${user.username || user.email}`,
-      });
+      toast.success(
+        fromSimulator 
+          ? `🎉 Inscription réussie avec migration ! Bienvenue ${user.username || user.email} ! Votre compte a été créé avec ${resultsArray.length} produits éligibles.`
+          : `Inscription réussie ! Bienvenue ${user.username || user.email}`
+      );
 
       // Rediriger vers le dashboard avec les données migrées si applicable
       navigate(`/dashboard/client/${user.id}`, {
@@ -164,11 +158,7 @@ export default function CreateAccountClient() {
       });
     } catch (error) {
       console.error("❌ Erreur d'inscription: ", error);
-      toast({
-        title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue",
-        variant: "destructive"
-      });
+      toast.error(error instanceof Error ? error.message : "Une erreur est survenue");
     } finally {
       setIsLoading(false);
     }

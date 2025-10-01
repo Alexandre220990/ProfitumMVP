@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Loader2, CreditCard, Lock, Building2, Briefcase, User, Mail, Key, CheckCircle } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { post, get } from "@/lib/api";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -41,7 +41,6 @@ interface FormErrors {
 
 const Paiement = () => { 
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [selectedPlan, setSelectedPlan] = useState<any>(null);
   const [errors, setErrors] = useState<FormErrors>({});
   const [isProcessing, setIsProcessing] = useState(false);
@@ -215,11 +214,7 @@ const Paiement = () => {
     e.preventDefault();
     
     if (!validateForm()) {
-      toast({
-        title: "Erreur de validation", 
-        description: "Veuillez corriger les erreurs dans le formulaire", 
-        variant: "destructive" 
-      });
+      toast.error("Veuillez corriger les erreurs dans le formulaire");
       return;
     }
     
@@ -252,10 +247,7 @@ const Paiement = () => {
           ...response.data, type: 'expert' 
         }));
         
-        toast({ 
-          title: "Inscription réussie", 
-          description: "Votre compte expert a été créé avec succès" 
-        });
+        toast.success("Inscription réussie ! Votre compte expert a été créé avec succès");
         
         // Rediriger vers la page de confirmation
         navigate("/confirmation");
@@ -264,11 +256,7 @@ const Paiement = () => {
       }
     } catch (error) { 
       console.error('❌ Erreur lors de l\'inscription: ', error);
-      toast({
-        title: "Erreur", 
-        description: error instanceof Error ? error.message : "Une erreur est survenue lors du traitement", 
-        variant: "destructive" 
-      });
+      toast.error(error instanceof Error ? error.message : "Une erreur est survenue lors du traitement");
     } finally { 
       setIsProcessing(false); 
     }

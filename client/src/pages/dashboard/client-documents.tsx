@@ -27,7 +27,7 @@ import {
 import { useAuth } from '@/hooks/use-auth';
 import { useEnhancedDocumentStorage } from '@/hooks/use-enhanced-document-storage';
 import { EnhancedDocumentUpload } from '@/components/documents/EnhancedDocumentUpload';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 
 interface ClientDocumentsData {
   files: any[];
@@ -48,7 +48,6 @@ interface ClientDocumentsData {
 export default function ClientDocumentsPage() {
   const { user } = useAuth();
   const { getClientFiles, getClientFileStats, deleteFile, downloadFile } = useEnhancedDocumentStorage();
-  const { toast } = useToast();
 
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<ClientDocumentsData | null>(null);
@@ -107,63 +106,39 @@ export default function ClientDocumentsPage() {
           stats: enhancedStats
         });
       } else {
-        toast({
-          variant: 'destructive',
-          title: 'Erreur',
-          description: 'Erreur lors du chargement des documents'
-        });
+        toast.error('Erreur lors du chargement des documents');
       }
     } catch (error) {
       console.error('Erreur chargement documents: ', error);
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: 'Erreur lors du chargement des documents'
-      });
+      toast.error('Erreur lors du chargement des documents');
     } finally {
       setLoading(false);
     }
   };
 
   const handleFileUploaded = () => {
-    toast({
-      title: 'Succès',
-      description: 'Document uploadé avec succès'
-    });
+    toast.success('Document uploadé avec succès');
     setRefreshKey(prev => prev + 1);
   };
 
   const handleFileDeleted = async (fileId: string) => {
     const result = await deleteFile(fileId);
     if (result.success) {
-      toast({
-        title: 'Succès',
-        description: 'Document supprimé avec succès'
-      });
+      toast.success('Document supprimé avec succès');
       setRefreshKey(prev => prev + 1);
     } else {
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: result.error || 'Erreur lors de la suppression'
-      });
+      toast.error(result.error || 'Erreur lors de la suppression');
     }
   };
 
   const handleFileDownload = async (fileId: string) => {
     await downloadFile(fileId);
-    toast({
-      title: 'Téléchargement',
-      description: 'Téléchargement en cours...'
-    });
+    toast.success('Téléchargement en cours...');
   };
 
   const handleRefresh = () => {
     setRefreshKey(prev => prev + 1);
-    toast({
-      title: 'Actualisation',
-      description: 'Données actualisées'
-    });
+    toast.success('Données actualisées');
   };
 
   const toggleFileSelection = (fileId: string) => {
@@ -397,11 +372,7 @@ export default function ClientDocumentsPage() {
                 clientId={user?.id || ''}
                 onUploadComplete={handleFileUploaded}
                 onUploadError={(error) => {
-                  toast({
-                    variant: 'destructive',
-                    title: 'Erreur',
-                    description: error
-                  });
+                  toast.error(error);
                 }}
                 showAdvancedOptions={true}
               />
@@ -630,11 +601,7 @@ export default function ClientDocumentsPage() {
                 clientId={user?.id || ''}
                 onUploadComplete={handleFileUploaded}
                 onUploadError={(error) => {
-                  toast({
-                    variant: 'destructive',
-                    title: 'Erreur',
-                    description: error
-                  });
+                  toast.error(error);
                 }}
                 showAdvancedOptions={true}
               />

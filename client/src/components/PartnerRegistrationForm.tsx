@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { post } from "@/lib/api";
 
 interface RegistrationData {
@@ -67,7 +67,6 @@ export default function PartnerRegistrationForm() {
   });
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   // Optimisation : Gestion de la soumission avec useCallback
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
@@ -77,19 +76,12 @@ export default function PartnerRegistrationForm() {
     try {
       await post<ApiResponse<{ id: number }>>('/api/experts', formData);
       
-      toast({
-        title: "Inscription réussie",
-        description: "Votre compte a été créé avec succès. Vous pouvez maintenant vous connecter."
-      });
+      toast.success("Inscription réussie ! Votre compte a été créé avec succès. Vous pouvez maintenant vous connecter");
 
       navigate("/connexion-expert");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Une erreur est survenue lors de l'inscription";
-      toast({
-        title: "Erreur",
-        description: message,
-        variant: "destructive"
-      });
+      toast.error(message);
     } finally {
       setLoading(false);
     }

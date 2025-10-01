@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "./use-auth";
 import { get, post } from "@/lib/api";
-import { useToast } from "./use-toast";
+import { toast } from "sonner";
 
 interface AuditProgress { current_step: number;
   progress: Record<string, any>;
@@ -14,7 +14,6 @@ interface ApiResponse<T> { success: boolean;
   message?: string; }
 
 export function useAuditProgress(requestId: string = 'default') { const { user } = useAuth();
-  const { toast } = useToast();
   const [progress, setProgress] = useState<AuditProgress | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,25 +26,22 @@ export function useAuditProgress(requestId: string = 'default') { const { user }
         if (response.success && response.data?.data) { setProgress(response.data.data); } else { throw new Error(response.message || "Erreur lors de la récupération de la progression"); }
       } catch (err) { console.error("Erreur: ", err);
         setError(err instanceof Error ? err.message : "Une erreur est survenue");
-        toast({
-          title: "Erreur", description: "Impossible de charger la progression de l'audit", variant: "destructive" });
+        toast.error("Impossible de charger la progression de l'audit");
       } finally { setLoading(false); }
     };
 
     fetchProgress();
-  }, [user?.id, requestId, toast]);
+  }, [user?.id, requestId]);
 
   const updateProgress = async (updates: Partial<AuditProgress>) => { if (!user?.id) return;
 
     try {
       const response = await post<ApiResponse<AuditProgress>>(`/api/audit-progress/${requestId }`, updates);
       if (response.success && response.data?.data) { setProgress(response.data.data);
-        toast({
-          title: "Succès", description: "Progression mise à jour avec succès" });
+        toast.success("Progression mise à jour avec succès");
       } else { throw new Error(response.message || "Erreur lors de la mise à jour de la progression"); }
     } catch (err) { console.error("Erreur: ", err);
-      toast({
-        title: "Erreur", description: "Impossible de mettre à jour la progression", variant: "destructive" });
+      toast.error("Impossible de mettre à jour la progression");
       throw err;
     }
   };

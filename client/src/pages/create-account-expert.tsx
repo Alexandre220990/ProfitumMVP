@@ -7,7 +7,7 @@ import { UserCircle, Mail, Lock, Building, MapPin, FileText, CreditCard, Calenda
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 import { post } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
 import { RegisterCredentials, UserType, AuthData } from "@/types/api";
@@ -53,7 +53,6 @@ const formFields = [
 ] as const;
 
 export default function CreateAccountExpert() {
-  const { toast } = useToast();
   const navigate = useNavigate();
   const { setUser } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
@@ -117,11 +116,7 @@ export default function CreateAccountExpert() {
       const { token, user } = response.data;
 
       if (!token || !user) {
-        toast({
-          title: "Erreur",
-          description: "Données utilisateur incomplètes",
-          variant: "destructive"
-        });
+        toast.error("Données utilisateur incomplètes");
         return;
       }
 
@@ -130,19 +125,12 @@ export default function CreateAccountExpert() {
       const userType = convertAuthUserToUserType(user);
       setUser(userType);
 
-      toast({
-        title: "Succès",
-        description: "Compte expert créé avec succès"
-      });
+      toast.success("Compte expert créé avec succès");
 
       navigate("/dashboard");
     } catch (error) {
       console.error("❌ Erreur d'inscription: ", error);
-      toast({
-        title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue",
-        variant: "destructive"
-      });
+      toast.error(error instanceof Error ? error.message : "Une erreur est survenue");
     } finally {
       setIsLoading(false);
     }

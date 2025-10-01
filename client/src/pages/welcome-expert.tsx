@@ -33,7 +33,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { config } from '@/config/env';
 import PublicHeader from '@/components/PublicHeader';
 
@@ -169,7 +169,6 @@ const benefits = [
 
 const WelcomeExpert = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedSpecializations, setSelectedSpecializations] = useState<string[]>([]);
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>(['Français']);
@@ -299,22 +298,14 @@ const WelcomeExpert = () => {
         throw new Error('Erreur lors de l\'envoi de la demande');
       }
 
-      toast({
-        title: '🎉 Demande envoyée avec succès !',
-        description: 'L\'équipe Profitum revient vers vous dans les 24-48h pour organiser une présentation personnalisée.',
-        variant: 'default'
-      });
+      toast.success('🎉 Demande envoyée avec succès ! L\'équipe Profitum revient vers vous dans les 24-48h pour organiser une présentation personnalisée');
 
       // Redirection vers une page de confirmation
       navigate('/demo-confirmation');
       
     } catch (error) {
       console.error('Erreur soumission:', error);
-      toast({
-        title: 'Erreur',
-        description: 'Une erreur est survenue lors de l\'envoi de votre demande. Veuillez réessayer.',
-        variant: 'destructive'
-      });
+      toast.error('Une erreur est survenue lors de l\'envoi de votre demande. Veuillez réessayer');
     } finally {
       setIsSubmitting(false);
     }

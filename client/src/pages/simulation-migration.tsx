@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ProgressiveMigrationFlow } from '../components/ProgressiveMigrationFlow';
-import { useToast } from '../components/ui/toast-notifications';
+import { toast } from 'sonner';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { ArrowLeft, AlertCircle } from 'lucide-react';
@@ -9,7 +9,6 @@ import { ArrowLeft, AlertCircle } from 'lucide-react';
 export default function SimulationMigration() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { addToast } = useToast();
   
   const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [isValidSession, setIsValidSession] = useState<boolean | null>(null);
@@ -27,11 +26,7 @@ export default function SimulationMigration() {
       validateSession(token);
     } else {
       setIsValidSession(false);
-      addToast({
-        type: 'error',
-        title: "Erreur",
-        message: "Aucun token de session fourni"
-      });
+      toast.error("Aucun token de session fourni");
     }
   }, [location]);
 
@@ -44,19 +39,11 @@ export default function SimulationMigration() {
         setIsValidSession(true);
       } else {
         setIsValidSession(false);
-        addToast({
-          type: 'error',
-          title: "Session expirée",
-          message: "Votre session a expiré. Veuillez refaire une simulation."
-        });
+        toast.error("Votre session a expiré. Veuillez refaire une simulation.");
       }
     } catch (error) {
       setIsValidSession(false);
-      addToast({
-        type: 'error',
-        title: "Erreur",
-        message: "Impossible de valider la session"
-      });
+      toast.error("Impossible de valider la session");
     }
   };
 

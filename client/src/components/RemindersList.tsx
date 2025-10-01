@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useToast } from "../hooks/use-toast";
+import { toast } from "sonner";
 import { put, get } from "../lib/api";
 import { ApiResponse } from "../types/api";
 import { CardContent, Card } from "./ui/card";
@@ -39,7 +39,6 @@ interface RemindersListProps { showHandled?: boolean;
   onReminderHandled?: (reminderId: string) => void }
 
 export const RemindersList: React.FC<RemindersListProps> = ({ showHandled = false, maxItems = 10, onReminderHandled }) => {
-  const { toast } = useToast();
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [loading, setLoading] = useState(true);
   const [handlingReminder, setHandlingReminder] = useState<string | null>(null);
@@ -77,11 +76,7 @@ export const RemindersList: React.FC<RemindersListProps> = ({ showHandled = fals
       }
     } catch (error) {
       console.error('Erreur chargement relances: ', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger les relances",
-        variant: "destructive"
-      });
+      toast.error("Impossible de charger les relances");
       setReminders([]);
     } finally {
       setLoading(false);
@@ -95,7 +90,7 @@ export const RemindersList: React.FC<RemindersListProps> = ({ showHandled = fals
       if (action === 'handle') {
         await put(`/api/reminders/${reminderId}/handle`, { notes: 'Traité par l\'utilisateur' });
         
-        toast({ title: "Relance traitée", description: "La relance a été marquée comme traitée" });
+        toast.success("La relance a été marquée comme traitée");
         
         onReminderHandled?.(reminderId);
       }
@@ -104,11 +99,7 @@ export const RemindersList: React.FC<RemindersListProps> = ({ showHandled = fals
       await loadReminders();
     } catch (error) {
       console.error('Erreur traitement relance: ', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de traiter la relance",
-        variant: "destructive"
-      });
+      toast.error("Impossible de traiter la relance");
     } finally {
       setHandlingReminder(null);
     }

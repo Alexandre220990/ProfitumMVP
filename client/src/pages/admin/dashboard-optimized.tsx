@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { get } from "@/lib/api";
 import HeaderAdmin from "@/components/HeaderAdmin";
 import ApporteurManagement from "@/components/admin/ApporteurManagement";
@@ -64,7 +64,6 @@ type ActiveSection = 'overview' | 'experts' | 'clients' | 'dossiers' | 'apporteu
 
 const AdminDashboardOptimized: React.FC = () => {
   const { user } = useAuth();
-  const { toast } = useToast();
   
   // ===== ÉTATS LOCAUX =====
   const [activeSection, setActiveSection] = useState<ActiveSection>('overview');
@@ -312,11 +311,7 @@ const AdminDashboardOptimized: React.FC = () => {
       }
     } catch (error) {
       console.error(`❌ Erreur chargement ${section}:`, error);
-      toast({
-        title: 'Erreur',
-        description: `Impossible de charger les données ${section}`,
-        variant: 'destructive'
-      });
+      toast.error(`Impossible de charger les données ${section}`);
     } finally {
       setLoading(false);
     }

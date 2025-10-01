@@ -6,7 +6,7 @@ import Button from "@/components/ui/design-system/Button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/design-system/Card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/components/ui/toast-notifications";
+import { toast } from "sonner";
 
 export default function ConnexionApporteur() {
   const [email, setEmail] = useState("");
@@ -17,7 +17,6 @@ export default function ConnexionApporteur() {
   
   const { login } = useAuth();
   const navigate = useNavigate();
-  const { addToast } = useToast();
 
   const validateForm = () => {
     const newErrors: { email?: string; password?: string } = {};
@@ -42,12 +41,7 @@ export default function ConnexionApporteur() {
     e.preventDefault();
     
     if (!validateForm()) {
-      addToast({
-        type: 'error',
-        title: 'Erreur de validation',
-        message: 'Veuillez corriger les erreurs dans le formulaire',
-        duration: 5000
-      });
+      toast.error('Veuillez corriger les erreurs dans le formulaire');
       return;
     }
 
@@ -63,12 +57,7 @@ export default function ConnexionApporteur() {
         type: "apporteur_affaires"
       });
 
-      addToast({
-        type: 'success',
-        title: 'Connexion réussie',
-        message: 'Bienvenue dans votre espace apporteur d\'affaires',
-        duration: 3000
-      });
+      toast.success('Bienvenue dans votre espace apporteur d\'affaires');
 
       // La redirection est gérée dans le hook useAuth
       console.log('✅ Connexion apporteur réussie');
@@ -95,12 +84,7 @@ export default function ConnexionApporteur() {
         password: errorMessage.includes("mot de passe") ? errorMessage : undefined
       });
 
-      addToast({
-        type: 'error',
-        title: 'Erreur de connexion',
-        message: errorMessage,
-        duration: 5000
-      });
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }

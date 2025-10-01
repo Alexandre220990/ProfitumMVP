@@ -3,8 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/use-auth';
+import { toast } from 'sonner';
 import { 
   FileText, 
   Upload, 
@@ -69,7 +68,6 @@ export default function TICPEUploadStep({
   onStepComplete,
   onDocumentsUploaded
 }: TICPEUploadStepProps) {
-  const { toast } = useToast();
   const [uploadedDocuments, setUploadedDocuments] = useState<DocumentFile[]>([]);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress>({});
   const [isUploading, setIsUploading] = useState(false);
@@ -107,11 +105,7 @@ export default function TICPEUploadStep({
   // Upload du fichier
   const handleUpload = useCallback(async () => {
     if (!selectedFile || !selectedDocumentType) {
-      toast({
-        title: "Erreur",
-        description: "Veuillez sélectionner un fichier et un type de document",
-        variant: "destructive"
-      });
+      toast.error("Veuillez sélectionner un fichier et un type de document");
       return;
     }
 
@@ -175,10 +169,7 @@ export default function TICPEUploadStep({
 
       setUploadedDocuments(prev => [...prev, newDocument]);
 
-      toast({
-        title: "Succès",
-        description: `${selectedFile.name} uploadé avec succès`
-      });
+      toast.success(`${selectedFile.name} uploadé avec succès`);
 
       // Nettoyer
       setSelectedFile(null);
@@ -198,11 +189,7 @@ export default function TICPEUploadStep({
       // Marquer comme erreur
       setUploadProgress(prev => ({ ...prev, [fileId]: -1 }));
 
-      toast({
-        title: "Erreur",
-        description: `Erreur lors de l'upload de ${selectedFile.name}`,
-        variant: "destructive"
-      });
+      toast.error(`Erreur lors de l'upload de ${selectedFile.name}`);
     } finally {
       setIsUploading(false);
     }
@@ -211,10 +198,7 @@ export default function TICPEUploadStep({
   // Supprimer un document
   const removeDocument = useCallback((documentId: string) => {
     setUploadedDocuments(prev => prev.filter(doc => doc.id !== documentId));
-    toast({
-      title: "Document supprimé",
-      description: "Le document a été supprimé de la liste"
-    });
+    toast.success("Le document a été supprimé de la liste");
   }, [toast]);
 
   // Visualiser un document
@@ -222,22 +206,14 @@ export default function TICPEUploadStep({
     if (document.file_url) {
       window.open(document.file_url, '_blank');
     } else {
-      toast({
-        title: "Erreur",
-        description: "Impossible d'ouvrir le document",
-        variant: "destructive"
-      });
+      toast.error("Impossible d'ouvrir le document");
     }
   }, [toast]);
 
   // Valider l'étape
   const handleValidateStep = useCallback(async () => {
     if (!hasAllRequiredDocuments()) {
-      toast({
-        title: "Documents manquants",
-        description: "Veuillez uploader tous les documents requis",
-        variant: "destructive"
-      });
+      toast.error("Veuillez uploader tous les documents requis");
       return;
     }
 
@@ -286,10 +262,7 @@ export default function TICPEUploadStep({
       });
 
       if (response.ok) {
-        toast({
-          title: "Étape validée",
-          description: "Vos documents ont été envoyés pour validation par l'administrateur"
-        });
+        toast.success("Vos documents ont été envoyés pour validation par l'administrateur");
 
         // Appeler le callback de complétion
         onStepComplete();
@@ -299,11 +272,7 @@ export default function TICPEUploadStep({
 
     } catch (error) {
       console.error('Erreur validation étape:', error);
-      toast({
-        title: "Erreur",
-        description: "Erreur lors de la validation de l'étape",
-        variant: "destructive"
-      });
+      toast.error("Erreur lors de la validation de l'étape");
     } finally {
       setIsValidating(false);
     }

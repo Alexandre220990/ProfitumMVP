@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef } from 'react';
-import { Upload, Image, FileText, CheckCircle, AlertCircle, X, Loader2 } from 'lucide-react';
+import { Upload, CheckCircle, AlertCircle, X, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { useEnhancedDocumentStorage, EnhancedUploadRequest } from '@/hooks/use-enhanced-document-storage';
 
 interface UploadingFile {
@@ -44,8 +44,7 @@ export const EnhancedDocumentUpload: React.FC<EnhancedDocumentUploadProps> = ({
   defaultCategory = 'autre',
   showAdvancedOptions = false
 }) => {
-  const { toast } = useToast();
-  const { uploadFile, uploading, formatFileSize, getFileIcon, getCategoryColor } = useEnhancedDocumentStorage();
+  const { uploadFile, uploading, formatFileSize, getFileIcon } = useEnhancedDocumentStorage();
   const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(showAdvancedOptions);
@@ -86,11 +85,7 @@ export const EnhancedDocumentUpload: React.FC<EnhancedDocumentUploadProps> = ({
 
     // Vérifier le nombre de fichiers
     if (fileArray.length > maxFiles) {
-      toast({
-        title: "Trop de fichiers",
-        description: `Vous ne pouvez uploader que ${maxFiles} fichiers maximum`,
-        variant: "destructive"
-      });
+      toast.error(`Vous ne pouvez uploader que ${maxFiles} fichiers maximum`);
       return;
     }
 
@@ -98,11 +93,7 @@ export const EnhancedDocumentUpload: React.FC<EnhancedDocumentUploadProps> = ({
     for (const file of fileArray) {
       const error = validateFile(file);
       if (error) {
-        toast({
-          title: "Fichier invalide",
-          description: error,
-          variant: "destructive"
-        });
+        toast.error(error);
         continue;
       }
 
@@ -156,10 +147,7 @@ export const EnhancedDocumentUpload: React.FC<EnhancedDocumentUploadProps> = ({
 
           onUploadComplete?.(result.fileId);
 
-          toast({
-            title: "Upload réussi",
-            description: `"${file.name}" a été uploadé avec succès`
-          });
+          toast.success(`"${file.name}" a été uploadé avec succès`);
 
           // Retirer le fichier après 2 secondes
           setTimeout(() => {

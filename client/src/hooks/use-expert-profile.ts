@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './use-auth';
 import { supabase } from '@/lib/supabase';
-import { useToast } from '@/components/ui/toast-notifications';
+import { toast } from 'sonner';
 
 // Types basés sur la structure de la base de données Expert
 export interface ExpertProfile {
@@ -36,7 +36,6 @@ export interface ExpertProfile {
 
 export const useExpertProfile = () => {
   const { user } = useAuth();
-  const { addToast } = useToast();
   
   const [profile, setProfile] = useState<ExpertProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -110,12 +109,7 @@ export const useExpertProfile = () => {
   // Demander une validation admin pour modifier le profil
   const requestProfileUpdate = useCallback(async (updateReason: string) => {
     if (!user?.id) {
-      addToast({
-        type: 'error',
-        title: 'Erreur',
-        message: 'Utilisateur non connecté',
-        duration: 5000
-      });
+      toast.error('Utilisateur non connecté');
       return false;
     }
 
@@ -134,33 +128,18 @@ export const useExpertProfile = () => {
 
       if (requestError) {
         console.error('Erreur lors de la demande de modification:', requestError);
-        addToast({
-          type: 'error',
-          title: 'Erreur',
-          message: 'Erreur lors de l\'envoi de la demande',
-          duration: 5000
-        });
+        toast.error('Erreur lors de l\'envoi de la demande');
         return false;
       }
 
-      addToast({
-        type: 'success',
-        title: 'Demande envoyée',
-        message: 'Votre demande de modification a été envoyée à l\'administrateur',
-        duration: 5000
-      });
+      toast.success('Demande envoyée ! Votre demande de modification a été envoyée à l\'administrateur');
       return true;
     } catch (err) {
       console.error('Erreur lors de la demande de modification:', err);
-      addToast({
-        type: 'error',
-        title: 'Erreur',
-        message: 'Erreur lors de l\'envoi de la demande',
-        duration: 5000
-      });
+      toast.error('Erreur lors de l\'envoi de la demande');
       return false;
     }
-  }, [user?.id, addToast]);
+  }, [user?.id]);
 
   // Charger le profil au montage du composant
   useEffect(() => {

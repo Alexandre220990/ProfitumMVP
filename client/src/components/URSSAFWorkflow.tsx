@@ -1,24 +1,18 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { 
-  FileSignature, 
   CheckCircle, 
   Clock, 
   Users, 
   FileText, 
   Shield, 
-  Play, 
-  AlertCircle, 
   DollarSign,
-  Building2,
   Calculator,
-  ArrowRight,
-  Check,
-  X
+  Check
 } from 'lucide-react';
 import DocumentUpload from './DocumentUpload';
 import ExpertSelectionModal from './ExpertSelectionModal';
@@ -57,28 +51,19 @@ interface Expert {
 export default function URSSAFWorkflow({
   clientProduitId,
   companyName,
-  estimatedAmount,
-  onWorkflowComplete,
   className = ""
 }: URSSAFWorkflowProps) {
-  const { toast } = useToast();
   
   // États du workflow
   const [currentStep, setCurrentStep] = useState(1);
-  const [documents, setDocuments] = useState<DocumentFile[]>([]);
-  const [selectedExpert, setSelectedExpert] = useState<Expert | null>(null);
+  const [documents] = useState<DocumentFile[]>([]);
   const [showExpertModal, setShowExpertModal] = useState(false);
   const [isValidatingEligibility, setIsValidatingEligibility] = useState(false);
-  const [eligibilityValidated, setEligibilityValidated] = useState(false);
 
   // Hook pour les étapes du dossier
   const {
-    steps,
-    loading: stepsLoading,
-    error: stepsError,
     generateSteps,
     updateStep,
-    refreshSteps,
     overallProgress
   } = useDossierSteps(clientProduitId);
 
@@ -137,7 +122,7 @@ export default function URSSAFWorkflow({
   // Charger les étapes au montage
   useEffect(() => {
     if (clientProduitId) {
-      generateSteps();
+      generateSteps(clientProduitId);
     }
   }, [clientProduitId, generateSteps]);
 
@@ -154,11 +139,7 @@ export default function URSSAFWorkflow({
   // Valider l'éligibilité URSSAF
   const handleValidateEligibility = async () => {
     if (!hasRequiredDocuments()) {
-      toast({
-        title: "Documents manquants",
-        description: "Veuillez uploader tous les documents requis pour l'éligibilité URSSAF",
-        variant: "destructive"
-      });
+      toast.error("Veuillez uploader tous les documents requis pour l'éligibilité URSSAF");
       return;
     }
 
@@ -183,16 +164,12 @@ export default function URSSAFWorkflow({
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
-          setEligibilityValidated(true);
           setCurrentStep(2);
           
-          toast({
-            title: "Éligibilité confirmée",
-            description: "Votre éligibilité au remboursement URSSAF a été confirmée",
-          });
+          toast.success("Votre éligibilité au remboursement URSSAF a été confirmée");
 
           // Mettre à jour l'étape dans la base de données
-          await updateStep('eligibility', { status: 'completed', validated_at: new Date().toISOString() });
+          await updateStep('eligibility', { status: 'completed' });
         } else {
           throw new Error(data.message);
         }
@@ -201,11 +178,7 @@ export default function URSSAFWorkflow({
       }
     } catch (error) {
       console.error('❌ Erreur validation éligibilité URSSAF:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de valider l'éligibilité URSSAF",
-        variant: "destructive"
-      });
+      toast.error("Impossible de valider l'éligibilité URSSAF");
     } finally {
       setIsValidatingEligibility(false);
     }
@@ -213,13 +186,9 @@ export default function URSSAFWorkflow({
 
   // Gérer la sélection d'expert
   const handleExpertSelected = (expert: Expert) => {
-    setSelectedExpert(expert);
     setCurrentStep(3);
     
-    toast({
-      title: "Expert sélectionné",
-      description: `${expert.name} vous accompagnera pour votre dossier URSSAF`,
-    });
+    toast.success(`${expert.name} vous accompagnera pour votre dossier URSSAF`);
   };
 
   // Rendu des icônes d'étape
@@ -294,10 +263,7 @@ export default function URSSAFWorkflow({
                   </div>
 
                   <DocumentUpload
-                    dossierId={clientProduitId}
-                    productType="URSSAF"
-                    onDocumentsUploaded={setDocuments}
-                    allowedTypes={['bulletin_paie', 'declaration_urssaf', 'attestation_employeur', 'formation']}
+                    dossiers={[]}
                   />
 
                   <div className="flex justify-center">
@@ -362,7 +328,6 @@ export default function URSSAFWorkflow({
               onClose={() => setShowExpertModal(false)}
               dossierId={clientProduitId}
               onExpertSelected={handleExpertSelected}
-              productType="URSSAF"
             />
           </div>
         );

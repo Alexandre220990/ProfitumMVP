@@ -5,13 +5,12 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
 const AuthPage = () => { 
   const { login, register, isLoading } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
-  const { toast } = useToast();
 
   const form = useForm({ 
     defaultValues: {
@@ -43,15 +42,11 @@ const AuthPage = () => {
       }
 
       // La redirection est gérée dans le hook useAuth
-      toast({ title: "Succès", description: "Authentification réussie !" });
+      toast.success("Authentification réussie !");
 
     } catch (error: any) { 
       console.error("AuthPage - Error during authentication: ", error);
-      toast({
-        title: "Erreur", 
-        description: error.message || "Une erreur est survenue", 
-        variant: "destructive" 
-      });
+      toast.error(error.message || "Une erreur est survenue");
     }
   };
 

@@ -4,7 +4,7 @@ import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Progress } from "./ui/progress";
 import { ChevronLeft, ChevronRight, AlertCircle, CheckCircle } from "lucide-react";
-import { toast } from "./ui/use-toast";
+import { toast } from 'sonner';
 
 interface IntelligentQuestionnaireProps { 
   questions: QuestionnaireQuestion[];
@@ -80,14 +80,12 @@ export function IntelligentQuestionnaire({
   // Terminer le questionnaire
   const handleComplete = async () => { const errors = getValidationErrors();
     if (errors.length > 0) {
-      toast({
-        title: "Validation requise, ", description: errors.join(', '), variant: "destructive" });
+      toast.error(`Validation requise: ${errors.join(', ')}`);
       return;
     }
 
     setIsSubmitting(true);
-    try { await onComplete(responses); } catch (error) { toast({
-        title: "Erreur, ", description: "Impossible de terminer le questionnaire, ", variant: "destructive" });
+    try { await onComplete(responses); } catch (error) { toast.error("Impossible de terminer le questionnaire");
     } finally { setIsSubmitting(false); }
   };
 

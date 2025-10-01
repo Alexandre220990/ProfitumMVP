@@ -15,7 +15,7 @@ import {
   RefreshCw,
   Zap
 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 
 interface DossierStepsDisplayProps {
   dossierId: string;
@@ -32,7 +32,6 @@ export const DossierStepsDisplay: React.FC<DossierStepsDisplayProps> = ({
   compact = false,
   onStepUpdate
 }) => {
-  const { toast } = useToast();
   const {
     steps,
     loading,
@@ -137,19 +136,10 @@ export const DossierStepsDisplay: React.FC<DossierStepsDisplayProps> = ({
     try {
       const success = await updateStep(stepId, updates);
       if (success) {
-        toast({
-          title: "Étape mise à jour",
-          description: "L'étape a été mise à jour avec succès",
-          duration: 3000
-        });
+        toast.success("L'étape a été mise à jour avec succès");
         onStepUpdate?.(stepId, updates);
       } else {
-        toast({
-          title: "Erreur",
-          description: "Impossible de mettre à jour l'étape",
-          variant: "destructive",
-          duration: 4000
-        });
+        toast.error("Impossible de mettre à jour l'étape");
       }
     } finally {
       setUpdatingStep(null);
@@ -161,26 +151,12 @@ export const DossierStepsDisplay: React.FC<DossierStepsDisplayProps> = ({
     try {
       const success = await generateSteps(dossierId);
       if (success) {
-        toast({
-          title: "Étapes générées",
-          description: "Les étapes ont été générées avec succès",
-          duration: 3000
-        });
+        toast.success("Les étapes ont été générées avec succès");
       } else {
-        toast({
-          title: "Erreur",
-          description: "Impossible de générer les étapes",
-          variant: "destructive",
-          duration: 4000
-        });
+        toast.error("Impossible de générer les étapes");
       }
     } catch (error) {
-      toast({
-        title: "Erreur",
-        description: "Erreur lors de la génération des étapes",
-        variant: "destructive",
-        duration: 4000
-      });
+      toast.error("Erreur lors de la génération des étapes");
     }
   };
 

@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { 
   Users, 
   Star, 
@@ -66,7 +66,6 @@ export default function ExpertSelectionModal({
   produitEligible,
   currentExpert
 }: ExpertSelectionModalProps) {
-  const { toast } = useToast();
   const [experts, setExperts] = useState<Expert[]>([]);
   const [filteredExperts, setFilteredExperts] = useState<Expert[]>([]);
   const [loading, setLoading] = useState(false);
@@ -224,11 +223,7 @@ export default function ExpertSelectionModal({
       }
     } catch (error) {
       console.error('❌ Erreur chargement experts:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger les experts disponibles",
-        variant: "destructive"
-      });
+      toast.error("Impossible de charger les experts disponibles");
     } finally {
       setLoading(false);
     }
@@ -279,10 +274,7 @@ export default function ExpertSelectionModal({
         if (data.success) {
           onExpertSelected?.(tempSelectedExpert);
           
-          toast({
-            title: "Succès",
-            description: `${tempSelectedExpert.name} a été sélectionné pour votre dossier`,
-          });
+          toast.success(`${tempSelectedExpert.name} a été sélectionné pour votre dossier`);
 
           // Fermer le modal après un délai
           setTimeout(() => {
@@ -303,11 +295,7 @@ export default function ExpertSelectionModal({
       }
     } catch (error) {
       console.error('❌ Erreur sélection expert:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de sélectionner cet expert",
-        variant: "destructive"
-      });
+      toast.error("Impossible de sélectionner cet expert");
     } finally {
       setSelecting(false);
     }

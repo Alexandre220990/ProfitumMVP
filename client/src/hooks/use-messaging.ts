@@ -9,7 +9,7 @@ import {
   FileAttachment,
   CalendarEvent
 } from '@/types/messaging';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 
 // ============================================================================
 // HOOK REACT UNIFIÉ POUR LA MESSAGERIE OPTIMISÉE
@@ -198,11 +198,7 @@ export const useMessaging = (options: UseMessagingOptions = {}): UseMessagingRet
         
         // Notification toast pour nouveaux événements
         if (action === 'INSERT' && (event as any).created_by !== user?.id) {
-          toast({
-            title: 'Nouvel événement calendrier',
-            description: `${event.title} - ${new Date(event.start_date).toLocaleString('fr-FR')}`,
-            variant: 'default'
-          });
+          toast.success(`${event.title} - ${new Date(event.start_date).toLocaleString('fr-FR')}`);
         }
       },
 
@@ -297,11 +293,7 @@ export const useMessaging = (options: UseMessagingOptions = {}): UseMessagingRet
     },
     onError: (error: Error) => {
       setError('Erreur lors de l\'envoi du message');
-      toast({
-        title: "Erreur d'envoi",
-        description: error.message,
-        variant: "destructive"
-      });
+      toast.error(error.message);
     }
   });
 

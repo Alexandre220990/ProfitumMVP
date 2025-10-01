@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { useAuth } from '@/hooks/use-auth';
 import { cn } from '@/lib/utils';
 import { config } from '@/config/env';
@@ -61,7 +61,6 @@ interface DocumentStats {
 const useDocumentUpload = () => {
   const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
-  const { toast } = useToast();
 
   const uploadFile = useCallback(async (file: File, options: any) => {
     const fileId = Math.random().toString(36).substr(2, 9);
@@ -98,7 +97,7 @@ const useDocumentUpload = () => {
         f.id === fileId ? { ...f, status: 'success', progress: 100 } : f
       ));
 
-      toast({ title: 'Succès', description: 'Fichier uploadé avec succès' });
+      toast.success('Fichier uploadé avec succès');
       return result.data;
 
     } catch (error: unknown) {
@@ -107,11 +106,7 @@ const useDocumentUpload = () => {
         f.id === fileId ? { ...f, status: 'error', error: errorMessage } : f
       ));
       
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: errorMessage
-      });
+      toast.error(errorMessage);
       throw error;
     }
   }, [toast]);
@@ -202,7 +197,6 @@ const useDocumentList = () => {
 };
 
 const useDocumentActions = () => {
-  const { toast } = useToast();
 
   const downloadFile = useCallback(async (fileId: string, filename: string) => {
     try {
@@ -222,13 +216,9 @@ const useDocumentActions = () => {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
       
-      toast({ title: 'Succès', description: 'Fichier téléchargé' });
+      toast.success('Fichier téléchargé');
     } catch (error: unknown) {
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: 'Erreur lors du téléchargement'
-      });
+      toast.error('Erreur lors du téléchargement');
     }
   }, [toast]);
 
@@ -244,17 +234,13 @@ const useDocumentActions = () => {
       const result = await response.json();
       
       if (result.success) {
-        toast({ title: 'Succès', description: 'Fichier supprimé' });
+        toast.success('Fichier supprimé');
         return true;
       } else {
         throw new Error(result.message);
       }
     } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: 'Erreur lors de la suppression'
-      });
+      toast.error('Erreur lors de la suppression');
       return false;
     }
   }, [toast]);
@@ -271,17 +257,13 @@ const useDocumentActions = () => {
       const result = await response.json();
       
       if (result.success) {
-        toast({ title: 'Succès', description: 'Fichier partagé' });
+        toast.success('Fichier partagé');
         return result.data;
       } else {
         throw new Error(result.message);
       }
     } catch (error: unknown) {
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: 'Erreur lors du partage'
-      });
+      toast.error('Erreur lors du partage');
     }
   }, [toast]);
 

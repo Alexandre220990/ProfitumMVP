@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useAuth } from './use-auth';
-import { useToast } from './use-toast';
+import { toast } from 'sonner';
 
 // Types pour le nouveau service
 export interface EnhancedUploadRequest {
@@ -66,7 +66,6 @@ export interface StatsResponse {
 
 export const useEnhancedDocumentStorage = () => {
   const { user } = useAuth();
-  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
 
@@ -123,25 +122,17 @@ export const useEnhancedDocumentStorage = () => {
       const result = await response.json();
 
       if (!result.success) {
-        toast({
-          variant: 'destructive',
-          title: 'Erreur',
-          description: result.message || 'Erreur lors de l\'upload'
-        });
+        toast.error(result.message || 'Erreur lors de l\'upload');
         return { success: false, error: result.message };
       }
 
-      toast({ title: 'Succès', description: 'Fichier uploadé avec succès' });
+      toast.success('Fichier uploadé avec succès');
 
       return { success: true, fileId: result.data?.id };
 
     } catch (error) {
       console.error('Erreur upload:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: 'Erreur lors de l\'upload'
-      });
+      toast.error('Erreur lors de l\'upload');
       return { success: false, error: 'Erreur lors de l\'upload' };
     } finally {
       setUploading(false);
@@ -180,17 +171,13 @@ export const useEnhancedDocumentStorage = () => {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
 
-      toast({ title: 'Succès', description: 'Fichier téléchargé avec succès' });
+      toast.success('Fichier téléchargé avec succès');
 
       return { success: true };
 
     } catch (error) {
       console.error('Erreur téléchargement:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: 'Erreur lors du téléchargement'
-      });
+      toast.error('Erreur lors du téléchargement');
       return { success: false, error: 'Erreur lors du téléchargement' };
     } finally {
       setLoading(false);
@@ -314,25 +301,17 @@ export const useEnhancedDocumentStorage = () => {
       const result = await response.json();
 
       if (!result.success) {
-        toast({
-          variant: 'destructive',
-          title: 'Erreur',
-          description: result.message || 'Erreur lors de la validation'
-        });
+        toast.error(result.message || 'Erreur lors de la validation');
         return { success: false, error: result.message };
       }
 
-      toast({ title: 'Succès', description: 'Document validé avec succès' });
+      toast.success('Document validé avec succès');
 
       return { success: true };
 
     } catch (error) {
       console.error('Erreur validation:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: 'Erreur lors de la validation'
-      });
+      toast.error('Erreur lors de la validation');
       return { success: false, error: 'Erreur lors de la validation' };
     } finally {
       setLoading(false);
@@ -358,25 +337,17 @@ export const useEnhancedDocumentStorage = () => {
       const result = await response.json();
 
       if (!result.success) {
-        toast({
-          variant: 'destructive',
-          title: 'Erreur',
-          description: result.message || 'Erreur lors de la suppression'
-        });
+        toast.error(result.message || 'Erreur lors de la suppression');
         return { success: false, error: result.message };
       }
 
-      toast({ title: 'Succès', description: 'Fichier supprimé avec succès' });
+      toast.success('Fichier supprimé avec succès');
 
       return { success: true };
 
     } catch (error) {
       console.error('Erreur suppression:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: 'Erreur lors de la suppression'
-      });
+      toast.error('Erreur lors de la suppression');
       return { success: false, error: 'Erreur lors de la suppression' };
     } finally {
       setLoading(false);
@@ -411,25 +382,17 @@ export const useEnhancedDocumentStorage = () => {
       const result = await response.json();
 
       if (!result.success) {
-        toast({
-          variant: 'destructive',
-          title: 'Erreur',
-          description: result.message || 'Erreur lors du partage'
-        });
+        toast.error(result.message || 'Erreur lors du partage');
         return { success: false, error: result.message };
       }
 
-      toast({ title: 'Succès', description: 'Fichier partagé avec succès' });
+      toast.success('Fichier partagé avec succès');
 
       return { success: true, shareToken: result.data?.share_token };
 
     } catch (error) {
       console.error('Erreur partage:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: 'Erreur lors du partage'
-      });
+      toast.error('Erreur lors du partage');
       return { success: false, error: 'Erreur lors du partage' };
     } finally {
       setLoading(false);

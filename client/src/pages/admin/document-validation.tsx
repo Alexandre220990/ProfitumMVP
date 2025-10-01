@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { 
   FileText, 
   CheckCircle, 
@@ -15,16 +15,13 @@ import {
   Filter,
   Download,
   Eye,
-  AlertTriangle,
   Users,
   Building2,
   Calendar,
   DollarSign,
   Check,
   X,
-  RefreshCw,
-  Send,
-  Archive
+  RefreshCw
 } from 'lucide-react';
 import { config } from '@/config/env';
 import HeaderAdmin from '@/components/HeaderAdmin';
@@ -60,7 +57,6 @@ interface ValidationFilters {
 }
 
 export default function DocumentValidationAdmin() {
-  const { toast } = useToast();
   const [documents, setDocuments] = useState<DocumentValidation[]>([]);
   const [filteredDocuments, setFilteredDocuments] = useState<DocumentValidation[]>([]);
   const [selectedDocuments, setSelectedDocuments] = useState<string[]>([]);
@@ -136,11 +132,7 @@ export default function DocumentValidationAdmin() {
       }
     } catch (error) {
       console.error('❌ Erreur chargement documents:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger les documents à valider",
-        variant: "destructive"
-      });
+      toast.error("Impossible de charger les documents à valider");
     } finally {
       setLoading(false);
     }
@@ -166,10 +158,7 @@ export default function DocumentValidationAdmin() {
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
-          toast({
-            title: "Succès",
-            description: `${documentIds.length} document(s) ${action === 'approve' ? 'approuvé(s)' : action === 'reject' ? 'rejeté(s)' : 'demande de révision'}`,
-          });
+          toast.success(`${documentIds.length} document(s) ${action === 'approve' ? 'approuvé(s)' : action === 'reject' ? 'rejeté(s)' : 'demande de révision'}`);
           
           // Recharger les documents
           await loadDocuments();
@@ -182,11 +171,7 @@ export default function DocumentValidationAdmin() {
       }
     } catch (error) {
       console.error('❌ Erreur validation:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de valider les documents",
-        variant: "destructive"
-      });
+      toast.error("Impossible de valider les documents");
     } finally {
       setValidating(false);
     }

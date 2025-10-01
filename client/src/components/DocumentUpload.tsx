@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { config } from '@/config/env';
 import { 
   Upload, 
@@ -59,7 +59,6 @@ export default function DocumentUpload({
   onDossierSelect,
   className = "" 
 }: DocumentUploadProps) {
-  const { toast } = useToast();
   const [uploadedDocuments, setUploadedDocuments] = useState<DocumentFile[]>([]);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress>({});
   const [isUploading, setIsUploading] = useState(false);
@@ -95,20 +94,12 @@ export default function DocumentUpload({
   // Configuration dropzone
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     if (!selectedDossier && showDossierSelector) {
-      toast({
-        title: "Sélection requise",
-        description: "Veuillez sélectionner un dossier avant d'uploader des documents",
-        variant: "destructive"
-      });
+      toast.error("Veuillez sélectionner un dossier avant d'uploader des documents");
       return;
     }
 
     if (!documentType) {
-      toast({
-        title: "Type de document requis",
-        description: "Veuillez sélectionner le type de document",
-        variant: "destructive"
-      });
+      toast.error("Veuillez sélectionner le type de document");
       return;
     }
 
@@ -171,10 +162,7 @@ export default function DocumentUpload({
 
         setUploadedDocuments(prev => [...prev, newDocument]);
 
-        toast({
-          title: "Succès",
-          description: `${file.name} uploadé avec succès`
-        });
+        toast.success(`${file.name} uploadé avec succès`);
 
         // Nettoyer le progress après un délai
         setTimeout(() => {
@@ -190,11 +178,7 @@ export default function DocumentUpload({
         // Marquer comme erreur
         setUploadProgress(prev => ({ ...prev, [fileId]: -1 }));
 
-        toast({
-          title: "Erreur",
-          description: `Erreur lors de l'upload de ${file.name}`,
-          variant: "destructive"
-        });
+        toast.error(`Erreur lors de l'upload de ${file.name}`);
       }
     }
 

@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { SirenValidationField } from "@/components/SirenValidationField";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { config } from "@/config/env";
 
@@ -34,7 +34,6 @@ type FormData = z.infer<typeof formSchema>;
 
 const InscriptionClient = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const { setUser } = useAuth();
   
   const [isLoading, setIsLoading] = useState(false);
@@ -127,22 +126,14 @@ const InscriptionClient = () => {
         company_name: data.company_name
       });
 
-      toast({
-        title: "Inscription réussie !",
-        description: "Votre compte client a été créé avec succès.",
-        variant: "default"
-      });
+      toast.success("Inscription réussie ! Votre compte client a été créé avec succès");
 
       // 4. Rediriger vers le dashboard
       navigate('/dashboard');
 
     } catch (error) {
       console.error('❌ Erreur lors de l\'inscription:', error);
-      toast({
-        title: "Erreur d'inscription",
-        description: error instanceof Error ? error.message : "Une erreur est survenue lors de l'inscription",
-        variant: "destructive"
-      });
+      toast.error(error instanceof Error ? error.message : "Une erreur est survenue lors de l'inscription");
     } finally {
       setIsLoading(false);
     }

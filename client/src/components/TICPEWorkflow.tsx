@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { 
   CheckCircle, 
   Users, 
@@ -55,7 +55,6 @@ export default function TICPEWorkflow({
 
   className = ""
 }: TICPEWorkflowProps) {
-  const { toast } = useToast();
   
   // États du workflow
   const [currentStep, setCurrentStep] = useState(1);
@@ -211,19 +210,13 @@ export default function TICPEWorkflow({
 
   const handleDocumentsComplete = useCallback((uploadedDocuments: DocumentFile[]) => {
     setDocuments(uploadedDocuments);
-    toast({
-      title: "Documents complets",
-      description: "Tous les documents requis ont été uploadés",
-    });
-  }, [toast]);
+    toast.success("Documents complets ! Tous les documents requis ont été uploadés");
+  }, []);
 
   const handleExpertSelected = useCallback((expert: Expert) => {
     setSelectedExpert(expert);
-    toast({
-      title: "Expert sélectionné",
-      description: `${expert.name} vous accompagnera dans votre démarche`,
-    });
-  }, [toast]);
+    toast.success(`Expert sélectionné ! ${expert.name} vous accompagnera dans votre démarche`);
+  }, []);
 
 
 

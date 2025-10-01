@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { post, get } from "@/lib/api";
 import { extractData } from "@/lib/api-helpers";
 import { Button } from "@/components/ui/button";
@@ -63,7 +63,6 @@ interface AnalyseResponse {
 
 export const UnifiedSimulator: React.FC = () => { 
   const { user } = useAuth();
-  const { toast } = useToast();
   
   // États
   const [simulationId, setSimulationId] = useState<string | null>(null);
@@ -229,18 +228,11 @@ export const UnifiedSimulator: React.FC = () => {
         setEligibleProducts(analyseData.products);
         setShowResults(true);
 
-        toast({
-          title: "Simulation terminée",
-          description: `${analyseData.products.length} produits éligibles trouvés`,
-        });
+        toast.success(`${analyseData.products.length} produits éligibles trouvés`);
       }
     } catch (error) { 
       console.error("Erreur soumission simulation: ", error);
-      toast({
-        title: "Erreur", 
-        description: "Erreur lors de la soumission", 
-        variant: "destructive" 
-      });
+      toast.error("Erreur lors de la soumission");
     } finally { 
       setIsSubmitting(false); 
     }
@@ -268,17 +260,10 @@ export const UnifiedSimulator: React.FC = () => {
       a.click();
       window.URL.revokeObjectURL(url);
 
-      toast({ 
-        title: "Export réussi", 
-        description: `Fichier ${format.toUpperCase()} téléchargé`,
-      });
+      toast.success(`Fichier ${format.toUpperCase()} téléchargé`);
     } catch (error) { 
       console.error("Erreur export: ", error);
-      toast({
-        title: "Erreur", 
-        description: "Erreur lors de l'export", 
-        variant: "destructive" 
-      });
+      toast.error("Erreur lors de l'export");
     }
   };
 

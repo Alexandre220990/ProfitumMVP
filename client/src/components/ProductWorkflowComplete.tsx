@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
 import { CheckCircle, Clock, FileText, Shield, Play, AlertCircle, DollarSign } from "lucide-react";
 import { useDossierSteps } from '@/hooks/use-dossier-steps';
 import TICPEWorkflow from './TICPEWorkflow';
@@ -27,62 +26,27 @@ export default function ProductWorkflowComplete({
   onStepUpdate,
   className = ""
 }: ProductWorkflowCompleteProps) {
-  const { toast } = useToast();
 
   // Hook pour les étapes du dossier
   const {
     steps,
     loading: stepsLoading,
-    error: stepsError,
     generateSteps,
-    updateStep,
-    refreshSteps,
-    totalSteps,
-    completedSteps,
-    inProgressSteps,
-    pendingSteps,
     overallProgress
   } = useDossierSteps(clientProduitId);
 
-  // Gestion des étapes du dossier
-  const handleStepUpdate = useCallback(async (stepId: string, updates: any) => {
-    try {
-      const success = await updateStep(stepId, updates);
-      if (success) {
-        onStepUpdate?.(stepId, updates);
-        toast({
-          title: "Succès",
-          description: "Étape mise à jour avec succès",
-        });
-      }
-    } catch (error) {
-      console.error('Erreur lors de la mise à jour de l\'étape:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de mettre à jour l'étape",
-        variant: "destructive"
-      });
-    }
-  }, [updateStep, onStepUpdate, toast]);
 
   const handleGenerateSteps = useCallback(async () => {
     try {
       const success = await generateSteps(clientProduitId);
       if (success) {
-        toast({
-          title: "Succès",
-          description: "Étapes générées avec succès",
-        });
+        // Étapes générées avec succès
       }
     } catch (error) {
       console.error('Erreur lors de la génération des étapes:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de générer les étapes",
-        variant: "destructive"
-      });
+      console.error("Impossible de générer les étapes");
     }
-  }, [generateSteps, clientProduitId, toast]);
+  }, [generateSteps, clientProduitId]);
 
   // Fonction pour obtenir l'icône selon le type d'étape
   const getStepTypeIcon = (stepType: string) => {
@@ -128,6 +92,11 @@ export default function ProductWorkflowComplete({
     );
   }
 
+  // Wrapper pour les callbacks
+  const handleWorkflowComplete = useCallback(() => {
+    onStepUpdate?.('workflow-complete', { completed: true });
+  }, [onStepUpdate]);
+
   // Vérifier le type de produit pour utiliser le workflow spécialisé
   const productType = productName.toLowerCase();
   
@@ -137,7 +106,7 @@ export default function ProductWorkflowComplete({
         clientProduitId={clientProduitId}
         companyName={companyName}
         estimatedAmount={estimatedAmount}
-        onWorkflowComplete={onStepUpdate}
+        onWorkflowComplete={handleWorkflowComplete}
         className={className}
       />
     );
@@ -149,7 +118,7 @@ export default function ProductWorkflowComplete({
         clientProduitId={clientProduitId}
         companyName={companyName}
         estimatedAmount={estimatedAmount}
-        onWorkflowComplete={onStepUpdate}
+        onWorkflowComplete={handleWorkflowComplete}
         className={className}
       />
     );
@@ -161,7 +130,7 @@ export default function ProductWorkflowComplete({
         clientProduitId={clientProduitId}
         companyName={companyName}
         estimatedAmount={estimatedAmount}
-        onWorkflowComplete={onStepUpdate}
+        onWorkflowComplete={handleWorkflowComplete}
         className={className}
       />
     );

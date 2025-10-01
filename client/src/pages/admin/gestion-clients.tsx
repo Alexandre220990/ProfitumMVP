@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { config } from '@/config/env';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -46,7 +46,6 @@ interface Filters {
 
 const GestionClients = () => {
   const { user, isLoading: authLoading } = useAuth();
-  const { toast } = useToast();
   const navigate = useNavigate();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
@@ -171,33 +170,17 @@ const GestionClients = () => {
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
-          toast({
-            title: "Succès",
-            description: "Statut mis à jour avec succès",
-            variant: "default"
-          });
+          toast.success("Statut mis à jour avec succès");
           fetchClients();
         } else {
-          toast({
-            title: "Erreur",
-            description: data.message || "Erreur lors de la mise à jour",
-            variant: "destructive"
-          });
+          toast.error(data.message || "Erreur lors de la mise à jour");
         }
       } else {
-        toast({
-          title: "Erreur",
-          description: "Erreur lors de la mise à jour",
-          variant: "destructive"
-        });
+        toast.error("Erreur lors de la mise à jour");
       }
     } catch (error) {
       console.error('Erreur mise à jour statut:', error);
-      toast({
-        title: "Erreur",
-        description: "Erreur lors de la mise à jour",
-        variant: "destructive"
-      });
+      toast.error("Erreur lors de la mise à jour");
     }
   };
 
@@ -217,33 +200,17 @@ const GestionClients = () => {
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
-          toast({
-            title: "Succès",
-            description: "Client supprimé avec succès",
-            variant: "default"
-          });
+          toast.success("Client supprimé avec succès");
           fetchClients();
         } else {
-          toast({
-            title: "Erreur",
-            description: data.message || "Erreur lors de la suppression",
-            variant: "destructive"
-          });
+          toast.error(data.message || "Erreur lors de la suppression");
         }
       } else {
-        toast({
-          title: "Erreur",
-          description: "Erreur lors de la suppression",
-          variant: "destructive"
-        });
+        toast.error("Erreur lors de la suppression");
       }
     } catch (error) {
       console.error('Erreur suppression client:', error);
-      toast({
-        title: "Erreur",
-        description: "Erreur lors de la suppression",
-        variant: "destructive"
-      });
+        toast.error("Erreur lors de la suppression");
     }
   };
 
@@ -265,11 +232,7 @@ const GestionClients = () => {
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
-          toast({
-            title: "Succès",
-            description: "Client créé avec succès",
-            variant: "default"
-          });
+          toast.success("Client créé avec succès");
           setShowCreateModal(false);
           setNewClient({
             email: '',
@@ -282,27 +245,15 @@ const GestionClients = () => {
           });
           fetchClients(); // Recharger la liste
         } else {
-          toast({
-            title: "Erreur",
-            description: data.message || "Erreur lors de la création",
-            variant: "destructive"
-          });
+          toast.error(data.message || "Erreur lors de la création");
         }
       } else {
         const errorData = await response.json();
-        toast({
-          title: "Erreur",
-          description: errorData.message || "Erreur lors de la création",
-          variant: "destructive"
-        });
+        toast.error(errorData.message || "Erreur lors de la création");
       }
     } catch (error) {
       console.error('Erreur création client:', error);
-      toast({
-        title: "Erreur",
-        description: "Erreur lors de la création",
-        variant: "destructive"
-      });
+      toast.error("Erreur lors de la création");
     } finally {
       setCreatingClient(false);
     }

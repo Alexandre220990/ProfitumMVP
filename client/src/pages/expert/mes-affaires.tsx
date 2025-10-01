@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
-import { useToast } from "@/components/ui/toast-notifications";
+import { toast } from "sonner";
 import { get } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,7 +27,6 @@ import type { ExpertBusiness, RevenueData, ProductPerformance, ClientPerformance
 const ExpertMesAffaires = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { addToast } = useToast();
   
   const [businessData, setBusinessData] = useState<ExpertBusiness | null>(null);
   const [revenueData, setRevenueData] = useState<RevenueData[]>([]);
@@ -68,26 +67,16 @@ const ExpertMesAffaires = () => {
         setClientPerformance(clientResponse.data);
       }
 
-      addToast({
-        type: 'success',
-        title: 'Données chargées',
-        message: 'Vos données business ont été récupérées avec succès',
-        duration: 3000
-      });
+      toast.success('Vos données business ont été récupérées avec succès');
 
     } catch (error) {
       console.error('Erreur chargement données business:', error);
       setError('Erreur lors de la récupération des données');
-      addToast({
-        type: 'error',
-        title: 'Erreur',
-        message: 'Erreur lors de la récupération des données',
-        duration: 5000
-      });
+      toast.error('Erreur lors de la récupération des données');
     } finally {
       setLoading(false);
     }
-  }, [user?.id, addToast]);
+  }, [user?.id]);
 
   useEffect(() => {
     fetchBusinessData();
@@ -111,12 +100,7 @@ const ExpertMesAffaires = () => {
   const handleExportData = (type: string) => {
     // Logique d'export des données
     console.log(`Export ${type} data`);
-    addToast({
-      type: 'success',
-      title: 'Export en cours',
-      message: `Export des données ${type} en cours de préparation`,
-      duration: 3000
-    });
+    toast.success(`Export des données ${type} en cours de préparation`);
   };
 
   if (loading) {

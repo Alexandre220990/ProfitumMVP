@@ -16,7 +16,7 @@ function useExpertDossierActions() {
 import { Loader2, ArrowLeft, RefreshCw } from 'lucide-react';
 import { Card } from '@/components/ui/design-system/Card';
 import Button from '@/components/ui/design-system/Button';
-import { useToast } from '@/components/ui/toast-notifications';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 // Types pour le dossier
@@ -79,7 +79,6 @@ const ExpertDossierPage = () => {
   const { id } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { addToast } = useToast();
   const { handleStepAction, handleDocumentAction } = useExpertDossierActions();
   
   const [dossier, setDossier] = useState<Dossier | null>(null);
@@ -121,17 +120,12 @@ const ExpertDossierPage = () => {
             email
           )
         `)
-        .eq('id', id)
-        .eq('expert_id', user?.id)
+        .eq('id', id || '')
+        .eq('expert_id', user?.id || '')
         .single();
 
       if (error || !data) {
-        addToast({
-          type: 'error',
-          title: 'Dossier non trouvé',
-          message: 'Le dossier demandé n\'existe pas ou vous n\'y avez pas accès',
-          duration: 5000
-        });
+        toast.error('Le dossier demandé n\'existe pas ou vous n\'y avez pas accès');
         navigate('/expert/dashboard');
         return;
       }
@@ -139,17 +133,12 @@ const ExpertDossierPage = () => {
       setDossier(data as Dossier);
     } catch (error) {
       console.error('Erreur récupération dossier:', error);
-      addToast({
-        type: 'error',
-        title: 'Erreur',
-        message: 'Erreur lors de la récupération du dossier',
-        duration: 5000
-      });
+      toast.error('Erreur lors de la récupération du dossier');
       navigate('/expert/dashboard');
     } finally {
       setLoading(false);
     }
-  }, [id, user?.id, addToast, navigate]);
+  }, [id, user?.id, navigate]);
 
   useEffect(() => {
     if (id && user?.id) {

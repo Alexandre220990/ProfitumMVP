@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from 'sonner';
 import { useAuth } from '@/hooks/use-auth';
 import { 
   Shield, 
@@ -59,7 +59,6 @@ export default function URSSAFUploadInline({
   onDocumentsUploaded,
   onStepComplete
 }: URSSAFUploadInlineProps) {
-  const { toast } = useToast();
   const { user } = useAuth();
   const [uploadedDocuments, setUploadedDocuments] = useState<DocumentFile[]>([]);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress>({});
@@ -92,11 +91,7 @@ export default function URSSAFUploadInline({
 
     // Vérifier l'authentification
     if (!user) {
-      toast({
-        title: "Erreur d'authentification",
-        description: "Vous devez être connecté pour uploader des documents",
-        variant: "destructive"
-      });
+      toast.error("Vous devez être connecté pour uploader des documents");
       return;
     }
 
@@ -138,10 +133,7 @@ export default function URSSAFUploadInline({
           const newDocument = response.data as DocumentFile;
           setUploadedDocuments(prev => [...prev, newDocument]);
           
-          toast({
-            title: "Document uploadé avec succès",
-            description: `${file.name} a été uploadé pour ${documentType}`,
-          });
+          toast.success(`${file.name} a été uploadé avec succès pour ${documentType}`);
         } else {
           throw new Error(response.message || 'Erreur lors de l\'upload');
         }
@@ -151,11 +143,7 @@ export default function URSSAFUploadInline({
 
     } catch (error) {
       console.error('Erreur upload:', error);
-      toast({
-        title: "Erreur lors de l'upload",
-        description: "Le document n'a pas pu être uploadé. Veuillez réessayer.",
-        variant: "destructive"
-      });
+      toast.error("Le document n'a pas pu être uploadé. Veuillez réessayer.");
     }
   }, [clientProduitId, toast]);
 
@@ -171,21 +159,14 @@ export default function URSSAFUploadInline({
       });
 
       if (response.success) {
-        toast({
-          title: "Éligibilité validée",
-          description: "Votre dossier URSSAF a été validé avec succès !",
-        });
+        toast.success("Votre dossier URSSAF a été validé avec succès !");
         onStepComplete?.();
       } else {
         throw new Error(response.message || 'Erreur lors de la validation');
       }
     } catch (error) {
       console.error('Erreur validation:', error);
-      toast({
-        title: "Erreur lors de la validation",
-        description: "L'éligibilité n'a pas pu être validée. Veuillez réessayer.",
-        variant: "destructive"
-      });
+      toast.error("L'éligibilité n'a pas pu être validée. Veuillez réessayer.");
     } finally {
       setIsValidating(false);
     }
@@ -200,20 +181,13 @@ export default function URSSAFUploadInline({
 
       if (response.success) {
         setUploadedDocuments(prev => prev.filter(doc => doc.id !== documentId));
-        toast({
-          title: "Document supprimé",
-          description: "Le document a été supprimé avec succès.",
-        });
+        toast.success("Le document a été supprimé avec succès.");
       } else {
         throw new Error(response.message || 'Erreur lors de la suppression');
       }
     } catch (error) {
       console.error('Erreur suppression:', error);
-      toast({
-        title: "Erreur lors de la suppression",
-        description: "Le document n'a pas pu être supprimé.",
-        variant: "destructive"
-      });
+      toast.error("Le document n'a pas pu être supprimé.");
     }
   }, [toast]);
 

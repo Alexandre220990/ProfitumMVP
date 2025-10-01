@@ -23,7 +23,7 @@ import {
   FolderOpen
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 
 interface DocumentManagerProps {
   className?: string;
@@ -31,7 +31,6 @@ interface DocumentManagerProps {
 
 export function DocumentManager({ className }: DocumentManagerProps) {
   const { documents, labels, loading, loadDocuments, loadLabels, createDocument, updateDocument, deleteDocument } = useGED();
-  const { toast } = useToast();
 
   // États locaux
   const [selectedDocument, setSelectedDocument] = useState<any>(null);
@@ -76,16 +75,9 @@ export function DocumentManager({ className }: DocumentManagerProps) {
         read_time: 5
       });
       loadDocuments();
-      toast({
-        title: 'Succès',
-        description: 'Document créé avec succès'
-      });
+      toast.success('Document créé avec succès');
     } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: 'Erreur lors de la création du document'
-      });
+      toast.error('Erreur lors de la création du document');
     }
   };
 
@@ -98,16 +90,9 @@ export function DocumentManager({ className }: DocumentManagerProps) {
       setShowEditDialog(false);
       setSelectedDocument(null);
       loadDocuments();
-      toast({
-        title: 'Succès',
-        description: 'Document modifié avec succès'
-      });
+      toast.success('Document modifié avec succès');
     } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: 'Erreur lors de la modification du document'
-      });
+      toast.error('Erreur lors de la modification du document');
     }
   };
 
@@ -118,16 +103,9 @@ export function DocumentManager({ className }: DocumentManagerProps) {
     try {
       await deleteDocument(documentId);
       loadDocuments();
-      toast({
-        title: 'Succès',
-        description: 'Document supprimé avec succès'
-      });
+      toast.success('Document supprimé avec succès');
     } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: 'Erreur lors de la suppression du document'
-      });
+      toast.error('Erreur lors de la suppression du document');
     }
   };
 

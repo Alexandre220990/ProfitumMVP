@@ -6,7 +6,7 @@ import { Clock, Mail, AlertCircle, Home, RefreshCw, CheckCircle, Phone } from "l
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/hooks/use-auth";
 import { get } from "@/lib/api";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 
 interface UserInfo {
@@ -32,7 +32,6 @@ interface ApprovalStatus {
 const ExpertPendingApproval = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const { toast } = useToast();
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [approvalStatus, setApprovalStatus] = useState<ApprovalStatus | null>(null);
   const [lastCheck, setLastCheck] = useState<Date>(new Date());
@@ -71,11 +70,7 @@ const ExpertPendingApproval = () => {
       }
     } catch (error) {
       console.error("Erreur lors du chargement des données:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger vos informations. Veuillez réessayer.",
-        variant: "destructive"
-      });
+      toast.error("Impossible de charger vos informations. Veuillez réessayer.");
     } finally {
       setIsLoading(false);
     }
@@ -91,10 +86,7 @@ const ExpertPendingApproval = () => {
         
         // Si approuvé, rediriger vers le dashboard
         if (approvalData.status === 'approved') {
-          toast({
-            title: "Félicitations !",
-            description: "Votre compte a été approuvé. Redirection vers votre tableau de bord...",
-          });
+          toast.success("Félicitations ! Votre compte a été approuvé. Redirection vers votre tableau de bord...");
           setTimeout(() => navigate("/expert/dashboard"), 2000);
         }
       } else {
@@ -124,17 +116,10 @@ const ExpertPendingApproval = () => {
       // Appel API pour vérifier le statut
       await loadApprovalStatus();
       
-      toast({
-        title: "Statut vérifié",
-        description: "Votre statut d'approbation a été mis à jour.",
-      });
+      toast.success("Votre statut d'approbation a été mis à jour.");
     } catch (error) {
       console.error("Erreur lors de la vérification du statut:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de vérifier le statut. Veuillez réessayer.",
-        variant: "destructive"
-      });
+      toast.error("Impossible de vérifier le statut. Veuillez réessayer.");
     } finally {
       setIsChecking(false);
     }

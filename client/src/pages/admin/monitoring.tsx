@@ -8,7 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Activity, AlertTriangle, Clock, Cpu, HardDrive, Network, RefreshCw, Shield, Eye, Server, Wifi, Database, Lock, Bug, Terminal, Code, User, ChevronUp, CheckCircle, FileText, Zap, Copy, Search, Download, Calendar, ChevronDown } from "lucide-react";
 import { useNavigate, Navigate } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 import { useAuth } from '@/hooks/use-auth';
 import { get } from '@/lib/api';
 
@@ -98,7 +98,6 @@ interface TerminalLog {
 
 const MonitoringPage = () => {
     const navigate = useNavigate();
-    const { toast } = useToast();
     const { user, isLoading: authLoading } = useAuth();
     const [monitoringData, setMonitoringData] = useState<MonitoringData | null>(null);
     const [loading, setLoading] = useState(true);
@@ -196,16 +195,9 @@ const MonitoringPage = () => {
             const data = await response.json();
             setNetworkServerOn(data.on === true);
             setNetworkServerIp(data.ip || '');
-            toast({
-                title: data.on ? 'Serveur partagé activé' : 'Serveur partagé désactivé',
-                description: data.message || ''
-            });
+            toast.success(data.on ? 'Serveur partagé activé' : 'Serveur partagé désactivé');
         } catch (e) {
-            toast({
-                variant: 'destructive',
-                title: 'Erreur',
-                description: 'Impossible de changer l\'état du serveur partagé'
-            });
+            toast.error('Impossible de changer l\'état du serveur partagé');
         } finally {
             setNetworkServerLoading(false);
         }
@@ -396,10 +388,7 @@ const MonitoringPage = () => {
                                             size="sm"
                                             onClick={() => {
                                                 navigator.clipboard.writeText(networkServerIp);
-                                                toast({
-                                                    title: 'Adresse IP copiée',
-                                                    description: 'L\'adresse IP a été copiée dans le presse-papiers'
-                                                });
+                                                toast.success('L\'adresse IP a été copiée dans le presse-papiers');
                                             }}
                                             className="h-6 w-6 p-0"
                                         >

@@ -31,7 +31,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useEnhancedDocumentStorage } from '@/hooks/use-enhanced-document-storage';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { get } from '@/lib/api';
 import HeaderAdmin from '@/components/HeaderAdmin';
 
@@ -82,7 +82,6 @@ interface DocumentFile {
 
 export default function EnhancedAdminDocumentsPage() {
   const { user } = useAuth();
-  const { toast } = useToast();
   
   // Gestion d'erreur pour le hook
   let documentStorage;
@@ -129,11 +128,7 @@ export default function EnhancedAdminDocumentsPage() {
       
     } catch (error) {
       console.error('Erreur chargement données admin:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: 'Impossible de charger les données'
-      });
+      toast.error('Impossible de charger les données');
     } finally {
       setLoading(false);
     }
@@ -221,11 +216,7 @@ export default function EnhancedAdminDocumentsPage() {
       
     } catch (error) {
       console.error('Erreur chargement fichiers:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: 'Impossible de charger les fichiers'
-      });
+      toast.error('Impossible de charger les fichiers');
     }
   };
 
@@ -272,47 +263,31 @@ export default function EnhancedAdminDocumentsPage() {
       switch (action) {
         case 'download':
           await downloadFile(fileId);
-          toast({
-            title: 'Téléchargement',
-            description: 'Fichier téléchargé avec succès'
-          });
+          toast.success('Fichier téléchargé avec succès');
           break;
           
         case 'delete':
           const confirmed = window.confirm('Êtes-vous sûr de vouloir supprimer ce fichier ?');
           if (confirmed) {
             await deleteFile(fileId);
-            toast({
-              title: 'Suppression',
-              description: 'Fichier supprimé avec succès'
-            });
+            toast.success('Fichier supprimé avec succès');
             loadAllFiles(); // Recharger la liste
           }
           break;
           
         case 'validate':
           // Logique de validation
-          toast({
-            title: 'Validation',
-            description: 'Fichier validé avec succès'
-          });
+          toast.success('Fichier validé avec succès');
           break;
           
         case 'reject':
           // Logique de rejet
-          toast({
-            title: 'Rejet',
-            description: 'Fichier rejeté'
-          });
+          toast.success('Fichier rejeté');
           break;
       }
     } catch (error) {
       console.error('Erreur action fichier:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: 'Action impossible'
-      });
+      toast.error('Action impossible');
     }
   };
 

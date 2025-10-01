@@ -17,7 +17,6 @@ export default function ConnectAdmin() {
   
   const { login } = useAuth();
   // const navigate = useNavigate();
-  const { addToast } = useToast();
 
   const validateForm = () => {
     const newErrors: { email?: string; password?: string } = {};
@@ -42,12 +41,7 @@ export default function ConnectAdmin() {
     e.preventDefault();
     
     if (!validateForm()) {
-      addToast({
-        type: 'error',
-        title: 'Erreur de validation',
-        message: 'Veuillez corriger les erreurs dans le formulaire',
-        duration: 5000
-      });
+      toast.error('Veuillez corriger les erreurs dans le formulaire');
       return;
     }
 
@@ -59,22 +53,12 @@ export default function ConnectAdmin() {
         password,
         type: 'admin'
       });
-      addToast({
-        type: 'success',
-        title: 'Connexion réussie',
-        message: 'Bienvenue dans l\'espace d\'administration !',
-        duration: 3000
-      });
+      toast.success('Connexion réussie ! Bienvenue dans l\'espace d\'administration');
       // La redirection est gérée automatiquement par le hook useAuth
       // navigate('/admin/dashboard');
     } catch (error) {
       console.error("Erreur de connexion:", error);
-      addToast({
-        type: 'error',
-        title: 'Erreur de connexion',
-        message: 'Email ou mot de passe incorrect',
-        duration: 5000
-      });
+      toast.error('Email ou mot de passe incorrect');
     } finally {
       setIsLoading(false);
     }

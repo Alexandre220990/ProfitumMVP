@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './use-auth';
-import { useToast } from '@/components/ui/toast-notifications';
+import { toast } from 'sonner';
 import { 
   googleCalendarClientService, 
   GoogleCalendarIntegration, 
@@ -40,7 +40,6 @@ export interface GoogleCalendarActions {
 
 export const useGoogleCalendar = (): GoogleCalendarState & GoogleCalendarActions => {
   const { user } = useAuth();
-  const { addToast } = useToast();
   
   const [integrations, setIntegrations] = useState<GoogleCalendarIntegration[]>([]);
   const [primaryIntegration, setPrimaryIntegration] = useState<GoogleCalendarIntegration | null>(null);
@@ -72,92 +71,57 @@ export const useGoogleCalendar = (): GoogleCalendarState & GoogleCalendarActions
       setIntegrations(data);
     } catch (error) {
       console.error('❌ Erreur chargement intégrations:', error);
-      addToast({
-        type: 'error',
-        title: 'Erreur',
-        message: 'Impossible de charger les intégrations Google Calendar',
-        duration: 5000
-      });
+      toast.error('Impossible de charger les intégrations Google Calendar');
     } finally {
       setLoading(false);
     }
-  }, [user?.id, addToast]);
+  }, [user?.id]);
 
   // Connecter une intégration
   const connectIntegration = useCallback(async (data: ConnectIntegrationData): Promise<string> => {
     try {
       const integrationId = await googleCalendarClientService.connectIntegration(data);
       
-      addToast({
-        type: 'success',
-        title: 'Connexion réussie',
-        message: 'Votre compte Google Calendar a été connecté avec succès',
-        duration: 5000
-      });
+      toast.success('Votre compte Google Calendar a été connecté avec succès');
 
       await refreshIntegrations();
       return integrationId;
     } catch (error) {
       console.error('❌ Erreur connexion intégration:', error);
-      addToast({
-        type: 'error',
-        title: 'Erreur de connexion',
-        message: error instanceof Error ? error.message : 'Impossible de connecter l\'intégration',
-        duration: 5000
-      });
+      toast.error(error instanceof Error ? error.message : 'Impossible de connecter l\'intégration');
       throw error;
     }
-  }, [addToast, refreshIntegrations]);
+  }, [refreshIntegrations]);
 
   // Déconnecter une intégration
   const disconnectIntegration = useCallback(async (integrationId: string): Promise<void> => {
     try {
       await googleCalendarClientService.deleteIntegration(integrationId);
       
-      addToast({
-        type: 'success',
-        title: 'Déconnexion réussie',
-        message: 'L\'intégration Google Calendar a été supprimée',
-        duration: 5000
-      });
+      toast.success('L\'intégration Google Calendar a été supprimée');
 
       await refreshIntegrations();
     } catch (error) {
       console.error('❌ Erreur déconnexion:', error);
-      addToast({
-        type: 'error',
-        title: 'Erreur',
-        message: 'Impossible de supprimer l\'intégration',
-        duration: 5000
-      });
+      toast.error('Impossible de supprimer l\'intégration');
       throw error;
     }
-  }, [addToast, refreshIntegrations]);
+  }, [refreshIntegrations]);
 
   // Mettre à jour une intégration
   const updateIntegration = useCallback(async (integrationId: string, data: UpdateIntegrationData): Promise<void> => {
     try {
       await googleCalendarClientService.updateIntegration(integrationId, data);
       
-      addToast({
-        type: 'success',
-        title: 'Mise à jour réussie',
-        message: 'L\'intégration a été mise à jour',
-        duration: 3000
-      });
+      toast.success('L\'intégration a été mise à jour');
 
       await refreshIntegrations();
     } catch (error) {
       console.error('❌ Erreur mise à jour:', error);
-      addToast({
-        type: 'error',
-        title: 'Erreur',
-        message: 'Impossible de mettre à jour l\'intégration',
-        duration: 5000
-      });
+      toast.error('Impossible de mettre à jour l\'intégration');
       throw error;
     }
-  }, [addToast, refreshIntegrations]);
+  }, [refreshIntegrations]);
 
   // Synchroniser un calendrier
   const syncCalendar = useCallback(async (integrationId: string, syncType: string = 'full'): Promise<SyncResult | null> => {
@@ -166,31 +130,23 @@ export const useGoogleCalendar = (): GoogleCalendarState & GoogleCalendarActions
       const result = await googleCalendarClientService.syncCalendar(integrationId, syncType);
       
       if (result) {
-        addToast({
-          type: result.success ? 'success' : 'error',
-          title: result.success ? 'Synchronisation réussie' : 'Erreur de synchronisation',
-          message: result.success 
-            ? `${result.eventsProcessed} événements traités`
-            : result.errors.join(', '),
-          duration: 5000
-        });
+        if (result.success) {
+          toast.success(`${result.eventsProcessed} événements traités`);
+        } else {
+          toast.error(result.errors.join(', '));
+        }
       }
 
       await refreshIntegrations();
       return result;
     } catch (error) {
       console.error('❌ Erreur synchronisation:', error);
-      addToast({
-        type: 'error',
-        title: 'Erreur',
-        message: 'Impossible de synchroniser le calendrier',
-        duration: 5000
-      });
+      toast.error('Impossible de synchroniser le calendrier');
       throw error;
     } finally {
       setSyncing(false);
     }
-  }, [addToast, refreshIntegrations]);
+  }, [refreshIntegrations]);
 
   // Obtenir les calendriers
   const getCalendars = useCallback(async (integrationId: string): Promise<GoogleCalendar[]> => {
@@ -198,15 +154,10 @@ export const useGoogleCalendar = (): GoogleCalendarState & GoogleCalendarActions
       return await googleCalendarClientService.getCalendars(integrationId);
     } catch (error) {
       console.error('❌ Erreur récupération calendriers:', error);
-      addToast({
-        type: 'error',
-        title: 'Erreur',
-        message: 'Impossible de récupérer les calendriers',
-        duration: 5000
-      });
+      toast.error('Impossible de récupérer les calendriers');
       return [];
     }
-  }, [addToast]);
+  }, []);
 
   // Obtenir la disponibilité
   const getFreeBusy = useCallback(async (
@@ -219,15 +170,10 @@ export const useGoogleCalendar = (): GoogleCalendarState & GoogleCalendarActions
       return await googleCalendarClientService.getFreeBusy(integrationId, calendarIds, timeMin, timeMax);
     } catch (error) {
       console.error('❌ Erreur récupération disponibilité:', error);
-      addToast({
-        type: 'error',
-        title: 'Erreur',
-        message: 'Impossible de récupérer la disponibilité',
-        duration: 5000
-      });
+      toast.error('Impossible de récupérer la disponibilité');
       return null;
     }
-  }, [addToast]);
+  }, []);
 
   // Générer l'URL d'autorisation
   const generateAuthUrl = useCallback(async (state?: string): Promise<{ authUrl: string; state: string }> => {
@@ -235,15 +181,10 @@ export const useGoogleCalendar = (): GoogleCalendarState & GoogleCalendarActions
       return await googleCalendarClientService.generateAuthUrl(state);
     } catch (error) {
       console.error('❌ Erreur génération URL auth:', error);
-      addToast({
-        type: 'error',
-        title: 'Erreur',
-        message: 'Impossible de générer l\'URL d\'autorisation',
-        duration: 5000
-      });
+      toast.error('Impossible de générer l\'URL d\'autorisation');
       throw error;
     }
-  }, [addToast]);
+  }, []);
 
   return {
     // État

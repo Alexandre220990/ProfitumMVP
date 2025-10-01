@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { SirenValidationField } from "@/components/SirenValidationField";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { config } from "@/config/env";
 
@@ -46,12 +46,11 @@ interface EligibilityResult {
 const InscriptionSimulateur = () => { 
   const navigate = useNavigate();
   const location = useLocation();
-  const { toast } = useToast();
   const { setUser } = useAuth();
   
   const [isLoading, setIsLoading] = useState(false);
   const [migrationStep, setMigrationStep] = useState<MigrationStep>('checking');
-  const [sessionData, setSessionData] = useState<any>(null);
+  const [_sessionData, setSessionData] = useState<any>(null);
   const [eligibilityResults, setEligibilityResults] = useState<EligibilityResult[]>([]);
   const [totalSavings, setTotalSavings] = useState(0);
   const [highEligibilityCount, setHighEligibilityCount] = useState(0);
@@ -89,14 +88,10 @@ const InscriptionSimulateur = () => {
       }
     } else { 
       // Rediriger si pas de données du simulateur
-      toast({
-        title: "Erreur", 
-        description: "Accès direct non autorisé. Veuillez utiliser le simulateur.", 
-        variant: "destructive" 
-      });
+      toast.error("Accès direct non autorisé. Veuillez utiliser le simulateur");
       navigate('/simulateur-eligibilite');
     }
-  }, [location, navigate, toast, form]);
+  }, [location, navigate, form]);
 
   // Vérifier si la session peut être migrée
   useEffect(() => { 
@@ -118,11 +113,7 @@ const InscriptionSimulateur = () => {
           }
         } else { 
           setMigrationStep('error');
-          toast({
-            title: "Erreur", 
-            description: "Cette session ne peut pas être migrée. Veuillez refaire le simulateur.", 
-            variant: "destructive" 
-          });
+          toast.error("Cette session ne peut pas être migrée. Veuillez refaire le simulateur");
         }
       } catch (error) { 
         console.error('Erreur vérification migration: ', error);
@@ -169,14 +160,6 @@ const InscriptionSimulateur = () => {
       // 2. Ensuite migrer les données de session
       console.log('📝 Migration des données de session...');
       
-      const migrationData = {
-        sessionToken: state.sessionToken, 
-        sessionId: state.sessionToken,
-        clientData: {
-          ...data,
-          ...sessionData?.extracted_client_data
-        }
-      };
 
       try {
         const migrationResponse = await fetch(`${config.API_URL}/api/session-migration/migrate`, { 
@@ -224,16 +207,13 @@ const InscriptionSimulateur = () => {
       localStorage.removeItem('eligibilityResults');
       sessionStorage.clear();
 
-      toast({
-        title: "🎉 Inscription réussie !", 
-        description: `Bienvenue ${data.username} ! Votre compte a été créé avec ${eligibilityResults.length} produits éligibles.`,
-      });
+      toast.success(`🎉 Inscription réussie ! Bienvenue ${data.username} ! Votre compte a été créé avec ${eligibilityResults.length} produits éligibles`);
 
       // Rediriger vers le dashboard
       navigate(`/dashboard/client/${user.id}`, { 
         state: {
           fromSimulator: true, 
-          migrationData: { eligibilityResults, totalSavings }
+          eligibilityResults, totalSavings
         }
       });
 
@@ -241,11 +221,7 @@ const InscriptionSimulateur = () => {
       console.error('❌ Erreur lors de l\'inscription: ', error);
       setMigrationStep('error');
       
-      toast({
-        title: "Erreur", 
-        description: error instanceof Error ? error.message : "Une erreur est survenue lors de l'inscription", 
-        variant: "destructive" 
-      });
+      toast.error(error instanceof Error ? error.message : "Une erreur est survenue lors de l'inscription");
     } finally { 
       setIsLoading(false); 
     }

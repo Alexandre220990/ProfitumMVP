@@ -1,6 +1,6 @@
 import { createContext, useContext, ReactNode, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useToast } from '@/components/ui/toast-notifications';
+import { toast } from 'sonner';
 import { loginWithSupabase, registerWithSupabase, logoutFromSupabase, checkSupabaseAuth } from '@/lib/supabase-auth';
 import { UserType, LoginCredentials } from '@/types/api';
 
@@ -20,7 +20,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
-  const { addToast } = useToast();
 
   const checkAuth = async (): Promise<boolean> => {
     try {
@@ -76,12 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
       setUser(userData);
 
-      addToast({
-        type: 'success',
-        title: "Connexion réussie",
-        message: `Bienvenue ${user.username || user.email}`,
-        duration: 3000
-      });
+      toast.success(`Connexion réussie ! Bienvenue ${user.username || user.email}`);
 
       // Rediriger vers le dashboard approprié selon le type d'utilisateur
       console.log('🔀 Redirection utilisateur (login):', { type: user.type, email: user.email });
@@ -103,12 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         navigate('/dashboard/client'); // Redirection par défaut vers client
       }
     } catch (error) {
-      addToast({
-        type: 'error',
-        title: "Erreur",
-        message: error instanceof Error ? error.message : "Erreur de connexion",
-        duration: 5000
-      });
+      toast.error(error instanceof Error ? error.message : "Erreur de connexion");
       throw error;
     } finally {
       setIsLoading(false);
@@ -139,12 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
       setUser(userData);
 
-      addToast({
-        type: 'success',
-        title: "Inscription réussie",
-        message: response.message || "Votre compte a été créé avec succès",
-        duration: 3000
-      });
+      toast.success(response.message || "Inscription réussie ! Votre compte a été créé avec succès");
 
       // Rediriger vers le dashboard approprié selon le type d'utilisateur
       console.log('🔀 Redirection utilisateur (register):', { type: user.type, email: user.email });
@@ -163,12 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         navigate('/dashboard/client'); // Redirection par défaut vers client
       }
     } catch (error) {
-      addToast({
-        type: 'error',
-        title: "Erreur",
-        message: error instanceof Error ? error.message : "Erreur d'inscription",
-        duration: 5000
-      });
+      toast.error(error instanceof Error ? error.message : "Erreur d'inscription");
       throw error;
     } finally {
       setIsLoading(false);
@@ -184,12 +163,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("supabase_refresh_token");
       setUser(null);
       navigate("/");
-      addToast({
-        type: 'success',
-        title: "Déconnexion",
-        message: "Vous avez été déconnecté",
-        duration: 3000
-      });
+      toast.success("Déconnexion réussie ! Vous avez été déconnecté");
     } catch (error) {
       console.error('Erreur lors de la déconnexion: ', error);
     }

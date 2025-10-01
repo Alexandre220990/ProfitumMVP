@@ -15,9 +15,8 @@ import {
   X,
   Loader2
 } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import api from "../lib/api";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 interface User {
   id: string;
@@ -45,7 +44,7 @@ const AdminUserSelector: React.FC<AdminUserSelectorProps> = ({
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<User[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [userType, setUserType] = useState<'all' | 'client' | 'expert'>('client');
+  const [userType] = useState<'all' | 'client' | 'expert'>('client');
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
 
@@ -139,11 +138,7 @@ const AdminUserSelector: React.FC<AdminUserSelectorProps> = ({
       
       setUsers(fallbackUsers);
       
-      toast({
-        variant: 'destructive',
-        title: 'Erreur de connexion',
-        description: 'Utilisation des données de test. Vérifiez votre connexion.'
-      });
+      toast.error('Utilisation des données de test. Vérifiez votre connexion.');
     } finally {
       setLoading(false);
     }
@@ -181,11 +176,7 @@ const AdminUserSelector: React.FC<AdminUserSelectorProps> = ({
       }
     } catch (error) {
       console.error('❌ Erreur recherche utilisateurs:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Erreur de recherche',
-        description: 'Impossible de rechercher les utilisateurs.'
-      });
+      toast.error('Impossible de rechercher les utilisateurs.');
     } finally {
       setSearching(false);
     }
@@ -193,11 +184,7 @@ const AdminUserSelector: React.FC<AdminUserSelectorProps> = ({
 
   const selectUser = (user: User) => {
     if (selectedUsers.length >= maxUsers) {
-      toast({
-        variant: 'destructive',
-        title: 'Limite atteinte',
-        description: `Vous ne pouvez sélectionner que ${maxUsers} utilisateurs maximum`
-      });
+      toast.error(`Vous ne pouvez sélectionner que ${maxUsers} utilisateurs maximum`);
       return;
     }
 
@@ -210,11 +197,7 @@ const AdminUserSelector: React.FC<AdminUserSelectorProps> = ({
 
   const confirmSelection = () => {
     if (selectedUsers.length === 0) {
-      toast({
-        variant: 'destructive',
-        title: 'Aucun utilisateur sélectionné',
-        description: 'Veuillez sélectionner au moins un utilisateur'
-      });
+      toast.error('Veuillez sélectionner au moins un utilisateur');
       return;
     }
 

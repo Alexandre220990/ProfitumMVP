@@ -17,7 +17,7 @@ import {
   AlertCircle,
   Info
 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 
 // ============================================================================
 // PAGE DOCUMENTAIRE UNIFIÉE RÉVOLUTIONNAIRE
@@ -27,7 +27,6 @@ import { useToast } from '@/hooks/use-toast';
 
 export default function UnifiedDocumentsPage() {
   const { user } = useAuth();
-  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('documents');
   const [stats, setStats] = useState<any>(null);
 
@@ -49,11 +48,7 @@ export default function UnifiedDocumentsPage() {
       }
     } catch (error) {
       console.error('Erreur chargement stats:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: 'Impossible de charger les statistiques'
-      });
+      toast.error('Impossible de charger les statistiques');
     }
   };
 

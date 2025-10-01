@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Star, MapPin, Building2, Phone, Mail, Euro } from "lucide-react";
 import { get } from "@/lib/api";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import HeaderClient from "@/components/HeaderClient";
 import type { Expert } from "@/types/expert";
 import type { ApiResponse } from "@/types/api";
@@ -14,7 +14,6 @@ import type { ApiResponse } from "@/types/api";
 const ExpertProfile = () => { 
   const { id } = useParams();
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [expert, setExpert] = useState<Expert | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -31,11 +30,7 @@ const ExpertProfile = () => {
         
         setExpert(response.data);
       } catch (error) { 
-        toast({
-          title: "Erreur", 
-          description: "Impossible de charger les informations de l'expert", 
-          variant: "destructive" 
-        });
+        toast.error("Impossible de charger les informations de l'expert");
         navigate("/marketplace-experts");
       } finally { 
         setLoading(false); 

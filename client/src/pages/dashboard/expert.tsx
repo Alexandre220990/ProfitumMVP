@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
-import { useToast } from "@/components/ui/toast-notifications";
+import { toast } from "sonner";
 import { get } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,6 @@ import type { ExpertBusiness } from "@/types/business";
 const ExpertDashboard = () => {
   const navigate = useNavigate();
   const { user, isLoading } = useAuth();
-  const { addToast } = useToast();
   
   const expertId = user?.id;
   
@@ -65,29 +64,19 @@ const ExpertDashboard = () => {
           setAgendaEvents(agendaResponse.data);
         }
 
-        addToast({
-          type: 'success',
-          title: 'Données chargées',
-          message: 'Vos informations ont été récupérées avec succès',
-          duration: 3000
-        });
+        toast.success('Vos informations ont été récupérées avec succès');
 
       } catch (error) {
         console.error('Erreur chargement données expert:', error);
         setError('Erreur lors de la récupération des données');
-        addToast({
-          type: 'error',
-          title: 'Erreur',
-          message: 'Erreur lors de la récupération des données',
-          duration: 5000
-        });
+        toast.error('Erreur lors de la récupération des données');
       } finally {
         
       }
     };
     
     fetchExpertData();
-  }, [expertId, addToast]);
+  }, [expertId]);
 
   // États de chargement et d'erreur
   if (isLoading) {

@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { useAuth } from "./use-auth";
-import { useToast } from "./use-toast";
+import { toast } from 'sonner';
 import { config } from "@/config/env";
 
 // Types pour le stockage de documents
@@ -91,7 +91,6 @@ export interface ClientDocumentsResponse {
 
 export const useDocumentStorage = () => {
   const { user } = useAuth();
-  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
 
@@ -140,30 +139,22 @@ export const useDocumentStorage = () => {
       const result = await response.json();
 
       if (!result.success) {
-        toast({
-          variant: 'destructive',
-          title: 'Erreur',
-          description: result.message || 'Erreur lors de l\'upload'
-        });
+        toast.error(result.message || 'Erreur lors de l\'upload');
         return { success: false, error: result.message };
       }
 
-      toast({ title: 'Succès', description: 'Fichier uploadé avec succès' });
+      toast.success('Fichier uploadé avec succès');
 
       return { success: true, fileId: result.data?.id };
 
     } catch (error) {
       console.error('Erreur upload:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: 'Erreur lors de l\'upload du fichier'
-      });
+      toast.error('Erreur lors de l\'upload du fichier');
       return { success: false, error: 'Erreur réseau' };
     } finally {
       setUploading(false);
     }
-  }, [user, toast]);
+  }, [user]);
 
   // ===== TÉLÉCHARGEMENT DE FICHIERS =====
 
@@ -328,30 +319,22 @@ export const useDocumentStorage = () => {
       const result = await response.json();
 
       if (!result.success) {
-        toast({
-          variant: 'destructive',
-          title: 'Erreur',
-          description: result.message
-        });
+        toast.error(result.message);
         return { success: false, error: result.message };
       }
 
-      toast({ title: 'Succès', description: 'Fichier validé avec succès' });
+      toast.success('Fichier validé avec succès');
 
       return { success: true };
 
     } catch (error) {
       console.error('Erreur validation:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: 'Erreur lors de la validation'
-      });
+      toast.error('Erreur lors de la validation');
       return { success: false, error: 'Erreur réseau' };
     } finally {
       setLoading(false);
     }
-  }, [user, toast]);
+  }, [user]);
 
   // ===== SUPPRESSION DE FICHIERS =====
 
@@ -372,30 +355,22 @@ export const useDocumentStorage = () => {
       const result = await response.json();
 
       if (!result.success) {
-        toast({
-          variant: 'destructive',
-          title: 'Erreur',
-          description: result.message
-        });
+        toast.error(result.message);
         return { success: false, error: result.message };
       }
 
-      toast({ title: 'Succès', description: 'Fichier supprimé avec succès' });
+      toast.success('Fichier supprimé avec succès');
 
       return { success: true };
 
     } catch (error) {
       console.error('Erreur suppression:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: 'Erreur lors de la suppression'
-      });
+      toast.error('Erreur lors de la suppression');
       return { success: false, error: 'Erreur réseau' };
     } finally {
       setLoading(false);
     }
-  }, [user, toast]);
+  }, [user]);
 
   // ===== PARTAGE DE FICHIERS =====
 
@@ -425,30 +400,22 @@ export const useDocumentStorage = () => {
       const result = await response.json();
 
       if (!result.success) {
-        toast({
-          variant: 'destructive',
-          title: 'Erreur',
-          description: result.message
-        });
+        toast.error(result.message);
         return { success: false, error: result.message };
       }
 
-      toast({ title: 'Succès', description: 'Fichier partagé avec succès' });
+      toast.success('Fichier partagé avec succès');
 
       return { success: true, shareToken: result.data.shareToken };
 
     } catch (error) {
       console.error('Erreur partage:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: 'Erreur lors du partage'
-      });
+      toast.error('Erreur lors du partage');
       return { success: false, error: 'Erreur réseau' };
     } finally {
       setLoading(false);
     }
-  }, [user, toast]);
+  }, [user]);
 
   // ===== STATISTIQUES =====
 

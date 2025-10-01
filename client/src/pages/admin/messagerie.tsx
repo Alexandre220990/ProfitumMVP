@@ -4,7 +4,7 @@ import { AdminMessagingApp } from "@/components/messaging/AdminMessagingApp";
 import AdminUserSelector from "@/components/AdminUserSelector";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { useState, useCallback } from 'react';
 
@@ -41,11 +41,7 @@ export default function MessagerieAdmin() {
       const user = users[0];
       setSelectedUser(user);
       setShowUserSelector(false);
-      toast({
-        title: 'Utilisateur sélectionné',
-        description: `Conversation avec ${user.name} (${user.type})`,
-        variant: 'default'
-      });
+      toast.success(`Conversation avec ${user.name} (${user.type})`);
     }
   }, []);
 

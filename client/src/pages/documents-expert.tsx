@@ -20,7 +20,7 @@ import {
 import { useAuth } from '@/hooks/use-auth';
 import { useEnhancedDocumentStorage } from '@/hooks/use-enhanced-document-storage';
 import { EnhancedDocumentUpload } from '@/components/documents/EnhancedDocumentUpload';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import HeaderExpert from '@/components/HeaderExpert';
 import { Label } from '@/components/ui/label';
 
@@ -40,7 +40,6 @@ interface ExpertDocumentsData {
 export default function DocumentsExpert() {
   const { user } = useAuth();
   const { getExpertFiles, getClientFiles, deleteFile, downloadFile } = useEnhancedDocumentStorage();
-  const { toast } = useToast();
 
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<ExpertDocumentsData | null>(null);
@@ -81,19 +80,11 @@ export default function DocumentsExpert() {
           stats
         });
       } else {
-        toast({
-          variant: 'destructive',
-          title: 'Erreur',
-          description: 'Erreur lors du chargement des documents'
-        });
+        toast.error('Erreur lors du chargement des documents');
       }
     } catch (error) {
       console.error('Erreur chargement documents expert: ', error);
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: 'Erreur lors du chargement des documents'
-      });
+      toast.error('Erreur lors du chargement des documents');
     } finally {
       setLoading(false);
     }
@@ -125,27 +116,17 @@ export default function DocumentsExpert() {
   };
 
   const handleFileUploaded = () => {
-    toast({
-      title: 'Succès',
-      description: 'Document uploadé avec succès'
-    });
+    toast.success('Document uploadé avec succès');
     loadExpertDocuments();
   };
 
   const handleFileDeleted = async (fileId: string) => {
     const result = await deleteFile(fileId);
     if (result.success) {
-      toast({
-        title: 'Succès',
-        description: 'Document supprimé avec succès'
-      });
+      toast.success('Document supprimé avec succès');
       loadExpertDocuments();
     } else {
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: result.error || 'Erreur lors de la suppression'
-      });
+      toast.error(result.error || 'Erreur lors de la suppression');
     }
   };
 
@@ -279,11 +260,7 @@ export default function DocumentsExpert() {
                   expertId={user?.id || ''}
                   onUploadComplete={handleFileUploaded}
                   onUploadError={(error) => {
-                    toast({
-                      variant: 'destructive',
-                      title: 'Erreur',
-                      description: error
-                    });
+                    toast.error(error);
                   }}
                   showAdvancedOptions={true}
                 />
@@ -460,11 +437,7 @@ export default function DocumentsExpert() {
                   expertId={user?.id || ''}
                   onUploadComplete={handleFileUploaded}
                   onUploadError={(error) => {
-                    toast({
-                      variant: 'destructive',
-                      title: 'Erreur',
-                      description: error
-                    });
+                    toast.error(error);
                   }}
                   showAdvancedOptions={true}
                 />

@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Progress } from "@/components/ui/progress";
 import DossierStepsDisplay from '@/components/DossierStepsDisplay';
 
 import { 
@@ -17,7 +16,6 @@ import {
   Euro, 
   TrendingUp, 
   CheckCircle, 
-  Clock, 
   User,
   Phone,
   Mail,
@@ -33,10 +31,8 @@ import {
   Activity,
   MessageSquare,
   HelpCircle,
-  XCircle,
 } from "lucide-react";
 import { get, post } from "@/lib/api";
-import { useToast } from "@/components/ui/use-toast";
 import HeaderClient from "@/components/HeaderClient";
 
 interface ClientProduitEligible {
@@ -105,39 +101,14 @@ interface ClientProduitEligible {
   };
 }
 
-interface ProductDetails {
-  id: string;
-  nom: string;
-  description: string;
-  categorie: string;
-  type: string;
-  conditions: any;
-  avantages: string[];
-  documents_requis: string[];
-  etapes_processus: Array<{
-    id: number;
-    titre: string;
-    description: string;
-    duree_estimee: string;
-    statut: 'pending' | 'in_progress' | 'completed' | 'failed';
-  }>;
-  statistiques: {
-    taux_reussite: number;
-    gain_moyen: number;
-    duree_moyenne: number;
-    nombre_clients: number;
-  };
-}
 
 export default function DossierClientProduit() {
   const { produit: produitNom, id: clientProduitId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [clientProduit, setClientProduit] = useState<ClientProduitEligible | null>(null);
-  const [productDetails, setProductDetails] = useState<ProductDetails | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
@@ -168,10 +139,16 @@ export default function DossierClientProduit() {
 
         setClientProduit(dossierData);
 
-        // Récupérer les détails du produit
-        const productResponse = await get(`/produits/${dossierData.produit_id}`);
-        if (productResponse.success) {
-          setProductDetails(productResponse.data as ProductDetails);
+        // Récupérer les détails du produit (optionnel)
+        try {
+          const productResponse = await get(`/produits/${dossierData.produit_id}`);
+          if (productResponse.success) {
+            console.log('✅ Détails produit récupérés:', productResponse.data);
+            // Les détails du produit sont disponibles dans productResponse.data
+          }
+        } catch (productError) {
+          console.warn('⚠️ Impossible de récupérer les détails du produit:', productError);
+          // Ce n'est pas critique, on continue sans les détails du produit
         }
 
         console.log('✅ Dossier récupéré:', dossierData);
@@ -197,19 +174,12 @@ export default function DossierClientProduit() {
       });
 
       if (response.success) {
-        toast({
-          title: "Audit lancé",
-          description: "Votre audit a été démarré avec succès.",
-        });
+        console.log("✅ Audit démarré avec succès");
         // Recharger les données
         window.location.reload();
       }
     } catch (error) {
-      toast({
-        title: "Erreur",
-        description: "Impossible de lancer l'audit. Veuillez réessayer.",
-        variant: "destructive"
-      });
+      console.error("❌ Impossible de lancer l'audit:", error);
     }
   };
 
@@ -236,11 +206,7 @@ export default function DossierClientProduit() {
         link.click();
       }
     } catch (error) {
-      toast({
-        title: "Erreur",
-        description: "Impossible de télécharger le document.",
-        variant: "destructive"
-      });
+      console.error("❌ Impossible de télécharger le document:", error);
     }
   };
 
@@ -259,18 +225,6 @@ export default function DossierClientProduit() {
     }
   };
 
-  const getStepStatusIcon = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return <CheckCircle className="h-5 w-5 text-green-500" />;
-      case 'in_progress':
-        return <Clock className="h-5 w-5 text-blue-500" />;
-      case 'failed':
-        return <XCircle className="h-5 w-5 text-red-500" />;
-      default:
-        return <Clock className="h-5 w-5 text-gray-400" />;
-    }
-  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('fr-FR', {
@@ -556,7 +510,7 @@ export default function DossierClientProduit() {
               onStepUpdate={(stepId, updates) => {
                 console.log('Étape mise à jour:', stepId, updates);
                 // Optionnel : rafraîchir les données du dossier
-                fetchDossierData();
+                // fetchDossierData(); // Fonction non définie
               }}
             />
           </TabsContent>

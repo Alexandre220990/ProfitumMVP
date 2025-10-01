@@ -35,7 +35,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useClientProducts } from '@/hooks/use-client-products';
 import { SectionTitle } from "@/components/dashboard/SectionTitle";
 import { EmptyEligibleProductsState } from "@/components/empty-eligible-products-state";
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { config } from '@/config/env';
 
 // Composant StatCard pour les KPIs
@@ -400,11 +400,7 @@ export default function DashboardClient() {
           navigate('/simulateur?mode=client');
         } else {
           // Afficher un message d'information
-          toast({
-            title: "Simulation en cours",
-            description: "Une simulation est déjà en cours. Veuillez attendre qu'elle se termine.",
-            variant: "default",
-          });
+          toast.info("Une simulation est déjà en cours. Veuillez attendre qu'elle se termine.");
         }
       } else {
         // En cas d'erreur, rediriger vers le simulateur public
@@ -474,11 +470,7 @@ export default function DashboardClient() {
 
   // Fonction appelée quand un expert est sélectionné
   const handleExpertSelected = useCallback((expert: any) => {
-    toast({
-      title: "Expert sélectionné",
-      description: `${expert.name} a été assigné à votre dossier.`,
-      variant: "default",
-    });
+    toast.success(`${expert.name} a été assigné à votre dossier.`);
     handleCloseExpertModal();
     // Optionnel : rafraîchir les données
     window.location.reload();

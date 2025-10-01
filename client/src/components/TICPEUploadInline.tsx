@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { useAuth } from '@/hooks/use-auth';
 import { 
   Upload, 
@@ -66,7 +66,6 @@ export default function TICPEUploadInline({
   onDocumentsUploaded,
   onStepComplete
 }: TICPEUploadInlineProps) {
-  const { toast } = useToast();
   const { user } = useAuth();
   const [uploadedDocuments, setUploadedDocuments] = useState<DocumentFile[]>([]);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress>({});
@@ -100,11 +99,7 @@ export default function TICPEUploadInline({
 
     // Vérifier l'authentification
     if (!user) {
-      toast({
-        title: "Erreur d'authentification",
-        description: "Vous devez être connecté pour uploader des documents",
-        variant: "destructive"
-      });
+      toast.error("Vous devez être connecté pour uploader des documents");
       return;
     }
 
@@ -141,11 +136,7 @@ export default function TICPEUploadInline({
       
       if (!token) {
         console.error('❌ Token manquant dans localStorage');
-        toast({
-          title: "Erreur d'authentification",
-          description: "Token d'authentification manquant. Veuillez vous reconnecter.",
-          variant: "destructive"
-        });
+        toast.error("Token d'authentification manquant. Veuillez vous reconnecter.");
         return;
       }
       
@@ -191,10 +182,7 @@ export default function TICPEUploadInline({
 
       setUploadedDocuments(prev => [...prev, newDocument]);
 
-      toast({
-        title: "Succès",
-        description: `${file.name} uploadé avec succès`
-      });
+      toast.success(`${file.name} uploadé avec succès`);
 
       // Nettoyer le progress après un délai
       setTimeout(() => {
@@ -210,11 +198,7 @@ export default function TICPEUploadInline({
       // Marquer comme erreur
       setUploadProgress(prev => ({ ...prev, [fileId]: -1 }));
 
-      toast({
-        title: "Erreur",
-        description: `Erreur lors de l'upload de ${file.name}`,
-        variant: "destructive"
-      });
+      toast.error(`Erreur lors de l'upload de ${file.name}`);
     } finally {
       setIsUploading(false);
     }
@@ -239,17 +223,10 @@ export default function TICPEUploadInline({
       // Supprimer de la liste locale
       setUploadedDocuments(prev => prev.filter(doc => doc.id !== documentId));
       
-      toast({
-        title: "Document supprimé",
-        description: "Le document a été supprimé avec succès"
-      });
+      toast.success("Le document a été supprimé avec succès");
     } catch (error) {
       console.error('Erreur suppression document:', error);
-      toast({
-        title: "Erreur",
-        description: "Erreur lors de la suppression du document",
-        variant: "destructive"
-      });
+      toast.error("Erreur lors de la suppression du document");
     }
   }, [toast]);
 
@@ -259,22 +236,14 @@ export default function TICPEUploadInline({
       setSelectedDocument(document);
       setShowViewer(true);
     } else {
-      toast({
-        title: "Erreur",
-        description: "Impossible d'ouvrir le document",
-        variant: "destructive"
-      });
+      toast.error("Impossible d'ouvrir le document");
     }
   }, [toast]);
 
   // Valider l'étape
   const handleValidateStep = useCallback(async () => {
     if (!hasAllRequiredDocuments()) {
-      toast({
-        title: "Documents manquants",
-        description: "Veuillez uploader tous les documents requis",
-        variant: "destructive"
-      });
+      toast.error("Veuillez uploader tous les documents requis");
       return;
     }
 
@@ -304,20 +273,13 @@ export default function TICPEUploadInline({
         console.error('Erreur mise à jour statut dossier:', updateResponse.status);
       }
 
-      toast({
-        title: "Étape validée",
-        description: "Vos documents ont été validés avec succès"
-      });
+      toast.success("Vos documents ont été validés avec succès");
 
       onStepComplete();
 
     } catch (error) {
       console.error('Erreur validation étape:', error);
-      toast({
-        title: "Erreur",
-        description: "Erreur lors de la validation de l'étape",
-        variant: "destructive"
-      });
+      toast.error("Erreur lors de la validation de l'étape");
     } finally {
       setIsValidating(false);
     }

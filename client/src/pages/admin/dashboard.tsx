@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/design
 import Button from "@/components/ui/design-system/Button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Badge from "@/components/ui/design-system/Badge";
-import { useToast } from "@/components/ui/toast-notifications";
+import { toast } from "sonner";
 import AdvancedMetrics from "@/components/admin/AdvancedMetrics";
 import { BusinessPipelineDashboard } from "@/components/admin/BusinessPipelineDashboard";
 import { ValidationActionsDashboard } from "@/components/admin/ValidationActionsDashboard";
@@ -50,7 +50,6 @@ const AdminDashboardPage: React.FC = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
 
-  const { addToast } = useToast();
 
   // Hook analytics révolutionnaire
   const {
@@ -95,13 +94,8 @@ const AdminDashboardPage: React.FC = () => {
     await refreshMetrics();
     setIsRefreshing(false);
     
-    addToast({
-      type: 'success',
-      title: 'Métriques actualisées',
-      message: 'Les données ont été mises à jour avec succès',
-      duration: 3000
-    });
-  }, [refreshMetrics, addToast]);
+    toast.success('Les données ont été mises à jour avec succès');
+  }, [refreshMetrics]);
 
   // ===== COMPOSANTS DE MÉTRIQUES =====
   
@@ -464,12 +458,7 @@ const AdminDashboardPage: React.FC = () => {
             <BusinessPipelineDashboard 
               onActionClick={(action) => {
                 console.log('Action clicked:', action);
-                addToast({
-                  type: 'info',
-                  title: 'Action',
-                  message: `Action ${action} déclenchée`,
-                  duration: 3000
-                });
+                toast.info(`Action ${action} déclenchée`);
               }}
             />
             
@@ -606,12 +595,7 @@ const AdminDashboardPage: React.FC = () => {
             <ValidationActionsDashboard 
               onActionClick={(action, itemId) => {
                 console.log('Validation action:', action, itemId);
-                addToast({
-                  type: 'info',
-                  title: 'Action de validation',
-                  message: `Action ${action} ${itemId ? `sur l'élément ${itemId}` : ''} déclenchée`,
-                  duration: 3000
-                });
+                toast.info(`Action ${action} ${itemId ? `sur l'élément ${itemId}` : ''} déclenchée`);
               }}
             />
           </TabsContent>

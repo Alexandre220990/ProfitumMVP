@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -57,7 +57,6 @@ interface EligibilityResult {
 const SimulateurEligibilite = () => { 
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { toast } = useToast();
   const { user } = useAuth();
   
   // Détecter le mode client connecté
@@ -66,14 +65,10 @@ const SimulateurEligibilite = () => {
   // Redirection si mode client sans authentification
   useEffect(() => {
     if (searchParams.get('mode') === 'client' && !user) {
-      toast({
-        title: "Authentification requise",
-        description: "Vous devez être connecté pour accéder au mode client",
-        variant: "destructive"
-      });
+      toast.error("Vous devez être connecté pour accéder au mode client");
       navigate('/connexion-client');
     }
-  }, [searchParams, user, navigate, toast]);
+  }, [searchParams, user, navigate]);
   
   // États du simulateur
   const [currentStep, setCurrentStep] = useState(1);
@@ -250,11 +245,7 @@ const SimulateurEligibilite = () => {
       }
     } catch (error) { 
       console.error('Erreur lors de l\'initialisation: ', error);
-      toast({
-        title: "Erreur", 
-        description: "Impossible d'initialiser le simulateur", 
-        variant: "destructive" 
-      });
+      toast.error("Impossible d'initialiser le simulateur");
     }
   };
 
@@ -293,11 +284,7 @@ const SimulateurEligibilite = () => {
       
     } catch (error) { 
       console.error('Erreur lors de la sauvegarde de la réponse: ', error);
-      toast({
-        title: "Erreur", 
-        description: "Impossible de sauvegarder votre réponse", 
-        variant: "destructive" 
-      });
+      toast.error("Impossible de sauvegarder votre réponse");
     }
   };
 
@@ -306,11 +293,7 @@ const SimulateurEligibilite = () => {
     
     // Validation des données avant envoi
     if (response === null || response === undefined || response === '') {
-      toast({
-        title: "Réponse manquante",
-        description: "Veuillez répondre à la question avant de continuer",
-        variant: "destructive"
-      });
+      toast.error("Veuillez répondre à la question avant de continuer");
       return;
     }
     
@@ -364,11 +347,7 @@ const SimulateurEligibilite = () => {
       }
     } catch (error) { 
       console.error('Erreur lors de la validation: ', error);
-      toast({
-        title: "Erreur", 
-        description: "Impossible de valider votre réponse", 
-        variant: "destructive" 
-      });
+      toast.error("Impossible de valider votre réponse");
     } finally { 
       setIsValidating(false); 
     }
@@ -378,11 +357,7 @@ const SimulateurEligibilite = () => {
     if (currentResponse !== null && currentResponse !== undefined && currentResponse !== '') {
       validateAndProceed(currentResponse); 
     } else { 
-      toast({
-        title: "Réponse manquante", 
-        description: "Veuillez répondre à la question avant de valider", 
-        variant: "destructive" 
-      });
+      toast.error("Veuillez répondre à la question avant de valider");
     }
   };
 
@@ -443,11 +418,7 @@ const SimulateurEligibilite = () => {
               total_savings: results.data.totalSavings
             });
             
-            toast({
-              title: "Simulation mise à jour !",
-              description: `${results.data.productsCreated} nouveaux produits créés, ${results.data.productsUpdated} produits mis à jour${results.data.productsProtected > 0 ? `, ${results.data.productsProtected} produits protégés` : ''}`,
-              variant: "default"
-            });
+            toast.success(`Simulation mise à jour ! ${results.data.productsCreated} nouveaux produits créés, ${results.data.productsUpdated} produits mis à jour${results.data.productsProtected > 0 ? `, ${results.data.productsProtected} produits protégés` : ''}`);
           } else {
             throw new Error(results.message || 'Erreur lors de la mise à jour');
           }
@@ -493,11 +464,7 @@ const SimulateurEligibilite = () => {
       }
     } catch (error) { 
       console.error('Erreur lors du calcul des résultats: ', error);
-      toast({
-        title: "Erreur", 
-        description: "Impossible de calculer vos résultats", 
-        variant: "destructive" 
-      });
+      toast.error("Impossible de calculer vos résultats");
     } finally {
       setIsUpdatingExisting(false);
     }

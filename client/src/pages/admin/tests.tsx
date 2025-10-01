@@ -9,7 +9,7 @@ import { Play, RefreshCw, Clock, AlertTriangle, Eye, Shield, Database, Globe, Mo
 import { post } from '@/lib/api';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 interface TestResult {
   test_name: string;
@@ -57,7 +57,6 @@ const TestsPage: React.FC = () => {
   const [selectedTestLogs, setSelectedTestLogs] = useState<TestResult | null>(null);
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { toast } = useToast();
 
   const testCategories: TestCategory[] = [
     {
@@ -136,10 +135,7 @@ const TestsPage: React.FC = () => {
       if (response.success) {
         setTestResults(response.data as TestSuite);
         setLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] Tests terminés avec succès!`]);
-        toast({
-          title: "Succès",
-          description: "Tous les tests ont été exécutés avec succès",
-        });
+        toast.success("Tous les tests ont été exécutés avec succès");
       } else {
         throw new Error(response.message || 'Échec de l\'exécution des tests');
       }
@@ -149,11 +145,7 @@ const TestsPage: React.FC = () => {
       const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
       setError(errorMessage);
       setLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] ❌ Erreur: ${errorMessage}`]);
-      toast({
-        title: "Erreur",
-        description: errorMessage,
-        variant: "destructive"
-      });
+      toast.error(errorMessage);
     } finally {
       setIsRunning(false);
       setCurrentTest('');
@@ -174,10 +166,7 @@ const TestsPage: React.FC = () => {
       if (response.success) {
         setTestResults(response.data as TestSuite);
         setLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] Tests ${categoryId} terminés!`]);
-        toast({
-          title: "Succès",
-          description: `Tests de la catégorie ${categoryId} exécutés avec succès`,
-        });
+        toast.success(`Tests de la catégorie ${categoryId} exécutés avec succès`);
       } else {
         throw new Error(response.message || `Échec des tests ${categoryId}`);
       }
@@ -187,11 +176,7 @@ const TestsPage: React.FC = () => {
       const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
       setError(errorMessage);
       setLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] ❌ Erreur: ${errorMessage}`]);
-      toast({
-        title: "Erreur",
-        description: errorMessage,
-        variant: "destructive"
-      });
+      toast.error(errorMessage);
     } finally {
       setIsRunning(false);
       setCurrentTest('');
@@ -211,10 +196,7 @@ const TestsPage: React.FC = () => {
     link.click();
     URL.revokeObjectURL(url);
     
-    toast({
-      title: "Export réussi",
-      description: "Les résultats ont été exportés avec succès",
-    });
+    toast.success("Les résultats ont été exportés avec succès");
   };
 
   const getStatusIcon = (status: string) => {

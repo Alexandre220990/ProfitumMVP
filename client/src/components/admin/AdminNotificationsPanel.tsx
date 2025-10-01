@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { 
   Bell, 
   CheckCircle, 
@@ -47,7 +47,6 @@ interface AdminNotification {
 }
 
 export default function AdminNotificationsPanel() {
-  const { toast } = useToast();
   const [notifications, setNotifications] = useState<AdminNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedNotification, setSelectedNotification] = useState<AdminNotification | null>(null);
@@ -80,11 +79,7 @@ export default function AdminNotificationsPanel() {
       }
     } catch (error) {
       console.error('Erreur chargement notifications:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger les notifications",
-        variant: "destructive"
-      });
+      toast.error("Impossible de charger les notifications");
     } finally {
       setLoading(false);
     }
@@ -107,10 +102,7 @@ export default function AdminNotificationsPanel() {
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
-          toast({
-            title: "Succès",
-            description: `Notification ${status === 'validated' ? 'validée' : 'rejetée'} avec succès`
-          });
+          toast.success(`Notification ${status === 'validated' ? 'validée' : 'rejetée'} avec succès`);
           
           // Recharger les notifications
           await loadNotifications();
@@ -122,11 +114,7 @@ export default function AdminNotificationsPanel() {
       }
     } catch (error) {
       console.error('Erreur mise à jour notification:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de mettre à jour la notification",
-        variant: "destructive"
-      });
+      toast.error("Impossible de mettre à jour la notification");
     } finally {
       setProcessing(null);
     }

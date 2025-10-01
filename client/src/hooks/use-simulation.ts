@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { get, post } from "@/lib/api";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { checkRecentSimulation } from "@/api/simulations";
 import { Question } from "@/types/simulation";
 import { ClientProduitEligible } from "@/types/simulation";
@@ -130,11 +130,7 @@ export const useSimulation = () => {
         setQuestions(sortedQuestions);
       } catch (error) {
         console.error("Erreur chargement questions: ", error);
-        toast({
-          title: "Erreur",
-          description: "Impossible de charger les questions",
-          variant: "destructive"
-        });
+        toast.error("Impossible de charger les questions");
       } finally {
         setIsLoading(false);
       }
@@ -212,18 +208,11 @@ export const useSimulation = () => {
 
       if (response.success && response.data) {
         setProducts(response.data.products);
-        toast({
-          title: "Simulation terminée",
-          description: `${response.data.products.length} produits éligibles trouvés`,
-        });
+        toast.success(`${response.data.products.length} produits éligibles trouvés`);
       }
     } catch (error) {
       console.error("Erreur soumission simulation: ", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de terminer la simulation",
-        variant: "destructive"
-      });
+      toast.error("Impossible de terminer la simulation");
     }
   };
 

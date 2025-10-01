@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './use-auth';
-import { useToast } from '@/components/ui/toast-notifications';
+import { toast } from 'sonner';
 import { get } from '@/lib/api';
 import type { 
   Expert
@@ -62,7 +62,6 @@ export interface ClientProduitEligible {
 
 export const useExpert = () => {
   const { user } = useAuth();
-  const { addToast } = useToast();
   
   const [expert, setExpert] = useState<Expert | null>(null);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -139,22 +138,12 @@ export const useExpert = () => {
         setAgendaEvents(agendaResponse.data);
       }
 
-      addToast({
-        type: 'success',
-        title: 'Données chargées',
-        message: 'Vos informations ont été récupérées avec succès',
-        duration: 3000
-      });
+      toast.success('Données chargées ! Vos informations ont été récupérées avec succès');
 
     } catch (error) {
       console.error('Erreur chargement données expert:', error);
       setError('Erreur lors de la récupération des données');
-      addToast({
-        type: 'error',
-        title: 'Erreur',
-        message: 'Erreur lors de la récupération des données',
-        duration: 5000
-      });
+      toast.error('Erreur lors de la récupération des données');
     } finally {
       setLoading(false);
     }

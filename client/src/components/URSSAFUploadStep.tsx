@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from 'sonner';
 import { 
   Shield, 
   FileText, 
@@ -11,7 +11,6 @@ import {
   Check, 
   AlertCircle, 
   Eye,
-  Download,
   Trash2
 } from 'lucide-react';
 import { post } from '@/lib/api';
@@ -58,7 +57,6 @@ export default function URSSAFUploadStep({
   onStepComplete,
   onDocumentsUploaded
 }: URSSAFUploadStepProps) {
-  const { toast } = useToast();
   const [uploadedDocuments, setUploadedDocuments] = useState<DocumentFile[]>([]);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress>({});
   const [isUploading, setIsUploading] = useState(false);
@@ -133,13 +131,10 @@ export default function URSSAFUploadStep({
         setUploadProgress(prev => ({ ...prev, [selectedDocumentType]: 100 }));
 
         if (response.success) {
-          const newDocument = response.data;
+          const newDocument = response.data as DocumentFile;
           setUploadedDocuments(prev => [...prev, newDocument]);
           
-          toast({
-            title: "Document uploadé avec succès",
-            description: `${selectedFile.name} a été uploadé pour ${selectedDocumentType}`,
-          });
+          toast.success(`${selectedFile.name} a été uploadé avec succès pour ${selectedDocumentType}`);
 
           // Réinitialiser la sélection
           setSelectedFile(null);
@@ -153,15 +148,11 @@ export default function URSSAFUploadStep({
 
     } catch (error) {
       console.error('Erreur upload:', error);
-      toast({
-        title: "Erreur lors de l'upload",
-        description: "Le document n'a pas pu être uploadé. Veuillez réessayer.",
-        variant: "destructive"
-      });
+      toast.error("Le document n'a pas pu être uploadé. Veuillez réessayer");
     } finally {
       setIsUploading(false);
     }
-  }, [selectedFile, selectedDocumentType, clientProduitId, toast]);
+  }, [selectedFile, selectedDocumentType, clientProduitId]);
 
   // Valider l'éligibilité
   const handleValidateEligibility = useCallback(async () => {
@@ -175,28 +166,21 @@ export default function URSSAFUploadStep({
       });
 
       if (response.success) {
-        toast({
-          title: "Éligibilité validée",
-          description: "Votre dossier URSSAF a été validé avec succès !",
-        });
+        toast.success("Votre dossier URSSAF a été validé avec succès !");
         onStepComplete();
       } else {
         throw new Error(response.message || 'Erreur lors de la validation');
       }
     } catch (error) {
       console.error('Erreur validation:', error);
-      toast({
-        title: "Erreur lors de la validation",
-        description: "L'éligibilité n'a pas pu être validée. Veuillez réessayer.",
-        variant: "destructive"
-      });
+      toast.error("L'éligibilité n'a pas pu être validée. Veuillez réessayer");
     } finally {
       setIsValidating(false);
     }
-  }, [hasAllRequiredDocuments, clientProduitId, toast, onStepComplete]);
+  }, [hasAllRequiredDocuments, clientProduitId, onStepComplete]);
 
   // Supprimer un document
-  const handleDeleteDocument = useCallback(async (documentId: string, documentType: string) => {
+  const handleDeleteDocument = useCallback(async (documentId: string, _documentType: string) => {
     try {
       const response = await post('/api/documents/delete', {
         document_id: documentId
@@ -204,20 +188,13 @@ export default function URSSAFUploadStep({
 
       if (response.success) {
         setUploadedDocuments(prev => prev.filter(doc => doc.id !== documentId));
-        toast({
-          title: "Document supprimé",
-          description: "Le document a été supprimé avec succès.",
-        });
+        toast.success("Le document a été supprimé avec succès");
       } else {
         throw new Error(response.message || 'Erreur lors de la suppression');
       }
     } catch (error) {
       console.error('Erreur suppression:', error);
-      toast({
-        title: "Erreur lors de la suppression",
-        description: "Le document n'a pas pu être supprimé.",
-        variant: "destructive"
-      });
+      toast.error("Le document n'a pas pu être supprimé");
     }
   }, [toast]);
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/use-auth';
-import { useToast } from '@/components/ui/toast-notifications';
+import { toast } from 'sonner';
 import { googleCalendarClientService, GoogleCalendarIntegration, ConnectIntegrationData } from '@/services/google-calendar-service';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -38,7 +38,6 @@ export const GoogleCalendarConnect: React.FC<GoogleCalendarConnectProps> = ({
   className = ""
 }) => {
   const { user } = useAuth();
-  const { addToast } = useToast();
   
   const [integrations, setIntegrations] = useState<GoogleCalendarIntegration[]>([]);
   const [loading, setLoading] = useState(false);
@@ -70,12 +69,7 @@ export const GoogleCalendarConnect: React.FC<GoogleCalendarConnectProps> = ({
       setIntegrations(data);
     } catch (error) {
       console.error('❌ Erreur chargement intégrations:', error);
-      addToast({
-        type: 'error',
-        title: 'Erreur',
-        message: 'Impossible de charger les intégrations Google Calendar',
-        duration: 5000
-      });
+      toast.error('Impossible de charger les intégrations Google Calendar');
     } finally {
       setLoading(false);
     }
@@ -114,12 +108,7 @@ export const GoogleCalendarConnect: React.FC<GoogleCalendarConnectProps> = ({
             tokens: encodeURIComponent(JSON.stringify(tokens))
           });
 
-          addToast({
-            type: 'success',
-            title: 'Connexion réussie',
-            message: 'Votre compte Google Calendar a été connecté avec succès',
-            duration: 5000
-          });
+          toast.success('Votre compte Google Calendar a été connecté avec succès');
 
           // Recharger les intégrations
           await loadIntegrations();
@@ -131,12 +120,7 @@ export const GoogleCalendarConnect: React.FC<GoogleCalendarConnectProps> = ({
           setConnecting(false);
           setShowConnectForm(false);
         } else if (event.data.type === 'GOOGLE_OAUTH_ERROR') {
-          addToast({
-            type: 'error',
-            title: 'Erreur de connexion',
-            message: event.data.error || 'Erreur lors de la connexion Google',
-            duration: 5000
-          });
+          toast.error(event.data.error || 'Erreur lors de la connexion Google');
           
           popup.close();
           window.removeEventListener('message', handleMessage);
@@ -152,23 +136,13 @@ export const GoogleCalendarConnect: React.FC<GoogleCalendarConnectProps> = ({
           popup.close();
           window.removeEventListener('message', handleMessage);
           setConnecting(false);
-          addToast({
-            type: 'error',
-            title: 'Timeout',
-            message: 'La connexion a pris trop de temps',
-            duration: 5000
-          });
+          toast.error('La connexion a pris trop de temps');
         }
       }, 300000); // 5 minutes
 
     } catch (error) {
       console.error('❌ Erreur connexion Google:', error);
-      addToast({
-        type: 'error',
-        title: 'Erreur',
-        message: 'Impossible de se connecter à Google Calendar',
-        duration: 5000
-      });
+      toast.error('Impossible de se connecter à Google Calendar');
       setConnecting(false);
     }
   };
@@ -178,12 +152,7 @@ export const GoogleCalendarConnect: React.FC<GoogleCalendarConnectProps> = ({
     try {
       await googleCalendarClientService.deleteIntegration(integrationId);
       
-      addToast({
-        type: 'success',
-        title: 'Déconnexion réussie',
-        message: 'L\'intégration Google Calendar a été supprimée',
-        duration: 5000
-      });
+      toast.success('L\'intégration Google Calendar a été supprimée');
 
       await loadIntegrations();
       
@@ -192,12 +161,7 @@ export const GoogleCalendarConnect: React.FC<GoogleCalendarConnectProps> = ({
       }
     } catch (error) {
       console.error('❌ Erreur déconnexion:', error);
-      addToast({
-        type: 'error',
-        title: 'Erreur',
-        message: 'Impossible de supprimer l\'intégration',
-        duration: 5000
-      });
+      toast.error('Impossible de supprimer l\'intégration');
     }
   };
 
@@ -206,22 +170,12 @@ export const GoogleCalendarConnect: React.FC<GoogleCalendarConnectProps> = ({
     try {
       await googleCalendarClientService.updateIntegration(integrationId, updates);
       
-      addToast({
-        type: 'success',
-        title: 'Mise à jour réussie',
-        message: 'L\'intégration a été mise à jour',
-        duration: 3000
-      });
+      toast.success('L\'intégration a été mise à jour');
 
       await loadIntegrations();
     } catch (error) {
       console.error('❌ Erreur mise à jour:', error);
-      addToast({
-        type: 'error',
-        title: 'Erreur',
-        message: 'Impossible de mettre à jour l\'intégration',
-        duration: 5000
-      });
+      toast.error('Impossible de mettre à jour l\'intégration');
     }
   };
 

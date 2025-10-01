@@ -5,9 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { UserCircle, Mail, Phone, MapPin, MessageSquare } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
-export default function Contact() { const { toast } = useToast();
+export default function Contact() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => { e.preventDefault();
@@ -16,8 +16,7 @@ export default function Contact() { const { toast } = useToast();
     // Simulation d'envoi
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    toast({
-      title: "Message envoyé !", description: "Nous vous répondrons dans les plus brefs délais.", variant: "default" });
+    toast.success("Message envoyé ! Nous vous répondrons dans les plus brefs délais.");
 
     setIsSubmitting(false);
     (e.target as HTMLFormElement).reset();
@@ -64,7 +63,7 @@ export default function Contact() { const { toast } = useToast();
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md: grid-cols-2 gap-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
           { /* Informations de contact */ }
           <div className="space-y-8">
             <h2 className="text-2xl font-semibold text-gray-900 mb-6">Nos coordonnées</h2>
