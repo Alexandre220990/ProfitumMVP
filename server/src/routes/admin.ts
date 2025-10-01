@@ -2793,8 +2793,10 @@ router.get('/dossiers/pending', asyncHandler(async (req, res) => {
           id,
           nom,
           description,
-          montant,
-          taux
+          montant_min,
+          montant_max,
+          taux_min,
+          taux_max
         )
       `)
       .in('statut', ['pending', 'in_progress'])
@@ -3117,8 +3119,10 @@ router.get('/dossiers/all', async (req, res) => {
           id,
           nom,
           description,
-          montant,
-          taux
+          montant_min,
+          montant_max,
+          taux_min,
+          taux_max
         )
       `)
       .order('created_at', { ascending: false });
