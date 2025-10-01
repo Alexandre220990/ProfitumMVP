@@ -1525,7 +1525,7 @@ router.get('/dossiers', async (req, res) => {
           duree_min,
           duree_max
         ),
-        Simulation(
+        simulations(
           id,
           created_at
         )
@@ -1584,7 +1584,7 @@ router.get('/dossiers', async (req, res) => {
       simulationId: dossier.simulationId,
       Client: dossier.Client,
       ProduitEligible: dossier.ProduitEligible,
-      Simulation: dossier.Simulation,
+      simulations: dossier.simulations,
       metadata: dossier.metadata,
       notes: dossier.notes,
       priorite: dossier.priorite
