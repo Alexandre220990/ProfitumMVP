@@ -69,6 +69,65 @@ htmlcov/
 # Fichiers privés et confidentiels
 DATABASE_KNOWLEDGE_BASE.md
 
+# Documentation et scripts de développement privés
+AGENDA_*.md
+ANALYSE-*.md
+CLIENT_TABLE_REFERENCE.md
+CONFIGURATION-*.md
+CORRECTIONS-*.md
+DATABASE-SCHEMA-REFERENCE.md
+DOC-*.md
+DOCUMENTATION-*.md
+ETAT-*.md
+GUIDE-*.md
+MIGRATION-*.md
+PLAN-*.md
+RAPPORT_*.md
+VERIFICATION_*.md
+
+# Scripts SQL de développement et migration
+*_analysis.sql
+*_removal.sql
+*_constraint.sql
+*_exists.sql
+analyze*.sql
+audit_*.sql
+check*.sql
+configure*.sql
+create_*.sql
+create-*.sql
+deploy*.sql
+fix*.sql
+organiser*.sql
+test_*.sql
+verify*.sql
+workflow-*.sql
+add-admin-rls-policies.sql
+
+# Fichiers de logs
+combined.log
+error.log
+
+# Scripts de déploiement et tests
+deploy-*.sh
+fix-*.sh
+force-*.sh
+restart_*.sh
+run_*.sh
+start*.sh
+test-*.sh
+convert-*.sh
+execute-*.sh
+setup-*.sh
+
+# Fichiers de configuration temporaires
+data.json
+theme.json
+
+# Garder seulement
+!README.md
+!SECURITY.md
+
 dist
 .DS_Store
 server/public
