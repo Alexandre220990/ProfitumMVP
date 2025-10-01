@@ -34,14 +34,12 @@ import { Badge } from '@/components/ui/badge';
 import { 
     Plus, 
     Search, 
-    Filter, 
-    MoreHorizontal, 
-    Edit, 
     Trash2, 
     UserCheck, 
     UserX 
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { config } from '@/config';
 
 interface ApporteurData {
     id: string;
@@ -76,8 +74,6 @@ const ApporteurManagement: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('all');
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-    const [selectedApporteur, setSelectedApporteur] = useState<ApporteurData | null>(null);
     const [formData, setFormData] = useState<ApporteurFormData>({
         first_name: '',
         last_name: '',
@@ -95,7 +91,7 @@ const ApporteurManagement: React.FC = () => {
         try {
             setLoading(true);
             const token = localStorage.getItem('token');
-            const response = await fetch('/api/admin/apporteurs', {
+            const response = await fetch(`${config.API_URL}/api/admin/apporteurs`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
@@ -124,7 +120,7 @@ const ApporteurManagement: React.FC = () => {
     const handleCreateApporteur = async () => {
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch('/api/admin/apporteurs/create', {
+            const response = await fetch(`${config.API_URL}/api/admin/apporteurs/create`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -163,7 +159,7 @@ const ApporteurManagement: React.FC = () => {
     const handleUpdateStatus = async (apporteurId: string, newStatus: string) => {
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch(`/api/admin/apporteurs/${apporteurId}/status`, {
+            const response = await fetch(`${config.API_URL}/api/admin/apporteurs/${apporteurId}/status`, {
                 method: 'PUT',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -194,7 +190,7 @@ const ApporteurManagement: React.FC = () => {
 
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch(`/api/admin/apporteurs/${apporteurId}`, {
+            const response = await fetch(`${config.API_URL}/api/admin/apporteurs/${apporteurId}`, {
                 method: 'DELETE',
                 headers: {
                     'Authorization': `Bearer ${token}`
