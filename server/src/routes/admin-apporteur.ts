@@ -1,17 +1,16 @@
 import express from 'express';
 import { Request, Response } from 'express';
-import { authAdmin } from '../middleware/auth-apporteur';
 import { AdminApporteurService } from '../services/AdminApporteurService';
 
 const router = express.Router();
 
-// Middleware d'authentification admin
-router.use(authAdmin);
+// Note: L'authentification admin est déjà gérée par enhancedAuthMiddleware + requireUserType('admin') dans index.ts
+// Pas besoin de middleware supplémentaire ici
 
 // ===== CRÉER UN APPORTEUR =====
 router.post('/create', async (req: Request, res: Response) => {
     try {
-        const adminId = (req as any).user.admin_id;
+        const adminId = (req as any).user.database_id;
         const apporteurData = req.body;
         
         const result = await AdminApporteurService.createApporteur(adminId, apporteurData);
@@ -114,7 +113,7 @@ router.put('/:apporteurId/status', async (req: Request, res: Response): Promise<
     try {
         const { apporteurId } = req.params;
         const { status } = req.body;
-        const adminId = (req as any).user.admin_id;
+        const adminId = (req as any).user.database_id;
         
         if (!status || !['active', 'inactive', 'suspended'].includes(status)) {
             res.status(400).json({
@@ -151,7 +150,7 @@ router.put('/:apporteurId/commission-rate', async (req: Request, res: Response):
     try {
         const { apporteurId } = req.params;
         const { commission_rate } = req.body;
-        const adminId = (req as any).user.admin_id;
+        const adminId = (req as any).user.database_id;
         
         if (typeof commission_rate !== 'number' || commission_rate < 0 || commission_rate > 100) {
             res.status(400).json({
