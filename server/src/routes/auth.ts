@@ -671,15 +671,16 @@ const verifyToken = async (req: Request, res: express.Response) => {
     }
     
     // Si pas trouvé dans Expert, vérifier dans ApporteurAffaires par email
-    if (!client && !userDetails && userType === 'apporteur_affaires') {
+    if (!client && !userDetails) {
       const { data: apporteur, error: apporteurError } = await supabase
         .from('ApporteurAffaires')
         .select('*')
         .eq('email', userEmail)
         .single();
 
-      if (apporteur) {
+      if (apporteur && !apporteurError) {
         userDetails = apporteur;
+        userType = 'apporteur_affaires';
         console.log('✅ Apporteur trouvé dans la base de données:', { id: apporteur.id, email: apporteur.email, status: apporteur.status });
       } else {
         console.log('❌ Apporteur non trouvé dans la base de données pour:', userEmail);
