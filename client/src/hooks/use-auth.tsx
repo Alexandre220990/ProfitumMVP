@@ -43,6 +43,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       setUser(userData);
       console.log('✅ Utilisateur authentifié:', user.email, user.type);
+      
+      // Rediriger vers le dashboard approprié selon le type d'utilisateur
+      console.log('🔀 Redirection utilisateur (checkAuth):', { type: user.type, email: user.email });
+      if (user.type === 'client') {
+        console.log('➡️ Redirection vers dashboard client');
+        navigate('/dashboard/client');
+      } else if (user.type === 'expert') {
+        console.log('➡️ Redirection vers dashboard expert');
+        navigate('/expert/dashboard');
+      } else if (user.type === 'admin') {
+        console.log('➡️ Redirection vers dashboard admin optimisé');
+        navigate("/admin/dashboard-optimized");
+      } else if (user.type === 'apporteur_affaires') {
+        console.log('➡️ Redirection vers dashboard apporteur');
+        navigate('/apporteur/dashboard');
+      } else {
+        console.warn('⚠️ Type utilisateur non reconnu:', user.type);
+        console.log('➡️ Redirection par défaut vers dashboard client');
+        navigate('/dashboard/client');
+      }
+      
       return true;
     } catch (error) {
       console.error('❌ Erreur lors de la vérification de l\'authentification:', error);
