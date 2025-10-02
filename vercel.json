@@ -25,6 +25,26 @@
       "destination": "/index.html"
     },
     {
+      "source": "/apporteur/(.*)",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/connexion-apporteur",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/apporteur/login",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/apporteur/register",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/become-apporteur",
+      "destination": "/index.html"
+    },
+    {
       "source": "/agenda-(.*)",
       "destination": "/index.html"
     },
