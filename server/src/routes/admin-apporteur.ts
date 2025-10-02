@@ -13,6 +13,21 @@ router.post('/create', async (req: Request, res: Response) => {
         const adminId = (req as any).user.database_id;
         const apporteurData = req.body;
         
+        console.log('🔍 Données reçues pour création apporteur:', {
+            adminId,
+            apporteurData: {
+                first_name: apporteurData.first_name,
+                last_name: apporteurData.last_name,
+                email: apporteurData.email,
+                phone: apporteurData.phone,
+                company_name: apporteurData.company_name,
+                company_type: apporteurData.company_type,
+                siren: apporteurData.siren,
+                password: apporteurData.password ? '***' : 'MANQUANT',
+                confirm_password: apporteurData.confirm_password ? '***' : 'MANQUANT'
+            }
+        });
+        
         const result = await AdminApporteurService.createApporteur(adminId, apporteurData);
         
         if (result.success) {

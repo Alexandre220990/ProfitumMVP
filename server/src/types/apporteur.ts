@@ -290,7 +290,7 @@ export interface ApporteurRegistrationData {
     company_type: 'independant' | 'salarie' | 'partenaire' | 'agence' | 'call_center';
     siren?: string;
     password: string;
-    confirm_password: string;
+    confirm_password?: string; // Optionnel car pas toujours fourni par l'admin
 }
 
 export interface ApporteurProfileData {

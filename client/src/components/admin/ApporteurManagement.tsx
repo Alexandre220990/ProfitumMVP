@@ -48,7 +48,7 @@ interface ApporteurData {
     email: string;
     phone: string;
     company_name: string;
-    company_type: string;
+    company_type: 'independant' | 'salarie' | 'partenaire' | 'agence' | 'call_center';
     siren?: string;
     commission_rate: number;
     status: 'pending_approval' | 'active' | 'inactive' | 'suspended';
@@ -62,7 +62,7 @@ interface ApporteurFormData {
     email: string;
     phone: string;
     company_name: string;
-    company_type: string;
+    company_type: 'independant' | 'salarie' | 'partenaire' | 'agence' | 'call_center';
     siren: string;
     password: string;
     confirm_password: string;
@@ -80,7 +80,7 @@ const ApporteurManagement: React.FC = () => {
         email: '',
         phone: '',
         company_name: '',
-        company_type: '',
+        company_type: 'independant', // Valeur par défaut
         siren: '',
         password: '',
         confirm_password: ''
@@ -91,6 +91,13 @@ const ApporteurManagement: React.FC = () => {
         try {
             setLoading(true);
             const token = localStorage.getItem('token');
+            
+            console.log('🔍 Frontend - Chargement apporteurs:', {
+                url: `${config.API_URL}/api/admin/apporteurs`,
+                hasToken: !!token,
+                tokenPreview: token ? `${token.substring(0, 20)}...` : 'MANQUANT'
+            });
+
             const response = await fetch(`${config.API_URL}/api/admin/apporteurs`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -98,14 +105,35 @@ const ApporteurManagement: React.FC = () => {
                 }
             });
 
+            console.log('🔍 Frontend - Réponse chargement apporteurs:', {
+                status: response.status,
+                statusText: response.statusText,
+                ok: response.ok
+            });
+
             if (!response.ok) {
-                throw new Error('Erreur lors du chargement des apporteurs');
+                const errorText = await response.text();
+                console.error('❌ Frontend - Erreur chargement apporteurs:', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    errorText: errorText
+                });
+                throw new Error(`Erreur ${response.status}: ${response.statusText}`);
             }
 
             const data = await response.json();
+            console.log('🔍 Frontend - Données apporteurs chargées:', {
+                success: data.success,
+                count: data.data?.length || 0,
+                data: data.data
+            });
+            
             setApporteurs(data.data || []);
         } catch (error) {
-            console.error('Erreur chargement apporteurs:', error);
+            console.error('❌ Frontend - Erreur chargement apporteurs:', {
+                error: error,
+                message: error instanceof Error ? error.message : 'Erreur inconnue'
+            });
             toast.error('Erreur lors du chargement des apporteurs');
         } finally {
             setLoading(false);
@@ -119,7 +147,53 @@ const ApporteurManagement: React.FC = () => {
     // Créer un apporteur
     const handleCreateApporteur = async () => {
         try {
+            console.log('🔍 Frontend - Tentative création apporteur:', {
+                formData: {
+                    first_name: formData.first_name,
+                    last_name: formData.last_name,
+                    email: formData.email,
+                    phone: formData.phone,
+                    company_name: formData.company_name,
+                    company_type: formData.company_type,
+                    siren: formData.siren,
+                    password: formData.password ? '***' : 'MANQUANT',
+                    confirm_password: formData.confirm_password ? '***' : 'MANQUANT'
+                },
+                timestamp: new Date().toISOString()
+            });
+
+            // Validation côté frontend
+            const validationErrors = [];
+            if (!formData.first_name?.trim()) validationErrors.push('Prénom requis');
+            if (!formData.last_name?.trim()) validationErrors.push('Nom requis');
+            if (!formData.email?.trim()) validationErrors.push('Email requis');
+            if (!formData.phone?.trim()) validationErrors.push('Téléphone requis');
+            if (!formData.company_name?.trim()) validationErrors.push('Nom entreprise requis');
+            if (!formData.company_type?.trim()) {
+                validationErrors.push('Type entreprise requis');
+            } else {
+                const validCompanyTypes = ['independant', 'salarie', 'partenaire', 'agence', 'call_center'];
+                if (!validCompanyTypes.includes(formData.company_type)) {
+                    validationErrors.push(`Type entreprise invalide: ${formData.company_type}`);
+                }
+            }
+            if (!formData.password?.trim()) validationErrors.push('Mot de passe requis');
+            if (formData.password !== formData.confirm_password) validationErrors.push('Mots de passe différents');
+
+            if (validationErrors.length > 0) {
+                console.error('❌ Frontend - Erreurs de validation:', validationErrors);
+                toast.error(`Erreurs de validation: ${validationErrors.join(', ')}`);
+                return;
+            }
+
             const token = localStorage.getItem('token');
+            console.log('🔍 Frontend - Envoi requête API:', {
+                url: `${config.API_URL}/api/admin/apporteurs/create`,
+                method: 'POST',
+                hasToken: !!token,
+                tokenPreview: token ? `${token.substring(0, 20)}...` : 'MANQUANT'
+            });
+
             const response = await fetch(`${config.API_URL}/api/admin/apporteurs/create`, {
                 method: 'POST',
                 headers: {
@@ -129,7 +203,15 @@ const ApporteurManagement: React.FC = () => {
                 body: JSON.stringify(formData)
             });
 
+            console.log('🔍 Frontend - Réponse API:', {
+                status: response.status,
+                statusText: response.statusText,
+                ok: response.ok,
+                headers: Object.fromEntries(response.headers.entries())
+            });
+
             const data = await response.json();
+            console.log('🔍 Frontend - Données réponse:', data);
 
             if (data.success) {
                 toast.success('Apporteur créé avec succès');
@@ -140,17 +222,35 @@ const ApporteurManagement: React.FC = () => {
                     email: '',
                     phone: '',
                     company_name: '',
-                    company_type: '',
+                    company_type: 'independant', // Valeur par défaut
                     siren: '',
                     password: '',
                     confirm_password: ''
                 });
                 loadApporteurs();
             } else {
+                console.error('❌ Frontend - Erreur API:', {
+                    success: data.success,
+                    error: data.error,
+                    fullResponse: data
+                });
                 toast.error(data.error || 'Erreur lors de la création');
             }
         } catch (error) {
-            console.error('Erreur création apporteur:', error);
+            console.error('❌ Frontend - Erreur réseau/exception:', {
+                error: error,
+                message: error instanceof Error ? error.message : 'Erreur inconnue',
+                stack: error instanceof Error ? error.stack : undefined,
+                formData: {
+                    first_name: formData.first_name,
+                    last_name: formData.last_name,
+                    email: formData.email,
+                    phone: formData.phone,
+                    company_name: formData.company_name,
+                    company_type: formData.company_type,
+                    siren: formData.siren
+                }
+            });
             toast.error('Erreur lors de la création de l\'apporteur');
         }
     };
@@ -315,7 +415,7 @@ const ApporteurManagement: React.FC = () => {
                                 <Label htmlFor="company_type">Type d'entreprise *</Label>
                                 <Select 
                                     value={formData.company_type} 
-                                    onValueChange={(value) => setFormData({...formData, company_type: value})}
+                                    onValueChange={(value: 'independant' | 'salarie' | 'partenaire' | 'agence' | 'call_center') => setFormData({...formData, company_type: value})}
                                 >
                                     <SelectTrigger>
                                         <SelectValue placeholder="Sélectionner un type" />

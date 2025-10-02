@@ -292,6 +292,18 @@ export class AdminApporteurService {
     // ===== VALIDATION =====
     private static validateApporteurData(data: ApporteurRegistrationData): { isValid: boolean; errors: string[] } {
         const errors: string[] = [];
+        
+        console.log('🔍 Validation des données apporteur:', {
+            first_name: data.first_name,
+            last_name: data.last_name,
+            email: data.email,
+            phone: data.phone,
+            company_name: data.company_name,
+            company_type: data.company_type,
+            siren: data.siren,
+            password: data.password ? '***' : 'MANQUANT',
+            confirm_password: data.confirm_password ? '***' : 'MANQUANT'
+        });
 
         if (!data.first_name || data.first_name.trim().length === 0) {
             errors.push('Le prénom est requis');
@@ -315,6 +327,11 @@ export class AdminApporteurService {
 
         if (!data.company_type) {
             errors.push('Le type d\'entreprise est requis');
+        } else {
+            const validCompanyTypes = ['independant', 'salarie', 'partenaire', 'agence', 'call_center'];
+            if (!validCompanyTypes.includes(data.company_type)) {
+                errors.push(`Le type d'entreprise doit être l'un des suivants: ${validCompanyTypes.join(', ')}`);
+            }
         }
 
         if (data.siren && !this.isValidSiren(data.siren)) {
@@ -329,6 +346,12 @@ export class AdminApporteurService {
         if (data.confirm_password && data.password !== data.confirm_password) {
             errors.push('Les mots de passe ne correspondent pas');
         }
+
+        console.log('🔍 Résultat validation:', {
+            isValid: errors.length === 0,
+            errorsCount: errors.length,
+            errors: errors
+        });
 
         return {
             isValid: errors.length === 0,
