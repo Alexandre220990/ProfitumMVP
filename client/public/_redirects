@@ -27,6 +27,8 @@
 /dossier-*        /index.html   200
 /aide-*           /index.html   200
 /google-calendar-* /index.html  200
+/validation-pending /index.html   200
+/validation-pending-apporteur /index.html   200
 
 # Catch-all pour toutes les autres routes
 /*               /index.html   200

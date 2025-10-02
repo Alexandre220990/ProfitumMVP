@@ -69,6 +69,14 @@ router.get('/produits-eligibles', enhancedAuthMiddleware, async (req, res) => {
 
     console.log('✅ Produits éligibles récupérés:', produits?.length || 0);
 
+    // Mettre à jour last_activity_at pour le client
+    await supabase
+      .from('Client')
+      .update({ 
+        last_activity_at: new Date().toISOString()
+      })
+      .eq('id', user.database_id);
+
     return res.json({
       success: true,
       data: produits || [],
@@ -160,6 +168,14 @@ router.get('/produits-eligibles/:id', enhancedAuthMiddleware, async (req, res) =
     }
 
     console.log('✅ Produit éligible récupéré:', produit.id);
+
+    // Mettre à jour last_activity_at pour le client
+    await supabase
+      .from('Client')
+      .update({ 
+        last_activity_at: new Date().toISOString()
+      })
+      .eq('id', user.database_id);
 
     return res.json({
       success: true,

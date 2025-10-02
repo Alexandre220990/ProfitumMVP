@@ -32,7 +32,7 @@ ORDER BY company_type;
 
 -- 5. Test d'insertion avec les nouveaux types
 -- (à décommenter pour tester)
-/*
+
 INSERT INTO "ApporteurAffaires" (
     id, auth_id, first_name, last_name, email, phone, 
     company_name, company_type, status, created_at, updated_at

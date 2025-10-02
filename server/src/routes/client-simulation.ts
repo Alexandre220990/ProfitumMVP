@@ -109,6 +109,47 @@ router.post('/update', enhancedAuthMiddleware, asyncHandler(async (req: Request,
       })
       .eq('id', simulation.id);
 
+    // 5. Vérifier si c'est la première simulation réussie et changer le statut prospect → client
+    const { data: clientData, error: clientError } = await supabaseClient
+      .from('Client')
+      .select('status, first_simulation_at')
+      .eq('id', user.database_id)
+      .single();
+
+    if (clientData && clientData.status === 'prospect') {
+      // Vérifier si c'est vraiment la première simulation
+      const { count: simulationCount } = await supabaseClient
+        .from('simulations')
+        .select('*', { count: 'exact', head: true })
+        .eq('client_id', user.database_id)
+        .eq('status', 'completed');
+
+      if (simulationCount === 1) {
+        // Première simulation réussie : changer prospect → client
+        await supabaseClient
+          .from('Client')
+          .update({ 
+            status: 'client',
+            first_simulation_at: new Date().toISOString(),
+            last_activity_at: new Date().toISOString()
+          })
+          .eq('id', user.database_id);
+
+        console.log('🎉 Premier client converti prospect → client:', {
+          clientId: user.database_id,
+          email: user.email
+        });
+      }
+    } else if (clientData && clientData.status === 'client') {
+      // Client déjà converti, juste mettre à jour last_activity_at
+      await supabaseClient
+        .from('Client')
+        .update({ 
+          last_activity_at: new Date().toISOString()
+        })
+        .eq('id', user.database_id);
+    }
+
     console.log('✅ Simulation client terminée:', {
       simulationId: simulation.id,
       productsUpdated: mergeResult.products_updated,

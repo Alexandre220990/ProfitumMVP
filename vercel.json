@@ -79,6 +79,14 @@
     {
       "source": "/simulateur-eligibilite",
       "destination": "/index.html"
+    },
+    {
+      "source": "/validation-pending",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/validation-pending-apporteur",
+      "destination": "/index.html"
     }
   ]
 } 

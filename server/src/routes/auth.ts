@@ -575,6 +575,33 @@ const getCurrentUser = async (req: Request, res: express.Response) => {
       }
       
       userData = expert;
+    } else if (userType === 'apporteur_affaires') {
+      // Rechercher l'apporteur par email
+      const { data: apporteur, error: apporteurError } = await supabase
+        .from('ApporteurAffaires')
+        .select('*')
+        .eq('email', userEmail)
+        .single();
+        
+      if (apporteurError) {
+        console.error('❌ Erreur lors de la récupération des données apporteur:', apporteurError);
+        return res.status(500).json({
+          success: false,
+          message: 'Erreur lors de la récupération des données utilisateur'
+        });
+      }
+      
+      // Vérifier le statut de l'apporteur
+      if (apporteur.status !== 'active') {
+        console.log('❌ Apporteur non actif:', apporteur.status);
+        return res.status(403).json({
+          success: false,
+          message: 'Votre compte apporteur d\'affaires n\'est pas encore activé. Contactez l\'administrateur.',
+          status: apporteur.status
+        });
+      }
+      
+      userData = apporteur;
     }
 
     // Si l'utilisateur n'a pas de profil dans les tables spécifiques
@@ -640,6 +667,22 @@ const verifyToken = async (req: Request, res: express.Response) => {
 
       if (expert) {
         userDetails = expert;
+      }
+    }
+    
+    // Si pas trouvé dans Expert, vérifier dans ApporteurAffaires par email
+    if (!client && !userDetails && userType === 'apporteur_affaires') {
+      const { data: apporteur, error: apporteurError } = await supabase
+        .from('ApporteurAffaires')
+        .select('*')
+        .eq('email', userEmail)
+        .single();
+
+      if (apporteur) {
+        userDetails = apporteur;
+        console.log('✅ Apporteur trouvé dans la base de données:', { id: apporteur.id, email: apporteur.email, status: apporteur.status });
+      } else {
+        console.log('❌ Apporteur non trouvé dans la base de données pour:', userEmail);
       }
     }
 

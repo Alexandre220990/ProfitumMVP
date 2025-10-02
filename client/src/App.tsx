@@ -48,6 +48,8 @@ const ConnexionExpert = React.lazy(() => import('./pages/connexion-expert'));
 const ConnexionApporteur = React.lazy(() => import('./pages/connexion-apporteur'));
 const ApporteurLogin = React.lazy(() => import('./pages/ApporteurLogin'));
 const ApporteurRegister = React.lazy(() => import('./pages/ApporteurRegister'));
+const ValidationPending = React.lazy(() => import('./pages/validation-pending'));
+const ValidationPendingApporteur = React.lazy(() => import('./pages/validation-pending-apporteur'));
 const ApporteurDashboard = React.lazy(() => import('./pages/ApporteurDashboard'));
 const ApporteurProspects = React.lazy(() => import('./pages/ApporteurProspects'));
 const ApporteurMeetings = React.lazy(() => import('./pages/ApporteurMeetings'));
@@ -140,6 +142,8 @@ function App() {
                     <Route path="/apporteur/login" element={<ApporteurLogin />} />
                     <Route path="/apporteur/register" element={<ApporteurRegister />} />
                     <Route path="/become-apporteur" element={<ApporteurRegister />} />
+                    <Route path="/validation-pending" element={<ValidationPending />} />
+                    <Route path="/validation-pending-apporteur" element={<ValidationPendingApporteur />} />
                     
                     {/* Routes apporteur avec layout */}
                     <Route path="/apporteur" element={<ApporteurLayout />}>

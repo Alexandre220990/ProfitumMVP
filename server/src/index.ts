@@ -27,6 +27,7 @@ import { checkDatabaseConnection, checkRLSPolicies } from './utils/databaseCheck
 import simulationRoutes from './routes/simulationRoutes';
 import clientRoutes from './routes/client';
 import clientSimulationRoutes from './routes/client-simulation';
+import clientReactivationRoutes from './routes/client-reactivation';
 import expertRoutes from './routes/expert';
 import adminRoutes from './routes/admin';
 import auditRoutes from './routes/audit';
@@ -228,6 +229,9 @@ app.use('/api/client', enhancedAuthMiddleware, requireUserType('client'), client
 
 // Routes simulation client - PROTÉGÉES
 app.use('/api/client/simulation', enhancedAuthMiddleware, requireUserType('client'), clientSimulationRoutes);
+
+// Routes réactivation client - PROTÉGÉES
+app.use('/api/client', enhancedAuthMiddleware, requireUserType('client'), clientReactivationRoutes);
 
 // Routes documents client améliorées - PROTÉGÉES
 app.use('/api/enhanced-client-documents', enhancedAuthMiddleware, enhancedClientDocumentsRoutes);
