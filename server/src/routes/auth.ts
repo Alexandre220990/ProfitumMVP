@@ -153,67 +153,26 @@ router.post('/login', async (req, res) => {
     const userEmail = authData.user.email;
     const userMetadata = authData.user.user_metadata || {};
     
-    // Vérifier le type d'utilisateur
-    let userType = type || userMetadata.type || 'client';
+    // LOGIQUE EXCLUSIVE SELON LA PAGE DE CONNEXION UTILISÉE
+    let userType = type;
     let userDetails = null;
     
-    // Récupérer les détails de l'utilisateur selon son type
-    if (userType === 'client') {
-      // Rechercher le client par email au lieu de l'ID Supabase Auth
-      const { data: client, error: clientError } = await supabase
-        .from('Client')
-        .select('*')
-        .eq('email', userEmail)
-        .single();
-        
-      if (clientError) {
-        console.error("❌ Erreur lors de la récupération des données client:", clientError);
-        return res.status(500).json({
-          success: false,
-          message: 'Erreur lors de la récupération des données utilisateur'
-        });
-      }
-      
-      userDetails = client;
-    } else if (userType === 'expert') {
-      const { data: expert, error: expertError } = await supabase
-        .from('Expert')
-        .select('*')
-        .eq('id', userId)
-        .single();
-        
-      if (expertError) {
-        console.error("❌ Erreur lors de la récupération des données expert:", expertError);
-        return res.status(500).json({
-          success: false,
-          message: 'Erreur lors de la récupération des données utilisateur'
-        });
-      }
-      
-      // Vérifier le statut d'approbation de l'expert
-      if (expert.approval_status !== 'approved') {
-        console.log("❌ Expert non approuvé:", expert.approval_status);
-        return res.status(403).json({
-          success: false,
-          message: 'Votre compte est en cours d\'approbation par les équipes Profitum. Vous recevrez un email dès que votre compte sera validé.',
-          approval_status: expert.approval_status
-        });
-      }
-      
-      userDetails = expert;
-    } else if (userType === 'apporteur_affaires') {
-      // Rechercher l'apporteur par email
+    console.log(`🔍 Connexion ${type} - Recherche EXCLUSIVE dans table ${type}`);
+    
+    if (type === 'apporteur_affaires') {
+      // ===== CONNEXION APPORTEUR : Recherche UNIQUEMENT dans ApporteurAffaires =====
       const { data: apporteur, error: apporteurError } = await supabase
         .from('ApporteurAffaires')
         .select('*')
         .eq('email', userEmail)
         .single();
         
-      if (apporteurError) {
-        console.error("❌ Erreur lors de la récupération des données apporteur:", apporteurError);
-        return res.status(500).json({
+      if (apporteurError || !apporteur) {
+        console.log("❌ Apporteur non trouvé:", apporteurError?.message);
+        return res.status(403).json({
           success: false,
-          message: 'Erreur lors de la récupération des données utilisateur'
+          message: 'Vous n\'êtes pas enregistré comme apporteur d\'affaires. Contactez l\'administrateur.',
+          error: 'NOT_APPORTEUR'
         });
       }
       
@@ -228,16 +187,72 @@ router.post('/login', async (req, res) => {
       }
       
       userDetails = apporteur;
+      userType = 'apporteur_affaires';
+      console.log("✅ Apporteur authentifié avec succès:", { email: userEmail, status: apporteur.status });
+      
+    } else if (type === 'client') {
+      // ===== CONNEXION CLIENT : Recherche UNIQUEMENT dans Client =====
+      const { data: client, error: clientError } = await supabase
+        .from('Client')
+        .select('*')
+        .eq('email', userEmail)
+        .single();
+        
+      if (clientError || !client) {
+        console.log("❌ Client non trouvé:", clientError?.message);
+        return res.status(403).json({
+          success: false,
+          message: 'Vous n\'êtes pas enregistré comme client. Contactez l\'administrateur.',
+          error: 'NOT_CLIENT'
+        });
+      }
+      
+      userDetails = client;
+      userType = 'client';
+      console.log("✅ Client authentifié avec succès:", { email: userEmail, status: client.status });
+      
+    } else if (type === 'expert') {
+      // ===== CONNEXION EXPERT : Recherche UNIQUEMENT dans Expert =====
+      const { data: expert, error: expertError } = await supabase
+        .from('Expert')
+        .select('*')
+        .eq('email', userEmail)
+        .single();
+        
+      if (expertError || !expert) {
+        console.log("❌ Expert non trouvé:", expertError?.message);
+        return res.status(403).json({
+          success: false,
+          message: 'Vous n\'êtes pas enregistré comme expert. Contactez l\'administrateur.',
+          error: 'NOT_EXPERT'
+        });
+      }
+      
+      // Vérifier le statut d'approbation de l'expert
+      if (expert.approval_status !== 'approved') {
+        console.log("❌ Expert non approuvé:", expert.approval_status);
+        return res.status(403).json({
+          success: false,
+          message: 'Votre compte est en cours d\'approbation par les équipes Profitum. Vous recevrez un email dès que votre compte sera validé.',
+          approval_status: expert.approval_status
+        });
+      }
+      
+      userDetails = expert;
+      userType = 'expert';
+      console.log("✅ Expert authentifié avec succès:", { email: userEmail, approval_status: expert.approval_status });
+      
+    } else {
+      // Type non reconnu
+      console.log("❌ Type de connexion non reconnu:", type);
+      return res.status(400).json({
+        success: false,
+        message: 'Type de connexion non valide',
+        error: 'INVALID_TYPE'
+      });
     }
 
-    // Si l'utilisateur n'a pas de profil dans les tables spécifiques
-    if (!userDetails) {
-      userDetails = {
-        id: userId,
-        email: userEmail,
-        type: userType
-      };
-    }
+    // userDetails est maintenant toujours défini grâce à la logique exclusive
 
     // Générer le token JWT avec l'ID de la table spécifique
     const token = jwt.sign(
