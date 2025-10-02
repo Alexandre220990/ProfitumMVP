@@ -166,7 +166,7 @@ router.get('/reactivation-status', enhancedAuthMiddleware, async (req: Request, 
       .eq('client_id', user.database_id)
       .eq('status', 'completed');
 
-    const canReactivate = clientData.status === 'inactive' && simulationCount > 0;
+    const canReactivate = clientData.status === 'inactive' && (simulationCount ?? 0) > 0;
     
     // Calculer les jours d'inactivité
     const daysSinceActivity = clientData.last_activity_at 
@@ -181,8 +181,8 @@ router.get('/reactivation-status', enhancedAuthMiddleware, async (req: Request, 
         status: clientData.status,
         canReactivate,
         daysSinceActivity,
-        hasSimulations: simulationCount > 0,
-        simulationCount,
+        hasSimulations: (simulationCount ?? 0) > 0,
+        simulationCount: simulationCount ?? 0,
         lastActivityAt: clientData.last_activity_at
       }
     });
