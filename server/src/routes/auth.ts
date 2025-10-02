@@ -628,7 +628,7 @@ const verifyToken = async (req: Request, res: express.Response) => {
       .single();
 
     // Si pas trouvé dans Client, vérifier dans Expert par email
-    let userType: 'client' | 'expert' | 'admin' = authUser.type;
+    let userType: 'client' | 'expert' | 'admin' | 'apporteur_affaires' = authUser.type;
     let userDetails = client;
     
     if (!client && userType === 'expert') {
