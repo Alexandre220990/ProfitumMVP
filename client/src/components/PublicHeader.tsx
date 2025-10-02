@@ -72,6 +72,12 @@ export default function PublicHeader() {
             >
               Partenaire
             </DropdownMenuItem>
+            <DropdownMenuItem 
+              onClick={() => navigate("/connexion-apporteur")}
+              className="cursor-pointer hover:bg-blue-50"
+            >
+              Apporteur d'affaires
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

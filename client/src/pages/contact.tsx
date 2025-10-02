@@ -50,6 +50,9 @@ export default function Contact() {
             <DropdownMenuItem asChild>
               <Link to="/connexion-expert">Partenaire</Link>
             </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to="/connexion-apporteur">Apporteur d'affaires</Link>
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
