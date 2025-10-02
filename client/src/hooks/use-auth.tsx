@@ -2,6 +2,7 @@ import { createContext, useContext, ReactNode, useState, useEffect } from 'react
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { loginWithSupabase, registerWithSupabase, logoutFromSupabase, checkSupabaseAuth } from '@/lib/supabase-auth';
+import { loginClient, loginExpert, loginApporteur } from '@/lib/auth-distinct';
 import { UserType, LoginCredentials } from '@/types/api';
 
 interface AuthContextType {
@@ -75,8 +76,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (credentials: LoginCredentials) => {
     setIsLoading(true);
     try {
-      console.log('🔐 Tentative de connexion avec Supabase...');
-      const response = await loginWithSupabase(credentials);
+      console.log('🔐 Tentative de connexion avec services distincts...');
+      
+      // Utiliser la fonction d'authentification appropriée selon le type
+      let response;
+      if (credentials.type === 'client') {
+        response = await loginClient(credentials);
+      } else if (credentials.type === 'expert') {
+        response = await loginExpert(credentials);
+      } else if (credentials.type === 'apporteur_affaires') {
+        response = await loginApporteur(credentials);
+      } else {
+        // Fallback vers l'ancienne méthode pour compatibilité
+        response = await loginWithSupabase(credentials);
+      }
       
       if (!response.success || !response.data) {
         throw new Error(response.message || "Erreur de connexion");

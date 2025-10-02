@@ -129,7 +129,242 @@ const checkAuth = async (req: Request, res: express.Response) => {
 
 router.get('/check', checkAuth);
 
-// Route de connexion
+// ===== ROUTES D'AUTHENTIFICATION DISTINCTES =====
+
+// Route de connexion CLIENT UNIQUEMENT
+router.post('/client/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    console.log("🔑 Tentative de connexion CLIENT:", { email });
+
+    // Authentifier avec Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if (authError || !authData?.user) {
+      console.error("❌ Erreur d'authentification CLIENT:", authError);
+      return res.status(401).json({
+        success: false,
+        message: 'Email ou mot de passe incorrect'
+      });
+    }
+
+    const userId = authData.user.id;
+    const userEmail = authData.user.email;
+    
+    console.log("🔍 Connexion CLIENT - Recherche EXCLUSIVE dans Client");
+    
+    // ===== RECHERCHE UNIQUEMENT DANS CLIENT =====
+    const { data: client, error: clientError } = await supabase
+      .from('Client')
+      .select('*')
+      .eq('email', userEmail)
+      .single();
+      
+    if (clientError || !client) {
+      console.log("❌ Client non trouvé:", clientError?.message);
+      return res.status(403).json({
+        success: false,
+        message: 'Vous n\'êtes pas enregistré comme client. Contactez l\'administrateur.',
+        error: 'NOT_CLIENT'
+      });
+    }
+    
+    console.log("✅ Client authentifié avec succès:", { email: userEmail, status: client.status });
+
+    // Générer le token JWT
+    const token = jwt.sign(
+      { 
+        id: client.id,
+        email: userEmail, 
+        type: 'client' 
+      },
+      process.env.SUPABASE_JWT_SECRET || 'votre_secret_jwt_super_securise',
+      { expiresIn: '24h' }
+    );
+
+    return res.json({
+      success: true,
+      data: {
+        token,
+        user: client
+      }
+    });
+  } catch (error) {
+    console.error('❌ Erreur lors de la connexion CLIENT:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la connexion',
+      error: error instanceof Error ? error.message : 'Erreur inconnue'
+    });
+  }
+});
+
+// Route de connexion EXPERT UNIQUEMENT
+router.post('/expert/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    console.log("🔑 Tentative de connexion EXPERT:", { email });
+
+    // Authentifier avec Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if (authError || !authData?.user) {
+      console.error("❌ Erreur d'authentification EXPERT:", authError);
+      return res.status(401).json({
+        success: false,
+        message: 'Email ou mot de passe incorrect'
+      });
+    }
+
+    const userId = authData.user.id;
+    const userEmail = authData.user.email;
+    
+    console.log("🔍 Connexion EXPERT - Recherche EXCLUSIVE dans Expert");
+    
+    // ===== RECHERCHE UNIQUEMENT DANS EXPERT =====
+    const { data: expert, error: expertError } = await supabase
+      .from('Expert')
+      .select('*')
+      .eq('email', userEmail)
+      .single();
+      
+    if (expertError || !expert) {
+      console.log("❌ Expert non trouvé:", expertError?.message);
+      return res.status(403).json({
+        success: false,
+        message: 'Vous n\'êtes pas enregistré comme expert. Contactez l\'administrateur.',
+        error: 'NOT_EXPERT'
+      });
+    }
+    
+    // Vérifier le statut d'approbation de l'expert
+    if (expert.approval_status !== 'approved') {
+      console.log("❌ Expert non approuvé:", expert.approval_status);
+      return res.status(403).json({
+        success: false,
+        message: 'Votre compte est en cours d\'approbation par les équipes Profitum. Vous recevrez un email dès que votre compte sera validé.',
+        approval_status: expert.approval_status
+      });
+    }
+    
+    console.log("✅ Expert authentifié avec succès:", { email: userEmail, approval_status: expert.approval_status });
+
+    // Générer le token JWT
+    const token = jwt.sign(
+      { 
+        id: expert.id,
+        email: userEmail, 
+        type: 'expert' 
+      },
+      process.env.SUPABASE_JWT_SECRET || 'votre_secret_jwt_super_securise',
+      { expiresIn: '24h' }
+    );
+
+    return res.json({
+      success: true,
+      data: {
+        token,
+        user: expert
+      }
+    });
+  } catch (error) {
+    console.error('❌ Erreur lors de la connexion EXPERT:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la connexion',
+      error: error instanceof Error ? error.message : 'Erreur inconnue'
+    });
+  }
+});
+
+// Route de connexion APPORTEUR UNIQUEMENT
+router.post('/apporteur/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    console.log("🔑 Tentative de connexion APPORTEUR:", { email });
+
+    // Authentifier avec Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if (authError || !authData?.user) {
+      console.error("❌ Erreur d'authentification APPORTEUR:", authError);
+      return res.status(401).json({
+        success: false,
+        message: 'Email ou mot de passe incorrect'
+      });
+    }
+
+    const userId = authData.user.id;
+    const userEmail = authData.user.email;
+    
+    console.log("🔍 Connexion APPORTEUR - Recherche EXCLUSIVE dans ApporteurAffaires");
+    
+    // ===== RECHERCHE UNIQUEMENT DANS APPORTEURAFFAIRES =====
+    const { data: apporteur, error: apporteurError } = await supabase
+      .from('ApporteurAffaires')
+      .select('*')
+      .eq('email', userEmail)
+      .single();
+      
+    if (apporteurError || !apporteur) {
+      console.log("❌ Apporteur non trouvé:", apporteurError?.message);
+      return res.status(403).json({
+        success: false,
+        message: 'Vous n\'êtes pas enregistré comme apporteur d\'affaires. Contactez l\'administrateur.',
+        error: 'NOT_APPORTEUR'
+      });
+    }
+    
+    // Vérifier le statut de l'apporteur
+    if (apporteur.status !== 'active') {
+      console.log("❌ Apporteur non actif:", apporteur.status);
+      return res.status(403).json({
+        success: false,
+        message: 'Votre compte apporteur d\'affaires n\'est pas encore activé. Contactez l\'administrateur.',
+        status: apporteur.status
+      });
+    }
+    
+    console.log("✅ Apporteur authentifié avec succès:", { email: userEmail, status: apporteur.status });
+
+    // Générer le token JWT
+    const token = jwt.sign(
+      { 
+        id: apporteur.id,
+        email: userEmail, 
+        type: 'apporteur_affaires' 
+      },
+      process.env.SUPABASE_JWT_SECRET || 'votre_secret_jwt_super_securise',
+      { expiresIn: '24h' }
+    );
+
+    return res.json({
+      success: true,
+      data: {
+        token,
+        user: apporteur
+      }
+    });
+  } catch (error) {
+    console.error('❌ Erreur lors de la connexion APPORTEUR:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la connexion',
+      error: error instanceof Error ? error.message : 'Erreur inconnue'
+    });
+  }
+});
+
+// Route de connexion GÉNÉRIQUE (pour compatibilité)
 router.post('/login', async (req, res) => {
   try {
     const { email, password, type } = req.body;
