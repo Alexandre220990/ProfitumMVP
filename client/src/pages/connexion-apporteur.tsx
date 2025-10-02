@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
-import { Eye, EyeOff, Loader2, UserCheck, AlertCircle, CheckCircle, Building2, Handshake, DollarSign } from "lucide-react";
+import { Eye, EyeOff, Loader2, UserCheck, AlertCircle, CheckCircle, Building2, Handshake, ArrowRight } from "lucide-react";
 import Button from "@/components/ui/design-system/Button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/design-system/Card";
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,6 @@ export default function ConnexionApporteur() {
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   
   const { login } = useAuth();
-  const navigate = useNavigate();
 
   const validateForm = () => {
     const newErrors: { email?: string; password?: string } = {};

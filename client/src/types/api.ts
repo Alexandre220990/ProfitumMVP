@@ -76,12 +76,12 @@ export interface DeleteAccountResponse { success: boolean;
 // --- Crédentials Login ---
 export interface LoginCredentials { email: string;
   password: string;
-  type: "client" | "expert" | "admin"; }
+  type: "client" | "expert" | "admin" | "apporteur_affaires"; }
 
 // --- Crédentials Register (frontend -> backend) ---
 export interface RegisterCredentials extends Partial<ClientData>, Partial<ExpertData> { email: string;
   password: string;
-  type: "client" | "expert" | "admin";
+  type: "client" | "expert" | "admin" | "apporteur_affaires";
   name?: string;
   username?: string;
   company_name?: string;
