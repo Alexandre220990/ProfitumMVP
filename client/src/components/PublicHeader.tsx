@@ -38,6 +38,13 @@ export default function PublicHeader() {
               <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-blue-600 to-purple-600 transition-all duration-300 group-hover:w-full"></span>
             </Link>
             <Link 
+              to="/become-apporteur" 
+              className="text-slate-700 hover:text-blue-600 transition-colors duration-200 font-medium relative group"
+            >
+              Devenir apporteur
+              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-blue-600 to-purple-600 transition-all duration-300 group-hover:w-full"></span>
+            </Link>
+            <Link 
               to="/contact" 
               className="text-slate-700 hover:text-blue-600 transition-colors duration-200 font-medium relative group"
             >

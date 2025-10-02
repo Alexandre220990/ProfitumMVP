@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { ApporteurRegistrationData } from '../types/apporteur';
+import { ApporteurEmailService } from './ApporteurEmailService';
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
@@ -79,6 +80,29 @@ export class AdminApporteurService {
                     success: false,
                     error: 'Erreur lors de la création de l\'apporteur'
                 };
+            }
+
+            // 3. Envoyer l'email avec les identifiants
+            try {
+                const credentials = await ApporteurEmailService.createApporteurAccount({
+                    email: apporteurData.email,
+                    first_name: apporteurData.first_name,
+                    last_name: apporteurData.last_name,
+                    phone: apporteurData.phone,
+                    company_name: apporteurData.company_name,
+                    company_type: apporteurData.company_type,
+                    siren: apporteurData.siren
+                });
+
+                const emailSent = await ApporteurEmailService.sendApporteurCredentials(credentials);
+                
+                console.log('📧 Email apporteur envoyé:', {
+                    email: credentials.email,
+                    sent: emailSent
+                });
+            } catch (emailError) {
+                console.error('Erreur envoi email apporteur:', emailError);
+                // Ne pas faire échouer la création si l'email échoue
             }
 
             return {

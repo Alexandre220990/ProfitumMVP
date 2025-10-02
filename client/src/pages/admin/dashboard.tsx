@@ -11,6 +11,7 @@ import AdvancedMetrics from "@/components/admin/AdvancedMetrics";
 import { BusinessPipelineDashboard } from "@/components/admin/BusinessPipelineDashboard";
 import { ValidationActionsDashboard } from "@/components/admin/ValidationActionsDashboard";
 import ApporteurManagement from "@/components/admin/ApporteurManagement";
+import ApporteurCandidatures from "@/components/admin/ApporteurCandidatures";
 import '@/styles/admin-dashboard.css';
 import { 
   Users, 
@@ -751,7 +752,16 @@ const AdminDashboardPage: React.FC = () => {
 
           {/* Onglet Apporteurs d'Affaires */}
           <TabsContent value="apporteurs" className="space-y-6">
-            <ApporteurManagement />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Gestion des Apporteurs</h3>
+                <ApporteurManagement />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Candidatures en Attente</h3>
+                <ApporteurCandidatures />
+              </div>
+            </div>
           </TabsContent>
         </Tabs>
       </div>

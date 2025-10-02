@@ -24,6 +24,8 @@ import calendarRoutes from "./calendar";
 import staticAssetsRoutes from "./static-assets";
 
 import unifiedMessagingRoutes from "./unified-messaging";
+import adminCandidaturesRoutes from "./admin-candidatures";
+import apporteurRegisterRoutes from "./apporteur-register";
 import { enhancedAuthMiddleware, requireUserType } from "../middleware/auth-enhanced";
 import * as fs from 'fs';
 import * as path from 'path';
@@ -92,6 +94,12 @@ router.use('/', staticAssetsRoutes);
 
 // Routes de messagerie unifiée
 router.use('/messaging', enhancedAuthMiddleware, unifiedMessagingRoutes);
+
+// Routes d'inscription apporteur (publiques)
+router.use('/apporteur', apporteurRegisterRoutes);
+
+// Routes admin pour les candidatures
+router.use('/admin', enhancedAuthMiddleware, requireUserType('admin'), adminCandidaturesRoutes);
 
 // Routes pour les images statiques
 router.get('/avatar.png', (req, res) => {

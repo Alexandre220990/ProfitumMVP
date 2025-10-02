@@ -46,6 +46,20 @@ const SocialProduct = React.lazy(() => import('./pages/produits/social-product')
 const ConnexionClient = React.lazy(() => import('./pages/connexion-client'));
 const ConnexionExpert = React.lazy(() => import('./pages/connexion-expert'));
 const ConnexionApporteur = React.lazy(() => import('./pages/connexion-apporteur'));
+const ApporteurLogin = React.lazy(() => import('./pages/ApporteurLogin'));
+const ApporteurRegister = React.lazy(() => import('./pages/ApporteurRegister'));
+const ApporteurDashboard = React.lazy(() => import('./pages/ApporteurDashboard'));
+const ApporteurProspects = React.lazy(() => import('./pages/ApporteurProspects'));
+const ApporteurMeetings = React.lazy(() => import('./pages/ApporteurMeetings'));
+const ApporteurExperts = React.lazy(() => import('./pages/ApporteurExperts'));
+const ApporteurCommissions = React.lazy(() => import('./pages/ApporteurCommissions'));
+const ApporteurStatistics = React.lazy(() => import('./pages/ApporteurStatistics'));
+const ApporteurKanban = React.lazy(() => import('./pages/ApporteurKanban'));
+const ApporteurNotifications = React.lazy(() => import('./pages/ApporteurNotifications'));
+const ApporteurProducts = React.lazy(() => import('./pages/ApporteurProducts'));
+const ApporteurMessaging = React.lazy(() => import('./pages/ApporteurMessaging'));
+const ApporteurAgenda = React.lazy(() => import('./pages/ApporteurAgenda'));
+const ApporteurLayout = React.lazy(() => import('./components/apporteur/ApporteurLayout'));
 const CreateAccountClient = React.lazy(() => import('./pages/create-account-client'));
 const CreateAccountExpert = React.lazy(() => import('./pages/create-account-expert'));
 const InscriptionClient = React.lazy(() => import('./pages/inscription-client'));
@@ -123,6 +137,24 @@ function App() {
                     <Route path="/connexion-client" element={<ConnexionClient />} />
                     <Route path="/connexion-expert" element={<ConnexionExpert />} />
                     <Route path="/connexion-apporteur" element={<ConnexionApporteur />} />
+                    <Route path="/apporteur/login" element={<ApporteurLogin />} />
+                    <Route path="/apporteur/register" element={<ApporteurRegister />} />
+                    <Route path="/become-apporteur" element={<ApporteurRegister />} />
+                    
+                    {/* Routes apporteur avec layout */}
+                    <Route path="/apporteur" element={<ApporteurLayout />}>
+                        <Route path="dashboard" element={<ApporteurDashboard />} />
+                        <Route path="prospects" element={<ApporteurProspects />} />
+                        <Route path="kanban" element={<ApporteurKanban />} />
+                        <Route path="meetings" element={<ApporteurMeetings />} />
+                        <Route path="experts" element={<ApporteurExperts />} />
+                        <Route path="products" element={<ApporteurProducts />} />
+                        <Route path="messaging" element={<ApporteurMessaging />} />
+                        <Route path="agenda" element={<ApporteurAgenda />} />
+                        <Route path="commissions" element={<ApporteurCommissions />} />
+                        <Route path="statistics" element={<ApporteurStatistics />} />
+                        <Route path="notifications" element={<ApporteurNotifications />} />
+                    </Route>
                     <Route path="/connect-admin" element={<ConnectAdmin />} />
                     <Route path="/register-client" element={<CreateAccountClient />} />
                     <Route path="/inscription-client" element={<InscriptionClient />} />
