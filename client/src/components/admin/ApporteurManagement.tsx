@@ -48,10 +48,10 @@ interface ApporteurData {
     email: string;
     phone: string;
     company_name: string;
-    company_type: 'independant' | 'salarie' | 'partenaire' | 'agence' | 'call_center';
+    company_type: 'independant' | 'expert' | 'call_center' | 'societe_commerciale';
     siren?: string;
     commission_rate: number;
-    status: 'pending_approval' | 'active' | 'inactive' | 'suspended';
+    status: 'candidature' | 'active' | 'inactive' | 'suspended' | 'rejected';
     created_at: string;
     prospects_count?: number;
 }
@@ -62,7 +62,7 @@ interface ApporteurFormData {
     email: string;
     phone: string;
     company_name: string;
-    company_type: 'independant' | 'salarie' | 'partenaire' | 'agence' | 'call_center';
+    company_type: 'independant' | 'expert' | 'call_center' | 'societe_commerciale';
     siren: string;
     password: string;
     confirm_password: string;
@@ -172,7 +172,7 @@ const ApporteurManagement: React.FC = () => {
             if (!formData.company_type?.trim()) {
                 validationErrors.push('Type entreprise requis');
             } else {
-                const validCompanyTypes = ['independant', 'salarie', 'partenaire', 'agence', 'call_center'];
+                const validCompanyTypes = ['independant', 'expert', 'call_center', 'societe_commerciale'];
                 if (!validCompanyTypes.includes(formData.company_type)) {
                     validationErrors.push(`Type entreprise invalide: ${formData.company_type}`);
                 }
@@ -326,13 +326,14 @@ const ApporteurManagement: React.FC = () => {
 
     const getStatusBadge = (status: string) => {
         const statusConfig = {
-            pending_approval: { label: 'En attente', variant: 'secondary' as const },
+            candidature: { label: 'Candidature', variant: 'secondary' as const },
             active: { label: 'Actif', variant: 'default' as const },
             inactive: { label: 'Inactif', variant: 'destructive' as const },
-            suspended: { label: 'Suspendu', variant: 'destructive' as const }
+            suspended: { label: 'Suspendu', variant: 'destructive' as const },
+            rejected: { label: 'Rejeté', variant: 'destructive' as const }
         };
 
-        const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending_approval;
+        const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.candidature;
         return <Badge variant={config.variant}>{config.label}</Badge>;
     };
 
@@ -415,17 +416,16 @@ const ApporteurManagement: React.FC = () => {
                                 <Label htmlFor="company_type">Type d'entreprise *</Label>
                                 <Select 
                                     value={formData.company_type} 
-                                    onValueChange={(value: 'independant' | 'salarie' | 'partenaire' | 'agence' | 'call_center') => setFormData({...formData, company_type: value})}
+                                    onValueChange={(value: 'independant' | 'expert' | 'call_center' | 'societe_commerciale') => setFormData({...formData, company_type: value})}
                                 >
                                     <SelectTrigger>
                                         <SelectValue placeholder="Sélectionner un type" />
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="independant">Indépendant</SelectItem>
-                                        <SelectItem value="salarie">Salarié</SelectItem>
-                                        <SelectItem value="partenaire">Partenaire</SelectItem>
-                                        <SelectItem value="agence">Agence</SelectItem>
+                                        <SelectItem value="expert">Expert</SelectItem>
                                         <SelectItem value="call_center">Call Center</SelectItem>
+                                        <SelectItem value="societe_commerciale">Société Commerciale</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -500,10 +500,11 @@ const ApporteurManagement: React.FC = () => {
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">Tous les statuts</SelectItem>
-                                <SelectItem value="pending_approval">En attente</SelectItem>
+                                <SelectItem value="candidature">Candidature</SelectItem>
                                 <SelectItem value="active">Actif</SelectItem>
                                 <SelectItem value="inactive">Inactif</SelectItem>
                                 <SelectItem value="suspended">Suspendu</SelectItem>
+                                <SelectItem value="rejected">Rejeté</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -552,10 +553,9 @@ const ApporteurManagement: React.FC = () => {
                                         <TableCell>{apporteur.company_name}</TableCell>
                                         <TableCell>
                                             {apporteur.company_type === 'independant' && 'Indépendant'}
-                                            {apporteur.company_type === 'salarie' && 'Salarié'}
-                                            {apporteur.company_type === 'partenaire' && 'Partenaire'}
-                                            {apporteur.company_type === 'agence' && 'Agence'}
+                                            {apporteur.company_type === 'expert' && 'Expert'}
                                             {apporteur.company_type === 'call_center' && 'Call Center'}
+                                            {apporteur.company_type === 'societe_commerciale' && 'Société Commerciale'}
                                         </TableCell>
                                         <TableCell>{apporteur.commission_rate}%</TableCell>
                                         <TableCell>{getStatusBadge(apporteur.status)}</TableCell>
@@ -564,7 +564,7 @@ const ApporteurManagement: React.FC = () => {
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex space-x-2">
-                                                {apporteur.status === 'pending_approval' && (
+                                                {apporteur.status === 'candidature' && (
                                                     <Button
                                                         size="sm"
                                                         variant="outline"

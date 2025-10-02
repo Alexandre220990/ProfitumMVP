@@ -287,7 +287,7 @@ export interface ApporteurRegistrationData {
     email: string;
     phone: string;
     company_name: string;
-    company_type: 'independant' | 'salarie' | 'partenaire' | 'agence' | 'call_center';
+    company_type: 'independant' | 'expert' | 'call_center' | 'societe_commerciale';
     siren?: string;
     password: string;
     confirm_password?: string; // Optionnel car pas toujours fourni par l'admin

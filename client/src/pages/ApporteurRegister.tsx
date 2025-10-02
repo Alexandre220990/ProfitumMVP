@@ -64,13 +64,10 @@ const SECTORS = [
 ];
 
 const COMPANY_TYPES = [
-  'Entreprise individuelle',
-  'SARL',
-  'SAS',
-  'SA',
-  'EURL',
-  'Auto-entrepreneur',
-  'Autre'
+  'Indépendant',
+  'Expert',
+  'Call Center',
+  'Société Commerciale'
 ];
 
 export default function ApporteurRegister() {

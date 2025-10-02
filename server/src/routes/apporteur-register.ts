@@ -9,6 +9,18 @@ import { EmailService } from '../services/EmailService';
 const router = express.Router();
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
+// Mapping des types d'entreprise du frontend vers la base de données
+const mapCompanyType = (frontendType: string): string => {
+  const mapping: Record<string, string> = {
+    'Indépendant': 'independant',
+    'Expert': 'expert',
+    'Call Center': 'call_center',
+    'Société Commerciale': 'societe_commerciale'
+  };
+  
+  return mapping[frontendType] || 'independant';
+};
+
 // Configuration multer pour l'upload de fichiers
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -112,7 +124,7 @@ router.post('/register', upload.single('cv_file'), async (req: Request, res: Res
       email,
       phone,
       company_name,
-      company_type,
+      company_type: mapCompanyType(company_type), // Mapper le type d'entreprise
       sector,
       siren: siren || null,
       motivation_letter,

@@ -51,7 +51,7 @@ export class AdminApporteurService {
                     company_type: apporteurData.company_type,
                     siren: apporteurData.siren,
                     commission_rate: 5.00, // Taux par défaut
-                    status: 'pending_approval',
+                    status: 'candidature', // Statut valide selon la contrainte DB
                     approved_by: adminId
                 })
                 .select(`
@@ -328,7 +328,7 @@ export class AdminApporteurService {
         if (!data.company_type) {
             errors.push('Le type d\'entreprise est requis');
         } else {
-            const validCompanyTypes = ['independant', 'salarie', 'partenaire', 'agence', 'call_center'];
+            const validCompanyTypes = ['independant', 'expert', 'call_center', 'societe_commerciale'];
             if (!validCompanyTypes.includes(data.company_type)) {
                 errors.push(`Le type d'entreprise doit être l'un des suivants: ${validCompanyTypes.join(', ')}`);
             }
