@@ -201,6 +201,33 @@ router.post('/login', async (req, res) => {
       }
       
       userDetails = expert;
+    } else if (userType === 'apporteur_affaires') {
+      // Rechercher l'apporteur par email
+      const { data: apporteur, error: apporteurError } = await supabase
+        .from('ApporteurAffaires')
+        .select('*')
+        .eq('email', userEmail)
+        .single();
+        
+      if (apporteurError) {
+        console.error("❌ Erreur lors de la récupération des données apporteur:", apporteurError);
+        return res.status(500).json({
+          success: false,
+          message: 'Erreur lors de la récupération des données utilisateur'
+        });
+      }
+      
+      // Vérifier le statut de l'apporteur
+      if (apporteur.status !== 'active') {
+        console.log("❌ Apporteur non actif:", apporteur.status);
+        return res.status(403).json({
+          success: false,
+          message: 'Votre compte apporteur d\'affaires n\'est pas encore activé. Contactez l\'administrateur.',
+          status: apporteur.status
+        });
+      }
+      
+      userDetails = apporteur;
     }
 
     // Si l'utilisateur n'a pas de profil dans les tables spécifiques

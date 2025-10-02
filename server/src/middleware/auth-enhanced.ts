@@ -15,14 +15,14 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 export interface AuthenticatedRequest extends Request {
   user?: {
     id: string;
-    type: 'client' | 'expert' | 'admin';
+    type: 'client' | 'expert' | 'admin' | 'apporteur_affaires';
     email: string;
     permissions: string[];
     auth_id: string;
     database_id: string; // ID de la base de données pour les clés étrangères
     user_metadata: {
       username: string;
-      type: 'client' | 'expert' | 'admin';
+      type: 'client' | 'expert' | 'admin' | 'apporteur_affaires';
       company_name?: string;
       siren?: string;
       phone_number?: string;
@@ -52,6 +52,13 @@ export enum Permission {
   EXPERT_VIEW_OWN_PROFILE = 'expert:view_own_profile',
   EXPERT_UPDATE_OWN_PROFILE = 'expert:update_own_profile',
   
+  // Permissions apporteurs d'affaires
+  APPORTEUR_VIEW_PROSPECTS = 'apporteur:view_prospects',
+  APPORTEUR_CREATE_PROSPECTS = 'apporteur:create_prospects',
+  APPORTEUR_VIEW_COMMISSIONS = 'apporteur:view_commissions',
+  APPORTEUR_VIEW_OWN_PROFILE = 'apporteur:view_own_profile',
+  APPORTEUR_UPDATE_OWN_PROFILE = 'apporteur:update_own_profile',
+  
   // Permissions admin
   ADMIN_VIEW_ALL = 'admin:view_all',
   ADMIN_MANAGE_USERS = 'admin:manage_users',
@@ -76,6 +83,14 @@ const EXPERT_PERMISSIONS = [
   Permission.EXPERT_UPDATE_OWN_PROFILE
 ];
 
+const APPORTEUR_PERMISSIONS = [
+  Permission.APPORTEUR_VIEW_PROSPECTS,
+  Permission.APPORTEUR_CREATE_PROSPECTS,
+  Permission.APPORTEUR_VIEW_COMMISSIONS,
+  Permission.APPORTEUR_VIEW_OWN_PROFILE,
+  Permission.APPORTEUR_UPDATE_OWN_PROFILE
+];
+
 const ADMIN_PERMISSIONS = [
   Permission.ADMIN_VIEW_ALL,
   Permission.ADMIN_MANAGE_USERS,
@@ -87,11 +102,13 @@ const ADMIN_PERMISSIONS = [
 const USER_PERMISSIONS = {
   client: CLIENT_PERMISSIONS,
   expert: EXPERT_PERMISSIONS,
+  apporteur_affaires: APPORTEUR_PERMISSIONS,
   admin: [
     ...ADMIN_PERMISSIONS,
-    // Admins ont aussi toutes les permissions clients et experts
+    // Admins ont aussi toutes les permissions clients, experts et apporteurs
     ...CLIENT_PERMISSIONS,
-    ...EXPERT_PERMISSIONS
+    ...EXPERT_PERMISSIONS,
+    ...APPORTEUR_PERMISSIONS
   ]
 };
 
@@ -262,7 +279,7 @@ export const enhancedAuthMiddleware = async (
 
     // 3. Recherche de l'utilisateur dans les tables métier
     let userData: any;
-    let userType: 'client' | 'expert' | 'admin';
+    let userType: 'client' | 'expert' | 'admin' | 'apporteur_affaires';
 
     // Pour les routes admin, chercher d'abord dans la table Admin
     if (req.path.startsWith('/api/admin')) {
@@ -359,44 +376,58 @@ export const enhancedAuthMiddleware = async (
           userType = 'expert';
           console.log('✅ Expert trouvé:', { expertId: expertData.id, email: expertData.email });
         } else {
-          console.log('❌ Expert non trouvé, recherche admin...');
-          // Vérifier si c'est un admin par email
-          const { data: adminData, error: adminError } = await supabase
-            .from('Admin')
-            .select('id, email, name')
+          console.log('❌ Expert non trouvé, recherche apporteur...');
+          // Chercher dans ApporteurAffaires
+          const { data: apporteurData, error: apporteurError } = await supabase
+            .from('ApporteurAffaires')
+            .select('id, email, first_name, last_name, status')
             .eq('email', user.email)
             .single();
           
-          if (adminError) {
-            console.log('⚠️ Erreur recherche admin:', adminError.message);
-          }
-          
-          if (adminData) {
-            userData = adminData;
-            userType = 'admin';
-            console.log('✅ Admin trouvé:', { adminId: adminData.id, email: adminData.email });
+          if (apporteurData) {
+            userData = apporteurData;
+            userType = 'apporteur_affaires';
+            console.log('✅ Apporteur trouvé:', { apporteurId: apporteurData.id, email: apporteurData.email, status: apporteurData.status });
           } else {
-            console.log('❌ Utilisateur non trouvé dans aucune table');
-            // Utilisateur non trouvé dans aucune table
-            await logAccess({
-              timestamp: new Date(),
-              userId: user.id,
-              userType: 'unknown',
-              action: req.method,
-              resource: req.path,
-              ipAddress: ipAddress as string,
-              userAgent,
-              success: false,
-              errorMessage: 'Utilisateur non trouvé en base'
-            });
+            console.log('❌ Apporteur non trouvé, recherche admin...');
+            // Vérifier si c'est un admin par email
+            const { data: adminData, error: adminError } = await supabase
+              .from('Admin')
+              .select('id, email, name')
+              .eq('email', user.email)
+              .single();
             
-            // S'assurer que les headers CORS sont présents avant d'envoyer la réponse
-            addCorsHeaders(req, res);
+            if (adminError) {
+              console.log('⚠️ Erreur recherche admin:', adminError.message);
+            }
             
-            return res.status(403).json({
-              success: false,
-              message: 'Utilisateur non autorisé'
-            });
+            if (adminData) {
+              userData = adminData;
+              userType = 'admin';
+              console.log('✅ Admin trouvé:', { adminId: adminData.id, email: adminData.email });
+            } else {
+              console.log('❌ Utilisateur non trouvé dans aucune table');
+              // Utilisateur non trouvé dans aucune table
+              await logAccess({
+                timestamp: new Date(),
+                userId: user.id,
+                userType: 'unknown',
+                action: req.method,
+                resource: req.path,
+                ipAddress: ipAddress as string,
+                userAgent,
+                success: false,
+                errorMessage: 'Utilisateur non trouvé en base'
+              });
+              
+              // S'assurer que les headers CORS sont présents avant d'envoyer la réponse
+              addCorsHeaders(req, res);
+              
+              return res.status(403).json({
+                success: false,
+                message: 'Utilisateur non autorisé'
+              });
+            }
           }
         }
       }

@@ -325,7 +325,8 @@ export class AdminApporteurService {
             errors.push('Le mot de passe doit contenir au moins 6 caractères');
         }
 
-        if (data.password !== data.confirm_password) {
+        // Vérifier la confirmation du mot de passe seulement si elle est fournie
+        if (data.confirm_password && data.password !== data.confirm_password) {
             errors.push('Les mots de passe ne correspondent pas');
         }
 
