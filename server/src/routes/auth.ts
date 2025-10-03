@@ -283,7 +283,7 @@ router.post('/expert/login', async (req, res) => {
   }
 });
 
-// Route de connexion APPORTEUR UNIQUEMENT
+// Route de connexion APPORTEUR UNIQUEMENT (Pattern Admin)
 router.post('/apporteur/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -303,16 +303,15 @@ router.post('/apporteur/login', async (req, res) => {
       });
     }
 
-    const userId = authData.user.id;
     const userEmail = authData.user.email;
     
     console.log("🔍 Connexion APPORTEUR - Recherche EXCLUSIVE dans ApporteurAffaires");
     
-    // ===== RECHERCHE UNIQUEMENT DANS APPORTEURAFFAIRES =====
+    // ===== RECHERCHE UNIQUEMENT DANS APPORTEURAFFAIRES (Pattern Admin) =====
     console.log("🔍 Recherche apporteur avec email:", userEmail);
     const { data: apporteur, error: apporteurError } = await supabase
       .from('ApporteurAffaires')
-      .select('*')
+      .select('id, email, first_name, last_name, company_name, status, created_at, updated_at')
       .eq('email', userEmail)
       .single();
       
@@ -322,6 +321,7 @@ router.post('/apporteur/login', async (req, res) => {
     if (apporteur) {
       console.log("   - Statut:", apporteur.status);
       console.log("   - Type statut:", typeof apporteur.status);
+      console.log("   - Toutes les données:", JSON.stringify(apporteur, null, 2));
     }
       
     if (apporteurError || !apporteur) {
@@ -333,25 +333,35 @@ router.post('/apporteur/login', async (req, res) => {
       });
     }
     
-    // Vérifier le statut de l'apporteur
-    console.log("🔍 Vérification statut:", apporteur.status, "=== 'active' ?", apporteur.status === 'active');
-    if (apporteur.status !== 'active') {
-      console.log("❌ Apporteur non actif:", apporteur.status);
+    // Vérifier le statut de l'apporteur (avec gestion des valeurs NULL/undefined)
+    const currentStatus = apporteur.status || null;
+    console.log("🔍 Vérification statut:", currentStatus, "=== 'active' ?", currentStatus === 'active');
+    console.log("🔍 Statut null/undefined ?", currentStatus === null || currentStatus === undefined);
+    
+    if (currentStatus !== 'active') {
+      console.log("❌ Apporteur non actif:", currentStatus);
       return res.status(403).json({
         success: false,
         message: 'Votre compte apporteur d\'affaires n\'est pas encore activé. Contactez l\'administrateur.',
-        status: apporteur.status
+        status: currentStatus,
+        debug: {
+          status: currentStatus,
+          type: typeof currentStatus,
+          isNull: currentStatus === null,
+          isUndefined: currentStatus === undefined
+        }
       });
     }
     
-    console.log("✅ Apporteur authentifié avec succès:", { email: userEmail, status: apporteur.status });
+    console.log("✅ Apporteur authentifié avec succès:", { email: userEmail, status: currentStatus });
 
-    // Générer le token JWT
+    // Générer le token JWT (Pattern Admin)
     const token = jwt.sign(
       { 
         id: apporteur.id,
         email: userEmail, 
-        type: 'apporteur_affaires' 
+        type: 'apporteur_affaires',
+        database_id: apporteur.id
       },
       process.env.SUPABASE_JWT_SECRET || 'votre_secret_jwt_super_securise',
       { expiresIn: '24h' }
@@ -361,7 +371,16 @@ router.post('/apporteur/login', async (req, res) => {
       success: true,
       data: {
         token,
-        user: apporteur
+        user: {
+          id: apporteur.id,
+          email: apporteur.email,
+          type: 'apporteur_affaires',
+          database_id: apporteur.id,
+          first_name: apporteur.first_name,
+          last_name: apporteur.last_name,
+          company_name: apporteur.company_name,
+          status: apporteur.status
+        }
       }
     });
   } catch (error) {
