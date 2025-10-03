@@ -12,68 +12,85 @@ const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SE
 export class ProspectService {
     
     // ===== CRÉATION PROSPECT =====
-    static async createProspect(apporteurId: string, prospectData: ProspectFormData): Promise<CreateProspectResponse> {
+    static async createProspect(apporteurId: string, prospectData: any): Promise<CreateProspectResponse> {
         try {
-            // Validation des données
-            const validation = this.validateProspectData(prospectData);
-            if (!validation.isValid) {
-                throw new Error(`Données invalides: ${validation.errors.join(', ')}`);
+            console.log('🔍 ProspectService.createProspect - Données reçues:', prospectData);
+            console.log('🔍 ProspectService.createProspect - ApporteurId:', apporteurId);
+
+            // Validation des données obligatoires
+            if (!prospectData.company_name || !prospectData.name || !prospectData.email || !prospectData.phone_number) {
+                throw new Error('Données obligatoires manquantes (nom entreprise, nom, email, téléphone)');
             }
 
-            // Créer le prospect
+            // Créer le prospect dans la table Client avec status = 'prospect'
+            const clientData = {
+                // Informations entreprise
+                company_name: prospectData.company_name,
+                siren: prospectData.siren || null,
+                address: prospectData.address || null,
+                website: prospectData.website || null,
+                
+                // Décisionnaire (mapper name vers name)
+                name: prospectData.name,
+                email: prospectData.email,
+                phone_number: prospectData.phone_number,
+                decision_maker_position: prospectData.decision_maker_position || null,
+                
+                // Qualification
+                qualification_score: prospectData.qualification_score || 5,
+                interest_level: prospectData.interest_level || 'medium',
+                budget_range: prospectData.budget_range || '10k-50k',
+                timeline: prospectData.timeline || '1-3months',
+                
+                // Métadonnées
+                source: prospectData.source || 'apporteur',
+                notes: prospectData.notes || null,
+                status: 'prospect', // IMPORTANT: Marquer comme prospect
+                apporteur_id: apporteurId,
+                
+                // Timestamps
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            };
+
+            console.log('📊 ProspectService.createProspect - Données à insérer:', clientData);
+
             const { data: prospect, error } = await supabase
-                .from('Prospect')
-                .insert({
-                    apporteur_id: apporteurId,
-                    company_name: prospectData.company_name,
-                    siren: prospectData.siren,
-                    address: prospectData.address,
-                    website: prospectData.website,
-                    decision_maker_first_name: prospectData.decision_maker_first_name,
-                    decision_maker_last_name: prospectData.decision_maker_last_name,
-                    decision_maker_email: prospectData.decision_maker_email,
-                    decision_maker_phone: prospectData.decision_maker_phone,
-                    decision_maker_position: prospectData.decision_maker_position,
-                    qualification_score: prospectData.qualification_score,
-                    interest_level: prospectData.interest_level,
-                    budget_range: prospectData.budget_range,
-                    timeline: prospectData.timeline,
-                    preselected_expert_id: prospectData.preselected_expert_id,
-                    expert_selection_reason: prospectData.expert_selection_reason,
-                    expert_note: prospectData.expert_note,
-                    source: prospectData.source,
-                    notes: prospectData.notes,
-                    status: 'qualified'
-                })
-                .select(`
-                    *,
-                    expert:Expert(id, name, email, specializations),
-                    apporteur:ApporteurAffaires(id, first_name, last_name, company_name)
-                `)
+                .from('Client')
+                .insert(clientData)
+                .select('*')
                 .single();
 
-            if (error) throw error;
+            if (error) {
+                console.error('❌ ProspectService.createProspect - Erreur Supabase:', error);
+                throw error;
+            }
 
-            // Si expert présélectionné, créer notification
-            let notificationSent = false;
-            if (prospectData.preselected_expert_id) {
-                const notificationResult = await this.notifyExpertNewProspect(
-                    prospectData.preselected_expert_id,
-                    prospect.id,
-                    apporteurId
-                );
-                notificationSent = notificationResult.success;
+            console.log('✅ ProspectService.createProspect - Prospect créé:', prospect.id);
+
+            // Gérer les produits sélectionnés si présents
+            if (prospectData.selected_products && prospectData.selected_products.length > 0) {
+                console.log('🔍 ProspectService.createProspect - Gestion des produits sélectionnés');
+                // TODO: Créer les liaisons avec les produits dans ClientProduitEligible
+                // Pour l'instant, on ignore car la table n'est pas encore configurée
+            }
+
+            // Gérer le RDV si présent
+            if (prospectData.meeting_type && prospectData.scheduled_date && prospectData.scheduled_time) {
+                console.log('🔍 ProspectService.createProspect - Création du RDV');
+                // TODO: Créer le RDV dans ClientRDV
+                // Pour l'instant, on ignore car la table n'est pas encore configurée
             }
 
             return {
                 prospect,
-                notification_sent: notificationSent,
-                expert_notified: !!prospectData.preselected_expert_id
+                notification_sent: false,
+                expert_notified: false
             };
 
         } catch (error) {
-            console.error('Erreur createProspect:', error);
-            throw new Error('Erreur lors de la création du prospect');
+            console.error('❌ ProspectService.createProspect - Erreur:', error);
+            throw new Error(`Erreur lors de la création du prospect: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
         }
     }
 
@@ -84,13 +101,10 @@ export class ProspectService {
             const offset = (page - 1) * limit;
 
             let query = supabase
-                .from('Prospect')
-                .select(`
-                    *,
-                    expert:Expert(id, name, email, specializations),
-                    apporteur:ApporteurAffaires(id, first_name, last_name, company_name)
-                `)
+                .from('Client')
+                .select('*')
                 .eq('apporteur_id', apporteurId)
+                .eq('status', 'prospect') // IMPORTANT: Récupérer seulement les prospects
                 .order('created_at', { ascending: false })
                 .range(offset, offset + limit - 1);
 
@@ -155,29 +169,16 @@ export class ProspectService {
     static async getProspectById(prospectId: string): Promise<ProspectResponse> {
         try {
             const { data: prospect, error } = await supabase
-                .from('Prospect')
-                .select(`
-                    *,
-                    expert:Expert(id, name, email, specializations, phone, company_name),
-                    apporteur:ApporteurAffaires(id, first_name, last_name, company_name),
-                    meetings:ProspectMeeting(
-                        id,
-                        meeting_type,
-                        scheduled_at,
-                        duration_minutes,
-                        location,
-                        status,
-                        outcome,
-                        notes
-                    )
-                `)
+                .from('Client')
+                .select('*')
                 .eq('id', prospectId)
+                .eq('status', 'prospect') // IMPORTANT: Vérifier que c'est bien un prospect
                 .single();
 
             if (error) throw error;
             if (!prospect) throw new Error('Prospect non trouvé');
 
-            return prospect;
+            return prospect as any; // Cast temporaire
 
         } catch (error) {
             console.error('Erreur getProspectById:', error);
@@ -186,54 +187,52 @@ export class ProspectService {
     }
 
     // ===== MISE À JOUR PROSPECT =====
-    static async updateProspect(prospectId: string, updateData: Partial<ProspectFormData>): Promise<ProspectResponse> {
+    static async updateProspect(prospectId: string, updateData: any): Promise<ProspectResponse> {
         try {
-            // Validation des données si présentes
-            if (Object.keys(updateData).length > 0) {
-                const validation = this.validateProspectData(updateData);
-                if (!validation.isValid) {
-                    throw new Error(`Données invalides: ${validation.errors.join(', ')}`);
-                }
-            }
+            console.log('🔍 ProspectService.updateProspect - ID:', prospectId);
+            console.log('🔍 ProspectService.updateProspect - Données:', updateData);
 
             const { data: prospect, error } = await supabase
-                .from('Prospect')
+                .from('Client')
                 .update({
                     ...updateData,
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', prospectId)
-                .select(`
-                    *,
-                    expert:Expert(id, name, email, specializations),
-                    apporteur:ApporteurAffaires(id, first_name, last_name, company_name)
-                `)
+                .eq('status', 'prospect') // IMPORTANT: Vérifier que c'est bien un prospect
+                .select('*')
                 .single();
 
             if (error) throw error;
             if (!prospect) throw new Error('Prospect non trouvé');
 
-            return prospect;
+            console.log('✅ ProspectService.updateProspect - Prospect mis à jour:', prospect.id);
+            return prospect as any; // Cast temporaire
 
         } catch (error) {
-            console.error('Erreur updateProspect:', error);
-            throw new Error('Erreur lors de la mise à jour du prospect');
+            console.error('❌ ProspectService.updateProspect - Erreur:', error);
+            throw new Error(`Erreur lors de la mise à jour du prospect: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
         }
     }
 
     // ===== SUPPRESSION PROSPECT =====
     static async deleteProspect(prospectId: string): Promise<void> {
         try {
+            console.log('🔍 ProspectService.deleteProspect - ID:', prospectId);
+
             const { error } = await supabase
-                .from('Prospect')
+                .from('Client')
                 .delete()
-                .eq('id', prospectId);
+                .eq('id', prospectId)
+                .eq('status', 'prospect'); // IMPORTANT: Vérifier que c'est bien un prospect
 
             if (error) throw error;
 
+            console.log('✅ ProspectService.deleteProspect - Prospect supprimé:', prospectId);
+
         } catch (error) {
-            console.error('Erreur deleteProspect:', error);
-            throw new Error('Erreur lors de la suppression du prospect');
+            console.error('❌ ProspectService.deleteProspect - Erreur:', error);
+            throw new Error(`Erreur lors de la suppression du prospect: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
         }
     }
 

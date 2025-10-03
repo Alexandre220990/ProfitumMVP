@@ -156,11 +156,46 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
     setError(null);
 
     try {
+      // Utiliser la route prospects qui existe dans apporteur.ts
       const url = prospectId 
-        ? `${config.API_URL}/api/apporteur/clients/${prospectId}`
-        : `${config.API_URL}/api/apporteur/clients`;
+        ? `${config.API_URL}/api/apporteur/prospects/${prospectId}`
+        : `${config.API_URL}/api/apporteur/prospects`;
       
       const method = prospectId ? 'PUT' : 'POST';
+
+      // Préparer les données pour la table Client
+      const clientData = {
+        // Informations entreprise
+        company_name: formData.company_name,
+        siren: formData.siren,
+        address: formData.address,
+        website: formData.website,
+        
+        // Décisionnaire
+        name: formData.name,
+        email: formData.email,
+        phone_number: formData.phone_number,
+        decision_maker_position: formData.decision_maker_position,
+        
+        // Qualification
+        qualification_score: formData.qualification_score,
+        interest_level: formData.interest_level,
+        budget_range: formData.budget_range,
+        timeline: formData.timeline,
+        
+        // RDV
+        meeting_type: formData.meeting_type,
+        scheduled_date: formData.scheduled_date,
+        scheduled_time: formData.scheduled_time,
+        location: formData.location,
+        
+        // Métadonnées
+        source: formData.source || 'apporteur',
+        notes: formData.notes,
+        
+        // Produits sélectionnés
+        selected_products: formData.selected_products
+      };
 
       const response = await fetch(url, {
         method,
@@ -168,21 +203,22 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(clientData)
       });
 
       if (!response.ok) {
-        throw new Error('Erreur lors de la sauvegarde');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Erreur lors de la sauvegarde');
       }
 
       const result = await response.json();
-      console.log('Prospect sauvegardé:', result);
+      console.log('✅ Prospect sauvegardé:', result);
       
       if (onSuccess) {
         onSuccess();
       }
     } catch (err) {
-      console.error('Erreur handleSubmit:', err);
+      console.error('❌ Erreur handleSubmit:', err);
       setError(err instanceof Error ? err.message : 'Erreur inconnue');
     } finally {
       setLoading(false);
