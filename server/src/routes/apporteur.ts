@@ -7,13 +7,12 @@ import { NotificationService } from '../services/NotificationService';
 
 const router = express.Router();
 
-// Middleware d'authentification pour toutes les routes
-router.use(authApporteur as any);
+// Middleware d'authentification déjà appliqué dans index.ts (enhancedAuthMiddleware)
 
 // ===== DASHBOARD =====
 router.get('/dashboard', async (req: any, res: any): Promise<void> => {
     try {
-        const dashboard = await ApporteurService.getDashboard(req.user!.apporteur_id);
+        const dashboard = await ApporteurService.getDashboard(req.user!.database_id);
         res.json({ success: true, data: dashboard });
     } catch (error) {
         console.error('Erreur dashboard apporteur:', error);
@@ -25,7 +24,7 @@ router.get('/dashboard', async (req: any, res: any): Promise<void> => {
 router.get('/stats', async (req: any, res: any): Promise<void> => {
     try {
         const { period = '30d' } = req.query;
-        const stats = await ApporteurService.getStats(req.user!.apporteur_id, period as string);
+        const stats = await ApporteurService.getStats(req.user!.database_id, period as string);
         res.json({ success: true, data: stats });
     } catch (error) {
         console.error('Erreur récupération stats:', error);
@@ -38,7 +37,7 @@ router.get('/stats', async (req: any, res: any): Promise<void> => {
 router.post('/prospects', async (req: any, res: any): Promise<void> => {
     try {
         const prospectData = req.body;
-        const apporteurId = req.user!.apporteur_id;
+        const apporteurId = req.user!.database_id;
         
         const result = await ProspectService.createProspect(apporteurId, prospectData);
         
@@ -53,7 +52,7 @@ router.post('/prospects', async (req: any, res: any): Promise<void> => {
 router.get('/prospects', async (req: any, res: any): Promise<void> => {
     try {
         const filters = req.query;
-        const apporteurId = req.user!.apporteur_id;
+        const apporteurId = req.user!.database_id;
         
         const result = await ProspectService.getProspects(apporteurId, filters);
         
@@ -113,7 +112,7 @@ router.delete('/prospects/:prospectId', checkProspectOwnership as any, async (re
 router.post('/prospects/:prospectId/convert', checkProspectOwnership as any, async (req: any, res: any): Promise<void> => {
     try {
         const { prospectId } = req.params;
-        const apporteurId = req.user!.apporteur_id;
+        const apporteurId = req.user!.database_id;
         
         const result = await ProspectService.convertProspectToClient(prospectId, apporteurId);
         
@@ -146,7 +145,7 @@ router.get('/experts', async (req: any, res: any): Promise<void> => {
 router.get('/commissions', async (req: any, res: any): Promise<void> => {
     try {
         const filters = req.query;
-        const apporteurId = req.user!.apporteur_id;
+        const apporteurId = req.user!.database_id;
         
         const result = await ApporteurService.getCommissions(apporteurId, filters);
         
@@ -165,12 +164,12 @@ router.get('/commissions', async (req: any, res: any): Promise<void> => {
 // Récupérer le profil
 router.get('/profile', async (req: any, res: any): Promise<void> => {
     try {
-        const { apporteur_id, first_name, last_name, email } = req.user!;
+        const { database_id, first_name, last_name, email } = req.user!;
         
         res.json({ 
             success: true, 
             data: {
-                id: apporteur_id,
+                id: database_id,
                 first_name,
                 last_name,
                 email
@@ -186,7 +185,7 @@ router.get('/profile', async (req: any, res: any): Promise<void> => {
 router.put('/profile', async (req: any, res: any): Promise<void> => {
     try {
         const { first_name, last_name, phone, company_name, company_type, siren } = req.body;
-        const apporteurId = req.user!.apporteur_id;
+        const apporteurId = req.user!.database_id;
         
         // Validation des données
         if (!first_name || !last_name) {
