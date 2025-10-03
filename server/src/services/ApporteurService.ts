@@ -82,28 +82,37 @@ export class ApporteurService {
                 conversion_rate: number;
             }> = [];
 
+            // Structure attendue par le frontend
             return {
-                total_prospects: totalProspects,
-                qualified_prospects: qualifiedProspects,
-                expert_assigned_prospects: expertAssignedProspects,
-                meeting_scheduled_prospects: meetingScheduledProspects,
-                meeting_completed_prospects: meetingCompletedProspects,
-                converted_prospects: convertedProspects,
-                lost_prospects: lostProspects,
-                conversion_rate: Math.round(conversionRate * 100) / 100,
-                experts_contacted: expertsContacted,
-                experts_accepted: 0, // À calculer
-                experts_declined: 0, // À calculer
-                meetings_scheduled: meetingsScheduled,
-                meetings_completed: meetingsCompleted,
-                pending_commissions: pendingCommissions,
-                confirmed_commissions: confirmedCommissions,
-                paid_commissions: paidCommissions,
-                total_earnings: totalEarnings,
-                prospects_by_status: prospectsByStatus,
-                avg_qualification_score: Math.round(avgQualificationScore * 100) / 100,
-                avg_conversion_time: 0, // À calculer
-                top_experts: topExperts
+                prospects: {
+                    total: totalProspects,
+                    qualified: qualifiedProspects,
+                    pending: prospects.filter(p => p.status === 'pending').length,
+                    new_this_month: prospects.filter(p => {
+                        const created = new Date(p.created_at);
+                        const now = new Date();
+                        return created.getMonth() === now.getMonth() && created.getFullYear() === now.getFullYear();
+                    }).length
+                },
+                conversions: {
+                    signed_this_month: convertedProspects,
+                    conversion_rate: Math.round(conversionRate * 100) / 100,
+                    in_progress: meetingScheduledProspects + meetingCompletedProspects,
+                    monthly_goal: 10, // Objectif mensuel par défaut
+                    goal_achieved: convertedProspects >= 10
+                },
+                commissions: {
+                    pending: pendingCommissions,
+                    paid_this_month: paidCommissions,
+                    total_year: totalEarnings,
+                    pending_amount: pendingCommissions * 1000 // Estimation
+                },
+                experts: {
+                    active: expertsContacted,
+                    available: 0, // À calculer
+                    top_performer: topExperts.length > 0 ? topExperts[0].expert_name : '',
+                    avg_response_time: '2h' // Estimation
+                }
             };
 
         } catch (error) {

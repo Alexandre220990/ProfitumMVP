@@ -72,48 +72,31 @@ export interface ProspectResponse {
 }
 
 export interface ApporteurDashboard {
-    // Métriques prospects
-    total_prospects: number;
-    qualified_prospects: number;
-    expert_assigned_prospects: number;
-    meeting_scheduled_prospects: number;
-    meeting_completed_prospects: number;
-    converted_prospects: number;
-    lost_prospects: number;
-    conversion_rate: number;
-    
-    // Métriques expert
-    experts_contacted: number;
-    experts_accepted: number;
-    experts_declined: number;
-    meetings_scheduled: number;
-    meetings_completed: number;
-    
-    // Métriques commissions
-    pending_commissions: number;
-    confirmed_commissions: number;
-    paid_commissions: number;
-    total_earnings: number;
-    
-    // Pipeline
-    prospects_by_status: {
+    prospects: {
+        total: number;
         qualified: number;
-        expert_assigned: number;
-        meeting_scheduled: number;
-        meeting_completed: number;
-        converted: number;
-        lost: number;
+        pending: number;
+        new_this_month: number;
     };
-    
-    // Performance
-    avg_qualification_score: number;
-    avg_conversion_time: number; // en jours
-    top_experts: Array<{
-        expert_id: string;
-        expert_name: string;
-        prospects_count: number;
+    conversions: {
+        signed_this_month: number;
         conversion_rate: number;
-    }>;
+        in_progress: number;
+        monthly_goal: number;
+        goal_achieved: boolean;
+    };
+    commissions: {
+        pending: number;
+        paid_this_month: number;
+        total_year: number;
+        pending_amount: number;
+    };
+    experts: {
+        active: number;
+        available: number;
+        top_performer: string;
+        avg_response_time: string;
+    };
 }
 
 export interface ExpertNotificationData {

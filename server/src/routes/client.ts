@@ -12,6 +12,104 @@ const router = express.Router();
 
 // Route de test d'authentification supprimée - l'authentification est gérée par le middleware enhancedAuthMiddleware
 
+// GET /api/client/dashboard - Dashboard client
+router.get('/dashboard', enhancedAuthMiddleware, async (req, res) => {
+  try {
+    const user = (req as AuthenticatedRequest).user;
+    
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur non authentifié'
+      });
+    }
+    
+    // Vérifier que l'utilisateur est un client
+    if (user.type !== 'client') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux clients'
+      });
+    }
+
+    console.log('🔍 Récupération dashboard client:', {
+      userId: user.id,
+      databaseId: user.database_id,
+      email: user.email
+    });
+
+    // Récupérer les statistiques du client
+    const { count: totalAudits } = await supabase
+      .from('Audit')
+      .select('*', { count: 'exact', head: true })
+      .eq('client_id', user.database_id);
+
+    const { count: activeAudits } = await supabase
+      .from('Audit')
+      .select('*', { count: 'exact', head: true })
+      .eq('client_id', user.database_id)
+      .eq('status', 'en_cours');
+
+    const { count: completedAudits } = await supabase
+      .from('Audit')
+      .select('*', { count: 'exact', head: true })
+      .eq('client_id', user.database_id)
+      .eq('status', 'terminé');
+
+    // Récupérer les gains potentiels et obtenus
+    const { data: auditsData } = await supabase
+      .from('Audit')
+      .select('potential_gain, obtained_gain')
+      .eq('client_id', user.database_id);
+
+    const totalPotentialGain = auditsData?.reduce((sum, audit) => 
+      sum + (audit.potential_gain || 0), 0) || 0;
+    
+    const totalObtainedGain = auditsData?.reduce((sum, audit) => 
+      sum + (audit.obtained_gain || 0), 0) || 0;
+
+    // Structure attendue par le frontend
+    const dashboardData = {
+      audits: {
+        total: totalAudits || 0,
+        active: activeAudits || 0,
+        completed: completedAudits || 0,
+        new_this_month: 0 // À calculer si nécessaire
+      },
+      gains: {
+        potential_total: totalPotentialGain,
+        obtained_total: totalObtainedGain,
+        pending_amount: totalPotentialGain - totalObtainedGain,
+        monthly_goal: 10000 // Objectif mensuel par défaut
+      },
+      products: {
+        eligible: 0, // À récupérer depuis ClientProduitEligible
+        in_progress: activeAudits || 0,
+        completed: completedAudits || 0
+      },
+      notifications: {
+        unread: 0, // À récupérer depuis les notifications
+        pending_actions: 0,
+        upcoming_deadlines: 0
+      }
+    };
+
+    console.log('✅ Dashboard client récupéré:', dashboardData);
+
+    return res.json({
+      success: true,
+      data: dashboardData
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur dashboard client:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération du dashboard'
+    });
+  }
+});
+
 // GET /api/client/produits-eligibles - Récupérer les produits éligibles du client connecté
 router.get('/produits-eligibles', enhancedAuthMiddleware, async (req, res) => {
   try {
