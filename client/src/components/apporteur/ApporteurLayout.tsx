@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '@/hooks/use-auth';
 import ApporteurAuthGuard from './ApporteurAuthGuard';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -29,8 +30,9 @@ export default function ApporteurLayout({ children }: ApporteurLayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Récupérer les données utilisateur depuis localStorage
-  const userData = JSON.parse(localStorage.getItem('user_data') || '{}');
+  // Utiliser le contexte d'authentification au lieu de localStorage
+  const { user } = useAuth();
+  const userData = user || {} as any;
 
   const handleLogout = () => {
     localStorage.removeItem('token');
