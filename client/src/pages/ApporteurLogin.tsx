@@ -41,10 +41,10 @@ export default function ApporteurLogin() {
 
       const result = await response.json();
       
-      // Stocker le token
-      localStorage.setItem('token', result.token);
+      // Stocker le token (correction structure de réponse)
+      localStorage.setItem('token', result.data.token);
       localStorage.setItem('user_type', 'apporteur_affaires');
-      localStorage.setItem('user_data', JSON.stringify(result.user));
+      localStorage.setItem('user_data', JSON.stringify(result.data.user));
 
       // Rediriger vers le dashboard apporteur
       navigate('/apporteur/dashboard');
