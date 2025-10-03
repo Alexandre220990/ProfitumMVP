@@ -235,7 +235,7 @@ export const enhancedAuthMiddleware = async (
         // Si ça échoue, essayer de décoder le token JWT personnalisé
         try {
           const jwt = require('jsonwebtoken');
-          const decoded = jwt.verify(token, process.env.SUPABASE_JWT_SECRET || 'votre_secret_jwt_super_securise');
+          const decoded = jwt.verify(token, process.env.JWT_SECRET || 'votre_secret_jwt_super_securise');
           user = {
             id: decoded.id,
             email: decoded.email,
