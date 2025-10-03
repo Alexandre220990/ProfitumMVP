@@ -311,7 +311,7 @@ router.post('/apporteur/login', async (req, res) => {
     
     // 2. Recherche dans la table ApporteurAffaires
     console.log("🔍 Recherche apporteur dans ApporteurAffaires...");
-    const { data: apporteur, error: apporteurError } = await supabase
+    let { data: apporteur, error: apporteurError } = await supabase
       .from('ApporteurAffaires')
       .select('id, email, first_name, last_name, company_name, status, created_at')
       .eq('email', userEmail)
@@ -432,7 +432,7 @@ router.post('/login', async (req, res) => {
     if (type === 'apporteur_affaires') {
       // ===== CONNEXION APPORTEUR : Recherche UNIQUEMENT dans ApporteurAffaires =====
       console.log("🔍 Recherche apporteur dans ApporteurAffaires (route générique)...");
-      const { data: apporteur, error: apporteurError } = await supabase
+      let { data: apporteur, error: apporteurError } = await supabase
         .from('ApporteurAffaires')
         .select('id, email, first_name, last_name, company_name, status, created_at')
         .eq('email', userEmail)
