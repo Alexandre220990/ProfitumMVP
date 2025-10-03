@@ -311,7 +311,7 @@ router.post('/apporteur/login', async (req, res) => {
     console.log("🔍 Recherche apporteur avec email:", userEmail);
     const { data: apporteur, error: apporteurError } = await supabase
       .from('ApporteurAffaires')
-      .select('*')
+      .select('id, email, first_name, last_name, company_name, status')
       .eq('email', userEmail)
       .single();
       
@@ -319,24 +319,8 @@ router.post('/apporteur/login', async (req, res) => {
     console.log("   - Error:", apporteurError ? apporteurError.message : 'NONE');
     console.log("   - Data:", apporteur ? 'FOUND' : 'NULL');
     if (apporteur) {
-      console.log("   - Clés disponibles:", Object.keys(apporteur));
-      console.log("   - Toutes les données:", JSON.stringify(apporteur, null, 2));
-      
-      // Vérification spécifique du champ status
-      console.log("   - apporteur.status:", apporteur.status);
-      console.log("   - typeof apporteur.status:", typeof apporteur.status);
-      console.log("   - 'status' in apporteur:", 'status' in apporteur);
-      
-      // Essayer différents accès au champ status
-      console.log("   - apporteur['status']:", apporteur['status']);
-      console.log("   - apporteur.status === undefined:", apporteur.status === undefined);
-      console.log("   - apporteur.status === null:", apporteur.status === null);
-      
-      if ('status' in apporteur) {
-        console.log("✅ Champ 'status' présent dans la réponse");
-      } else {
-        console.log("❌ PROBLÈME: Champ 'status' absent de la réponse");
-      }
+      console.log("   - Statut:", apporteur.status);
+      console.log("   - Type:", typeof apporteur.status);
     }
       
     if (apporteurError || !apporteur) {
@@ -349,53 +333,18 @@ router.post('/apporteur/login', async (req, res) => {
     }
     
     // Vérifier le statut de l'apporteur
-    // CORRECTION: Le champ s'appelle "status" (minuscules) selon les logs
-    let currentStatus = apporteur.status || apporteur['status'] || null;
+    console.log("🔍 Vérification statut:", apporteur.status, "=== 'active' ?", apporteur.status === 'active');
     
-    console.log("🔍 Récupération statut:");
-    console.log("   - apporteur.status:", apporteur.status);
-    console.log("   - apporteur['status']:", apporteur['status']);
-    console.log("   - currentStatus final:", currentStatus);
-    console.log("   - typeof currentStatus:", typeof currentStatus);
-    
-    // SOLUTION DE CONTOURNEMENT: Si le champ status est absent, forcer une requête directe
-    if (currentStatus === null || currentStatus === undefined) {
-      console.log("⚠️ Statut null/undefined, requête de récupération directe...");
-      
-      const { data: statusData, error: statusError } = await supabase
-        .from('ApporteurAffaires')
-        .select('status')
-        .eq('email', userEmail)
-        .single();
-      
-      if (statusError) {
-        console.log("❌ Erreur récupération statut:", statusError.message);
-      } else {
-        currentStatus = statusData.status;
-        console.log("✅ Statut récupéré directement:", currentStatus);
-      }
-    }
-    
-    console.log("🔍 Vérification statut final:", currentStatus, "=== 'active' ?", currentStatus === 'active');
-    console.log("🔍 Statut null/undefined ?", currentStatus === null || currentStatus === undefined);
-    
-    if (currentStatus !== 'active') {
-      console.log("❌ Apporteur non actif:", currentStatus);
+    if (apporteur.status !== 'active') {
+      console.log("❌ Apporteur non actif:", apporteur.status);
       return res.status(403).json({
         success: false,
         message: 'Votre compte apporteur d\'affaires n\'est pas encore activé. Contactez l\'administrateur.',
-        status: currentStatus,
-        debug: {
-          status: currentStatus,
-          type: typeof currentStatus,
-          isNull: currentStatus === null,
-          isUndefined: currentStatus === undefined,
-          originalData: apporteur
-        }
+        status: apporteur.status
       });
     }
     
-    console.log("✅ Apporteur authentifié avec succès:", { email: userEmail, status: currentStatus });
+    console.log("✅ Apporteur authentifié avec succès:", { email: userEmail, status: apporteur.status });
 
     // Générer le token JWT (Pattern Admin)
     const token = jwt.sign(
