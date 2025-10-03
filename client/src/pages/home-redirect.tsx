@@ -27,6 +27,9 @@ export default function HomeRedirect() { const { user, isLoading } = useAuth();
         } else if (user.type === 'expert') { 
           console.log('HomeRedirect - Redirection vers dashboard expert');
           navigate('/dashboard/expert'); 
+        } else if (user.type === 'apporteur_affaires') {
+          console.log('HomeRedirect - Redirection vers dashboard apporteur');
+          navigate('/apporteur/dashboard');
         } else { 
           console.log('HomeRedirect - Type utilisateur inconnu, redirection vers home');
           navigate('/home'); 
