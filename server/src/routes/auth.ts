@@ -15,9 +15,10 @@ import { googleCalendarService } from '../services/google-calendar-service';
 dotenv.config();
 
 // Créer un client Supabase avec la clé de service pour les opérations admin
+// En production, s'assurer d'utiliser SERVICE_ROLE_KEY pour les opérations admin
 const supabaseAdmin = createClient(
   process.env.SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || '',
   {
     auth: {
       autoRefreshToken: false,
