@@ -320,6 +320,9 @@ router.post('/apporteur/login', async (req, res) => {
     console.log("📊 Résultat requête ApporteurAffaires:");
     console.log("   - Error:", apporteurError ? apporteurError.message : 'NONE');
     console.log("   - Data:", apporteur ? 'FOUND' : 'NULL');
+    if (apporteur) {
+      console.log("   - Apporteur complet:", JSON.stringify(apporteur, null, 2));
+    }
     
     if (apporteurError) {
       console.log("❌ Erreur requête apporteur:", apporteurError.message);

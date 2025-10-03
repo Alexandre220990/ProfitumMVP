@@ -13,14 +13,14 @@ const supabaseAnonKey = process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KE
 
 // En production, on peut utiliser la service role key comme fallback pour la clé anonyme
 const isProduction = process.env.NODE_ENV === 'production';
-const effectiveAnonKey = supabaseAnonKey || (isProduction ? supabaseServiceRoleKey : null);
+const effectiveAnonKey = supabaseAnonKey || supabaseServiceRoleKey; // Toujours utiliser SERVICE_ROLE_KEY comme fallback
 
 if (!supabaseUrl || !supabaseServiceRoleKey) {
   throw new Error('Configuration Supabase manquante: SUPABASE_URL et SUPABASE_SERVICE_ROLE_KEY sont requis');
 }
 
 if (!effectiveAnonKey) {
-  throw new Error('Configuration Supabase manquante: SUPABASE_KEY ou SUPABASE_ANON_KEY est requis en développement');
+  throw new Error('Configuration Supabase manquante: SUPABASE_SERVICE_ROLE_KEY est requis');
 }
 
 // Configuration HTTPS
