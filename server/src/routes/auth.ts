@@ -184,7 +184,7 @@ router.post('/client/login', async (req, res) => {
         email: userEmail, 
         type: 'client' 
       },
-      process.env.SUPABASE_JWT_SECRET || 'votre_secret_jwt_super_securise',
+      process.env.JWT_SECRET || 'votre_secret_jwt_super_securise',
       { expiresIn: '24h' }
     );
 
@@ -265,7 +265,7 @@ router.post('/expert/login', async (req, res) => {
         email: userEmail, 
         type: 'expert' 
       },
-      process.env.SUPABASE_JWT_SECRET || 'votre_secret_jwt_super_securise',
+      process.env.JWT_SECRET || 'votre_secret_jwt_super_securise',
       { expiresIn: '24h' }
     );
 
@@ -368,7 +368,7 @@ router.post('/apporteur/login', async (req, res) => {
         type: 'apporteur_affaires',
         database_id: apporteur.id
       },
-      process.env.SUPABASE_JWT_SECRET || 'votre_secret_jwt_super_securise',
+      process.env.JWT_SECRET || 'votre_secret_jwt_super_securise',
       { expiresIn: '24h' }
     );
 
@@ -542,7 +542,7 @@ router.post('/login', async (req, res) => {
         email: userEmail, 
         type: userType 
       },
-      process.env.SUPABASE_JWT_SECRET || 'votre_secret_jwt_super_securise',
+      process.env.JWT_SECRET || 'votre_secret_jwt_super_securise',
       { expiresIn: '24h' }
     );
 
