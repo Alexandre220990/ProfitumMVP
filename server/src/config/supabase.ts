@@ -9,7 +9,7 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 // Configuration Supabase
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const supabaseAnonKey = process.env.SUPABASE_KEY;
+const supabaseAnonKey = process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY;
 
 // En production, on peut utiliser la service role key comme fallback pour la clé anonyme
 const isProduction = process.env.NODE_ENV === 'production';
@@ -20,7 +20,7 @@ if (!supabaseUrl || !supabaseServiceRoleKey) {
 }
 
 if (!effectiveAnonKey) {
-  throw new Error('Configuration Supabase manquante: SUPABASE_KEY est requis en développement');
+  throw new Error('Configuration Supabase manquante: SUPABASE_KEY ou SUPABASE_ANON_KEY est requis en développement');
 }
 
 // Configuration HTTPS
