@@ -22,15 +22,14 @@ export default function ApporteurLogin() {
     setError(null);
 
     try {
-      const response = await fetch(`${config.API_URL}/api/auth/login`, {
+      const response = await fetch(`${config.API_URL}/api/auth/apporteur/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           email,
-          password,
-          user_type: 'apporteur_affaires'
+          password
         }),
       });
 
