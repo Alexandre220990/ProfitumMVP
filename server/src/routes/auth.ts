@@ -402,8 +402,9 @@ router.post('/apporteur/login', async (req, res) => {
 // Route de connexion GÉNÉRIQUE (pour compatibilité)
 router.post('/login', async (req, res) => {
   try {
-    const { email, password, type } = req.body;
-    console.log("🔑 Tentative de connexion:", { email, type });
+    const { email, password, type, user_type } = req.body;
+    const effectiveType = type || user_type; // Support des deux formats
+    console.log("🔑 Tentative de connexion:", { email, type: effectiveType });
 
     // Authentifier avec Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
@@ -424,12 +425,12 @@ router.post('/login', async (req, res) => {
     const userMetadata = authData.user.user_metadata || {};
     
     // LOGIQUE EXCLUSIVE SELON LA PAGE DE CONNEXION UTILISÉE
-    let userType = type;
+    let userType = effectiveType;
     let userDetails = null;
     
-    console.log(`🔍 Connexion ${type} - Recherche EXCLUSIVE dans table ${type}`);
+    console.log(`🔍 Connexion ${effectiveType} - Recherche EXCLUSIVE dans table ${effectiveType}`);
     
-    if (type === 'apporteur_affaires') {
+    if (effectiveType === 'apporteur_affaires') {
       // ===== CONNEXION APPORTEUR : Recherche UNIQUEMENT dans ApporteurAffaires =====
       console.log("🔍 Recherche apporteur dans ApporteurAffaires (route générique)...");
       let { data: apporteur, error: apporteurError } = await supabase
@@ -468,7 +469,7 @@ router.post('/login', async (req, res) => {
       userType = 'apporteur_affaires';
       console.log("✅ Apporteur authentifié avec succès (générique):", { email: userEmail, status: apporteur.status });
       
-    } else if (type === 'client') {
+    } else if (effectiveType === 'client') {
       // ===== CONNEXION CLIENT : Recherche UNIQUEMENT dans Client =====
       const { data: client, error: clientError } = await supabase
         .from('Client')
@@ -489,7 +490,7 @@ router.post('/login', async (req, res) => {
       userType = 'client';
       console.log("✅ Client authentifié avec succès:", { email: userEmail, status: client.status });
       
-    } else if (type === 'expert') {
+    } else if (effectiveType === 'expert') {
       // ===== CONNEXION EXPERT : Recherche UNIQUEMENT dans Expert =====
       const { data: expert, error: expertError } = await supabase
         .from('Expert')
@@ -535,7 +536,7 @@ router.post('/login', async (req, res) => {
     // Générer le token JWT avec l'ID de la table spécifique
     const token = jwt.sign(
       { 
-        id: userType === 'apporteur_affaires' ? userId : (userDetails?.id || userId), // Auth ID pour apporteur, ID table pour autres
+        id: effectiveType === 'apporteur_affaires' ? userId : (userDetails?.id || userId), // Auth ID pour apporteur, ID table pour autres
         email: userEmail, 
         type: userType,
         database_id: userDetails?.id // Garder l'ID de la table pour référence
