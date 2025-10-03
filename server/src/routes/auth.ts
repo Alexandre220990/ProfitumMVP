@@ -342,20 +342,11 @@ router.post('/apporteur/login', async (req, res) => {
       });
     }
     
-    // 3. Vérification du statut
-    console.log("🔍 Vérification statut apporteur:");
+    // 3. Vérification du statut (DÉSACTIVÉE - TOUS LES APPORTEURS PEUVENT SE CONNECTER)
+    console.log("🔍 Statut apporteur (vérification désactivée):");
     console.log("   - Status:", apporteur.status);
     console.log("   - Status Type:", typeof apporteur.status);
-    console.log("   - Is Active:", apporteur.status === 'active');
-    
-    if (apporteur.status !== 'active') {
-      console.log("❌ Apporteur non actif:", apporteur.status);
-      return res.status(403).json({
-        success: false,
-        message: 'Votre compte apporteur d\'affaires n\'est pas encore activé. Contactez l\'administrateur.',
-        status: apporteur.status
-      });
-    }
+    console.log("✅ Connexion autorisée pour tous les apporteurs (vérification status désactivée)");
     
     console.log("✅ Apporteur authentifié avec succès:", { 
       email: userEmail, 
@@ -459,16 +450,9 @@ router.post('/login', async (req, res) => {
         });
       }
       
-      // Vérifier le statut de l'apporteur
-      console.log("🔍 Vérification statut (générique):", apporteur.status, "=== 'active' ?", apporteur.status === 'active');
-      if (apporteur.status !== 'active') {
-        console.log("❌ Apporteur non actif:", apporteur.status);
-        return res.status(403).json({
-          success: false,
-          message: 'Votre compte apporteur d\'affaires n\'est pas encore activé. Contactez l\'administrateur.',
-          status: apporteur.status
-        });
-      }
+      // Vérification du statut désactivée (TOUS LES APPORTEURS PEUVENT SE CONNECTER)
+      console.log("🔍 Statut apporteur (générique, vérification désactivée):", apporteur.status);
+      console.log("✅ Connexion autorisée pour tous les apporteurs (vérification status désactivée)");
       
       userDetails = apporteur;
       userType = 'apporteur_affaires';
