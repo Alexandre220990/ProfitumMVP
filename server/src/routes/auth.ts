@@ -286,13 +286,13 @@ router.post('/expert/login', async (req, res) => {
   }
 });
 
-// Route de connexion APPORTEUR UNIQUEMENT (Pattern Admin)
+// Route de connexion APPORTEUR UNIQUEMENT - VERSION REFACTORISÉE
 router.post('/apporteur/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     console.log("🔑 Tentative de connexion APPORTEUR:", { email });
 
-    // Authentifier avec Supabase Auth (même client que CLIENT/EXPERT)
+    // 1. Authentification Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email,
       password
@@ -307,27 +307,31 @@ router.post('/apporteur/login', async (req, res) => {
     }
 
     const userEmail = authData.user.email;
+    console.log("✅ Authentification Supabase réussie pour:", userEmail);
     
-    console.log("🔍 Connexion APPORTEUR - Recherche EXCLUSIVE dans ApporteurAffaires");
-    
-    // ===== RECHERCHE UNIQUEMENT DANS APPORTEURAFFAIRES (Pattern Admin) =====
-    console.log("🔍 Recherche apporteur avec email:", userEmail);
+    // 2. Recherche dans la table ApporteurAffaires
+    console.log("🔍 Recherche apporteur dans ApporteurAffaires...");
     const { data: apporteur, error: apporteurError } = await supabase
       .from('ApporteurAffaires')
-      .select('id, email, first_name, last_name, company_name, status')
+      .select('id, email, first_name, last_name, company_name, status, created_at')
       .eq('email', userEmail)
       .single();
       
-    console.log("📊 Résultat requête Supabase:");
+    console.log("📊 Résultat requête ApporteurAffaires:");
     console.log("   - Error:", apporteurError ? apporteurError.message : 'NONE');
     console.log("   - Data:", apporteur ? 'FOUND' : 'NULL');
-    if (apporteur) {
-      console.log("   - Statut:", apporteur.status);
-      console.log("   - Type:", typeof apporteur.status);
+    
+    if (apporteurError) {
+      console.log("❌ Erreur requête apporteur:", apporteurError.message);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la vérification du compte apporteur',
+        error: 'DATABASE_ERROR'
+      });
     }
       
-    if (apporteurError || !apporteur) {
-      console.log("❌ Apporteur non trouvé:", apporteurError?.message);
+    if (!apporteur) {
+      console.log("❌ Apporteur non trouvé dans ApporteurAffaires");
       return res.status(403).json({
         success: false,
         message: 'Vous n\'êtes pas enregistré comme apporteur d\'affaires. Contactez l\'administrateur.',
@@ -335,8 +339,11 @@ router.post('/apporteur/login', async (req, res) => {
       });
     }
     
-    // Vérifier le statut de l'apporteur
-    console.log("🔍 Vérification statut:", apporteur.status, "=== 'active' ?", apporteur.status === 'active');
+    // 3. Vérification du statut
+    console.log("🔍 Vérification statut apporteur:");
+    console.log("   - Status:", apporteur.status);
+    console.log("   - Status Type:", typeof apporteur.status);
+    console.log("   - Is Active:", apporteur.status === 'active');
     
     if (apporteur.status !== 'active') {
       console.log("❌ Apporteur non actif:", apporteur.status);
@@ -347,9 +354,13 @@ router.post('/apporteur/login', async (req, res) => {
       });
     }
     
-    console.log("✅ Apporteur authentifié avec succès:", { email: userEmail, status: apporteur.status });
+    console.log("✅ Apporteur authentifié avec succès:", { 
+      email: userEmail, 
+      status: apporteur.status,
+      id: apporteur.id 
+    });
 
-    // Générer le token JWT (Pattern Admin)
+    // 4. Génération du token JWT
     const token = jwt.sign(
       { 
         id: apporteur.id,
@@ -361,6 +372,7 @@ router.post('/apporteur/login', async (req, res) => {
       { expiresIn: '24h' }
     );
 
+    // 5. Réponse de succès
     return res.json({
       success: true,
       data: {
@@ -377,6 +389,7 @@ router.post('/apporteur/login', async (req, res) => {
         }
       }
     });
+    
   } catch (error) {
     console.error('❌ Erreur lors de la connexion APPORTEUR:', error);
     return res.status(500).json({
@@ -419,11 +432,20 @@ router.post('/login', async (req, res) => {
     
     if (type === 'apporteur_affaires') {
       // ===== CONNEXION APPORTEUR : Recherche UNIQUEMENT dans ApporteurAffaires =====
+      console.log("🔍 Recherche apporteur dans ApporteurAffaires (route générique)...");
       const { data: apporteur, error: apporteurError } = await supabase
         .from('ApporteurAffaires')
-        .select('*')
+        .select('id, email, first_name, last_name, company_name, status, created_at')
         .eq('email', userEmail)
         .single();
+        
+      console.log("📊 Résultat requête ApporteurAffaires (générique):");
+      console.log("   - Error:", apporteurError ? apporteurError.message : 'NONE');
+      console.log("   - Data:", apporteur ? 'FOUND' : 'NULL');
+      if (apporteur) {
+        console.log("   - Status:", apporteur.status);
+        console.log("   - Status Type:", typeof apporteur.status);
+      }
         
       if (apporteurError || !apporteur) {
         console.log("❌ Apporteur non trouvé:", apporteurError?.message);
@@ -435,6 +457,7 @@ router.post('/login', async (req, res) => {
       }
       
       // Vérifier le statut de l'apporteur
+      console.log("🔍 Vérification statut (générique):", apporteur.status, "=== 'active' ?", apporteur.status === 'active');
       if (apporteur.status !== 'active') {
         console.log("❌ Apporteur non actif:", apporteur.status);
         return res.status(403).json({
@@ -446,7 +469,7 @@ router.post('/login', async (req, res) => {
       
       userDetails = apporteur;
       userType = 'apporteur_affaires';
-      console.log("✅ Apporteur authentifié avec succès:", { email: userEmail, status: apporteur.status });
+      console.log("✅ Apporteur authentifié avec succès (générique):", { email: userEmail, status: apporteur.status });
       
     } else if (type === 'client') {
       // ===== CONNEXION CLIENT : Recherche UNIQUEMENT dans Client =====
