@@ -322,6 +322,11 @@ router.post('/apporteur/login', async (req, res) => {
     console.log("   - Data:", apporteur ? 'FOUND' : 'NULL');
     if (apporteur) {
       console.log("   - Apporteur complet:", JSON.stringify(apporteur, null, 2));
+      // Si apporteur est un tableau, prendre le premier élément
+      if (Array.isArray(apporteur)) {
+        console.log("⚠️  Apporteur est un tableau, extraction du premier élément");
+        apporteur = apporteur[0];
+      }
     }
     
     if (apporteurError) {
@@ -439,6 +444,11 @@ router.post('/login', async (req, res) => {
       if (apporteur) {
         console.log("   - Status:", apporteur.status);
         console.log("   - Status Type:", typeof apporteur.status);
+        // Si apporteur est un tableau, prendre le premier élément
+        if (Array.isArray(apporteur)) {
+          console.log("⚠️  Apporteur est un tableau (générique), extraction du premier élément");
+          apporteur = apporteur[0];
+        }
       }
         
       if (apporteurError || !apporteur) {
