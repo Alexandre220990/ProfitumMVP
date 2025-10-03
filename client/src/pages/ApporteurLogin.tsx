@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Eye, EyeOff, LogIn, Building } from 'lucide-react';
-import { config } from '@/config';
+import { useAuth } from '@/hooks/use-auth';
+import { toast } from 'sonner';
 
 export default function ApporteurLogin() {
   const [email, setEmail] = useState('');
@@ -15,6 +16,7 @@ export default function ApporteurLogin() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,34 +24,19 @@ export default function ApporteurLogin() {
     setError(null);
 
     try {
-      const response = await fetch(`${config.API_URL}/api/auth/apporteur/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email,
-          password
-        }),
+      await login({
+        email,
+        password,
+        type: 'apporteur_affaires'
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Erreur de connexion');
-      }
-
-      const result = await response.json();
       
-      // Stocker le token (correction structure de réponse)
-      localStorage.setItem('token', result.data.token);
-      localStorage.setItem('user_type', 'apporteur_affaires');
-      localStorage.setItem('user_data', JSON.stringify(result.data.user));
-
-      // Rediriger vers le dashboard apporteur
-      navigate('/apporteur/dashboard');
+      toast.success('Connexion réussie ! Bienvenue dans votre espace apporteur d\'affaires');
+      
+      // La redirection est gérée automatiquement par useAuth
     } catch (err) {
       console.error('Erreur connexion:', err);
       setError(err instanceof Error ? err.message : 'Erreur de connexion');
+      toast.error(err instanceof Error ? err.message : 'Erreur de connexion');
     } finally {
       setLoading(false);
     }
