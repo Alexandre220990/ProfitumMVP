@@ -109,7 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
       setUser(userData);
 
-      toast.success(`Connexion réussie ! Bienvenue ${user.username || user.email}`);
+      toast.success(`Connexion réussie ! Bienvenue ${user.first_name || user.email}`);
 
       // Rediriger vers le dashboard approprié selon le type d'utilisateur
       console.log('🔀 Redirection utilisateur (login):', { type: user.type, email: user.email });

@@ -3,15 +3,19 @@ import { AuthUser } from "./auth";
 // --- Base commune à tous les utilisateurs ---
 export interface BaseUser { id: string;
   email: string;
-  type: "client" | "expert" | "admin";
+  type: "client" | "expert" | "admin" | "apporteur_affaires";
   username?: string;
   name?: string;
+  first_name?: string;
+  last_name?: string;
   company_name?: string;
   phone_number?: string;
   address?: string;
   city?: string;
   postal_code?: string;
   siren?: string;
+  status?: string;
+  database_id?: string;
   created_at?: string;
   updated_at?: string; }
 
