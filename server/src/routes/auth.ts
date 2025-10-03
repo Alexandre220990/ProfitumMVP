@@ -180,9 +180,10 @@ router.post('/client/login', async (req, res) => {
     // Générer le token JWT
     const token = jwt.sign(
       { 
-        id: client.id,
+        id: authData.user.id,  // Supabase Auth ID
         email: userEmail, 
-        type: 'client' 
+        type: 'client',
+        database_id: client.id  // ID de la table Client
       },
       process.env.JWT_SECRET || 'votre_secret_jwt_super_securise',
       { expiresIn: '24h' }
@@ -533,13 +534,13 @@ router.post('/login', async (req, res) => {
 
     // userDetails est maintenant toujours défini grâce à la logique exclusive
 
-    // Générer le token JWT avec l'ID de la table spécifique
+    // Générer le token JWT avec l'ID Supabase Auth pour tous les types
     const token = jwt.sign(
       { 
-        id: effectiveType === 'apporteur_affaires' ? userId : (userDetails?.id || userId), // Auth ID pour apporteur, ID table pour autres
+        id: userId,  // Toujours utiliser l'ID Supabase Auth
         email: userEmail, 
         type: userType,
-        database_id: userDetails?.id // Garder l'ID de la table pour référence
+        database_id: userDetails?.id  // ID de la table spécifique
       },
       process.env.JWT_SECRET || 'votre_secret_jwt_super_securise',
       { expiresIn: '24h' }
