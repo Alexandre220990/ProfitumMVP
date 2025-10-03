@@ -363,10 +363,10 @@ router.post('/apporteur/login', async (req, res) => {
     // 4. Génération du token JWT
     const token = jwt.sign(
       { 
-        id: apporteur.id,
+        id: authData.user.id,  // Utiliser l'Auth ID de Supabase
         email: userEmail, 
         type: 'apporteur_affaires',
-        database_id: apporteur.id
+        database_id: apporteur.id  // Garder l'ID de la table pour référence
       },
       process.env.JWT_SECRET || 'votre_secret_jwt_super_securise',
       { expiresIn: '24h' }
@@ -538,9 +538,10 @@ router.post('/login', async (req, res) => {
     // Générer le token JWT avec l'ID de la table spécifique
     const token = jwt.sign(
       { 
-        id: userDetails?.id || userId, // Utiliser l'ID de la table Client/Expert si disponible
+        id: userType === 'apporteur_affaires' ? userId : (userDetails?.id || userId), // Auth ID pour apporteur, ID table pour autres
         email: userEmail, 
-        type: userType 
+        type: userType,
+        database_id: userDetails?.id // Garder l'ID de la table pour référence
       },
       process.env.JWT_SECRET || 'votre_secret_jwt_super_securise',
       { expiresIn: '24h' }
