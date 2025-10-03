@@ -15,14 +15,25 @@ import { googleCalendarService } from '../services/google-calendar-service';
 dotenv.config();
 
 // Créer un client Supabase avec la clé de service pour les opérations admin
-// En production, s'assurer d'utiliser SERVICE_ROLE_KEY pour les opérations admin
 const supabaseAdmin = createClient(
   process.env.SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || '',
+  process.env.SUPABASE_SERVICE_ROLE_KEY || '',
   {
     auth: {
       autoRefreshToken: false,
       persistSession: false
+    }
+  }
+);
+
+// Créer un client Supabase dédié pour les apporteurs d'affaires (clé anonyme)
+const supabaseApporteur = createClient(
+  process.env.SUPABASE_URL || '',
+  process.env.SUPABASE_KEY || '',
+  {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: true
     }
   }
 );
@@ -290,8 +301,8 @@ router.post('/apporteur/login', async (req, res) => {
     const { email, password } = req.body;
     console.log("🔑 Tentative de connexion APPORTEUR:", { email });
 
-    // Authentifier avec Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+    // Authentifier avec Supabase Auth (client dédié apporteur)
+    const { data: authData, error: authError } = await supabaseApporteur.auth.signInWithPassword({
       email,
       password
     });
@@ -310,7 +321,7 @@ router.post('/apporteur/login', async (req, res) => {
     
     // ===== RECHERCHE UNIQUEMENT DANS APPORTEURAFFAIRES (Pattern Admin) =====
     console.log("🔍 Recherche apporteur avec email:", userEmail);
-    const { data: apporteur, error: apporteurError } = await supabase
+    const { data: apporteur, error: apporteurError } = await supabaseApporteur
       .from('ApporteurAffaires')
       .select('id, email, first_name, last_name, company_name, status')
       .eq('email', userEmail)
