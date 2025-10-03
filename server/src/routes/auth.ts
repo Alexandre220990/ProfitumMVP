@@ -309,11 +309,20 @@ router.post('/apporteur/login', async (req, res) => {
     console.log("🔍 Connexion APPORTEUR - Recherche EXCLUSIVE dans ApporteurAffaires");
     
     // ===== RECHERCHE UNIQUEMENT DANS APPORTEURAFFAIRES =====
+    console.log("🔍 Recherche apporteur avec email:", userEmail);
     const { data: apporteur, error: apporteurError } = await supabase
       .from('ApporteurAffaires')
       .select('*')
       .eq('email', userEmail)
       .single();
+      
+    console.log("📊 Résultat requête Supabase:");
+    console.log("   - Error:", apporteurError ? apporteurError.message : 'NONE');
+    console.log("   - Data:", apporteur ? 'FOUND' : 'NULL');
+    if (apporteur) {
+      console.log("   - Statut:", apporteur.status);
+      console.log("   - Type statut:", typeof apporteur.status);
+    }
       
     if (apporteurError || !apporteur) {
       console.log("❌ Apporteur non trouvé:", apporteurError?.message);
@@ -325,6 +334,7 @@ router.post('/apporteur/login', async (req, res) => {
     }
     
     // Vérifier le statut de l'apporteur
+    console.log("🔍 Vérification statut:", apporteur.status, "=== 'active' ?", apporteur.status === 'active');
     if (apporteur.status !== 'active') {
       console.log("❌ Apporteur non actif:", apporteur.status);
       return res.status(403).json({
