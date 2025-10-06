@@ -235,6 +235,7 @@ export const enhancedAuthMiddleware = async (
       user = {
         id: decoded.id,
         email: decoded.email,
+        type: decoded.type,
         user_metadata: {
           type: decoded.type
         },
