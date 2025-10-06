@@ -1,499 +1,398 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { 
-  Users, 
-  TrendingUp, 
-  DollarSign, 
-  Calendar, 
-  CheckCircle, 
-  Clock, 
-  AlertCircle,
-  Plus,
-  BarChart3,
-  Building
-} from 'lucide-react';
-import { apporteurApi } from '@/services/apporteur-api';
-import ProspectForm from './ProspectForm';
+import { useApporteurAnalytics } from '../../hooks/use-apporteur-analytics';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
+import { RefreshCw, Users, UserCheck, FileText, DollarSign, AlertTriangle, Activity, Target, Calendar, MessageSquare, BarChart3, TrendingUp } from 'lucide-react';
 
-interface DashboardData {
-  prospects: {
-    total: number;
-    qualified: number;
-    pending: number;
-    new_this_month: number;
-  };
-  conversions: {
-    signed_this_month: number;
-    conversion_rate: number;
-    in_progress: number;
-    monthly_goal: number;
-    goal_achieved: boolean;
-  };
-  commissions: {
-    pending: number;
-    paid_this_month: number;
-    total_year: number;
-    pending_amount: number;
-  };
-  experts: {
-    active: number;
-    available: number;
-    top_performer: string;
-    avg_response_time: string;
-  };
+interface ApporteurDashboardProps {
+  apporteurId: string;
 }
 
-export default function ApporteurDashboard() {
-  const navigate = useNavigate();
-  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [prospectModalOpen, setProspectModalOpen] = useState(false);
-
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
-
-  const fetchDashboardData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      console.log('🔄 Chargement des données du dashboard apporteur...');
-      const result = await apporteurApi.getDashboardData();
-      
-      if (result.success && result.data) {
-        console.log('✅ Données dashboard récupérées:', result.data);
-        setDashboardData(result.data as DashboardData);
-      } else {
-        console.warn('⚠️ Pas de données dashboard, initialisation avec des zéros');
-        setDashboardData(getDefaultDashboardData());
-        if (result.error) {
-          setError(result.error);
-        }
-      }
-    } catch (err) {
-      console.error('❌ Erreur fetchDashboardData:', err);
-      setError(err instanceof Error ? err.message : 'Erreur inconnue');
-      setDashboardData(getDefaultDashboardData());
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Fonction utilitaire pour les données par défaut
-  const getDefaultDashboardData = (): DashboardData => ({
-    prospects: {
-      total: 0,
-      qualified: 0,
-      pending: 0,
-      new_this_month: 0
-    },
-    conversions: {
-      signed_this_month: 0,
-      conversion_rate: 0,
-      in_progress: 0,
-      monthly_goal: 10,
-      goal_achieved: false
-    },
-    commissions: {
-      pending: 0,
-      paid_this_month: 0,
-      total_year: 0,
-      pending_amount: 0
-    },
-    experts: {
-      active: 0,
-      available: 0,
-      top_performer: 'Aucun expert assigné',
-      avg_response_time: 'N/A'
-    }
-  });
-
-  const handleProspectSuccess = () => {
-    setProspectModalOpen(false);
-    // Recharger les données du dashboard
-    fetchDashboardData();
-  };
+export function ApporteurDashboard({ apporteurId }: ApporteurDashboardProps) {
+  const { 
+    analytics, 
+    loading, 
+    error, 
+    refresh, 
+    getProspectsByStatus
+  } = useApporteurAnalytics(apporteurId);
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        {/* Header skeleton */}
-        <div className="flex justify-between items-center">
-          <div>
-            <div className="h-8 bg-gray-200 rounded w-64 mb-2"></div>
-            <div className="h-4 bg-gray-200 rounded w-48"></div>
-          </div>
-          <div className="h-10 bg-gray-200 rounded w-32"></div>
-        </div>
-        
-        {/* Cards skeleton */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[1, 2, 3, 4].map((i) => (
-            <Card key={i}>
-              <CardHeader>
-                <div className="h-6 bg-gray-200 rounded w-32"></div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="h-4 bg-gray-200 rounded w-full"></div>
-                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-        
-        <div className="flex items-center justify-center py-8">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Chargement de vos données...</p>
-          </div>
-        </div>
+      <div className="flex items-center justify-center h-64">
+        <RefreshCw className="h-8 w-8 animate-spin" />
+        <span className="ml-2">Chargement de vos données...</span>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Dashboard Apporteur</h1>
-            <p className="text-gray-600">Vue d'ensemble de votre activité</p>
-          </div>
-        </div>
-        
-        {/* Error state */}
-        <Card>
-          <CardContent className="p-12">
-            <div className="text-center">
-              <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-6" />
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Erreur de chargement</h3>
-              <p className="text-red-600 mb-6 max-w-md mx-auto">{error}</p>
-              <div className="flex gap-4 justify-center">
-                <Button onClick={fetchDashboardData} className="bg-blue-600 hover:bg-blue-700">
-                  <TrendingUp className="h-4 w-4 mr-2" />
-                  Réessayer
-                </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={() => setDashboardData(getDefaultDashboardData())}
-                >
-                  <Clock className="h-4 w-4 mr-2" />
-                  Mode démo
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="flex items-center justify-center h-64">
+        <AlertTriangle className="h-8 w-8 text-red-500" />
+        <span className="ml-2 text-red-500">Erreur: {error}</span>
+        <Button onClick={refresh} className="ml-4">
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Réessayer
+        </Button>
       </div>
     );
   }
 
-  if (!dashboardData) {
-    return null;
+  if (!analytics.kpis) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <span>Aucune donnée disponible</span>
+      </div>
+    );
   }
 
+  const { kpis, activity, prospects, alerts } = analytics;
+
+  // Statistiques des prospects
+  const prospectsInactifs = getProspectsByStatus('inactif');
+  const prospectsActifs = getProspectsByStatus('actif');
+  const prospectsJamaisConnectes = getProspectsByStatus('jamais_connecte');
+
+  // Alertes par sévérité (pour usage futur)
+  // const alertesHigh = getAlertsBySeverity('high');
+  // const alertesMedium = getAlertsBySeverity('medium');
+  // const alertesLow = getAlertsBySeverity('low');
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard Apporteur</h1>
-          <p className="text-gray-600">Vue d'ensemble de votre activité</p>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Header Optimisé */}
+        <div className="mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+            <div className="mb-4 sm:mb-0">
+              <h1 className="text-3xl font-bold text-gray-900">Mon Dashboard</h1>
+              <p className="text-gray-600 mt-1">Bienvenue, voici un aperçu de votre activité</p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button onClick={refresh} variant="outline" className="w-full sm:w-auto">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Actualiser
+              </Button>
+              <Button className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700">
+                <Users className="h-4 w-4 mr-2" />
+                Nouveau Prospect
+              </Button>
+            </div>
+          </div>
         </div>
-        <Dialog open={prospectModalOpen} onOpenChange={setProspectModalOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-blue-600 hover:bg-blue-700">
-              <Plus className="h-4 w-4 mr-2" />
-              Nouveau Prospect
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Nouveau Prospect</DialogTitle>
-            </DialogHeader>
-            <ProspectForm 
-              onSuccess={handleProspectSuccess}
-              onCancel={() => setProspectModalOpen(false)}
-            />
-          </DialogContent>
-        </Dialog>
+
+        {/* Quick Actions Optimisées */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <Button className="h-20 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transition-all duration-200">
+            <div className="text-center">
+              <Users className="h-6 w-6 mx-auto mb-2" />
+              <div className="text-sm font-semibold">Nouveau Prospect</div>
+              <div className="text-xs opacity-90">Ajouter un client</div>
+            </div>
+          </Button>
+          <Button className="h-20 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white shadow-lg hover:shadow-xl transition-all duration-200">
+            <div className="text-center">
+              <Calendar className="h-6 w-6 mx-auto mb-2" />
+              <div className="text-sm font-semibold">Planifier RDV</div>
+              <div className="text-xs opacity-90">Créer un rendez-vous</div>
+            </div>
+          </Button>
+          <Button className="h-20 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white shadow-lg hover:shadow-xl transition-all duration-200">
+            <div className="text-center">
+              <MessageSquare className="h-6 w-6 mx-auto mb-2" />
+              <div className="text-sm font-semibold">Messagerie</div>
+              <div className="text-xs opacity-90">Envoyer un message</div>
+            </div>
+          </Button>
+          <Button className="h-20 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white shadow-lg hover:shadow-xl transition-all duration-200">
+            <div className="text-center">
+              <BarChart3 className="h-6 w-6 mx-auto mb-2" />
+              <div className="text-sm font-semibold">Statistiques</div>
+              <div className="text-xs opacity-90">Voir les analyses</div>
+            </div>
+          </Button>
+        </div>
+
+        {/* KPIs Cards Optimisées */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {/* Prospects */}
+          <Card className="bg-white shadow-lg hover:shadow-xl transition-shadow duration-200 border-0">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+              <CardTitle className="text-sm font-semibold text-gray-700">Mes Prospects</CardTitle>
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <Target className="h-4 w-4 text-blue-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-gray-900 mb-2">{kpis.mesProspects}</div>
+              <p className="text-sm text-gray-600 mb-3">
+                {kpis.prospectsQualifies} qualifiés • {kpis.nouveauxProspects30j} ce mois
+              </p>
+              <div className="flex items-center text-sm text-green-600 bg-green-50 px-2 py-1 rounded-full">
+                <TrendingUp className="h-3 w-3 mr-1" />
+                +12% vs mois dernier
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Clients */}
+          <Card className="bg-white shadow-lg hover:shadow-xl transition-shadow duration-200 border-0">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+              <CardTitle className="text-sm font-semibold text-gray-700">Mes Clients</CardTitle>
+              <div className="p-2 bg-green-100 rounded-lg">
+                <UserCheck className="h-4 w-4 text-green-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-gray-900 mb-2">{kpis.mesClientsActifs}</div>
+              <p className="text-sm text-gray-600 mb-3">
+                {kpis.nouveauxClients30j} nouveaux ce mois
+              </p>
+              <div className="flex items-center text-sm text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
+                <TrendingUp className="h-3 w-3 mr-1" />
+                Actifs
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Dossiers */}
+          <Card className="bg-white shadow-lg hover:shadow-xl transition-shadow duration-200 border-0">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+              <CardTitle className="text-sm font-semibold text-gray-700">Dossiers</CardTitle>
+              <div className="p-2 bg-purple-100 rounded-lg">
+                <FileText className="h-4 w-4 text-purple-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-gray-900 mb-2">{kpis.dossiersMesClients}</div>
+              <p className="text-sm text-gray-600 mb-3">
+                {kpis.dossiersTerminesMesClients} terminés
+              </p>
+              <div className="flex items-center text-sm text-purple-600 bg-purple-50 px-2 py-1 rounded-full">
+                <Activity className="h-3 w-3 mr-1" />
+                En cours
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Commissions */}
+          <Card className="bg-white shadow-lg hover:shadow-xl transition-shadow duration-200 border-0">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+              <CardTitle className="text-sm font-semibold text-gray-700">Commissions</CardTitle>
+              <div className="p-2 bg-orange-100 rounded-lg">
+                <DollarSign className="h-4 w-4 text-orange-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-gray-900 mb-2">
+                {new Intl.NumberFormat('fr-FR', {
+                  style: 'currency',
+                  currency: 'EUR'
+                }).format(kpis.commissionsTotales)}
+              </div>
+              <p className="text-sm text-gray-600 mb-3">
+                {new Intl.NumberFormat('fr-FR', {
+                  style: 'currency',
+                  currency: 'EUR'
+                }).format(kpis.commissionsPayees)} payées
+              </p>
+              <div className="flex items-center text-sm text-orange-600 bg-orange-50 px-2 py-1 rounded-full">
+                <TrendingUp className="h-3 w-3 mr-1" />
+                En attente
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Performance Optimisée */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200 shadow-lg">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold text-green-800 flex items-center">
+                <Target className="h-4 w-4 mr-2" />
+                Taux de Conversion
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-4xl font-bold text-green-700 mb-2">{kpis.tauxConversionProspects.toFixed(1)}%</div>
+              <p className="text-sm text-green-600">Prospects → Clients</p>
+              <div className="mt-3 bg-green-200 rounded-full h-2">
+                <div 
+                  className="bg-green-500 h-2 rounded-full transition-all duration-500" 
+                  style={{ width: `${Math.min(kpis.tauxConversionProspects, 100)}%` }}
+                ></div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 shadow-lg">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold text-blue-800 flex items-center">
+                <DollarSign className="h-4 w-4 mr-2" />
+                Montant Total
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-4xl font-bold text-blue-700 mb-2">
+                {new Intl.NumberFormat('fr-FR', {
+                  style: 'currency',
+                  currency: 'EUR'
+                }).format(kpis.montantTotalMesClients)}
+              </div>
+              <p className="text-sm text-blue-600">Dossiers de mes clients</p>
+              <div className="mt-3 flex items-center text-sm text-blue-600">
+                <TrendingUp className="h-4 w-4 mr-1" />
+                Chiffre d'affaires
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 shadow-lg">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold text-purple-800 flex items-center">
+                <Activity className="h-4 w-4 mr-2" />
+                Montant Réalisé
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-4xl font-bold text-purple-700 mb-2">
+                {new Intl.NumberFormat('fr-FR', {
+                  style: 'currency',
+                  currency: 'EUR'
+                }).format(kpis.montantRealiseMesClients)}
+              </div>
+              <p className="text-sm text-purple-600">Dossiers terminés</p>
+              <div className="mt-3 flex items-center text-sm text-purple-600">
+                <TrendingUp className="h-4 w-4 mr-1" />
+                Réalisé
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Alertes Personnelles Optimisées */}
+        {alerts.length > 0 && (
+          <Card className="mb-8 bg-gradient-to-r from-red-50 to-orange-50 border-red-200 shadow-lg">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center text-red-800">
+                <div className="p-2 bg-red-100 rounded-lg mr-3">
+                  <AlertTriangle className="h-5 w-5 text-red-600" />
+                </div>
+                Mes Alertes ({alerts.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {alerts.map((alert, index) => (
+                  <div key={index} className="flex items-center justify-between p-4 bg-white rounded-lg border border-red-200 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="flex items-center space-x-4">
+                      <Badge 
+                        variant={alert.severity === 'high' ? 'destructive' : alert.severity === 'medium' ? 'default' : 'secondary'}
+                        className="text-xs font-semibold"
+                      >
+                        {alert.severity}
+                      </Badge>
+                      <span className="font-medium text-gray-900">{alert.message}</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-sm font-semibold text-red-600">{alert.nombre} éléments</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Mes Prospects Optimisés */}
+        {prospects.length > 0 && (
+          <Card className="mb-8 bg-white shadow-lg">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center text-gray-800">
+                <div className="p-2 bg-blue-100 rounded-lg mr-3">
+                  <Users className="h-5 w-5 text-blue-600" />
+                </div>
+                Mes Prospects ({prospects.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="text-center p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="text-3xl font-bold text-green-600 mb-1">{prospectsActifs.length}</div>
+                  <div className="text-sm font-semibold text-green-700">Actifs</div>
+                </div>
+                <div className="text-center p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <div className="text-3xl font-bold text-yellow-600 mb-1">{prospectsInactifs.length}</div>
+                  <div className="text-sm font-semibold text-yellow-700">Inactifs</div>
+                </div>
+                <div className="text-center p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                  <div className="text-3xl font-bold text-gray-600 mb-1">{prospectsJamaisConnectes.length}</div>
+                  <div className="text-sm font-semibold text-gray-700">Jamais connectés</div>
+                </div>
+              </div>
+              
+              <div className="space-y-3">
+                {prospects.slice(0, 10).map((prospect, index) => (
+                  <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border hover:shadow-md transition-shadow">
+                    <div className="flex items-center space-x-4">
+                      <Badge 
+                        variant={prospect.statutActivite === 'actif' ? 'default' : prospect.statutActivite === 'inactif' ? 'secondary' : 'outline'}
+                        className="text-xs font-semibold"
+                      >
+                        {prospect.statutActivite}
+                      </Badge>
+                      <div>
+                        <span className="font-semibold text-gray-900">{prospect.name}</span>
+                        <div className="text-sm text-gray-600">{prospect.email}</div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-semibold text-gray-900">{prospect.nbDossiers} dossiers</div>
+                      <div className="text-sm text-gray-600">
+                        {new Intl.NumberFormat('fr-FR', {
+                          style: 'currency',
+                          currency: 'EUR'
+                        }).format(prospect.montantTotalDossiers)}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Activité Personnelle Optimisée */}
+        <Card className="bg-white shadow-lg">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center text-gray-800">
+              <div className="p-2 bg-purple-100 rounded-lg mr-3">
+                <Activity className="h-5 w-5 text-purple-600" />
+              </div>
+              Mon Activité Récente
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {activity.slice(0, 10).map((item, index) => (
+                <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border hover:shadow-md transition-shadow">
+                  <div className="flex items-center space-x-4">
+                    <Badge variant="outline" className="text-xs font-semibold">{item.typeEntite}</Badge>
+                    <div>
+                      <span className="font-semibold text-gray-900">{item.nom}</span>
+                      <div className="text-sm text-gray-600">{item.action}</div>
+                    </div>
+                  </div>
+                  <span className="text-sm font-semibold text-gray-600">
+                    {new Date(item.dateAction).toLocaleDateString('fr-FR')}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
-
-      {/* Groupe 1 - PROSPECTS */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-blue-600" />
-            PROSPECTS
-            {dashboardData.prospects.total > 0 && (
-              <span className="text-sm font-normal text-gray-500">
-                ({dashboardData.prospects.qualified}/{dashboardData.prospects.total} qualifiés)
-              </span>
-            )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="text-center p-4 rounded-lg bg-gray-50">
-              <div className="text-3xl font-bold text-gray-900">{dashboardData.prospects.total}</div>
-              <div className="text-sm text-gray-600">Total</div>
-              {dashboardData.prospects.total === 0 && (
-                <div className="text-xs text-gray-400 mt-1">Aucun prospect</div>
-              )}
-            </div>
-            <div className="text-center p-4 rounded-lg bg-green-50">
-              <div className="text-3xl font-bold text-green-600">{dashboardData.prospects.qualified}</div>
-              <div className="text-sm text-gray-600">Qualifiés</div>
-              {dashboardData.prospects.total > 0 && (
-                <div className="text-xs text-gray-400 mt-1">
-                  {Math.round((dashboardData.prospects.qualified / dashboardData.prospects.total) * 100)}%
-                </div>
-              )}
-            </div>
-            <div className="text-center p-4 rounded-lg bg-yellow-50">
-              <div className="text-3xl font-bold text-yellow-600">{dashboardData.prospects.pending}</div>
-              <div className="text-sm text-gray-600">En attente</div>
-              {dashboardData.prospects.pending > 0 && (
-                <div className="text-xs text-orange-500 mt-1">Action requise</div>
-              )}
-            </div>
-            <div className="text-center p-4 rounded-lg bg-blue-50">
-              <div className="text-3xl font-bold text-blue-600">{dashboardData.prospects.new_this_month}</div>
-              <div className="text-sm text-gray-600">Nouveaux ce mois</div>
-              {dashboardData.prospects.new_this_month > 0 && (
-                <div className="text-xs text-blue-500 mt-1">🔥 En croissance</div>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Groupe 2 - CONVERSIONS */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-green-600" />
-            CONVERSIONS
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="text-center p-4 rounded-lg bg-green-50">
-              <div className="text-3xl font-bold text-green-600">{dashboardData.conversions.signed_this_month}</div>
-              <div className="text-sm text-gray-600">Signés ce mois</div>
-              <div className="text-xs text-gray-400 mt-1">
-                vs {dashboardData.conversions.monthly_goal} objectif
-              </div>
-            </div>
-            <div className="text-center p-4 rounded-lg bg-blue-50">
-              <div className="text-3xl font-bold text-blue-600">{dashboardData.conversions.conversion_rate}%</div>
-              <div className="text-sm text-gray-600">Taux conversion</div>
-              {dashboardData.conversions.conversion_rate >= 20 && (
-                <div className="text-xs text-green-500 mt-1">🚀 Excellent</div>
-              )}
-            </div>
-            <div className="text-center p-4 rounded-lg bg-purple-50">
-              <div className="text-3xl font-bold text-purple-600">{dashboardData.conversions.in_progress}</div>
-              <div className="text-sm text-gray-600">En cours</div>
-              {dashboardData.conversions.in_progress > 0 && (
-                <div className="text-xs text-purple-500 mt-1">⚡ Pipeline actif</div>
-              )}
-            </div>
-            <div className="text-center p-4 rounded-lg bg-gray-50">
-              <div className="flex items-center justify-center gap-2">
-                <div className="text-3xl font-bold text-gray-900">{dashboardData.conversions.monthly_goal}</div>
-                {dashboardData.conversions.goal_achieved ? (
-                  <CheckCircle className="h-6 w-6 text-green-500" />
-                ) : (
-                  <Clock className="h-6 w-6 text-yellow-500" />
-                )}
-              </div>
-              <div className="text-sm text-gray-600">Objectif mensuel</div>
-              <div className="text-xs text-gray-400 mt-1">
-                {dashboardData.conversions.goal_achieved ? '✅ Atteint' : '🎯 En cours'}
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Groupe 3 - COMMISSIONS */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5 text-yellow-600" />
-            COMMISSIONS
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="text-center p-4 rounded-lg bg-yellow-50">
-              <div className="text-3xl font-bold text-yellow-600">{dashboardData.commissions.pending.toLocaleString()}€</div>
-              <div className="text-sm text-gray-600">En cours</div>
-              {dashboardData.commissions.pending > 0 && (
-                <div className="text-xs text-yellow-600 mt-1">⏳ En attente</div>
-              )}
-            </div>
-            <div className="text-center p-4 rounded-lg bg-green-50">
-              <div className="text-3xl font-bold text-green-600">{dashboardData.commissions.paid_this_month.toLocaleString()}€</div>
-              <div className="text-sm text-gray-600">Payées ce mois</div>
-              {dashboardData.commissions.paid_this_month > 0 && (
-                <div className="text-xs text-green-600 mt-1">💰 Revenus confirmés</div>
-              )}
-            </div>
-            <div className="text-center p-4 rounded-lg bg-blue-50">
-              <div className="text-3xl font-bold text-blue-600">{dashboardData.commissions.pending_amount.toLocaleString()}€</div>
-              <div className="text-sm text-gray-600">Montant en attente</div>
-              {dashboardData.commissions.pending_amount > 0 && (
-                <div className="text-xs text-blue-600 mt-1">🎯 Potentiel</div>
-              )}
-            </div>
-            <div className="text-center p-4 rounded-lg bg-gray-50">
-              <div className="text-3xl font-bold text-gray-900">{dashboardData.commissions.total_year.toLocaleString()}€</div>
-              <div className="text-sm text-gray-600">Total année</div>
-              {dashboardData.commissions.total_year > 0 && (
-                <div className="text-xs text-gray-500 mt-1">📈 Performance</div>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Groupe 4 - EXPERTS */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Building className="h-5 w-5 text-purple-600" />
-            EXPERTS PARTENAIRES
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 rounded-lg bg-purple-50">
-                <div>
-                  <div className="text-2xl font-bold text-purple-600">{dashboardData.experts.active}</div>
-                  <div className="text-sm text-gray-600">Experts actifs</div>
-                </div>
-                <Building className="h-8 w-8 text-purple-500" />
-              </div>
-              <div className="flex items-center justify-between p-4 rounded-lg bg-blue-50">
-                <div>
-                  <div className="text-2xl font-bold text-blue-600">{dashboardData.experts.available}</div>
-                  <div className="text-sm text-gray-600">Disponibles</div>
-                </div>
-                <Clock className="h-8 w-8 text-blue-500" />
-              </div>
-            </div>
-            <div className="space-y-4">
-              <div className="p-4 rounded-lg bg-gray-50">
-                <div className="text-sm font-medium text-gray-600 mb-2">Meilleur performer</div>
-                <div className="text-lg font-semibold text-gray-900">
-                  {dashboardData.experts.top_performer || 'Aucun expert assigné'}
-                </div>
-              </div>
-              <div className="p-4 rounded-lg bg-gray-50">
-                <div className="text-sm font-medium text-gray-600 mb-2">Temps de réponse moyen</div>
-                <div className="text-lg font-semibold text-gray-900">
-                  {dashboardData.experts.avg_response_time || 'N/A'}
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Actions rapides */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card 
-          className="hover:shadow-lg transition-shadow cursor-pointer"
-          onClick={() => navigate('/apporteur/prospects')}
-        >
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3">
-              <Users className="h-8 w-8 text-blue-600" />
-              <div>
-                <h3 className="font-semibold">Gérer les Prospects</h3>
-                <p className="text-sm text-gray-600">Voir et gérer tous vos prospects</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card 
-          className="hover:shadow-lg transition-shadow cursor-pointer"
-          onClick={() => navigate('/apporteur/meetings')}
-        >
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3">
-              <Calendar className="h-8 w-8 text-green-600" />
-              <div>
-                <h3 className="font-semibold">Planifier un RDV</h3>
-                <p className="text-sm text-gray-600">Organiser un rendez-vous</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card 
-          className="hover:shadow-lg transition-shadow cursor-pointer"
-          onClick={() => navigate('/apporteur/statistics')}
-        >
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3">
-              <BarChart3 className="h-8 w-8 text-purple-600" />
-              <div>
-                <h3 className="font-semibold">Voir les Statistiques</h3>
-                <p className="text-sm text-gray-600">Analyser vos performances</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Notifications récentes */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <AlertCircle className="h-5 w-5 text-orange-600" />
-            Notifications Récentes
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
-              <CheckCircle className="h-5 w-5 text-green-600" />
-              <div>
-                <p className="font-medium">Expert a accepté le prospect</p>
-                <p className="text-sm text-gray-600">Jean Dupont - Entreprise ABC</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
-              <Calendar className="h-5 w-5 text-blue-600" />
-              <div>
-                <p className="font-medium">Meeting planifié</p>
-                <p className="text-sm text-gray-600">RDV confirmé pour demain 14h</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 p-3 bg-yellow-50 rounded-lg">
-              <Clock className="h-5 w-5 text-yellow-600" />
-              <div>
-                <p className="font-medium">Deadline approchante</p>
-                <p className="text-sm text-gray-600">Réponse expert attendue dans 2h</p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

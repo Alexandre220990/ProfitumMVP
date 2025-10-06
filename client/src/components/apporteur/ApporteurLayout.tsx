@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
 import ApporteurAuthGuard from './ApporteurAuthGuard';
+// import { NotificationCenter } from './NotificationCenter';
 import { Badge } from '@/components/ui/badge';
 import { 
   LayoutDashboard, 
@@ -209,7 +210,7 @@ export default function ApporteurLayout({ children }: ApporteurLayoutProps) {
       </div>
 
       {/* Main Content */}
-      <div className="lg:pl-64 flex flex-col flex-1">
+      <div className="lg:pl-64 flex flex-col flex-1 min-h-screen">
         {/* Header */}
         <div className="sticky top-0 z-10 flex-shrink-0 flex h-16 bg-white shadow">
           <button
@@ -285,7 +286,7 @@ export default function ApporteurLayout({ children }: ApporteurLayoutProps) {
         </div>
 
         {/* Page Content */}
-        <main className="flex-1">
+        <main className="flex-1 overflow-auto bg-gray-50">
           <div className="py-6">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
               {children || <Outlet />}

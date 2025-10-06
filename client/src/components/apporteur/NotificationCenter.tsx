@@ -1,251 +1,212 @@
 import { useState, useEffect } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { 
-  Bell, 
-  CheckCircle, 
-  AlertCircle, 
-  Info, 
-  Clock,
-  User,
-  Calendar,
-  DollarSign
-} from 'lucide-react';
-import { apporteurApi } from '@/services/apporteur-api';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Button } from '../ui/button';
+import { Badge } from '../ui/badge';
+import { Bell, Check, X, AlertTriangle, Info, CheckCircle, AlertCircle } from 'lucide-react';
 
 interface Notification {
   id: string;
-  type: string;
   title: string;
   message: string;
-  priority: 'low' | 'medium' | 'high';
-  is_read: boolean;
-  created_at: string;
-  read_at?: string;
-  client_id?: string;
-  expert_id?: string;
-  rdv_id?: string;
+  type: 'success' | 'info' | 'warning' | 'error';
+  timestamp: string;
+  read: boolean;
+  priority: 'high' | 'medium' | 'low';
 }
 
-export default function NotificationCenter() {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<'all' | 'unread' | 'read'>('all');
+interface NotificationCenterProps {
+  apporteurId: string;
+}
 
+export function NotificationCenter({ apporteurId }: NotificationCenterProps) {
+  // Utilisation de apporteurId pour les futures requêtes API
+  console.log('Apporteur ID:', apporteurId);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [isOpen, setIsOpen] = useState(false);
+
+  // Données simulées
   useEffect(() => {
-    fetchNotifications();
+    const mockNotifications: Notification[] = [
+      {
+        id: '1',
+        title: 'Nouveau prospect qualifié',
+        message: 'Entreprise ABC a été qualifiée comme prospect chaud',
+        type: 'success',
+        timestamp: 'Il y a 2 heures',
+        read: false,
+        priority: 'high'
+      },
+      {
+        id: '2',
+        title: 'Rendez-vous confirmé',
+        message: 'Votre RDV avec Société XYZ est confirmé pour demain 14h',
+        type: 'info',
+        timestamp: 'Il y a 4 heures',
+        read: false,
+        priority: 'medium'
+      },
+      {
+        id: '3',
+        title: 'Commission payée',
+        message: 'Votre commission de 2 250€ a été versée sur votre compte',
+        type: 'success',
+        timestamp: 'Il y a 1 jour',
+        read: true,
+        priority: 'high'
+      }
+    ];
+    setNotifications(mockNotifications);
   }, []);
 
-  const fetchNotifications = async () => {
-    try {
-      setLoading(true);
-      const result = await apporteurApi.getNotifications();
-      
-      if (result.success && result.data) {
-        setNotifications(Array.isArray(result.data) ? result.data : []);
-      } else {
-        setError(result.error || 'Erreur lors du chargement des notifications');
-      }
-    } catch (err) {
-      console.error('Erreur fetchNotifications:', err);
-      setError(err instanceof Error ? err.message : 'Erreur inconnue');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const markAsRead = async (notificationId: string) => {
-    try {
-      const result = await apporteurApi.markNotificationAsRead(notificationId);
-      
-      if (result.success) {
-        setNotifications(prev => 
-          prev.map(notif => 
-            notif.id === notificationId 
-              ? { ...notif, is_read: true, read_at: new Date().toISOString() }
-              : notif
-          )
-        );
-      }
-    } catch (err) {
-      console.error('Erreur markAsRead:', err);
-    }
-  };
-
-  const getPriorityIcon = (priority: string) => {
-    switch (priority) {
-      case 'high': return <AlertCircle className="h-4 w-4 text-red-500" />;
-      case 'medium': return <Info className="h-4 w-4 text-yellow-500" />;
-      case 'low': return <Bell className="h-4 w-4 text-blue-500" />;
-      default: return <Bell className="h-4 w-4 text-gray-500" />;
-    }
-  };
-
-  const getPriorityBadge = (priority: string) => {
-    const config = {
-      'high': { color: 'bg-red-100 text-red-800', label: 'Urgent' },
-      'medium': { color: 'bg-yellow-100 text-yellow-800', label: 'Important' },
-      'low': { color: 'bg-blue-100 text-blue-800', label: 'Info' }
-    };
-    const badgeConfig = config[priority as keyof typeof config] || config['low'];
-    return <Badge className={badgeConfig.color}>{badgeConfig.label}</Badge>;
-  };
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'rdv_request': return <Calendar className="h-4 w-4 text-blue-500" />;
-      case 'expert_response': return <User className="h-4 w-4 text-green-500" />;
-      case 'commission': return <DollarSign className="h-4 w-4 text-yellow-500" />;
-      case 'status_change': return <CheckCircle className="h-4 w-4 text-purple-500" />;
-      default: return <Bell className="h-4 w-4 text-gray-500" />;
+      case 'success': return <CheckCircle className="h-4 w-4 text-green-600" />;
+      case 'info': return <Info className="h-4 w-4 text-blue-600" />;
+      case 'warning': return <AlertTriangle className="h-4 w-4 text-yellow-600" />;
+      case 'error': return <AlertCircle className="h-4 w-4 text-red-600" />;
+      default: return <Bell className="h-4 w-4 text-gray-600" />;
     }
   };
 
-  const filteredNotifications = notifications.filter(notification => {
-    if (filter === 'all') return true;
-    if (filter === 'unread') return !notification.is_read;
-    if (filter === 'read') return notification.is_read;
-    return true;
-  });
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'high': return 'bg-red-100 text-red-800';
+      case 'medium': return 'bg-yellow-100 text-yellow-800';
+      case 'low': return 'bg-gray-100 text-gray-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
 
-  const unreadCount = notifications.filter(n => !n.is_read).length;
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
+  const markAsRead = (id: string) => {
+    setNotifications(prev => 
+      prev.map(n => n.id === id ? { ...n, read: true } : n)
     );
-  }
+  };
 
-  if (error) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <p className="text-red-600">{error}</p>
-          <Button onClick={fetchNotifications} className="mt-4">
-            Réessayer
-          </Button>
-        </div>
-      </div>
+  const markAllAsRead = () => {
+    setNotifications(prev => 
+      prev.map(n => ({ ...n, read: true }))
     );
-  }
+  };
+
+  const removeNotification = (id: string) => {
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Notifications</h1>
-          <p className="text-gray-600">
-            {unreadCount > 0 ? `${unreadCount} notification(s) non lue(s)` : 'Aucune notification non lue'}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant={filter === 'all' ? 'default' : 'outline'}
-            onClick={() => setFilter('all')}
-            size="sm"
-          >
-            Toutes
-          </Button>
-          <Button
-            variant={filter === 'unread' ? 'default' : 'outline'}
-            onClick={() => setFilter('unread')}
-            size="sm"
-          >
-            Non lues ({unreadCount})
-          </Button>
-          <Button
-            variant={filter === 'read' ? 'default' : 'outline'}
-            onClick={() => setFilter('read')}
-            size="sm"
-          >
-            Lues
-          </Button>
-        </div>
-      </div>
+    <div className="relative">
+      {/* Notification Bell */}
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setIsOpen(!isOpen)}
+        className="relative"
+      >
+        <Bell className="h-4 w-4" />
+        {unreadCount > 0 && (
+          <Badge className="absolute -top-2 -right-2 bg-red-600 text-white text-xs">
+            {unreadCount}
+          </Badge>
+        )}
+      </Button>
 
-      {/* Liste des notifications */}
-      <div className="space-y-4">
-        {filteredNotifications.map((notification) => (
-          <Card 
-            key={notification.id} 
-            className={`hover:shadow-md transition-shadow ${
-              !notification.is_read ? 'border-l-4 border-l-blue-500 bg-blue-50' : ''
-            }`}
-          >
-            <CardContent className="p-4">
-              <div className="flex items-start gap-4">
-                <div className="flex-shrink-0 mt-1">
-                  {getTypeIcon(notification.type)}
+      {/* Notification Dropdown */}
+      {isOpen && (
+        <div className="absolute right-0 mt-2 w-80 bg-white border rounded-lg shadow-lg z-50">
+          <Card className="border-0 shadow-none">
+            <CardHeader className="pb-3">
+              <div className="flex justify-between items-center">
+                <CardTitle className="text-sm">Notifications</CardTitle>
+                <div className="flex space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={markAllAsRead}
+                    className="text-xs"
+                  >
+                    <Check className="h-3 w-3 mr-1" />
+                    Tout marquer comme lu
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsOpen(false)}
+                    className="text-xs"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
                 </div>
-                
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-2">
-                    <h3 className="font-medium text-gray-900">{notification.title}</h3>
-                    {getPriorityIcon(notification.priority)}
-                    {getPriorityBadge(notification.priority)}
-                    {!notification.is_read && (
-                      <Badge className="bg-blue-100 text-blue-800">Nouveau</Badge>
-                    )}
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="max-h-96 overflow-y-auto">
+                {notifications.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <Bell className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                    <p>Aucune notification</p>
                   </div>
-                  
-                  <p className="text-gray-600 text-sm mb-3">{notification.message}</p>
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4 text-xs text-gray-500">
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {new Date(notification.created_at).toLocaleString()}
-                      </div>
-                      {notification.read_at && (
-                        <div className="flex items-center gap-1">
-                          <CheckCircle className="h-3 w-3" />
-                          Lu le {new Date(notification.read_at).toLocaleString()}
-                        </div>
-                      )}
-                    </div>
-                    
-                    {!notification.is_read && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => markAsRead(notification.id)}
+                ) : (
+                  <div className="space-y-1">
+                    {notifications.map((notification) => (
+                      <div
+                        key={notification.id}
+                        className={`p-3 border-b hover:bg-gray-50 ${
+                          !notification.read ? 'bg-blue-50 border-blue-200' : ''
+                        }`}
                       >
-                        Marquer comme lu
-                      </Button>
-                    )}
+                        <div className="flex items-start space-x-3">
+                          <div className="flex-shrink-0 mt-1">
+                            {getTypeIcon(notification.type)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-1">
+                              <h4 className="text-sm font-medium text-gray-900 truncate">
+                                {notification.title}
+                              </h4>
+                              <Badge className={getPriorityColor(notification.priority)}>
+                                {notification.priority}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-gray-600 mb-2">
+                              {notification.message}
+                            </p>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-gray-500">
+                                {notification.timestamp}
+                              </span>
+                              <div className="flex space-x-1">
+                                {!notification.read && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => markAsRead(notification.id)}
+                                    className="h-6 w-6 p-0"
+                                  >
+                                    <Check className="h-3 w-3" />
+                                  </Button>
+                                )}
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => removeNotification(notification.id)}
+                                  className="h-6 w-6 p-0"
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                </div>
+                )}
               </div>
             </CardContent>
           </Card>
-        ))}
-      </div>
-
-      {filteredNotifications.length === 0 && (
-        <Card>
-          <CardContent className="p-12 text-center">
-            <Bell className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              {filter === 'all' ? 'Aucune notification' : 
-               filter === 'unread' ? 'Aucune notification non lue' : 
-               'Aucune notification lue'}
-            </h3>
-            <p className="text-gray-600">
-              {filter === 'all' 
-                ? 'Vous n\'avez pas encore de notifications.'
-                : filter === 'unread'
-                ? 'Toutes vos notifications ont été lues.'
-                : 'Vous n\'avez pas encore de notifications lues.'
-              }
-            </p>
-          </CardContent>
-        </Card>
+        </div>
       )}
     </div>
   );
