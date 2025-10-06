@@ -149,20 +149,27 @@ router.get('/prospects', async (req: Request, res: Response): Promise<void> => {
     }
 
     const { data: prospects, error } = await supabase
-      .from('ApporteurProspects')
+      .from('Client')
       .select(`
-        *,
-        Client (
-          id,
-          name,
-          email,
-          company_name,
-          phone_number,
-          city,
-          siren
-        )
+        id,
+        name,
+        email,
+        company_name,
+        phone_number,
+        city,
+        siren,
+        status,
+        apporteur_id,
+        qualification_score,
+        interest_level,
+        budget_range,
+        timeline,
+        source,
+        notes,
+        created_at
       `)
       .eq('apporteur_id', user.database_id)
+      .eq('status', 'prospect')
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -247,22 +254,31 @@ router.get('/clients', async (req: Request, res: Response): Promise<void> => {
     const user = req.user as any;
     console.log('📋 Récupération des clients pour apporteur:', user.email);
 
-    // Récupérer les clients liés à cet apporteur via les prospects
-    const { data: prospects, error } = await supabase
-      .from('ApporteurProspects')
+    // Récupérer les clients liés à cet apporteur directement depuis la table Client
+    const { data: clients, error } = await supabase
+      .from('Client')
       .select(`
-        *,
-        Client (
-          id,
-          name,
-          email,
-          company_name,
-          phone_number,
-          city,
-          siren,
-          status,
-          created_at
-        )
+        id,
+        name,
+        email,
+        company_name,
+        phone_number,
+        city,
+        siren,
+        status,
+        apporteur_id,
+        qualification_score,
+        interest_level,
+        budget_range,
+        timeline,
+        source,
+        address,
+        website,
+        decision_maker_position,
+        notes,
+        expert_contacted_at,
+        converted_at,
+        created_at
       `)
       .eq('apporteur_id', user.database_id)
       .order('created_at', { ascending: false });
@@ -275,15 +291,6 @@ router.get('/clients', async (req: Request, res: Response): Promise<void> => {
       });
       return;
     }
-
-    // Transformer les données pour retourner les clients
-    const clients = prospects?.map(prospect => ({
-      ...prospect.Client,
-      prospect_id: prospect.id,
-      prospect_status: prospect.status,
-      prospect_created_at: prospect.created_at,
-      notes: prospect.notes
-    })) || [];
 
     res.json({
       success: true,
