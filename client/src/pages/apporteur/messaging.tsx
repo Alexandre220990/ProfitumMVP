@@ -1,4 +1,4 @@
-import { useRouter } from 'next/router';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
@@ -22,8 +22,9 @@ import { ApporteurRealDataService } from '../../services/apporteur-real-data-ser
  * Système de messagerie intégré
  */
 export default function MessagingPage() {
-  const router = useRouter();
-  const { apporteurId } = router.query;
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const apporteurId = searchParams.get('apporteurId');
   const [conversations, setConversations] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');

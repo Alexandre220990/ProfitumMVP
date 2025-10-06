@@ -1,4 +1,4 @@
-import { useRouter } from 'next/router';
+import { useSearchParams } from 'react-router-dom';
 import ProspectManagement from '../../components/apporteur/ProspectManagement';
 
 /**
@@ -6,8 +6,8 @@ import ProspectManagement from '../../components/apporteur/ProspectManagement';
  * Interface complète pour gérer les prospects
  */
 export default function ProspectsPage() {
-  const router = useRouter();
-  const { apporteurId } = router.query;
+  const [searchParams] = useSearchParams();
+  const apporteurId = searchParams.get('apporteurId');
 
   if (!apporteurId || typeof apporteurId !== 'string') {
     return (

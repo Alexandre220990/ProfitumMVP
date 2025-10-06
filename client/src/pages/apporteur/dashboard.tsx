@@ -1,4 +1,4 @@
-import { useRouter } from 'next/router';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { ApporteurDashboard } from '../../components/apporteur/ApporteurDashboard';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
@@ -11,8 +11,9 @@ import { RefreshCw, AlertTriangle, ArrowLeft } from 'lucide-react';
  * Gestion d'erreurs avancée et interface utilisateur améliorée
  */
 export default function ApporteurDashboardPage() {
-  const router = useRouter();
-  const { apporteurId } = router.query;
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const apporteurId = searchParams.get('apporteurId');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -68,7 +69,7 @@ export default function ApporteurDashboardPage() {
             
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Button 
-                onClick={() => router.push('/apporteur/login')}
+                onClick={() => navigate('/apporteur/login')}
                 className="flex items-center gap-2"
               >
                 <ArrowLeft className="h-4 w-4" />

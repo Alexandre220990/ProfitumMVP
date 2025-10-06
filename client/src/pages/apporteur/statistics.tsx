@@ -1,4 +1,4 @@
-import { useRouter } from 'next/router';
+import { useSearchParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
@@ -10,8 +10,8 @@ import { ApporteurRealDataService } from '../../services/apporteur-real-data-ser
  * Graphiques et analyses détaillées
  */
 export default function StatisticsPage() {
-  const router = useRouter();
-  const { apporteurId } = router.query;
+  const [searchParams] = useSearchParams();
+  const apporteurId = searchParams.get('apporteurId');
   const [statistics, setStatistics] = useState<any>(null);
   const [periodFilter, setPeriodFilter] = useState('month');
   const [showFilters, setShowFilters] = useState(false);

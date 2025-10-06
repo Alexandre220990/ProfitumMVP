@@ -1,4 +1,4 @@
-import { useRouter } from 'next/router';
+import { useSearchParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
@@ -11,8 +11,8 @@ import { Settings, User, Bell, Shield, Save, Edit, Eye, EyeOff, Download, Upload
  * Configuration du compte et préférences
  */
 export default function SettingsPage() {
-  const router = useRouter();
-  const { apporteurId } = router.query;
+  const [searchParams] = useSearchParams();
+  const apporteurId = searchParams.get('apporteurId');
   const [settings, setSettings] = useState<any>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);

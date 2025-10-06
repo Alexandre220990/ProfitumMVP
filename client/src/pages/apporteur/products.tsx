@@ -1,4 +1,4 @@
-import { useRouter } from 'next/router';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
@@ -24,8 +24,9 @@ import { ApporteurRealDataService } from '../../services/apporteur-real-data-ser
  * Gestion des produits et services disponibles
  */
 export default function ProductsPage() {
-  const router = useRouter();
-  const { apporteurId } = router.query;
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const apporteurId = searchParams.get('apporteurId');
   const [products, setProducts] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');

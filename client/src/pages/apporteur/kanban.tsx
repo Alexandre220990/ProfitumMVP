@@ -1,4 +1,4 @@
-import { useRouter } from 'next/router';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import KanbanBoard from '../../components/apporteur/KanbanBoard';
 
 /**
@@ -6,8 +6,9 @@ import KanbanBoard from '../../components/apporteur/KanbanBoard';
  * Vue Kanban pour gérer le pipeline des prospects
  */
 export default function KanbanPage() {
-  const router = useRouter();
-  const { apporteurId } = router.query;
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const apporteurId = searchParams.get('apporteurId');
 
   if (!apporteurId || typeof apporteurId !== 'string') {
     return (
