@@ -237,7 +237,10 @@ export const enhancedAuthMiddleware = async (
         email: decoded.email,
         user_metadata: {
           type: decoded.type
-        }
+        },
+        app_metadata: {},
+        aud: 'authenticated',
+        created_at: new Date().toISOString()
       };
       jwtUserData = decoded; // Stocker les données décodées pour plus tard
       console.log('✅ Utilisateur authentifié via JWT personnalisé:', decoded.email);
