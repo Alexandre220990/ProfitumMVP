@@ -170,6 +170,7 @@ export const enhancedAuthMiddleware = async (
   try {
     // 1. Vérification du token d'authentification (header Authorization OU cookies Supabase)
     let token = req.headers.authorization?.replace('Bearer ', '');
+    console.log('🔍 Middleware auth - Token reçu:', token ? 'PRÉSENT' : 'MANQUANT');
     
     // Si pas de token dans le header, vérifier les cookies Supabase
     if (!token) {
@@ -245,6 +246,7 @@ export const enhancedAuthMiddleware = async (
           };
           jwtUserData = decoded; // Stocker les données décodées pour plus tard
           console.log('✅ Utilisateur authentifié via JWT personnalisé:', decoded.email);
+          console.log('🔍 JWT décodé:', JSON.stringify(decoded, null, 2));
         } catch (jwtError) {
           authError = jwtError;
           console.log('❌ Erreur décodage JWT:', jwtError instanceof Error ? jwtError.message : 'Erreur JWT inconnue');
