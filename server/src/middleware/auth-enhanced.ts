@@ -281,7 +281,30 @@ export const enhancedAuthMiddleware = async (
     let userData: any;
     let userType: 'client' | 'expert' | 'admin' | 'apporteur_affaires';
 
-    // Pour les routes admin, chercher d'abord dans la table Admin
+    // Si on a des données JWT avec database_id, utiliser directement cet ID
+    if (jwtUserData && jwtUserData.database_id && jwtUserData.type) {
+      console.log('🔍 Utilisation directe des données JWT:', {
+        database_id: jwtUserData.database_id,
+        type: jwtUserData.type,
+        email: jwtUserData.email
+      });
+      
+      userType = jwtUserData.type;
+      userData = {
+        id: jwtUserData.database_id,
+        email: jwtUserData.email
+      };
+      
+      console.log('✅ Utilisateur construit à partir du JWT:', {
+        id: userData.id,
+        type: userType,
+        email: userData.email
+      });
+    } else {
+      // Fallback: recherche par email dans les tables
+      console.log('🔍 Fallback: recherche par email dans les tables...');
+
+      // Pour les routes admin, chercher d'abord dans la table Admin
     if (req.path.startsWith('/api/admin')) {
       console.log('🔍 Recherche admin prioritaire...');
       
@@ -438,7 +461,7 @@ export const enhancedAuthMiddleware = async (
           }
         }
       }
-    }
+    } // Fin du bloc else (fallback: recherche par email)
 
     // 4. Attribution des permissions
     const permissions = USER_PERMISSIONS[userType] || [];
@@ -511,6 +534,7 @@ export const enhancedAuthMiddleware = async (
     const duration = Date.now() - startTime;
     logger.info(`🔐 Auth réussie - ${userType} ${userData.email} - ${req.method} ${req.path} - ${duration}ms`);
 
+    } // Fermeture du bloc else (fallback: recherche par email)
     return next();
     
   } catch (error) {
