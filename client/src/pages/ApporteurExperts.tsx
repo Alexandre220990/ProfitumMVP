@@ -54,7 +54,24 @@ export default function ApporteurExperts() {
       const result = await apporteurApi.getExperts(filters);
       
       if (result.success && result.data) {
-        setExperts(Array.isArray(result.data) ? result.data : []);
+        const expertsData = Array.isArray(result.data) ? result.data : [];
+        // S'assurer que chaque expert a une structure de performance valide
+        const formattedExperts = expertsData.map(expert => ({
+          ...expert,
+          performance: {
+            total_dossiers: expert.performance?.total_dossiers || 0,
+            rating: expert.performance?.rating || '4.5',
+            response_time: expert.performance?.response_time || 2,
+            availability: expert.performance?.availability || 'available',
+            ...expert.performance
+          },
+          specializations: expert.specializations || [],
+          name: expert.name || 'Expert sans nom',
+          company_name: expert.company_name || 'Entreprise non spécifiée',
+          email: expert.email || '',
+          phone_number: expert.phone_number || ''
+        }));
+        setExperts(formattedExperts);
       } else {
         setError(result.error || 'Erreur lors du chargement des experts');
       }
@@ -67,12 +84,12 @@ export default function ApporteurExperts() {
   };
 
   const filteredExperts = experts.filter(expert => {
-    const matchesSearch = expert.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         expert.company_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         expert.specializations.some(spec => spec.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesSearch = (expert.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (expert.company_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (expert.specializations || []).some(spec => spec.toLowerCase().includes(searchTerm.toLowerCase()));
     
     const matchesSpecialization = !selectedSpecialization || 
-                                 expert.specializations.includes(selectedSpecialization);
+                                 (expert.specializations || []).includes(selectedSpecialization);
     
     return matchesSearch && matchesSpecialization;
   });
@@ -83,11 +100,14 @@ export default function ApporteurExperts() {
     fetchExperts();
   };
 
-  const getAvailabilityBadge = (availability: string) => {
+  const getAvailabilityBadge = (expert: Expert) => {
+    // Vérification de sécurité pour éviter les erreurs avec des propriétés undefined
+    const availability = expert?.performance?.availability || 'available';
     const config = {
       'available': { color: 'bg-green-100 text-green-800', label: 'Disponible' },
       'busy': { color: 'bg-red-100 text-red-800', label: 'Occupé' },
-      'away': { color: 'bg-yellow-100 text-yellow-800', label: 'Absent' }
+      'away': { color: 'bg-yellow-100 text-yellow-800', label: 'Absent' },
+      'offline': { color: 'bg-gray-100 text-gray-800', label: 'Hors ligne' }
     };
     const badgeConfig = config[availability as keyof typeof config] || config['available'];
     return <Badge className={badgeConfig.color}>{badgeConfig.label}</Badge>;
@@ -176,7 +196,7 @@ export default function ApporteurExperts() {
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
                     <h3 className="text-lg font-semibold text-gray-900">{expert.name}</h3>
-                    {getAvailabilityBadge(expert.performance.availability)}
+                    {getAvailabilityBadge(expert)}
                   </div>
                   
                   <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
@@ -197,20 +217,20 @@ export default function ApporteurExperts() {
                   <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
                     <div className="flex items-center gap-1">
                       <Star className="h-4 w-4 text-yellow-500" />
-                      {expert.performance.rating}/5
+                      {expert?.performance?.rating || '4.5'}/5
                     </div>
                     <div className="flex items-center gap-1">
                       <CheckCircle className="h-4 w-4 text-green-500" />
-                      {expert.performance.total_dossiers} dossiers
+                      {expert?.performance?.total_dossiers || 0} dossiers
                     </div>
                     <div className="flex items-center gap-1">
                       <Clock className="h-4 w-4" />
-                      Réponse: {expert.performance.response_time}h
+                      Réponse: {expert?.performance?.response_time || 2}h
                     </div>
                   </div>
 
                   <div className="flex flex-wrap gap-2">
-                    {expert.specializations.map((spec, index) => (
+                    {(expert.specializations || []).map((spec, index) => (
                       <Badge key={index} variant="outline" className="text-xs">
                         {spec}
                       </Badge>

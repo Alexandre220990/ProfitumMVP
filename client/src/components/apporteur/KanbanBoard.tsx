@@ -212,92 +212,84 @@ export default function KanbanBoard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Header Optimisé */}
-        <div className="mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
-            <div className="mb-4 sm:mb-0">
-              <h1 className="text-3xl font-bold text-gray-900">Pipeline Prospects</h1>
-              <p className="text-gray-600 mt-1">Suivi visuel de vos prospects par étape</p>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Button 
-                onClick={() => setShowFilters(!showFilters)}
-                variant="outline" 
-                className="w-full sm:w-auto"
-              >
-                <Filter className="h-4 w-4 mr-2" />
-                Filtres
-              </Button>
-              <Button className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700">
-                <Plus className="h-4 w-4 mr-2" />
-                Nouveau Prospect
-              </Button>
-            </div>
+    <div className="bg-white rounded-lg shadow-lg border-0">
+      {/* Barre de recherche et filtres compacts */}
+      <div className="p-6 border-b border-gray-200">
+        <div className="flex flex-col lg:flex-row gap-4 items-center">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              type="text"
+              placeholder="Rechercher par nom, entreprise ou email..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 pr-4 py-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
           </div>
-
-          {/* Barre de recherche et filtres */}
-          <div className="flex flex-col lg:flex-row gap-4 mb-6">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                type="text"
-                placeholder="Rechercher par nom, entreprise ou email..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
+          <div className="flex gap-2">
+            <Button 
+              onClick={() => setShowFilters(!showFilters)}
+              variant="outline" 
+              size="sm"
+            >
+              <Filter className="h-4 w-4 mr-2" />
+              Filtres
+            </Button>
+            <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
+              <Plus className="h-4 w-4 mr-2" />
+              Nouveau
+            </Button>
           </div>
+        </div>
 
-          {/* Panneau de filtres */}
-          {showFilters && (
-            <div className="bg-white p-4 rounded-lg border shadow-sm mb-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Score minimum
-                  </label>
-                  <Input
-                    type="number"
-                    min="0"
-                    max="10"
-                    value={filterScore}
-                    onChange={(e) => setFilterScore(Number(e.target.value))}
-                    className="w-full"
-                    placeholder="Score de qualification"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Statuts
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {['prospect', 'qualified', 'rdv_negotiated', 'expert_validated', 'meeting_done', 'in_progress', 'signed', 'refused'].map((status) => (
-                      <Button
-                        key={status}
-                        variant={filterStatus.includes(status) ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => {
-                          if (filterStatus.includes(status)) {
-                            setFilterStatus(filterStatus.filter(s => s !== status));
-                          } else {
-                            setFilterStatus([...filterStatus, status]);
-                          }
-                        }}
-                      >
-                        {status}
-                      </Button>
-                    ))}
-                  </div>
+        {/* Panneau de filtres */}
+        {showFilters && (
+          <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Score minimum
+                </label>
+                <Input
+                  type="number"
+                  min="0"
+                  max="10"
+                  value={filterScore}
+                  onChange={(e) => setFilterScore(Number(e.target.value))}
+                  className="w-full"
+                  placeholder="Score de qualification"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Statuts
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {['prospect', 'qualified', 'rdv_negotiated', 'expert_validated', 'meeting_done', 'in_progress', 'signed', 'refused'].map((status) => (
+                    <Button
+                      key={status}
+                      variant={filterStatus.includes(status) ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => {
+                        if (filterStatus.includes(status)) {
+                          setFilterStatus(filterStatus.filter(s => s !== status));
+                        } else {
+                          setFilterStatus([...filterStatus, status]);
+                        }
+                      }}
+                    >
+                      {status}
+                    </Button>
+                  ))}
                 </div>
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
+      </div>
 
-        {/* Kanban Board Optimisé */}
+      {/* Kanban Board Optimisé */}
+      <div className="p-6">
         <div className="flex gap-6 overflow-x-auto pb-6">
           {columns.map((column) => (
             <div key={column.id} className="flex-shrink-0 w-80">

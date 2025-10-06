@@ -206,16 +206,110 @@ export class ApporteurService {
 
             if (error) throw error;
 
-            return experts.map(expert => ({
-                ...expert,
-                success_rate: expert.total_assignments > 0 
-                    ? (expert.completed_assignments / expert.total_assignments) * 100 
-                    : 0
-            }));
+            return experts.map(expert => {
+                // Gestion sécurisée des valeurs null/0 avec logging des erreurs
+                const totalAssignments = expert.total_assignments || 0;
+                const completedAssignments = expert.completed_assignments || 0;
+                const rating = expert.rating || 4.5;
+                
+                // Calcul sécurisé du taux de réussite
+                let successRate = 0;
+                try {
+                    if (totalAssignments > 0) {
+                        successRate = Math.round((completedAssignments / totalAssignments) * 100);
+                    }
+                } catch (error) {
+                    console.error('Erreur calcul success_rate pour expert', expert.id, ':', error);
+                    successRate = 0;
+                }
+
+                return {
+                    ...expert,
+                    success_rate: successRate,
+                    // S'assurer que toutes les propriétés requises existent avec valeurs par défaut
+                    specializations: Array.isArray(expert.specializations) ? expert.specializations : [],
+                    name: expert.name || 'Expert sans nom',
+                    company_name: expert.company_name || 'Entreprise non spécifiée',
+                    email: expert.email || '',
+                    phone_number: expert.phone || '',
+                    // Structure de performance avec gestion d'erreurs
+                    performance: {
+                        total_dossiers: totalAssignments,
+                        rating: typeof rating === 'number' ? rating.toFixed(1) : '4.5',
+                        response_time: 2, // Valeur par défaut
+                        availability: 'available' // Valeur par défaut
+                    }
+                };
+            });
 
         } catch (error) {
             console.error('Erreur getAvailableExperts:', error);
             throw new Error('Erreur lors de la récupération des experts');
+        }
+    }
+
+    // ===== PRODUITS ÉLIGIBLES =====
+    static async getProduitsEligibles(): Promise<ApiResponse<any[]>> {
+        try {
+            console.log('🔍 Récupération des produits depuis la base de données...');
+            
+            const { data: produits, error } = await supabase
+                .from('ProduitEligible')
+                .select('*')
+                .order('nom');
+
+            if (error) {
+                console.error('❌ Erreur récupération produits:', error);
+                return { success: false, error: 'Erreur lors de la récupération des produits' };
+            }
+
+            console.log(`✅ ${produits?.length || 0} produits récupérés depuis la base de données`);
+
+            // Formatage sécurisé des produits avec gestion des valeurs null/0
+            const formattedProduits = (produits || []).map(produit => {
+                try {
+                    return {
+                        id: produit.id || '',
+                        nom: produit.nom || 'Produit sans nom',
+                        description: produit.description || 'Description non disponible',
+                        categorie: produit.category || 'Général',
+                        montant_min: produit.montant_min !== null ? Number(produit.montant_min) : null,
+                        montant_max: produit.montant_max !== null ? Number(produit.montant_max) : null,
+                        taux_min: produit.taux_min !== null ? Number(produit.taux_min) : null,
+                        taux_max: produit.taux_max !== null ? Number(produit.taux_max) : null,
+                        duree_min: produit.duree_min !== null ? Number(produit.duree_min) : null,
+                        duree_max: produit.duree_max !== null ? Number(produit.duree_max) : null,
+                        conditions: Array.isArray(produit.conditions) ? produit.conditions : [],
+                        avantages: Array.isArray(produit.avantages) ? produit.avantages : [],
+                        status: produit.status || 'active',
+                        created_at: produit.created_at || new Date().toISOString()
+                    };
+                } catch (error) {
+                    console.error('Erreur formatage produit', produit.id, ':', error);
+                    return {
+                        id: produit.id || '',
+                        nom: 'Produit avec erreur',
+                        description: 'Erreur lors du formatage',
+                        categorie: 'Erreur',
+                        montant_min: 0,
+                        montant_max: 0,
+                        taux_min: 0,
+                        taux_max: 0,
+                        duree_min: 0,
+                        duree_max: 0,
+                        conditions: [],
+                        avantages: [],
+                        status: 'error',
+                        created_at: new Date().toISOString()
+                    };
+                }
+            });
+
+            console.log(`🎯 ${formattedProduits.length} produits formatés et prêts`);
+            return { success: true, data: formattedProduits };
+        } catch (error) {
+            console.error('❌ Erreur getProduitsEligibles:', error);
+            return { success: false, error: 'Erreur lors de la récupération des produits' };
         }
     }
 
@@ -250,16 +344,60 @@ export class ApporteurService {
 
             const { data: commissions, error, count } = await query;
 
-            if (error) throw error;
+            if (error) {
+                console.error('Erreur récupération commissions:', error);
+                throw error;
+            }
+
+            // Formatage sécurisé des commissions avec gestion des valeurs null/0
+            const formattedCommissions = (commissions || []).map(commission => {
+                try {
+                    return {
+                        ...commission,
+                        montant: Number(commission.montant) || 0,
+                        taux_commission: Number(commission.taux_commission) || 0,
+                        montant_commission: Number(commission.montant_commission) || 0,
+                        status: commission.status || 'pending',
+                        created_at: commission.created_at || new Date().toISOString(),
+                        // Gestion sécurisée des relations
+                        prospect: commission.prospect ? {
+                            ...commission.prospect,
+                            name: commission.prospect.name || 'Prospect sans nom',
+                            email: commission.prospect.email || '',
+                            company_name: commission.prospect.company_name || 'Entreprise non spécifiée'
+                        } : null,
+                        client_produit_eligible: commission.client_produit_eligible ? {
+                            ...commission.client_produit_eligible,
+                            montantFinal: Number(commission.client_produit_eligible.montantFinal) || 0,
+                            progress: Number(commission.client_produit_eligible.progress) || 0
+                        } : null
+                    };
+                } catch (error) {
+                    console.error('Erreur formatage commission', commission.id, ':', error);
+                    return {
+                        ...commission,
+                        montant: 0,
+                        taux_commission: 0,
+                        montant_commission: 0,
+                        status: 'error',
+                        created_at: new Date().toISOString(),
+                        prospect: null,
+                        client_produit_eligible: null
+                    };
+                }
+            });
+
+            const totalCount = count || 0;
+            const totalPages = Math.ceil(totalCount / limit);
 
             return {
                 success: true,
-                data: commissions || [],
+                data: formattedCommissions,
                 pagination: {
                     page,
                     limit,
-                    total: count || 0,
-                    total_pages: Math.ceil((count || 0) / limit)
+                    total: totalCount,
+                    total_pages: totalPages
                 }
             };
 

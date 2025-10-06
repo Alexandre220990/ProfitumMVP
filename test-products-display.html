@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - Affichage des 10 Produits</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .product { border: 1px solid #ddd; margin: 10px 0; padding: 15px; border-radius: 8px; }
+        .product h3 { color: #2563eb; margin: 0 0 10px 0; }
+        .product p { margin: 5px 0; color: #666; }
+        .product .details { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-top: 10px; }
+        .product .detail { background: #f8f9fa; padding: 8px; border-radius: 4px; }
+        .product .detail strong { color: #333; }
+        .null-value { color: #999; font-style: italic; }
+        .has-value { color: #059669; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test - Affichage des 10 Produits de la Base de Données</h1>
+    
+    <div class="product">
+        <h3>1. CEE - Certificats d'économies d'énergie</h3>
+        <p><strong>Description:</strong> Aides CEE - Certificats d'économies d'énergie</p>
+        <p><strong>Catégorie:</strong> general</p>
+        <div class="details">
+            <div class="detail">
+                <strong>Montant:</strong> <span class="null-value">Non spécifié</span>
+            </div>
+            <div class="detail">
+                <strong>Taux:</strong> <span class="null-value">Non spécifié</span>
+            </div>
+            <div class="detail">
+                <strong>Durée:</strong> <span class="null-value">Non spécifiée</span> - <span class="has-value">24 mois max</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="product">
+        <h3>2. Chronotachygraphes digitaux</h3>
+        <p><strong>Description:</strong> Chronotachygraphes digitaux pour pilotage en temps réel et simplifié des démarches administratives liées aux remboursement de la TICPE</p>
+        <p><strong>Catégorie:</strong> Services additionnels TICPE</p>
+        <div class="details">
+            <div class="detail">
+                <strong>Montant:</strong> <span class="has-value">0€</span> - <span class="null-value">Non spécifié</span>
+            </div>
+            <div class="detail">
+                <strong>Taux:</strong> <span class="has-value">5%</span> - <span class="has-value">40%</span>
+            </div>
+            <div class="detail">
+                <strong>Durée:</strong> <span class="has-value">1 mois</span> - <span class="has-value">2 mois</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="product">
+        <h3>3. DFS - Déduction Forfaitaire Spécifique</h3>
+        <p><strong>Description:</strong> Déduction Forfaitaire Spécifique</p>
+        <p><strong>Catégorie:</strong> general</p>
+        <div class="details">
+            <div class="detail">
+                <strong>Montant:</strong> <span class="null-value">Non spécifié</span>
+            </div>
+            <div class="detail">
+                <strong>Taux:</strong> <span class="has-value">5%</span> - <span class="has-value">40%</span>
+            </div>
+            <div class="detail">
+                <strong>Durée:</strong> <span class="null-value">Non spécifiée</span> - <span class="has-value">24 mois max</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="product">
+        <h3>4. Foncier - Optimisation Fiscalité Foncière</h3>
+        <p><strong>Description:</strong> Optimisation Fiscalité Foncière</p>
+        <p><strong>Catégorie:</strong> general</p>
+        <div class="details">
+            <div class="detail">
+                <strong>Montant:</strong> <span class="null-value">Non spécifié</span>
+            </div>
+            <div class="detail">
+                <strong>Taux:</strong> <span class="null-value">Non spécifié</span>
+            </div>
+            <div class="detail">
+                <strong>Durée:</strong> <span class="null-value">Non spécifiée</span> - <span class="has-value">12 mois max</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="product">
+        <h3>5. MSA - Optimisation Charges MSA</h3>
+        <p><strong>Description:</strong> Optimisation Charges MSA</p>
+        <p><strong>Catégorie:</strong> general</p>
+        <div class="details">
+            <div class="detail">
+                <strong>Montant:</strong> <span class="null-value">Non spécifié</span>
+            </div>
+            <div class="detail">
+                <strong>Taux:</strong> <span class="null-value">Non spécifié</span>
+            </div>
+            <div class="detail">
+                <strong>Durée:</strong> <span class="null-value">Non spécifiée</span> - <span class="has-value">18 mois max</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="product">
+        <h3>6. Optimisation Énergie</h3>
+        <p><strong>Description:</strong> Optimisation des contrats d'électricité et de gaz</p>
+        <p><strong>Catégorie:</strong> general</p>
+        <div class="details">
+            <div class="detail">
+                <strong>Montant:</strong> <span class="null-value">Non spécifié</span>
+            </div>
+            <div class="detail">
+                <strong>Taux:</strong> <span class="null-value">Non spécifié</span>
+            </div>
+            <div class="detail">
+                <strong>Durée:</strong> <span class="null-value">Non spécifiée</span> - <span class="has-value">36 mois max</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="product">
+        <h3>7. Recouvrement</h3>
+        <p><strong>Description:</strong> Avocat spécialisé en recouvrement d'impayés</p>
+        <p><strong>Catégorie:</strong> general</p>
+        <div class="details">
+            <div class="detail">
+                <strong>Montant:</strong> <span class="null-value">Non spécifié</span>
+            </div>
+            <div class="detail">
+                <strong>Taux:</strong> <span class="null-value">Non spécifié</span>
+            </div>
+            <div class="detail">
+                <strong>Durée:</strong> <span class="null-value">Non spécifiée</span> - <span class="has-value">24 mois max</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="product">
+        <h3>8. TICPE - Remboursement Taxe Intérieure Consommation</h3>
+        <p><strong>Description:</strong> Remboursement de la Taxe Intérieure de Consommation sur les Produits Énergétiques</p>
+        <p><strong>Catégorie:</strong> general</p>
+        <div class="details">
+            <div class="detail">
+                <strong>Montant:</strong> <span class="null-value">Non spécifié</span>
+            </div>
+            <div class="detail">
+                <strong>Taux:</strong> <span class="null-value">Non spécifié</span>
+            </div>
+            <div class="detail">
+                <strong>Durée:</strong> <span class="null-value">Non spécifiée</span> - <span class="has-value">24 mois max</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="product">
+        <h3>9. TVA - Remboursement TVA internationale</h3>
+        <p><strong>Description:</strong> Remboursement et gestion administrative tva internationale</p>
+        <p><strong>Catégorie:</strong> general</p>
+        <div class="details">
+            <div class="detail">
+                <strong>Montant:</strong> <span class="null-value">Non spécifié</span>
+            </div>
+            <div class="detail">
+                <strong>Taux:</strong> <span class="null-value">Non spécifié</span>
+            </div>
+            <div class="detail">
+                <strong>Durée:</strong> <span class="null-value">Non spécifiée</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="product">
+        <h3>10. URSSAF - Optimisation Charges Sociales</h3>
+        <p><strong>Description:</strong> Optimisation de Charges Sociales</p>
+        <p><strong>Catégorie:</strong> general</p>
+        <div class="details">
+            <div class="detail">
+                <strong>Montant:</strong> <span class="null-value">Non spécifié</span>
+            </div>
+            <div class="detail">
+                <strong>Taux:</strong> <span class="null-value">Non spécifié</span>
+            </div>
+            <div class="detail">
+                <strong>Durée:</strong> <span class="null-value">Non spécifiée</span> - <span class="has-value">36 mois max</span>
+            </div>
+        </div>
+    </div>
+
+    <div style="margin-top: 30px; padding: 20px; background: #f0f9ff; border-radius: 8px;">
+        <h2>📊 Résumé</h2>
+        <p><strong>Total:</strong> 10 produits</p>
+        <p><strong>Avec montants spécifiés:</strong> 1 produit (Chronotachygraphes)</p>
+        <p><strong>Avec taux spécifiés:</strong> 2 produits (Chronotachygraphes, DFS)</p>
+        <p><strong>Avec durée spécifiée:</strong> 9 produits</p>
+        <p><strong>Catégories:</strong> general (9), Services additionnels TICPE (1)</p>
+    </div>
+</body>
+</html>

@@ -48,6 +48,7 @@ export default function ProspectManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [viewMode, setViewMode] = useState<'kanban' | 'list' | 'agenda'>('kanban');
+  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
 
   useEffect(() => {
     fetchProspects();
@@ -88,6 +89,29 @@ export default function ProspectManagement() {
   };
 
   const statusCounts = getStatusCounts();
+
+  const handleStatusClick = (status: string) => {
+    setSelectedStatus(selectedStatus === status ? null : status);
+    setStatusFilter(selectedStatus === status ? '' : status);
+  };
+
+  const getFilteredProspects = () => {
+    let filtered = prospects;
+    
+    if (searchTerm) {
+      filtered = filtered.filter(prospect => 
+        prospect.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        prospect.company_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        prospect.email.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    
+    if (statusFilter) {
+      filtered = filtered.filter(prospect => prospect.status === statusFilter);
+    }
+    
+    return filtered;
+  };
 
   if (loading) {
     return (
@@ -138,9 +162,14 @@ export default function ProspectManagement() {
           </div>
         </div>
 
-        {/* Statistiques Optimisées */}
+        {/* Statistiques Optimisées - Cliquables */}
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-6 mb-8">
-          <Card className="bg-white shadow-lg hover:shadow-xl transition-shadow border-0">
+          <Card 
+            className={`bg-white shadow-lg hover:shadow-xl transition-all duration-200 border-0 cursor-pointer ${
+              selectedStatus === null ? 'ring-2 ring-blue-500 bg-blue-50' : 'hover:bg-gray-50'
+            }`}
+            onClick={() => handleStatusClick('all')}
+          >
             <CardContent className="p-6 text-center">
               <div className="flex items-center justify-center mb-3">
                 <div className="p-2 bg-blue-100 rounded-lg">
@@ -152,7 +181,12 @@ export default function ProspectManagement() {
             </CardContent>
           </Card>
           
-          <Card className="bg-white shadow-lg hover:shadow-xl transition-shadow border-0">
+          <Card 
+            className={`bg-white shadow-lg hover:shadow-xl transition-all duration-200 border-0 cursor-pointer ${
+              selectedStatus === 'prospect' ? 'ring-2 ring-gray-500 bg-gray-50' : 'hover:bg-gray-50'
+            }`}
+            onClick={() => handleStatusClick('prospect')}
+          >
             <CardContent className="p-6 text-center">
               <div className="flex items-center justify-center mb-3">
                 <div className="p-2 bg-gray-100 rounded-lg">
@@ -164,7 +198,12 @@ export default function ProspectManagement() {
             </CardContent>
           </Card>
           
-          <Card className="bg-white shadow-lg hover:shadow-xl transition-shadow border-0">
+          <Card 
+            className={`bg-white shadow-lg hover:shadow-xl transition-all duration-200 border-0 cursor-pointer ${
+              selectedStatus === 'qualified' ? 'ring-2 ring-blue-500 bg-blue-50' : 'hover:bg-gray-50'
+            }`}
+            onClick={() => handleStatusClick('qualified')}
+          >
             <CardContent className="p-6 text-center">
               <div className="flex items-center justify-center mb-3">
                 <div className="p-2 bg-blue-100 rounded-lg">
@@ -176,7 +215,12 @@ export default function ProspectManagement() {
             </CardContent>
           </Card>
           
-          <Card className="bg-white shadow-lg hover:shadow-xl transition-shadow border-0">
+          <Card 
+            className={`bg-white shadow-lg hover:shadow-xl transition-all duration-200 border-0 cursor-pointer ${
+              selectedStatus === 'rdv_negotiated' ? 'ring-2 ring-yellow-500 bg-yellow-50' : 'hover:bg-gray-50'
+            }`}
+            onClick={() => handleStatusClick('rdv_negotiated')}
+          >
             <CardContent className="p-6 text-center">
               <div className="flex items-center justify-center mb-3">
                 <div className="p-2 bg-yellow-100 rounded-lg">
@@ -188,7 +232,12 @@ export default function ProspectManagement() {
             </CardContent>
           </Card>
           
-          <Card className="bg-white shadow-lg hover:shadow-xl transition-shadow border-0">
+          <Card 
+            className={`bg-white shadow-lg hover:shadow-xl transition-all duration-200 border-0 cursor-pointer ${
+              selectedStatus === 'expert_validated' ? 'ring-2 ring-purple-500 bg-purple-50' : 'hover:bg-gray-50'
+            }`}
+            onClick={() => handleStatusClick('expert_validated')}
+          >
             <CardContent className="p-6 text-center">
               <div className="flex items-center justify-center mb-3">
                 <div className="p-2 bg-purple-100 rounded-lg">
@@ -200,7 +249,12 @@ export default function ProspectManagement() {
             </CardContent>
           </Card>
           
-          <Card className="bg-white shadow-lg hover:shadow-xl transition-shadow border-0">
+          <Card 
+            className={`bg-white shadow-lg hover:shadow-xl transition-all duration-200 border-0 cursor-pointer ${
+              selectedStatus === 'meeting_done' ? 'ring-2 ring-green-500 bg-green-50' : 'hover:bg-gray-50'
+            }`}
+            onClick={() => handleStatusClick('meeting_done')}
+          >
             <CardContent className="p-6 text-center">
               <div className="flex items-center justify-center mb-3">
                 <div className="p-2 bg-green-100 rounded-lg">
@@ -212,7 +266,12 @@ export default function ProspectManagement() {
             </CardContent>
           </Card>
           
-          <Card className="bg-white shadow-lg hover:shadow-xl transition-shadow border-0">
+          <Card 
+            className={`bg-white shadow-lg hover:shadow-xl transition-all duration-200 border-0 cursor-pointer ${
+              selectedStatus === 'in_progress' ? 'ring-2 ring-orange-500 bg-orange-50' : 'hover:bg-gray-50'
+            }`}
+            onClick={() => handleStatusClick('in_progress')}
+          >
             <CardContent className="p-6 text-center">
               <div className="flex items-center justify-center mb-3">
                 <div className="p-2 bg-orange-100 rounded-lg">
@@ -224,7 +283,12 @@ export default function ProspectManagement() {
             </CardContent>
           </Card>
           
-          <Card className="bg-white shadow-lg hover:shadow-xl transition-shadow border-0">
+          <Card 
+            className={`bg-white shadow-lg hover:shadow-xl transition-all duration-200 border-0 cursor-pointer ${
+              selectedStatus === 'signed' ? 'ring-2 ring-emerald-500 bg-emerald-50' : 'hover:bg-gray-50'
+            }`}
+            onClick={() => handleStatusClick('signed')}
+          >
             <CardContent className="p-6 text-center">
               <div className="flex items-center justify-center mb-3">
                 <div className="p-2 bg-emerald-100 rounded-lg">
@@ -282,6 +346,79 @@ export default function ProspectManagement() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Liste des Prospects Filtrés */}
+        {selectedStatus && (
+          <Card className="bg-white shadow-lg border-0 mb-8">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-3 text-xl">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <Users className="h-6 w-6 text-blue-600" />
+                </div>
+                Prospects - {selectedStatus === 'all' ? 'Tous' : selectedStatus}
+                <Badge variant="outline" className="ml-auto">
+                  {getFilteredProspects().length} prospect{getFilteredProspects().length > 1 ? 's' : ''}
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              {getFilteredProspects().length === 0 ? (
+                <div className="text-center py-12">
+                  <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500">Aucun prospect trouvé</p>
+                </div>
+              ) : (
+                <div className="divide-y">
+                  {getFilteredProspects().map((prospect) => (
+                    <div key={prospect.id} className="p-6 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <h4 className="font-semibold text-lg text-gray-900">{prospect.name}</h4>
+                            <Badge 
+                              variant={prospect.status === 'signed' ? 'default' : 'secondary'}
+                              className="text-xs"
+                            >
+                              {prospect.status}
+                            </Badge>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+                            <div className="flex items-center gap-2">
+                              <Building className="h-4 w-4 text-blue-500" />
+                              <span>{prospect.company_name}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Mail className="h-4 w-4 text-green-500" />
+                              <span>{prospect.email}</span>
+                            </div>
+                            {prospect.phone_number && (
+                              <div className="flex items-center gap-2">
+                                <Phone className="h-4 w-4 text-purple-500" />
+                                <span>{prospect.phone_number}</span>
+                              </div>
+                            )}
+                            <div className="flex items-center gap-2">
+                              <Target className="h-4 w-4 text-orange-500" />
+                              <span>Score: {prospect.qualification_score}/10</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button variant="outline" size="sm">
+                            Voir détails
+                          </Button>
+                          <Button variant="outline" size="sm">
+                            Modifier
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Onglets de Vue Optimisés */}
         <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as 'kanban' | 'list' | 'agenda')}>

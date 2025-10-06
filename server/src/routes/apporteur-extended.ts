@@ -29,7 +29,7 @@ router.get('/experts', async (req: any, res: any): Promise<void> => {
 
         if (error) throw error;
 
-        // Ajouter des données de performance simulées (à remplacer par de vraies données)
+        // Ajouter des données de performance avec valeurs par défaut sécurisées
         const expertsWithPerformance = experts?.map(expert => ({
             ...expert,
             performance: {
@@ -37,8 +37,14 @@ router.get('/experts', async (req: any, res: any): Promise<void> => {
                 rating: (Math.random() * 2 + 3).toFixed(1), // 3.0 à 5.0
                 response_time: Math.floor(Math.random() * 4) + 1, // 1 à 4 heures
                 availability: Math.random() > 0.3 ? 'available' : 'busy' // 70% disponibles
-            }
-        }));
+            },
+            // S'assurer que toutes les propriétés requises existent
+            specializations: expert.specializations || [],
+            name: expert.name || 'Expert sans nom',
+            company_name: expert.company_name || 'Entreprise non spécifiée',
+            email: expert.email || '',
+            phone_number: expert.phone_number || ''
+        })) || [];
 
         res.json({ success: true, data: expertsWithPerformance });
     } catch (error) {

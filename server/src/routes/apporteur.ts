@@ -132,6 +132,23 @@ router.get('/experts', async (req: any, res: any): Promise<void> => {
     }
 });
 
+// ===== PRODUITS ÉLIGIBLES =====
+// Récupérer les produits éligibles
+router.get('/produits', async (req: any, res: any): Promise<void> => {
+    try {
+        const result = await ApporteurService.getProduitsEligibles();
+        
+        if (result.success) {
+            res.json(result);
+        } else {
+            res.status(500).json(result);
+        }
+    } catch (error) {
+        console.error('Erreur récupération produits:', error);
+        res.status(500).json({ error: 'Erreur lors de la récupération des produits' });
+    }
+});
+
 // ===== COMMISSIONS =====
 // Récupérer les commissions
 router.get('/commissions', async (req: any, res: any): Promise<void> => {

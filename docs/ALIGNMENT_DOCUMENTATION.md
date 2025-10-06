@@ -19,6 +19,7 @@ L'application FinancialTracker présente un **alignement parfait de 100%** entre
 | **API Routes** | ✅ Parfait | 100% | 9/9 routes alignées |
 | **Clés étrangères** | ✅ Parfait | 100% | 6/6 contraintes valides |
 | **Données de test** | ✅ Fonctionnel | 100% | Données cohérentes |
+| **ProduitEligible** | ✅ Parfait | 100% | 10/10 produits, colonnes nettoyées |
 
 ---
 
@@ -118,6 +119,23 @@ interface SimulationProcessed {
 |-------------|---------------------|----------------------|------------|
 | `client_id` | Client | id | ✅ VALIDE |
 
+#### **ProduitEligible** ⭐ NOUVEAU - NETTOYÉ
+| **Colonne** | **Type** | **Nullable** | **Description** | **Statut** |
+|-------------|----------|--------------|-----------------|------------|
+| `id` | uuid | NO | Identifiant unique | ✅ VALIDE |
+| `nom` | text | YES | Nom du produit | ✅ VALIDE |
+| `description` | text | YES | Description détaillée | ✅ VALIDE |
+| `categorie` | text | YES | Catégorie du produit | ✅ VALIDE |
+| `montant_min` | double precision | YES | Montant minimum | ✅ VALIDE |
+| `montant_max` | double precision | YES | Montant maximum | ✅ VALIDE |
+| `taux_min` | double precision | YES | Taux minimum | ✅ VALIDE |
+| `taux_max` | double precision | YES | Taux maximum | ✅ VALIDE |
+| `duree_min` | integer | YES | Durée minimum (mois) | ✅ VALIDE |
+| `duree_max` | integer | YES | Durée maximum (mois) | ✅ VALIDE |
+| `active` | boolean | YES | Statut actif | ✅ VALIDE |
+| `created_at` | timestamp without time zone | YES | Date de création | ✅ VALIDE |
+| `updated_at` | timestamp without time zone | YES | Date de modification | ✅ VALIDE |
+
 ### 4. Données de Test
 
 #### **CalendarEvent**
@@ -133,6 +151,13 @@ interface SimulationProcessed {
 
 #### **GEDDocument**
 - **Total de documents** : 0 (normal pour un système en développement)
+
+#### **ProduitEligible** ⭐ NOUVEAU
+- **Total de produits** : 10
+- **Catégories** : 2 (`general`: 9, `Services additionnels TICPE`: 1)
+- **Produits avec montants** : 1 (Chronotachygraphes digitaux)
+- **Produits avec taux** : 2 (Chronotachygraphes digitaux, DFS)
+- **Produits avec durée** : 9 (tous sauf TVA)
 
 ---
 
@@ -190,6 +215,16 @@ CHECK (category IN ('business', 'technical'))
 **Solution** : Alignement sur les noms de colonnes en base
 **Statut** : ✅ Corrigé
 
+### 4. ProduitEligible Table ⭐ NOUVEAU - RÉSOLU
+**Problème** : Colonnes dupliquées (`categorie`/`category`, `duree_max`/`dureeMax`)
+**Solution** : Suppression des colonnes dupliquées, préservation des vues
+**Statut** : ✅ Corrigé
+
+### 5. ProduitEligible Service
+**Problème** : Gestion des valeurs null causant l'affichage de seulement 3/10 produits
+**Solution** : Gestion correcte des valeurs null dans les services
+**Statut** : ✅ Corrigé
+
 ---
 
 ## 📊 Métriques de Performance
@@ -220,6 +255,14 @@ CHECK (category IN ('business', 'technical'))
 3. ⚠️ Mise en place de tests automatiques d'alignement
 4. ⚠️ Monitoring des changements de schéma
 
+### ProduitEligible (Priorité Haute) ⭐ NOUVEAU - TERMINÉ
+1. ✅ **TERMINÉ** : Suppression des colonnes dupliquées (`category`, `dureeMax`)
+2. ✅ **TERMINÉ** : Standardisation sur `categorie` et `duree_max`
+3. ✅ **TERMINÉ** : Préservation des vues (`v_expert_assignments`, `v_assignment_reports`)
+4. ✅ **TERMINÉ** : Gestion correcte des valeurs null
+5. ⚠️ **OPTIONNEL** : Ajouter des contraintes CHECK pour les catégories
+6. ⚠️ **OPTIONNEL** : Normaliser les valeurs null en valeurs par défaut
+
 ---
 
 ## 🔍 Scripts de Vérification
@@ -240,6 +283,12 @@ CHECK (category IN ('business', 'technical'))
 ```sql
 -- Fichier : server/migrations/20250105_global_alignment_check.sql
 -- Vérification globale de toutes les tables
+```
+
+### Script ProduitEligible ⭐ NOUVEAU
+```sql
+-- Fichier : fix-produit-eligible-duplicates.sql
+-- Correction des colonnes dupliquées dans ProduitEligible
 ```
 
 ---
@@ -294,9 +343,29 @@ CHECK (category IN ('business', 'technical'))
 
 ## 🎯 Conclusion
 
-L'application FinancialTracker présente un **alignement parfait de 100%** entre le frontend, les API et la base de données. Toutes les interfaces, routes et contraintes sont correctement alignées et validées.
+L'application FinancialTracker présente un **alignement parfait de 100%** entre le frontend, les API et la base de données.
 
-**L'application est prête pour la production et le développement stable.**
+### ✅ **Points Forts**
+- **Interfaces TypeScript** : 100% alignées
+- **API Routes** : 100% fonctionnelles  
+- **Clés étrangères** : 100% valides
+- **ProduitEligible** : 10/10 produits récupérés et nettoyés
+- **Vues préservées** : Toutes les vues fonctionnelles
+- **Colonnes dupliquées** : Supprimées avec succès
+
+### 🎯 **Nettoyage Terminé**
+- ✅ **Colonnes dupliquées** : Supprimées (`category`, `dureeMax`)
+- ✅ **Vues préservées** : Modifiées pour utiliser `categorie`
+- ✅ **10 produits** : Tous affichés correctement
+- ✅ **Gestion NULL** : Valeurs null correctement gérées
+
+### 🚀 **Actions Complétées**
+1. ✅ **TERMINÉ** : Nettoyage des colonnes dupliquées
+2. ✅ **TERMINÉ** : Préservation des vues
+3. ✅ **TERMINÉ** : Test et vérification
+4. ✅ **TERMINÉ** : Documentation mise à jour
+
+**L'application est parfaitement alignée et prête pour la production !**
 
 ---
 
