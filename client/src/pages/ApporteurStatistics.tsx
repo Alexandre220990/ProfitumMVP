@@ -177,9 +177,9 @@ export default function ApporteurStatistics() {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Prospects totaux</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.prospects.total}</p>
+                <p className="text-2xl font-bold text-gray-900">{stats?.prospects?.total || 0}</p>
                 <p className="text-xs text-gray-500">
-                  {stats.prospects.qualified} qualifiés ({Math.round((stats.prospects.qualified / stats.prospects.total) * 100)}%)
+                  {stats?.prospects?.qualified || 0} qualifiés ({stats?.prospects?.total ? Math.round(((stats.prospects.qualified || 0) / stats.prospects.total) * 100) : 0}%)
                 </p>
               </div>
             </div>
@@ -194,9 +194,9 @@ export default function ApporteurStatistics() {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Taux de conversion</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.prospects.conversion_rate}%</p>
+                <p className="text-2xl font-bold text-gray-900">{stats?.prospects?.conversion_rate || 0}%</p>
                 <p className="text-xs text-gray-500">
-                  {stats.prospects.converted} conversions
+                  {stats?.prospects?.converted || 0} conversions
                 </p>
               </div>
             </div>
@@ -211,9 +211,9 @@ export default function ApporteurStatistics() {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">RDV réussis</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.meetings.success_rate}%</p>
+                <p className="text-2xl font-bold text-gray-900">{stats?.meetings?.success_rate || 0}%</p>
                 <p className="text-xs text-gray-500">
-                  {stats.meetings.completed}/{stats.meetings.total} RDV
+                  {stats?.meetings?.completed || 0}/{stats?.meetings?.total || 0} RDV
                 </p>
               </div>
             </div>
@@ -229,10 +229,10 @@ export default function ApporteurStatistics() {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Gains totaux</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {stats.commissions.total_earnings.toLocaleString()}€
+                  {(stats?.commissions?.total_earnings || 0).toLocaleString()}€
                 </p>
                 <p className="text-xs text-gray-500">
-                  {stats.commissions.monthly_earnings.toLocaleString()}€ ce mois
+                  {(stats?.commissions?.monthly_earnings || 0).toLocaleString()}€ ce mois
                 </p>
               </div>
             </div>
@@ -254,18 +254,18 @@ export default function ApporteurStatistics() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-gray-700">Score global</span>
-                <span className="text-2xl font-bold text-blue-600">{stats.performance.score}/10</span>
+                <span className="text-2xl font-bold text-blue-600">{stats?.performance?.score || 0}/10</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div 
                   className="bg-blue-600 h-2 rounded-full" 
-                  style={{ width: `${(stats.performance.score / 10) * 100}%` }}
+                  style={{ width: `${((stats?.performance?.score || 0) / 10) * 100}%` }}
                 ></div>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-gray-700">Classement</span>
                 <span className="text-lg font-semibold text-gray-900">
-                  {stats.performance.ranking}ᵉ sur {stats.performance.total_apporteurs}
+                  {stats?.performance?.ranking || 0}ᵉ sur {stats?.performance?.total_apporteurs || 0}
                 </span>
               </div>
             </div>
@@ -323,7 +323,7 @@ export default function ApporteurStatistics() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="text-center">
               <div className="text-3xl font-bold text-blue-600 mb-2">
-                {stats.prospects.total}
+                {stats?.prospects?.total || 0}
               </div>
               <div className="text-sm text-gray-600">Prospects totaux</div>
               <div className="text-xs text-gray-500 mt-1">
@@ -332,7 +332,7 @@ export default function ApporteurStatistics() {
             </div>
             <div className="text-center">
               <div className="text-3xl font-bold text-green-600 mb-2">
-                {stats.prospects.conversion_rate}%
+                {stats?.prospects?.conversion_rate || 0}%
               </div>
               <div className="text-sm text-gray-600">Taux de conversion</div>
               <div className="text-xs text-gray-500 mt-1">
@@ -341,7 +341,7 @@ export default function ApporteurStatistics() {
             </div>
             <div className="text-center">
               <div className="text-3xl font-bold text-purple-600 mb-2">
-                {stats.commissions.monthly_earnings.toLocaleString()}€
+                {(stats?.commissions?.monthly_earnings || 0).toLocaleString()}€
               </div>
               <div className="text-sm text-gray-600">Gains ce mois</div>
               <div className="text-xs text-gray-500 mt-1">

@@ -63,18 +63,18 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
     );
   }
 
-  // Données de fallback
+  // Données réelles ou 0 si vide, logs si erreur
   const prospects = analytics.prospects || [];
   const prospectsActifs = getProspectsByStatus('active');
 
-  // Utiliser les données enrichies si disponibles, sinon fallback
+  // Utiliser les données enrichies si disponibles, sinon données réelles avec 0 si vide
   const dashboardData = hasEnhancedData ? {
-    total_prospects: stats.totalProspects,
-    total_active_clients: stats.totalClients,
-    nouveaux_clients_30j: stats.nouveaux30j,
-    total_montant_demande: stats.montantTotal,
-    taux_conversion_pourcent: stats.tauxConversion,
-    dossiers_acceptes: stats.dossiersAcceptes
+    total_prospects: stats.totalProspects || 0,
+    total_active_clients: stats.totalClients || 0,
+    nouveaux_clients_30j: stats.nouveaux30j || 0,
+    total_montant_demande: stats.montantTotal || 0,
+    taux_conversion_pourcent: stats.tauxConversion || 0,
+    dossiers_acceptes: stats.dossiersAcceptes || 0
   } : {
     total_prospects: prospects.length,
     total_active_clients: prospectsActifs.length,
@@ -94,7 +94,7 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
   const objectivesData = hasEnhancedData ? objectives : null;
 
   return (
-    <div className="bg-gradient-to-br from-slate-50 to-blue-50 min-h-screen">
+    <div className="bg-gradient-to-br from-slate-50 to-blue-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         {/* Header Compact */}
         <div className="flex items-center justify-between mb-6">

@@ -92,9 +92,5 @@ export default function ApporteurDashboardPage() {
   }
 
   // Dashboard principal
-  return (
-    <div className="bg-gray-50">
-      <ApporteurDashboardSimple apporteurId={apporteurId} />
-    </div>
-  );
+  return <ApporteurDashboardSimple apporteurId={apporteurId} />;
 }
