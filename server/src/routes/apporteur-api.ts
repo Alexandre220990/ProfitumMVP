@@ -246,7 +246,14 @@ router.get('/clients', async (req: Request, res: Response): Promise<void> => {
   try {
     const user = req.user as any;
     
+    console.log('🔍 Route /clients - User object:', user ? 'PRÉSENT' : 'MANQUANT');
+    if (user) {
+      console.log('🔍 User type:', user.type);
+      console.log('🔍 User complet:', JSON.stringify(user, null, 2));
+    }
+    
     if (!user || user.type !== 'apporteur_affaires') {
+      console.log('❌ Route /clients - Accès refusé:', { hasUser: !!user, userType: user?.type });
       res.status(403).json({
         success: false,
         message: 'Accès réservé aux apporteurs d\'affaires'
