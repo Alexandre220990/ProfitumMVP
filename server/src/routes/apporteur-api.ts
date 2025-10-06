@@ -66,36 +66,29 @@ router.get('/dashboard', async (req: Request, res: Response): Promise<void> => {
         return;
     }
 
-    // Récupérer les prospects de l'apporteur
+    // Récupérer les prospects de l'apporteur (clients avec status 'prospect')
     const { data: prospects, error: prospectsError } = await supabase
-      .from('ApporteurProspects')
+      .from('Client')
       .select(`
-        *,
-        Client (
-          id,
-          name,
-          email,
-          company_name,
-          phone_number
-        )
+        id,
+        name,
+        email,
+        company_name,
+        phone_number,
+        status,
+        created_at
       `)
       .eq('apporteur_id', user.database_id)
+      .eq('status', 'prospect')
       .order('created_at', { ascending: false });
 
     if (prospectsError) {
       console.error('❌ Erreur récupération prospects:', prospectsError);
     }
 
-    // Récupérer les commissions
-    const { data: commissions, error: commissionsError } = await supabase
-      .from('ApporteurCommissions')
-      .select('*')
-      .eq('apporteur_id', user.database_id)
-      .order('created_at', { ascending: false });
-
-    if (commissionsError) {
-      console.error('❌ Erreur récupération commissions:', commissionsError);
-    }
+    // Récupérer les commissions (pour l'instant, retourner une liste vide)
+    const commissions: any[] = [];
+    console.log('ℹ️ Commissions: fonctionnalité à implémenter');
 
     // Calculer les statistiques
     const stats = {
@@ -208,22 +201,9 @@ router.get('/commissions', async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    const { data: commissions, error } = await supabase
-      .from('ApporteurCommissions')
-      .select(`
-        *,
-        Client (
-          id,
-          name,
-          company_name
-        ),
-        Dossier (
-          id,
-          reference
-        )
-      `)
-      .eq('apporteur_id', user.database_id)
-      .order('created_at', { ascending: false });
+    // Commissions: fonctionnalité à implémenter
+    const commissions: any[] = [];
+    const error = null;
 
     if (error) {
       console.error('❌ Erreur récupération commissions:', error);
@@ -321,25 +301,29 @@ router.get('/clients/:clientId', async (req: Request, res: Response): Promise<vo
     }
 
     // Vérifier que le client appartient à cet apporteur
-    const { data: prospect, error: prospectError } = await supabase
-      .from('ApporteurProspects')
-      .select(`
-        *,
-        Client (
-          *
-        )
-      `)
+    const { data: client, error: clientError } = await supabase
+      .from('Client')
+      .select('*')
+      .eq('id', clientId)
       .eq('apporteur_id', user.database_id)
-      .eq('client_id', clientId)
       .single();
 
-    if (prospectError || !prospect) {
+    if (clientError || !client) {
       res.status(404).json({
         success: false,
         message: 'Client non trouvé ou accès non autorisé'
       });
       return;
     }
+
+    const prospect = {
+      id: client.id,
+      client_id: client.id,
+      apporteur_id: user.database_id,
+      status: client.status,
+      notes: client.notes || '',
+      Client: client
+    };
 
     res.json({
       success: true,
@@ -406,7 +390,7 @@ router.post('/prospects', async (req: Request, res: Response): Promise<void> => 
           siren: client_data.siren,
           source: 'apporteur_affaires'
         })
-        .select('id')
+        .select('*')
         .single();
 
       if (clientCreateError) {
@@ -418,39 +402,25 @@ router.post('/prospects', async (req: Request, res: Response): Promise<void> => 
         return;
       }
 
-      client = newClient;
+      client = newClient as any;
     }
 
-    // Créer le prospect
-    const { data: prospect, error: prospectError } = await supabase
-      .from('ApporteurProspects')
-      .insert({
-        apporteur_id: user.database_id,
-        client_id: client.id,
-        status: 'new',
-        notes: notes || '',
-        source: 'direct'
-      })
-      .select(`
-        *,
-        Client (
-          id,
-          name,
-          email,
-          company_name,
-          phone_number
-        )
-      `)
-      .single();
-
-    if (prospectError) {
-      console.error('❌ Erreur création prospect:', prospectError);
-        res.status(500).json({
-          success: false,
-          message: 'Erreur lors de la création du prospect'
-        });
-        return;
-    }
+    // Le prospect est maintenant le client créé
+    const prospect = {
+      id: client.id,
+      apporteur_id: user.database_id,
+      client_id: client.id,
+      status: client.status || 'prospect',
+      notes: notes || '',
+      source: 'direct',
+      Client: {
+        id: client.id,
+        name: client.name || '',
+        email: client.email || '',
+        company_name: client.company_name || '',
+        phone_number: client.phone_number || ''
+      }
+    };
 
     console.log('✅ Prospect créé:', prospect.id);
 
