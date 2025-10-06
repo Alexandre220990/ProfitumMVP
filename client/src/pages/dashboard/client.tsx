@@ -373,7 +373,7 @@ export default function DashboardClient() {
     inProgressProducts
   } = useClientProducts();
 
-  // Suppression des tests d'authentification inutiles - l'authentification est gérée par les hooks
+  // L'authentification est gérée par les hooks
 
   // Redirection automatique vers le simulateur si le client n'a pas de produits éligibles
   useEffect(() => {

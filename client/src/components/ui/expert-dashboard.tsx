@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,8 +14,6 @@ import {
   CheckCircle,
   Clock,
   Search,
-  ArrowUpRight,
-  ArrowDownRight,
   AlertCircle,
   Play,
   AlertTriangle,
@@ -31,7 +29,8 @@ import {
   CalendarDays,
   Timer
 } from "lucide-react";
-import { useExpert } from "@/hooks/use-expert";
+import { useAuth } from "@/hooks/use-auth";
+import { ExpertRealDataService } from "@/services/expert-real-data-service";
 import HeaderExpert from "@/components/HeaderExpert";
 import { useNavigate } from "react-router-dom";
 
@@ -250,29 +249,44 @@ const DossierCard: React.FC<{
 // Composant principal du Dashboard Expert Ultra-Optimisé
 export const ExpertDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const {
-    clientProduitsEligibles,
-    analytics,
-    loading,
-    error,
-    getQuickMetrics,
-    getPriorityDossiers,
-    getOverdueDossiers,
-    refreshData
-  } = useExpert();
-
+  const { user } = useAuth();
+  
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
 
-  // Calculer les métriques rapides
-  const metrics = getQuickMetrics();
+  // Charger les données réelles
+  useEffect(() => {
+    const loadData = async () => {
+      if (!user?.id) return;
+      
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const service = new ExpertRealDataService(user.id);
+        const result = await service.getAllData();
+        
+        if (result.success && result.data) {
+          setData(result.data);
+        } else {
+          setError(result.error || 'Erreur lors du chargement des données');
+        }
+      } catch (err) {
+        console.error('Erreur chargement données expert:', err);
+        setError('Erreur lors du chargement des données');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  // Obtenir les dossiers prioritaires et en retard
-  const priorityDossiers = getPriorityDossiers();
-  const overdueDossiers = getOverdueDossiers();
+    loadData();
+  }, [user?.id]);
 
   // Filtrage des dossiers
-  const filteredDossiers = (clientProduitsEligibles ?? []).filter(dossier => {
+  const filteredDossiers = (data?.dossiers ?? []).filter((dossier: any) => {
     const clientName = dossier.Client?.company_name || dossier.Client?.name || 'Client inconnu';
     const productName = dossier.ProduitEligible?.nom || 'Produit inconnu';
     
@@ -281,6 +295,28 @@ export const ExpertDashboard: React.FC = () => {
     const matchesStatus = filterStatus === 'all' || dossier.statut === filterStatus;
     return matchesSearch && matchesStatus;
   });
+
+  // Fonction de rafraîchissement
+  const refreshData = async () => {
+    if (!user?.id) return;
+    
+    try {
+      setLoading(true);
+      const service = new ExpertRealDataService(user.id);
+      const result = await service.getAllData();
+      
+      if (result.success && result.data) {
+        setData(result.data);
+      } else {
+        setError(result.error || 'Erreur lors du chargement des données');
+      }
+    } catch (err) {
+      console.error('Erreur rafraîchissement données expert:', err);
+      setError('Erreur lors du rafraîchissement des données');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Actions sur les dossiers
   const handleViewDossier = (id: string) => {
@@ -330,51 +366,53 @@ export const ExpertDashboard: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <KPICard
             title="Dossiers actifs"
-            value={metrics.inProgress}
+            value={data?.dossiersActifs || 0}
             icon={<Briefcase className="w-6 h-6 text-blue-600" />}
             color="bg-blue-100 dark:bg-blue-900/20"
-            trend={{ value: 12, isPositive: true }}
-            subtitle="+2 ce mois"
             onClick={() => setFilterStatus('en_cours')}
           />
           <KPICard
             title="Gains du mois"
-            value={`€${metrics.totalRevenue.toLocaleString()}`}
+            value={`€${(data?.gainsDuMois || 0).toLocaleString()}`}
             icon={<DollarSign className="w-6 h-6 text-green-600" />}
             color="bg-green-100 dark:bg-green-900/20"
-            trend={{ value: 8, isPositive: true }}
-            subtitle="vs mois dernier"
             onClick={() => navigate('/expert/analytics')}
           />
           <KPICard
             title="Taux de réussite"
-            value={analytics?.conversionRate ? `${analytics.conversionRate}%` : '0%'}
+            value={`${(data?.tauxReussite || 0).toFixed(1)}%`}
             icon={<TrendingUp className="w-6 h-6 text-purple-600" />}
             color="bg-purple-100 dark:bg-purple-900/20"
-            trend={{ value: 5, isPositive: true }}
-            subtitle="+5% ce mois"
           />
           <KPICard
             title="Opportunités"
-            value={metrics.opportunities}
+            value={data?.opportunites || 0}
             icon={<Users className="w-6 h-6 text-orange-600" />}
             color="bg-orange-100 dark:bg-orange-900/20"
-            trend={{ value: 3, isPositive: true }}
-            subtitle="+3 ce mois"
             onClick={() => setFilterStatus('eligible')}
           />
         </div>
 
         {/* Alertes et priorités */}
-        {(overdueDossiers.length > 0 || priorityDossiers.length > 0) && (
+        {data?.dossiers && (
           <div className="mb-8 space-y-4">
-            {overdueDossiers.length > 0 && (
+            {data.dossiers.filter((d: any) => {
+              const createdDate = new Date(d.created_at);
+              const now = new Date();
+              const daysDiff = Math.floor((now.getTime() - createdDate.getTime()) / (1000 * 3600 * 24));
+              return d.statut === 'en_cours' && daysDiff > 30;
+            }).length > 0 && (
               <Card className="border-red-200 bg-red-50">
                 <CardContent className="p-4">
                   <div className="flex items-center space-x-2">
                     <AlertTriangle className="w-5 h-5 text-red-600" />
                     <span className="font-medium text-red-800">
-                      {overdueDossiers.length} dossier(s) en retard
+                      {data.dossiers.filter((d: any) => {
+                        const createdDate = new Date(d.created_at);
+                        const now = new Date();
+                        const daysDiff = Math.floor((now.getTime() - createdDate.getTime()) / (1000 * 3600 * 24));
+                        return d.statut === 'en_cours' && daysDiff > 30;
+                      }).length} dossier(s) en retard
                     </span>
                     <Button variant="outline" size="sm" onClick={() => setFilterStatus('en_cours')}>
                       Voir les dossiers
@@ -384,13 +422,13 @@ export const ExpertDashboard: React.FC = () => {
               </Card>
             )}
             
-            {priorityDossiers.length > 0 && (
+            {data.dossiers.filter((d: any) => d.priorite > 2).length > 0 && (
               <Card className="border-orange-200 bg-orange-50">
                 <CardContent className="p-4">
                   <div className="flex items-center space-x-2">
                     <Star className="w-5 h-5 text-orange-600" />
                     <span className="font-medium text-orange-800">
-                      {priorityDossiers.length} dossier(s) prioritaire(s)
+                      {data.dossiers.filter((d: any) => d.priorite > 2).length} dossier(s) prioritaire(s)
                     </span>
                     <Button variant="outline" size="sm" onClick={() => setFilterStatus('en_cours')}>
                       Voir les priorités
@@ -430,15 +468,15 @@ export const ExpertDashboard: React.FC = () => {
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="eligible">
                   <Target className="h-4 w-4 mr-2" />
-                  Opportunités ({clientProduitsEligibles.filter(cpe => cpe.statut === 'eligible').length})
+                  Opportunités ({data?.dossiers?.filter((d: any) => d.statut === 'eligible').length || 0})
                 </TabsTrigger>
                 <TabsTrigger value="en_cours">
                   <Play className="h-4 w-4 mr-2" />
-                  En cours ({clientProduitsEligibles.filter(cpe => cpe.statut === 'en_cours').length})
+                  En cours ({data?.dossiers?.filter((d: any) => d.statut === 'en_cours').length || 0})
                 </TabsTrigger>
                 <TabsTrigger value="termine">
                   <Award className="h-4 w-4 mr-2" />
-                  Terminés ({clientProduitsEligibles.filter(cpe => cpe.statut === 'termine').length})
+                  Terminés ({data?.dossiers?.filter((d: any) => d.statut === 'termine').length || 0})
                 </TabsTrigger>
               </TabsList>
 

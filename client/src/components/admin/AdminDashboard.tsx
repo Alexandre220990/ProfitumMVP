@@ -1,11 +1,151 @@
-import { useAdminAnalytics } from '../../hooks/use-admin-analytics';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { RefreshCw, Users, UserCheck, FileText, DollarSign, AlertTriangle, Activity } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 
 export function AdminDashboard() {
-  const { analytics, loading, error, refresh } = useAdminAnalytics();
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Charger les données réelles
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Récupérer les KPIs globaux
+        const { data: kpisData, error: kpisError } = await supabase
+          .from('vue_admin_kpis_globaux')
+          .select('*')
+          .single();
+
+        if (kpisError) throw kpisError;
+
+        // Récupérer l'activité récente
+        const { data: activityData, error: activityError } = await supabase
+          .from('vue_admin_activite_globale')
+          .select('*')
+          .order('date_action', { ascending: false })
+          .limit(10);
+
+        if (activityError) throw activityError;
+
+        // Récupérer les alertes
+        const { data: alertsData, error: alertsError } = await supabase
+          .from('vue_admin_alertes_globales')
+          .select('*');
+
+        if (alertsError) throw alertsError;
+
+        // Récupérer les sessions actives
+        const { data: sessionsData, error: sessionsError } = await supabase
+          .from('vue_sessions_actives_globale')
+          .select('*');
+
+        if (sessionsError) throw sessionsError;
+
+        // Récupérer les KPIs dashboard v2
+        const { data: dashboardKPIsData, error: dashboardKPIsError } = await supabase
+          .from('vue_dashboard_kpis_v2')
+          .select('*')
+          .single();
+
+        if (dashboardKPIsError) throw dashboardKPIsError;
+
+        // Récupérer les sessions actives détaillées
+        const { data: sessionsDetailData, error: sessionsDetailError } = await supabase
+          .from('vue_sessions_actives')
+          .select('*');
+
+        if (sessionsDetailError) throw sessionsDetailError;
+
+        setData({
+          kpis: kpisData,
+          activity: activityData || [],
+          alerts: alertsData || [],
+          sessions: sessionsData || [],
+          dashboardKPIs: dashboardKPIsData || {},
+          sessionsDetail: sessionsDetailData || []
+        });
+      } catch (err) {
+        console.error('Erreur chargement données admin:', err);
+        setError('Erreur lors du chargement des données');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
+
+  // Fonction de rafraîchissement
+  const refresh = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Recharger les données
+      const { data: kpisData, error: kpisError } = await supabase
+        .from('vue_admin_kpis_globaux')
+        .select('*')
+        .single();
+
+      if (kpisError) throw kpisError;
+
+      const { data: activityData, error: activityError } = await supabase
+        .from('vue_admin_activite_globale')
+        .select('*')
+        .order('date_action', { ascending: false })
+        .limit(10);
+
+      if (activityError) throw activityError;
+
+      const { data: alertsData, error: alertsError } = await supabase
+        .from('vue_admin_alertes_globales')
+        .select('*');
+
+      if (alertsError) throw alertsError;
+
+      const { data: sessionsData, error: sessionsError } = await supabase
+        .from('vue_sessions_actives_globale')
+        .select('*');
+
+      if (sessionsError) throw sessionsError;
+
+      // Récupérer les KPIs dashboard v2
+      const { data: dashboardKPIsData, error: dashboardKPIsError } = await supabase
+        .from('vue_dashboard_kpis_v2')
+        .select('*')
+        .single();
+
+      if (dashboardKPIsError) throw dashboardKPIsError;
+
+      // Récupérer les sessions actives détaillées
+      const { data: sessionsDetailData, error: sessionsDetailError } = await supabase
+        .from('vue_sessions_actives')
+        .select('*');
+
+      if (sessionsDetailError) throw sessionsDetailError;
+
+      setData({
+        kpis: kpisData,
+        activity: activityData || [],
+        alerts: alertsData || [],
+        sessions: sessionsData || [],
+        dashboardKPIs: dashboardKPIsData || {},
+        sessionsDetail: sessionsDetailData || []
+      });
+    } catch (err) {
+      console.error('Erreur rafraîchissement données admin:', err);
+      setError('Erreur lors du rafraîchissement des données');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -29,7 +169,7 @@ export function AdminDashboard() {
     );
   }
 
-  if (!analytics.kpis) {
+  if (!data?.kpis) {
     return (
       <div className="flex items-center justify-center h-64">
         <span>Aucune donnée disponible</span>
@@ -37,7 +177,7 @@ export function AdminDashboard() {
     );
   }
 
-  const { kpis, activity, alerts, sessions } = analytics;
+  const { kpis, activity, alerts, sessions, dashboardKPIs, sessionsDetail } = data;
 
   return (
     <div className="space-y-6">
@@ -161,7 +301,7 @@ export function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {alerts.map((alert, index) => (
+              {alerts.map((alert: any, index: number) => (
                 <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
                   <div className="flex items-center space-x-3">
                     <Badge variant={alert.severity === 'high' ? 'destructive' : alert.severity === 'warning' ? 'default' : 'secondary'}>
@@ -187,7 +327,7 @@ export function AdminDashboard() {
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            {activity.slice(0, 10).map((item, index) => (
+            {activity.slice(0, 10).map((item: any, index: number) => (
               <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
                 <div className="flex items-center space-x-3">
                   <Badge variant="outline">{item.typeEntite}</Badge>
@@ -211,12 +351,60 @@ export function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {sessions.map((session, index) => (
+              {sessions.map((session: any, index: number) => (
                 <div key={index} className="text-center p-4 border rounded-lg">
                   <div className="text-2xl font-bold">{session.sessionsActives}</div>
                   <div className="text-sm text-muted-foreground">{session.userType}</div>
                   <div className="text-xs text-muted-foreground">
                     {session.utilisateursUniques} utilisateurs uniques
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* KPIs Dashboard V2 */}
+      {dashboardKPIs && Object.keys(dashboardKPIs).length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>KPIs Système (V2)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {Object.entries(dashboardKPIs).map(([key, value]: [string, any]) => (
+                <div key={key} className="text-center p-4 border rounded-lg">
+                  <div className="text-2xl font-bold">{value}</div>
+                  <div className="text-sm text-muted-foreground capitalize">
+                    {key.replace(/([A-Z])/g, ' $1').trim()}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Sessions Actives Détaillées */}
+      {sessionsDetail.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Sessions Détaillées</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {sessionsDetail.map((session: any, index: number) => (
+                <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span className="font-medium">{session.userType || 'Utilisateur'}</span>
+                    <span className="text-sm text-muted-foreground">
+                      {session.sessionsActives || 0} session(s)
+                    </span>
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {session.utilisateursUniques || 0} unique(s)
                   </div>
                 </div>
               ))}

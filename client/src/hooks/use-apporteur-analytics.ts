@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ApporteurAnalyticsService } from '../services/apporteur-analytics-service';
+import { ApporteurRealDataService } from '../services/apporteur-real-data-service';
 
 interface ApporteurKPIs {
   mesProspects: number;
@@ -90,6 +91,8 @@ export function useApporteurAnalytics(apporteurId: string) {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activiteRecente, setActiviteRecente] = useState<any[]>([]);
+  const [kpisGlobaux, setKpisGlobaux] = useState<any>({});
 
   useEffect(() => {
     if (!apporteurId) {
@@ -104,6 +107,7 @@ export function useApporteurAnalytics(apporteurId: string) {
         setError(null);
 
         const service = new ApporteurAnalyticsService(apporteurId);
+        const realDataService = new ApporteurRealDataService(apporteurId);
 
         // Charger toutes les données en parallèle
         const [
@@ -112,14 +116,18 @@ export function useApporteurAnalytics(apporteurId: string) {
           prospectsResult,
           alertsResult,
           productsResult,
-          sessionsResult
+          sessionsResult,
+          activiteRecenteResult,
+          kpisGlobauxResult
         ] = await Promise.all([
           service.getPersonalKPIs(),
           service.getPersonalActivity(),
           service.getPersonalProspects(),
           service.getPersonalAlerts(),
           service.getProductStats(),
-          service.getActiveSessions()
+          service.getActiveSessions(),
+          realDataService.getActiviteRecente(),
+          realDataService.getKPIsGlobaux()
         ]);
 
         // Vérifier les erreurs
@@ -129,6 +137,8 @@ export function useApporteurAnalytics(apporteurId: string) {
         if (!alertsResult.success) throw new Error(alertsResult.error);
         if (!productsResult.success) throw new Error(productsResult.error);
         if (!sessionsResult.success) throw new Error(sessionsResult.error);
+        if (!activiteRecenteResult.success) throw new Error(activiteRecenteResult.error);
+        if (!kpisGlobauxResult.success) throw new Error(kpisGlobauxResult.error);
 
         setAnalytics({
           kpis: kpisResult.data || null,
@@ -138,6 +148,10 @@ export function useApporteurAnalytics(apporteurId: string) {
           products: productsResult.data || [],
           sessions: sessionsResult.data || []
         });
+
+        // Stocker les nouvelles données
+        setActiviteRecente(activiteRecenteResult.data || []);
+        setKpisGlobaux(kpisGlobauxResult.data || {});
 
       } catch (err) {
         console.error('Erreur chargement analytics apporteur:', err);
@@ -206,6 +220,8 @@ export function useApporteurAnalytics(apporteurId: string) {
     refresh,
     getProspectsByStatus,
     getProspectsByAnciennete,
-    getAlertsBySeverity
+    getAlertsBySeverity,
+    activiteRecente,
+    kpisGlobaux
   };
 }

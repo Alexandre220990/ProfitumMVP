@@ -150,6 +150,53 @@ export class ApporteurRealDataService {
     }
   }
 
+  // Récupérer l'activité récente de l'apporteur
+  async getActiviteRecente() {
+    try {
+      const { data, error } = await supabase
+        .from('vue_apporteur_activite_recente')
+        .select('*')
+        .order('date_action', { ascending: false })
+        .limit(20);
+
+      if (error) throw error;
+
+      return {
+        success: true,
+        data: data || []
+      };
+    } catch (error) {
+      console.error('Erreur récupération activité récente:', error);
+      return {
+        success: false,
+        error: 'Erreur lors de la récupération de l\'activité récente'
+      };
+    }
+  }
+
+  // Récupérer les KPIs globaux de l'apporteur
+  async getKPIsGlobaux() {
+    try {
+      const { data, error } = await supabase
+        .from('vue_apporteur_kpis_globaux')
+        .select('*')
+        .single();
+
+      if (error) throw error;
+
+      return {
+        success: true,
+        data: data || {}
+      };
+    } catch (error) {
+      console.error('Erreur récupération KPIs globaux:', error);
+      return {
+        success: false,
+        error: 'Erreur lors de la récupération des KPIs globaux'
+      };
+    }
+  }
+
   // Récupérer les performances par produit réelles
   async getPerformanceProduits() {
     try {
