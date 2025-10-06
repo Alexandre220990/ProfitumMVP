@@ -541,6 +541,9 @@ app.use('/api/apporteur', enhancedAuthMiddleware, apporteurApiRoutes);
 // Route de test simple pour diagnostiquer l'authentification
 app.use('/api/test', testAuthMiddleware, testRoutes);
 
+// Route de test avec le middleware enhanced
+app.use('/api/test-enhanced', enhancedAuthMiddleware, testRoutes);
+
 // Routes expert pour apporteurs - PROTÉGÉES
 app.use('/api/expert-apporteur', enhancedAuthMiddleware, expertApporteurRoutes);
 
