@@ -223,41 +223,29 @@ export const enhancedAuthMiddleware = async (
       });
     }
 
-    // 2. Validation du token (Supabase ou JWT personnalisé)
+    // 2. Validation du token (JWT personnalisé en priorité)
     let user;
     let authError = null;
     let jwtUserData = null;
     
     try {
-      // Essayer d'abord avec Supabase (pour les tokens de session)
-      const { data: { user: sessionUser }, error: sessionError } = await supabase.auth.getUser(token);
-      if (sessionUser && !sessionError) {
-        user = sessionUser;
-        console.log('✅ Utilisateur authentifié via Supabase:', sessionUser.email);
-      } else {
-        // Si ça échoue, essayer de décoder le token JWT personnalisé
-        try {
-          const jwt = require('jsonwebtoken');
-          const decoded = jwt.verify(token, process.env.JWT_SECRET || 'votre_secret_jwt_super_securise');
-          user = {
-            id: decoded.id,
-            email: decoded.email,
-            user_metadata: {
-              type: decoded.type
-            }
-          };
-          jwtUserData = decoded; // Stocker les données décodées pour plus tard
-          console.log('✅ Utilisateur authentifié via JWT personnalisé:', decoded.email);
-          console.log('🔍 JWT décodé:', JSON.stringify(decoded, null, 2));
-        } catch (jwtError) {
-          authError = jwtError;
-          console.log('❌ Erreur décodage JWT:', jwtError instanceof Error ? jwtError.message : 'Erreur JWT inconnue');
-          console.log('🔍 Secret JWT utilisé:', process.env.JWT_SECRET ? 'DÉFINI' : 'DÉFAUT');
+      // Décoder le token JWT personnalisé
+      const jwt = require('jsonwebtoken');
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'votre_secret_jwt_super_securise');
+      user = {
+        id: decoded.id,
+        email: decoded.email,
+        user_metadata: {
+          type: decoded.type
         }
-      }
-    } catch (error) {
-      authError = error;
-      console.log('❌ Erreur validation token Supabase:', error);
+      };
+      jwtUserData = decoded; // Stocker les données décodées pour plus tard
+      console.log('✅ Utilisateur authentifié via JWT personnalisé:', decoded.email);
+      console.log('🔍 JWT décodé:', JSON.stringify(decoded, null, 2));
+    } catch (jwtError) {
+      authError = jwtError;
+      console.log('❌ Erreur décodage JWT:', jwtError instanceof Error ? jwtError.message : 'Erreur JWT inconnue');
+      console.log('🔍 Secret JWT utilisé:', process.env.JWT_SECRET ? 'DÉFINI' : 'DÉFAUT');
     }
     
     if (authError || !user) {
