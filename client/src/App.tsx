@@ -50,7 +50,7 @@ const ApporteurLogin = React.lazy(() => import('./pages/ApporteurLogin'));
 const ApporteurRegister = React.lazy(() => import('./pages/ApporteurRegister'));
 const ValidationPending = React.lazy(() => import('./pages/validation-pending'));
 const ValidationPendingApporteur = React.lazy(() => import('./pages/validation-pending-apporteur'));
-const ApporteurDashboard = React.lazy(() => import('./pages/ApporteurDashboard'));
+const ApporteurDashboard = React.lazy(() => import('./pages/apporteur/dashboard'));
 const ApporteurProspects = React.lazy(() => import('./pages/ApporteurProspects'));
 const ApporteurMeetings = React.lazy(() => import('./pages/ApporteurMeetings'));
 const ApporteurExperts = React.lazy(() => import('./pages/ApporteurExperts'));
