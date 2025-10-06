@@ -243,24 +243,9 @@ router.get('/commissions', async (req: Request, res: Response): Promise<void> =>
 
 // GET /api/apporteur/clients - Liste des clients
 router.get('/clients', async (req: Request, res: Response): Promise<void> => {
-  console.log('🚀 ROUTE /clients APPELÉE');
   try {
     const user = req.user as any;
-    
-    console.log('🔍 Route /clients - User object:', user ? 'PRÉSENT' : 'MANQUANT');
-    if (user) {
-      console.log('🔍 User type:', user.type);
-      console.log('🔍 User complet:', JSON.stringify(user, null, 2));
-    }
-    
-    if (!user || user.type !== 'apporteur_affaires') {
-      console.log('❌ Route /clients - Accès refusé:', { hasUser: !!user, userType: user?.type });
-      res.status(403).json({
-        success: false,
-        message: 'Accès réservé aux apporteurs d\'affaires'
-      });
-      return;
-    }
+    console.log('📋 Récupération des clients pour apporteur:', user.email);
 
     // Récupérer les clients liés à cet apporteur via les prospects
     const { data: prospects, error } = await supabase

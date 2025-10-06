@@ -247,6 +247,10 @@ export const enhancedAuthMiddleware = async (
       console.log('✅ Utilisateur authentifié via JWT personnalisé:', decoded.email);
       console.log('🔍 JWT décodé:', JSON.stringify(decoded, null, 2));
       console.log('🔍 User object créé:', JSON.stringify(user, null, 2));
+      
+      // ASSIGNER L'UTILISATEUR À LA REQUÊTE
+      (req as any).user = user;
+      console.log('✅ User assigné à req.user');
     } catch (jwtError) {
       authError = jwtError;
       console.log('❌ Erreur décodage JWT:', jwtError instanceof Error ? jwtError.message : 'Erreur JWT inconnue');

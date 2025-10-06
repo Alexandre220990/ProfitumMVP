@@ -44,7 +44,6 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import compression from 'compression';
 import { errorHandler } from './middleware/error-handler';
-import { requireUserType } from './middleware/auth-enhanced';
 import { logger } from './utils/logger';
 import { Request, Response, NextFunction } from 'express';
 import { asyncHandler } from './utils/asyncHandler';
@@ -56,6 +55,9 @@ import {
   requirePermission, 
   Permission 
 } from './middleware/auth-enhanced';
+
+// Import du middleware d'authentification simplifié
+import { simpleAuthMiddleware, requireUserType } from './middleware/auth-simple';
 
 // Import des middlewares de performance
 import { 
@@ -533,10 +535,10 @@ app.use('/api/documents', documentsRoutes);
 
 // ===== ROUTES APPORTEURS D'AFFAIRES =====
 // Routes apporteur d'affaires - PROTÉGÉES (routes de base)
-app.use('/api/apporteur', enhancedAuthMiddleware, apporteurRoutes);
+app.use('/api/apporteur', simpleAuthMiddleware, requireUserType('apporteur_affaires'), apporteurRoutes);
 
 // Routes API apporteur d'affaires - PROTÉGÉES (routes étendues avec /clients, etc.)
-app.use('/api/apporteur', enhancedAuthMiddleware, apporteurApiRoutes);
+app.use('/api/apporteur', simpleAuthMiddleware, requireUserType('apporteur_affaires'), apporteurApiRoutes);
 
 // Route de test simple pour diagnostiquer l'authentification
 app.use('/api/test', testAuthMiddleware, testRoutes);
