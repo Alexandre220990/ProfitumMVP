@@ -1,6 +1,6 @@
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { ApporteurDashboard } from '../../components/apporteur/ApporteurDashboard';
+import { ApporteurDashboardSimple } from '../../components/apporteur/ApporteurDashboardSimple';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { RefreshCw, AlertTriangle, ArrowLeft } from 'lucide-react';
@@ -95,7 +95,7 @@ export default function ApporteurDashboardPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto py-6">
-        <ApporteurDashboard apporteurId={apporteurId} />
+        <ApporteurDashboardSimple apporteurId={apporteurId} />
       </div>
     </div>
   );
