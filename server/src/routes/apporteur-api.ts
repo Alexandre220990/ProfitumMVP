@@ -243,6 +243,7 @@ router.get('/commissions', async (req: Request, res: Response): Promise<void> =>
 
 // GET /api/apporteur/clients - Liste des clients
 router.get('/clients', async (req: Request, res: Response): Promise<void> => {
+  console.log('🚀 ROUTE /clients APPELÉE');
   try {
     const user = req.user as any;
     
