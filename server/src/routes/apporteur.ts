@@ -10,15 +10,7 @@ const router = express.Router();
 // Middleware d'authentification déjà appliqué dans index.ts (enhancedAuthMiddleware)
 
 // ===== DASHBOARD =====
-router.get('/dashboard', async (req: any, res: any): Promise<void> => {
-    try {
-        const dashboard = await ApporteurService.getDashboard(req.user!.database_id);
-        res.json({ success: true, data: dashboard });
-    } catch (error) {
-        console.error('Erreur dashboard apporteur:', error);
-        res.status(500).json({ error: 'Erreur lors du chargement du dashboard' });
-    }
-});
+// Route dashboard déplacée vers apporteur-api.ts pour éviter les conflits
 
 // ===== STATISTIQUES =====
 router.get('/stats', async (req: any, res: any): Promise<void> => {

@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { BarChart3, TrendingUp, TrendingDown, Download, Filter, Target, Users, DollarSign, CheckCircle, Building, Star, Activity, PieChart, LineChart } from 'lucide-react';
-import { ApporteurRealDataService } from '../../services/apporteur-real-data-service';
+import { ApporteurSimpleService } from '../../services/apporteur-simple-service';
 
 /**
  * Page Statistiques
@@ -34,8 +34,8 @@ export default function StatisticsPage() {
       if (!apporteurId || typeof apporteurId !== 'string') return;
       
       try {
-        const service = new ApporteurRealDataService(apporteurId);
-        const result = await service.getStatistics();
+        const service = new ApporteurSimpleService(apporteurId);
+        const result = await service.getProductStats();
         const data = result.success ? result.data : null;
         setStatistics(data || defaultStatistics);
       } catch (err) {

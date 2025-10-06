@@ -1,18 +1,17 @@
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
 import { DollarSign, Download, Eye, Filter, CheckCircle, Clock, Building, Calendar, BarChart3, TrendingUp } from 'lucide-react';
-import { ApporteurRealDataService } from '../../services/apporteur-real-data-service';
+import { ApporteurSimpleService } from '../../services/apporteur-simple-service';
 
 /**
  * Page Commissions
  * Suivi des commissions et paiements
  */
 export default function CommissionsPage() {
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const apporteurId = searchParams.get('apporteurId');
   const [commissions, setCommissions] = useState<any[]>([]);
@@ -26,10 +25,9 @@ export default function CommissionsPage() {
       if (!apporteurId || typeof apporteurId !== 'string') return;
       
       try {
-        const service = new ApporteurRealDataService(apporteurId);
-        const result = await service.getCommissions();
-        const data = result.success ? result.data : null;
-        setCommissions(data || []);
+        const service = new ApporteurSimpleService(apporteurId);
+        await service.getPersonalKPIs(); // Pour l'instant, juste tester la connexion
+        setCommissions([]); // Pour l'instant, liste vide car les commissions ne sont pas encore implémentées
       } catch (err) {
         console.error('Erreur lors du chargement des commissions:', err);
         setCommissions([]);
