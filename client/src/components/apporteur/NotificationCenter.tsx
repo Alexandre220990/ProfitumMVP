@@ -15,7 +15,7 @@ interface Notification {
 }
 
 interface NotificationCenterProps {
-  apporteurId: string;
+  apporteurId?: string;
 }
 
 export function NotificationCenter({ apporteurId }: NotificationCenterProps) {

@@ -1,4 +1,4 @@
-import NotificationCenter from '../components/apporteur/NotificationCenter';
+import { NotificationCenter } from '../components/apporteur/NotificationCenter';
 
 export default function ApporteurNotifications() {
   return <NotificationCenter />;
