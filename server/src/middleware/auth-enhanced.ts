@@ -163,6 +163,7 @@ export const enhancedAuthMiddleware = async (
   res: Response,
   next: NextFunction
 ) => {
+  console.log('🚀 MIDDLEWARE AUTH ENHANCED DÉMARRÉ - Route:', req.path, 'Method:', req.method);
   const startTime = Date.now();
   const ipAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
   const userAgent = req.headers['user-agent'] || 'unknown';
@@ -200,6 +201,7 @@ export const enhancedAuthMiddleware = async (
     }
     
     if (!token) {
+      console.log('❌ Middleware auth - Aucun token trouvé');
       await logAccess({
         timestamp: new Date(),
         userId: 'anonymous',
@@ -250,6 +252,7 @@ export const enhancedAuthMiddleware = async (
         } catch (jwtError) {
           authError = jwtError;
           console.log('❌ Erreur décodage JWT:', jwtError instanceof Error ? jwtError.message : 'Erreur JWT inconnue');
+          console.log('🔍 Secret JWT utilisé:', process.env.JWT_SECRET ? 'DÉFINI' : 'DÉFAUT');
         }
       }
     } catch (error) {
@@ -282,6 +285,11 @@ export const enhancedAuthMiddleware = async (
     // 3. Recherche de l'utilisateur dans les tables métier
     let userData: any;
     let userType: 'client' | 'expert' | 'admin' | 'apporteur_affaires';
+
+    console.log('🔍 Middleware auth - Données JWT disponibles:', jwtUserData ? 'OUI' : 'NON');
+    if (jwtUserData) {
+      console.log('🔍 JWT User Data:', JSON.stringify(jwtUserData, null, 2));
+    }
 
     // Si on a des données JWT avec database_id, utiliser directement cet ID
     if (jwtUserData && jwtUserData.database_id && jwtUserData.type) {
