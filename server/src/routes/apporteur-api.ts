@@ -241,6 +241,125 @@ router.get('/commissions', async (req: Request, res: Response): Promise<void> =>
   }
 });
 
+// GET /api/apporteur/clients - Liste des clients
+router.get('/clients', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const user = req.user as any;
+    
+    if (!user || user.type !== 'apporteur_affaires') {
+      res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux apporteurs d\'affaires'
+      });
+      return;
+    }
+
+    // Récupérer les clients liés à cet apporteur via les prospects
+    const { data: prospects, error } = await supabase
+      .from('ApporteurProspects')
+      .select(`
+        *,
+        Client (
+          id,
+          name,
+          email,
+          company_name,
+          phone_number,
+          city,
+          siren,
+          status,
+          created_at
+        )
+      `)
+      .eq('apporteur_id', user.database_id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('❌ Erreur récupération clients:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la récupération des clients'
+      });
+      return;
+    }
+
+    // Transformer les données pour retourner les clients
+    const clients = prospects?.map(prospect => ({
+      ...prospect.Client,
+      prospect_id: prospect.id,
+      prospect_status: prospect.status,
+      prospect_created_at: prospect.created_at,
+      notes: prospect.notes
+    })) || [];
+
+    res.json({
+      success: true,
+      data: clients
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route clients:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+// GET /api/apporteur/clients/:clientId - Détails d'un client
+router.get('/clients/:clientId', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const user = req.user as any;
+    const { clientId } = req.params;
+    
+    if (!user || user.type !== 'apporteur_affaires') {
+      res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux apporteurs d\'affaires'
+      });
+      return;
+    }
+
+    // Vérifier que le client appartient à cet apporteur
+    const { data: prospect, error: prospectError } = await supabase
+      .from('ApporteurProspects')
+      .select(`
+        *,
+        Client (
+          *
+        )
+      `)
+      .eq('apporteur_id', user.database_id)
+      .eq('client_id', clientId)
+      .single();
+
+    if (prospectError || !prospect) {
+      res.status(404).json({
+        success: false,
+        message: 'Client non trouvé ou accès non autorisé'
+      });
+      return;
+    }
+
+    res.json({
+      success: true,
+      data: {
+        ...prospect.Client,
+        prospect_id: prospect.id,
+        prospect_status: prospect.status,
+        notes: prospect.notes
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route client details:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
 // POST /api/apporteur/prospects - Créer un prospect
 router.post('/prospects', async (req: Request, res: Response): Promise<void> => {
   try {

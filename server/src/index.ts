@@ -94,6 +94,11 @@ dotenv.config();
 const PORT = Number(process.env.PORT) || 5001;
 const HOST = process.env.NODE_ENV === 'production' ? '0.0.0.0' : '::'; // En production, écouter sur toutes les interfaces
 
+// Configuration trust proxy pour Railway et autres reverse proxies
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1); // Faire confiance au premier proxy (Railway)
+}
+
 // Configuration Supabase avec gestion d'erreur
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -525,11 +530,11 @@ console.log('🔧 Routes dossier-steps montées sur /api/dossier-steps');
 app.use('/api/documents', documentsRoutes);
 
 // ===== ROUTES APPORTEURS D'AFFAIRES =====
-// Routes apporteur d'affaires - PROTÉGÉES
+// Routes apporteur d'affaires - PROTÉGÉES (routes de base)
 app.use('/api/apporteur', enhancedAuthMiddleware, apporteurRoutes);
 
-// Routes API apporteur d'affaires - PROTÉGÉES
-app.use('/api/apporteur-api', enhancedAuthMiddleware, apporteurApiRoutes);
+// Routes API apporteur d'affaires - PROTÉGÉES (routes étendues avec /clients, etc.)
+app.use('/api/apporteur', enhancedAuthMiddleware, apporteurApiRoutes);
 
 // Routes expert pour apporteurs - PROTÉGÉES
 app.use('/api/expert-apporteur', enhancedAuthMiddleware, expertApporteurRoutes);

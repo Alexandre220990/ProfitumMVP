@@ -289,13 +289,14 @@ export const enhancedAuthMiddleware = async (
       const { data: adminData, error: adminError } = await supabase
         .from('Admin')
         .select('id, email, name')
-        .eq('email', user.email)
-        .single();
+        .eq('email', user.email);
       
-      if (adminData) {
-        userData = adminData;
+      if (adminData && adminData.length > 0) {
+        // Si c'est un tableau, prendre le premier élément
+        const admin = Array.isArray(adminData) ? adminData[0] : adminData;
+        userData = admin;
         userType = 'admin';
-        console.log('✅ Admin trouvé:', { adminId: adminData.id, email: adminData.email });
+        console.log('✅ Admin trouvé:', { adminId: admin.id, email: admin.email });
       } else {
         console.log('❌ Admin non trouvé, recherche dans les autres tables...');
         
@@ -303,25 +304,27 @@ export const enhancedAuthMiddleware = async (
         const { data: clientData, error: clientError } = await supabase
           .from('Client')
           .select('id, email, name')
-          .eq('email', user.email)
-          .single();
+          .eq('email', user.email);
         
-        if (clientData) {
-          userData = clientData;
+        if (clientData && clientData.length > 0) {
+          // Si c'est un tableau, prendre le premier élément
+          const client = Array.isArray(clientData) ? clientData[0] : clientData;
+          userData = client;
           userType = 'client';
-          console.log('✅ Client trouvé:', { clientId: clientData.id, email: clientData.email });
+          console.log('✅ Client trouvé:', { clientId: client.id, email: client.email });
         } else {
           // Chercher dans Expert
           const { data: expertData, error: expertError } = await supabase
             .from('Expert')
             .select('id, email, name')
-            .eq('email', user.email)
-            .single();
+            .eq('email', user.email);
           
-          if (expertData) {
-            userData = expertData;
+          if (expertData && expertData.length > 0) {
+            // Si c'est un tableau, prendre le premier élément
+            const expert = Array.isArray(expertData) ? expertData[0] : expertData;
+            userData = expert;
             userType = 'expert';
-            console.log('✅ Expert trouvé:', { expertId: expertData.id, email: expertData.email });
+            console.log('✅ Expert trouvé:', { expertId: expert.id, email: expert.email });
           } else {
             console.log('❌ Utilisateur non trouvé dans aucune table');
             // Utilisateur non trouvé dans aucune table
@@ -355,56 +358,60 @@ export const enhancedAuthMiddleware = async (
       const { data: clientData, error: clientError } = await supabase
         .from('Client')
         .select('id, email, name')
-        .eq('email', user.email)
-        .single();
+        .eq('email', user.email);
       
-      if (clientData) {
-        userData = clientData;
+      if (clientData && clientData.length > 0) {
+        // Si c'est un tableau, prendre le premier élément
+        const client = Array.isArray(clientData) ? clientData[0] : clientData;
+        userData = client;
         userType = 'client';
-        console.log('✅ Client trouvé:', { clientId: clientData.id, email: clientData.email });
+        console.log('✅ Client trouvé:', { clientId: client.id, email: client.email });
       } else {
         console.log('❌ Client non trouvé, recherche expert...');
         // Chercher dans Expert
         const { data: expertData, error: expertError } = await supabase
           .from('Expert')
           .select('id, email, name')
-          .eq('email', user.email)
-          .single();
+          .eq('email', user.email);
         
-        if (expertData) {
-          userData = expertData;
+        if (expertData && expertData.length > 0) {
+          // Si c'est un tableau, prendre le premier élément
+          const expert = Array.isArray(expertData) ? expertData[0] : expertData;
+          userData = expert;
           userType = 'expert';
-          console.log('✅ Expert trouvé:', { expertId: expertData.id, email: expertData.email });
+          console.log('✅ Expert trouvé:', { expertId: expert.id, email: expert.email });
         } else {
           console.log('❌ Expert non trouvé, recherche apporteur...');
           // Chercher dans ApporteurAffaires
           const { data: apporteurData, error: apporteurError } = await supabase
             .from('ApporteurAffaires')
             .select('id, email, first_name, last_name, status')
-            .eq('email', user.email)
-            .single();
+            .eq('email', user.email);
           
-          if (apporteurData) {
-            userData = apporteurData;
+          if (apporteurData && apporteurData.length > 0) {
+            // Si c'est un tableau, prendre le premier élément
+            const apporteur = Array.isArray(apporteurData) ? apporteurData[0] : apporteurData;
+            userData = apporteur;
             userType = 'apporteur_affaires';
-            console.log('✅ Apporteur trouvé:', { apporteurId: apporteurData.id, email: apporteurData.email, status: apporteurData.status });
+            console.log('✅ Apporteur trouvé:', { apporteurId: apporteur.id, email: apporteur.email, status: apporteur.status });
           } else {
             console.log('❌ Apporteur non trouvé, recherche admin...');
             // Vérifier si c'est un admin par email
             const { data: adminData, error: adminError } = await supabase
               .from('Admin')
               .select('id, email, name')
-              .eq('email', user.email)
-              .single();
+              .eq('email', user.email);
             
             if (adminError) {
               console.log('⚠️ Erreur recherche admin:', adminError.message);
             }
             
-            if (adminData) {
-              userData = adminData;
+            if (adminData && adminData.length > 0) {
+              // Si c'est un tableau, prendre le premier élément
+              const admin = Array.isArray(adminData) ? adminData[0] : adminData;
+              userData = admin;
               userType = 'admin';
-              console.log('✅ Admin trouvé:', { adminId: adminData.id, email: adminData.email });
+              console.log('✅ Admin trouvé:', { adminId: admin.id, email: admin.email });
             } else {
               console.log('❌ Utilisateur non trouvé dans aucune table');
               // Utilisateur non trouvé dans aucune table
