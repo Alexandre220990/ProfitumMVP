@@ -59,14 +59,14 @@ export class ApporteurEnhancedService {
         .single();
 
       if (error) {
-        console.error('Erreur vue dashboard principal:', error);
-        return { success: false, error: error.message };
+        console.warn('Vue vue_apporteur_dashboard_principal non disponible');
+        return { success: false, error: 'Vue SQL vue_apporteur_dashboard_principal non créée - Voir recommended-apporteur-views.sql' };
       }
 
       return { success: true, data };
     } catch (error) {
-      console.error('Erreur getDashboardPrincipal:', error);
-      return { success: false, error: error instanceof Error ? error.message : 'Erreur inconnue' };
+      console.warn('Erreur getDashboardPrincipal:', error);
+      return { success: false, error: 'Vue SQL vue_apporteur_dashboard_principal non créée - Voir recommended-apporteur-views.sql' };
     }
   }
 
@@ -79,17 +79,17 @@ export class ApporteurEnhancedService {
         .from('vue_apporteur_prospects_detaille')
         .select('*')
         .eq('apporteur_id', this.apporteurId)
-        .order('date_creation', { ascending: false });
+        .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Erreur vue prospects détaillés:', error);
-        return { success: false, error: error.message };
+        console.warn('Vue vue_apporteur_prospects_detaille non disponible');
+        return { success: false, error: 'Vue SQL vue_apporteur_prospects_detaille non créée - Voir recommended-apporteur-views.sql' };
       }
 
       return { success: true, data: data || [] };
     } catch (error) {
-      console.error('Erreur getProspectsDetaille:', error);
-      return { success: false, error: error instanceof Error ? error.message : 'Erreur inconnue' };
+      console.warn('Erreur getProspectsDetaille:', error);
+      return { success: false, error: 'Vue SQL vue_apporteur_prospects_detaille non créée - Voir recommended-apporteur-views.sql' };
     }
   }
 
@@ -106,14 +106,14 @@ export class ApporteurEnhancedService {
         .limit(20);
 
       if (error) {
-        console.error('Erreur vue activité récente:', error);
-        return { success: false, error: error.message };
+        console.warn('Vue vue_apporteur_activite_recente non disponible');
+        return { success: false, error: 'Vue SQL vue_apporteur_activite_recente non créée - Voir recommended-apporteur-views.sql' };
       }
 
       return { success: true, data: data || [] };
     } catch (error) {
-      console.error('Erreur getActiviteRecente:', error);
-      return { success: false, error: error instanceof Error ? error.message : 'Erreur inconnue' };
+      console.warn('Erreur getActiviteRecente:', error);
+      return { success: false, error: 'Vue SQL vue_apporteur_activite_recente non créée - Voir recommended-apporteur-views.sql' };
     }
   }
 
@@ -129,14 +129,14 @@ export class ApporteurEnhancedService {
         .order('date_commission', { ascending: false });
 
       if (error) {
-        console.error('Erreur vue commissions calculées:', error);
-        return { success: false, error: error.message };
+        console.warn('Vue vue_apporteur_commissions_calculees non disponible');
+        return { success: false, error: 'Vue SQL vue_apporteur_commissions_calculees non créée - Voir recommended-apporteur-views.sql' };
       }
 
       return { success: true, data: data || [] };
     } catch (error) {
-      console.error('Erreur getCommissionsCalculees:', error);
-      return { success: false, error: error instanceof Error ? error.message : 'Erreur inconnue' };
+      console.warn('Erreur getCommissionsCalculees:', error);
+      return { success: false, error: 'Vue SQL vue_apporteur_commissions_calculees non créée - Voir recommended-apporteur-views.sql' };
     }
   }
 
@@ -152,14 +152,14 @@ export class ApporteurEnhancedService {
         .single();
 
       if (error) {
-        console.error('Erreur vue objectifs performance:', error);
-        return { success: false, error: error.message };
+        console.warn('Vue vue_apporteur_objectifs_performance non disponible');
+        return { success: false, error: 'Vue SQL vue_apporteur_objectifs_performance non créée - Voir recommended-apporteur-views.sql' };
       }
 
       return { success: true, data };
     } catch (error) {
-      console.error('Erreur getObjectifsPerformance:', error);
-      return { success: false, error: error instanceof Error ? error.message : 'Erreur inconnue' };
+      console.warn('Erreur getObjectifsPerformance:', error);
+      return { success: false, error: 'Vue SQL vue_apporteur_objectifs_performance non créée - Voir recommended-apporteur-views.sql' };
     }
   }
 
@@ -175,14 +175,14 @@ export class ApporteurEnhancedService {
         .order('taux_reussite_pourcent', { ascending: false });
 
       if (error) {
-        console.error('Erreur vue performance produits:', error);
-        return { success: false, error: error.message };
+        console.warn('Vue vue_apporteur_performance_produits non disponible');
+        return { success: false, error: 'Vue SQL vue_apporteur_performance_produits non créée - Voir recommended-apporteur-views.sql' };
       }
 
       return { success: true, data: data || [] };
     } catch (error) {
-      console.error('Erreur getPerformanceProduits:', error);
-      return { success: false, error: error instanceof Error ? error.message : 'Erreur inconnue' };
+      console.warn('Erreur getPerformanceProduits:', error);
+      return { success: false, error: 'Vue SQL vue_apporteur_performance_produits non créée - Voir recommended-apporteur-views.sql' };
     }
   }
 
@@ -199,14 +199,14 @@ export class ApporteurEnhancedService {
         .limit(12);
 
       if (error) {
-        console.error('Erreur vue statistiques mensuelles:', error);
-        return { success: false, error: error.message };
+        console.warn('Vue vue_apporteur_statistiques_mensuelles non disponible');
+        return { success: false, error: 'Vue SQL vue_apporteur_statistiques_mensuelles non créée - Voir recommended-apporteur-views.sql' };
       }
 
       return { success: true, data: data || [] };
     } catch (error) {
-      console.error('Erreur getStatistiquesMensuelles:', error);
-      return { success: false, error: error instanceof Error ? error.message : 'Erreur inconnue' };
+      console.warn('Erreur getStatistiquesMensuelles:', error);
+      return { success: false, error: 'Vue SQL vue_apporteur_statistiques_mensuelles non créée - Voir recommended-apporteur-views.sql' };
     }
   }
 
@@ -222,13 +222,51 @@ export class ApporteurEnhancedService {
         .order('nb_prospects', { ascending: false });
 
       if (error) {
-        console.error('Erreur vue sources prospects:', error);
-        return { success: false, error: error.message };
+        console.warn('Vue vue_apporteur_sources_prospects non disponible');
+        return { success: false, error: 'Vue SQL vue_apporteur_sources_prospects non créée - Voir recommended-apporteur-views.sql' };
       }
 
       return { success: true, data: data || [] };
     } catch (error) {
-      console.error('Erreur getSourcesProspects:', error);
+      console.warn('Erreur getSourcesProspects:', error);
+      return { success: false, error: 'Vue SQL vue_apporteur_sources_prospects non créée - Voir recommended-apporteur-views.sql' };
+    }
+  }
+
+  /**
+   * Récupérer les experts disponibles
+   */
+  async getExperts() {
+    try {
+      const { data, error } = await supabase
+        .from('Expert')
+        .select('*')
+        .eq('status', 'active')
+        .order('name');
+
+      if (error) {
+        console.error('Erreur récupération experts:', error);
+        return { success: false, error: error.message };
+      }
+
+      // Formater les données pour le composant
+      const formattedExperts = (data || []).map((expert: any) => ({
+        id: expert.id,
+        name: expert.name,
+        email: expert.email,
+        phone: expert.phone,
+        specialty: expert.specializations?.[0] || 'Généraliste',
+        location: expert.city || 'Non spécifié',
+        rating: expert.rating || 4.5,
+        status: expert.availability || 'available',
+        availability: expert.availability || 'available',
+        dossiers: 0, // À calculer depuis les dossiers
+        successRate: expert.rating ? Math.round(expert.rating * 20) : 90
+      }));
+
+      return { success: true, data: formattedExperts };
+    } catch (error) {
+      console.error('Erreur getExperts:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Erreur inconnue' };
     }
   }

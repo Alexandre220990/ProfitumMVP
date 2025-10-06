@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
 import ApporteurAuthGuard from './ApporteurAuthGuard';
-// import { NotificationCenter } from './NotificationCenter';
+import { NotificationSlider } from './NotificationSlider';
 import { Badge } from '@/components/ui/badge';
 import { 
   LayoutDashboard, 
@@ -28,6 +28,7 @@ interface ApporteurLayoutProps {
 export default function ApporteurLayout({ children }: ApporteurLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [notificationSliderOpen, setNotificationSliderOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -102,12 +103,6 @@ export default function ApporteurLayout({ children }: ApporteurLayoutProps) {
       href: '/apporteur/statistics',
       icon: BarChart3,
       current: location.pathname.startsWith('/apporteur/statistics')
-    },
-    {
-      name: 'Notifications',
-      href: '/apporteur/notifications',
-      icon: Bell,
-      current: location.pathname.startsWith('/apporteur/notifications')
     }
   ];
 
@@ -234,9 +229,14 @@ export default function ApporteurLayout({ children }: ApporteurLayoutProps) {
               {/* Notifications */}
               <button
                 type="button"
-                className="bg-white p-1 rounded-full text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                className="relative bg-white p-1 rounded-full text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                onClick={() => setNotificationSliderOpen(true)}
               >
                 <Bell className="h-6 w-6" />
+                {/* Badge pour notifications non lues */}
+                <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full text-xs text-white flex items-center justify-center">
+                  3
+                </span>
               </button>
 
               {/* User Menu */}
@@ -295,6 +295,12 @@ export default function ApporteurLayout({ children }: ApporteurLayoutProps) {
         </main>
       </div>
     </div>
+
+    {/* Notification Slider */}
+    <NotificationSlider 
+      isOpen={notificationSliderOpen} 
+      onClose={() => setNotificationSliderOpen(false)} 
+    />
     </ApporteurAuthGuard>
   );
 }

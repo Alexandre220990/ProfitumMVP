@@ -84,13 +84,14 @@ router.get('/prospects', async (req: any, res: any): Promise<void> => {
         const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
         
         let query = supabase
-            .from('Prospect')
+            .from('Client')
             .select(`
                 *,
                 expert:Expert(id, name, email, specializations),
                 apporteur:ApporteurAffaires(id, first_name, last_name, company_name)
             `)
             .eq('preselected_expert_id', expertId)
+            .eq('status', 'prospect')
             .order('created_at', { ascending: false })
             .range((Number(page) - 1) * Number(limit), Number(page) * Number(limit) - 1);
 
@@ -129,24 +130,15 @@ router.get('/prospects/:prospectId', async (req: any, res: any): Promise<void> =
         const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
         
         const { data: prospect, error } = await supabase
-            .from('Prospect')
+            .from('Client')
             .select(`
                 *,
                 expert:Expert(id, name, email, specializations),
-                apporteur:ApporteurAffaires(id, first_name, last_name, company_name),
-                meetings:ProspectMeeting(
-                    id,
-                    meeting_type,
-                    scheduled_at,
-                    duration_minutes,
-                    location,
-                    status,
-                    outcome,
-                    notes
-                )
+                apporteur:ApporteurAffaires(id, first_name, last_name, company_name)
             `)
             .eq('id', prospectId)
             .eq('preselected_expert_id', expertId)
+            .eq('status', 'prospect')
             .single();
 
         if (error || !prospect) {

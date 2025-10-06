@@ -1,4 +1,4 @@
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
@@ -21,14 +21,13 @@ import {
   Award,
   MessageSquare
 } from 'lucide-react';
-import { ApporteurRealDataService } from '../../services/apporteur-real-data-service';
+import { ApporteurEnhancedService } from '../../services/apporteur-enhanced-service';
 
 /**
  * Page Experts
  * Gestion des experts et leurs spécialisations
  */
 export default function ExpertsPage() {
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const apporteurId = searchParams.get('apporteurId');
   const [experts, setExperts] = useState<any[]>([]);
@@ -45,7 +44,7 @@ export default function ExpertsPage() {
 
   const loadExperts = async () => {
     try {
-      const service = new ApporteurRealDataService(apporteurId as string);
+      const service = new ApporteurEnhancedService(apporteurId as string);
       const result = await service.getExperts();
       
       if (result.success) {
@@ -307,8 +306,8 @@ export default function ExpertsPage() {
                           <div className="text-lg font-bold text-gray-900">{expert.dossiers} dossiers</div>
                           <div className="text-sm text-gray-600">{expert.successRate}% réussite</div>
                         </div>
-                        <Badge className={`${getStatusColor(expert.status)} px-4 py-2 rounded-full text-sm font-semibold`}>
-                          {getStatusText(expert.status)}
+                        <Badge className={`${getStatusColor(expert.status || expert.availability || 'offline')} px-4 py-2 rounded-full text-sm font-semibold`}>
+                          {getStatusText(expert.status || expert.availability || 'offline')}
                         </Badge>
                       </div>
                     </div>

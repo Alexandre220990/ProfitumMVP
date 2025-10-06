@@ -127,9 +127,10 @@ export class ApporteurService {
             const dateFrom = this.getDateFromPeriod(period);
             
             const { data: prospects, error: prospectsError } = await supabase
-                .from('Prospect')
+                .from('Client')
                 .select('status, source, created_at, qualification_score')
                 .eq('apporteur_id', apporteurId)
+                .eq('status', 'prospect')
                 .gte('created_at', dateFrom);
 
             if (prospectsError) throw prospectsError;
