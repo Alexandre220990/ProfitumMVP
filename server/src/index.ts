@@ -85,6 +85,8 @@ import apporteurRoutes from './routes/apporteur';
 import expertApporteurRoutes from './routes/expert-apporteur';
 import adminApporteurRoutes from './routes/admin-apporteur';
 import apporteurApiRoutes from './routes/apporteur-api';
+import testRoutes from './routes/test-routes';
+import { testAuthMiddleware } from './middleware/test-auth';
 
 // Créer l'application Express
 const app = express();
@@ -535,6 +537,9 @@ app.use('/api/apporteur', enhancedAuthMiddleware, apporteurRoutes);
 
 // Routes API apporteur d'affaires - PROTÉGÉES (routes étendues avec /clients, etc.)
 app.use('/api/apporteur', enhancedAuthMiddleware, apporteurApiRoutes);
+
+// Route de test simple pour diagnostiquer l'authentification
+app.use('/api/test', testAuthMiddleware, testRoutes);
 
 // Routes expert pour apporteurs - PROTÉGÉES
 app.use('/api/expert-apporteur', enhancedAuthMiddleware, expertApporteurRoutes);
