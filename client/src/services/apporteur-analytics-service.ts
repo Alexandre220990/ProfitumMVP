@@ -1,19 +1,14 @@
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase';
 
 /**
  * Service Analytics pour Dashboard Apporteur
  * Utilise les fonctions SQL créées pour les données personnelles
  */
 export class ApporteurAnalyticsService {
-  private supabase;
   private apporteurId: string;
 
   constructor(apporteurId: string) {
     this.apporteurId = apporteurId;
-    this.supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
   }
 
   /**
@@ -21,7 +16,7 @@ export class ApporteurAnalyticsService {
    */
   async getPersonalKPIs() {
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await supabase
         .rpc('get_apporteur_kpis', { apporteur_uuid: this.apporteurId });
 
       if (error) throw error;
@@ -68,7 +63,7 @@ export class ApporteurAnalyticsService {
    */
   async getPersonalActivity() {
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await supabase
         .rpc('get_apporteur_activite_personnelle', { apporteur_uuid: this.apporteurId });
 
       if (error) throw error;
@@ -100,7 +95,7 @@ export class ApporteurAnalyticsService {
    */
   async getPersonalProspects() {
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await supabase
         .rpc('get_apporteur_prospects_detaille', { apporteur_uuid: this.apporteurId });
 
       if (error) throw error;
@@ -134,7 +129,7 @@ export class ApporteurAnalyticsService {
    */
   async getPersonalAlerts() {
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await supabase
         .rpc('get_apporteur_alertes_personnelles', { apporteur_uuid: this.apporteurId });
 
       if (error) throw error;
@@ -163,7 +158,7 @@ export class ApporteurAnalyticsService {
    */
   async getProductStats() {
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await supabase
         .from('vue_stats_produits_globale')
         .select('*');
 
@@ -201,7 +196,7 @@ export class ApporteurAnalyticsService {
    */
   async getActiveSessions() {
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await supabase
         .from('vue_sessions_actives_globale')
         .select('*');
 
