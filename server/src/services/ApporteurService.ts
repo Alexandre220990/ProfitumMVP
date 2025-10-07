@@ -319,19 +319,41 @@ export class ApporteurService {
             const { page = 1, limit = 20, status, date_from, date_to } = filters;
             const offset = (page - 1) * limit;
 
+            // Utiliser ProspectConversion au lieu d'ApporteurCommission
             let query = supabase
-                .from('ApporteurCommission')
+                .from('ProspectConversion')
                 .select(`
                     *,
                     prospect:Prospect(*),
+                    client:Client(*),
                     client_produit_eligible:ClientProduitEligible(*)
                 `)
-                .eq('apporteur_id', apporteurId)
                 .order('created_at', { ascending: false })
                 .range(offset, offset + limit - 1);
 
-            if (status) {
-                query = query.eq('status', status);
+            // Filtrer par apporteur via la table Prospect
+            // Note: Nous devons récupérer tous les prospects de cet apporteur
+            const { data: prospects } = await supabase
+                .from('Prospect')
+                .select('id')
+                .eq('apporteur_id', apporteurId);
+
+            const prospectIds = prospects?.map(p => p.id) || [];
+            
+            if (prospectIds.length > 0) {
+                query = query.in('prospect_id', prospectIds);
+            } else {
+                // Aucun prospect pour cet apporteur, retourner un tableau vide
+                return { 
+                    success: true, 
+                    data: [],
+                    pagination: {
+                        page,
+                        limit,
+                        total: 0,
+                        total_pages: 0
+                    }
+                };
             }
 
             if (date_from) {
@@ -346,18 +368,19 @@ export class ApporteurService {
 
             if (error) {
                 console.error('Erreur récupération commissions:', error);
-                throw error;
+                return { success: false, error: 'Erreur lors de la récupération des commissions' };
             }
 
             // Formatage sécurisé des commissions avec gestion des valeurs null/0
             const formattedCommissions = (commissions || []).map(commission => {
                 try {
                     return {
-                        ...commission,
-                        montant: Number(commission.montant) || 0,
-                        taux_commission: Number(commission.taux_commission) || 0,
-                        montant_commission: Number(commission.montant_commission) || 0,
-                        status: commission.status || 'pending',
+                        id: commission.id || '',
+                        conversion_value: Number(commission.conversion_value) || 0,
+                        commission_rate: Number(commission.commission_rate) || 0,
+                        commission_amount: Number(commission.commission_amount) || 0,
+                        converted_at: commission.converted_at || new Date().toISOString(),
+                        conversion_notes: commission.conversion_notes || '',
                         created_at: commission.created_at || new Date().toISOString(),
                         // Gestion sécurisée des relations
                         prospect: commission.prospect ? {
@@ -366,23 +389,25 @@ export class ApporteurService {
                             email: commission.prospect.email || '',
                             company_name: commission.prospect.company_name || 'Entreprise non spécifiée'
                         } : null,
-                        client_produit_eligible: commission.client_produit_eligible ? {
-                            ...commission.client_produit_eligible,
-                            montantFinal: Number(commission.client_produit_eligible.montantFinal) || 0,
-                            progress: Number(commission.client_produit_eligible.progress) || 0
+                        client: commission.client ? {
+                            ...commission.client,
+                            name: commission.client.name || 'Client sans nom',
+                            email: commission.client.email || '',
+                            company_name: commission.client.company_name || 'Entreprise non spécifiée'
                         } : null
                     };
                 } catch (error) {
                     console.error('Erreur formatage commission', commission.id, ':', error);
                     return {
-                        ...commission,
-                        montant: 0,
-                        taux_commission: 0,
-                        montant_commission: 0,
-                        status: 'error',
+                        id: commission.id || '',
+                        conversion_value: 0,
+                        commission_rate: 0,
+                        commission_amount: 0,
+                        converted_at: new Date().toISOString(),
+                        conversion_notes: '',
                         created_at: new Date().toISOString(),
                         prospect: null,
-                        client_produit_eligible: null
+                        client: null
                     };
                 }
             });
@@ -392,7 +417,7 @@ export class ApporteurService {
 
             return {
                 success: true,
-                data: formattedCommissions,
+                data: formattedCommissions as any, // Type temporaire pour les données de conversion
                 pagination: {
                     page,
                     limit,

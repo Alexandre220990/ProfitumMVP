@@ -165,9 +165,9 @@ export default function ApporteurLayout({ children }: ApporteurLayoutProps) {
       )}
 
       {/* Sidebar Desktop */}
-      <div className="hidden lg:flex lg:flex-shrink-0">
+      <div className="hidden lg:flex lg:flex-shrink-0 lg:fixed lg:inset-y-0 lg:z-40">
         <div className="flex flex-col w-64">
-          <div className="flex flex-col h-0 flex-1 border-r border-gray-200 bg-white">
+          <div className="flex flex-col h-screen flex-1 border-r border-gray-200 bg-white">
             <div className="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
               <div className="flex items-center flex-shrink-0 px-4">
                 <div className="flex items-center">
@@ -207,7 +207,7 @@ export default function ApporteurLayout({ children }: ApporteurLayoutProps) {
       {/* Main Content */}
       <div className="lg:pl-64 flex flex-col flex-1 min-h-screen">
         {/* Header */}
-        <div className="sticky top-0 z-10 flex-shrink-0 flex h-16 bg-white shadow">
+        <div className="sticky top-0 z-30 flex-shrink-0 flex h-16 bg-white shadow">
           <button
             type="button"
             className="px-4 border-r border-gray-200 text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 lg:hidden"
