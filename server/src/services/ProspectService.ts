@@ -6,6 +6,9 @@ import {
     ApiResponse,
     CreateProspectResponse 
 } from '../types/apporteur';
+import { PasswordService } from './PasswordService';
+import { EmailService } from './EmailService';
+import { getExchangeEmailTemplate, getPresentationEmailTemplate } from '../templates/prospect-emails';
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
@@ -22,17 +25,60 @@ export class ProspectService {
                 throw new Error('Données obligatoires manquantes (nom entreprise, nom, email, téléphone)');
             }
 
-            // Créer le prospect dans la table Client avec status = 'prospect'
+            // ÉTAPE 1: Générer un mot de passe provisoire sécurisé
+            console.log('🔐 Génération du mot de passe provisoire...');
+            const { plainPassword, hashedPassword } = await PasswordService.generateAndHashTemporaryPassword();
+            console.log('✅ Mot de passe provisoire généré (format: XXX-XXX-XXX)');
+
+            // ÉTAPE 2: Créer le compte Supabase Auth
+            console.log('👤 Création du compte Supabase Auth...');
+            const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+                email: prospectData.email,
+                password: plainPassword,
+                email_confirm: true, // Email automatiquement confirmé
+                user_metadata: {
+                    name: prospectData.name,
+                    company_name: prospectData.company_name,
+                    phone_number: prospectData.phone_number,
+                    role: 'client',
+                    created_by: 'apporteur',
+                    apporteur_id: apporteurId,
+                    requires_password_change: true // Changement obligatoire à la première connexion
+                }
+            });
+
+            if (authError) {
+                console.error('❌ Erreur création compte Auth:', authError);
+                
+                // Si l'utilisateur existe déjà, on récupère son ID
+                if (authError.message.includes('already registered')) {
+                    throw new Error(`Un compte existe déjà avec l'email ${prospectData.email}. Veuillez utiliser un autre email.`);
+                }
+                throw authError;
+            }
+
+            if (!authData.user) {
+                throw new Error('Aucun utilisateur créé par Supabase Auth');
+            }
+
+            console.log('✅ Compte Supabase Auth créé:', authData.user.id);
+
+            // ÉTAPE 3: Créer le prospect dans la table Client avec status = 'prospect'
             const clientData = {
+                // Auth
+                auth_id: authData.user.id,
+                email: prospectData.email,
+                password: hashedPassword, // Mot de passe haché
+                type: 'client', // Type = client (sera prospect via status)
+                
                 // Informations entreprise
                 company_name: prospectData.company_name,
                 siren: prospectData.siren || null,
                 address: prospectData.address || null,
                 website: prospectData.website || null,
                 
-                // Décisionnaire (mapper name vers name)
+                // Décisionnaire
                 name: prospectData.name,
-                email: prospectData.email,
                 phone_number: prospectData.phone_number,
                 decision_maker_position: prospectData.decision_maker_position || null,
                 
@@ -47,23 +93,29 @@ export class ProspectService {
                 notes: prospectData.notes || null,
                 status: 'prospect', // IMPORTANT: Marquer comme prospect
                 apporteur_id: apporteurId,
+                temp_password: plainPassword, // Stocker temporairement pour l'email (sera supprimé après envoi)
                 
                 // Timestamps
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
             };
 
-            console.log('📊 ProspectService.createProspect - Données à insérer:', clientData);
+            console.log('📊 ProspectService.createProspect - Données à insérer dans Client');
 
-            const { data: prospect, error } = await supabase
+            const { data: prospect, error: clientError } = await supabase
                 .from('Client')
                 .insert(clientData)
                 .select('*')
                 .single();
 
-            if (error) {
-                console.error('❌ ProspectService.createProspect - Erreur Supabase:', error);
-                throw error;
+            if (clientError) {
+                console.error('❌ ProspectService.createProspect - Erreur Supabase:', clientError);
+                
+                // Supprimer le compte Auth si la création du Client échoue
+                console.log('🗑️ Suppression du compte Auth suite à l\'erreur...');
+                await supabase.auth.admin.deleteUser(authData.user.id);
+                
+                throw clientError;
             }
 
             console.log('✅ ProspectService.createProspect - Prospect créé:', prospect.id);
@@ -71,19 +123,74 @@ export class ProspectService {
             // Gérer les produits sélectionnés si présents
             if (prospectData.selected_products && prospectData.selected_products.length > 0) {
                 console.log('🔍 ProspectService.createProspect - Gestion des produits sélectionnés');
-                // TODO: Créer les liaisons avec les produits dans ClientProduitEligible
-                // Pour l'instant, on ignore car la table n'est pas encore configurée
+                const selectedProducts = prospectData.selected_products.filter((p: any) => p.selected);
+                
+                if (selectedProducts.length > 0) {
+                    const productLinks = selectedProducts.map((p: any) => ({
+                        client_id: prospect.id,
+                        produit_eligible_id: p.id,
+                        notes: p.notes || null,
+                        priority: p.priority || 'medium',
+                        estimated_amount: p.estimated_amount || null,
+                        success_probability: p.success_probability || null,
+                        created_at: new Date().toISOString()
+                    }));
+
+                    const { error: productsError } = await supabase
+                        .from('ClientProduitEligible')
+                        .insert(productLinks);
+
+                    if (productsError) {
+                        console.error('⚠️ Erreur liaison produits:', productsError);
+                        // On ne bloque pas la création du prospect
+                    } else {
+                        console.log(`✅ ${productLinks.length} produit(s) lié(s) au prospect`);
+                    }
+                }
             }
 
             // Gérer le RDV si présent
             if (prospectData.meeting_type && prospectData.scheduled_date && prospectData.scheduled_time) {
                 console.log('🔍 ProspectService.createProspect - Création du RDV');
-                // TODO: Créer le RDV dans ClientRDV
-                // Pour l'instant, on ignore car la table n'est pas encore configurée
+                const rdvData = {
+                    client_id: prospect.id,
+                    apporteur_id: apporteurId,
+                    meeting_type: prospectData.meeting_type,
+                    scheduled_date: prospectData.scheduled_date,
+                    scheduled_time: prospectData.scheduled_time,
+                    location: prospectData.location || null,
+                    status: 'scheduled',
+                    created_at: new Date().toISOString()
+                };
+
+                const { error: rdvError } = await supabase
+                    .from('CalendarEvent')
+                    .insert({
+                        title: `RDV Prospect - ${prospectData.company_name}`,
+                        description: `Rendez-vous avec ${prospectData.name} (${prospectData.email})`,
+                        start_time: `${prospectData.scheduled_date}T${prospectData.scheduled_time}:00`,
+                        end_time: `${prospectData.scheduled_date}T${prospectData.scheduled_time}:00`, // TODO: calculer +1h
+                        event_type: prospectData.meeting_type,
+                        status: 'scheduled',
+                        created_by: apporteurId,
+                        client_id: prospect.id,
+                        location: prospectData.location,
+                        created_at: new Date().toISOString()
+                    });
+
+                if (rdvError) {
+                    console.error('⚠️ Erreur création RDV:', rdvError);
+                    // On ne bloque pas la création du prospect
+                } else {
+                    console.log('✅ RDV créé dans le calendrier');
+                }
             }
 
             return {
-                prospect,
+                prospect: {
+                    ...prospect,
+                    temporaryPassword: plainPassword // Inclure le mot de passe pour l'email (ne sera jamais affiché à l'apporteur dans l'UI)
+                },
                 notification_sent: false,
                 expert_notified: false
             };
@@ -381,6 +488,108 @@ export class ProspectService {
             isValid: errors.length === 0,
             errors
         };
+    }
+
+    /**
+     * Envoie les identifiants de connexion au prospect par email
+     * @param prospectId ID du prospect
+     * @param emailType Type d'email ('exchange' ou 'presentation')
+     * @param apporteurId ID de l'apporteur qui a créé le prospect
+     */
+    static async sendProspectCredentials(
+        prospectId: string,
+        emailType: 'exchange' | 'presentation',
+        apporteurId: string
+    ): Promise<{ success: boolean; message: string }> {
+        try {
+            console.log(`📧 Envoi des identifiants au prospect ${prospectId}...`);
+
+            // Récupérer les données du prospect
+            const { data: prospect, error: prospectError } = await supabase
+                .from('Client')
+                .select('id, name, email, company_name, temp_password, status')
+                .eq('id', prospectId)
+                .eq('status', 'prospect')
+                .single();
+
+            if (prospectError || !prospect) {
+                throw new Error('Prospect non trouvé');
+            }
+
+            if (!prospect.temp_password) {
+                throw new Error('Aucun mot de passe provisoire disponible pour ce prospect');
+            }
+
+            // Récupérer les données de l'apporteur
+            const { data: apporteur, error: apporteurError } = await supabase
+                .from('ApporteurAffaires')
+                .select('first_name, last_name, company_name, email')
+                .eq('id', apporteurId)
+                .single();
+
+            if (apporteurError || !apporteur) {
+                throw new Error('Apporteur non trouvé');
+            }
+
+            const apporteurName = `${apporteur.first_name} ${apporteur.last_name}`;
+            const loginUrl = `${process.env.CLIENT_URL || 'https://www.profitum.app'}/login`;
+
+            // Préparer les données pour le template
+            const emailData = {
+                prospectName: prospect.name,
+                prospectEmail: prospect.email,
+                temporaryPassword: prospect.temp_password,
+                apporteurName,
+                apporteurCompany: apporteur.company_name || apporteurName,
+                loginUrl
+            };
+
+            // Sélectionner le template approprié
+            const emailTemplate = emailType === 'exchange' 
+                ? getExchangeEmailTemplate(emailData)
+                : getPresentationEmailTemplate(emailData);
+
+            // Envoyer l'email
+            const emailSent = await EmailService.sendEmail({
+                to: prospect.email,
+                subject: emailTemplate.subject,
+                html: emailTemplate.html,
+                text: emailTemplate.text
+            });
+
+            if (!emailSent) {
+                throw new Error('Échec de l\'envoi de l\'email');
+            }
+
+            // Supprimer le temp_password de la base de données après envoi réussi
+            const { error: updateError } = await supabase
+                .from('Client')
+                .update({ 
+                    temp_password: null,
+                    temp_password_sent_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', prospectId);
+
+            if (updateError) {
+                console.error('⚠️ Erreur suppression temp_password:', updateError);
+                // On ne bloque pas le succès de l'envoi
+            }
+
+            console.log('✅ Email envoyé avec succès au prospect');
+
+            return {
+                success: true,
+                message: `Email "${emailType === 'exchange' ? 'Échange concluant' : 'Présentation'}" envoyé à ${prospect.email}`
+            };
+
+        } catch (error) {
+            console.error('❌ Erreur envoi email prospect:', error);
+            return {
+                success: false,
+                message: error instanceof Error ? error.message : 'Erreur lors de l\'envoi de l\'email'
+            };
+        }
     }
 
     private static isValidEmail(email: string): boolean {

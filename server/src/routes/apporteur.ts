@@ -170,7 +170,42 @@ router.post('/prospects', async (req: any, res: any): Promise<void> => {
         res.status(201).json({ success: true, data: result });
     } catch (error) {
         console.error('Erreur création prospect:', error);
-        res.status(500).json({ error: 'Erreur lors de la création du prospect' });
+        res.status(500).json({ 
+            success: false,
+            error: 'Erreur lors de la création du prospect',
+            message: error instanceof Error ? error.message : 'Erreur inconnue'
+        });
+    }
+});
+
+// Envoyer les identifiants au prospect par email
+router.post('/prospects/:prospectId/send-credentials', async (req: any, res: any): Promise<void> => {
+    try {
+        const { prospectId } = req.params;
+        const { emailType } = req.body; // 'exchange' ou 'presentation'
+        const apporteurId = req.user!.database_id;
+        
+        if (!emailType || !['exchange', 'presentation'].includes(emailType)) {
+            res.status(400).json({ 
+                success: false,
+                error: 'Type d\'email invalide. Utilisez "exchange" ou "presentation"' 
+            });
+            return;
+        }
+        
+        const result = await ProspectService.sendProspectCredentials(prospectId, emailType, apporteurId);
+        
+        if (result.success) {
+            res.json(result);
+        } else {
+            res.status(500).json(result);
+        }
+    } catch (error) {
+        console.error('Erreur envoi identifiants:', error);
+        res.status(500).json({ 
+            success: false,
+            error: 'Erreur lors de l\'envoi des identifiants' 
+        });
     }
 });
 
