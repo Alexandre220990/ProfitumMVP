@@ -1,46 +1,49 @@
-import { useSearchParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { BarChart3, TrendingUp, TrendingDown, Download, Filter, Target, Users, DollarSign, CheckCircle, Building, Star, Activity, PieChart, LineChart } from 'lucide-react';
-import { ApporteurSimpleService } from '../../services/apporteur-simple-service';
+import { ApporteurViewsService } from '../../services/apporteur-views-service';
+import { useAuth } from '../../hooks/use-auth';
 
 /**
  * Page Statistiques
- * Graphiques et analyses détaillées
+ * Graphiques et analyses détaillées - Données réelles depuis vues SQL
  */
 export default function StatisticsPage() {
-  const [searchParams] = useSearchParams();
-  const apporteurId = searchParams.get('apporteurId');
+  const { user } = useAuth();
+  const apporteurId = user?.id;
+  const [objectives, setObjectives] = useState<any>(null);
   const [statistics, setStatistics] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [periodFilter, setPeriodFilter] = useState('month');
   const [showFilters, setShowFilters] = useState(false);
 
-  const defaultStatistics = {
-    monthlyMetrics: {
-      prospects: 0,
-      clients: 0,
-      revenue: 0,
-      conversion: 0
-    },
-    productPerformance: [],
-    sources: [],
-    geography: [],
-    objectives: []
-  };
-
   useEffect(() => {
     const loadStatistics = async () => {
-      if (!apporteurId || typeof apporteurId !== 'string') return;
+      if (!apporteurId) return;
       
       try {
-        const service = new ApporteurSimpleService(apporteurId);
-        const result = await service.getProductStats();
-        const data = result.success ? result.data : null;
-        setStatistics(data || defaultStatistics);
+        setLoading(true);
+        const service = new ApporteurViewsService();
+        
+        // Charger les données en parallèle
+        const [objectivesResult, statsResult, performanceResult, sourcesResult] = await Promise.all([
+          service.getObjectifsPerformance(),
+          service.getStatistiquesMensuelles(),
+          service.getPerformanceProduits(),
+          service.getSourcesProspects()
+        ]);
+
+        if (objectivesResult.success) setObjectives(objectivesResult.data);
+        if (statsResult.success) setStatistics({
+          monthlyMetrics: statsResult.data[0] || {},
+          productPerformance: performanceResult.success ? performanceResult.data : [],
+          sources: sourcesResult.success ? sourcesResult.data : []
+        });
       } catch (err) {
         console.error('Erreur lors du chargement des statistiques:', err);
-        setStatistics(defaultStatistics);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -60,7 +63,18 @@ export default function StatisticsPage() {
     );
   }
 
-  const productPerformance = statistics?.productPerformance || defaultStatistics.productPerformance;
+  const productPerformance = statistics?.productPerformance || [];
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 text-lg">Chargement des statistiques...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100">
@@ -346,33 +360,86 @@ export default function StatisticsPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
-                <div>
-                  <div className="flex justify-between mb-2">
-                    <span className="text-sm font-medium">Prospects</span>
-                    <span className="text-sm font-bold text-green-600">110%</span>
+                {objectives ? (
+                  <>
+                    <div>
+                      <div className="flex justify-between mb-2">
+                        <span className="text-sm font-medium">Prospects mensuels</span>
+                        <span className={`text-sm font-bold ${
+                          objectives.pourcentage_objectif_clients >= 100 ? 'text-green-600' : 
+                          objectives.pourcentage_objectif_clients >= 75 ? 'text-yellow-600' : 'text-red-600'
+                        }`}>
+                          {objectives.clients_30j || 0}/{objectives.objectif_clients_mensuel || 10}
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-3">
+                        <div 
+                          className={`h-3 rounded-full ${
+                            objectives.pourcentage_objectif_clients >= 100 ? 'bg-green-600' : 
+                            objectives.pourcentage_objectif_clients >= 75 ? 'bg-yellow-600' : 'bg-red-600'
+                          }`}
+                          style={{width: `${Math.min(objectives.pourcentage_objectif_clients || 0, 100)}%`}}
+                        ></div>
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1 text-right">
+                        {Math.round(objectives.pourcentage_objectif_clients || 0)}%
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <div className="flex justify-between mb-2">
+                        <span className="text-sm font-medium">Conversions mensuelles</span>
+                        <span className={`text-sm font-bold ${
+                          objectives.pourcentage_objectif_dossiers >= 100 ? 'text-green-600' : 
+                          objectives.pourcentage_objectif_dossiers >= 75 ? 'text-yellow-600' : 'text-red-600'
+                        }`}>
+                          {objectives.dossiers_30j || 0}/{objectives.objectif_dossiers_mensuel || 5}
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-3">
+                        <div 
+                          className={`h-3 rounded-full ${
+                            objectives.pourcentage_objectif_dossiers >= 100 ? 'bg-green-600' : 
+                            objectives.pourcentage_objectif_dossiers >= 75 ? 'bg-yellow-600' : 'bg-red-600'
+                          }`}
+                          style={{width: `${Math.min(objectives.pourcentage_objectif_dossiers || 0, 100)}%`}}
+                        ></div>
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1 text-right">
+                        {Math.round(objectives.pourcentage_objectif_dossiers || 0)}%
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <div className="flex justify-between mb-2">
+                        <span className="text-sm font-medium">Gains mensuels</span>
+                        <span className={`text-sm font-bold ${
+                          objectives.pourcentage_objectif_montant >= 100 ? 'text-green-600' : 
+                          objectives.pourcentage_objectif_montant >= 75 ? 'text-yellow-600' : 'text-red-600'
+                        }`}>
+                          {((objectives.montant_30j || 0) / 1000).toFixed(1)}k€/{((objectives.objectif_montant_mensuel || 100000) / 1000).toFixed(0)}k€
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-3">
+                        <div 
+                          className={`h-3 rounded-full ${
+                            objectives.pourcentage_objectif_montant >= 100 ? 'bg-green-600' : 
+                            objectives.pourcentage_objectif_montant >= 75 ? 'bg-yellow-600' : 'bg-red-600'
+                          }`}
+                          style={{width: `${Math.min(objectives.pourcentage_objectif_montant || 0, 100)}%`}}
+                        ></div>
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1 text-right">
+                        {Math.round(objectives.pourcentage_objectif_montant || 0)}%
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center text-gray-500 py-8">
+                    <Target className="h-12 w-12 mx-auto mb-2 text-gray-400" />
+                    <p>Chargement des objectifs...</p>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-3">
-                    <div className="bg-green-600 h-3 rounded-full" style={{width: '110%'}}></div>
-                  </div>
-                </div>
-                <div>
-                  <div className="flex justify-between mb-2">
-                    <span className="text-sm font-medium">Clients</span>
-                    <span className="text-sm font-bold text-yellow-600">95%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-3">
-                    <div className="bg-yellow-600 h-3 rounded-full" style={{width: '95%'}}></div>
-                  </div>
-                </div>
-                <div>
-                  <div className="flex justify-between mb-2">
-                    <span className="text-sm font-medium">Revenus</span>
-                    <span className="text-sm font-bold text-blue-600">105%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-3">
-                    <div className="bg-blue-600 h-3 rounded-full" style={{width: '105%'}}></div>
-                  </div>
-                </div>
+                )}
               </div>
             </CardContent>
           </Card>

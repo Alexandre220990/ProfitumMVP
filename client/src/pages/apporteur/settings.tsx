@@ -1,49 +1,53 @@
-import { useSearchParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
 import { Settings, User, Bell, Shield, Save, Edit, Eye, EyeOff, Download, Upload, Trash2 } from 'lucide-react';
+import { useAuth } from '../../hooks/use-auth';
 
 /**
  * Page Paramètres
  * Configuration du compte et préférences
  */
 export default function SettingsPage() {
-  const [searchParams] = useSearchParams();
-  const apporteurId = searchParams.get('apporteurId');
+  const { user } = useAuth();
+  const apporteurId = user?.id;
   const [settings, setSettings] = useState<any>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const defaultSettings = {
     profile: {
-      fullName: '',
-      email: '',
-      phone: '',
-      company: ''
+      fullName: user?.name || user?.username || '',
+      email: user?.email || '',
+      phone: user?.phone_number || '',
+      company: user?.company_name || ''
     },
     notifications: {
-      newProspects: false,
-      confirmedMeetings: false,
-      paidCommissions: false,
+      newProspects: true,
+      confirmedMeetings: true,
+      paidCommissions: true,
       followUpReminders: false,
       availableTrainings: false,
       reminderFrequency: 'daily'
     },
     account: {
-      status: 'inactive',
-      registrationDate: '',
-      lastLogin: '',
+      status: 'active',
+      registrationDate: user?.created_at ? new Date(user.created_at).toLocaleDateString('fr-FR') : '',
+      lastLogin: user?.updated_at ? new Date(user.updated_at).toLocaleString('fr-FR') : 'Maintenant',
       accessLevel: 'Apporteur d\'Affaires'
     }
   };
 
   useEffect(() => {
     const loadSettings = async () => {
-      if (!apporteurId || typeof apporteurId !== 'string') return;
+      if (!apporteurId) {
+        setLoading(false);
+        return;
+      }
       
       try {
         // Ici on pourrait charger les paramètres depuis l'API
@@ -51,20 +55,31 @@ export default function SettingsPage() {
       } catch (err) {
         console.error('Erreur lors du chargement des paramètres:', err);
         setSettings(defaultSettings);
+      } finally {
+        setLoading(false);
       }
     };
 
     loadSettings();
   }, [apporteurId]);
 
-  if (!apporteurId || typeof apporteurId !== 'string') {
+  if (loading) {
     return (
-      <div className="container mx-auto py-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">ID Apporteur Requis</h2>
-            <p className="text-gray-600">Veuillez vous connecter pour accéder aux paramètres.</p>
-          </div>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-slate-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Chargement des paramètres...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user || user.type !== 'apporteur_affaires') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-slate-100 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Accès Refusé</h2>
+          <p className="text-gray-600">Veuillez vous connecter en tant qu'apporteur d'affaires.</p>
         </div>
       </div>
     );
@@ -114,7 +129,8 @@ export default function SettingsPage() {
                 </label>
                 <Input
                   type="text"
-                  defaultValue={settings?.profile?.fullName || "Béranger Keita"}
+                  defaultValue={settings?.profile?.fullName || user?.name || user?.username || ""}
+                  placeholder="Votre nom complet"
                   className="w-full"
                 />
               </div>
@@ -124,9 +140,12 @@ export default function SettingsPage() {
                 </label>
                 <Input
                   type="email"
-                  defaultValue={settings?.profile?.email || "conseilprofitum@gmail.com"}
+                  defaultValue={settings?.profile?.email || user?.email || ""}
+                  placeholder="votre@email.com"
                   className="w-full"
+                  disabled
                 />
+                <p className="text-xs text-gray-500 mt-1">L'email ne peut pas être modifié</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -134,7 +153,8 @@ export default function SettingsPage() {
                 </label>
                 <Input
                   type="tel"
-                  defaultValue={settings?.profile?.phone || "+33 1 23 45 67 89"}
+                  defaultValue={settings?.profile?.phone || user?.phone_number || ""}
+                  placeholder="+33 X XX XX XX XX"
                   className="w-full"
                 />
               </div>
@@ -144,7 +164,8 @@ export default function SettingsPage() {
                 </label>
                 <Input
                   type="text"
-                  defaultValue={settings?.profile?.company || "Profitum Conseil"}
+                  defaultValue={settings?.profile?.company || ""}
+                  placeholder="Nom de votre entreprise"
                   className="w-full"
                 />
               </div>
@@ -297,11 +318,15 @@ export default function SettingsPage() {
               </div>
               <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
                 <span className="text-sm font-medium text-gray-700">Date d'inscription</span>
-                <span className="text-sm text-gray-600">{settings?.account?.registrationDate || "15 Janvier 2024"}</span>
+                <span className="text-sm text-gray-600">
+                  {settings?.account?.registrationDate || (user?.created_at ? new Date(user.created_at).toLocaleDateString('fr-FR') : 'N/A')}
+                </span>
               </div>
               <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
-                <span className="text-sm font-medium text-gray-700">Dernière connexion</span>
-                <span className="text-sm text-gray-600">{settings?.account?.lastLogin || "Aujourd'hui 14:30"}</span>
+                <span className="text-sm font-medium text-gray-700">Dernière activité</span>
+                <span className="text-sm text-gray-600">
+                  {settings?.account?.lastLogin || (user?.updated_at ? new Date(user.updated_at).toLocaleDateString('fr-FR') : 'Maintenant')}
+                </span>
               </div>
               <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
                 <span className="text-sm font-medium text-gray-700">Niveau d'accès</span>

@@ -67,12 +67,6 @@ export default function ApporteurLayout({ children }: ApporteurLayoutProps) {
       current: location.pathname.startsWith('/apporteur/kanban')
     },
     {
-      name: 'Rendez-vous',
-      href: '/apporteur/meetings',
-      icon: Calendar,
-      current: location.pathname.startsWith('/apporteur/meetings')
-    },
-    {
       name: 'Experts',
       href: '/apporteur/experts',
       icon: Building,

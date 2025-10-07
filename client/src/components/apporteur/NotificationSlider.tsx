@@ -144,12 +144,6 @@ export function NotificationSlider({ isOpen, onClose }: NotificationSliderProps)
             )}
           </div>
 
-          {/* Footer */}
-          <div className="p-4 border-t border-gray-200 bg-gray-50">
-            <Button variant="outline" className="w-full" size="sm">
-              Voir toutes les notifications
-            </Button>
-          </div>
         </div>
       </div>
     </div>

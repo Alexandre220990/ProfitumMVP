@@ -39,7 +39,7 @@ export function QuickActions({
     if (onScheduleMeeting) {
       onScheduleMeeting();
     } else {
-      navigate('/apporteur/meetings');
+      navigate('/apporteur/agenda');
     }
   };
 
