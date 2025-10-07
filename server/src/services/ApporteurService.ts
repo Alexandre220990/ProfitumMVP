@@ -452,6 +452,178 @@ export class ApporteurService {
         }
     }
 
+    // ===== VUES SQL =====
+    
+    // Vue dashboard principal
+    static async getDashboardPrincipal(apporteurId: string) {
+        try {
+            const { data, error } = await supabase
+                .from('vue_apporteur_dashboard_principal')
+                .select('*')
+                .eq('apporteur_id', apporteurId)
+                .maybeSingle();
+
+            if (error) {
+                console.error('Erreur vue dashboard principal:', error);
+                return { success: false, error: error.message };
+            }
+
+            return { success: true, data: data || null };
+        } catch (error) {
+            console.error('Erreur getDashboardPrincipal:', error);
+            return { success: false, error: 'Erreur lors de la récupération du dashboard' };
+        }
+    }
+
+    // Vue prospects détaillés
+    static async getProspectsDetaille(apporteurId: string) {
+        try {
+            const { data, error } = await supabase
+                .from('vue_apporteur_prospects_detaille')
+                .select('*')
+                .eq('apporteur_id', apporteurId)
+                .order('date_creation', { ascending: false });
+
+            if (error) {
+                console.error('Erreur vue prospects détaillés:', error);
+                return { success: false, error: error.message };
+            }
+
+            return { success: true, data: data || [] };
+        } catch (error) {
+            console.error('Erreur getProspectsDetaille:', error);
+            return { success: false, error: 'Erreur lors de la récupération des prospects' };
+        }
+    }
+
+    // Vue objectifs et performance
+    static async getObjectifsPerformance(apporteurId: string) {
+        try {
+            const { data, error } = await supabase
+                .from('vue_apporteur_objectifs_performance')
+                .select('*')
+                .eq('apporteur_id', apporteurId)
+                .maybeSingle();
+
+            if (error) {
+                console.error('Erreur vue objectifs performance:', error);
+                return { success: false, error: error.message };
+            }
+
+            return { success: true, data: data || null };
+        } catch (error) {
+            console.error('Erreur getObjectifsPerformance:', error);
+            return { success: false, error: 'Erreur lors de la récupération des objectifs' };
+        }
+    }
+
+    // Vue activité récente
+    static async getActiviteRecente(apporteurId: string) {
+        try {
+            const { data, error } = await supabase
+                .from('vue_apporteur_activite_recente')
+                .select('*')
+                .eq('apporteur_id', apporteurId)
+                .order('date_activite', { ascending: false })
+                .limit(20);
+
+            if (error) {
+                console.error('Erreur vue activité récente:', error);
+                return { success: false, error: error.message };
+            }
+
+            return { success: true, data: data || [] };
+        } catch (error) {
+            console.error('Erreur getActiviteRecente:', error);
+            return { success: false, error: 'Erreur lors de la récupération de l\'activité' };
+        }
+    }
+
+    // Vue statistiques mensuelles
+    static async getStatistiquesMensuelles(apporteurId: string) {
+        try {
+            const { data, error } = await supabase
+                .from('vue_apporteur_statistiques_mensuelles')
+                .select('*')
+                .eq('apporteur_id', apporteurId)
+                .order('mois', { ascending: false })
+                .limit(12);
+
+            if (error) {
+                console.error('Erreur vue statistiques mensuelles:', error);
+                return { success: false, error: error.message };
+            }
+
+            return { success: true, data: data || [] };
+        } catch (error) {
+            console.error('Erreur getStatistiquesMensuelles:', error);
+            return { success: false, error: 'Erreur lors de la récupération des statistiques mensuelles' };
+        }
+    }
+
+    // Vue performance produits
+    static async getPerformanceProduits(apporteurId: string) {
+        try {
+            const { data, error } = await supabase
+                .from('vue_apporteur_performance_produits')
+                .select('*')
+                .eq('apporteur_id', apporteurId)
+                .order('taux_reussite_pourcent', { ascending: false });
+
+            if (error) {
+                console.error('Erreur vue performance produits:', error);
+                return { success: false, error: error.message };
+            }
+
+            return { success: true, data: data || [] };
+        } catch (error) {
+            console.error('Erreur getPerformanceProduits:', error);
+            return { success: false, error: 'Erreur lors de la récupération de la performance produits' };
+        }
+    }
+
+    // Vue sources prospects
+    static async getSourcesProspects(apporteurId: string) {
+        try {
+            const { data, error } = await supabase
+                .from('vue_apporteur_sources_prospects')
+                .select('*')
+                .eq('apporteur_id', apporteurId)
+                .order('nb_prospects', { ascending: false });
+
+            if (error) {
+                console.error('Erreur vue sources prospects:', error);
+                return { success: false, error: error.message };
+            }
+
+            return { success: true, data: data || [] };
+        } catch (error) {
+            console.error('Erreur getSourcesProspects:', error);
+            return { success: false, error: 'Erreur lors de la récupération des sources' };
+        }
+    }
+
+    // Vue KPIs globaux
+    static async getKpisGlobaux(apporteurId: string) {
+        try {
+            const { data, error } = await supabase
+                .from('vue_apporteur_kpis_globaux')
+                .select('*')
+                .eq('apporteur_id', apporteurId)
+                .maybeSingle();
+
+            if (error) {
+                console.error('Erreur vue KPIs globaux:', error);
+                return { success: false, error: error.message };
+            }
+
+            return { success: true, data: data || null };
+        } catch (error) {
+            console.error('Erreur getKpisGlobaux:', error);
+            return { success: false, error: 'Erreur lors de la récupération des KPIs' };
+        }
+    }
+
     // ===== VALIDATION =====
     static validateProspectData(data: any): { isValid: boolean; errors: string[] } {
         const errors: string[] = [];

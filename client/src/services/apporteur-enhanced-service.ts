@@ -1,14 +1,29 @@
-import { supabase } from '../lib/supabase';
-
 /**
  * Service Apporteur Enhanced
- * Utilise les nouvelles vues SQL corrigées pour des données complètes et précises
+ * Utilise les vues SQL via le backend Railway pour éviter les problèmes CORS
  */
 export class ApporteurEnhancedService {
-  private apporteurId: string;
+  private baseUrl: string;
 
-  constructor(apporteurId: string) {
-    this.apporteurId = apporteurId;
+  constructor(_apporteurId?: string) {
+    // apporteurId non utilisé - l'authentification se fait via le token JWT
+    this.baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+  }
+
+  private async fetchFromBackend(endpoint: string) {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${this.baseUrl}/api/apporteur/${endpoint}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Erreur HTTP ${response.status}`);
+    }
+
+    return response.json();
   }
 
   /**
@@ -52,21 +67,10 @@ export class ApporteurEnhancedService {
    */
   async getDashboardPrincipal() {
     try {
-      const { data, error } = await supabase
-        .from('vue_apporteur_dashboard_principal')
-        .select('*')
-        .eq('apporteur_id', this.apporteurId)
-        .single();
-
-      if (error) {
-        console.warn('Vue vue_apporteur_dashboard_principal non disponible');
-        return { success: false, error: 'Vue SQL vue_apporteur_dashboard_principal non créée - Voir recommended-apporteur-views.sql' };
-      }
-
-      return { success: true, data };
+      return await this.fetchFromBackend('views/dashboard-principal');
     } catch (error) {
-      console.warn('Erreur getDashboardPrincipal:', error);
-      return { success: false, error: 'Vue SQL vue_apporteur_dashboard_principal non créée - Voir recommended-apporteur-views.sql' };
+      console.error('Erreur getDashboardPrincipal:', error);
+      return { success: false, error: 'Erreur lors de la récupération du dashboard' };
     }
   }
 
@@ -75,21 +79,10 @@ export class ApporteurEnhancedService {
    */
   async getProspectsDetaille() {
     try {
-      const { data, error } = await supabase
-        .from('vue_apporteur_prospects_detaille')
-        .select('*')
-        .eq('apporteur_id', this.apporteurId)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.warn('Vue vue_apporteur_prospects_detaille non disponible');
-        return { success: false, error: 'Vue SQL vue_apporteur_prospects_detaille non créée - Voir recommended-apporteur-views.sql' };
-      }
-
-      return { success: true, data: data || [] };
+      return await this.fetchFromBackend('views/prospects-detaille');
     } catch (error) {
-      console.warn('Erreur getProspectsDetaille:', error);
-      return { success: false, error: 'Vue SQL vue_apporteur_prospects_detaille non créée - Voir recommended-apporteur-views.sql' };
+      console.error('Erreur getProspectsDetaille:', error);
+      return { success: false, error: 'Erreur lors de la récupération des prospects' };
     }
   }
 
@@ -98,22 +91,10 @@ export class ApporteurEnhancedService {
    */
   async getActiviteRecente() {
     try {
-      const { data, error } = await supabase
-        .from('vue_apporteur_activite_recente')
-        .select('*')
-        .eq('apporteur_id', this.apporteurId)
-        .order('date_activite', { ascending: false })
-        .limit(20);
-
-      if (error) {
-        console.warn('Vue vue_apporteur_activite_recente non disponible');
-        return { success: false, error: 'Vue SQL vue_apporteur_activite_recente non créée - Voir recommended-apporteur-views.sql' };
-      }
-
-      return { success: true, data: data || [] };
+      return await this.fetchFromBackend('views/activite-recente');
     } catch (error) {
-      console.warn('Erreur getActiviteRecente:', error);
-      return { success: false, error: 'Vue SQL vue_apporteur_activite_recente non créée - Voir recommended-apporteur-views.sql' };
+      console.error('Erreur getActiviteRecente:', error);
+      return { success: false, error: 'Erreur lors de la récupération de l\'activité' };
     }
   }
 
@@ -122,21 +103,12 @@ export class ApporteurEnhancedService {
    */
   async getCommissionsCalculees() {
     try {
-      const { data, error } = await supabase
-        .from('vue_apporteur_commissions_calculees')
-        .select('*')
-        .eq('apporteur_id', this.apporteurId)
-        .order('date_commission', { ascending: false });
-
-      if (error) {
-        console.warn('Vue vue_apporteur_commissions_calculees non disponible');
-        return { success: false, error: 'Vue SQL vue_apporteur_commissions_calculees non créée - Voir recommended-apporteur-views.sql' };
-      }
-
-      return { success: true, data: data || [] };
+      // La vue existe mais utilise ApporteurCommission (table manquante)
+      // Utiliser la route commissions qui utilise ProspectConversion
+      return await this.fetchFromBackend('commissions');
     } catch (error) {
-      console.warn('Erreur getCommissionsCalculees:', error);
-      return { success: false, error: 'Vue SQL vue_apporteur_commissions_calculees non créée - Voir recommended-apporteur-views.sql' };
+      console.error('Erreur getCommissionsCalculees:', error);
+      return { success: false, error: 'Erreur lors de la récupération des commissions' };
     }
   }
 
@@ -145,21 +117,10 @@ export class ApporteurEnhancedService {
    */
   async getObjectifsPerformance() {
     try {
-      const { data, error } = await supabase
-        .from('vue_apporteur_objectifs_performance')
-        .select('*')
-        .eq('apporteur_id', this.apporteurId)
-        .single();
-
-      if (error) {
-        console.warn('Vue vue_apporteur_objectifs_performance non disponible');
-        return { success: false, error: 'Vue SQL vue_apporteur_objectifs_performance non créée - Voir recommended-apporteur-views.sql' };
-      }
-
-      return { success: true, data };
+      return await this.fetchFromBackend('views/objectifs-performance');
     } catch (error) {
-      console.warn('Erreur getObjectifsPerformance:', error);
-      return { success: false, error: 'Vue SQL vue_apporteur_objectifs_performance non créée - Voir recommended-apporteur-views.sql' };
+      console.error('Erreur getObjectifsPerformance:', error);
+      return { success: false, error: 'Erreur lors de la récupération des objectifs' };
     }
   }
 
@@ -168,21 +129,10 @@ export class ApporteurEnhancedService {
    */
   async getPerformanceProduits() {
     try {
-      const { data, error } = await supabase
-        .from('vue_apporteur_performance_produits')
-        .select('*')
-        .eq('apporteur_id', this.apporteurId)
-        .order('taux_reussite_pourcent', { ascending: false });
-
-      if (error) {
-        console.warn('Vue vue_apporteur_performance_produits non disponible');
-        return { success: false, error: 'Vue SQL vue_apporteur_performance_produits non créée - Voir recommended-apporteur-views.sql' };
-      }
-
-      return { success: true, data: data || [] };
+      return await this.fetchFromBackend('views/performance-produits');
     } catch (error) {
-      console.warn('Erreur getPerformanceProduits:', error);
-      return { success: false, error: 'Vue SQL vue_apporteur_performance_produits non créée - Voir recommended-apporteur-views.sql' };
+      console.error('Erreur getPerformanceProduits:', error);
+      return { success: false, error: 'Erreur lors de la récupération de la performance produits' };
     }
   }
 
@@ -191,22 +141,10 @@ export class ApporteurEnhancedService {
    */
   async getStatistiquesMensuelles() {
     try {
-      const { data, error } = await supabase
-        .from('vue_apporteur_statistiques_mensuelles')
-        .select('*')
-        .eq('apporteur_id', this.apporteurId)
-        .order('mois', { ascending: false })
-        .limit(12);
-
-      if (error) {
-        console.warn('Vue vue_apporteur_statistiques_mensuelles non disponible');
-        return { success: false, error: 'Vue SQL vue_apporteur_statistiques_mensuelles non créée - Voir recommended-apporteur-views.sql' };
-      }
-
-      return { success: true, data: data || [] };
+      return await this.fetchFromBackend('views/statistiques-mensuelles');
     } catch (error) {
-      console.warn('Erreur getStatistiquesMensuelles:', error);
-      return { success: false, error: 'Vue SQL vue_apporteur_statistiques_mensuelles non créée - Voir recommended-apporteur-views.sql' };
+      console.error('Erreur getStatistiquesMensuelles:', error);
+      return { success: false, error: 'Erreur lors de la récupération des statistiques mensuelles' };
     }
   }
 
@@ -215,21 +153,10 @@ export class ApporteurEnhancedService {
    */
   async getSourcesProspects() {
     try {
-      const { data, error } = await supabase
-        .from('vue_apporteur_sources_prospects')
-        .select('*')
-        .eq('apporteur_id', this.apporteurId)
-        .order('nb_prospects', { ascending: false });
-
-      if (error) {
-        console.warn('Vue vue_apporteur_sources_prospects non disponible');
-        return { success: false, error: 'Vue SQL vue_apporteur_sources_prospects non créée - Voir recommended-apporteur-views.sql' };
-      }
-
-      return { success: true, data: data || [] };
+      return await this.fetchFromBackend('views/sources-prospects');
     } catch (error) {
-      console.warn('Erreur getSourcesProspects:', error);
-      return { success: false, error: 'Vue SQL vue_apporteur_sources_prospects non créée - Voir recommended-apporteur-views.sql' };
+      console.error('Erreur getSourcesProspects:', error);
+      return { success: false, error: 'Erreur lors de la récupération des sources' };
     }
   }
 
@@ -238,36 +165,11 @@ export class ApporteurEnhancedService {
    */
   async getExperts() {
     try {
-      const { data, error } = await supabase
-        .from('Expert')
-        .select('*')
-        .eq('status', 'active')
-        .order('name');
-
-      if (error) {
-        console.error('Erreur récupération experts:', error);
-        return { success: false, error: error.message };
-      }
-
-      // Formater les données pour le composant
-      const formattedExperts = (data || []).map((expert: any) => ({
-        id: expert.id,
-        name: expert.name,
-        email: expert.email,
-        phone: expert.phone,
-        specialty: expert.specializations?.[0] || 'Généraliste',
-        location: expert.city || 'Non spécifié',
-        rating: expert.rating || 4.5,
-        status: expert.availability || 'available',
-        availability: expert.availability || 'available',
-        dossiers: 0, // À calculer depuis les dossiers
-        successRate: expert.rating ? Math.round(expert.rating * 20) : 90
-      }));
-
-      return { success: true, data: formattedExperts };
+      // Utiliser le backend au lieu de Supabase direct
+      return await this.fetchFromBackend('experts');
     } catch (error) {
       console.error('Erreur getExperts:', error);
-      return { success: false, error: error instanceof Error ? error.message : 'Erreur inconnue' };
+      return { success: false, error: 'Erreur lors de la récupération des experts' };
     }
   }
 
@@ -276,36 +178,23 @@ export class ApporteurEnhancedService {
    */
   async getFallbackData() {
     try {
-      // Données de base depuis les tables principales
-      const { data: clients, error } = await supabase
-        .from('Client')
-        .select('*')
-        .eq('apporteur_id', this.apporteurId);
-
-      if (error) {
-        console.error('Erreur récupération clients fallback:', error);
-        return { success: false, error: error.message };
-      }
-
-      return {
-        success: true,
-        data: {
-          total_prospects: clients?.length || 0,
-          total_active_clients: clients?.filter((c: any) => c.status === 'client').length || 0,
-          nouveaux_clients_30j: clients?.filter((c: any) => {
-            const created = new Date(c.created_at);
-            const thirtyDaysAgo = new Date();
-            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-            return created >= thirtyDaysAgo;
-          }).length || 0,
-          total_montant_demande: 0, // À calculer depuis les dossiers
-          taux_conversion_pourcent: 0, // À calculer
-          dossiers_acceptes: 0 // À calculer depuis les dossiers
-        }
-      };
+      // Utiliser le service simple comme fallback
+      return { success: false, error: 'Fallback désactivé - utiliser ApporteurSimpleService' };
     } catch (error) {
       console.error('Erreur fallback data:', error);
-      return { success: false, error: error instanceof Error ? error.message : 'Erreur inconnue' };
+      return { success: false, error: 'Erreur lors de la récupération des données de fallback' };
+    }
+  }
+
+  /**
+   * Liste des produits éligibles
+   */
+  async getProduits() {
+    try {
+      return await this.fetchFromBackend('produits');
+    } catch (error) {
+      console.error('Erreur getProduits:', error);
+      return { success: false, error: 'Erreur lors de la récupération des produits' };
     }
   }
 }

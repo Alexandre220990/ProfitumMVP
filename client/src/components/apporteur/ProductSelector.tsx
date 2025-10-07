@@ -68,8 +68,35 @@ export default function ProductSelector({
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      // Simulation de données - à remplacer par des appels API réels
-      const mockProducts: ProductEligible[] = [
+      
+      console.log('🔍 Récupération des produits depuis l\'API...');
+      
+      // Appel à l'API pour récupérer les produits réels
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${baseUrl}/api/apporteur/produits`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      console.log('📡 Réponse API produits:', response.status);
+
+      if (!response.ok) {
+        throw new Error('Erreur lors de la récupération des produits');
+      }
+
+      const result = await response.json();
+      
+      console.log('✅ Résultat API:', result.success, 'Nombre de produits:', result.data?.length);
+      
+      if (result.success && result.data) {
+        setProducts(result.data);
+        setError(null);
+      } else {
+        console.warn('⚠️ API retourné sans succès, utilisation des données mock');
+        // Fallback sur données mock si l'API échoue
+        const mockProducts: ProductEligible[] = [
         {
           id: '1',
           nom: 'CIR - Crédit Impôt Recherche',
@@ -114,10 +141,58 @@ export default function ProductSelector({
         }
       ];
       
-      setProducts(mockProducts);
+        setProducts(mockProducts);
+      }
     } catch (err) {
       console.error('Erreur fetchProducts:', err);
       setError(err instanceof Error ? err.message : 'Erreur inconnue');
+      
+      // En cas d'erreur, utiliser les données mock
+      const fallbackProducts: ProductEligible[] = [
+        {
+          id: '1',
+          nom: 'CIR - Crédit Impôt Recherche',
+          description: 'Réduction d\'impôt pour les dépenses de R&D',
+          categorie: 'Fiscal',
+          montant_min: 10000,
+          montant_max: 1000000,
+          taux_min: 30,
+          taux_max: 50,
+          duree_min: 1,
+          duree_max: 3,
+          conditions: ['Activité de R&D', 'Personnel qualifié'],
+          avantages: ['Réduction d\'impôt', 'Financement R&D']
+        },
+        {
+          id: '2',
+          nom: 'TICPE - Taxe Intérieure de Consommation',
+          description: 'Remboursement de la TICPE sur les carburants',
+          categorie: 'Environnemental',
+          montant_min: 5000,
+          montant_max: 500000,
+          taux_min: 20,
+          taux_max: 40,
+          duree_min: 1,
+          duree_max: 2,
+          conditions: ['Transport routier', 'Flotte de véhicules'],
+          avantages: ['Remboursement TICPE', 'Économies carburant']
+        },
+        {
+          id: '3',
+          nom: 'URSSAF - Réduction Charges Sociales',
+          description: 'Réduction des charges sociales pour l\'embauche',
+          categorie: 'Social',
+          montant_min: 2000,
+          montant_max: 200000,
+          taux_min: 25,
+          taux_max: 50,
+          duree_min: 1,
+          duree_max: 2,
+          conditions: ['Embauche CDI', 'Première embauche'],
+          avantages: ['Réduction charges', 'Aide embauche']
+        }
+      ];
+      setProducts(fallbackProducts);
     } finally {
       setLoading(false);
     }

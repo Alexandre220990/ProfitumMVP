@@ -1,33 +1,21 @@
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ApporteurDashboardSimple } from '../../components/apporteur/ApporteurDashboardSimple';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { RefreshCw, AlertTriangle, ArrowLeft } from 'lucide-react';
+import { useAuth } from '../../hooks/use-auth';
 
 /**
  * Page Dashboard Apporteur Optimisée
- * Utilise les fonctions SQL pour afficher les données personnelles
+ * Utilise le contexte d'authentification pour récupérer l'ID apporteur
  * Gestion d'erreurs avancée et interface utilisateur améliorée
  */
 export default function ApporteurDashboardPage() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const apporteurId = searchParams.get('apporteurId');
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    // Vérification de l'ID apporteur avec délai pour éviter les erreurs de hydration
-    const timer = setTimeout(() => {
-      if (!apporteurId || typeof apporteurId !== 'string') {
-        setError('ID Apporteur manquant ou invalide');
-      }
-      setIsLoading(false);
-    }, 100);
-
-    return () => clearTimeout(timer);
-  }, [apporteurId]);
+  const { user, isLoading } = useAuth();
+  
+  // Récupérer l'ID depuis le contexte d'authentification
+  const apporteurId = user?.id;
 
   // État de chargement
   if (isLoading) {
@@ -43,8 +31,8 @@ export default function ApporteurDashboardPage() {
     );
   }
 
-  // Gestion d'erreur
-  if (error || !apporteurId || typeof apporteurId !== 'string') {
+  // Gestion d'erreur - Vérifier si l'utilisateur est bien un apporteur
+  if (!user || user.type !== 'apporteur_affaires' || !apporteurId) {
     return (
       <div className="container mx-auto py-6">
         <Card className="max-w-2xl mx-auto">
@@ -57,13 +45,10 @@ export default function ApporteurDashboardPage() {
           <CardContent className="space-y-4">
             <div className="text-center">
               <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                {error || 'ID Apporteur Requis'}
+                Authentification Requise
               </h2>
               <p className="text-gray-600 mb-6">
-                {error 
-                  ? 'Une erreur est survenue lors du chargement de votre dashboard.'
-                  : 'Veuillez vous connecter pour accéder à votre dashboard.'
-                }
+                Veuillez vous connecter pour accéder à votre dashboard.
               </p>
             </div>
             

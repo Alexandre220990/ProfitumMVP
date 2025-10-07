@@ -12,6 +12,104 @@ const router = express.Router();
 // ===== DASHBOARD =====
 // Route dashboard déplacée vers apporteur-api.ts pour éviter les conflits
 
+// ===== VUES SQL - ACCÈS AUX VUES SUPABASE VIA BACKEND (ÉVITE CORS) =====
+
+// Vue dashboard principal
+router.get('/views/dashboard-principal', async (req: any, res: any): Promise<void> => {
+    try {
+        const apporteurId = req.user!.database_id;
+        const result = await ApporteurService.getDashboardPrincipal(apporteurId);
+        res.json(result);
+    } catch (error) {
+        console.error('Erreur vue dashboard principal:', error);
+        res.status(500).json({ success: false, error: 'Erreur lors de la récupération du dashboard' });
+    }
+});
+
+// Vue prospects détaillés
+router.get('/views/prospects-detaille', async (req: any, res: any): Promise<void> => {
+    try {
+        const apporteurId = req.user!.database_id;
+        const result = await ApporteurService.getProspectsDetaille(apporteurId);
+        res.json(result);
+    } catch (error) {
+        console.error('Erreur vue prospects détaillés:', error);
+        res.status(500).json({ success: false, error: 'Erreur lors de la récupération des prospects' });
+    }
+});
+
+// Vue objectifs et performance
+router.get('/views/objectifs-performance', async (req: any, res: any): Promise<void> => {
+    try {
+        const apporteurId = req.user!.database_id;
+        const result = await ApporteurService.getObjectifsPerformance(apporteurId);
+        res.json(result);
+    } catch (error) {
+        console.error('Erreur vue objectifs performance:', error);
+        res.status(500).json({ success: false, error: 'Erreur lors de la récupération des objectifs' });
+    }
+});
+
+// Vue activité récente
+router.get('/views/activite-recente', async (req: any, res: any): Promise<void> => {
+    try {
+        const apporteurId = req.user!.database_id;
+        const result = await ApporteurService.getActiviteRecente(apporteurId);
+        res.json(result);
+    } catch (error) {
+        console.error('Erreur vue activité récente:', error);
+        res.status(500).json({ success: false, error: 'Erreur lors de la récupération de l\'activité' });
+    }
+});
+
+// Vue statistiques mensuelles
+router.get('/views/statistiques-mensuelles', async (req: any, res: any): Promise<void> => {
+    try {
+        const apporteurId = req.user!.database_id;
+        const result = await ApporteurService.getStatistiquesMensuelles(apporteurId);
+        res.json(result);
+    } catch (error) {
+        console.error('Erreur vue statistiques mensuelles:', error);
+        res.status(500).json({ success: false, error: 'Erreur lors de la récupération des statistiques' });
+    }
+});
+
+// Vue performance produits
+router.get('/views/performance-produits', async (req: any, res: any): Promise<void> => {
+    try {
+        const apporteurId = req.user!.database_id;
+        const result = await ApporteurService.getPerformanceProduits(apporteurId);
+        res.json(result);
+    } catch (error) {
+        console.error('Erreur vue performance produits:', error);
+        res.status(500).json({ success: false, error: 'Erreur lors de la récupération de la performance' });
+    }
+});
+
+// Vue sources prospects
+router.get('/views/sources-prospects', async (req: any, res: any): Promise<void> => {
+    try {
+        const apporteurId = req.user!.database_id;
+        const result = await ApporteurService.getSourcesProspects(apporteurId);
+        res.json(result);
+    } catch (error) {
+        console.error('Erreur vue sources prospects:', error);
+        res.status(500).json({ success: false, error: 'Erreur lors de la récupération des sources' });
+    }
+});
+
+// Vue KPIs globaux
+router.get('/views/kpis-globaux', async (req: any, res: any): Promise<void> => {
+    try {
+        const apporteurId = req.user!.database_id;
+        const result = await ApporteurService.getKpisGlobaux(apporteurId);
+        res.json(result);
+    } catch (error) {
+        console.error('Erreur vue KPIs globaux:', error);
+        res.status(500).json({ success: false, error: 'Erreur lors de la récupération des KPIs' });
+    }
+});
+
 // ===== STATISTIQUES =====
 router.get('/stats', async (req: any, res: any): Promise<void> => {
     try {

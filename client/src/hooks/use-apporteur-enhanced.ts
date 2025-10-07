@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { ApporteurEnhancedService } from '../services/apporteur-enhanced-service';
+import { ApporteurViewsService } from '../services/apporteur-views-service';
 
 /**
  * Hook pour utiliser les données enrichies du dashboard apporteur
- * Utilise les nouvelles vues SQL corrigées
+ * Utilise les vues SQL via le backend Railway (évite CORS)
  */
 export function useApporteurEnhanced(apporteurId: string | null) {
   const [data, setData] = useState<any>(null);
@@ -20,9 +20,24 @@ export function useApporteurEnhanced(apporteurId: string | null) {
     setError(null);
 
     try {
-      const service = new ApporteurEnhancedService(apporteurId);
-      const result = await service.getAllDashboardData();
-      setData(result);
+      const service = new ApporteurViewsService();
+      
+      // Charger les données en parallèle
+      const [dashboard, prospects, objectifs, activite, performance] = await Promise.all([
+        service.getDashboardPrincipal(),
+        service.getProspectsDetaille(),
+        service.getObjectifsPerformance(),
+        service.getActiviteRecente(),
+        service.getPerformanceProduits()
+      ]);
+
+      setData({
+        dashboard,
+        prospects,
+        objectifs,
+        activite,
+        performance
+      });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erreur lors du chargement des données';
       setError(errorMessage);
@@ -44,7 +59,6 @@ export function useApporteurEnhanced(apporteurId: string | null) {
   const getDashboardData = () => data?.dashboard?.data || null;
   const getProspectsData = () => data?.prospects?.data || [];
   const getActivityData = () => data?.activite?.data || [];
-  const getCommissionsData = () => data?.commissions?.data || [];
   const getObjectivesData = () => data?.objectifs?.data || null;
   const getPerformanceData = () => data?.performance?.data || [];
 
@@ -101,10 +115,10 @@ export function useApporteurEnhanced(apporteurId: string | null) {
     return getPerformanceData().map((product: any) => ({
       produitId: product.produit_id,
       produitNom: product.produit_nom,
-      nbDossiers: product.nb_dossiers || 0,
+      nbDossiers: product.nb_dossiers_produit || 0,
       tauxReussite: product.taux_reussite_pourcent || 0,
-      montantMoyen: product.montant_moyen || 0,
-      commissionMoyenne: product.commission_moyenne || 0
+      montantMoyen: product.montant_moyen_demande || 0,
+      montantAccepte: product.montant_accepte || 0
     }));
   };
 
@@ -147,7 +161,6 @@ export function useApporteurEnhanced(apporteurId: string | null) {
     getDashboardData,
     getProspectsData,
     getActivityData,
-    getCommissionsData,
     getObjectivesData,
     getPerformanceData,
 
