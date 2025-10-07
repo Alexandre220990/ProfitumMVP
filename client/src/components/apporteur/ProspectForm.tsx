@@ -12,7 +12,9 @@ import {
   User, 
   Calendar,
   DollarSign,
-  Target
+  Target,
+  Mail,
+  AlertCircle
 } from 'lucide-react';
 import { config } from '@/config';
 
@@ -93,6 +95,9 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
   const [products, setProducts] = useState<ProductEligible[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [emailOption, setEmailOption] = useState<'none' | 'exchange' | 'presentation'>('none');
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailSuccess, setEmailSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     fetchProducts();
@@ -157,11 +162,11 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
 
     try {
       // Utiliser la route prospects qui existe dans apporteur.ts
-      const url = prospectId 
+      const url: string = prospectId 
         ? `${config.API_URL}/api/apporteur/prospects/${prospectId}`
         : `${config.API_URL}/api/apporteur/prospects`;
       
-      const method = prospectId ? 'PUT' : 'POST';
+      const method: 'PUT' | 'POST' = prospectId ? 'PUT' : 'POST';
 
       // Préparer les données pour la table Client
       const clientData = {
@@ -197,7 +202,7 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
         selected_products: formData.selected_products
       };
 
-      const response = await fetch(url, {
+      const response: Response = await fetch(url, {
         method,
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -211,17 +216,75 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
         throw new Error(errorData.message || 'Erreur lors de la sauvegarde');
       }
 
-      const result = await response.json();
+      const result: any = await response.json();
       console.log('✅ Prospect sauvegardé:', result);
       
-      if (onSuccess) {
-        onSuccess();
+      const createdProspectId: string | undefined = result.data?.prospect?.id;
+      
+      // Envoyer l'email si une option a été sélectionnée
+      if (emailOption !== 'none' && createdProspectId) {
+        await sendCredentialsEmail(createdProspectId, emailOption);
+      } else {
+        // Pas d'email, fermer directement
+        if (onSuccess) {
+          onSuccess();
+        }
       }
     } catch (err) {
       console.error('❌ Erreur handleSubmit:', err);
       setError(err instanceof Error ? err.message : 'Erreur inconnue');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const sendCredentialsEmail = async (prospectId: string, emailType: 'exchange' | 'presentation') => {
+    setSendingEmail(true);
+    setEmailSuccess(null);
+    
+    try {
+      const response = await fetch(
+        `${config.API_URL}/api/apporteur/prospects/${prospectId}/send-credentials`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ emailType })
+        }
+      );
+
+      const result = await response.json();
+
+      if (result.success) {
+        setEmailSuccess(result.message);
+        // Attendre 2 secondes pour afficher le message de succès, puis fermer
+        setTimeout(() => {
+          if (onSuccess) {
+            onSuccess();
+          }
+        }, 2000);
+      } else {
+        setError(`Prospect créé mais erreur d'envoi d'email: ${result.message}`);
+        // Fermer quand même après 3 secondes
+        setTimeout(() => {
+          if (onSuccess) {
+            onSuccess();
+          }
+        }, 3000);
+      }
+    } catch (err) {
+      console.error('❌ Erreur envoi email:', err);
+      setError('Prospect créé mais erreur lors de l\'envoi de l\'email');
+      // Fermer quand même après 3 secondes
+      setTimeout(() => {
+        if (onSuccess) {
+          onSuccess();
+        }
+      }, 3000);
+    } finally {
+      setSendingEmail(false);
     }
   };
 
@@ -560,6 +623,108 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
               </div>
             </div>
 
+            {/* Sélecteur d'envoi d'email */}
+            <div className="space-y-4 p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border-2 border-blue-200">
+              <div className="flex items-center gap-2 mb-4">
+                <Mail className="h-5 w-5 text-blue-600" />
+                <h3 className="text-lg font-semibold text-gray-900">Envoi des identifiants au prospect</h3>
+              </div>
+              
+              <p className="text-sm text-gray-600 mb-4">
+                Un compte sera automatiquement créé pour le prospect avec un mot de passe provisoire. 
+                Choisissez si vous souhaitez lui envoyer les identifiants par email :
+              </p>
+
+              <div className="space-y-3">
+                {/* Option 1: Ne pas envoyer */}
+                <label className={`flex items-start p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                  emailOption === 'none' 
+                    ? 'border-blue-500 bg-blue-50' 
+                    : 'border-gray-200 hover:border-gray-300 bg-white'
+                }`}>
+                  <input
+                    type="radio"
+                    name="emailOption"
+                    value="none"
+                    checked={emailOption === 'none'}
+                    onChange={(e) => setEmailOption(e.target.value as any)}
+                    className="mt-1 mr-3"
+                  />
+                  <div className="flex-1">
+                    <div className="font-semibold text-gray-900">Ne pas envoyer d'email</div>
+                    <div className="text-sm text-gray-600 mt-1">
+                      Le compte sera créé mais aucun email ne sera envoyé. Vous pourrez communiquer les identifiants vous-même.
+                    </div>
+                  </div>
+                </label>
+
+                {/* Option 2: Email Échange concluant */}
+                <label className={`flex items-start p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                  emailOption === 'exchange' 
+                    ? 'border-green-500 bg-green-50' 
+                    : 'border-gray-200 hover:border-gray-300 bg-white'
+                }`}>
+                  <input
+                    type="radio"
+                    name="emailOption"
+                    value="exchange"
+                    checked={emailOption === 'exchange'}
+                    onChange={(e) => setEmailOption(e.target.value as any)}
+                    className="mt-1 mr-3"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <div className="font-semibold text-gray-900">Email "Échange concluant"</div>
+                      <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">Recommandé</span>
+                    </div>
+                    <div className="text-sm text-gray-600 mt-1">
+                      Pour un prospect avec qui vous avez eu un échange positif. Ton chaleureux et engageant.
+                    </div>
+                    <div className="text-xs text-gray-500 mt-2 italic">
+                      "Suite à notre échange, nous sommes ravis de vous accompagner..."
+                    </div>
+                  </div>
+                </label>
+
+                {/* Option 3: Email Présentation */}
+                <label className={`flex items-start p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                  emailOption === 'presentation' 
+                    ? 'border-purple-500 bg-purple-50' 
+                    : 'border-gray-200 hover:border-gray-300 bg-white'
+                }`}>
+                  <input
+                    type="radio"
+                    name="emailOption"
+                    value="presentation"
+                    checked={emailOption === 'presentation'}
+                    onChange={(e) => setEmailOption(e.target.value as any)}
+                    className="mt-1 mr-3"
+                  />
+                  <div className="flex-1">
+                    <div className="font-semibold text-gray-900">Email "Présentation Profitum"</div>
+                    <div className="text-sm text-gray-600 mt-1">
+                      Pour un premier contact. Invitation à découvrir la plateforme sans engagement.
+                    </div>
+                    <div className="text-xs text-gray-500 mt-2 italic">
+                      "Découvrez Profitum, votre partenaire d'optimisation..."
+                    </div>
+                  </div>
+                </label>
+              </div>
+
+              {emailOption !== 'none' && (
+                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                    <div className="text-sm text-yellow-800">
+                      <strong>Note de sécurité :</strong> Le mot de passe provisoire ne sera jamais affiché ici. 
+                      Il sera uniquement envoyé par email au prospect et supprimé de notre système après l'envoi.
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Actions */}
             <div className="flex justify-end gap-4 pt-6 border-t">
               {onCancel && (
@@ -568,15 +733,37 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
                   Annuler
                 </Button>
               )}
-              <Button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700">
+              <Button type="submit" disabled={loading || sendingEmail} className="bg-blue-600 hover:bg-blue-700">
                 <Save className="h-4 w-4 mr-2" />
-                {loading ? 'Sauvegarde...' : 'Sauvegarder'}
+                {loading ? 'Création du prospect...' : sendingEmail ? 'Envoi de l\'email...' : 'Sauvegarder'}
               </Button>
             </div>
 
+            {/* Messages de feedback */}
             {error && (
-              <div className="text-red-600 text-sm text-center">
-                {error}
+              <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm text-red-800">{error}</div>
+                </div>
+              </div>
+            )}
+
+            {emailSuccess && (
+              <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <Mail className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm text-green-800">{emailSuccess}</div>
+                </div>
+              </div>
+            )}
+
+            {sendingEmail && (
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin h-5 w-5 border-2 border-blue-600 border-t-transparent rounded-full"></div>
+                  <div className="text-sm text-blue-800">Envoi de l'email en cours...</div>
+                </div>
               </div>
             )}
           </form>
