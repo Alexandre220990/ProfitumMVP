@@ -145,7 +145,7 @@ export default function ApporteurCommissions() {
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-500">En attente</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {stats.pending_amount.toLocaleString()}€
+                    {(stats.pending_amount || 0).toLocaleString()}€
                   </p>
                 </div>
               </div>
@@ -161,7 +161,7 @@ export default function ApporteurCommissions() {
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-500">Payées ce mois</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {stats.paid_amount.toLocaleString()}€
+                    {(stats.paid_amount || 0).toLocaleString()}€
                   </p>
                 </div>
               </div>
@@ -177,7 +177,7 @@ export default function ApporteurCommissions() {
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-500">Total année</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {stats.yearly_earnings.toLocaleString()}€
+                    {(stats.yearly_earnings || 0).toLocaleString()}€
                   </p>
                 </div>
               </div>
@@ -193,7 +193,7 @@ export default function ApporteurCommissions() {
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-500">Objectif mensuel</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {stats.monthly_earnings.toLocaleString()}€
+                    {(stats.monthly_earnings || 0).toLocaleString()}€
                   </p>
                 </div>
               </div>
@@ -278,20 +278,20 @@ export default function ApporteurCommissions() {
                   <div className="flex items-center gap-6 text-sm">
                     <div>
                       <span className="text-gray-500">Produit:</span>
-                      <span className="ml-1 font-medium">{commission.product_name}</span>
+                      <span className="ml-1 font-medium">{commission.product_name || 'Non spécifié'}</span>
                     </div>
                     <div>
                       <span className="text-gray-500">Montant base:</span>
-                      <span className="ml-1 font-medium">{commission.base_amount.toLocaleString()}€</span>
+                      <span className="ml-1 font-medium">{(commission.base_amount || 0).toLocaleString()}€</span>
                     </div>
                     <div>
                       <span className="text-gray-500">Taux:</span>
-                      <span className="ml-1 font-medium">{commission.commission_rate}%</span>
+                      <span className="ml-1 font-medium">{(commission.commission_rate || 0)}%</span>
                     </div>
                     <div>
                       <span className="text-gray-500">Commission:</span>
                       <span className="ml-1 font-bold text-green-600">
-                        {commission.commission_amount.toLocaleString()}€
+                        {(commission.commission_amount || 0).toLocaleString()}€
                       </span>
                     </div>
                   </div>
