@@ -110,6 +110,42 @@ router.get('/views/kpis-globaux', async (req: any, res: any): Promise<void> => {
     }
 });
 
+// Vue notifications
+router.get('/views/notifications', async (req: any, res: any): Promise<void> => {
+    try {
+        const apporteurId = req.user!.database_id;
+        const result = await ApporteurService.getNotifications(apporteurId);
+        res.json(result);
+    } catch (error) {
+        console.error('Erreur vue notifications:', error);
+        res.status(500).json({ success: false, error: 'Erreur lors de la récupération des notifications' });
+    }
+});
+
+// Marquer une notification comme lue
+router.put('/notifications/:notificationId/read', async (req: any, res: any): Promise<void> => {
+    try {
+        const { notificationId } = req.params;
+        const result = await ApporteurService.markNotificationAsRead(notificationId);
+        res.json(result);
+    } catch (error) {
+        console.error('Erreur mark notification as read:', error);
+        res.status(500).json({ success: false, error: 'Erreur lors de la mise à jour de la notification' });
+    }
+});
+
+// Marquer toutes les notifications comme lues
+router.put('/notifications/mark-all-read', async (req: any, res: any): Promise<void> => {
+    try {
+        const apporteurId = req.user!.database_id;
+        const result = await ApporteurService.markAllNotificationsAsRead(apporteurId);
+        res.json(result);
+    } catch (error) {
+        console.error('Erreur mark all notifications as read:', error);
+        res.status(500).json({ success: false, error: 'Erreur lors de la mise à jour des notifications' });
+    }
+});
+
 // ===== STATISTIQUES =====
 router.get('/stats', async (req: any, res: any): Promise<void> => {
     try {

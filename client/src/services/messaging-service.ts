@@ -285,8 +285,8 @@ class MessagingService {
 
       if (error) throw error;
 
-      // Pour les clients et experts, créer automatiquement une conversation admin si elle n'existe pas
-      if (this.currentUserType === 'client' || this.currentUserType === 'expert') {
+      // Pour les clients, experts et apporteurs, créer automatiquement une conversation admin si elle n'existe pas
+      if (this.currentUserType === 'client' || this.currentUserType === 'expert' || this.currentUserType === 'apporteur_affaires') {
         await this.ensureAdminSupportConversation();
       }
 

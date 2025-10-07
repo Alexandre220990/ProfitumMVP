@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
+import { useNotifications } from '@/hooks/use-notifications';
 import ApporteurAuthGuard from './ApporteurAuthGuard';
 import { NotificationSlider } from './NotificationSlider';
 import { Badge } from '@/components/ui/badge';
@@ -35,6 +36,9 @@ export default function ApporteurLayout({ children }: ApporteurLayoutProps) {
   // Utiliser le contexte d'authentification au lieu de localStorage
   const { user } = useAuth();
   const userData = user || {} as any;
+  
+  // Hook pour les notifications avec compteur en temps réel
+  const { unreadCount } = useNotifications();
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -233,10 +237,12 @@ export default function ApporteurLayout({ children }: ApporteurLayoutProps) {
                 onClick={() => setNotificationSliderOpen(true)}
               >
                 <Bell className="h-6 w-6" />
-                {/* Badge pour notifications non lues */}
-                <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full text-xs text-white flex items-center justify-center">
-                  3
-                </span>
+                {/* Badge pour notifications non lues - Afficher seulement s'il y en a */}
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 rounded-full text-xs text-white flex items-center justify-center px-1">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
               </button>
 
               {/* User Menu */}

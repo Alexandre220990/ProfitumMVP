@@ -1,21 +1,7 @@
-import { useState, useEffect } from 'react';
 import { Bell, X, CheckCircle, AlertCircle, Info, User, Calendar, DollarSign } from 'lucide-react';
-import { Card, CardContent } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
-
-interface Notification {
-  id: string;
-  type: 'success' | 'warning' | 'info' | 'user' | 'calendar' | 'commission';
-  title: string;
-  message: string;
-  timestamp: string;
-  read: boolean;
-  action?: {
-    label: string;
-    onClick: () => void;
-  };
-}
+import { useNotifications } from '@/hooks/use-notifications';
 
 interface NotificationSliderProps {
   isOpen: boolean;
@@ -23,94 +9,44 @@ interface NotificationSliderProps {
 }
 
 export function NotificationSlider({ isOpen, onClose }: NotificationSliderProps) {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // Simuler le chargement des notifications
-    const mockNotifications: Notification[] = [
-      {
-        id: '1',
-        type: 'success',
-        title: 'Nouveau prospect ajouté',
-        message: 'Jean Dupont a été ajouté à vos prospects avec succès.',
-        timestamp: 'Il y a 5 minutes',
-        read: false
-      },
-      {
-        id: '2',
-        type: 'commission',
-        title: 'Commission calculée',
-        message: 'Une nouvelle commission de 450€ a été calculée pour le dossier #1234.',
-        timestamp: 'Il y a 1 heure',
-        read: false
-      },
-      {
-        id: '3',
-        type: 'calendar',
-        title: 'RDV programmé',
-        message: 'Votre rendez-vous avec Marie Martin est prévu demain à 14h.',
-        timestamp: 'Il y a 2 heures',
-        read: true
-      },
-      {
-        id: '4',
-        type: 'user',
-        title: 'Expert assigné',
-        message: 'L\'expert Pierre Durand a été assigné à votre prospect ABC Corp.',
-        timestamp: 'Il y a 3 heures',
-        read: true
-      },
-      {
-        id: '5',
-        type: 'info',
-        title: 'Mise à jour système',
-        message: 'Nouvelles fonctionnalités disponibles dans votre dashboard.',
-        timestamp: 'Hier',
-        read: true
-      }
-    ];
-
-    setTimeout(() => {
-      setNotifications(mockNotifications);
-      setLoading(false);
-    }, 500);
-  }, []);
+  const { notifications, loading, unreadCount, markAsRead, markAllAsRead } = useNotifications();
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
-      case 'success':
+      case 'nouveau_prospect':
+      case 'commission_payee':
         return <CheckCircle className="h-5 w-5 text-green-500" />;
-      case 'warning':
+      case 'rappel_suivi':
         return <AlertCircle className="h-5 w-5 text-yellow-500" />;
-      case 'info':
+      case 'formation_disponible':
+      case 'rdv_confirme':
         return <Info className="h-5 w-5 text-blue-500" />;
-      case 'user':
+      case 'expert_assigne':
         return <User className="h-5 w-5 text-purple-500" />;
-      case 'calendar':
+      case 'rdv_programme':
         return <Calendar className="h-5 w-5 text-indigo-500" />;
-      case 'commission':
+      case 'commission_calculee':
         return <DollarSign className="h-5 w-5 text-green-600" />;
       default:
         return <Bell className="h-5 w-5 text-gray-500" />;
     }
   };
 
-  const markAsRead = (id: string) => {
-    setNotifications(prev => 
-      prev.map(notif => 
-        notif.id === id ? { ...notif, read: true } : notif
-      )
-    );
-  };
+  const formatTimestamp = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
 
-  const markAllAsRead = () => {
-    setNotifications(prev => 
-      prev.map(notif => ({ ...notif, read: true }))
-    );
+    if (diffMins < 1) return 'À l\'instant';
+    if (diffMins < 60) return `Il y a ${diffMins} minute${diffMins > 1 ? 's' : ''}`;
+    if (diffHours < 24) return `Il y a ${diffHours} heure${diffHours > 1 ? 's' : ''}`;
+    if (diffDays === 1) return 'Hier';
+    if (diffDays < 7) return `Il y a ${diffDays} jours`;
+    return date.toLocaleDateString('fr-FR');
   };
-
-  const unreadCount = notifications.filter(n => !n.read).length;
 
   if (!isOpen) return null;
 
@@ -175,22 +111,22 @@ export function NotificationSlider({ isOpen, onClose }: NotificationSliderProps)
                   <div
                     key={notification.id}
                     className={`p-4 hover:bg-gray-50 transition-colors cursor-pointer ${
-                      !notification.read ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
+                      !notification.lue ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
                     }`}
                     onClick={() => markAsRead(notification.id)}
                   >
                     <div className="flex items-start gap-3">
                       <div className="flex-shrink-0 mt-0.5">
-                        {getNotificationIcon(notification.type)}
+                        {getNotificationIcon(notification.type_notification)}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
                           <h3 className={`text-sm font-medium ${
-                            !notification.read ? 'text-gray-900' : 'text-gray-700'
+                            !notification.lue ? 'text-gray-900' : 'text-gray-700'
                           }`}>
-                            {notification.title}
+                            {notification.titre}
                           </h3>
-                          {!notification.read && (
+                          {!notification.lue && (
                             <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></div>
                           )}
                         </div>
@@ -198,21 +134,8 @@ export function NotificationSlider({ isOpen, onClose }: NotificationSliderProps)
                           {notification.message}
                         </p>
                         <p className="text-xs text-gray-500 mt-2">
-                          {notification.timestamp}
+                          {formatTimestamp(notification.created_at)}
                         </p>
-                        {notification.action && (
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            className="mt-2"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              notification.action?.onClick();
-                            }}
-                          >
-                            {notification.action.label}
-                          </Button>
-                        )}
                       </div>
                     </div>
                   </div>

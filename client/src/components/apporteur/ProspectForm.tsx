@@ -235,16 +235,30 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <User className="h-5 w-5" />
-            {prospectId ? 'Modifier le Prospect' : 'Nouveau Prospect'}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <Card className="border-0 shadow-2xl">
+          <CardHeader className="sticky top-0 bg-white z-10 border-b">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <User className="h-5 w-5" />
+                {prospectId ? 'Modifier le Prospect' : 'Nouveau Prospect'}
+              </CardTitle>
+              {onCancel && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={onCancel}
+                  className="rounded-full p-2"
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <form onSubmit={handleSubmit} className="space-y-6">
             {/* Informations Entreprise */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold flex items-center gap-2">
@@ -568,6 +582,7 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
           </form>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }

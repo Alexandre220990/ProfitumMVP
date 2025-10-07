@@ -335,24 +335,30 @@ export default function ProductSelector({
                     <p className="text-gray-600 mb-4">{product.description}</p>
                     
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                      <div className="flex items-center gap-2">
-                        <DollarSign className="h-4 w-4 text-green-500" />
-                        <span className="text-sm text-gray-600">
-                          {product.montant_min.toLocaleString()}€ - {product.montant_max.toLocaleString()}€
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <TrendingUp className="h-4 w-4 text-blue-500" />
-                        <span className="text-sm text-gray-600">
-                          {product.taux_min}% - {product.taux_max}%
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Target className="h-4 w-4 text-purple-500" />
-                        <span className="text-sm text-gray-600">
-                          {product.duree_min}-{product.duree_max} ans
-                        </span>
-                      </div>
+                      {(product.montant_min !== null || product.montant_max !== null) && (
+                        <div className="flex items-center gap-2">
+                          <DollarSign className="h-4 w-4 text-green-500" />
+                          <span className="text-sm text-gray-600">
+                            {product.montant_min !== null ? product.montant_min.toLocaleString() : 'N/A'}€ - {product.montant_max !== null ? product.montant_max.toLocaleString() : 'N/A'}€
+                          </span>
+                        </div>
+                      )}
+                      {(product.taux_min !== null || product.taux_max !== null) && (
+                        <div className="flex items-center gap-2">
+                          <TrendingUp className="h-4 w-4 text-blue-500" />
+                          <span className="text-sm text-gray-600">
+                            {product.taux_min !== null ? product.taux_min : 'N/A'}% - {product.taux_max !== null ? product.taux_max : 'N/A'}%
+                          </span>
+                        </div>
+                      )}
+                      {(product.duree_min !== null || product.duree_max !== null) && (
+                        <div className="flex items-center gap-2">
+                          <Target className="h-4 w-4 text-purple-500" />
+                          <span className="text-sm text-gray-600">
+                            {product.duree_min !== null ? product.duree_min : 'N/A'}-{product.duree_max !== null ? product.duree_max : 'N/A'} mois
+                          </span>
+                        </div>
+                      )}
                     </div>
                     
                     {isSelected && (

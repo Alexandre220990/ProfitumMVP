@@ -3,11 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import ProspectForm from './ProspectForm';
 import { 
   Users, 
   Calendar, 
-  List, 
   Search, 
   Filter, 
   Plus,
@@ -25,8 +24,6 @@ import {
   Phone
 } from 'lucide-react';
 import { apporteurApi } from '@/services/apporteur-api';
-import KanbanBoard from './KanbanBoard';
-import ProspectList from './ProspectList';
 
 interface Prospect {
   id: string;
@@ -51,8 +48,8 @@ export default function ProspectManagement() {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [viewMode, setViewMode] = useState<'kanban' | 'list' | 'agenda'>('kanban');
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+  const [showProspectForm, setShowProspectForm] = useState(false);
 
   useEffect(() => {
     fetchProspects();
@@ -158,7 +155,10 @@ export default function ProspectManagement() {
                 <Download className="h-4 w-4 mr-2" />
                 Importer
               </Button>
-              <Button className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700">
+              <Button 
+                className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700"
+                onClick={() => setShowProspectForm(true)}
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Nouveau Prospect
               </Button>
@@ -424,74 +424,61 @@ export default function ProspectManagement() {
           </Card>
         )}
 
-        {/* Onglets de Vue Optimisés */}
-        <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as 'kanban' | 'list' | 'agenda')}>
-          <TabsList className="grid w-full grid-cols-3 bg-white shadow-lg border-0 rounded-xl p-1">
-            <TabsTrigger 
-              value="kanban" 
-              className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-lg transition-all duration-200"
-            >
-              <Users className="h-4 w-4" />
-              Pipeline Kanban
-            </TabsTrigger>
-            <TabsTrigger 
-              value="list" 
-              className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-lg transition-all duration-200"
-            >
-              <List className="h-4 w-4" />
-              Liste
-            </TabsTrigger>
-            <TabsTrigger 
-              value="agenda" 
-              className="flex items-center gap-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-lg transition-all duration-200"
-            >
-              <Calendar className="h-4 w-4" />
-              Agenda
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="kanban" className="mt-8">
-            <KanbanBoard />
-          </TabsContent>
-
-          <TabsContent value="list" className="mt-8">
-            <ProspectList />
-          </TabsContent>
-
-          <TabsContent value="agenda" className="mt-8">
-            <Card className="bg-white shadow-lg border-0">
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-3 text-xl">
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <Calendar className="h-6 w-6 text-blue-600" />
-                  </div>
-                  Agenda des Prospects
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-16">
-                  <div className="bg-gradient-to-br from-blue-50 to-indigo-100 rounded-full w-24 h-24 flex items-center justify-center mx-auto mb-6">
-                    <Calendar className="h-12 w-12 text-blue-600" />
-                  </div>
-                  <h3 className="text-2xl font-bold text-gray-900 mb-3">Agenda des Prospects</h3>
-                  <p className="text-gray-600 mb-8 max-w-md mx-auto">
-                    Visualisez vos rendez-vous et événements liés aux prospects dans un calendrier interactif
-                  </p>
-                  <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                    <Button className="bg-blue-600 hover:bg-blue-700 px-8 py-3">
-                      <Calendar className="h-5 w-5 mr-2" />
-                      Ouvrir l'agenda complet
-                    </Button>
-                    <Button variant="outline" className="px-8 py-3">
-                      <Plus className="h-5 w-5 mr-2" />
-                      Nouveau RDV
-                    </Button>
+        {/* Footer avec Statistiques */}
+        <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 shadow-lg border-0 mt-8">
+          <CardContent className="p-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="text-center">
+                <div className="flex items-center justify-center mb-3">
+                  <div className="p-3 bg-blue-100 rounded-full">
+                    <Users className="h-6 w-6 text-blue-600" />
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+                <div className="text-2xl font-bold text-gray-900 mb-1">{prospects.length}</div>
+                <div className="text-sm text-gray-600">Total Prospects</div>
+              </div>
+              
+              <div className="text-center">
+                <div className="flex items-center justify-center mb-3">
+                  <div className="p-3 bg-green-100 rounded-full">
+                    <TrendingUp className="h-6 w-6 text-green-600" />
+                  </div>
+                </div>
+                <div className="text-2xl font-bold text-gray-900 mb-1">
+                  {statusCounts.qualifie + statusCounts.rdv_negocie + statusCounts.expert_valide}
+                </div>
+                <div className="text-sm text-gray-600">En cours de qualification</div>
+              </div>
+              
+              <div className="text-center">
+                <div className="flex items-center justify-center mb-3">
+                  <div className="p-3 bg-purple-100 rounded-full">
+                    <CheckCircle className="h-6 w-6 text-purple-600" />
+                  </div>
+                </div>
+                <div className="text-2xl font-bold text-gray-900 mb-1">{statusCounts.signe}</div>
+                <div className="text-sm text-gray-600">Prospects signés</div>
+              </div>
+            </div>
+            
+            <div className="mt-6 pt-6 border-t border-blue-200">
+              <p className="text-center text-sm text-gray-600">
+                Cliquez sur une carte de statut ci-dessus pour voir les prospects correspondants
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+        
+        {/* Formulaire de création de prospect */}
+        {showProspectForm && (
+          <ProspectForm 
+            onCancel={() => setShowProspectForm(false)}
+            onSuccess={() => {
+              setShowProspectForm(false);
+              fetchProspects(); // Rafraîchir la liste après création
+            }}
+          />
+        )}
       </div>
     </div>
   );

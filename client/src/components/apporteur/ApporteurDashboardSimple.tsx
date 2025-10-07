@@ -1,15 +1,18 @@
+import { useState } from 'react';
 import { useApporteurSimple } from '../../hooks/use-apporteur-simple';
 import { useApporteurEnhanced } from '../../hooks/use-apporteur-enhanced';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { RefreshCw, AlertTriangle, Users, TrendingUp, Calendar, DollarSign, BarChart3, Target, Award, Activity, Eye } from 'lucide-react';
+import ProspectForm from './ProspectForm';
 
 interface ApporteurDashboardSimpleProps {
   apporteurId: string;
 }
 
 export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimpleProps) {
+  const [showProspectForm, setShowProspectForm] = useState(false);
   // Hook pour les données de base (fallback)
   const { 
     analytics, 
@@ -107,7 +110,11 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
               <RefreshCw className="h-4 w-4 mr-1" />
               Actualiser
             </Button>
-            <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
+            <Button 
+              size="sm" 
+              className="bg-blue-600 hover:bg-blue-700"
+              onClick={() => setShowProspectForm(true)}
+            >
               <Users className="h-4 w-4 mr-1" />
               Nouveau
             </Button>
@@ -339,6 +346,17 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
           </Card>
         </div>
       </div>
+      
+      {/* Formulaire de création de prospect */}
+      {showProspectForm && (
+        <ProspectForm 
+          onCancel={() => setShowProspectForm(false)}
+          onSuccess={() => {
+            setShowProspectForm(false);
+            refresh(); // Rafraîchir les données après création
+          }}
+        />
+      )}
     </div>
   );
 }

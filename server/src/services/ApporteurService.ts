@@ -624,6 +624,110 @@ export class ApporteurService {
         }
     }
 
+    // Vue notifications
+    static async getNotifications(apporteurId: string) {
+        try {
+            // La vue utilise auth.uid(), donc on doit passer par un filtre sur user_id
+            // Récupérer d'abord l'apporteur pour avoir son user_id
+            const { data: apporteur, error: apporteurError } = await supabase
+                .from('ApporteurAffaires')
+                .select('id, auth_id')
+                .eq('id', apporteurId)
+                .maybeSingle();
+
+            if (apporteurError || !apporteur) {
+                console.error('Erreur récupération apporteur:', apporteurError);
+                return { success: false, error: 'Apporteur non trouvé' };
+            }
+
+            // Récupérer les notifications directement depuis la table avec filtre
+            const { data, error } = await supabase
+                .from('notification')
+                .select('*')
+                .eq('user_id', apporteur.id)
+                .eq('user_type', 'apporteur')
+                .order('created_at', { ascending: false })
+                .limit(50);
+
+            if (error) {
+                console.error('Erreur vue notifications:', error);
+                return { success: false, error: error.message };
+            }
+
+            // Formater les notifications
+            const formattedNotifications = (data || []).map(notif => ({
+                id: notif.id,
+                titre: notif.title || 'Notification',
+                message: notif.message || '',
+                type_notification: notif.notification_type || 'info',
+                priorite: notif.priority || 'medium',
+                lue: notif.is_read || false,
+                created_at: notif.created_at,
+                updated_at: notif.updated_at,
+                type_couleur: this.getNotificationColor(notif.notification_type)
+            }));
+
+            return { success: true, data: formattedNotifications };
+        } catch (error) {
+            console.error('Erreur getNotifications:', error);
+            return { success: false, error: 'Erreur lors de la récupération des notifications' };
+        }
+    }
+
+    // Marquer une notification comme lue
+    static async markNotificationAsRead(notificationId: string) {
+        try {
+            const { error } = await supabase
+                .from('notification')
+                .update({ is_read: true, read_at: new Date().toISOString() })
+                .eq('id', notificationId);
+
+            if (error) {
+                console.error('Erreur mark notification as read:', error);
+                return { success: false, error: error.message };
+            }
+
+            return { success: true };
+        } catch (error) {
+            console.error('Erreur markNotificationAsRead:', error);
+            return { success: false, error: 'Erreur lors de la mise à jour de la notification' };
+        }
+    }
+
+    // Marquer toutes les notifications comme lues
+    static async markAllNotificationsAsRead(apporteurId: string) {
+        try {
+            const { error } = await supabase
+                .from('notification')
+                .update({ is_read: true, read_at: new Date().toISOString() })
+                .eq('user_id', apporteurId)
+                .eq('user_type', 'apporteur')
+                .eq('is_read', false);
+
+            if (error) {
+                console.error('Erreur mark all as read:', error);
+                return { success: false, error: error.message };
+            }
+
+            return { success: true };
+        } catch (error) {
+            console.error('Erreur markAllNotificationsAsRead:', error);
+            return { success: false, error: 'Erreur lors de la mise à jour des notifications' };
+        }
+    }
+
+    // Helper pour déterminer la couleur selon le type
+    private static getNotificationColor(type: string): string {
+        switch (type) {
+            case 'nouveau_prospect': return 'success';
+            case 'rdv_confirme': return 'info';
+            case 'commission_payee': return 'success';
+            case 'rappel_suivi': return 'warning';
+            case 'formation_disponible': return 'info';
+            default: return 'info';
+        }
+    }
+
     // ===== VALIDATION =====
     static validateProspectData(data: any): { isValid: boolean; errors: string[] } {
         const errors: string[] = [];
