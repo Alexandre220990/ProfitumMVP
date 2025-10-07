@@ -1,0 +1,9 @@
+# Documentation privée de la base de données
+# Ces fichiers sont pour référence personnelle uniquement
+
+# Ignorer tous les fichiers de ce dossier
+*
+
+# Sauf ce .gitignore
+!.gitignore
+
