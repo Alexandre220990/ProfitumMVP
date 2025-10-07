@@ -61,22 +61,10 @@ export default function ApporteurLayout({ children }: ApporteurLayoutProps) {
       current: location.pathname.startsWith('/apporteur/prospects')
     },
     {
-      name: 'Pipeline',
-      href: '/apporteur/kanban',
-      icon: BarChart3,
-      current: location.pathname.startsWith('/apporteur/kanban')
-    },
-    {
-      name: 'Experts',
-      href: '/apporteur/experts',
-      icon: Building,
-      current: location.pathname.startsWith('/apporteur/experts')
-    },
-    {
-      name: 'Produits',
-      href: '/apporteur/products',
-      icon: DollarSign,
-      current: location.pathname.startsWith('/apporteur/products')
+      name: 'Agenda',
+      href: '/apporteur/agenda',
+      icon: Calendar,
+      current: location.pathname.startsWith('/apporteur/agenda')
     },
     {
       name: 'Messagerie',
@@ -85,10 +73,16 @@ export default function ApporteurLayout({ children }: ApporteurLayoutProps) {
       current: location.pathname.startsWith('/apporteur/messaging')
     },
     {
-      name: 'Agenda',
-      href: '/apporteur/agenda',
-      icon: Calendar,
-      current: location.pathname.startsWith('/apporteur/agenda')
+      name: 'Produits',
+      href: '/apporteur/products',
+      icon: DollarSign,
+      current: location.pathname.startsWith('/apporteur/products')
+    },
+    {
+      name: 'Experts',
+      href: '/apporteur/experts',
+      icon: Building,
+      current: location.pathname.startsWith('/apporteur/experts')
     },
     {
       name: 'Commissions',

@@ -56,7 +56,6 @@ const ApporteurMeetings = React.lazy(() => import('./pages/ApporteurMeetings'));
 const ApporteurExperts = React.lazy(() => import('./pages/ApporteurExperts'));
 const ApporteurCommissions = React.lazy(() => import('./pages/ApporteurCommissions'));
 const ApporteurStatistics = React.lazy(() => import('./pages/ApporteurStatistics'));
-const ApporteurKanban = React.lazy(() => import('./pages/ApporteurKanban'));
 const ApporteurNotifications = React.lazy(() => import('./pages/ApporteurNotifications'));
 const ApporteurProducts = React.lazy(() => import('./pages/ApporteurProducts'));
 const ApporteurMessaging = React.lazy(() => import('./pages/ApporteurMessaging'));
@@ -149,7 +148,6 @@ function App() {
                     <Route path="/apporteur" element={<ApporteurLayout />}>
                         <Route path="dashboard" element={<ApporteurDashboard />} />
                         <Route path="prospects" element={<ApporteurProspects />} />
-                        <Route path="kanban" element={<ApporteurKanban />} />
                         <Route path="meetings" element={<ApporteurMeetings />} />
                         <Route path="experts" element={<ApporteurExperts />} />
                         <Route path="products" element={<ApporteurProducts />} />
