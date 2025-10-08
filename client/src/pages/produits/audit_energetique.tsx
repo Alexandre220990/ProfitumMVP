@@ -85,7 +85,6 @@ const AuditEnergetiquePage = () => {
             </CardContent>
           </Card>
         </div>
-      </div>
     </div>
   );
 };
