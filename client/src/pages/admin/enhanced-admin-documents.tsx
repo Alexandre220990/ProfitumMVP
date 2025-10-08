@@ -961,7 +961,6 @@ export default function EnhancedAdminDocumentsPage() {
             </Card>
           </TabsContent>
         </Tabs>
-      </div>
     </div>
   );
 }
