@@ -96,6 +96,6 @@ export default function AideClient() {
             </CardContent>
           </Card>
         </div>
-      </div>
+    </div>
   );
 } 

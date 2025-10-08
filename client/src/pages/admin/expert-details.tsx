@@ -769,7 +769,7 @@ const ExpertDetails = () => {
             </Card>
           </TabsContent>
         </Tabs>
-      </div>
+    </div>
   );
 };
 

@@ -534,6 +534,6 @@ export default function DocumentValidationAdmin() {
             )}
           </CardContent>
         </Card>
-      </div>
+    </div>
   );
 } 

@@ -495,6 +495,6 @@ export default function DocumentsExpert() {
             </Card>
           </TabsContent>
         </Tabs>
-      </div>
+    </div>
   );
 } 
