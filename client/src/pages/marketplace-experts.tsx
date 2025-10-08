@@ -785,7 +785,6 @@ export default function MarketplaceExperts() {
             </DialogFooter>
           </DialogContent>
           </Dialog>
-        </div>
     </div>
   );
 }
