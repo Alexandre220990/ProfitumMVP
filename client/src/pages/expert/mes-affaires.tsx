@@ -155,7 +155,6 @@ const ExpertMesAffaires = () => {
             </CardContent>
           </Card>
         </div>
-      </div>
     );
   }
 
@@ -457,11 +456,10 @@ const ExpertMesAffaires = () => {
                     </Table>
                   </CardContent>
                 </Card>
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
-      </div>
+          </TabsContent>
+        </Tabs>
+      </CardContent>
+    </Card>
     </div>
   );
 };
