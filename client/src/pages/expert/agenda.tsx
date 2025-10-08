@@ -1,4 +1,3 @@
-import React from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { useNavigate } from 'react-router-dom';
 import { UnifiedCalendar } from '@/components/UnifiedCalendar';
@@ -48,7 +47,6 @@ export default function ExpertAgendaPage() {
             category: 'expert'
           }}
         />
-      </div>
     </div>
   );
 } 
