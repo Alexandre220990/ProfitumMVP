@@ -540,8 +540,8 @@ const ClientProfile = () => {
 
 
           </div>
+          </div>
         </div>
-      </div>
     </div>
   );
 };
