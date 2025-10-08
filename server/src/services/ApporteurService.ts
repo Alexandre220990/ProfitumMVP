@@ -248,6 +248,132 @@ export class ApporteurService {
         }
     }
 
+    /**
+     * Récupérer les experts disponibles pour des produits spécifiques
+     * Retourne les experts qui ont des spécialisations correspondant aux produits sélectionnés
+     */
+    static async getExpertsByProducts(productIds: string[]): Promise<ExpertData[]> {
+        try {
+            console.log('🔍 Récupération des experts pour les produits:', productIds);
+
+            // 1. Récupérer les informations des produits sélectionnés
+            const { data: products, error: productsError } = await supabase
+                .from('ProduitEligible')
+                .select('id, nom, categorie, specialization_required')
+                .in('id', productIds);
+
+            if (productsError) throw productsError;
+
+            if (!products || products.length === 0) {
+                console.warn('⚠️ Aucun produit trouvé pour les IDs:', productIds);
+                return [];
+            }
+
+            // 2. Extraire les catégories et spécialisations requises
+            const categories = products.map(p => p.categorie).filter(Boolean);
+            const specializations = products
+                .map(p => p.specialization_required)
+                .filter(Boolean)
+                .flat();
+
+            console.log('📊 Catégories:', categories);
+            console.log('📊 Spécialisations:', specializations);
+
+            // 3. Récupérer les experts correspondants
+            let query = supabase
+                .from('Expert')
+                .select(`
+                    id, 
+                    name, 
+                    email, 
+                    phone, 
+                    company_name, 
+                    specializations, 
+                    location, 
+                    rating, 
+                    total_assignments, 
+                    completed_assignments, 
+                    status, 
+                    created_at,
+                    expertise_area
+                `)
+                .eq('status', 'active');
+
+            // Filtrer par spécialisations si disponibles
+            if (specializations.length > 0) {
+                // Utiliser overlaps pour trouver les experts ayant au moins une spécialisation correspondante
+                query = query.overlaps('specializations', specializations);
+            }
+
+            const { data: experts, error: expertsError } = await query
+                .order('rating', { ascending: false })
+                .order('completed_assignments', { ascending: false });
+
+            if (expertsError) throw expertsError;
+
+            if (!experts || experts.length === 0) {
+                console.warn('⚠️ Aucun expert trouvé pour les spécialisations:', specializations);
+                // Fallback: retourner tous les experts actifs
+                return this.getAvailableExperts();
+            }
+
+            // 4. Formater les données
+            return experts.map(expert => {
+                const totalAssignments = expert.total_assignments || 0;
+                const completedAssignments = expert.completed_assignments || 0;
+                const rating = expert.rating || 4.5;
+                
+                let successRate = 0;
+                try {
+                    if (totalAssignments > 0) {
+                        successRate = Math.round((completedAssignments / totalAssignments) * 100);
+                    }
+                } catch (error) {
+                    console.error('Erreur calcul success_rate pour expert', expert.id, ':', error);
+                    successRate = 0;
+                }
+
+                // Calculer le score de pertinence (nombre de spécialisations matchées)
+                const expertSpecs = Array.isArray(expert.specializations) ? expert.specializations : [];
+                const matchedSpecs = expertSpecs.filter(spec => 
+                    specializations.some(reqSpec => 
+                        spec.toLowerCase().includes(reqSpec.toLowerCase()) ||
+                        reqSpec.toLowerCase().includes(spec.toLowerCase())
+                    )
+                );
+                const relevanceScore = matchedSpecs.length;
+
+                return {
+                    ...expert,
+                    success_rate: successRate,
+                    specializations: expertSpecs,
+                    name: expert.name || 'Expert sans nom',
+                    company_name: expert.company_name || 'Entreprise non spécifiée',
+                    email: expert.email || '',
+                    phone_number: expert.phone || '',
+                    relevance_score: relevanceScore, // Score de pertinence pour tri frontend
+                    matched_specializations: matchedSpecs, // Spécialisations matchées
+                    performance: {
+                        total_dossiers: totalAssignments,
+                        rating: typeof rating === 'number' ? rating.toFixed(1) : '4.5',
+                        response_time: 2,
+                        availability: 'available'
+                    }
+                };
+            }).sort((a, b) => {
+                // Trier par score de pertinence, puis par rating
+                if (b.relevance_score !== a.relevance_score) {
+                    return b.relevance_score - a.relevance_score;
+                }
+                return (b.rating || 0) - (a.rating || 0);
+            });
+
+        } catch (error) {
+            console.error('❌ Erreur getExpertsByProducts:', error);
+            throw new Error('Erreur lors de la récupération des experts par produits');
+        }
+    }
+
     // ===== PRODUITS ÉLIGIBLES =====
     static async getProduitsEligibles(): Promise<ApiResponse<any[]>> {
         try {

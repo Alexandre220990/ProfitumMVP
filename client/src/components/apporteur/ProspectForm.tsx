@@ -14,7 +14,11 @@ import {
   DollarSign,
   Target,
   Mail,
-  AlertCircle
+  AlertCircle,
+  Users,
+  Star,
+  Award,
+  CheckCircle
 } from 'lucide-react';
 import { config } from '@/config';
 
@@ -23,6 +27,23 @@ interface ProductEligible {
   nom: string;
   description: string;
   categorie: string;
+}
+
+interface Expert {
+  id: string;
+  name: string;
+  email: string;
+  company_name: string;
+  specializations: string[];
+  rating: number;
+  relevance_score?: number;
+  matched_specializations?: string[];
+  performance?: {
+    total_dossiers: number;
+    rating: string;
+    response_time: number;
+    availability: string;
+  };
 }
 
 interface ProspectFormData {
@@ -43,6 +64,9 @@ interface ProspectFormData {
   interest_level: 'high' | 'medium' | 'low';
   budget_range: '0-10k' | '10k-50k' | '50k-100k' | '100k+';
   timeline: 'immediate' | '1-3months' | '3-6months' | '6months+';
+  
+  // Expert présélectionné
+  preselected_expert_id?: string;
   
   // RDV
   meeting_type: 'physical' | 'video' | 'phone';
@@ -93,6 +117,9 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
   });
 
   const [products, setProducts] = useState<ProductEligible[]>([]);
+  const [availableExperts, setAvailableExperts] = useState<Expert[]>([]);
+  const [loadingExperts, setLoadingExperts] = useState(false);
+  const [selectedExpert, setSelectedExpert] = useState<Expert | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [emailOption, setEmailOption] = useState<'none' | 'exchange' | 'presentation'>('none');
@@ -155,6 +182,55 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
     }
   };
 
+  // Fonction pour charger les experts disponibles en fonction des produits sélectionnés
+  const fetchExpertsByProducts = async () => {
+    const selectedProductIds = formData.selected_products
+      .filter(p => p.selected)
+      .map(p => p.id);
+
+    if (selectedProductIds.length === 0) {
+      setAvailableExperts([]);
+      return;
+    }
+
+    try {
+      setLoadingExperts(true);
+      const response = await fetch(`${config.API_URL}/api/apporteur/experts/by-products`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ productIds: selectedProductIds })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setAvailableExperts(result.data || []);
+        console.log(`✅ ${result.data?.length || 0} expert(s) trouvé(s) pour les produits sélectionnés`);
+      } else {
+        console.error('Erreur chargement experts');
+        setAvailableExperts([]);
+      }
+    } catch (err) {
+      console.error('Erreur fetchExpertsByProducts:', err);
+      setAvailableExperts([]);
+    } finally {
+      setLoadingExperts(false);
+    }
+  };
+
+  // Charger les experts quand les produits sélectionnés changent
+  useEffect(() => {
+    const hasSelectedProducts = formData.selected_products.some(p => p.selected);
+    if (hasSelectedProducts) {
+      fetchExpertsByProducts();
+    } else {
+      setAvailableExperts([]);
+      setSelectedExpert(null);
+    }
+  }, [formData.selected_products]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -187,6 +263,9 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
         interest_level: formData.interest_level,
         budget_range: formData.budget_range,
         timeline: formData.timeline,
+        
+        // Expert présélectionné
+        preselected_expert_id: selectedExpert?.id || null,
         
         // RDV
         meeting_type: formData.meeting_type,
@@ -607,6 +686,126 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
                 })}
               </div>
             </div>
+
+            {/* Sélection Expert (nouvelle étape) */}
+            {formData.selected_products.some(p => p.selected) && (
+              <div className="space-y-4 p-6 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border-2 border-purple-200">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-5 w-5 text-purple-600" />
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Présélection d'un Expert (optionnel)
+                    </h3>
+                  </div>
+                  {selectedExpert && (
+                    <CheckCircle className="h-6 w-6 text-green-600" />
+                  )}
+                </div>
+
+                <p className="text-sm text-gray-600 mb-4">
+                  Experts recommandés en fonction des produits sélectionnés. 
+                  {selectedExpert && " L'expert sera automatiquement invité au rendez-vous."}
+                </p>
+
+                {loadingExperts ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                    <span className="ml-3 text-gray-600">Chargement des experts...</span>
+                  </div>
+                ) : availableExperts.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <Users className="h-12 w-12 mx-auto mb-3 text-gray-400" />
+                    <p>Aucun expert trouvé pour les produits sélectionnés</p>
+                    <p className="text-sm mt-2">Vous pouvez continuer sans présélectionner d'expert</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {availableExperts.slice(0, 6).map((expert) => (
+                      <Card 
+                        key={expert.id}
+                        className={`p-4 cursor-pointer transition-all hover:shadow-lg ${
+                          selectedExpert?.id === expert.id 
+                            ? 'ring-2 ring-purple-500 bg-purple-50' 
+                            : 'hover:bg-gray-50'
+                        }`}
+                        onClick={() => {
+                          if (selectedExpert?.id === expert.id) {
+                            setSelectedExpert(null);
+                          } else {
+                            setSelectedExpert(expert);
+                          }
+                        }}
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="font-semibold text-gray-900">{expert.name}</h4>
+                              {selectedExpert?.id === expert.id && (
+                                <CheckCircle className="h-5 w-5 text-green-600" />
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-600">{expert.company_name}</p>
+                          </div>
+                          <div className="flex items-center gap-1 bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-sm">
+                            <Star className="h-4 w-4 fill-current" />
+                            <span className="font-semibold">{expert.rating || '4.5'}</span>
+                          </div>
+                        </div>
+
+                        {expert.matched_specializations && expert.matched_specializations.length > 0 && (
+                          <div className="mb-3">
+                            <p className="text-xs text-gray-500 mb-1">Spécialisations pertinentes:</p>
+                            <div className="flex flex-wrap gap-1">
+                              {expert.matched_specializations.slice(0, 3).map((spec, idx) => (
+                                <span 
+                                  key={idx}
+                                  className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full"
+                                >
+                                  {spec}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {expert.performance && (
+                          <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 pt-2 border-t">
+                            <div className="flex items-center gap-1">
+                              <Award className="h-3 w-3" />
+                              <span>{expert.performance.total_dossiers || 0} dossiers</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <CheckCircle className="h-3 w-3" />
+                              <span>{expert.performance.availability || 'Disponible'}</span>
+                            </div>
+                          </div>
+                        )}
+                      </Card>
+                    ))}
+                  </div>
+                )}
+
+                {selectedExpert && (
+                  <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="flex items-start gap-3">
+                      <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
+                      <div>
+                        <p className="font-semibold text-green-900">Expert sélectionné : {selectedExpert.name}</p>
+                        <p className="text-sm text-green-700 mt-1">
+                          Cet expert sera automatiquement invité au rendez-vous et pourra accéder aux informations du prospect.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {!selectedExpert && availableExperts.length > 0 && (
+                  <p className="text-sm text-gray-500 text-center mt-4">
+                    Cliquez sur une carte pour sélectionner un expert, ou continuez sans sélection
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Notes */}
             <div className="space-y-4">

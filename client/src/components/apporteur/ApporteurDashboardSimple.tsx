@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useApporteurSimple } from '../../hooks/use-apporteur-simple';
 import { useApporteurEnhanced } from '../../hooks/use-apporteur-enhanced';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
@@ -12,6 +13,7 @@ interface ApporteurDashboardSimpleProps {
 }
 
 export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimpleProps) {
+  const navigate = useNavigate();
   const [showProspectForm, setShowProspectForm] = useState(false);
   // Hook pour les données de base (fallback)
   const { 
@@ -209,7 +211,11 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg">Prospects Récents</CardTitle>
-                <Button variant="outline" size="sm">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => navigate('/apporteur/prospects')}
+                >
                   <Eye className="h-4 w-4 mr-1" />
                   Voir tout
                 </Button>

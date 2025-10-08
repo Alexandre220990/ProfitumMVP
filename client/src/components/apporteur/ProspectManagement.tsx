@@ -50,6 +50,8 @@ export default function ProspectManagement() {
   const [statusFilter, setStatusFilter] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [showProspectForm, setShowProspectForm] = useState(false);
+  const [selectedProspect, setSelectedProspect] = useState<Prospect | null>(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
 
   useEffect(() => {
     fetchProspects();
@@ -408,11 +410,15 @@ export default function ProspectManagement() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Button variant="outline" size="sm">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              setSelectedProspect(prospect);
+                              setShowDetailsModal(true);
+                            }}
+                          >
                             Voir détails
-                          </Button>
-                          <Button variant="outline" size="sm">
-                            Modifier
                           </Button>
                         </div>
                       </div>
@@ -476,6 +482,22 @@ export default function ProspectManagement() {
             onSuccess={() => {
               setShowProspectForm(false);
               fetchProspects(); // Rafraîchir la liste après création
+            }}
+          />
+        )}
+
+        {/* Modal de détails du prospect avec possibilité de modification */}
+        {showDetailsModal && selectedProspect && (
+          <ProspectForm 
+            prospectId={selectedProspect.id}
+            onCancel={() => {
+              setShowDetailsModal(false);
+              setSelectedProspect(null);
+            }}
+            onSuccess={() => {
+              setShowDetailsModal(false);
+              setSelectedProspect(null);
+              fetchProspects(); // Rafraîchir la liste après modification
             }}
           />
         )}

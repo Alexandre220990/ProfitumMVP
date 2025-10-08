@@ -301,6 +301,30 @@ router.get('/experts', async (req: any, res: any): Promise<void> => {
     }
 });
 
+// Récupérer les experts disponibles pour des produits spécifiques
+router.post('/experts/by-products', async (req: any, res: any): Promise<void> => {
+    try {
+        const { productIds } = req.body;
+        
+        if (!productIds || !Array.isArray(productIds) || productIds.length === 0) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Liste de produits requise' 
+            });
+        }
+
+        const experts = await ApporteurService.getExpertsByProducts(productIds);
+        
+        res.json({ success: true, data: experts });
+    } catch (error) {
+        console.error('Erreur récupération experts par produits:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: 'Erreur lors de la récupération des experts' 
+        });
+    }
+});
+
 // ===== PRODUITS ÉLIGIBLES =====
 // Récupérer les produits éligibles
 router.get('/produits', async (req: any, res: any): Promise<void> => {
