@@ -1489,7 +1489,6 @@ const AdminDashboardOptimized: React.FC = () => {
             </>
           )}
         </div>
-      </div>
       
       <AdminFooter />
     </div>
