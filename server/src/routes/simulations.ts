@@ -472,12 +472,21 @@ async function enregistrerProduitsEligibles(clientId: string, simulationId: numb
   try {
     console.log('💾 Enregistrement des produits éligibles:', { clientId, simulationId, produitIds });
 
-    const produitsEligibles = produitIds.map(produitId => ({
+    // Créer les entrées avec metadata.source = 'simulation' pour différenciation
+    const produitsEligibles = produitIds.map((produitId, index) => ({
       clientId,
       produitId,
-      simulationId,
-      eligible: true,
-      createdAt: new Date().toISOString()
+      statut: 'eligible',
+      priorite: index + 1, // Priorité basée sur l'ordre de recommandation
+      notes: 'Produit détecté via simulation d\'éligibilité',
+      metadata: {
+        source: 'simulation',
+        simulation_id: simulationId,
+        detected_at: new Date().toISOString(),
+        priority_label: index === 0 ? 'high' : index < 3 ? 'medium' : 'low'
+      },
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     }));
 
     const { error } = await supabase
@@ -489,7 +498,7 @@ async function enregistrerProduitsEligibles(clientId: string, simulationId: numb
       throw error;
     }
 
-    console.log('✅ Produits éligibles enregistrés avec succès');
+    console.log(`✅ ${produitsEligibles.length} produits éligibles enregistrés avec succès (source: simulation)`);
   } catch (error) {
     console.error('❌ Erreur lors de l\'enregistrement des produits éligibles:', error);
     throw error;

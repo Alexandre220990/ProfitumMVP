@@ -28,7 +28,8 @@ import {
   Award,
   FileText,
   Shield,
-  Users
+  Users,
+  UserCheck
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useClientProducts } from '@/hooks/use-client-products';
@@ -214,6 +215,10 @@ const ProductCard = ({ produit, onClick, onExpertSelection }: ProductCardProps) 
   };
 
   const statusConfig = getStatusConfig(produit.statut);
+  
+  // Détecter si le produit vient d'un apporteur d'affaires
+  const isFromApporteur = produit.metadata?.source === 'apporteur';
+  const isHighPriority = produit.priorite === 1;
 
   // Fonction pour obtenir la description courte du produit
   const getProductDescription = (nom: string) => {
@@ -227,8 +232,27 @@ const ProductCard = ({ produit, onClick, onExpertSelection }: ProductCardProps) 
   };
 
   return (
-    <Card className="h-full flex flex-col hover:shadow-xl transition-all duration-300 cursor-pointer group border-2 hover:border-blue-300">
+    <Card className={`h-full flex flex-col hover:shadow-xl transition-all duration-300 cursor-pointer group border-2 ${
+      isFromApporteur ? 'border-blue-300 bg-gradient-to-br from-blue-50/30 to-indigo-50/30' : 'hover:border-blue-300'
+    }`}>
       <CardContent className="p-6 flex flex-col h-full">
+        {/* Badge "Via Apporteur" si applicable */}
+        {isFromApporteur && (
+          <div className="mb-3 p-2 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-lg border border-blue-200">
+            <div className="flex items-center justify-center gap-2">
+              <Badge className="bg-blue-600 text-white flex items-center gap-1">
+                <UserCheck className="h-3 w-3" />
+                Recommandé par votre conseiller
+              </Badge>
+              {isHighPriority && (
+                <Badge className="bg-amber-500 text-white">
+                  ⭐ Priorité
+                </Badge>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* En-tête avec titre centré et icône */}
         <div className="text-center mb-4">
           <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-50 rounded-xl mb-3 text-blue-600">
