@@ -292,10 +292,9 @@ const DocumentsClientPage = () => {
     return (
       <div>
         <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="mt-2 text-gray-600">Chargement des sections...</p>
-            </div>
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-2 text-gray-600">Chargement des sections...</p>
           </div>
         </div>
       </div>
@@ -436,15 +435,14 @@ const DocumentsClientPage = () => {
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Dialog d'upload */}
-      <UploadDialog
-        isOpen={uploadDialogOpen}
-        onClose={() => setUploadDialogOpen(false)}
-        onUpload={handleUpload}
-      />
-    </div>
+        {/* Dialog d'upload */}
+        <UploadDialog
+          isOpen={uploadDialogOpen}
+          onClose={() => setUploadDialogOpen(false)}
+          onUpload={handleUpload}
+        />
+      </div>
   );
 };
 
