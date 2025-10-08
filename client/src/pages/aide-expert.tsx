@@ -96,7 +96,6 @@ export default function AideExpert() {
             </CardContent>
           </Card>
         </div>
-      </div>
     </div>
   );
 } 
