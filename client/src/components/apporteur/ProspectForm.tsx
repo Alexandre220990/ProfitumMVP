@@ -176,9 +176,37 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
       if (response.ok) {
         const result = await response.json();
         setFormData(result.data);
+        
+        // Si un expert est présélectionné, le charger
+        if (result.data.preselected_expert_id) {
+          fetchExpertDetails(result.data.preselected_expert_id);
+        }
       }
     } catch (err) {
       console.error('Erreur fetchProspect:', err);
+    }
+  };
+
+  // Charger les détails d'un expert spécifique
+  const fetchExpertDetails = async (expertId: string) => {
+    try {
+      const response = await fetch(`${config.API_URL}/api/apporteur/experts`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        const expert = result.data?.find((e: Expert) => e.id === expertId);
+        if (expert) {
+          setSelectedExpert(expert);
+          console.log('✅ Expert présélectionné chargé:', expert.name);
+        }
+      }
+    } catch (err) {
+      console.error('Erreur fetchExpertDetails:', err);
     }
   };
 
