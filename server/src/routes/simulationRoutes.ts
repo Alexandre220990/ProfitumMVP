@@ -25,12 +25,13 @@ const supabase = createClient<Database>(supabaseUrl, supabaseKey);
 // Route pour récupérer les questions
 router.get('/questions', async (req: Request, res: Response) => {
   try {
-    console.log('Récupération des questions de simulation');
+    console.log('Récupération des questions de simulation (QuestionnaireQuestion)');
     
     const { data: questions, error } = await supabase
-      .from('Question')
+      .from('QuestionnaireQuestion')
       .select('*')
-      .order('ordre', { ascending: true });
+      .eq('active', true)
+      .order('question_order', { ascending: true });
 
     if (error) {
       console.error('Erreur Supabase lors de la récupération des questions:', error);
@@ -39,47 +40,16 @@ router.get('/questions', async (req: Request, res: Response) => {
 
     console.log(`${questions?.length || 0} questions récupérées`);
 
-    // Normaliser les options des questions
-    const normalizedQuestions = questions.map(q => {
-      // Si options est déjà un objet et non un tableau, on garde tel quel
-      if (
-        q.options &&
-        typeof q.options === "object" &&
-        !Array.isArray(q.options)
-      ) {
-        return q;
-      }
-
-      // Sinon, si c'est une question à choix avec un tableau brut, on transforme
-      if (
-        (q.type === "choix_unique" || q.type === "choix_multiple") &&
-        Array.isArray(q.options)
-      ) {
-        return {
-          ...q,
-          options: {
-            choix: q.options
-          }
-        };
-      }
-
-      // Sinon, pas d'options
-      return {
-        ...q,
-        options: {}
-      };
-    });
-
     // Transformer les questions pour le format attendu par le front
-    const formattedQuestions = normalizedQuestions.map(q => ({
+    const formattedQuestions = questions.map(q => ({
       id: q.id,
-      texte: q.texte,
-      type: q.type,
-      ordre: q.ordre,
-      categorie: q.categorie,
-      options: q.options,
-      description: q.description,
-      importance: q.importance
+      texte: q.question_text,
+      type: q.question_type,
+      ordre: q.question_order,
+      categorie: q.category || 'general',
+      options: q.response_options || {},
+      description: q.help_text || '',
+      importance: 5 // Valeur par défaut
     }));
 
     return res.json({

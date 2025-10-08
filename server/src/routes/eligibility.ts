@@ -6,23 +6,30 @@
 
 import { Router, Request, Response } from 'express';
 import EligibilityEvaluator from '../services/EligibilityEvaluator';
+import { createClient } from '@supabase/supabase-js';
 
 const router = Router();
 const evaluator = new EligibilityEvaluator();
+
+const supabase = createClient(
+  process.env.SUPABASE_URL || '',
+  process.env.SUPABASE_SERVICE_KEY || ''
+);
 
 /**
  * POST /api/eligibility/evaluate
  * Évaluer l'éligibilité basée sur les réponses du simulateur
  */
-router.post('/evaluate', async (req: Request, res: Response) => {
+router.post('/evaluate', async (req: Request, res: Response): Promise<void> => {
   try {
     const { answers } = req.body;
 
     if (!answers || !Array.isArray(answers)) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Réponses invalides'
       });
+      return;
     }
 
     console.log('📊 Évaluation éligibilité pour', answers.length, 'réponses');

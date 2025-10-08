@@ -176,7 +176,7 @@ export class EligibilityEvaluator {
     return {
       is_eligible,
       confidence_score,
-      matched_rules,
+      matched_rules: matchedRules,
       reasons
     };
   }
@@ -208,20 +208,20 @@ export class EligibilityEvaluator {
       );
 
       if (operator === 'AND') {
-        const allMatched = subResults.every(r => r.matched);
+        const allMatched = subResults.every((r: any) => r.matched);
         return {
           matched: allMatched,
-          reasons: allMatched ? subResults.flatMap(r => r.reasons) : [],
-          failureReasons: !allMatched ? subResults.flatMap(r => r.failureReasons) : []
+          reasons: allMatched ? subResults.flatMap((r: any) => r.reasons) : [],
+          failureReasons: !allMatched ? subResults.flatMap((r: any) => r.failureReasons) : []
         };
       }
 
       if (operator === 'OR') {
-        const anyMatched = subResults.some(r => r.matched);
+        const anyMatched = subResults.some((r: any) => r.matched);
         return {
           matched: anyMatched,
-          reasons: anyMatched ? subResults.filter(r => r.matched).flatMap(r => r.reasons) : [],
-          failureReasons: !anyMatched ? subResults.flatMap(r => r.failureReasons) : []
+          reasons: anyMatched ? subResults.filter((r: any) => r.matched).flatMap((r: any) => r.reasons) : [],
+          failureReasons: !anyMatched ? subResults.flatMap((r: any) => r.failureReasons) : []
         };
       }
     }
