@@ -467,40 +467,72 @@ router.post('/:id/export', async (req: Request, res: Response) => {
   }
 });
 
-// Fonction pour enregistrer les produits éligibles
-async function enregistrerProduitsEligibles(clientId: string, simulationId: number, produitIds: string[]) {
+// Fonction pour enregistrer TOUS les produits (éligibles ou non)
+async function enregistrerProduitsEligibles(clientId: string, simulationId: number, produitIdsEligibles: string[]) {
   try {
-    console.log('💾 Enregistrement des produits éligibles:', { clientId, simulationId, produitIds });
+    console.log('💾 Enregistrement de TOUS les produits pour le client:', { clientId, simulationId, produitIdsEligibles });
 
-    // Créer les entrées avec metadata.source = 'simulation' pour différenciation
-    const produitsEligibles = produitIds.map((produitId, index) => ({
-      clientId,
-      produitId,
-      statut: 'eligible',
-      priorite: index + 1, // Priorité basée sur l'ordre de recommandation
-      notes: 'Produit détecté via simulation d\'éligibilité',
-      metadata: {
-        source: 'simulation',
-        simulation_id: simulationId,
-        detected_at: new Date().toISOString(),
-        priority_label: index === 0 ? 'high' : index < 3 ? 'medium' : 'low'
-      },
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }));
+    // 1. Récupérer TOUS les 10 produits actifs de la BDD
+    const { data: tousProduits, error: produitsError } = await supabase
+      .from('ProduitEligible')
+      .select('id, nom')
+      .eq('active', true)
+      .order('nom');
 
+    if (produitsError || !tousProduits) {
+      console.error('❌ Erreur récupération produits:', produitsError);
+      throw produitsError;
+    }
+
+    console.log(`📦 ${tousProduits.length} produits actifs trouvés dans la BDD`);
+
+    // 2. Créer les entrées pour TOUS les produits
+    const produitsToInsert = tousProduits.map((produit, index) => {
+      const isEligible = produitIdsEligibles.includes(produit.id);
+      const eligibleIndex = produitIdsEligibles.indexOf(produit.id);
+      
+      return {
+        clientId,
+        produitId: produit.id,
+        statut: isEligible ? 'eligible' : 'non_eligible',
+        priorite: isEligible ? (eligibleIndex + 1) : (index + 10), // Éligibles en premier
+        notes: isEligible 
+          ? 'Produit détecté comme éligible via simulation' 
+          : 'Produit non éligible selon simulation - Contactez un expert pour plus d\'informations',
+        metadata: {
+          source: 'simulation',
+          simulation_id: simulationId,
+          detected_at: new Date().toISOString(),
+          is_eligible: isEligible,
+          priority_label: isEligible 
+            ? (eligibleIndex === 0 ? 'high' : eligibleIndex < 3 ? 'medium' : 'low')
+            : 'none',
+          eligibility_rank: isEligible ? (eligibleIndex + 1) : null
+        },
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+    });
+
+    // 3. Insérer TOUS les produits
     const { error } = await supabase
       .from('ClientProduitEligible')
-      .insert(produitsEligibles);
+      .insert(produitsToInsert);
 
     if (error) {
-      console.error('❌ Erreur lors de l\'enregistrement des produits éligibles:', error);
+      console.error('❌ Erreur lors de l\'enregistrement des produits:', error);
       throw error;
     }
 
-    console.log(`✅ ${produitsEligibles.length} produits éligibles enregistrés avec succès (source: simulation)`);
+    const nbEligibles = produitsToInsert.filter(p => p.statut === 'eligible').length;
+    const nbNonEligibles = produitsToInsert.filter(p => p.statut === 'non_eligible').length;
+    
+    console.log(`✅ ${produitsToInsert.length} produits enregistrés avec succès:`);
+    console.log(`   - ${nbEligibles} éligibles`);
+    console.log(`   - ${nbNonEligibles} non éligibles`);
+    console.log(`   - Source: simulation`);
   } catch (error) {
-    console.error('❌ Erreur lors de l\'enregistrement des produits éligibles:', error);
+    console.error('❌ Erreur lors de l\'enregistrement des produits:', error);
     throw error;
   }
 }
