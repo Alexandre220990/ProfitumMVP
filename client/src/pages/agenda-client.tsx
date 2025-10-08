@@ -2,7 +2,6 @@ import React from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { useNavigate } from 'react-router-dom';
 import { UnifiedCalendar } from '@/components/UnifiedCalendar';
-import HeaderClient from '@/components/HeaderClient';
 
 export default function AgendaClientPage() {
   const { user } = useAuth();
@@ -15,11 +14,7 @@ export default function AgendaClientPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
-      <HeaderClient />
-      
-      <div className="max-w-7xl mx-auto px-4 py-4">
-        <div className="mt-8"></div>
+    <div className="max-w-7xl mx-auto px-4 py-4">
         
         {/* Header */}
         <div className="flex items-center justify-between mb-4">

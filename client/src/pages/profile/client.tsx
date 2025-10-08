@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useClientProfile, ClientProfileUpdate } from "@/hooks/use-client-profile";
-import HeaderClient from "@/components/HeaderClient";
 import { Button } from "@/components/ui/button";
 import { 
   Building2, 
@@ -132,10 +131,7 @@ const ClientProfile = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
-      <HeaderClient />
-      
-      <div className="pt-20">
+    <div>
         <div className="container mx-auto px-4 py-8">
           <div className="max-w-7xl mx-auto">
             {/* Header moderne avec design 2025 */}

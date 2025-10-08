@@ -1,5 +1,4 @@
 import React from 'react';
-import HeaderClient from '@/components/HeaderClient';
 import { Card } from "@/components/ui/card";
 import { Bar, Pie } from "react-chartjs-2";
 import { Chart, ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend } from "chart.js";
@@ -22,9 +21,7 @@ const KPIPage: React.FC = () => { // Données fictives pour les graphiques
   };
 
   return (
-    <div>
-      <HeaderClient />
-      <div className="container mx-auto p-4 mt-20">
+    <div className="container mx-auto p-4">
         <h1 className="text-3xl font-bold mb-6 text-blue-900">Analytique & KPI</h1>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <Card className="p-6 flex flex-col items-center">

@@ -33,7 +33,6 @@ import {
   HelpCircle,
 } from "lucide-react";
 import { get, post } from "@/lib/api";
-import HeaderClient from "@/components/HeaderClient";
 
 interface ClientProduitEligible {
   id: string;
@@ -244,9 +243,8 @@ export default function DossierClientProduit() {
   // Page de chargement
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <HeaderClient />
-        <div className="flex items-center justify-center min-h-screen">
+      <div>
+        <div className="flex items-center justify-center min-h-64">
           <div className="text-center">
             <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
             <p className="text-gray-600">Chargement du dossier...</p>
@@ -259,10 +257,8 @@ export default function DossierClientProduit() {
   // Page d'erreur
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <HeaderClient />
+      <div>
         <div className="max-w-2xl mx-auto px-4 py-12">
-          <div className="mt-16"></div>
           
           <Card className="border-red-200 bg-red-50">
             <CardHeader>
@@ -313,9 +309,7 @@ export default function DossierClientProduit() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <HeaderClient />
-      
+    <div>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">

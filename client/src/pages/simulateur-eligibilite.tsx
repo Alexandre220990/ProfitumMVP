@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, Clock, Calculator, Building2, Truck, Home, DollarSign, Check, Target, Zap, ArrowRight, CheckCircle, User } from "lucide-react";
 import { config } from "@/config/env";
 import PublicHeader from '@/components/PublicHeader';
-import HeaderClient from '@/components/HeaderClient';
 import { useAuth } from '@/hooks/use-auth';
 
 interface QuestionOptions {
@@ -554,7 +553,7 @@ const SimulateurEligibilite = () => {
   if (showWelcomeScreen) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
-        {isClientMode ? <HeaderClient /> : <PublicHeader />}
+        {!isClientMode && <PublicHeader />}
         
         <div className="max-w-6xl mx-auto px-4 py-16">
           <div className="text-center space-y-8">
@@ -912,7 +911,7 @@ const SimulateurEligibilite = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
       {/* Header de la page d'accueil */}
-      {isClientMode ? <HeaderClient /> : <PublicHeader />}
+      {!isClientMode && <PublicHeader />}
       {/* 🎯 BANDEAU FIXE - Simulateur d'Éligibilité */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-6 px-8 shadow-lg">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between">

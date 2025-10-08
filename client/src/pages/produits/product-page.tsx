@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import HeaderClient from "@/components/HeaderClient";
 import { ArrowLeft, Truck, Building, DollarSign, Home, Users, Lightbulb, FileText, Loader2 } from "lucide-react";
 
 // Types pour les produits
@@ -121,9 +120,7 @@ export default function ProductPage() { const { productId, userId } = useParams(
   };
 
   if (loading) { return (
-      <div className="min-h-screen flex flex-col">
-        <HeaderClient />
-        <div className="flex-grow flex items-center justify-center">
+      <div className="flex-grow flex items-center justify-center">
           <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
           <span className="ml-3 text-lg">Chargement du produit...</span>
         </div>
@@ -135,9 +132,7 @@ export default function ProductPage() { const { productId, userId } = useParams(
   }
 
   if (error || !product) { return (
-      <div className="min-h-screen flex flex-col">
-        <HeaderClient />
-        <div className="flex-grow container mx-auto px-4 py-12">
+      <div className="flex-grow container mx-auto px-4 py-12">
           <Link to="/dashboard/client">
             <Button variant="ghost" className="mb-6">
               <ArrowLeft className="mr-2 h-4 w-4" /> Retour au tableau de bord
@@ -168,9 +163,7 @@ export default function ProductPage() { const { productId, userId } = useParams(
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <HeaderClient />
-      <div className="flex-grow container mx-auto px-4 py-12">
+    <div className="flex-grow container mx-auto px-4 py-12">
         <Link to="/dashboard/client">
           <Button variant="ghost" className="mb-6">
             <ArrowLeft className="mr-2 h-4 w-4" /> Retour au tableau de bord

@@ -9,7 +9,6 @@ import {
   ExternalLink,
   ArrowLeft
 } from 'lucide-react';
-import HeaderClient from '@/components/HeaderClient';
 
 const AuditEnergetiquePage = () => {
   const navigate = useNavigate();
@@ -35,10 +34,7 @@ const AuditEnergetiquePage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-100">
-      <HeaderClient />
-      
-      <div className="pt-20">
+    <div>
         <div className="max-w-4xl mx-auto px-4 py-6">
           <div className="mb-6">
             <Button 

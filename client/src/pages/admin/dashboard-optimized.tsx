@@ -7,7 +7,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import { get } from "@/lib/api";
-import HeaderAdmin from "@/components/HeaderAdmin";
 import ApporteurManagement from "@/components/admin/ApporteurManagement";
 import { 
   RefreshCw, UserPlus, Users, FileText, 
@@ -926,10 +925,7 @@ const AdminDashboardOptimized: React.FC = () => {
   // ===== RENDU PRINCIPAL =====
   
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <HeaderAdmin />
-      
-      <div className="flex flex-1 pt-16">
+    <div className="flex flex-1">
         <div className="flex-1 p-6">
           {loading ? (
             <div className="flex items-center justify-center h-64">

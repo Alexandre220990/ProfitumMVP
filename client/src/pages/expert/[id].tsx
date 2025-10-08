@@ -7,7 +7,6 @@ import { Separator } from "@/components/ui/separator";
 import { Star, MapPin, Building2, Phone, Mail, Euro } from "lucide-react";
 import { get } from "@/lib/api";
 import { toast } from "sonner";
-import HeaderClient from "@/components/HeaderClient";
 import type { Expert } from "@/types/expert";
 import type { ApiResponse } from "@/types/api";
 
@@ -42,8 +41,7 @@ const ExpertProfile = () => {
 
   if (loading) { 
     return (
-      <div className="min-h-screen bg-gray-50">
-        <HeaderClient />
+      <div>
         <div className="container mx-auto px-4 py-8">
           <div className="animate-pulse space-y-4">
             <div className="h-8 bg-gray-200 rounded w-1/4"></div>
@@ -59,9 +57,7 @@ const ExpertProfile = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <HeaderClient />
-      
+    <div>
       <div className="container mx-auto px-4 py-8">
         <Card className="max-w-4xl mx-auto">
           <CardHeader className="relative">

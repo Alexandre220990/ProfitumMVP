@@ -2,7 +2,6 @@ import React from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { useNavigate } from 'react-router-dom';
 import { UnifiedCalendar } from '@/components/UnifiedCalendar';
-import HeaderExpert from '@/components/HeaderExpert';
 
 export default function ExpertAgendaPage() {
   const { user } = useAuth();
@@ -15,10 +14,7 @@ export default function ExpertAgendaPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
-      <HeaderExpert />
-      
-      <div className="max-w-7xl mx-auto px-4 py-10">
+    <div className="max-w-7xl mx-auto px-4 py-10">
         <div className="mt-16"></div>
         
         {/* Header */}

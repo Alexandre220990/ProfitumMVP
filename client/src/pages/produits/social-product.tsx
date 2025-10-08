@@ -1,16 +1,10 @@
-import HeaderClient from "@/components/HeaderClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Users, FileText } from "lucide-react";
 
 const SocialProductPage = () => { 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-100">
-      {/* Header Client */}
-      <HeaderClient />
-
-      {/* Contenu principal avec marge pour le header fixe */}
-      <div className="pt-20">
+    <div>
         <div className="max-w-7xl mx-auto px-4 py-6">
           <Card>
             <CardHeader>
@@ -36,7 +30,6 @@ const SocialProductPage = () => {
             </CardContent>
           </Card>
         </div>
-      </div>
     </div>
   );
 };

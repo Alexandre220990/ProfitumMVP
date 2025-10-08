@@ -3,7 +3,6 @@ import { useParams, Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import HeaderClient from "@/components/HeaderClient";
 import { FolderOpen, Calendar, User, Briefcase, FileText, Phone } from "lucide-react";
 import { get } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
@@ -57,10 +56,8 @@ export default function DetailsDossier() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100">
-        <HeaderClient />
-        <div className="container mx-auto px-6 py-10">
-          <p className="text-center text-gray-600 mt-10">Chargement...</p>
+      <div className="container mx-auto px-6 py-10">
+        <p className="text-center text-gray-600 mt-10">Chargement...</p>
         </div>
       </div>
     );
@@ -68,10 +65,8 @@ export default function DetailsDossier() {
 
   if (error || !dossier) {
     return (
-      <div className="min-h-screen bg-gray-100">
-        <HeaderClient />
-        <div className="container mx-auto px-6 py-10">
-          <p className="text-center text-red-500 mt-10">
+      <div className="container mx-auto px-6 py-10">
+        <p className="text-center text-red-500 mt-10">
             ❌ {error || "Dossier introuvable."}
           </p>
         </div>
@@ -84,9 +79,7 @@ export default function DetailsDossier() {
     : dossier.progress || 0;
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <HeaderClient />
-      <div className="container mx-auto px-6 py-10">
+    <div className="container mx-auto px-6 py-10">
         <Card className="mb-6">
           <CardHeader>
             <div className="flex justify-between items-center">

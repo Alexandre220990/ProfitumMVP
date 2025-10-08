@@ -21,7 +21,6 @@ import {
   Download,
   AlertCircle
 } from "lucide-react";
-import HeaderExpert from "@/components/HeaderExpert";
 import type { ExpertBusiness, RevenueData, ProductPerformance, ClientPerformance } from "@/types/business";
 
 const ExpertMesAffaires = () => {
@@ -140,10 +139,7 @@ const ExpertMesAffaires = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
-        <HeaderExpert />
-        <div className="max-w-7xl mx-auto px-4 py-10">
-          <div className="mt-16"></div>
+      <div className="max-w-7xl mx-auto px-4 py-10">
           <Card>
             <CardHeader>
               <CardTitle className="text-2xl text-red-600">Problème de chargement des données</CardTitle>
@@ -164,10 +160,7 @@ const ExpertMesAffaires = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
-      <HeaderExpert />
-      
-      <div className="max-w-7xl mx-auto px-4 py-10">
+    <div className="max-w-7xl mx-auto px-4 py-10">
         <div className="mt-16"></div>
         
         {/* En-tête de la page */}

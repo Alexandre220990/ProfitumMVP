@@ -12,7 +12,6 @@ import {
   Loader2,
   MessageCircle
 } from "lucide-react";
-import HeaderExpert from "@/components/HeaderExpert";
 import { ExpertMetrics } from "@/components/expert/ExpertMetrics";
 import { ExpertAssignmentsTable } from "@/components/expert/ExpertAssignmentsTable";
 import { ExpertAgendaWidget } from "@/components/expert/ExpertAgendaWidget";
@@ -116,10 +115,7 @@ const ExpertDashboard = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
-        <HeaderExpert />
-        <div className="max-w-7xl mx-auto px-4 py-10">
-          <div className="mt-16"></div>
+      <div className="max-w-7xl mx-auto px-4 py-10">
           <Card>
             <CardHeader>
               <CardTitle className="text-2xl text-red-600">Problème de chargement des données</CardTitle>
@@ -140,10 +136,7 @@ const ExpertDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
-      <HeaderExpert />
-      
-      <div className="max-w-7xl mx-auto px-4 py-10">
+    <div className="max-w-7xl mx-auto px-4 py-10">
         <div className="mt-16"></div>
         
         {/* En-tête de la page */}

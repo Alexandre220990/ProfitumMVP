@@ -1,7 +1,5 @@
 
-import React from "react";
 import { MessageSquare } from "lucide-react";
-import HeaderClient from "@/components/HeaderClient";
 import { OptimizedMessagingApp } from "@/components/messaging/OptimizedMessagingApp";
 import { motion } from "framer-motion";
 
@@ -11,9 +9,7 @@ import { motion } from "framer-motion";
 
 export default function MessagerieClient() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/50 overflow-hidden">
-      <HeaderClient />
-      
+    <div>
       {/* Container principal avec design moderne */}
       <div className="h-full pt-16 flex flex-col">
         {/* Header moderne avec design 2025 */}
@@ -66,11 +62,7 @@ export default function MessagerieClient() {
         >
           <div className="max-w-7xl mx-auto h-full">
             <div className="h-full bg-white/80 backdrop-blur-sm rounded-3xl shadow-2xl overflow-hidden border border-slate-200/60">
-              <OptimizedMessagingApp 
-                theme="blue"
-                showHeader={false}
-                className="h-full"
-              />
+              <OptimizedMessagingApp className="h-full" />
             </div>
           </div>
         </motion.div>

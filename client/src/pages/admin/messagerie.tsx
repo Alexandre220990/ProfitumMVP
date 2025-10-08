@@ -1,5 +1,4 @@
 import { MessageSquare, Plus, Users } from "lucide-react";
-import HeaderAdmin from "@/components/HeaderAdmin";
 import { AdminMessagingApp } from "@/components/messaging/AdminMessagingApp";
 import AdminUserSelector from "@/components/AdminUserSelector";
 import { Button } from "@/components/ui/button";
@@ -50,9 +49,7 @@ export default function MessagerieAdmin() {
   // ========================================
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-violet-50/50 overflow-hidden">
-      <HeaderAdmin />
-      
+    <div>
       {/* Container principal avec design moderne */}
       <div className="h-full pt-16 flex flex-col">
         {/* Header moderne avec design 2025 */}

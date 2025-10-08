@@ -21,7 +21,6 @@ import { useAuth } from '@/hooks/use-auth';
 import { useEnhancedDocumentStorage } from '@/hooks/use-enhanced-document-storage';
 import { EnhancedDocumentUpload } from '@/components/documents/EnhancedDocumentUpload';
 import { toast } from 'sonner';
-import HeaderExpert from '@/components/HeaderExpert';
 import { Label } from '@/components/ui/label';
 
 interface ExpertDocumentsData {
@@ -148,12 +147,9 @@ export default function DocumentsExpert() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <HeaderExpert />
-        <div className="container mx-auto p-4 pt-24">
-          <div className="flex justify-center items-center min-h-64">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          </div>
+      <div className="container mx-auto p-4">
+        <div className="flex justify-center items-center min-h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         </div>
       </div>
     );
@@ -161,15 +157,12 @@ export default function DocumentsExpert() {
 
   if (!data) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <HeaderExpert />
-        <div className="container mx-auto p-4 pt-24">
-          <Card>
-            <CardContent className="p-6">
-              <p>Erreur lors du chargement des données.</p>
-            </CardContent>
-          </Card>
-        </div>
+      <div className="container mx-auto p-4">
+        <Card>
+          <CardContent className="p-6">
+            <p>Erreur lors du chargement des données.</p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -177,9 +170,7 @@ export default function DocumentsExpert() {
   const { stats } = data;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <HeaderExpert />
-      <div className="container mx-auto p-4 pt-24">
+    <div className="container mx-auto p-4">
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-900">📁 Mes Documents</h1>
           <p className="text-gray-600">Gestion de vos documents et de ceux de vos clients</p>
@@ -505,6 +496,5 @@ export default function DocumentsExpert() {
           </TabsContent>
         </Tabs>
       </div>
-    </div>
   );
 } 

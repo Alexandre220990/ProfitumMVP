@@ -7,7 +7,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useDocumentSections, DocumentFile } from '../hooks/use-document-sections';
 import { toast } from 'sonner';
-import HeaderClient from '@/components/HeaderClient';
 import { 
   Download, 
   Eye, 
@@ -291,10 +290,8 @@ const DocumentsClientPage = () => {
 
   if (sectionsLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
-        <HeaderClient />
-        <div className="pt-20">
-          <div className="flex items-center justify-center h-64">
+      <div>
+        <div className="flex items-center justify-center h-64">
             <div className="text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
               <p className="mt-2 text-gray-600">Chargement des sections...</p>
@@ -306,10 +303,8 @@ const DocumentsClientPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
-      <HeaderClient />
-      <div className="pt-20">
-        <div className="container mx-auto px-4 py-6">
+    <div>
+      <div className="container mx-auto px-4 py-6">
           <div className="flex gap-6">
             {/* Contenu principal (3/4) */}
             <div className="flex-1">

@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Search, Send, ChevronDown, ChevronUp } from "lucide-react";
-import HeaderExpert from "@/components/HeaderExpert";
 
 interface FAQItem { id: string;
   question: string;
@@ -31,9 +30,7 @@ export default function AideExpert() {
     setMessage(""); };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <HeaderExpert />
-      <div className="container mx-auto p-4 pt-24">
+    <div className="container mx-auto p-4">
         <div className="grid gap-6 md:grid-cols-2">
           <Card>
             <CardHeader>

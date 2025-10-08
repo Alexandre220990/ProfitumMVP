@@ -16,7 +16,6 @@ import {
   Briefcase, CheckSquare, XSquare, Calendar as CalendarIcon, 
   Mail as MailIcon, MessageCircle, Phone as PhoneIcon
 } from "lucide-react";
-import HeaderAdmin from "@/components/HeaderAdmin";
 
 // ============================================================================
 // TYPES ET INTERFACES
@@ -274,9 +273,8 @@ const ExpertDetails = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <HeaderAdmin />
-        <div className="pt-16 p-6">
+      <div>
+        <div className="p-6">
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
@@ -290,9 +288,8 @@ const ExpertDetails = () => {
 
   if (!expert) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <HeaderAdmin />
-        <div className="pt-16 p-6">
+      <div>
+        <div className="p-6">
           <div className="text-center">
             <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Expert non trouvé</h2>
@@ -312,10 +309,7 @@ const ExpertDetails = () => {
   // ========================================
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <HeaderAdmin />
-      
-      <div className="pt-16 p-6">
+    <div className="p-6">
         {/* En-tête avec navigation */}
         <div className="mb-6">
           <Button 
@@ -776,7 +770,6 @@ const ExpertDetails = () => {
           </TabsContent>
         </Tabs>
       </div>
-    </div>
   );
 };
 

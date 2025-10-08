@@ -33,7 +33,6 @@ import { useAuth } from '@/hooks/use-auth';
 import { useEnhancedDocumentStorage } from '@/hooks/use-enhanced-document-storage';
 import { toast } from 'sonner';
 import { get } from '@/lib/api';
-import HeaderAdmin from '@/components/HeaderAdmin';
 
 interface AdminDocumentStats {
   total_files: number;
@@ -344,9 +343,8 @@ export default function EnhancedAdminDocumentsPage() {
 
   if (!user || user.type !== 'admin') {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <HeaderAdmin />
-        <div className="pt-16 p-6">
+      <div>
+        <div className="p-6">
           <div className="text-center">
             <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Accès non autorisé</h2>
@@ -362,10 +360,7 @@ export default function EnhancedAdminDocumentsPage() {
   // ========================================
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <HeaderAdmin />
-      
-      <div className="pt-16 p-6">
+    <div className="p-6">
         {/* En-tête */}
         <div className="mb-8">
           <div className="flex items-center justify-between">

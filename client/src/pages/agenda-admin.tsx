@@ -2,7 +2,6 @@ import React from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { useNavigate } from 'react-router-dom';
 import { UnifiedCalendar } from '@/components/UnifiedCalendar';
-import HeaderAdmin from '@/components/HeaderAdmin';
 
 export default function AgendaAdminPage() {
   const { user } = useAuth();
@@ -15,11 +14,7 @@ export default function AgendaAdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
-      <HeaderAdmin />
-      
-      <div className="max-w-7xl mx-auto px-4 py-10">
-        <div className="mt-16"></div>
+    <div className="max-w-7xl mx-auto px-4 py-10">
         
         {/* Header */}
         <div className="flex items-center justify-between mb-8">

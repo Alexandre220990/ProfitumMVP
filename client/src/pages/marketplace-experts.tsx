@@ -22,7 +22,6 @@ import {
   Sparkles,
   Handshake
 } from "lucide-react";
-import HeaderClient from "@/components/HeaderClient";
 import { get, post } from "@/lib/api";
 
 // Types
@@ -301,8 +300,7 @@ export default function MarketplaceExperts() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <HeaderClient />
+      <div>
         <div className="flex justify-center items-center h-screen">
           <div className="text-xl">Chargement de la marketplace...</div>
         </div>
@@ -313,10 +311,7 @@ export default function MarketplaceExperts() {
   const filteredExperts = getFilteredExperts();
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <HeaderClient />
-      
-      <div className="max-w-7xl mx-auto px-4 py-8 pt-24">
+    <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
           <div className="relative">

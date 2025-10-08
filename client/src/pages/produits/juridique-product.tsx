@@ -1,16 +1,10 @@
-import HeaderClient from "@/components/HeaderClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Scale, FileText } from "lucide-react";
 
 const JuridiqueProductPage = () => { 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-indigo-100">
-      {/* Header Client */}
-      <HeaderClient />
-
-      {/* Contenu principal avec marge pour le header fixe */}
-      <div className="pt-20">
+    <div>
         <div className="max-w-7xl mx-auto px-4 py-6">
           <Card>
             <CardHeader>
@@ -36,7 +30,6 @@ const JuridiqueProductPage = () => {
             </CardContent>
           </Card>
         </div>
-      </div>
     </div>
   );
 };

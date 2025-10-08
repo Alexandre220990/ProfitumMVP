@@ -3,7 +3,6 @@ import { useParams, Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import HeaderClient from "@/components/HeaderClient";
 import { FolderOpen, Calendar, User, Briefcase, FileText, Phone, ArrowLeft } from "lucide-react";
 import { get } from "@/lib/api"; // Utilisation de la fonction get depuis lib/api.ts
 
@@ -30,9 +29,7 @@ export default function ExpertPage() { const { id } = useParams();
     : 0;
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <HeaderClient />
-      <div className="container mx-auto px-6 py-10">
+    <div className="container mx-auto px-6 py-10">
         <div className="mb-6">
           <Link to="/dashboard">
             <Button variant="ghost" className="flex items-center gap-2 text-gray-700 hover:text-blue-600">

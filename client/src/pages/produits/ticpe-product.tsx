@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
-import HeaderClient from "@/components/HeaderClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,9 +13,10 @@ import {
   Clock, 
   AlertCircle,
   Info,
+  Award,
+  UserCheck,
   TrendingUp,
   Shield,
-  Award,
   Euro
 } from "lucide-react";
 import TICPEWorkflow from "@/components/TICPEWorkflow";
@@ -35,7 +35,11 @@ interface ClientProduitEligible {
   expert_id?: string;
   created_at: string;
   updated_at: string;
-  metadata?: any;
+  metadata?: {
+    source?: 'simulation' | 'apporteur';
+    created_by_apporteur?: string;
+    apporteur_notes?: string;
+  };
   notes?: string;
   priorite?: number;
   dateEligibilite?: string;
@@ -87,17 +91,17 @@ const TICPEProductPage = () => {
     }
   };
 
+  const isFromApporteur = clientProduit?.metadata?.source === 'apporteur';
+  const isHighPriority = clientProduit?.priorite === 1;
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-red-100">
-        <HeaderClient />
-        <div className="pt-20">
-          <div className="max-w-7xl mx-auto px-4 py-6">
-            <div className="flex items-center justify-center h-64">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
-                <p className="text-gray-600">Chargement du dossier TICPE...</p>
-              </div>
+      <div>
+        <div className="max-w-7xl mx-auto px-4 py-6">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Chargement du dossier TICPE...</p>
             </div>
           </div>
         </div>
@@ -107,41 +111,53 @@ const TICPEProductPage = () => {
 
   if (error || !clientProduit) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-red-100">
-        <HeaderClient />
-        <div className="pt-20">
-          <div className="max-w-7xl mx-auto px-4 py-6">
-            <Card>
-              <CardContent className="p-6">
-                <div className="text-center">
-                  <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">
-                    Erreur de chargement
-                  </h3>
-                  <p className="text-gray-500 mb-4">
-                    {error || 'Impossible de charger le dossier TICPE'}
-                  </p>
-                  <Button onClick={() => navigate('/dashboard')}>
-                    Retour au dashboard
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+      <div>
+        <div className="max-w-7xl mx-auto px-4 py-6">
+          <Card>
+            <CardContent className="p-6">
+              <div className="text-center">
+                <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  Erreur de chargement
+                </h3>
+                <p className="text-gray-500 mb-4">
+                  {error || 'Impossible de charger le dossier TICPE'}
+                </p>
+                <Button onClick={() => navigate('/dashboard')}>
+                  Retour au dashboard
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-red-100">
-      <HeaderClient />
+    <div>
+      <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
+        
+        {/* Badge "Via Apporteur" */}
+        {isFromApporteur && (
+          <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-300 rounded-lg shadow-sm">
+            <div className="flex items-center gap-2 mb-2">
+              <Badge className="bg-blue-600 text-white flex items-center gap-1">
+                <UserCheck className="h-3 w-3" />
+                Recommandé par votre conseiller
+              </Badge>
+              {isHighPriority && (
+                <Badge className="bg-amber-500 text-white">⭐ Priorité haute</Badge>
+              )}
+            </div>
+            {clientProduit.notes && (
+              <p className="text-sm text-blue-800">💬 <strong>Note:</strong> {clientProduit.notes}</p>
+            )}
+          </div>
+        )}
 
-      <div className="pt-20">
-        <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
-          
-          {/* En-tête du produit */}
-          <Card>
+        {/* En-tête du produit */}
+        <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -379,7 +395,6 @@ const TICPEProductPage = () => {
             </CardContent>
           </Card>
 
-        </div>
       </div>
     </div>
   );

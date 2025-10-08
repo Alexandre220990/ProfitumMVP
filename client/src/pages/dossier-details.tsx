@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import HeaderClient from "@/components/HeaderClient";
 import { FolderOpen, Calendar, User, Briefcase, FileText, Phone } from "lucide-react";
 import { get } from "@/lib/api"; // Utilisation de la fonction get depuis lib/api.ts
 
@@ -32,9 +31,7 @@ export default function DetailsDossier() { const { id } = useParams();
     : 0;
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <HeaderClient />
-      <div className="container mx-auto px-6 py-10">
+    <div className="container mx-auto px-6 py-10">
         <Card className="mb-6">
           <CardHeader>
             <div className="flex justify-between items-center">

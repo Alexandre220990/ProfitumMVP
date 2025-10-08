@@ -1,5 +1,4 @@
 import React from 'react';
-import HeaderExpert from '@/components/HeaderExpert';
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,9 +23,7 @@ const dossier = { id: 1, client: {
 };
 
 const ExpertDossier: React.FC = () => { return (
-    <div className="min-h-screen bg-gray-50">
-      <HeaderExpert />
-      <div className="container mx-auto p-4 mt-20">
+    <div className="container mx-auto p-4">
         {/* Résumé du dossier */ }
         <Card className="p-6 mb-8 shadow-lg">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">

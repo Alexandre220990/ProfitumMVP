@@ -30,7 +30,6 @@ import {
   Shield,
   Users
 } from 'lucide-react';
-import HeaderClient from '@/components/HeaderClient';
 import { useAuth } from '@/hooks/use-auth';
 import { useClientProducts } from '@/hooks/use-client-products';
 import { SectionTitle } from "@/components/dashboard/SectionTitle";
@@ -421,11 +420,6 @@ export default function DashboardClient() {
     navigate(0);
   }, [navigate]);
 
-  const handleLogout = useCallback(() => {
-    localStorage.removeItem('user');
-    sessionStorage.removeItem('user');
-    handleRefresh();
-  }, [handleRefresh]);
 
   // Fonction pour rediriger vers le workflow approprié
   const handleProductClick = useCallback((produit: any) => {
@@ -545,11 +539,8 @@ export default function DashboardClient() {
 
   if (productsError) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
-        <HeaderClient />
+      <div>
         <div className="max-w-5xl mx-auto px-4 py-10">
-          <div className="mt-16"></div>
-          
           <Card>
             <CardHeader>
               <CardTitle className="text-2xl text-red-600">Problème de chargement des données</CardTitle>
@@ -593,10 +584,8 @@ export default function DashboardClient() {
 
   if (!hasProducts) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 pb-16">
-        <HeaderClient />
-        <div className="max-w-5xl mx-auto px-4 py-10">
-          <div className="mt-16"></div>
+      <div>
+        <div className="max-w-5xl mx-auto px-4 py-10 pb-16">
           <div className="text-center mb-8">
             <SectionTitle 
               title="Votre stratégie d'optimisation fiscale" 
@@ -611,10 +600,8 @@ export default function DashboardClient() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
-      <HeaderClient onLogout={handleLogout} />
+    <div>
       <div className="max-w-7xl mx-auto px-4 py-6">
-        <div className="mt-16"></div>
         
         {/* Header moderne et compact */}
         <div className="mb-8">
