@@ -48,7 +48,7 @@ export default function ProspectManagement() {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+  const [selectedStatus, setSelectedStatus] = useState<string | null>('all'); // Afficher tous par défaut
   const [showProspectForm, setShowProspectForm] = useState(false);
   const [selectedProspect, setSelectedProspect] = useState<Prospect | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);

@@ -124,15 +124,31 @@ export function useApporteurEnhanced(apporteurId: string | null) {
 
   // Activité récente formatée
   const getRecentActivity = () => {
-    return getActivityData().map((activity: any) => ({
-      id: activity.entite_id,
-      type: activity.type_activite,
-      nom: activity.nom_entite,
-      action: activity.action,
-      date: activity.date_activite,
-      montant: activity.montant || 0,
-      libelle: `${activity.action} - ${activity.nom_entite}${activity.montant ? ` (${activity.montant}€)` : ''}`
-    }));
+    return getActivityData().map((activity: any) => {
+      // Construire le libelle selon le type d'activité
+      let libelle = '';
+      
+      if (activity.type_activite === 'nouveau_client') {
+        libelle = `Nouveau client : ${activity.client_name || activity.client_company || 'Client'}`;
+      } else if (activity.type_activite === 'nouveau_produit') {
+        const client = activity.client_name || activity.client_company || 'Client';
+        const produit = activity.produit_nom || 'Produit';
+        libelle = `${client} - ${produit}${activity.montant ? ` (${activity.montant.toLocaleString('fr-FR')}€)` : ''}`;
+      } else {
+        libelle = `${activity.client_name || 'Activité'} - ${activity.produit_nom || ''}`;
+      }
+
+      return {
+        id: activity.source_id,
+        type: activity.type_activite,
+        date: activity.date_activite,
+        montant: activity.montant || 0,
+        libelle: libelle.trim(),
+        client_name: activity.client_name,
+        client_company: activity.client_company,
+        produit_nom: activity.produit_nom
+      };
+    });
   };
 
   // Prospects avec informations enrichies

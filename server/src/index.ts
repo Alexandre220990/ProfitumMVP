@@ -88,6 +88,9 @@ import expertApporteurRoutes from './routes/expert-apporteur';
 import adminApporteurRoutes from './routes/admin-apporteur';
 import apporteurApiRoutes from './routes/apporteur-api';
 
+// Route évaluation éligibilité (nouveau simulateur)
+import eligibilityRoutes from './routes/eligibility';
+
 // Créer l'application Express
 const app = express();
 
@@ -191,6 +194,7 @@ app.use('/api/partners', publicRouteLogger, partnersRouter);
 
 // 🚀 ROUTES DU SIMULATEUR - PUBLIQUES (pas d'authentification requise)
 app.use('/api/simulator', publicRouteLogger, simulatorRoutes);
+app.use('/api/eligibility', publicRouteLogger, eligibilityRoutes);
 
 // 🔄 ROUTES DE MIGRATION DES SESSIONS - PUBLIQUES (pas d'authentification requise)
 app.use('/api/session-migration', publicRouteLogger, sessionMigrationRoutes);

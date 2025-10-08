@@ -298,9 +298,13 @@ router.post('/', async (req: Request, res: Response) => {
         console.error('❌ Erreur lors de la mise à jour de la simulation:', updateError);
       }
 
-      // Enregistrer les produits éligibles
+      // Enregistrer les produits éligibles avec le nouveau système
       if (pythonResponse.eligibleProduitIds && pythonResponse.eligibleProduitIds.length > 0) {
         await enregistrerProduitsEligibles(clientId, simulation.id, pythonResponse.eligibleProduitIds);
+      } else {
+        // Fallback : Évaluer avec le nouveau moteur de règles
+        console.log('⚠️ Pas de produits éligibles de Python, utilisation du moteur de règles');
+        // TODO: Implémenter l'évaluation basée sur les réponses de la simulation
       }
 
       return res.json({
