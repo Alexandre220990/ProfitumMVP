@@ -2,10 +2,12 @@ import { Request, Response, NextFunction } from 'express';
 import { User } from '@supabase/supabase-js';
 
 export interface UserMetadata {
-  type?: 'client' | 'expert' | 'admin' | 'apporteur_affaires';
+  type?: 'client' | 'expert' | 'admin' | 'apporteur' | 'apporteur_affaires';
   username?: string;
   company?: string;
+  company_name?: string;
   phone?: string;
+  phone_number?: string;
   address?: string;
   city?: string;
   postal_code?: string;
@@ -16,16 +18,24 @@ export interface UserMetadata {
 // Interface étendue pour AuthUser avec toutes les propriétés requises
 export interface AuthUser extends User {
   user_metadata: UserMetadata;
-  type: 'client' | 'expert' | 'admin' | 'apporteur_affaires';
+  type: 'client' | 'expert' | 'admin' | 'apporteur' | 'apporteur_affaires';
+  database_id: string;
+  permissions?: string[];
+  auth_id?: string;
   app_metadata: any;
   aud: string;
   created_at: string;
+  role?: string;
 }
+
+// Alias pour compatibilité avec middleware
+export interface AuthenticatedUser extends AuthUser {}
 
 export interface BaseUser {
   id: string;
   email: string;
-  type: 'client' | 'expert' | 'admin' | 'apporteur_affaires';
+  type: 'client' | 'expert' | 'admin' | 'apporteur' | 'apporteur_affaires';
+  database_id?: string;
   user_metadata?: UserMetadata;
 }
 
@@ -65,11 +75,20 @@ export type ExpressRequestHandler = (
 
 // Type pour les requêtes avec utilisateur authentifié
 export interface RequestWithUser extends Request {
-  user: AuthUser;
+  user?: AuthUser;
+}
+
+// Extension globale de Request pour TypeScript
+declare global {
+  namespace Express {
+    interface Request {
+      user?: AuthUser;
+    }
+  }
 }
 
 export function createAuthUserFromSupabase(user: User): AuthUser {
-  const type = (user.user_metadata?.type as 'client' | 'expert' | 'admin' | 'apporteur_affaires') || 'client';
+  const type = (user.user_metadata?.type as 'client' | 'expert' | 'admin' | 'apporteur' | 'apporteur_affaires') || 'client';
 
   // ⚠️ Sécuriser le champ `username` avec fallback
   const username =
@@ -87,6 +106,7 @@ export function createAuthUserFromSupabase(user: User): AuthUser {
   return {
     ...user,
     type,
+    database_id: (user as any).database_id || user.id,
     user_metadata: userMetadata,
     app_metadata: user.app_metadata || {},
     aud: user.aud || 'authenticated',

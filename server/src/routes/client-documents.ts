@@ -282,7 +282,7 @@ router.post('/upload', asyncHandler(async (req: Request, res: Response) => {
  */
 router.get('/download/:fileId', asyncHandler(async (req: Request, res: Response) => {
   const { fileId } = req.params;
-  const user = req.user as AuthUser;
+  const user = req.user;
 
   try {
     const downloadResponse = await documentStorageService.downloadFile(fileId, user.id);
@@ -313,7 +313,7 @@ router.get('/download/:fileId', asyncHandler(async (req: Request, res: Response)
 router.put('/validate/:fileId', asyncHandler(async (req: Request, res: Response) => {
   const { fileId } = req.params;
   const { status, comment } = req.body;
-  const user = req.user as AuthUser;
+  const user = req.user;
 
   if (!status || !['approved', 'rejected', 'requires_revision'].includes(status)) {
     return res.status(400).json({
@@ -360,7 +360,7 @@ router.put('/validate/:fileId', asyncHandler(async (req: Request, res: Response)
  */
 router.delete('/:fileId', asyncHandler(async (req: Request, res: Response) => {
   const { fileId } = req.params;
-  const user = req.user as AuthUser;
+  const user = req.user;
 
   try {
     const success = await documentStorageService.deleteFile(fileId, user.id);
@@ -393,7 +393,7 @@ router.delete('/:fileId', asyncHandler(async (req: Request, res: Response) => {
 router.post('/share/:fileId', asyncHandler(async (req: Request, res: Response) => {
   const { fileId } = req.params;
   const { sharedWithEmail, permissions, expiresAt } = req.body;
-  const user = req.user as AuthUser;
+  const user = req.user;
 
   if (!sharedWithEmail || !permissions) {
     return res.status(400).json({
@@ -441,7 +441,7 @@ router.post('/share/:fileId', asyncHandler(async (req: Request, res: Response) =
  */
 router.get('/stats/:clientId', asyncHandler(async (req: Request, res: Response) => {
   const { clientId } = req.params;
-  const user = req.user as AuthUser;
+  const user = req.user;
 
   // Vérifier que l'utilisateur a accès à ce client
   if (user.type !== 'admin' && user.id !== clientId) {

@@ -17,14 +17,16 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 // GET /api/expert/notifications - Récupérer les notifications de l'expert
 router.get('/', async (req: Request, res: Response) => {
   try {
-    const authUser = req.user as AuthUser;
-    const expertId = authUser.id;
-    if (!expertId) {
+    const authUser = req.user;
+    
+    if (!authUser) {
       return res.status(401).json({
         success: false,
         message: 'Utilisateur non authentifié'
       });
     }
+    
+    const expertId = authUser.id;
 
     // Vérifier que l'utilisateur est un expert
     if (authUser.type !== 'expert') {
@@ -85,7 +87,15 @@ router.get('/', async (req: Request, res: Response) => {
 // POST /api/expert/notifications/:id/read - Marquer une notification comme lue
 router.post('/:id/read', async (req: Request, res: Response) => {
   try {
-    const authUser = req.user as AuthUser;
+    const authUser = req.user;
+    
+    if (!authUser) {
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur non authentifié'
+      });
+    }
+    
     const expertId = authUser.id;
     const notificationId = req.params.id;
 
@@ -147,7 +157,15 @@ router.post('/:id/read', async (req: Request, res: Response) => {
 // POST /api/expert/notifications/mark-all-read - Marquer toutes les notifications comme lues
 router.post('/mark-all-read', async (req: Request, res: Response) => {
   try {
-    const authUser = req.user as AuthUser;
+    const authUser = req.user;
+    
+    if (!authUser) {
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur non authentifié'
+      });
+    }
+    
     const expertId = authUser.id;
 
     if (!expertId) {
@@ -193,7 +211,15 @@ router.post('/mark-all-read', async (req: Request, res: Response) => {
 // DELETE /api/expert/notifications/:id - Supprimer une notification
 router.delete('/:id', async (req: Request, res: Response) => {
   try {
-    const authUser = req.user as AuthUser;
+    const authUser = req.user;
+    
+    if (!authUser) {
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur non authentifié'
+      });
+    }
+    
     const expertId = authUser.id;
     const notificationId = req.params.id;
 
@@ -252,7 +278,15 @@ router.delete('/:id', async (req: Request, res: Response) => {
 // GET /api/expert/notifications/unread-count - Obtenir le nombre de notifications non lues
 router.get('/unread-count', async (req: Request, res: Response) => {
   try {
-    const authUser = req.user as AuthUser;
+    const authUser = req.user;
+    
+    if (!authUser) {
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur non authentifié'
+      });
+    }
+    
     const expertId = authUser.id;
 
     if (!expertId) {
