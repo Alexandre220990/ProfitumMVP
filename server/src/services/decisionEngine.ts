@@ -195,13 +195,26 @@ export class DecisionEngine {
       // Mettre en cache les résultats
       this.eligibilityCache.set(simulationId, eligibleProducts);
 
-      // Mettre à jour la table chatbotsimulation
+      // Récupérer le CheminParcouru actuel
+      const { data: simulation } = await this.supabase
+        .from('simulations')
+        .select('results')
+        .eq('id', simulationId)
+        .single();
+
+      // Mettre à jour la table simulations avec les produits éligibles
+      const updatedResults = {
+        ...(simulation?.results || {}),
+        eligible_products: eligibleProducts,
+        last_calculation: new Date().toISOString()
+      };
+
       await this.supabase
-        .from('chatbotsimulation')
+        .from('simulations')
         .update({
-          eligible_products: eligibleProducts,
-          processing_status: 'completed',
-          last_processed_at: new Date().toISOString()
+          results: updatedResults,
+          status: 'completed',
+          updated_at: new Date().toISOString()
         })
         .eq('id', simulationId);
 

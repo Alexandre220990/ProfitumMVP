@@ -478,9 +478,10 @@ export class SessionMigrationService {
     try {
       // Créer une simulation
       const { data: simulation, error: simulationError } = await supabase
-        .from('Simulation')
+        .from('simulations')
         .insert({
-          clientId: clientId,
+          client_id: clientId,
+          type: 'authentifiee',
           answers: responses.map(r => ({
             question_id: r.question_id,
             question_text: r.QuestionnaireQuestion?.question_text,
@@ -488,8 +489,10 @@ export class SessionMigrationService {
             question_type: r.QuestionnaireQuestion?.question_type
           })),
           results: eligibilityResults,
-          source: 'simulator_migration',
-          created_at: new Date().toISOString()
+          metadata: { source: 'simulator_migration' },
+          status: 'completed',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         })
         .select('id')
         .single();
@@ -710,13 +713,16 @@ export class SessionMigrationService {
     try {
       // Créer une simulation
       const { data: simulation, error: simulationError } = await supabase
-        .from('Simulation')
+        .from('simulations')
         .insert({
-          clientId: clientId,
+          client_id: clientId,
+          type: 'authentifiee',
           answers: [], // Pas de réponses détaillées dans la migration directe
           results: eligibilityResults,
-          source: 'direct_migration',
-          created_at: new Date().toISOString()
+          metadata: { source: 'direct_migration' },
+          status: 'completed',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         })
         .select('id')
         .single();

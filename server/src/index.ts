@@ -31,7 +31,7 @@ import clientReactivationRoutes from './routes/client-reactivation';
 import expertRoutes from './routes/expert';
 import adminRoutes from './routes/admin';
 import auditRoutes from './routes/audit';
-import simulationRoute from './routes/simulation';
+// SUPPRIMÉ: import simulationRoute from './routes/simulation'; (fichier obsolète, doublon de simulationRoutes)
 
 // import messagingRoutes from './routes/messaging';
 import unifiedMessagingRoutes from './routes/unified-messaging';
@@ -90,6 +90,10 @@ import apporteurApiRoutes from './routes/apporteur-api';
 
 // Route évaluation éligibilité (nouveau simulateur)
 import eligibilityRoutes from './routes/eligibility';
+
+// Routes RDV unifiées (remplace ClientRDV)
+import rdvRoutes from './routes/rdv';
+import testEmailRoutes from './routes/test-email';
 
 // Créer l'application Express
 const app = express();
@@ -486,8 +490,8 @@ app.post('/api/admin-fix', async (req, res) => {
 // Routes audit - PROTÉGÉES
 app.use('/api/audit', enhancedAuthMiddleware, auditRoutes);
 
-// Routes simulation - PROTÉGÉES (correction pour éviter les conflits)
-app.use('/api/simulation', enhancedAuthMiddleware, simulationRoute);
+// Routes simulation - SUPPRIMÉES (doublon avec ligne 236, utilisait le fichier obsolète simulation.ts)
+// app.use('/api/simulation', enhancedAuthMiddleware, simulationRoute);
 
 // Routes de messagerie - PROTÉGÉES
 // app.use('/api/messaging', enhancedAuthMiddleware, messagingRoutes);
@@ -548,6 +552,15 @@ app.use('/api/expert-apporteur', enhancedAuthMiddleware, expertApporteurRoutes);
 
 // Routes admin pour apporteurs - PROTÉGÉES
 app.use('/api/admin/apporteurs', enhancedAuthMiddleware, requireUserType('admin'), adminApporteurRoutes);
+
+// ===== ROUTES RDV UNIFIÉES =====
+// Routes RDV - PROTÉGÉES (remplace ClientRDV et unifie avec CalendarEvent)
+app.use('/api/rdv', enhancedAuthMiddleware, rdvRoutes);
+console.log('🎯 Routes RDV unifiées montées sur /api/rdv');
+
+// Routes test email - PROTÉGÉES
+app.use('/api/test-email', enhancedAuthMiddleware, testEmailRoutes);
+console.log('📧 Routes test email montées sur /api/test-email');
 
 // Router centralisé pour toutes les routes API
 app.use('/api', routes);

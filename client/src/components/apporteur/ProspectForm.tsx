@@ -21,6 +21,15 @@ import {
   CheckCircle
 } from 'lucide-react';
 import { config } from '@/config';
+import { toast } from 'sonner';
+
+// Nouveaux composants simulation
+import { SimulationToggle } from './SimulationToggle';
+import { EmbeddedSimulator } from './EmbeddedSimulator';
+import { SimulationResultsSummary } from './SimulationResultsSummary';
+import { ProductEligibilityCardWithExpert } from './ProductEligibilityCardWithExpert';
+import { ExpertRecommendationOptimized } from './ExpertRecommendationOptimized';
+import { MultiMeetingScheduler, MeetingData } from './MultiMeetingScheduler';
 
 interface ProductEligible {
   id: string;
@@ -126,6 +135,15 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailSuccess, setEmailSuccess] = useState<string | null>(null);
 
+  // États simulation
+  const [identificationMode, setIdentificationMode] = useState<'simulation' | 'manual'>('simulation');
+  const [simulationCompleted, setSimulationCompleted] = useState(false);
+  const [identifiedProducts, setIdentifiedProducts] = useState<any[]>([]);
+  const [expertOptimization, setExpertOptimization] = useState<any>(null);
+  const [selectedExperts, setSelectedExperts] = useState<string[]>([]);
+  const [scheduledMeetings, setScheduledMeetings] = useState<MeetingData[]>([]);
+  const [prefilledAnswers, setPrefilledAnswers] = useState<Record<number, string>>({});
+
   useEffect(() => {
     fetchProducts();
     if (prospectId) {
@@ -181,9 +199,146 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
         if (result.data.preselected_expert_id) {
           fetchExpertDetails(result.data.preselected_expert_id);
         }
+        
+        // Pré-remplir les questions de simulation
+        await prefillSimulationQuestions();
       }
     } catch (err) {
       console.error('Erreur fetchProspect:', err);
+    }
+  };
+
+  /**
+   * Pré-remplir les questions de simulation avec les données prospect
+   */
+  const prefillSimulationQuestions = async () => {
+    try {
+      const response = await fetch(`${config.API_URL}/api/apporteur/simulation/questions/prefilled`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          prospect_data: {
+            budget_range: formData.budget_range,
+            timeline: formData.timeline,
+            qualification_score: formData.qualification_score,
+            secteur_activite: formData.company_name
+          }
+        })
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        setPrefilledAnswers(result.data?.prefilled_answers || {});
+      }
+    } catch (error) {
+      console.error('Erreur pré-remplissage questions:', error);
+    }
+  };
+
+  /**
+   * Gérer la complétion de la simulation
+   */
+  const handleSimulationComplete = async (simulationResults: any) => {
+    try {
+      setLoading(true);
+      
+      // Mettre à jour les états avec les résultats
+      setIdentifiedProducts(simulationResults.eligible_products || []);
+      setExpertOptimization(simulationResults.expert_optimization);
+      setSimulationCompleted(true);
+      
+      // Pré-sélectionner les experts de la recommandation principale
+      if (simulationResults.expert_optimization?.recommended?.experts) {
+        const recommendedExpertIds = simulationResults.expert_optimization.recommended.experts.map((e: any) => e.id);
+        setSelectedExperts(recommendedExpertIds);
+        
+        // Pré-remplir les RDV recommandés
+        const meetings: MeetingData[] = simulationResults.expert_optimization.recommended.meetings?.map((m: any) => ({
+          expert_id: m.expertId,
+          expert_name: m.expert?.name || '',
+          expert_company: m.expert?.company_name || '',
+          product_ids: m.productIds || [],
+          product_names: m.products?.map((p: any) => p.productName) || [],
+          client_produit_eligible_ids: m.clientProduitEligibleIds || [],
+          meeting_type: 'video',
+          scheduled_date: '',
+          scheduled_time: '',
+          location: '',
+          notes: `RDV pour ${m.products?.length || 0} produit(s)`,
+          estimated_duration: m.estimatedDuration || 60,
+          estimated_savings: m.estimatedSavings || 0
+        })) || [];
+        
+        setScheduledMeetings(meetings);
+      }
+      
+    } catch (error) {
+      console.error('Erreur traitement résultats simulation:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * Gérer changement de mode identification (simulation/manuel)
+   */
+  const handleModeChange = (mode: 'simulation' | 'manual') => {
+    setIdentificationMode(mode);
+    if (mode === 'manual') {
+      // Réinitialiser la simulation
+      setSimulationCompleted(false);
+      setIdentifiedProducts([]);
+      setExpertOptimization(null);
+      setSelectedExperts([]);
+      setScheduledMeetings([]);
+    }
+  };
+
+  /**
+   * Gérer changement des RDV planifiés
+   */
+  const handleMeetingsChange = (meetings: MeetingData[]) => {
+    setScheduledMeetings(meetings);
+  };
+
+  /**
+   * Créer plusieurs RDV pour le prospect
+   */
+  const createMultipleMeetings = async (clientId: string) => {
+    try {
+      const response = await fetch(`${config.API_URL}/api/apporteur/prospects/${clientId}/schedule-meetings`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          meetings: scheduledMeetings.map(m => ({
+            expert_id: m.expert_id,
+            meeting_type: m.meeting_type,
+            scheduled_date: m.scheduled_date,
+            scheduled_time: m.scheduled_time,
+            location: m.location,
+            notes: m.notes,
+            duration_minutes: m.estimated_duration || 60,
+            product_ids: m.client_produit_eligible_ids || m.product_ids
+          }))
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Erreur création RDV');
+      }
+
+      const result = await response.json();
+      toast.success(`${result.data?.created?.length || 0} RDV créé(s) avec succès !`);
+      
+    } catch (error) {
+      console.error('Erreur création RDV multiples:', error);
+      toast.error('Erreur lors de la création des RDV');
     }
   };
 
@@ -326,7 +481,12 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
       const result: any = await response.json();
       console.log('✅ Prospect sauvegardé:', result);
       
-      const createdProspectId: string | undefined = result.data?.prospect?.id;
+      const createdProspectId: string | undefined = result.data?.prospect?.id || prospectId;
+      
+      // Si mode simulation avec RDV multiples, créer les RDV
+      if (identificationMode === 'simulation' && simulationCompleted && scheduledMeetings.length > 0 && createdProspectId) {
+        await createMultipleMeetings(createdProspectId);
+      }
       
       // Envoyer l'email si une option a été sélectionnée
       if (emailOption !== 'none' && createdProspectId) {
@@ -590,58 +750,116 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
               </div>
             </div>
 
-            {/* RDV */}
+            {/* Toggle Simulation/Manuel - NOUVEAU */}
+            <div className="my-8">
+              <SimulationToggle
+                mode={identificationMode}
+                onModeChange={handleModeChange}
+                disabled={loading}
+              />
+            </div>
+
+            {/* Simulateur Intégré - NOUVEAU */}
+            {identificationMode === 'simulation' && !simulationCompleted && (
+              <div className="my-6">
+                <EmbeddedSimulator
+                  prospectId={prospectId}
+                  prospectData={{
+                    company_name: formData.company_name,
+                    budget_range: formData.budget_range,
+                    timeline: formData.timeline,
+                    secteur_activite: formData.company_name
+                  }}
+                  prefilledAnswers={prefilledAnswers}
+                  onComplete={handleSimulationComplete}
+                  onCancel={() => setIdentificationMode('manual')}
+                />
+              </div>
+            )}
+
+            {/* Résumé Simulation - NOUVEAU */}
+            {identificationMode === 'simulation' && simulationCompleted && identifiedProducts.length > 0 && (
+              <div className="my-6">
+                <SimulationResultsSummary
+                  summary={{
+                    highly_eligible: identifiedProducts.filter(p => p.score >= 80).length,
+                    eligible: identifiedProducts.filter(p => p.score >= 60 && p.score < 80).length,
+                    to_confirm: identifiedProducts.filter(p => p.score >= 40 && p.score < 60).length,
+                    not_eligible: identifiedProducts.filter(p => p.score < 40).length
+                  }}
+                  totalSavings={identifiedProducts.reduce((sum, p) => sum + (p.estimated_savings || 0), 0)}
+                  prospectName={formData.company_name || formData.name}
+                  onReset={() => {
+                    setSimulationCompleted(false);
+                    setIdentifiedProducts([]);
+                  }}
+                  onValidate={() => toast.success('Résultats validés !')}
+                />
+              </div>
+            )}
+
+            {/* RDV - Mode conditionnel selon simulation */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold flex items-center gap-2">
                 <Calendar className="h-5 w-5" />
-                Rendez-vous (obligatoire)
+                Rendez-vous
               </h3>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="meeting_type">Type de meeting *</Label>
-                  <select
-                    id="meeting_type"
-                    value={formData.meeting_type}
-                    onChange={(e) => setFormData(prev => ({ ...prev, meeting_type: e.target.value as any }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  >
-                    <option value="physical">Physique</option>
-                    <option value="video">Visio</option>
-                    <option value="phone">Téléphone</option>
-                  </select>
+              {/* Mode Simulation : Planification RDV Multiples */}
+              {identificationMode === 'simulation' && simulationCompleted && scheduledMeetings.length > 0 ? (
+                <MultiMeetingScheduler
+                  meetings={scheduledMeetings}
+                  onMeetingsChange={handleMeetingsChange}
+                  prospectName={formData.company_name || formData.name}
+                />
+              ) : (
+                /* Mode Manuel : RDV Simple */
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="meeting_type">Type de meeting *</Label>
+                    <select
+                      id="meeting_type"
+                      value={formData.meeting_type}
+                      onChange={(e) => setFormData(prev => ({ ...prev, meeting_type: e.target.value as any }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    >
+                      <option value="physical">Physique</option>
+                      <option value="video">Visio</option>
+                      <option value="phone">Téléphone</option>
+                    </select>
+                  </div>
+                  <div>
+                    <Label htmlFor="scheduled_date">Date *</Label>
+                    <Input
+                      id="scheduled_date"
+                      type="date"
+                      value={formData.scheduled_date}
+                      onChange={(e) => setFormData(prev => ({ ...prev, scheduled_date: e.target.value }))}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="scheduled_time">Heure *</Label>
+                    <Input
+                      id="scheduled_time"
+                      type="time"
+                      value={formData.scheduled_time}
+                      onChange={(e) => setFormData(prev => ({ ...prev, scheduled_time: e.target.value }))}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="location">Lieu</Label>
+                    <Input
+                      id="location"
+                      value={formData.location}
+                      onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+                      placeholder="Adresse ou lien visio"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <Label htmlFor="scheduled_date">Date *</Label>
-                  <Input
-                    id="scheduled_date"
-                    type="date"
-                    value={formData.scheduled_date}
-                    onChange={(e) => setFormData(prev => ({ ...prev, scheduled_date: e.target.value }))}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="scheduled_time">Heure *</Label>
-                  <Input
-                    id="scheduled_time"
-                    type="time"
-                    value={formData.scheduled_time}
-                    onChange={(e) => setFormData(prev => ({ ...prev, scheduled_time: e.target.value }))}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="location">Lieu</Label>
-                  <Input
-                    id="location"
-                    value={formData.location}
-                    onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
-                    placeholder="Adresse ou lien visio"
-                  />
-                </div>
-              </div>
+              )}
             </div>
 
             {/* Produits Éligibles */}
@@ -651,20 +869,32 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
                 Produits Éligibles
               </h3>
               
-              <div className="space-y-3">
-                {products.map((product) => {
-                  const selectedProduct = formData.selected_products.find(p => p.id === product.id);
-                  if (!selectedProduct) return null;
+              {/* Mode Simulation : Afficher produits avec experts optimisés */}
+              {identificationMode === 'simulation' && simulationCompleted && identifiedProducts.length > 0 ? (
+                <div className="space-y-4">
+                  {identifiedProducts.map((product) => (
+                    <ProductEligibilityCardWithExpert
+                      key={product.id}
+                      product={product}
+                    />
+                  ))}
+                </div>
+              ) : (
+                /* Mode Manuel : Afficher checkboxes traditionnelles */
+                <div className="space-y-3">
+                  {products.map((product) => {
+                    const selectedProduct = formData.selected_products.find(p => p.id === product.id);
+                    if (!selectedProduct) return null;
 
-                  return (
-                    <Card key={product.id} className="p-4">
-                      <div className="flex items-start gap-3">
-                        <Checkbox
-                          checked={selectedProduct.selected}
-                          onCheckedChange={(checked) => 
-                            handleProductChange(product.id, 'selected', checked)
-                          }
-                        />
+                    return (
+                      <Card key={product.id} className="p-4">
+                        <div className="flex items-start gap-3">
+                          <Checkbox
+                            checked={selectedProduct.selected}
+                            onCheckedChange={(checked) => 
+                              handleProductChange(product.id, 'selected', checked)
+                            }
+                          />
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
                             <h4 className="font-medium">{product.nom}</h4>
@@ -713,7 +943,50 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
                   );
                 })}
               </div>
+              )}
             </div>
+
+            {/* Recommandations Experts Optimisées - NOUVEAU (uniquement en mode simulation) */}
+            {identificationMode === 'simulation' && simulationCompleted && expertOptimization && (
+              <div className="my-6">
+                <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
+                  <Users className="h-5 w-5" />
+                  Experts Recommandés (Sélection Optimale)
+                </h3>
+                
+                <div className="space-y-4">
+                  {/* Recommandation Principale */}
+                  {expertOptimization.recommended && (
+                    <div>
+                      <div className="text-sm font-semibold text-purple-700 mb-2">🏆 Recommandé</div>
+                      <ExpertRecommendationOptimized
+                        recommendation={expertOptimization.recommended}
+                        isSelected={selectedExperts.some(id => expertOptimization.recommended.experts.some((e: any) => e.id === id))}
+                        onSelect={() => {
+                          const expertIds = expertOptimization.recommended.experts.map((e: any) => e.id);
+                          setSelectedExperts(expertIds);
+                        }}
+                      />
+                    </div>
+                  )}
+                  
+                  {/* Alternatives */}
+                  {expertOptimization.alternatives?.map((alt: any, idx: number) => (
+                    <div key={idx}>
+                      <div className="text-sm font-semibold text-blue-600 mb-2">Alternative {idx + 1}</div>
+                      <ExpertRecommendationOptimized
+                        recommendation={alt}
+                        isSelected={alt.experts.some((e: any) => selectedExperts.includes(e.id))}
+                        onSelect={() => {
+                          const expertIds = alt.experts.map((e: any) => e.id);
+                          setSelectedExperts(expertIds);
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Sélection Expert (nouvelle étape) */}
             {formData.selected_products.some(p => p.selected) && (

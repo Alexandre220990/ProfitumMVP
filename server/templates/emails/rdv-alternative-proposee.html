@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Date alternative proposée</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f7fafc;
+        }
+        .container {
+            background-color: white;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .logo {
+            font-size: 32px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+        .title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2d3748;
+            margin-bottom: 10px;
+        }
+        .date-comparison {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 16px;
+            margin: 32px 0;
+            align-items: center;
+        }
+        .date-box {
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .date-box-old {
+            background-color: #fed7d7;
+            border: 2px solid #fc8181;
+        }
+        .date-box-new {
+            background-color: #c6f6d5;
+            border: 2px solid #48bb78;
+        }
+        .date-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            font-weight: 600;
+            color: #718096;
+            margin-bottom: 8px;
+        }
+        .date-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: #2d3748;
+        }
+        .arrow {
+            font-size: 32px;
+            color: #a0aec0;
+        }
+        .expert-notes {
+            background-color: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 16px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+        .cta-buttons {
+            text-align: center;
+            margin: 32px 0;
+        }
+        .btn {
+            display: inline-block;
+            padding: 14px 28px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            margin: 8px;
+        }
+        .btn-accept {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            color: white !important;
+        }
+        .btn-refuse {
+            background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
+            color: white !important;
+        }
+        .footer {
+            text-align: center;
+            color: #a0aec0;
+            font-size: 14px;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e2e8f0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">Profitum</div>
+            <h1 class="title">📅 Nouvelle date proposée</h1>
+            <p class="subtitle">Bonjour {{client_name}},</p>
+        </div>
+
+        <!-- Introduction -->
+        <p>Votre expert <strong>{{expert_name}}</strong> propose une date alternative pour votre rendez-vous.</p>
+
+        <!-- Date Comparison -->
+        <div class="date-comparison">
+            <!-- Date Originale -->
+            <div class="date-box date-box-old">
+                <div class="date-label">Date originale</div>
+                <div class="date-value">{{original_date}}</div>
+                <div style="margin-top: 8px; color: #4a5568;">à {{original_time}}</div>
+            </div>
+
+            <!-- Arrow -->
+            <div class="arrow">→</div>
+
+            <!-- Nouvelle Date -->
+            <div class="date-box date-box-new">
+                <div class="date-label">✨ Nouvelle date</div>
+                <div class="date-value">{{alternative_date}}</div>
+                <div style="margin-top: 8px; color: #4a5568;">à {{alternative_time}}</div>
+            </div>
+        </div>
+
+        <!-- Expert Notes -->
+        {{#if expert_notes}}
+        <div class="expert-notes">
+            <strong>💬 Message de {{expert_name}} :</strong>
+            <p style="margin: 8px 0 0 0;">{{expert_notes}}</p>
+        </div>
+        {{/if}}
+
+        <!-- Produits concernés -->
+        <div style="background-color: #ebf8ff; border-radius: 8px; padding: 20px; margin: 24px 0;">
+            <h3 style="margin-top: 0; color: #2d3748;">📦 Produits à traiter :</h3>
+            {{#each products}}
+            <div style="padding: 8px 0;">
+                <span style="font-weight: 600;">{{name}}</span>
+                {{#if estimated_savings}}
+                <span style="color: #48bb78; margin-left: 8px;">💰 {{estimated_savings}}€/an</span>
+                {{/if}}
+            </div>
+            {{/each}}
+        </div>
+
+        <!-- CTA Buttons -->
+        <div class="cta-buttons">
+            <a href="{{platform_url}}/client/meetings/{{meeting_id}}/accept-alternative" class="btn btn-accept">
+                ✅ Accepter cette date
+            </a>
+            <a href="{{platform_url}}/client/meetings/{{meeting_id}}/refuse" class="btn btn-refuse">
+                ❌ Refuser
+            </a>
+        </div>
+
+        <!-- Info -->
+        <div style="background-color: #edf2f7; border-radius: 8px; padding: 20px; margin-top: 24px;">
+            <h4 style="margin-top: 0; color: #2d3748;">ℹ️ Bon à savoir</h4>
+            <ul style="margin: 0; padding-left: 20px; color: #4a5568;">
+                <li>Vous pouvez accepter ou refuser cette proposition depuis votre espace personnel</li>
+                <li>Si vous refusez, votre conseiller vous recontactera</li>
+                <li>Une fois acceptée, vous recevrez une confirmation avec les détails complets</li>
+                <li>Un fichier .ics sera généré pour votre calendrier</li>
+            </ul>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>© 2025 Profitum - Tous droits réservés</p>
+            <p style="font-size: 12px; margin-top: 8px;">
+                Questions ? Contactez {{apporteur_name}} : {{apporteur_email}}
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+

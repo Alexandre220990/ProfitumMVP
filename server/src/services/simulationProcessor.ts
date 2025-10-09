@@ -151,9 +151,9 @@ export async function lancerSimulation(clientId: string): Promise<SimulationResu
     // 2. Créer une nouvelle simulation
     console.log(`Création d'une nouvelle simulation pour le client ${clientId}`)
     const { data: simulation, error } = await supabase
-      .from('Simulation')
+      .from('simulations')
       .insert({
-        clientId,
+        client_id: clientId,
         statut: 'en_cours',
         dateCreation: new Date().toISOString(),
         createdAt: new Date().toISOString(),
@@ -269,10 +269,100 @@ export async function traiterSimulation(simulationId: number): Promise<Simulatio
       answers
     )
     
-    // 5. Mettre à jour la simulation avec les résultats
+    console.log(`✅ ${eligibleProducts.length} produits éligibles identifiés pour la simulation ${simulationId}`)
+    
+    // 5. **NOUVEAU** : Créer les ClientProduitEligible (liaison Client ↔ Produits)
+    if (simulation.client_id && eligibleProducts.length > 0) {
+      console.log(`📦 Création des ClientProduitEligible pour le client ${simulation.client_id}`)
+      
+      // Récupérer TOUS les produits actifs
+      const { data: allProducts, error: productsError } = await supabase
+        .from('ProduitEligible')
+        .select('id, nom')
+        .eq('active', true)
+        .order('nom')
+      
+      if (productsError || !allProducts) {
+        console.error('⚠️ Erreur récupération produits:', productsError)
+      } else {
+        // Créer les entrées pour TOUS les produits (éligibles ET non éligibles)
+        const produitsToInsert = allProducts.map((produit, index) => {
+          const eligibility = eligibleProducts.find(ep => ep.productId === produit.id)
+          const isEligible = !!eligibility
+          
+          return {
+            clientId: simulation.client_id,
+            produitId: produit.id,
+            simulationId: simulationId,
+            statut: isEligible ? 'eligible' : 'non_eligible',
+            tauxFinal: isEligible ? (eligibility.score / 100) : null,
+            montantFinal: isEligible ? (eligibility.score * 1000) : null, // Estimation
+            dureeFinale: isEligible ? 12 : null, // Durée par défaut
+            priorite: isEligible ? (eligibleProducts.indexOf(eligibility) + 1) : (index + 10),
+            notes: isEligible 
+              ? `Produit éligible via simulation - Score: ${eligibility.score.toFixed(2)}%` 
+              : 'Produit non éligible selon simulation',
+            metadata: {
+              source: 'simulation_processor',
+              simulation_id: simulationId,
+              detected_at: new Date().toISOString(),
+              is_eligible: isEligible,
+              score: isEligible ? eligibility.score : 0,
+              satisfied_rules: isEligible ? eligibility.satisfiedRules : 0,
+              total_rules: isEligible ? eligibility.totalRules : 0,
+              details: isEligible ? eligibility.details : []
+            },
+            dateEligibilite: isEligible ? new Date().toISOString() : null,
+            current_step: isEligible ? 0 : 0,
+            progress: isEligible ? 0 : 0,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }
+        })
+        
+        // Insérer TOUS les produits
+        const { error: insertError } = await supabase
+          .from('ClientProduitEligible')
+          .insert(produitsToInsert)
+        
+        if (insertError) {
+          console.error('❌ Erreur lors de la création des ClientProduitEligible:', insertError)
+          // Ne pas faire échouer la simulation pour autant
+        } else {
+          const nbEligibles = produitsToInsert.filter(p => p.statut === 'eligible').length
+          const nbNonEligibles = produitsToInsert.filter(p => p.statut === 'non_eligible').length
+          console.log(`✅ ${produitsToInsert.length} ClientProduitEligible créés (${nbEligibles} éligibles, ${nbNonEligibles} non éligibles)`)
+          
+          // Générer automatiquement les étapes pour les produits éligibles
+          for (const produit of produitsToInsert.filter(p => p.statut === 'eligible')) {
+            try {
+              // Récupérer l'ID du ClientProduitEligible juste créé
+              const { data: cpe } = await supabase
+                .from('ClientProduitEligible')
+                .select('id')
+                .eq('clientId', simulation.client_id)
+                .eq('produitId', produit.produitId)
+                .eq('simulationId', simulationId)
+                .single()
+              
+              if (cpe) {
+                const { DossierStepGenerator } = require('./dossierStepGenerator')
+                await DossierStepGenerator.generateStepsForDossier(cpe.id)
+                console.log(`  ✅ Étapes générées pour ${produit.produitId}`)
+              }
+            } catch (stepError) {
+              const errorMessage = stepError instanceof Error ? stepError.message : String(stepError)
+              console.warn(`  ⚠️ Erreur génération étapes:`, errorMessage)
+            }
+          }
+        }
+      }
+    }
+    
+    // 6. Mettre à jour la simulation avec les résultats
     const now = new Date().toISOString()
     
-    // 6. Créer une entrée dans SimulationProcessed
+    // 7. Créer une entrée dans SimulationProcessed
     const { error: archiveError } = await supabase
       .from('SimulationProcessed')
       .insert({
@@ -295,15 +385,19 @@ export async function traiterSimulation(simulationId: number): Promise<Simulatio
       console.error("Erreur lors de l'archivage de la simulation:", archiveError)
     }
     
-    // 7. Mettre à jour le statut de la simulation
+    // 8. Mettre à jour le statut de la simulation
     const { error: updateError } = await supabase
-      .from('Simulation')
+      .from('simulations')
       .update({
-        statut: 'terminée',
-        score: eligibleProducts.length > 0 
-          ? eligibleProducts.reduce((acc, p) => acc + p.score, 0) / eligibleProducts.length
-          : 0,
-        updatedAt: now
+        status: 'completed',
+        results: {
+          eligible_products: eligibleProducts,
+          processed_at: now,
+          score: eligibleProducts.length > 0 
+            ? eligibleProducts.reduce((acc, p) => acc + p.score, 0) / eligibleProducts.length
+            : 0
+        },
+        updated_at: now
       })
       .eq('id', simulationId)
     

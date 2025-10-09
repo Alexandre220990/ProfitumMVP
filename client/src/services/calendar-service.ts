@@ -64,7 +64,7 @@ class CalendarService {
   // ===== GESTION DES ÉVÉNEMENTS =====
 
   /**
-   * Récupérer tous les événements
+   * Récupérer tous les événements (CalendarEvent + RDV unifiés)
    */
   async getEvents(filters: {
     start_date?: string;
@@ -83,7 +83,8 @@ class CalendarService {
         }
       });
 
-      const response = await fetch(`${this.baseUrl}/events?${params}`, {
+      // 1. Récupérer les événements CalendarEvent classiques
+      const calendarResponse = await fetch(`${this.baseUrl}/events?${params}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -91,26 +92,112 @@ class CalendarService {
         }
       });
 
-      if (!response.ok) {
-        // Gestion spécifique des erreurs
-        if (response.status === 404) {
-          console.warn('⚠️ Endpoint calendrier non trouvé - retourner tableau vide');
-          return [];
-        }
-        if (response.status === 401) {
-          console.warn('⚠️ Non authentifié pour le calendrier - retourner tableau vide');
-          return [];
-        }
-        throw new Error(`Erreur calendrier: ${response.status} ${response.statusText}`);
+      let calendarEvents: CalendarEvent[] = [];
+      if (calendarResponse.ok) {
+        const calendarResult = await calendarResponse.json();
+        calendarEvents = calendarResult.data || [];
       }
 
-      const result = await response.json();
-      return result.data || [];
+      // 2. Récupérer les RDV et les transformer en CalendarEvent
+      try {
+        const rdvBaseUrl = `${import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app'}/api/rdv`;
+        const rdvParams = new URLSearchParams();
+        rdvParams.append('format', 'calendar'); // Demander format CalendarEvent
+        if (filters.start_date) rdvParams.append('start_date', filters.start_date);
+        if (filters.end_date) rdvParams.append('end_date', filters.end_date);
+        if (filters.status) rdvParams.append('status', filters.status);
+        if (filters.category) rdvParams.append('category', filters.category);
+        
+        const rdvResponse = await fetch(`${rdvBaseUrl}?${rdvParams}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        if (rdvResponse.ok) {
+          const rdvResult = await rdvResponse.json();
+          const rdvEvents = rdvResult.data || [];
+          
+          // Transformer les RDV en format CalendarEvent
+          const transformedRDVs = rdvEvents.map((rdv: any) => this.transformRDVToCalendarEvent(rdv));
+          
+          // 3. Fusionner et trier
+          const allEvents = [...calendarEvents, ...transformedRDVs]
+            .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime());
+          
+          return allEvents;
+        }
+      } catch (rdvError) {
+        console.warn('⚠️ Erreur récupération RDV, retour CalendarEvent uniquement:', rdvError);
+      }
+
+      // Retourner au moins les CalendarEvent si RDV échoue
+      return calendarEvents;
+      
     } catch (error) {
       console.error('❌ Erreur récupération événements calendrier:', error);
-      // Retourner un tableau vide au lieu de lancer une exception
       return [];
     }
+  }
+
+  /**
+   * Transformer un RDV en CalendarEvent
+   */
+  private transformRDVToCalendarEvent(rdv: any): CalendarEvent {
+    const startDateTime = `${rdv.scheduled_date}T${rdv.scheduled_time}`;
+    const endDateTime = new Date(
+      new Date(startDateTime).getTime() + (rdv.duration_minutes || 60) * 60000
+    ).toISOString();
+
+    return {
+      id: rdv.id,
+      title: rdv.title || 'RDV',
+      description: rdv.description || rdv.notes,
+      start_date: startDateTime,
+      end_date: endDateTime,
+      location: rdv.location,
+      is_online: rdv.meeting_type === 'video',
+      meeting_url: rdv.meeting_url,
+      color: rdv.metadata?.color || this.getStatusColor(rdv.status),
+      status: rdv.status,
+      type: 'appointment',
+      priority: this.getPriorityFromNumber(rdv.priority),
+      category: rdv.category || 'client_rdv',
+      client_id: rdv.client_id,
+      expert_id: rdv.expert_id,
+      created_by: rdv.created_by,
+      created_at: rdv.created_at,
+      updated_at: rdv.updated_at,
+      metadata: {
+        ...rdv.metadata,
+        source: 'RDV',
+        rdv_id: rdv.id,
+        meeting_type: rdv.meeting_type,
+        apporteur_id: rdv.apporteur_id,
+        products: rdv.RDV_Produits || []
+      }
+    };
+  }
+
+  private getStatusColor(status: string): string {
+    const colors: Record<string, string> = {
+      'proposed': '#F59E0B',
+      'confirmed': '#10B981',
+      'completed': '#3B82F6',
+      'cancelled': '#EF4444',
+      'rescheduled': '#8B5CF6'
+    };
+    return colors[status] || '#6B7280';
+  }
+
+  private getPriorityFromNumber(priority?: number): 'low' | 'medium' | 'high' | 'critical' {
+    if (!priority) return 'medium';
+    if (priority >= 4) return 'critical';
+    if (priority === 3) return 'high';
+    if (priority === 2) return 'medium';
+    return 'low';
   }
 
   /**

@@ -286,11 +286,11 @@ router.post('/', async (req: Request, res: Response) => {
 
       // Mettre à jour la simulation avec les résultats
       const { error: updateError } = await supabase
-        .from('Simulation')
+        .from('simulations')
         .update({
-          statut: 'completed',
+          status: 'completed',
           results: pythonResponse,
-          processedAt: new Date().toISOString()
+          updated_at: new Date().toISOString()
         })
         .eq('id', simulation.id);
 
@@ -323,10 +323,12 @@ router.post('/', async (req: Request, res: Response) => {
       
       // Marquer la simulation comme échouée
       await supabase
-        .from('Simulation')
+        .from('simulations')
         .update({
-          statut: 'failed',
-          error: pythonError instanceof Error ? pythonError.message : 'Erreur inconnue'
+          status: 'failed',
+          metadata: { 
+            error: pythonError instanceof Error ? pythonError.message : 'Erreur inconnue'
+          }
         })
         .eq('id', simulation.id);
 
@@ -410,7 +412,7 @@ router.post('/:id/export', async (req: Request, res: Response) => {
 
     // Récupérer la simulation
     const { data: simulation, error: simulationError } = await supabase
-      .from('Simulation')
+      .from('simulations')
       .select('*')
       .eq('id', id)
       .single();

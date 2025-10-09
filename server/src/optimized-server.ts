@@ -20,7 +20,7 @@ import clientRoutes from './routes/client';
 import expertRoutes from './routes/expert';
 import adminRoutes from './routes/admin';
 import auditRoutes from './routes/audit';
-import simulationRoute from './routes/simulation';
+// SUPPRIMÉ: import simulationRoute from './routes/simulation'; (fichier obsolète, doublon de simulationRoutes)
 
 
 // Middlewares
@@ -216,7 +216,7 @@ app.use('/api/client', enhancedAuthMiddleware, requireUserType('client'), client
 app.use('/api/expert', enhancedAuthMiddleware, requireUserType('expert'), expertRoutes);
 app.use('/api/admin', enhancedAuthMiddleware, requireUserType('admin'), adminRoutes);
 app.use('/api/audit', enhancedAuthMiddleware, auditRoutes);
-app.use('/api/simulation', enhancedAuthMiddleware, simulationRoute);
+// SUPPRIMÉ: app.use('/api/simulation', enhancedAuthMiddleware, simulationRoute); (doublon avec ligne 205)
 
 
 // ===== ROUTES DE SYSTÈME =====

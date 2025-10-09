@@ -119,7 +119,7 @@ export class ConversationOrchestrator {
     // Essayer de récupérer depuis la base de données
     try {
       const { rows } = await pool.query(
-        'SELECT * FROM "chatbotsimulation" WHERE id = $1',
+        'SELECT * FROM "Simulation" WHERE id = $1',
         [simulationId]
       );
 
@@ -755,10 +755,14 @@ export class ConversationOrchestrator {
     try {
       // Essayer d'abord la structure complète
       await pool.query(
-        `UPDATE "chatbotsimulation" 
-         SET processing_status = $1, 
-             eligible_products = $2,
-             last_processed_at = NOW()
+        `UPDATE "Simulation" 
+         SET statut = $1, 
+             "CheminParcouru" = jsonb_set(
+               COALESCE("CheminParcouru", '{}'::jsonb),
+               '{produits_eligibles}',
+               $2::jsonb
+             ),
+             "updatedAt" = NOW()
          WHERE id = $3`,
         [
           state.phase,

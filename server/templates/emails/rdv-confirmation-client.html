@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirmation de vos rendez-vous</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f7fafc;
+        }
+        .container {
+            background-color: white;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .logo {
+            font-size: 32px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+        .title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2d3748;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #718096;
+            font-size: 16px;
+        }
+        .meeting-card {
+            background: linear-gradient(to right, #ebf4ff, #e9d8fd);
+            border-left: 4px solid #5a67d8;
+            border-radius: 8px;
+            padding: 24px;
+            margin: 20px 0;
+        }
+        .meeting-header {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 16px;
+        }
+        .meeting-detail {
+            display: flex;
+            align-items: center;
+            margin: 12px 0;
+            color: #4a5568;
+        }
+        .meeting-detail-icon {
+            margin-right: 12px;
+            color: #5a67d8;
+        }
+        .products-list {
+            background-color: white;
+            border-radius: 6px;
+            padding: 16px;
+            margin-top: 16px;
+        }
+        .product-item {
+            padding: 8px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .product-item:last-child {
+            border-bottom: none;
+        }
+        .product-name {
+            font-weight: 600;
+            color: #2d3748;
+        }
+        .product-savings {
+            color: #48bb78;
+            font-size: 14px;
+        }
+        .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white !important;
+            text-decoration: none;
+            padding: 14px 28px;
+            border-radius: 8px;
+            font-weight: 600;
+            margin: 24px 0;
+            text-align: center;
+        }
+        .cta-button:hover {
+            opacity: 0.9;
+        }
+        .info-box {
+            background-color: #edf2f7;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .footer {
+            text-align: center;
+            color: #a0aec0;
+            font-size: 14px;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e2e8f0;
+        }
+        .highlight {
+            background-color: #fef3c7;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">Profitum</div>
+            <h1 class="title">🎉 Vos rendez-vous sont confirmés !</h1>
+            <p class="subtitle">Bonjour {{client_name}},</p>
+        </div>
+
+        <!-- Introduction -->
+        <p>Nous avons le plaisir de vous informer que vos rendez-vous avec nos experts ont été confirmés.</p>
+        <p>Votre conseiller <strong>{{apporteur_name}}</strong> a identifié <span class="highlight">{{products_count}} produits éligibles</span> pouvant générer jusqu'à <span class="highlight">{{total_savings}}€ d'économies</span>.</p>
+
+        <!-- Rendez-vous */}
+        {{#each meetings}}
+        <div class="meeting-card">
+            <div class="meeting-header">
+                📅 Rendez-vous {{@index}} : {{expert_name}}
+            </div>
+            
+            <div class="meeting-detail">
+                <span class="meeting-detail-icon">📍</span>
+                <strong>Date :</strong>&nbsp;{{scheduled_date}} à {{scheduled_time}}
+            </div>
+            
+            <div class="meeting-detail">
+                <span class="meeting-detail-icon">⏱️</span>
+                <strong>Durée :</strong>&nbsp;{{duration_minutes}} minutes
+            </div>
+            
+            <div class="meeting-detail">
+                <span class="meeting-detail-icon">{{#if (eq meeting_type 'video')}}🎥{{else if (eq meeting_type 'phone')}}📞{{else}}🏢{{/if}}</span>
+                <strong>Modalité :</strong>&nbsp;{{#if (eq meeting_type 'video')}}Visioconférence{{else if (eq meeting_type 'phone')}}Téléphone{{else}}Physique{{/if}}
+            </div>
+            
+            {{#if location}}
+            <div class="meeting-detail">
+                <span class="meeting-detail-icon">📌</span>
+                <strong>Lieu :</strong>&nbsp;{{location}}
+            </div>
+            {{/if}}
+
+            <!-- Produits associés -->
+            <div class="products-list">
+                <strong style="display: block; margin-bottom: 12px;">Produits à traiter :</strong>
+                {{#each products}}
+                <div class="product-item">
+                    <div class="product-name">✓ {{name}}</div>
+                    {{#if estimated_savings}}
+                    <div class="product-savings">Économie estimée : {{estimated_savings}}€/an</div>
+                    {{/if}}
+                </div>
+                {{/each}}
+            </div>
+        </div>
+        {{/each}}
+
+        <!-- Accès plateforme -->
+        <div class="info-box">
+            <h3 style="margin-top: 0; color: #2d3748;">🔐 Accès à votre espace personnel</h3>
+            <p>Nous avons créé votre compte sur notre plateforme. Vous pourrez y suivre vos dossiers en temps réel.</p>
+            <p style="margin: 16px 0;">
+                <strong>Email :</strong> {{client_email}}<br>
+                <strong>Mot de passe temporaire :</strong> <code style="background: #e2e8f0; padding: 4px 8px; border-radius: 4px;">{{temp_password}}</code>
+            </p>
+            <p style="font-size: 14px; color: #718096;">
+                ⚠️ Veuillez changer votre mot de passe lors de votre première connexion
+            </p>
+        </div>
+
+        <!-- CTA Button -->
+        <center>
+            <a href="{{platform_url}}/connexion-client" class="cta-button">
+                Accéder à mon espace
+            </a>
+        </center>
+
+        <!-- Instructions -->
+        <div style="margin-top: 32px; padding: 20px; background-color: #f7fafc; border-radius: 8px;">
+            <h3 style="color: #2d3748; margin-top: 0;">📋 Prochaines étapes :</h3>
+            <ol style="margin: 0; padding-left: 20px; color: #4a5568;">
+                <li>Connectez-vous à votre espace personnel</li>
+                <li>Préparez les documents nécessaires pour vos rendez-vous</li>
+                <li>Nos experts vous contacteront avant le rendez-vous si besoin</li>
+                <li>Les rendez-vous sont ajoutés à votre calendrier automatiquement</li>
+            </ol>
+        </div>
+
+        <!-- Contact -->
+        <div style="margin-top: 32px; text-align: center; padding: 20px; background-color: #edf2f7; border-radius: 8px;">
+            <p style="margin: 0; color: #4a5568;">
+                Des questions ? Contactez votre conseiller <strong>{{apporteur_name}}</strong>
+            </p>
+            <p style="margin: 8px 0 0 0; color: #718096;">
+                📧 {{apporteur_email}} | 📞 {{apporteur_phone}}
+            </p>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>© 2025 Profitum - Tous droits réservés</p>
+            <p style="font-size: 12px; margin-top: 8px;">
+                Cet email a été envoyé à {{client_email}}<br>
+                Si vous n'êtes pas destinataire de cet email, veuillez le supprimer.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+

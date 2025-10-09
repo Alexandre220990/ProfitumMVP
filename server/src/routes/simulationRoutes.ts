@@ -13,7 +13,7 @@ const router = Router();
 // Configuration Supabase avec les valeurs exactes fournies
 const supabaseUrl = process.env.SUPABASE_URL || 'https://gvvlsgtubqfxdztldunj.supabase.co';
 // Utiliser la clé anon public pour les opérations côté client
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2dmxzZ3R1YnFmeGR6dGxkdW5qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE3Njk4NDksImV4cCI6MjA1NzM0NTg0OX0.2hahkZasfMfdFhQvP7rvPHzO1DBCl0FfsRVkxVZfdgk';
+const supabaseKey = process.env.SUPABASE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2dmxzZ3R1YnFmeGR6dGxkdW5qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE3Njk4NDksImV4cCI6MjA1NzM0NTg0OX0.2hahkZasfMfdFhQvP7rvPHzO1DBCl0FfsRVkxVZfdgk';
 
 console.log(`SimulationRoutes - Initialisation Supabase avec URL: ${supabaseUrl}`);
 console.log(`SimulationRoutes - Utilisation de la clé API: ${supabaseKey.substring(0, 20)}...`);
@@ -78,13 +78,23 @@ router.post('/', async (req: Request, res: Response) => {
       });
     }
 
-    // Créer la simulation
+    // Initialiser CheminParcouru avec structure appropriée
+    const cheminParcouruInitial = {
+      etapes: [],
+      temps_par_question: {},
+      date_debut: new Date().toISOString(),
+      retours_arriere: []
+    };
+
+    // Créer la simulation avec l'approche hybride
     const { data: simulation, error: simulationError } = await supabase
-      .from('Simulation')
+      .from('simulations')
       .insert({
-        clientId: client_id,
-        cheminParcouru: answers || {},
+        client_id: client_id,
+        CheminParcouru: cheminParcouruInitial,
+        Answers: answers || {},
         statut: 'en_cours',
+        dateCreation: new Date().toISOString(),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       })
@@ -137,10 +147,10 @@ router.post('/:id/terminer', async (req: Request, res: Response) => {
 
     // Mettre à jour le statut de la simulation
     const { error: updateError } = await supabase
-      .from('Simulation')
+      .from('simulations')
       .update({
-        statut: 'terminé',
-        updatedAt: new Date().toISOString()
+        status: 'completed',
+        updated_at: new Date().toISOString()
       })
       .eq('id', simulationId);
 
@@ -165,7 +175,7 @@ router.post('/:id/terminer', async (req: Request, res: Response) => {
   }
 });
 
-// Route pour sauvegarder les réponses
+// Route pour sauvegarder les réponses (APPROCHE HYBRIDE)
 router.post('/:id/answers', async (req: Request, res: Response) => {
   try {
     const simulationId = parseInt(req.params.id);
@@ -185,18 +195,55 @@ router.post('/:id/answers', async (req: Request, res: Response) => {
       });
     }
 
-    // Mettre à jour les réponses dans la table Simulation
+    // ÉTAPE 1 : Sauvegarder chaque réponse dans la table Reponse (normalisé)
+    const reponsePromises = Object.entries(answers).map(async ([questionId, valeur]) => {
+      // Vérifier si la réponse existe déjà
+      const { data: existingReponse } = await supabase
+        .from('Reponse')
+        .select('id')
+        .eq('simulationId', simulationId)
+        .eq('questionId', parseInt(questionId))
+        .single();
+
+      if (existingReponse) {
+        // Mettre à jour la réponse existante
+        return supabase
+          .from('Reponse')
+          .update({
+            valeur: Array.isArray(valeur) ? valeur[0] : String(valeur),
+            updatedAt: new Date().toISOString()
+          })
+          .eq('id', existingReponse.id);
+      } else {
+        // Créer une nouvelle réponse
+        return supabase
+          .from('Reponse')
+          .insert({
+            simulationId: simulationId,
+            questionId: parseInt(questionId),
+            valeur: Array.isArray(valeur) ? valeur[0] : String(valeur),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          });
+      }
+    });
+
+    await Promise.all(reponsePromises);
+
+    // ÉTAPE 2 : Mettre à jour answers (JSON) dans simulations pour récupération rapide
     const { error: updateError } = await supabase
-      .from('Simulation')
+      .from('simulations')
       .update({
-        Answers: answers,
-        updatedAt: new Date().toISOString()
+        answers: answers,
+        updated_at: new Date().toISOString()
       })
       .eq('id', simulationId);
 
     if (updateError) {
       throw updateError;
     }
+
+    console.log(`✅ Réponses sauvegardées (hybride) pour simulation ${simulationId}: ${Object.keys(answers).length} questions`);
 
     return res.json({
       success: true,
@@ -212,7 +259,7 @@ router.post('/:id/answers', async (req: Request, res: Response) => {
   }
 });
 
-// Route pour récupérer les réponses d'une simulation
+// Route pour récupérer les réponses d'une simulation (APPROCHE HYBRIDE - Performance)
 router.get('/:id/answers', async (req: Request, res: Response) => {
   try {
     const simulationId = parseInt(req.params.id);
@@ -224,25 +271,30 @@ router.get('/:id/answers', async (req: Request, res: Response) => {
       });
     }
 
-    // Récupérer les réponses
-    const { data: reponses, error: selectError } = await supabase
-      .from('Reponse')
-      .select('questionId, valeur')
-      .eq('simulationId', simulationId);
+    // OPTIMISATION : Récupérer directement depuis le JSON answers (plus rapide)
+    const { data: simulation, error: selectError } = await supabase
+      .from('simulations')
+      .select('answers, results')
+      .eq('id', simulationId)
+      .single();
 
     if (selectError) {
       throw selectError;
     }
 
-    // Formater les réponses pour le front
-    const formattedAnswers = reponses.reduce((acc, reponse) => {
-      acc[reponse.questionId] = [reponse.valeur];
-      return acc;
-    }, {} as Record<number, string[]>);
+    if (!simulation) {
+      return res.status(404).json({
+        success: false,
+        message: "Simulation non trouvée"
+      });
+    }
 
     return res.json({
       success: true,
-      data: formattedAnswers
+      data: {
+        answers: simulation.answers || {},
+        results: simulation.results || {}
+      }
     });
 
   } catch (error) {
@@ -254,7 +306,7 @@ router.get('/:id/answers', async (req: Request, res: Response) => {
   }
 });
 
-// Route pour traiter une réponse en temps réel
+// Route pour traiter une réponse en temps réel (APPROCHE HYBRIDE)
 router.post('/:id/answer', async (req: Request, res: Response) => {
   try {
     const simulationId = parseInt(req.params.id);
@@ -274,20 +326,88 @@ router.post('/:id/answer', async (req: Request, res: Response) => {
       });
     }
 
-    // Créer une instance du processeur en temps réel
-    const realTimeProcessor = new RealTimeProcessor();
+    // ÉTAPE 1 : Sauvegarder dans la table Reponse (normalisé)
+    const { data: existingReponse } = await supabase
+      .from('Reponse')
+      .select('id')
+      .eq('simulationId', simulationId)
+      .eq('questionId', parseInt(questionId))
+      .single();
 
-    // Traiter la réponse
-    await realTimeProcessor.processAnswer(simulationId.toString(), {
+    if (existingReponse) {
+      // Mettre à jour la réponse existante
+      await supabase
+        .from('Reponse')
+        .update({
+          valeur: String(answer),
+          updatedAt: new Date().toISOString()
+        })
+        .eq('id', existingReponse.id);
+    } else {
+      // Créer une nouvelle réponse
+      await supabase
+        .from('Reponse')
+        .insert({
+          simulationId: simulationId,
+          questionId: parseInt(questionId),
+          valeur: String(answer),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        });
+    }
+
+    // ÉTAPE 2 : Récupérer la simulation actuelle
+    const { data: currentSim } = await supabase
+      .from('simulations')
+      .select('answers, metadata')
+      .eq('id', simulationId)
+      .single();
+
+    // ÉTAPE 3 : Mettre à jour answers (JSON) pour récupération rapide
+    const updatedAnswers = {
+      ...(currentSim?.answers || {}),
+      [questionId]: answer
+    };
+
+    // ÉTAPE 4 : Mettre à jour metadata avec métadonnées du parcours
+    const metadata = currentSim?.metadata || { etapes: [], temps_par_question: {} };
+    metadata.etapes = [...(metadata.etapes || []), {
       questionId,
-      value: answer,
-      timestamp: new Date(timestamp)
-    });
+      timestamp: timestamp || new Date().toISOString(),
+      valeur: answer
+    }];
+    metadata.temps_par_question = {
+      ...(metadata.temps_par_question || {}),
+      [questionId]: timestamp || new Date().toISOString()
+    };
 
-    // Récupérer les produits éligibles mis à jour
+    // Mettre à jour la simulation
+    await supabase
+      .from('simulations')
+      .update({
+        answers: updatedAnswers,
+        metadata: metadata,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', simulationId);
+
+    // ÉTAPE 5 : Traiter avec le processeur en temps réel (si disponible)
+    try {
+      const realTimeProcessor = new RealTimeProcessor();
+      await realTimeProcessor.processAnswer(simulationId.toString(), {
+        questionId,
+        value: answer,
+        timestamp: new Date(timestamp)
+      });
+    } catch (processorError) {
+      console.warn('Processeur temps réel non disponible ou erreur:', processorError);
+      // On continue même si le processeur échoue
+    }
+
+    // Récupérer la simulation mise à jour
     const { data: simulation, error: simError } = await supabase
-      .from('chatbotsimulation')
-      .select('eligible_products, processing_status')
+      .from('simulations')
+      .select('answers, metadata, status')
       .eq('id', simulationId)
       .single();
 
@@ -295,16 +415,17 @@ router.post('/:id/answer', async (req: Request, res: Response) => {
       throw simError;
     }
 
-    // Vérifier si la simulation est terminée
-    const isComplete = simulation.processing_status === 'completed' && 
-                      simulation.eligible_products && 
-                      simulation.eligible_products.length > 0;
+    // Vérifier si la simulation est terminée (toutes les questions répondues)
+    const isComplete = simulation.status === 'completed' && 
+                      simulation.answers && 
+                      Object.keys(simulation.answers).length > 0;
 
     return res.json({
       success: true,
       simulationComplete: isComplete,
       result: isComplete ? {
-        produits: simulation.eligible_products
+        answers: simulation.answers,
+        metadata: simulation.metadata
       } : null
     });
 

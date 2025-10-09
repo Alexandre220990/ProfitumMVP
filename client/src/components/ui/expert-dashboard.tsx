@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SkeletonMeetingCard } from "@/components/ui/loading-skeleton";
 import { 
   Briefcase, 
   DollarSign, 
@@ -27,12 +28,16 @@ import {
   MapPin,
   FileSignature,
   CalendarDays,
-  Timer
+  Timer,
+  ArrowUpRight,
+  ArrowDownRight
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { ExpertRealDataService } from "@/services/expert-real-data-service";
 import HeaderExpert from "@/components/HeaderExpert";
 import { useNavigate } from "react-router-dom";
+import { usePendingRDVs } from "@/hooks/use-rdv";
+import { ExpertMeetingProposalCard } from "@/components/expert/ExpertMeetingProposalCard";
 
 // Composant KPI Card ultra-optimisé
 const KPICard: React.FC<{
@@ -256,6 +261,9 @@ export const ExpertDashboard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  
+  // Hook pour les RDV en attente
+  const { pendingRDVs, loading: rdvLoading, refresh: refreshRDVs } = usePendingRDVs();
 
   // Charger les données réelles
   useEffect(() => {
@@ -393,6 +401,69 @@ export const ExpertDashboard: React.FC = () => {
           />
         </div>
 
+        {/* RDV EN ATTENTE - NOUVEAU */}
+        {!rdvLoading && pendingRDVs.length > 0 && (
+          <div className="mb-8">
+            <Card className="border-purple-200 bg-gradient-to-r from-purple-50 to-pink-50">
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <CalendarDays className="w-5 h-5 text-purple-600" />
+                    <span className="text-purple-900">Rendez-vous en attente ({pendingRDVs.length})</span>
+                  </div>
+                  <Badge className="bg-purple-600 text-white">Action requise</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {rdvLoading ? (
+                  <>
+                    <SkeletonMeetingCard />
+                    <SkeletonMeetingCard />
+                  </>
+                ) : (
+                  <>
+                    {pendingRDVs.slice(0, 3).map((rdv) => (
+                    <ExpertMeetingProposalCard
+                    key={rdv.id}
+                    meeting={{
+                      id: rdv.id,
+                      client: {
+                        name: rdv.Client?.name || 'Client',
+                        company_name: rdv.Client?.company_name || ''
+                      },
+                      products: rdv.RDV_Produits?.map((rp: any) => ({
+                        name: rp.ProduitEligible?.nom || 'Produit',
+                        estimated_savings: 0
+                      })) || [],
+                      scheduled_date: rdv.scheduled_date,
+                      scheduled_time: rdv.scheduled_time,
+                      meeting_type: rdv.meeting_type,
+                      location: rdv.location,
+                      duration_minutes: rdv.duration_minutes,
+                      notes: rdv.notes
+                    }}
+                    onAccept={async () => {
+                      await refreshRDVs();
+                      await refreshData();
+                    }}
+                    onPropose={async () => {
+                      await refreshRDVs();
+                      await refreshData();
+                    }}
+                  />
+                    ))}
+                  </>
+                )}
+                {!rdvLoading && pendingRDVs.length > 3 && (
+                  <Button variant="outline" className="w-full" onClick={() => navigate('/expert/agenda')}>
+                    Voir tous les RDV en attente ({pendingRDVs.length})
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         {/* Alertes et priorités */}
         {data?.dossiers && (
           <div className="mb-8 space-y-4">
@@ -484,7 +555,7 @@ export const ExpertDashboard: React.FC = () => {
               <div className="space-y-4">
                 {filteredDossiers.length > 0 ? (
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {filteredDossiers.map((dossier) => (
+                    {filteredDossiers.map((dossier: any) => (
                       <DossierCard
                         key={dossier.id}
                         dossier={dossier}

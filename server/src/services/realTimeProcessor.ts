@@ -55,10 +55,10 @@ export class RealTimeProcessor {
     try {
       // Mettre à jour le statut de traitement
       await this.supabase
-        .from('chatbotsimulation')
+        .from('simulations')
         .update({
-          processing_status: 'processing',
-          last_processed_at: new Date().toISOString()
+          status: 'processing',
+          updated_at: new Date().toISOString()
         })
         .eq('id', simulationId);
 
@@ -92,10 +92,10 @@ export class RealTimeProcessor {
       
       // Mettre à jour le statut en cas d'erreur
       await this.supabase
-        .from('chatbotsimulation')
+        .from('simulations')
         .update({
-          processing_status: 'error',
-          last_processed_at: new Date().toISOString()
+          status: 'error',
+          updated_at: new Date().toISOString()
         })
         .eq('id', simulationId);
 
@@ -137,10 +137,10 @@ export class RealTimeProcessor {
     newEligibility: ProductEligibility[]
   ): Promise<void> {
     try {
-      // Récupérer l'éligibilité précédente
+      // Récupérer l'éligibilité précédente depuis results
       const { data: simulation, error: simError } = await this.supabase
-        .from('chatbotsimulation')
-        .select('eligible_products')
+        .from('simulations')
+        .select('results')
         .eq('id', simulationId)
         .single();
 
@@ -148,7 +148,8 @@ export class RealTimeProcessor {
         throw new Error('Erreur lors de la récupération de la simulation');
       }
 
-      const previousEligibility = simulation.eligible_products || [];
+      const results = simulation.results || {};
+      const previousEligibility = results.eligible_products || [];
 
       // Identifier les changements
       const changes: EligibilityChange[] = [];
@@ -175,13 +176,19 @@ export class RealTimeProcessor {
           .from('EligibilityChanges')
           .insert(changes);
 
-        // Émettre un événement pour les changements
+        // Mettre à jour les produits éligibles dans results
+        const updatedResults = {
+          ...(simulation.results || {}),
+          eligible_products: newEligibility,
+          last_calculation: new Date().toISOString()
+        };
+
         await this.supabase
-          .from('chatbotsimulation')
+          .from('simulations')
           .update({
-            eligible_products: newEligibility,
-            processing_status: 'completed',
-            last_processed_at: new Date().toISOString()
+            results: updatedResults,
+            status: 'completed',
+            updated_at: new Date().toISOString()
           })
           .eq('id', simulationId);
       }
