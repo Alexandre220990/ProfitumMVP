@@ -21,14 +21,7 @@ interface AuthenticatedUser {
   email: string;
 }
 
-// Extension du type global Request
-declare global {
-  namespace Express {
-    interface Request {
-      user?: AuthenticatedUser;
-    }
-  }
-}
+// Note: Extension globale déjà définie dans types/auth.ts
 
 // ============================================================================
 // HELPER FUNCTIONS

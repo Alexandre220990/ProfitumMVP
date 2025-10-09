@@ -284,6 +284,13 @@ router.get('/download/:fileId', asyncHandler(async (req: Request, res: Response)
   const { fileId } = req.params;
   const user = req.user;
 
+  if (!user) {
+    return res.status(401).json({
+      success: false,
+      message: 'Utilisateur non authentifié'
+    });
+  }
+
   try {
     const downloadResponse = await documentStorageService.downloadFile(fileId, user.id);
 
@@ -314,6 +321,13 @@ router.put('/validate/:fileId', asyncHandler(async (req: Request, res: Response)
   const { fileId } = req.params;
   const { status, comment } = req.body;
   const user = req.user;
+
+  if (!user) {
+    return res.status(401).json({
+      success: false,
+      message: 'Utilisateur non authentifié'
+    });
+  }
 
   if (!status || !['approved', 'rejected', 'requires_revision'].includes(status)) {
     return res.status(400).json({
@@ -362,6 +376,13 @@ router.delete('/:fileId', asyncHandler(async (req: Request, res: Response) => {
   const { fileId } = req.params;
   const user = req.user;
 
+  if (!user) {
+    return res.status(401).json({
+      success: false,
+      message: 'Utilisateur non authentifié'
+    });
+  }
+
   try {
     const success = await documentStorageService.deleteFile(fileId, user.id);
 
@@ -394,6 +415,13 @@ router.post('/share/:fileId', asyncHandler(async (req: Request, res: Response) =
   const { fileId } = req.params;
   const { sharedWithEmail, permissions, expiresAt } = req.body;
   const user = req.user;
+
+  if (!user) {
+    return res.status(401).json({
+      success: false,
+      message: 'Utilisateur non authentifié'
+    });
+  }
 
   if (!sharedWithEmail || !permissions) {
     return res.status(400).json({
@@ -442,6 +470,13 @@ router.post('/share/:fileId', asyncHandler(async (req: Request, res: Response) =
 router.get('/stats/:clientId', asyncHandler(async (req: Request, res: Response) => {
   const { clientId } = req.params;
   const user = req.user;
+
+  if (!user) {
+    return res.status(401).json({
+      success: false,
+      message: 'Utilisateur non authentifié'
+    });
+  }
 
   // Vérifier que l'utilisateur a accès à ce client
   if (user.type !== 'admin' && user.id !== clientId) {

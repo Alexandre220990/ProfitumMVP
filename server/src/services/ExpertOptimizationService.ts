@@ -156,8 +156,8 @@ export class ExpertOptimizationService {
       const uniqueExperts = new Map<string, Expert>();
       
       for (const ep of expertProduits || []) {
-        const expert = ep.Expert;
-        if (!uniqueExperts.has(expert.id)) {
+        const expert: any = ep.Expert;
+        if (expert && !Array.isArray(expert) && expert.id && !uniqueExperts.has(expert.id)) {
           uniqueExperts.set(expert.id, {
             id: expert.id,
             name: expert.name,

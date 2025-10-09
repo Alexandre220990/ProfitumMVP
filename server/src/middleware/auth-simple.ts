@@ -9,13 +9,23 @@ interface AuthenticatedUser {
   id: string;
   email: string;
   type: UserType;
-  database_id?: string;
+  database_id: string;
+  permissions?: string[];
+  auth_id?: string;
   user_metadata: {
+    username?: string;
     type: UserType;
+    company_name?: string;
+    siren?: string;
+    phone_number?: string;
+    address?: string;
+    city?: string;
+    postal_code?: string;
   };
   app_metadata: Record<string, any>;
   aud: string;
   created_at: string;
+  role?: string;
 }
 
 // Interface pour la requête avec utilisateur
