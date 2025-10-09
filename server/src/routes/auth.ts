@@ -434,7 +434,7 @@ router.post('/login', loginRateLimiter, async (req, res) => {
     
     console.log(`🔍 Connexion ${effectiveType} - Recherche EXCLUSIVE dans table ${effectiveType}`);
     
-    if (effectiveType === 'apporteur' || effectiveType === 'apporteur_affaires') {
+    if (effectiveType === 'apporteur') {
       // ===== CONNEXION APPORTEUR : Recherche UNIQUEMENT dans ApporteurAffaires =====
       console.log("🔍 Recherche apporteur dans ApporteurAffaires (route générique)...");
       let { data: apporteur, error: apporteurError } = await supabase

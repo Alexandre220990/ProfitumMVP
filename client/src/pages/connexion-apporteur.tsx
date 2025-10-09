@@ -53,7 +53,7 @@ export default function ConnexionApporteur() {
       await login({
         email,
         password,
-        type: "apporteur_affaires"
+        type: "apporteur"
       });
 
       toast.success('Bienvenue dans votre espace apporteur d\'affaires');

@@ -84,7 +84,7 @@ class MessagingService {
   private channels: Map<string, RealtimeChannel> = new Map();
   private callbacks: MessagingCallbacks = {};
   private currentUserId: string | null = null;
-  private currentUserType: 'client' | 'expert' | 'admin' | 'apporteur_affaires' | null = null;
+  private currentUserType: 'client' | 'expert' | 'admin' | 'apporteur' | null = null;
   private isConnected = false;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
@@ -101,7 +101,7 @@ class MessagingService {
   // INITIALISATION ET CONNEXION (Guillermo Rauch)
   // ========================================
 
-  async initialize(userId: string, userType: 'client' | 'expert' | 'admin' | 'apporteur_affaires'): Promise<void> {
+  async initialize(userId: string, userType: 'client' | 'expert' | 'admin' | 'apporteur'): Promise<void> {
     // Éviter les initialisations multiples
     if (this.isConnected && this.currentUserId === userId) {
       console.log('⚠️ Service déjà connecté pour cet utilisateur');
@@ -118,7 +118,7 @@ class MessagingService {
     
     try {
       // Pour les apporteurs d'affaires, on utilise l'authentification JWT personnalisée
-      if (userType === 'apporteur_affaires') {
+      if (userType === 'apporteur') {
         console.log('✅ Initialisation messagerie pour apporteur d\'affaires (JWT personnalisé)');
         // Configurer les subscriptions Realtime optimisées
         await this.setupOptimizedRealtimeSubscriptions();
@@ -286,7 +286,7 @@ class MessagingService {
       if (error) throw error;
 
       // Pour les clients, experts et apporteurs, créer automatiquement une conversation admin si elle n'existe pas
-      if (this.currentUserType === 'client' || this.currentUserType === 'expert' || this.currentUserType === 'apporteur_affaires') {
+      if (this.currentUserType === 'client' || this.currentUserType === 'expert' || this.currentUserType === 'apporteur') {
         await this.ensureAdminSupportConversation();
       }
 

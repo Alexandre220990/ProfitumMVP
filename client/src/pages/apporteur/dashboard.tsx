@@ -32,7 +32,7 @@ export default function ApporteurDashboardPage() {
   }
 
   // Gestion d'erreur - Vérifier si l'utilisateur est bien un apporteur
-  if (!user || user.type !== 'apporteur_affaires' || !apporteurId) {
+  if (!user || user.type !== 'apporteur' || !apporteurId) {
     return (
       <div className="container mx-auto py-6">
         <Card className="max-w-2xl mx-auto">

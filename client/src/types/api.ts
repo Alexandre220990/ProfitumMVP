@@ -3,7 +3,7 @@ import { AuthUser } from "./auth";
 // --- Base commune à tous les utilisateurs ---
 export interface BaseUser { id: string;
   email: string;
-  type: "client" | "expert" | "admin" | "apporteur_affaires";
+  type: "client" | "expert" | "admin" | "apporteur";
   username?: string;
   name?: string;
   first_name?: string;
@@ -80,12 +80,12 @@ export interface DeleteAccountResponse { success: boolean;
 // --- Crédentials Login ---
 export interface LoginCredentials { email: string;
   password: string;
-  type: "client" | "expert" | "admin" | "apporteur_affaires"; }
+  type: "client" | "expert" | "admin" | "apporteur"; }
 
 // --- Crédentials Register (frontend -> backend) ---
 export interface RegisterCredentials extends Partial<ClientData>, Partial<ExpertData> { email: string;
   password: string;
-  type: "client" | "expert" | "admin" | "apporteur_affaires";
+  type: "client" | "expert" | "admin" | "apporteur";
   name?: string;
   username?: string;
   company_name?: string;

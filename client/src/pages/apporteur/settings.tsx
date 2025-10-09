@@ -74,7 +74,7 @@ export default function SettingsPage() {
     );
   }
 
-  if (!user || user.type !== 'apporteur_affaires') {
+  if (!user || user.type !== 'apporteur') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-slate-100 flex items-center justify-center">
         <div className="text-center">

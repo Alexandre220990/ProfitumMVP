@@ -1,7 +1,7 @@
 export interface AuthUser { 
   id: string;
   email: string;
-  type: 'client' | 'expert' | 'admin' | 'apporteur_affaires';
+  type: 'client' | 'expert' | 'admin' | 'apporteur';
   username?: string;
   first_name?: string;
   last_name?: string;

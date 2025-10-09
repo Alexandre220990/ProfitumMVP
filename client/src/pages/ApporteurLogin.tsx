@@ -25,7 +25,7 @@ export default function ApporteurLogin() {
       await login({
         email,
         password,
-        type: 'apporteur_affaires'
+        type: 'apporteur'
       });
       
       toast.success('Connexion réussie ! Bienvenue dans votre espace apporteur d\'affaires');

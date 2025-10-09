@@ -56,7 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else if (user.type === 'admin') {
         console.log('➡️ Redirection vers dashboard admin optimisé');
         navigate("/admin/dashboard-optimized");
-      } else if (user.type === 'apporteur_affaires') {
+      } else if (user.type === 'apporteur') {
         console.log('➡️ Redirection vers dashboard apporteur');
         navigate('/apporteur/dashboard');
       } else {
@@ -78,13 +78,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       console.log('🔐 Tentative de connexion avec services distincts...');
       
+      // Nettoyer les anciens tokens avant la nouvelle connexion
+      localStorage.removeItem('token');
+      localStorage.removeItem('supabase_token');
+      localStorage.removeItem('supabase_refresh_token');
+      
       // Utiliser la fonction d'authentification appropriée selon le type
       let response;
       if (credentials.type === 'client') {
         response = await loginClient(credentials);
       } else if (credentials.type === 'expert') {
         response = await loginExpert(credentials);
-      } else if (credentials.type === 'apporteur_affaires') {
+      } else if (credentials.type === 'apporteur') {
         response = await loginApporteur(credentials);
       } else {
         // Fallback vers l'ancienne méthode pour compatibilité
@@ -122,7 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else if (user.type === 'admin') {
         console.log('➡️ Redirection vers dashboard admin optimisé');
         navigate("/admin/dashboard-optimized");
-      } else if (user.type === 'apporteur_affaires') {
+      } else if (user.type === 'apporteur') {
         console.log('➡️ Redirection vers dashboard apporteur');
         navigate('/apporteur/dashboard');
       } else {

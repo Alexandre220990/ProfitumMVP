@@ -297,8 +297,8 @@ export const enhancedAuthMiddleware = async (
         email: jwtUserData.email
       });
       
-      // Normaliser le type pour compatibilité avec anciens tokens
-      userType = (jwtUserData.type === 'apporteur_affaires' ? 'apporteur' : jwtUserData.type) as 'client' | 'expert' | 'admin' | 'apporteur';
+      // Utiliser directement le type du JWT
+      userType = jwtUserData.type as 'client' | 'expert' | 'admin' | 'apporteur';
       userData = {
         id: jwtUserData.database_id,
         email: jwtUserData.email
