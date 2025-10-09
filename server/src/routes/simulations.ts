@@ -34,7 +34,8 @@ interface PythonAnalyseResponse {
 const router = express.Router();
 
 // Clé JWT pour la validation des tokens
-const JWT_SECRET = process.env.JWT_SECRET || "EhAhS26BXDsowVPe";
+import { jwtConfig } from '../config/jwt';
+const JWT_SECRET = jwtConfig.secret;
 
 // Route de test pour vérifier les tables
 router.get('/test-tables', async (req: Request, res: Response) => {

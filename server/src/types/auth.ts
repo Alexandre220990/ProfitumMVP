@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { User } from '@supabase/supabase-js';
 
 export interface UserMetadata {
-  type?: 'client' | 'expert' | 'admin' | 'apporteur' | 'apporteur_affaires';
+  type?: 'client' | 'expert' | 'admin' | 'apporteur';
   username?: string;
   company?: string;
   company_name?: string;
@@ -18,7 +18,7 @@ export interface UserMetadata {
 // Interface étendue pour AuthUser avec toutes les propriétés requises
 export interface AuthUser extends User {
   user_metadata: UserMetadata;
-  type: 'client' | 'expert' | 'admin' | 'apporteur' | 'apporteur_affaires';
+  type: 'client' | 'expert' | 'admin' | 'apporteur';
   database_id: string;
   permissions?: string[];
   auth_id?: string;
@@ -34,7 +34,7 @@ export interface AuthenticatedUser extends AuthUser {}
 export interface BaseUser {
   id: string;
   email: string;
-  type: 'client' | 'expert' | 'admin' | 'apporteur' | 'apporteur_affaires';
+  type: 'client' | 'expert' | 'admin' | 'apporteur';
   database_id?: string;
   user_metadata?: UserMetadata;
 }
@@ -88,7 +88,7 @@ declare global {
 }
 
 export function createAuthUserFromSupabase(user: User): AuthUser {
-  const type = (user.user_metadata?.type as 'client' | 'expert' | 'admin' | 'apporteur' | 'apporteur_affaires') || 'client';
+  const type = (user.user_metadata?.type as 'client' | 'expert' | 'admin' | 'apporteur') || 'client';
 
   // ⚠️ Sécuriser le champ `username` avec fallback
   const username =

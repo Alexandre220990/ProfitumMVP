@@ -217,14 +217,16 @@ export class ExpertOptimizationService {
           let matchScore = 0;
           
           // Facteur 1 : Niveau d'expertise (40 points)
-          const expertiseScore = {
+          const expertiseScore: Record<string, number> = {
             'expert': 40,
             'avance': 30,
             'intermediaire': 20,
             'debutant': 10
-          }[expertProduit.niveauExpertise || 'intermediaire'] || 20;
+          };
+          const expertiseLevel = expertProduit.niveauExpertise || 'intermediaire';
+          const expertisePoints = expertiseScore[expertiseLevel] || 20;
           
-          matchScore += expertiseScore;
+          matchScore += expertisePoints;
           
           // Facteur 2 : Rating général (30 points)
           matchScore += (expert.rating / 5.0) * 30;

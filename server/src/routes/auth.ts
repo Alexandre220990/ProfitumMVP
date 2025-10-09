@@ -10,6 +10,9 @@ import { createClient } from '@supabase/supabase-js';
 import { AuthUser, BaseUser, UserMetadata, RequestWithUser } from '../types/auth';
 import { logger } from '../utils/logger';
 import { googleCalendarService } from '../services/google-calendar-service';
+import { jwtConfig } from '../config/jwt';
+import { RefreshTokenService } from '../services/RefreshTokenService';
+import { loginRateLimiter, registerRateLimiter } from '../middleware/rate-limiter';
 
 // Charger les variables d'environnement
 dotenv.config();
@@ -135,7 +138,7 @@ router.get('/check', checkAuth);
 // ===== ROUTES D'AUTHENTIFICATION DISTINCTES =====
 
 // Route de connexion CLIENT UNIQUEMENT
-router.post('/client/login', async (req, res) => {
+router.post('/client/login', loginRateLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
     console.log("🔑 Tentative de connexion CLIENT:", { email });
@@ -185,8 +188,8 @@ router.post('/client/login', async (req, res) => {
         type: 'client',
         database_id: client.id  // ID de la table Client
       },
-      process.env.JWT_SECRET || 'votre_secret_jwt_super_securise',
-      { expiresIn: '24h' }
+      jwtConfig.secret,
+      { expiresIn: jwtConfig.expiresIn }
     );
 
     return res.json({
@@ -207,7 +210,7 @@ router.post('/client/login', async (req, res) => {
 });
 
 // Route de connexion EXPERT UNIQUEMENT
-router.post('/expert/login', async (req, res) => {
+router.post('/expert/login', loginRateLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
     console.log("🔑 Tentative de connexion EXPERT:", { email });
@@ -266,8 +269,8 @@ router.post('/expert/login', async (req, res) => {
         email: userEmail, 
         type: 'expert' 
       },
-      process.env.JWT_SECRET || 'votre_secret_jwt_super_securise',
-      { expiresIn: '24h' }
+      jwtConfig.secret,
+      { expiresIn: jwtConfig.expiresIn }
     );
 
     return res.json({
@@ -288,7 +291,7 @@ router.post('/expert/login', async (req, res) => {
 });
 
 // Route de connexion APPORTEUR UNIQUEMENT - VERSION REFACTORISÉE
-router.post('/apporteur/login', async (req, res) => {
+router.post('/apporteur/login', loginRateLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
     console.log("🔑 Tentative de connexion APPORTEUR:", { email });
@@ -365,11 +368,11 @@ router.post('/apporteur/login', async (req, res) => {
       { 
         id: authData.user.id,  // Utiliser l'Auth ID de Supabase
         email: userEmail, 
-        type: 'apporteur_affaires',
+        type: 'apporteur',
         database_id: apporteur.id  // Garder l'ID de la table pour référence
       },
-      process.env.JWT_SECRET || 'votre_secret_jwt_super_securise',
-      { expiresIn: '24h' }
+      jwtConfig.secret,
+      { expiresIn: jwtConfig.expiresIn }
     );
 
     // 5. Réponse de succès
@@ -380,7 +383,7 @@ router.post('/apporteur/login', async (req, res) => {
         user: {
           id: apporteur.id,
           email: apporteur.email,
-          type: 'apporteur_affaires',
+          type: 'apporteur',
           database_id: apporteur.id,
           first_name: apporteur.first_name,
           last_name: apporteur.last_name,
@@ -401,7 +404,7 @@ router.post('/apporteur/login', async (req, res) => {
 });
 
 // Route de connexion GÉNÉRIQUE (pour compatibilité)
-router.post('/login', async (req, res) => {
+router.post('/login', loginRateLimiter, async (req, res) => {
   try {
     const { email, password, type, user_type } = req.body;
     const effectiveType = type || user_type; // Support des deux formats
@@ -431,7 +434,7 @@ router.post('/login', async (req, res) => {
     
     console.log(`🔍 Connexion ${effectiveType} - Recherche EXCLUSIVE dans table ${effectiveType}`);
     
-    if (effectiveType === 'apporteur_affaires') {
+    if (effectiveType === 'apporteur' || effectiveType === 'apporteur_affaires') {
       // ===== CONNEXION APPORTEUR : Recherche UNIQUEMENT dans ApporteurAffaires =====
       console.log("🔍 Recherche apporteur dans ApporteurAffaires (route générique)...");
       let { data: apporteur, error: apporteurError } = await supabase
@@ -467,7 +470,7 @@ router.post('/login', async (req, res) => {
       console.log("✅ Connexion autorisée pour tous les apporteurs (vérification status désactivée)");
       
       userDetails = apporteur;
-      userType = 'apporteur_affaires';
+      userType = 'apporteur';
       console.log("✅ Apporteur authentifié avec succès (générique):", { email: userEmail, status: apporteur.status });
       
     } else if (effectiveType === 'client') {
@@ -542,8 +545,8 @@ router.post('/login', async (req, res) => {
         type: userType,
         database_id: userDetails?.id  // ID de la table spécifique
       },
-      process.env.JWT_SECRET || 'votre_secret_jwt_super_securise',
-      { expiresIn: '24h' }
+      jwtConfig.secret,
+      { expiresIn: jwtConfig.expiresIn }
     );
 
     console.log("✅ Connexion réussie:", { userId, email: userEmail, type: userType });
@@ -616,7 +619,7 @@ router.post("/check-siren", async (req: Request, res: Response) => {
 });
 
 // Route d'inscription
-router.post("/register", async (req: Request, res: Response) => {
+router.post("/register", registerRateLimiter, async (req: Request, res: Response) => {
   try {
     const {
       username,
@@ -665,6 +668,8 @@ router.post("/register", async (req: Request, res: Response) => {
       });
     }
 
+    console.log('📝 Type d\'inscription:', type);
+
     console.log('📝 Tentative d\'inscription:', { email, username, type });
 
     // 1. Préparation des métadonnées utilisateur
@@ -704,16 +709,16 @@ router.post("/register", async (req: Request, res: Response) => {
       });
     }
 
-    // 3. Hash du mot de passe pour la table spécifique
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // 4. Insertion dans la table appropriée selon le type
+    // 3. Insertion dans la table appropriée selon le type
+    // ⚠️ SÉCURITÉ : Le mot de passe est UNIQUEMENT géré par Supabase Auth
+    // On ne stocke PAS de mot de passe dans les tables métier
     if (type === 'client') {
       // Préparation des données client complètes
       const clientData = {
         id: authData.user.id, // Utiliser directement l'ID Supabase Auth comme ID de la table Client
+        auth_id: authData.user.id, // Référence explicite à l'ID Supabase Auth
         email,
-        password: hashedPassword, // Mot de passe hashé pour la table Client
+        // ⚠️ PAS de champ password - l'authentification est gérée par Supabase Auth
         username,
         company_name,
         phone_number,
@@ -732,10 +737,7 @@ router.post("/register", async (req: Request, res: Response) => {
       };
 
       // Log des données avant insertion
-      console.log('📊 Données client à insérer:', { 
-        ...clientData, 
-        password: '[HASHED]' // Ne pas logger le mot de passe hashé
-      });
+      console.log('📊 Données client à insérer:', clientData);
 
       // Utiliser supabaseAdmin pour l'insertion
       const { data: insertedClient, error: insertError } = await supabaseAdmin
@@ -768,8 +770,8 @@ router.post("/register", async (req: Request, res: Response) => {
           email: insertedClient.email, 
           type: insertedClient.type 
         },
-        process.env.JWT_SECRET || 'votre_secret_jwt_super_securise',
-        { expiresIn: '24h' }
+        jwtConfig.secret,
+        { expiresIn: jwtConfig.expiresIn }
       );
 
       // Préparer la réponse avec tous les champs attendus par le frontend
@@ -798,12 +800,103 @@ router.post("/register", async (req: Request, res: Response) => {
           }
         }
       });
+    } else if (type === 'expert') {
+      // Préparation des données expert complètes
+      const expertData = {
+        id: authData.user.id, // Utiliser directement l'ID Supabase Auth comme ID de la table Expert
+        auth_id: authData.user.id, // Référence explicite à l'ID Supabase Auth
+        email,
+        // ⚠️ PAS de champ password - l'authentification est gérée par Supabase Auth
+        name: username,
+        company_name,
+        phone_number,
+        address,
+        city,
+        postal_code,
+        siren,
+        specializations: [], // Peut être complété après inscription
+        experience: '', // Peut être complété après inscription
+        location: `${city || ''} ${postal_code || ''}`.trim(),
+        description: '',
+        approval_status: 'pending', // Les experts nécessitent une approbation
+        status: 'inactive', // Inactif jusqu'à approbation
+        rating: 0,
+        total_dossiers: 0,
+        dossiers_en_cours: 0,
+        dossiers_termines: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      // Log des données avant insertion
+      console.log('📊 Données expert à insérer:', expertData);
+
+      // Utiliser supabaseAdmin pour l'insertion
+      const { data: insertedExpert, error: insertError } = await supabaseAdmin
+        .from('Expert')
+        .insert([expertData])
+        .select('*')
+        .single();
+
+      if (insertError || !insertedExpert) {
+        console.error('❌ Erreur insertion Expert:', insertError);
+        // Nettoyage : suppression de l'utilisateur Supabase Auth en cas d'échec
+        await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
+        return res.status(400).json({
+          success: false,
+          message: "Erreur lors de la création du profil expert",
+          error: 'EXPERT_INSERTION_FAILED',
+          details: insertError?.message || 'Insertion échouée ou données manquantes'
+        });
+      }
+
+      console.log('✅ Expert créé avec succès:', {
+        id: insertedExpert.id,
+        email: insertedExpert.email,
+        approval_status: insertedExpert.approval_status
+      });
+
+      // Générer le token JWT (même si non approuvé, pour permettre l'accès au dashboard)
+      const token = jwt.sign(
+        { 
+          id: insertedExpert.id, 
+          email: insertedExpert.email, 
+          type: insertedExpert.type || 'expert'
+        },
+        jwtConfig.secret,
+        { expiresIn: jwtConfig.expiresIn }
+      );
+
+      // Préparer la réponse avec message d'approbation
+      return res.status(200).json({
+        success: true,
+        message: 'Expert inscrit avec succès. Votre compte sera activé après validation par nos équipes.',
+        data: {
+          token,
+          user: {
+            id: insertedExpert.id,
+            email: insertedExpert.email,
+            name: insertedExpert.name,
+            type: 'expert',
+            company_name: insertedExpert.company_name || null,
+            siren: insertedExpert.siren || null,
+            phone_number: insertedExpert.phone_number || null,
+            address: insertedExpert.address || null,
+            city: insertedExpert.city || null,
+            postal_code: insertedExpert.postal_code || null,
+            approval_status: insertedExpert.approval_status,
+            status: insertedExpert.status,
+            created_at: insertedExpert.created_at,
+            updated_at: insertedExpert.updated_at
+          }
+        }
+      });
     } else {
-      // Logique pour l'insertion d'un expert (à implémenter si nécessaire)
+      // Type non reconnu
       return res.status(400).json({
         success: false,
-        message: "Inscription expert non implémentée",
-        error: 'EXPERT_NOT_IMPLEMENTED'
+        message: "Type d'utilisateur non reconnu. Utilisez 'client' ou 'expert'",
+        error: 'INVALID_USER_TYPE'
       });
     }
 
@@ -871,7 +964,7 @@ const getCurrentUser = async (req: Request, res: express.Response) => {
       }
       
       userData = expert;
-    } else if (userType === 'apporteur_affaires') {
+    } else if (userType === 'apporteur') {
       // Rechercher l'apporteur par email
       const { data: apporteur, error: apporteurError } = await supabase
         .from('ApporteurAffaires')
@@ -951,7 +1044,7 @@ const verifyToken = async (req: Request, res: express.Response) => {
       .single();
 
     // Si pas trouvé dans Client, vérifier dans Expert par email
-    let userType: 'client' | 'expert' | 'admin' | 'apporteur_affaires' = authUser.type;
+    let userType: 'client' | 'expert' | 'admin' | 'apporteur' = authUser.type;
     let userDetails = client;
     
     if (!client && userType === 'expert') {
@@ -976,7 +1069,7 @@ const verifyToken = async (req: Request, res: express.Response) => {
 
       if (apporteur && !apporteurError) {
         userDetails = apporteur;
-        userType = 'apporteur_affaires';
+        userType = 'apporteur';
         console.log('✅ Apporteur trouvé dans la base de données:', { id: apporteur.id, email: apporteur.email, status: apporteur.status });
       } else {
         console.log('❌ Apporteur non trouvé dans la base de données pour:', userEmail);
@@ -1392,6 +1485,141 @@ router.post('/google/logout', async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'Erreur lors de la déconnexion'
+    });
+  }
+});
+
+// ===== ROUTES REFRESH TOKEN =====
+
+/**
+ * Route pour renouveler le token d'accès avec un refresh token
+ * POST /api/auth/refresh
+ */
+router.post('/refresh', async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+      return res.status(400).json({
+        success: false,
+        message: 'Refresh token requis'
+      });
+    }
+
+    // Renouveler les tokens
+    const tokens = await RefreshTokenService.refreshAccessToken(refreshToken);
+
+    if (!tokens) {
+      return res.status(401).json({
+        success: false,
+        message: 'Refresh token invalide ou expiré. Veuillez vous reconnecter.'
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: tokens
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur lors du renouvellement du token:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors du renouvellement du token'
+    });
+  }
+});
+
+/**
+ * Route pour révoquer un refresh token (déconnexion sur un appareil)
+ * POST /api/auth/revoke
+ */
+router.post('/revoke', async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+      return res.status(400).json({
+        success: false,
+        message: 'Refresh token requis'
+      });
+    }
+
+    const decoded = jwt.decode(refreshToken) as any;
+    if (decoded?.tokenId) {
+      await RefreshTokenService.revokeRefreshToken(decoded.tokenId);
+    }
+
+    return res.json({
+      success: true,
+      message: 'Token révoqué avec succès'
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur lors de la révocation du token:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la révocation du token'
+    });
+  }
+});
+
+/**
+ * Route pour révoquer tous les tokens d'un utilisateur (déconnexion partout)
+ * POST /api/auth/revoke-all
+ */
+router.post('/revoke-all', async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentification requise'
+      });
+    }
+
+    const authUser = req.user as AuthUser;
+    await RefreshTokenService.revokeAllUserTokens(authUser.id);
+
+    return res.json({
+      success: true,
+      message: 'Tous les tokens ont été révoqués'
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur lors de la révocation des tokens:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la révocation des tokens'
+    });
+  }
+});
+
+/**
+ * Route pour obtenir toutes les sessions actives
+ * GET /api/auth/sessions
+ */
+router.get('/sessions', async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentification requise'
+      });
+    }
+
+    const authUser = req.user as AuthUser;
+    const sessions = await RefreshTokenService.getUserActiveSessions(authUser.id);
+
+    return res.json({
+      success: true,
+      data: { sessions }
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur lors de la récupération des sessions:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des sessions'
     });
   }
 });

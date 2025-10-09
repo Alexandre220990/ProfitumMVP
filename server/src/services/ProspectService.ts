@@ -64,11 +64,13 @@ export class ProspectService {
             console.log('✅ Compte Supabase Auth créé:', authData.user.id);
 
             // ÉTAPE 3: Créer le prospect dans la table Client avec status = 'prospect'
+            // ⚠️ SÉCURITÉ : Le mot de passe est UNIQUEMENT géré par Supabase Auth
+            // On stocke UNIQUEMENT temp_password pour l'envoi de l'email de bienvenue
             const clientData = {
                 // Auth
                 auth_id: authData.user.id,
                 email: prospectData.email,
-                password: hashedPassword, // Mot de passe haché
+                // ⚠️ PAS de champ password - l'authentification est gérée par Supabase Auth
                 type: 'client', // Type = client (sera prospect via status)
                 
                 // Informations entreprise
@@ -93,7 +95,7 @@ export class ProspectService {
                 notes: prospectData.notes || null,
                 status: 'prospect', // IMPORTANT: Marquer comme prospect
                 apporteur_id: apporteurId,
-                temp_password: plainPassword, // Stocker temporairement pour l'email (sera supprimé après envoi)
+                temp_password: plainPassword, // Stocker temporairement UNIQUEMENT pour l'email (sera supprimé après envoi)
                 
                 // Timestamps
                 created_at: new Date().toISOString(),
@@ -202,7 +204,7 @@ export class ProspectService {
                         {
                             event_id: calendarEvent.id,
                             user_id: apporteurId,
-                            user_type: 'apporteur_affaires',
+                            user_type: 'apporteur',
                             status: 'accepted', // Le créateur accepte automatiquement
                             created_at: new Date().toISOString()
                         },

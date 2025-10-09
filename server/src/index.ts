@@ -541,10 +541,10 @@ app.use('/api/documents', documentsRoutes);
 
 // ===== ROUTES APPORTEURS D'AFFAIRES =====
 // Routes apporteur d'affaires - PROTÉGÉES (routes de base)
-app.use('/api/apporteur', simpleAuthMiddleware, requireUserType('apporteur_affaires'), apporteurRoutes);
+app.use('/api/apporteur', simpleAuthMiddleware, requireUserType('apporteur'), apporteurRoutes);
 
 // Routes API apporteur d'affaires - PROTÉGÉES (routes étendues avec /clients, etc.)
-app.use('/api/apporteur', simpleAuthMiddleware, requireUserType('apporteur_affaires'), apporteurApiRoutes);
+app.use('/api/apporteur', simpleAuthMiddleware, requireUserType('apporteur'), apporteurApiRoutes);
 
 
 // Routes expert pour apporteurs - PROTÉGÉES

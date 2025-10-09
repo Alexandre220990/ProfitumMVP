@@ -8,7 +8,7 @@ import jwt from 'jsonwebtoken';
  * @returns Un objet AuthUser typé
  */
 export function createAuthUserFromSupabase(user: User): AuthUser {
-  const type = (user.user_metadata?.type as 'client' | 'expert' | 'admin' | 'apporteur' | 'apporteur_affaires') || 'client';
+  const type = (user.user_metadata?.type as 'client' | 'expert' | 'admin' | 'apporteur') || 'client';
 
   // ⚠️ Sécuriser le champ `username` avec fallback
   const username =

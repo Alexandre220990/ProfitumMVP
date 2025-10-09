@@ -7,7 +7,7 @@ export interface ApporteurUser {
     id: string;
     auth_id: string;
     apporteur_id: string;
-    role: 'apporteur_affaires';
+    role: 'apporteur';
     status: string;
     first_name: string;
     last_name: string;
@@ -77,7 +77,7 @@ export const authApporteur = async (req: ApporteurRequest, res: Response, next: 
             id: user.id,
             auth_id: user.id,
             apporteur_id: apporteur.id,
-            role: 'apporteur_affaires',
+            role: 'apporteur',
             status: apporteur.status,
             first_name: apporteur.first_name,
             last_name: apporteur.last_name,
@@ -235,7 +235,7 @@ export const checkMeetingOwnership = async (req: Request, res: Response, next: N
 
         // Vérifier si l'utilisateur est l'expert ou l'apporteur
         const isExpert = user.role === 'expert' && meeting.expert_id === user.expert_id;
-        const isApporteur = user.role === 'apporteur_affaires' && meeting.apporteur_id === user.apporteur_id;
+        const isApporteur = user.role === 'apporteur' && meeting.apporteur_id === user.apporteur_id;
 
         if (!isExpert && !isApporteur) {
             res.status(403).json({ error: 'Accès refusé - Rencontre non autorisée' });

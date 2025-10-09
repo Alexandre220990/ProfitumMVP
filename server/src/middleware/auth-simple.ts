@@ -1,8 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { jwtConfig } from '../config/jwt';
 
 // Types pour l'authentification
-type UserType = 'client' | 'expert' | 'admin' | 'apporteur_affaires';
+type UserType = 'client' | 'expert' | 'admin' | 'apporteur';
 
 // Interface pour l'utilisateur authentifié
 interface AuthenticatedUser {
@@ -68,7 +69,7 @@ export const simpleAuthMiddleware = async (
     }
     
     // 2. Vérification et décodage du token JWT
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'votre_secret_jwt_super_securise') as any;
+    const decoded = jwt.verify(token, jwtConfig.secret) as any;
     console.log('✅ Token JWT valide pour:', decoded.email);
     
     // 3. Création de l'objet utilisateur

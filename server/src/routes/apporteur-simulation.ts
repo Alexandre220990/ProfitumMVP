@@ -17,7 +17,7 @@ router.post('/:prospectId/simulation', async (req: Request, res: Response) => {
     const { prospectId } = req.params;
     const user = req.user as any;
     
-    if (!user || user.type !== 'apporteur_affaires') {
+    if (!user || user.type !== 'apporteur') {
       return res.status(403).json({
         success: false,
         message: 'Accès réservé aux apporteurs d\'affaires'
@@ -65,7 +65,7 @@ router.get('/:prospectId/simulation', async (req: Request, res: Response) => {
     const { prospectId } = req.params;
     const user = req.user as any;
     
-    if (!user || user.type !== 'apporteur_affaires') {
+    if (!user || user.type !== 'apporteur') {
       return res.status(403).json({
         success: false,
         message: 'Accès réservé aux apporteurs d\'affaires'
@@ -103,7 +103,7 @@ router.post('/experts/optimize', async (req: Request, res: Response) => {
   try {
     const user = req.user as any;
     
-    if (!user || user.type !== 'apporteur_affaires') {
+    if (!user || user.type !== 'apporteur') {
       return res.status(403).json({
         success: false,
         message: 'Accès réservé aux apporteurs d\'affaires'
@@ -147,7 +147,7 @@ router.post('/:prospectId/schedule-meetings', async (req: Request, res: Response
     const { prospectId } = req.params;
     const user = req.user as any;
     
-    if (!user || user.type !== 'apporteur_affaires') {
+    if (!user || user.type !== 'apporteur') {
       return res.status(403).json({
         success: false,
         message: 'Accès réservé aux apporteurs d\'affaires'
@@ -192,7 +192,7 @@ router.post('/simulation/questions/prefilled', async (req: Request, res: Respons
   try {
     const user = req.user as any;
     
-    if (!user || user.type !== 'apporteur_affaires') {
+    if (!user || user.type !== 'apporteur') {
       return res.status(403).json({
         success: false,
         message: 'Accès réservé aux apporteurs d\'affaires'

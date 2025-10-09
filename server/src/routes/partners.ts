@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { randomUUID } from 'crypto';
+import { jwtConfig } from '../config/jwt';
 
 const router = express.Router();
 
@@ -62,7 +63,7 @@ router.post('/register', async (req, res) => {
     // Générer un token JWT
     const token = jwt.sign(
       { id: expert.id, email: expert.email, role: 'expert' },
-      process.env.JWT_SECRET || 'votre_secret_jwt_super_securise',
+      jwtConfig.secret,
       { expiresIn: '24h' }
     );
 

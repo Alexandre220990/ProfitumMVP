@@ -26,7 +26,7 @@ export class AdminApporteurService {
                 user_metadata: {
                     first_name: apporteurData.first_name,
                     last_name: apporteurData.last_name,
-                    role: 'apporteur_affaires'
+                    role: 'apporteur'
                 }
             });
 

@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { createClient } from '@supabase/supabase-js';
 import { logger } from '../utils/logger';
+import { jwtConfig } from '../config/jwt';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -15,14 +16,14 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 export interface AuthenticatedRequest extends Request {
   user?: {
     id: string;
-    type: 'client' | 'expert' | 'admin' | 'apporteur_affaires';
+    type: 'client' | 'expert' | 'admin' | 'apporteur';
     email: string;
     permissions: string[];
     auth_id: string;
     database_id: string; // ID de la base de données pour les clés étrangères
     user_metadata: {
       username: string;
-      type: 'client' | 'expert' | 'admin' | 'apporteur_affaires';
+      type: 'client' | 'expert' | 'admin' | 'apporteur';
       company_name?: string;
       siren?: string;
       phone_number?: string;
@@ -102,7 +103,7 @@ const ADMIN_PERMISSIONS = [
 const USER_PERMISSIONS = {
   client: CLIENT_PERMISSIONS,
   expert: EXPERT_PERMISSIONS,
-  apporteur_affaires: APPORTEUR_PERMISSIONS,
+  apporteur: APPORTEUR_PERMISSIONS,
   admin: [
     ...ADMIN_PERMISSIONS,
     // Admins ont aussi toutes les permissions clients, experts et apporteurs
@@ -231,7 +232,7 @@ export const enhancedAuthMiddleware = async (
     try {
       // Décoder le token JWT personnalisé
       const jwt = require('jsonwebtoken');
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'votre_secret_jwt_super_securise');
+      const decoded = jwt.verify(token, jwtConfig.secret);
       user = {
         id: decoded.id,
         email: decoded.email,
@@ -281,7 +282,7 @@ export const enhancedAuthMiddleware = async (
 
     // 3. Recherche de l'utilisateur dans les tables métier
     let userData: any;
-    let userType: 'client' | 'expert' | 'admin' | 'apporteur_affaires';
+    let userType: 'client' | 'expert' | 'admin' | 'apporteur';
 
     console.log('🔍 Middleware auth - Données JWT disponibles:', jwtUserData ? 'OUI' : 'NON');
     if (jwtUserData) {
@@ -296,7 +297,8 @@ export const enhancedAuthMiddleware = async (
         email: jwtUserData.email
       });
       
-      userType = jwtUserData.type;
+      // Normaliser le type pour compatibilité avec anciens tokens
+      userType = (jwtUserData.type === 'apporteur_affaires' ? 'apporteur' : jwtUserData.type) as 'client' | 'expert' | 'admin' | 'apporteur';
       userData = {
         id: jwtUserData.database_id,
         email: jwtUserData.email
@@ -422,7 +424,7 @@ export const enhancedAuthMiddleware = async (
             // Si c'est un tableau, prendre le premier élément
             const apporteur = Array.isArray(apporteurData) ? apporteurData[0] : apporteurData;
             userData = apporteur;
-            userType = 'apporteur_affaires';
+            userType = 'apporteur';
             console.log('✅ Apporteur trouvé:', { apporteurId: apporteur.id, email: apporteur.email, status: apporteur.status });
           } else {
             console.log('❌ Apporteur non trouvé, recherche admin...');

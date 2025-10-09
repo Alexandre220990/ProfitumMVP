@@ -53,8 +53,8 @@ export class ApporteurEmailService {
                     company_name: apporteurData.company_name,
                     company_type: apporteurData.company_type,
                     siren: apporteurData.siren,
-                    role: 'apporteur_affaires',
-                    type: 'apporteur_affaires'
+                    role: 'apporteur',
+                    type: 'apporteur'
                 }
             });
 

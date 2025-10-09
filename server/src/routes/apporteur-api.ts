@@ -7,14 +7,14 @@ const router = express.Router();
 interface AuthenticatedRequest extends Request {
   user?: {
     id: string;
-    type: 'client' | 'expert' | 'admin' | 'apporteur_affaires';
+    type: 'client' | 'expert' | 'admin' | 'apporteur';
     email: string;
     permissions: string[];
     auth_id: string;
     database_id: string;
     user_metadata: {
       username: string;
-      type: 'client' | 'expert' | 'admin' | 'apporteur_affaires';
+      type: 'client' | 'expert' | 'admin' | 'apporteur';
       company_name?: string;
       siren?: string;
       phone_number?: string;
@@ -37,7 +37,7 @@ router.get('/dashboard', async (req: Request, res: Response): Promise<void> => {
   try {
     const user = req.user as any;
     
-    if (!user || user.type !== 'apporteur_affaires') {
+    if (!user || user.type !== 'apporteur') {
       res.status(403).json({
         success: false,
         message: 'Accès réservé aux apporteurs d\'affaires'
@@ -133,7 +133,7 @@ router.get('/prospects', async (req: Request, res: Response): Promise<void> => {
   try {
     const user = req.user as any;
     
-    if (!user || user.type !== 'apporteur_affaires') {
+    if (!user || user.type !== 'apporteur') {
       res.status(403).json({
         success: false,
         message: 'Accès réservé aux apporteurs d\'affaires'
@@ -193,7 +193,7 @@ router.get('/commissions', async (req: Request, res: Response): Promise<void> =>
   try {
     const user = req.user as any;
     
-    if (!user || user.type !== 'apporteur_affaires') {
+    if (!user || user.type !== 'apporteur') {
       res.status(403).json({
         success: false,
         message: 'Accès réservé aux apporteurs d\'affaires'
@@ -292,7 +292,7 @@ router.get('/clients/:clientId', async (req: Request, res: Response): Promise<vo
     const user = req.user as any;
     const { clientId } = req.params;
     
-    if (!user || user.type !== 'apporteur_affaires') {
+    if (!user || user.type !== 'apporteur') {
       res.status(403).json({
         success: false,
         message: 'Accès réservé aux apporteurs d\'affaires'
@@ -349,7 +349,7 @@ router.post('/prospects', async (req: Request, res: Response): Promise<void> => 
   try {
     const user = req.user as any;
     
-    if (!user || user.type !== 'apporteur_affaires') {
+    if (!user || user.type !== 'apporteur') {
       res.status(403).json({
         success: false,
         message: 'Accès réservé aux apporteurs d\'affaires'
@@ -388,7 +388,7 @@ router.post('/prospects', async (req: Request, res: Response): Promise<void> => 
           phone_number: client_data.phone_number,
           city: client_data.city,
           siren: client_data.siren,
-          source: 'apporteur_affaires'
+          source: 'apporteur'
         })
         .select('*')
         .single();
