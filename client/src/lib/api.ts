@@ -27,36 +27,36 @@ const api = axios.create({ baseURL: BASE_URL, headers: {
   withCredentials: true // Important pour CORS
 });
 
-// Intercepteur pour ajouter le token d'authentification Supabase
+// Intercepteur pour ajouter le token d'authentification
 api.interceptors.request.use(async (config) => { 
   try {
-    // Récupérer le token Supabase depuis localStorage
-    let supabaseToken = localStorage.getItem('supabase_token') || localStorage.getItem('token');
+    // Récupérer le token JWT depuis localStorage (priorité au token direct)
+    let authToken = localStorage.getItem('token') || localStorage.getItem('supabase_token');
     
-    // Si pas de token, essayer de rafraîchir la session Supabase
-    if (!supabaseToken) {
-      console.log('🔄 Tentative de rafraîchissement de la session Supabase...');
+    // Si pas de token JWT, essayer de récupérer le token Supabase
+    if (!authToken) {
+      console.log('🔄 Tentative de récupération session Supabase...');
       try {
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session?.access_token) {
-          supabaseToken = session.access_token;
+          authToken = session.access_token;
           localStorage.setItem('supabase_token', session.access_token);
-          console.log('✅ Session Supabase rafraîchie');
+          console.log('✅ Session Supabase récupérée');
         }
       } catch (error) {
-        console.error('Erreur lors du rafraîchissement de la session:', error);
+        console.error('Erreur lors de la récupération de la session:', error);
       }
     }
     
-    if (supabaseToken) {
-      config.headers.Authorization = `Bearer ${supabaseToken}`;
-      console.log('🔐 Token Supabase ajouté aux headers');
+    if (authToken) {
+      config.headers.Authorization = `Bearer ${authToken}`;
+      console.log('🔐 Token ajouté aux headers');
     } else { 
-      console.log('⚠️ Aucun token Supabase trouvé');
+      console.log('⚠️ Aucun token trouvé');
       console.log('🔍 Tokens disponibles:', {
-        supabase_token: localStorage.getItem('supabase_token'),
-        token: localStorage.getItem('token')
+        token: localStorage.getItem('token'),
+        supabase_token: localStorage.getItem('supabase_token')
       });
     }
   } catch (error) { 
