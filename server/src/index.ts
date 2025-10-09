@@ -93,6 +93,7 @@ import eligibilityRoutes from './routes/eligibility';
 
 // Routes RDV unifiées (remplace ClientRDV)
 import rdvRoutes from './routes/rdv';
+// Routes test email - uniquement en dev
 import testEmailRoutes from './routes/test-email';
 
 // Créer l'application Express
@@ -220,13 +221,17 @@ app.get('/api/health', publicRouteLogger, (req, res) => {
   });
 });
 
-// Route de test (publique mais loggée) - PLACÉE AVANT LES ROUTES PROTÉGÉES
-app.get('/api/test', publicRouteLogger, (req, res) => {
-  res.json({ 
-    message: 'API is working',
-    security: 'Enhanced authentication enabled'
+// Route de test publique - UNIQUEMENT EN DÉVELOPPEMENT
+if (process.env.NODE_ENV !== 'production') {
+  app.get('/api/test', publicRouteLogger, (req, res) => {
+    res.json({ 
+      message: 'API is working',
+      security: 'Enhanced authentication enabled',
+      env: 'development'
+    });
   });
-});
+  console.log('🧪 Route /api/test montée (DEV ONLY)');
+}
 
 // ===== ROUTES PROTÉGÉES (authentification renforcée requise) =====
 
@@ -510,16 +515,21 @@ app.use('/api/client-documents', enhancedAuthMiddleware, clientDocumentsRoutes);
 // Routes de monitoring - PROTÉGÉES avec permissions admin
 // app.use('/api/monitoring', enhancedAuthMiddleware, requireUserType('admin'), monitoringRoutes);
 
-// Routes de tests - PROTÉGÉES avec permissions admin
-app.use('/api/tests', enhancedAuthMiddleware, requireUserType('admin'), testsRoutes);
-
-// Routes de tests terminaux - PROTÉGÉES avec permissions admin
-app.use('/api/terminal-tests', enhancedAuthMiddleware, requireUserType('admin'), terminalTestsRoutes);
-
-// Route de test Sentry (pour vérifier que tout fonctionne)
-app.get("/debug-sentry", function mainHandler(req, res) {
-  throw new Error("My first Sentry error!");
-});
+// Routes de tests - UNIQUEMENT EN DÉVELOPPEMENT
+if (process.env.NODE_ENV !== 'production') {
+  app.use('/api/tests', enhancedAuthMiddleware, requireUserType('admin'), testsRoutes);
+  console.log('🧪 Routes tests montées sur /api/tests (DEV ONLY)');
+  
+  app.use('/api/terminal-tests', enhancedAuthMiddleware, requireUserType('admin'), terminalTestsRoutes);
+  console.log('🧪 Routes terminal-tests montées sur /api/terminal-tests (DEV ONLY)');
+  
+  app.get("/debug-sentry", function mainHandler(req, res) {
+    throw new Error("My first Sentry error!");
+  });
+  console.log('🧪 Route debug-sentry montée (DEV ONLY)');
+} else {
+  console.log('🚫 Routes de test désactivées en production');
+}
 
 // Routes de notifications expert - PROTÉGÉES
 app.use('/api/expert/notifications', enhancedAuthMiddleware, expertNotificationsRoutes);
@@ -565,9 +575,13 @@ app.use('/api/admin/apporteurs', enhancedAuthMiddleware, requireUserType('admin'
 app.use('/api/rdv', enhancedAuthMiddleware, rdvRoutes);
 console.log('🎯 Routes RDV unifiées montées sur /api/rdv');
 
-// Routes test email - PROTÉGÉES
-app.use('/api/test-email', enhancedAuthMiddleware, testEmailRoutes);
-console.log('📧 Routes test email montées sur /api/test-email');
+// Routes test email - UNIQUEMENT EN DÉVELOPPEMENT
+if (process.env.NODE_ENV !== 'production') {
+  app.use('/api/test-email', enhancedAuthMiddleware, testEmailRoutes);
+  console.log('📧 Routes test email montées sur /api/test-email (DEV ONLY)');
+} else {
+  console.log('🚫 Routes test email désactivées en production');
+}
 
 // Router centralisé pour toutes les routes API
 app.use('/api', routes);
