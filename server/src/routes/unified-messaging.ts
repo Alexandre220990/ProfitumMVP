@@ -929,6 +929,89 @@ router.get('/admin/users', async (req, res) => {
   }
 });
 
+// GET /api/unified-messaging/admin/conversations - Récupérer toutes les conversations de l'admin
+router.get('/admin/conversations', async (req, res) => {
+  try {
+    const authUser = req.user as AuthUser;
+
+    if (!authUser || authUser.type !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux administrateurs'
+      });
+    }
+
+    // Récupérer toutes les conversations où l'admin est participant
+    const { data: conversations, error } = await supabaseAdmin
+      .from('conversations')
+      .select(`
+        id,
+        type,
+        participant_ids,
+        title,
+        description,
+        status,
+        priority,
+        category,
+        client_id,
+        expert_id,
+        apporteur_id,
+        created_at,
+        updated_at
+      `)
+      .contains('participant_ids', [authUser.database_id || authUser.id])
+      .order('updated_at', { ascending: false });
+
+    if (error) {
+      console.error('❌ Erreur récupération conversations admin:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la récupération des conversations'
+      });
+    }
+
+    // Enrichir chaque conversation avec le dernier message et le compteur de non-lus
+    const enrichedConversations = await Promise.all(
+      (conversations || []).map(async (conv) => {
+        // Récupérer le dernier message
+        const { data: lastMessage } = await supabaseAdmin
+          .from('messages')
+          .select('content, created_at, is_read, sender_id')
+          .eq('conversation_id', conv.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        // Compter les messages non lus
+        const { count: unreadCount } = await supabaseAdmin
+          .from('messages')
+          .select('*', { count: 'exact', head: true })
+          .eq('conversation_id', conv.id)
+          .eq('is_read', false)
+          .neq('sender_id', authUser.database_id || authUser.id);
+
+        return {
+          ...conv,
+          last_message: lastMessage || null,
+          unread_count: unreadCount || 0
+        };
+      })
+    );
+
+    return res.json({
+      success: true,
+      data: enrichedConversations
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route GET admin/conversations:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
 // POST /api/unified-messaging/admin/conversations - Créer conversation admin
 router.post('/admin/conversations', async (req, res) => {
   try {

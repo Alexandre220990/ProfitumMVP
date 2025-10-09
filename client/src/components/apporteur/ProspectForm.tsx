@@ -193,7 +193,23 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
 
       if (response.ok) {
         const result = await response.json();
-        setFormData(result.data);
+        
+        // Ensure selected_products is always an array
+        const prospectData = {
+          ...result.data,
+          selected_products: Array.isArray(result.data.selected_products) 
+            ? result.data.selected_products 
+            : []
+        };
+        
+        setFormData(prev => ({
+          ...prev,
+          ...prospectData,
+          // Preserve the initialized selected_products if the API didn't return any
+          selected_products: prospectData.selected_products.length > 0 
+            ? prospectData.selected_products 
+            : prev.selected_products
+        }));
         
         // Si un expert est présélectionné, le charger
         if (result.data.preselected_expert_id) {
@@ -367,7 +383,7 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
 
   // Fonction pour charger les experts disponibles en fonction des produits sélectionnés
   const fetchExpertsByProducts = async () => {
-    const selectedProductIds = formData.selected_products
+    const selectedProductIds = (formData.selected_products || [])
       .filter(p => p.selected)
       .map(p => p.id);
 
@@ -405,7 +421,7 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
 
   // Charger les experts quand les produits sélectionnés changent
   useEffect(() => {
-    const hasSelectedProducts = formData.selected_products.some(p => p.selected);
+    const hasSelectedProducts = (formData.selected_products || []).some(p => p.selected);
     if (hasSelectedProducts) {
       fetchExpertsByProducts();
     } else {
@@ -558,7 +574,7 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
   const handleProductChange = (productId: string, field: string, value: any) => {
     setFormData(prev => ({
       ...prev,
-      selected_products: prev.selected_products.map(product =>
+      selected_products: (prev.selected_products || []).map(product =>
         product.id === productId ? { ...product, [field]: value } : product
       )
     }));
@@ -883,7 +899,7 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
                 /* Mode Manuel : Afficher checkboxes traditionnelles */
                 <div className="space-y-3">
                   {products.map((product) => {
-                    const selectedProduct = formData.selected_products.find(p => p.id === product.id);
+                    const selectedProduct = formData.selected_products?.find(p => p.id === product.id);
                     if (!selectedProduct) return null;
 
                     return (
@@ -989,7 +1005,7 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
             )}
 
             {/* Sélection Expert (nouvelle étape) */}
-            {formData.selected_products.some(p => p.selected) && (
+            {(formData.selected_products || []).some(p => p.selected) && (
               <div className="space-y-4 p-6 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border-2 border-purple-200">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">

@@ -1,0 +1,533 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { motion } from 'framer-motion';
+import { 
+  MessageSquare, 
+  Send, 
+  Search,
+  User,
+  Users,
+  ChevronDown,
+  Filter
+} from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { useAuth } from '@/hooks/use-auth';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { config } from '@/config';
+
+// ============================================================================
+// TYPES
+// ============================================================================
+
+interface Conversation {
+  id: string;
+  type: 'admin_support' | 'expert_client' | 'internal';
+  last_message?: {
+    content: string;
+    created_at: string;
+    is_read: boolean;
+  };
+  unread_count: number;
+  updated_at: string;
+  client_id?: string;
+  expert_id?: string;
+  apporteur_id?: string;
+  participant_ids: string[];
+  
+  // Données enrichies
+  otherParticipant?: {
+    id: string;
+    name: string;
+    first_name?: string;
+    last_name?: string;
+    email: string;
+    type: 'client' | 'expert' | 'apporteur' | 'admin';
+  };
+}
+
+interface Message {
+  id: string;
+  content: string;
+  sender_id: string;
+  sender_name: string;
+  created_at: string;
+  is_read: boolean;
+}
+
+interface ImprovedAdminMessagingProps {
+  showHeader?: boolean;
+  className?: string;
+}
+
+// ============================================================================
+// COMPOSANT PRINCIPAL
+// ============================================================================
+
+export const ImprovedAdminMessaging: React.FC<ImprovedAdminMessagingProps> = ({
+  showHeader = true,
+  className = ''
+}) => {
+  const { user } = useAuth();
+  
+  // États
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [filteredConversations, setFilteredConversations] = useState<Conversation[]>([]);
+  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [messageInput, setMessageInput] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [userTypeFilter, setUserTypeFilter] = useState<string>('all');
+  const [loading, setLoading] = useState(true);
+
+  // ========================================
+  // CHARGEMENT DES DONNÉES
+  // ========================================
+
+  useEffect(() => {
+    loadConversations();
+  }, []);
+
+  const loadConversations = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${config.API_URL}/api/unified-messaging/admin/conversations`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        const convs = result.data || [];
+        
+        // Enrichir les conversations avec les infos des participants
+        const enrichedConvs = await Promise.all(convs.map(enrichConversation));
+        
+        setConversations(enrichedConvs);
+        setFilteredConversations(enrichedConvs);
+      }
+    } catch (error) {
+      console.error('Erreur chargement conversations:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Enrichir une conversation avec les données du participant
+  const enrichConversation = async (conv: Conversation): Promise<Conversation> => {
+    // Trouver l'autre participant (pas l'admin)
+    const otherParticipantId = conv.participant_ids?.find(id => id !== user?.id);
+    
+    if (!otherParticipantId) return conv;
+
+    try {
+      // Déterminer le type et charger les données
+      let participantData = null;
+      let participantType: 'client' | 'expert' | 'apporteur' | 'admin' = 'client';
+
+      if (conv.client_id) {
+        participantType = 'client';
+        participantData = await fetchUserData('client', conv.client_id);
+      } else if (conv.expert_id) {
+        participantType = 'expert';
+        participantData = await fetchUserData('expert', conv.expert_id);
+      } else if (conv.apporteur_id) {
+        participantType = 'apporteur';
+        participantData = await fetchUserData('apporteur', conv.apporteur_id);
+      }
+
+      if (participantData) {
+        return {
+          ...conv,
+          otherParticipant: {
+            id: participantData.id,
+            name: participantData.name || `${participantData.first_name || ''} ${participantData.last_name || ''}`.trim(),
+            first_name: participantData.first_name,
+            last_name: participantData.last_name,
+            email: participantData.email,
+            type: participantType
+          }
+        };
+      }
+    } catch (error) {
+      console.error('Erreur enrichissement conversation:', error);
+    }
+
+    return conv;
+  };
+
+  // Charger les données d'un utilisateur
+  const fetchUserData = async (type: string, id: string) => {
+    try {
+      let endpoint = '';
+      if (type === 'client') {
+        endpoint = `/api/admin/clients/${id}`;
+      } else if (type === 'expert') {
+        endpoint = `/api/admin/experts/${id}`;
+      } else if (type === 'apporteur') {
+        endpoint = `/api/admin/apporteurs/${id}`;
+      }
+
+      const response = await fetch(`${config.API_URL}${endpoint}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        return result.data;
+      }
+    } catch (error) {
+      console.error('Erreur chargement utilisateur:', error);
+    }
+    return null;
+  };
+
+  // ========================================
+  // FILTRAGE
+  // ========================================
+
+  useEffect(() => {
+    filterConversations();
+  }, [searchQuery, userTypeFilter, conversations]);
+
+  const filterConversations = () => {
+    let filtered = [...conversations];
+
+    // Filtrer par type d'utilisateur
+    if (userTypeFilter !== 'all') {
+      filtered = filtered.filter(conv => conv.otherParticipant?.type === userTypeFilter);
+    }
+
+    // Filtrer par recherche
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(conv => 
+        conv.otherParticipant?.name?.toLowerCase().includes(query) ||
+        conv.otherParticipant?.email?.toLowerCase().includes(query) ||
+        conv.last_message?.content?.toLowerCase().includes(query)
+      );
+    }
+
+    // Trier: nouvelles conversations (non lues) en haut, puis par date
+    filtered.sort((a, b) => {
+      // Priorité aux non lues
+      if (a.unread_count > 0 && b.unread_count === 0) return -1;
+      if (a.unread_count === 0 && b.unread_count > 0) return 1;
+      
+      // Puis par date
+      return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+    });
+
+    setFilteredConversations(filtered);
+  };
+
+  // ========================================
+  // GESTION DES MESSAGES
+  // ========================================
+
+  const handleConversationSelect = useCallback(async (conversation: Conversation) => {
+    setSelectedConversation(conversation);
+    
+    // Charger les messages
+    try {
+      const response = await fetch(
+        `${config.API_URL}/api/unified-messaging/conversations/${conversation.id}/messages`,
+        {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (response.ok) {
+        const result = await response.json();
+        setMessages(result.data || []);
+      }
+    } catch (error) {
+      console.error('Erreur chargement messages:', error);
+    }
+  }, []);
+
+  const handleSendMessage = useCallback(async () => {
+    if (!messageInput.trim() || !selectedConversation) return;
+
+    try {
+      const response = await fetch(`${config.API_URL}/api/unified-messaging/messages`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          conversation_id: selectedConversation.id,
+          content: messageInput,
+          message_type: 'text'
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setMessages(prev => [...prev, result.data]);
+        setMessageInput('');
+      }
+    } catch (error) {
+      console.error('Erreur envoi message:', error);
+    }
+  }, [messageInput, selectedConversation]);
+
+  // ========================================
+  // HELPERS
+  // ========================================
+
+  const getUserTypeLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      client: 'Client',
+      expert: 'Expert',
+      apporteur: 'Apporteur',
+      admin: 'Admin'
+    };
+    return labels[type] || type;
+  };
+
+  const getUserTypeBadgeColor = (type: string) => {
+    const colors: Record<string, string> = {
+      client: 'bg-blue-100 text-blue-700',
+      expert: 'bg-green-100 text-green-700',
+      apporteur: 'bg-purple-100 text-purple-700',
+      admin: 'bg-gray-100 text-gray-700'
+    };
+    return colors[type] || 'bg-gray-100 text-gray-700';
+  };
+
+  // ========================================
+  // RENDU
+  // ========================================
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Chargement des conversations...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`flex h-full ${className}`}>
+      {/* Liste des conversations - 30% */}
+      <div className="w-[400px] border-r border-gray-200 flex flex-col bg-gray-50">
+        {/* Header filtres */}
+        <div className="p-4 border-b border-gray-200 bg-white space-y-3">
+          {/* Recherche */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              type="text"
+              placeholder="Rechercher..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+
+          {/* Filtre par type */}
+          <Select value={userTypeFilter} onValueChange={setUserTypeFilter}>
+            <SelectTrigger>
+              <Filter className="h-4 w-4 mr-2" />
+              <SelectValue placeholder="Tous les types" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous les types</SelectItem>
+              <SelectItem value="client">Clients</SelectItem>
+              <SelectItem value="expert">Experts</SelectItem>
+              <SelectItem value="apporteur">Apporteurs</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Compteur */}
+          <div className="text-sm text-gray-600">
+            {filteredConversations.length} conversation(s)
+            {filteredConversations.filter(c => c.unread_count > 0).length > 0 && (
+              <span className="ml-2 text-purple-600 font-semibold">
+                · {filteredConversations.filter(c => c.unread_count > 0).length} non lue(s)
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Liste */}
+        <div className="flex-1 overflow-y-auto">
+          {filteredConversations.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-gray-500 p-6">
+              <MessageSquare className="h-12 w-12 mb-3 text-gray-400" />
+              <p className="text-center">Aucune conversation trouvée</p>
+            </div>
+          ) : (
+            filteredConversations.map((conv) => (
+              <motion.div
+                key={conv.id}
+                onClick={() => handleConversationSelect(conv)}
+                className={`p-4 cursor-pointer border-b border-gray-100 hover:bg-white transition-colors ${
+                  selectedConversation?.id === conv.id ? 'bg-white border-l-4 border-l-purple-500' : ''
+                } ${conv.unread_count > 0 ? 'bg-purple-50' : ''}`}
+                whileHover={{ x: 4 }}
+              >
+                <div className="flex items-start gap-3">
+                  {/* Avatar */}
+                  <Avatar className="w-12 h-12 flex-shrink-0">
+                    <AvatarFallback className={`text-white font-semibold ${
+                      conv.otherParticipant?.type === 'client' ? 'bg-blue-500' :
+                      conv.otherParticipant?.type === 'expert' ? 'bg-green-500' :
+                      conv.otherParticipant?.type === 'apporteur' ? 'bg-purple-500' :
+                      'bg-gray-500'
+                    }`}>
+                      {conv.otherParticipant?.type === 'client' && <User className="w-5 h-5" />}
+                      {conv.otherParticipant?.type === 'expert' && <Users className="w-5 h-5" />}
+                      {conv.otherParticipant?.type === 'apporteur' && <Users className="w-5 h-5" />}
+                    </AvatarFallback>
+                  </Avatar>
+
+                  {/* Contenu */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      {/* Badge Type */}
+                      <Badge className={`${getUserTypeBadgeColor(conv.otherParticipant?.type || '')} text-xs px-2 py-0.5`}>
+                        {getUserTypeLabel(conv.otherParticipant?.type || '')}
+                      </Badge>
+                      
+                      {/* Nom */}
+                      <span className={`font-medium text-sm truncate ${conv.unread_count > 0 ? 'font-bold text-gray-900' : 'text-gray-700'}`}>
+                        {conv.otherParticipant?.name || 'Utilisateur'}
+                      </span>
+
+                      {/* Badge unread */}
+                      {conv.unread_count > 0 && (
+                        <Badge className="bg-purple-600 text-white ml-auto">{conv.unread_count}</Badge>
+                      )}
+                    </div>
+
+                    {/* Dernier message */}
+                    {conv.last_message && (
+                      <p className={`text-sm truncate ${
+                        conv.unread_count > 0 ? 'font-semibold text-gray-900' : 'text-gray-500'
+                      }`}>
+                        {conv.last_message.content}
+                      </p>
+                    )}
+
+                    {/* Date */}
+                    <p className="text-xs text-gray-400 mt-1">
+                      {new Date(conv.updated_at).toLocaleString('fr-FR', {
+                        day: '2-digit',
+                        month: 'short',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* Zone de messages - 70% */}
+      <div className="flex-1 flex flex-col">
+        {selectedConversation ? (
+          <>
+            {/* Header conversation */}
+            <div className="p-4 border-b border-gray-200 bg-white">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Avatar className="w-10 h-10">
+                    <AvatarFallback className={`text-white ${
+                      selectedConversation.otherParticipant?.type === 'client' ? 'bg-blue-500' :
+                      selectedConversation.otherParticipant?.type === 'expert' ? 'bg-green-500' :
+                      'bg-purple-500'
+                    }`}>
+                      <User className="w-5 h-5" />
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <h3 className="font-semibold text-gray-900">
+                      {selectedConversation.otherParticipant?.name}
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      {getUserTypeLabel(selectedConversation.otherParticipant?.type || '')} · {selectedConversation.otherParticipant?.email}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Messages */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
+              {messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`flex ${message.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div
+                    className={`max-w-[70%] rounded-lg p-3 ${
+                      message.sender_id === user?.id
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-white text-gray-900 border border-gray-200'
+                    }`}
+                  >
+                    <p className="text-sm">{message.content}</p>
+                    <p className={`text-xs mt-1 ${
+                      message.sender_id === user?.id ? 'text-purple-200' : 'text-gray-400'
+                    }`}>
+                      {new Date(message.created_at).toLocaleTimeString('fr-FR', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Input message */}
+            <div className="p-4 border-t border-gray-200 bg-white">
+              <div className="flex gap-2">
+                <Input
+                  type="text"
+                  placeholder="Votre message..."
+                  value={messageInput}
+                  onChange={(e) => setMessageInput(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                  className="flex-1"
+                />
+                <Button onClick={handleSendMessage} className="bg-purple-600 hover:bg-purple-700">
+                  <Send className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="flex-1 flex items-center justify-center text-gray-500">
+            <div className="text-center">
+              <MessageSquare className="h-16 w-16 mx-auto mb-4 text-gray-400" />
+              <p className="text-lg font-medium">Sélectionnez une conversation</p>
+              <p className="text-sm mt-2">Choisissez une conversation pour commencer</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default ImprovedAdminMessaging;
+

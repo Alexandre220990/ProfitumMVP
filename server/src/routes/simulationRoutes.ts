@@ -33,7 +33,6 @@ router.get('/questions', async (req: Request, res: Response) => {
     const { data: questions, error } = await supabase
       .from('QuestionnaireQuestion')
       .select('*')
-      .eq('active', true)
       .order('question_order', { ascending: true });
 
     if (error) {

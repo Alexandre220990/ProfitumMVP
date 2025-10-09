@@ -144,11 +144,18 @@ app.use(cookieParser()); // Ajout du middleware cookie-parser
 app.use(helmet());
 app.use(morgan('dev'));
 
-// Rate limiting renforcé
+// Rate limiting renforcé mais raisonnable pour usage normal
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limite chaque IP à 100 requêtes par fenêtre
-  message: 'Trop de requêtes depuis cette IP, veuillez réessayer plus tard.'
+  max: 500, // limite chaque IP à 500 requêtes par fenêtre (augmenté pour dashboards avec polling)
+  message: 'Trop de requêtes depuis cette IP, veuillez réessayer plus tard.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => {
+    // Skip rate limiting pour les routes de notification et vues qui peuvent polling
+    const skipPaths = ['/api/health', '/api/apporteur/views/notifications', '/api/notifications'];
+    return skipPaths.some(path => req.path.startsWith(path));
+  }
 });
 
 app.use('/api/', limiter);

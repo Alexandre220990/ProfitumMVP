@@ -3089,6 +3089,39 @@ router.get('/experts/all', asyncHandler(async (req, res) => {
   }
 }));
 
+// GET /api/admin/apporteurs/:id - Détails d'un apporteur
+router.get('/apporteurs/:id', asyncHandler(async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Récupérer l'apporteur
+    const { data: apporteur, error } = await supabaseClient
+      .from('ApporteurAffaires')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error || !apporteur) {
+      return res.status(404).json({
+        success: false,
+        message: 'Apporteur non trouvé'
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: apporteur
+    });
+
+  } catch (error) {
+    console.error('Erreur récupération apporteur:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération de l\'apporteur'
+    });
+  }
+}));
+
 // GET /api/admin/dossiers/all - Tous les ClientProduitEligible de la plateforme
 router.get('/dossiers/all', async (req, res) => {
   try {

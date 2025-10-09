@@ -259,7 +259,7 @@ export class ApporteurService {
             // 1. Récupérer les informations des produits sélectionnés
             const { data: products, error: productsError } = await supabase
                 .from('ProduitEligible')
-                .select('id, nom, categorie, specialization_required')
+                .select('id, nom, categorie')
                 .in('id', productIds);
 
             if (productsError) throw productsError;
@@ -269,12 +269,10 @@ export class ApporteurService {
                 return [];
             }
 
-            // 2. Extraire les catégories et spécialisations requises
+            // 2. Extraire les catégories
             const categories = products.map(p => p.categorie).filter(Boolean);
-            const specializations = products
-                .map(p => p.specialization_required)
-                .filter(Boolean)
-                .flat();
+            // Utiliser les catégories comme spécialisations pour le matching
+            const specializations = categories;
 
             console.log('📊 Catégories:', categories);
             console.log('📊 Spécialisations:', specializations);

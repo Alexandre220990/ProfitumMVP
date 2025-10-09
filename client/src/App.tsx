@@ -22,6 +22,7 @@ const AideExpert = React.lazy(() => import('./pages/aide-expert'));
 const ProfileClient = React.lazy(() => import('./pages/profile/client'));
 const ProfileExpert = React.lazy(() => import('./pages/profile/expert'));
 const MessagerieClient = React.lazy(() => import('./pages/messagerie-client'));
+const MessagerieAdmin = React.lazy(() => import('./pages/admin/messagerie'));
 const ClientDocuments = React.lazy(() => import('./pages/dashboard/client-documents'));
 const DocumentsClient = React.lazy(() => import('./pages/documents-client'));
 const NotificationCenter = React.lazy(() => import('./pages/notification-center'));
@@ -274,7 +275,7 @@ function App() {
                         <Route path="agenda-admin" element={<AgendaAdmin />} />
                         
                         {/* Messagerie */}
-                        <Route path="messagerie-admin" element={<MessagerieClient />} />
+                        <Route path="messagerie-admin" element={<MessagerieAdmin />} />
                         
                         {/* GED & Documents */}
                         <Route path="enhanced-admin-documents" element={<AdminDocuments />} />

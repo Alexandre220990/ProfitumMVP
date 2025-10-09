@@ -44,6 +44,7 @@ interface ConversationData {
   updated_at: string;
   client_id?: string;
   expert_id?: string;
+  apporteur_id?: string;
 }
 
 // ============================================================================
@@ -495,9 +496,9 @@ class MessagingService {
     return data;
   }
 
-  // Créer automatiquement une conversation admin pour les clients et experts
+  // Créer automatiquement une conversation admin pour les clients, experts et apporteurs
   private async ensureAdminSupportConversation(): Promise<void> {
-    if (!this.currentUserId || (this.currentUserType !== 'client' && this.currentUserType !== 'expert')) return;
+    if (!this.currentUserId || (this.currentUserType !== 'client' && this.currentUserType !== 'expert' && this.currentUserType !== 'apporteur')) return;
 
     try {
       // Vérifier si une conversation admin existe déjà
@@ -545,6 +546,8 @@ class MessagingService {
           conversationData.client_id = this.currentUserId;
         } else if (this.currentUserType === 'expert') {
           conversationData.expert_id = this.currentUserId;
+        } else if (this.currentUserType === 'apporteur') {
+          conversationData.apporteur_id = this.currentUserId;
         }
 
         const { data: newConversation, error: createError } = await supabase

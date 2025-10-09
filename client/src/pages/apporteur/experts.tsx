@@ -339,19 +339,45 @@ export default function ExpertsPage() {
                     </div>
                     
                     <div className="flex gap-3">
-                      <Button variant="outline" className="flex-1 hover:bg-blue-50">
+                      <Button 
+                        variant="outline" 
+                        className="flex-1 hover:bg-blue-50"
+                        onClick={() => window.location.href = `tel:${expert.phone}`}
+                        title={`Appeler ${expert.name}`}
+                      >
                         <Phone className="h-4 w-4 mr-2" />
                         Appeler
                       </Button>
-                      <Button variant="outline" className="flex-1 hover:bg-green-50">
+                      <Button 
+                        variant="outline" 
+                        className="flex-1 hover:bg-green-50"
+                        onClick={() => window.location.href = `mailto:${expert.email}`}
+                        title={`Envoyer un email à ${expert.name}`}
+                      >
                         <Mail className="h-4 w-4 mr-2" />
                         Email
                       </Button>
-                      <Button variant="outline" className="flex-1 hover:bg-purple-50">
+                      <Button 
+                        variant="outline" 
+                        className="flex-1 hover:bg-purple-50"
+                        onClick={() => {
+                          // Navigate to messaging with this expert
+                          window.location.href = `/apporteur/messaging?apporteurId=${apporteurId}&expertId=${expert.id}`;
+                        }}
+                        title={`Envoyer un message à ${expert.name}`}
+                      >
                         <MessageSquare className="h-4 w-4 mr-2" />
                         Message
                       </Button>
-                      <Button variant="outline" className="flex-1 hover:bg-orange-50">
+                      <Button 
+                        variant="outline" 
+                        className="flex-1 hover:bg-orange-50"
+                        onClick={() => {
+                          // Show expert details modal or navigate to expert profile
+                          alert(`Profil de ${expert.name}\n\nEmail: ${expert.email}\nTéléphone: ${expert.phone}\nLocalisation: ${expert.location}\nSpécialité: ${expert.specialty}\nNote: ${expert.rating}/5\nTaux de réussite: ${expert.successRate}%\nNombre de dossiers: ${expert.dossiers}`);
+                        }}
+                        title={`Voir le profil de ${expert.name}`}
+                      >
                         <Eye className="h-4 w-4 mr-2" />
                         Voir
                       </Button>

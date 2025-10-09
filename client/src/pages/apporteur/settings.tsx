@@ -19,49 +19,49 @@ export default function SettingsPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const defaultSettings = {
-    profile: {
-      fullName: user?.name || user?.username || '',
-      email: user?.email || '',
-      phone: user?.phone_number || '',
-      company: user?.company_name || ''
-    },
-    notifications: {
-      newProspects: true,
-      confirmedMeetings: true,
-      paidCommissions: true,
-      followUpReminders: false,
-      availableTrainings: false,
-      reminderFrequency: 'daily'
-    },
-    account: {
-      status: 'active',
-      registrationDate: user?.created_at ? new Date(user.created_at).toLocaleDateString('fr-FR') : '',
-      lastLogin: user?.updated_at ? new Date(user.updated_at).toLocaleString('fr-FR') : 'Maintenant',
-      accessLevel: 'Apporteur d\'Affaires'
-    }
-  };
-
   useEffect(() => {
     const loadSettings = async () => {
-      if (!apporteurId) {
+      if (!apporteurId || !user) {
         setLoading(false);
         return;
       }
       
       try {
+        // Créer les paramètres par défaut avec les données de l'utilisateur
+        const defaultSettings = {
+          profile: {
+            fullName: user?.name || user?.username || '',
+            email: user?.email || '',
+            phone: user?.phone_number || '',
+            company: user?.company_name || ''
+          },
+          notifications: {
+            newProspects: true,
+            confirmedMeetings: true,
+            paidCommissions: true,
+            followUpReminders: false,
+            availableTrainings: false,
+            reminderFrequency: 'daily'
+          },
+          account: {
+            status: 'active',
+            registrationDate: user?.created_at ? new Date(user.created_at).toLocaleDateString('fr-FR') : '',
+            lastLogin: user?.updated_at ? new Date(user.updated_at).toLocaleString('fr-FR') : 'Maintenant',
+            accessLevel: 'Apporteur d\'Affaires'
+          }
+        };
+        
         // Ici on pourrait charger les paramètres depuis l'API
         setSettings(defaultSettings);
       } catch (err) {
         console.error('Erreur lors du chargement des paramètres:', err);
-        setSettings(defaultSettings);
       } finally {
         setLoading(false);
       }
     };
 
     loadSettings();
-  }, [apporteurId]);
+  }, [apporteurId, user]);
 
   if (loading) {
     return (

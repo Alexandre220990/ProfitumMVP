@@ -925,7 +925,7 @@ const AdminDashboardOptimized: React.FC = () => {
   // ===== RENDU PRINCIPAL =====
   
   return (
-    <div className="flex flex-1">
+    <div className="flex flex-col min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
         <div className="flex-1 p-6">
           {loading ? (
             <div className="flex items-center justify-center h-64">
@@ -1490,6 +1490,7 @@ const AdminDashboardOptimized: React.FC = () => {
           )}
         </div>
       
+      {/* Footer en bas de page */}
       <AdminFooter />
     </div>
   );

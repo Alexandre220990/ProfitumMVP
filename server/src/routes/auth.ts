@@ -192,11 +192,18 @@ router.post('/client/login', loginRateLimiter, async (req, res) => {
       { expiresIn: jwtConfig.expiresIn }
     );
 
+    // Ajouter explicitement le type 'client' à l'objet utilisateur
+    const userResponse = {
+      ...client,
+      type: 'client',
+      database_id: client.id
+    };
+
     return res.json({
       success: true,
       data: {
         token,
-        user: client
+        user: userResponse
       }
     });
   } catch (error) {
@@ -267,17 +274,25 @@ router.post('/expert/login', loginRateLimiter, async (req, res) => {
       { 
         id: expert.id,
         email: userEmail, 
-        type: 'expert' 
+        type: 'expert',
+        database_id: expert.id
       },
       jwtConfig.secret,
       { expiresIn: jwtConfig.expiresIn }
     );
 
+    // Ajouter explicitement le type 'expert' à l'objet utilisateur
+    const userResponse = {
+      ...expert,
+      type: 'expert',
+      database_id: expert.id
+    };
+
     return res.json({
       success: true,
       data: {
         token,
-        user: expert
+        user: userResponse
       }
     });
   } catch (error) {
