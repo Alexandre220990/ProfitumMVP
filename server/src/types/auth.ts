@@ -25,7 +25,6 @@ export interface AuthUser extends User {
   app_metadata: any;
   aud: string;
   created_at: string;
-  role?: string;
 }
 
 // Alias pour compatibilité avec middleware

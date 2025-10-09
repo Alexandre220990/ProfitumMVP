@@ -880,7 +880,7 @@ router.post('/experts', asyncHandler(async (req, res) => {
       password: 'Expert2024!', // Mot de passe temporaire
       email_confirm: true,
       user_metadata: {
-        role: 'expert',
+        type: 'expert',
         name: expertData.name
       }
     });

@@ -26,7 +26,6 @@ interface AuthenticatedUser {
   app_metadata: Record<string, any>;
   aud: string;
   created_at: string;
-  role?: string;
 }
 
 // Interface pour la requête avec utilisateur

@@ -62,9 +62,9 @@ router.post('/register', async (req, res) => {
 
     // Générer un token JWT
     const token = jwt.sign(
-      { id: expert.id, email: expert.email, role: 'expert' },
+      { id: expert.id, email: expert.email, type: 'expert' },
       jwtConfig.secret,
-      { expiresIn: '24h' }
+      { expiresIn: jwtConfig.expiresIn }
     );
 
     return res.status(201).json({

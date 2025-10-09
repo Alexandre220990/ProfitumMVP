@@ -7,7 +7,7 @@ export interface ApporteurUser {
     id: string;
     auth_id: string;
     apporteur_id: string;
-    role: 'apporteur';
+    type: 'apporteur';
     status: string;
     first_name: string;
     last_name: string;
@@ -18,7 +18,7 @@ export interface ExpertUser {
     id: string;
     auth_id: string;
     expert_id: string;
-    role: 'expert';
+    type: 'expert';
     status: string;
     name: string;
     email: string;
@@ -77,7 +77,7 @@ export const authApporteur = async (req: ApporteurRequest, res: Response, next: 
             id: user.id,
             auth_id: user.id,
             apporteur_id: apporteur.id,
-            role: 'apporteur',
+            type: 'apporteur',
             status: apporteur.status,
             first_name: apporteur.first_name,
             last_name: apporteur.last_name,
@@ -165,7 +165,7 @@ export const authExpert = async (req: ExpertRequest, res: Response, next: NextFu
             id: user.id,
             auth_id: user.id,
             expert_id: expert.id,
-            role: 'expert',
+            type: 'expert',
             status: expert.status,
             name: expert.name,
             email: expert.email
@@ -234,8 +234,8 @@ export const checkMeetingOwnership = async (req: Request, res: Response, next: N
         }
 
         // Vérifier si l'utilisateur est l'expert ou l'apporteur
-        const isExpert = user.role === 'expert' && meeting.expert_id === user.expert_id;
-        const isApporteur = user.role === 'apporteur' && meeting.apporteur_id === user.apporteur_id;
+        const isExpert = user.type === 'expert' && meeting.expert_id === user.expert_id;
+        const isApporteur = user.type === 'apporteur' && meeting.apporteur_id === user.apporteur_id;
 
         if (!isExpert && !isApporteur) {
             res.status(403).json({ error: 'Accès refusé - Rencontre non autorisée' });
@@ -290,7 +290,7 @@ export const authAdmin = async (req: Request, res: Response, next: NextFunction)
             id: user.id,
             auth_id: user.id,
             admin_id: admin.id,
-            role: 'admin',
+            type: 'admin',
             status: admin.status,
             name: admin.name,
             email: admin.email

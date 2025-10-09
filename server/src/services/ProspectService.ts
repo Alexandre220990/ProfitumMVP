@@ -40,7 +40,7 @@ export class ProspectService {
                     name: prospectData.name,
                     company_name: prospectData.company_name,
                     phone_number: prospectData.phone_number,
-                    role: 'client',
+                    type: 'client',
                     created_by: 'apporteur',
                     apporteur_id: apporteurId,
                     requires_password_change: true // Changement obligatoire à la première connexion

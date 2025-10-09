@@ -49,7 +49,6 @@ export class EmailService {
                     name: clientData.name,
                     company_name: clientData.company_name,
                     phone_number: clientData.phone_number,
-                    role: 'client',
                     type: 'client'
                 }
             });
