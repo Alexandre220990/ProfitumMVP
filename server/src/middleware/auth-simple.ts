@@ -66,8 +66,11 @@ export const simpleAuthMiddleware = async (
       id: decoded.id,
       email: decoded.email,
       type: decoded.type,
-      database_id: decoded.database_id,
+      database_id: decoded.database_id || decoded.id,
+      permissions: decoded.permissions || [],
+      auth_id: decoded.id,
       user_metadata: {
+        username: decoded.email?.split('@')[0] || 'user',
         type: decoded.type
       },
       app_metadata: {},

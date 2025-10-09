@@ -82,12 +82,12 @@ router.get('/click/:emailId', async (req: Request, res: Response) => {
     });
 
     // Rediriger vers l'URL cible
-    res.redirect(302, decodeURIComponent(url));
+    return res.redirect(302, decodeURIComponent(url));
   } catch (error) {
     console.error('❌ Erreur tracking clic:', error);
     
     // Même en cas d'erreur, rediriger vers l'URL
-    res.redirect(302, decodeURIComponent(url));
+    return res.redirect(302, decodeURIComponent(url));
   }
 });
 

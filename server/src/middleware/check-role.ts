@@ -4,7 +4,7 @@ import { AuthUser } from '../types/auth';
 export const checkRole = (allowedRoles: string[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
     try {
-      const user = req.user as AuthUser;
+      const user = req.user as AuthUser | undefined;
       
       if (!user) {
         return res.status(401).json({ 

@@ -147,7 +147,7 @@ export class RDVEmailService {
         to: rdvData.expert_email,
         subject: `🆕 Nouveau RDV proposé - ${rdvData.company_name}`,
         html: html,
-        priority: 'high'
+        priority: 'high' as 'high'
       };
 
       // Envoyer l'email
