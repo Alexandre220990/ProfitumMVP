@@ -4,8 +4,10 @@ import { authApporteur, checkProspectOwnership, ApporteurRequest } from '../midd
 import { ApporteurService } from '../services/ApporteurService';
 import { ProspectService } from '../services/ProspectService';
 import { NotificationService } from '../services/NotificationService';
+import { createClient } from '@supabase/supabase-js';
 
 const router = express.Router();
+const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
 // Middleware d'authentification déjà appliqué dans index.ts (enhancedAuthMiddleware)
 
@@ -359,6 +361,182 @@ router.get('/commissions', async (req: any, res: any): Promise<void> => {
     } catch (error) {
         console.error('Erreur récupération commissions:', error);
         res.status(500).json({ error: 'Erreur lors de la récupération des commissions' });
+    }
+});
+
+// ===== DOSSIERS (ClientProduitEligible) =====
+// Récupérer tous les ClientProduitEligible des clients de l'apporteur
+router.get('/dossiers', async (req: any, res: any): Promise<void> => {
+    try {
+        const apporteurId = req.user!.database_id;
+        
+        console.log('🔍 Récupération dossiers pour apporteur:', apporteurId);
+        
+        // 1. Récupérer tous les clients de l'apporteur (Client avec status='client' OU 'prospect')
+        const { data: clients, error: clientsError } = await supabase
+            .from('Client')
+            .select('id, company_name, email, status')
+            .eq('apporteur_id', apporteurId);
+        
+        if (clientsError) {
+            console.error('Erreur récupération clients:', clientsError);
+            throw clientsError;
+        }
+        
+        if (!clients || clients.length === 0) {
+            return res.json({ success: true, data: [] });
+        }
+        
+        const clientIds = clients.map((c: any) => c.id);
+        console.log(`📋 ${clientIds.length} clients trouvés pour l'apporteur`);
+        
+        // 2. Récupérer tous les ClientProduitEligible de ces clients
+        const { data: dossiers, error: dossiersError } = await supabase
+            .from('ClientProduitEligible')
+            .select(`
+                id,
+                clientId,
+                produitId,
+                statut,
+                progress,
+                montantFinal,
+                tauxFinal,
+                current_step,
+                expert_id,
+                created_at,
+                updated_at,
+                Client:Client!inner(
+                    id,
+                    company_name,
+                    email,
+                    status,
+                    phone_number
+                ),
+                ProduitEligible:ProduitEligible!inner(
+                    id,
+                    nom,
+                    description,
+                    categorie
+                ),
+                Expert:Expert(
+                    id,
+                    name,
+                    company_name
+                )
+            `)
+            .in('clientId', clientIds)
+            .order('created_at', { ascending: false });
+        
+        if (dossiersError) {
+            console.error('Erreur récupération dossiers:', dossiersError);
+            throw dossiersError;
+        }
+        
+        console.log(`✅ ${dossiers?.length || 0} dossiers trouvés`);
+        
+        res.json({ 
+            success: true, 
+            data: dossiers || [] 
+        });
+        
+    } catch (error) {
+        console.error('Erreur récupération dossiers:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: 'Erreur lors de la récupération des dossiers' 
+        });
+    }
+});
+
+// ===== STATISTIQUES DE CONVERSION =====
+// Récupérer les stats de conversion multi-niveaux
+router.get('/conversion-stats', async (req: any, res: any): Promise<void> => {
+    try {
+        const apporteurId = req.user!.database_id;
+        
+        console.log('📊 Récupération stats conversion pour apporteur:', apporteurId);
+        
+        // 1. Total prospects de l'apporteur
+        const { data: allProspects, error: prospectsError } = await supabase
+            .from('Client')
+            .select('id, status, created_at')
+            .eq('apporteur_id', apporteurId);
+        
+        if (prospectsError) throw prospectsError;
+        
+        const totalProspects = allProspects?.length || 0;
+        const prospectsOnly = allProspects?.filter(p => p.status === 'prospect') || [];
+        const clients = allProspects?.filter(p => p.status === 'client') || [];
+        
+        // 2. Prospects avec RDV (ClientRDV ou RDV ou ProspectMeeting)
+        const { data: rdvs, error: rdvError } = await supabase
+            .from('RDV')
+            .select('id, client_id, status')
+            .eq('apporteur_id', apporteurId);
+        
+        const prospectsAvecRDV = new Set(rdvs?.map(r => r.client_id) || []).size;
+        
+        // 3. Conversions (ProspectConversion)
+        const { data: conversions, error: convError } = await supabase
+            .from('ProspectConversion')
+            .select(`
+                id,
+                prospect_id,
+                converted_at,
+                conversion_value,
+                commission_amount,
+                Client:Client!inner(
+                    id,
+                    company_name,
+                    email,
+                    apporteur_id
+                )
+            `)
+            .eq('Client.apporteur_id', apporteurId);
+        
+        const totalSignatures = clients.length;
+        const rdvAvecSignature = rdvs?.filter(r => 
+            clients.some(c => c.id === r.client_id)
+        ).length || 0;
+        
+        // 4. Calculer les taux
+        const tauxProspectRDV = totalProspects > 0 ? ((prospectsAvecRDV / totalProspects) * 100).toFixed(1) : '0';
+        const tauxProspectSignature = totalProspects > 0 ? ((totalSignatures / totalProspects) * 100).toFixed(1) : '0';
+        const tauxRDVSignature = prospectsAvecRDV > 0 ? ((rdvAvecSignature / prospectsAvecRDV) * 100).toFixed(1) : '0';
+        
+        console.log(`✅ Stats conversion:`, {
+            totalProspects,
+            prospectsAvecRDV,
+            totalSignatures,
+            rdvAvecSignature
+        });
+        
+        res.json({
+            success: true,
+            data: {
+                // Métriques absolues
+                total_prospects: totalProspects,
+                prospects_avec_rdv: prospectsAvecRDV,
+                total_signatures: totalSignatures,
+                rdv_avec_signature: rdvAvecSignature,
+                
+                // Taux de conversion
+                taux_prospect_rdv: parseFloat(tauxProspectRDV),
+                taux_prospect_signature: parseFloat(tauxProspectSignature),
+                taux_rdv_signature: parseFloat(tauxRDVSignature),
+                
+                // Dernières conversions
+                recent_conversions: conversions?.slice(0, 5) || [],
+                recent_clients: clients.slice(0, 5)
+            }
+        });
+        
+    } catch (error) {
+        console.error('Erreur récupération stats conversion:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: 'Erreur lors de la récupération des stats de conversion' 
+        });
     }
 });
 
