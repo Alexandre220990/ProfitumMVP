@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
 import { Badge } from '@/components/ui/badge';
+import { TypeSwitcher } from '@/components/TypeSwitcher';
 import { 
   LayoutDashboard,
   Briefcase,
@@ -251,7 +252,10 @@ export default function ExpertLayout({ children }: ExpertLayoutProps) {
                 </div>
               </div>
             </div>
-            <div className="ml-4 flex items-center md:ml-6">
+            <div className="ml-4 flex items-center md:ml-6 gap-3">
+              {/* TypeSwitcher */}
+              <TypeSwitcher />
+
               {/* Notifications */}
               <button
                 type="button"

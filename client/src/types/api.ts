@@ -16,6 +16,8 @@ export interface BaseUser { id: string;
   siren?: string;
   status?: string;
   database_id?: string;
+  auth_user_id?: string;
+  available_types?: string[];
   created_at?: string;
   updated_at?: string; }
 

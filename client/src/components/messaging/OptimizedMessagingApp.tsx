@@ -10,7 +10,10 @@ import {
   MoreVertical,
   Phone,
   Video,
-  Info
+  Info,
+  Users,
+  Trash2,
+  AlertTriangle
 } from 'lucide-react';
 import { useMessaging } from '@/hooks/use-messaging';
 import { Conversation } from '@/types/messaging';
@@ -20,6 +23,24 @@ import { useAuth } from '@/hooks/use-auth';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { ContactsModal } from './ContactsModal';
+import { toast } from 'sonner';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // ============================================================================
 // MESSAGERIE CLIENT MODERNE - DESIGN PROFESSIONNEL 2025
@@ -47,6 +68,9 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
   const [messageInput, setMessageInput] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
+  const [showContactsModal, setShowContactsModal] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [participantStatus, setParticipantStatus] = useState<{ is_active: boolean; name: string } | null>(null);
 
   // Hook de messagerie optimisé
   const messaging = useMessaging({
@@ -63,10 +87,38 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
   // GESTION DES CONVERSATIONS
   // ========================================
 
-  const handleConversationSelect = useCallback((conversation: Conversation) => {
+  const handleConversationSelect = useCallback(async (conversation: Conversation) => {
     setSelectedConversation(conversation);
     messaging.selectConversation(conversation);
+    
+    // Vérifier le statut du participant
+    await checkParticipantStatus(conversation);
   }, [messaging]);
+
+  // Vérifier si le participant est actif
+  const checkParticipantStatus = async (conversation: Conversation) => {
+    try {
+      const otherParticipantId = conversation.participant_ids?.find(id => id !== user?.id);
+      if (!otherParticipantId) return;
+
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/messaging/user-status/${otherParticipantId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setParticipantStatus({
+          is_active: data.is_active,
+          name: conversation.title || 'Utilisateur'
+        });
+      }
+    } catch (error) {
+      console.error('Erreur vérification statut:', error);
+    }
+  };
 
   // ========================================
   // GESTION DES MESSAGES
@@ -75,14 +127,58 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
   const handleSendMessage = useCallback(async () => {
     if (!messageInput.trim() && selectedFiles.length === 0) return;
 
+    // Vérifier si l'utilisateur est désactivé
+    if (participantStatus && !participantStatus.is_active) {
+      toast.error(
+        `${participantStatus.name} s'est désinscrit. Le message ne sera pas délivré.`
+      );
+      return;
+    }
+
     try {
       await messaging.sendMessage(messageInput, selectedFiles);
       setMessageInput('');
       setSelectedFiles([]);
     } catch (error) {
       console.error('Erreur envoi message:', error);
+      toast.error("Impossible d'envoyer le message");
     }
-  }, [messageInput, selectedFiles, messaging]);
+  }, [messageInput, selectedFiles, messaging, participantStatus]);
+
+  // Supprimer une conversation
+  const handleDeleteConversation = async () => {
+    if (!selectedConversation) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      const isAdmin = user?.type === 'admin';
+      const endpoint = isAdmin 
+        ? `/api/messaging/conversations/${selectedConversation.id}/hard`
+        : `/api/messaging/conversations/${selectedConversation.id}`;
+
+      const response = await fetch(endpoint, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        toast.success(
+          isAdmin ? "Conversation supprimée définitivement" : "Conversation masquée"
+        );
+        setSelectedConversation(null);
+        setShowDeleteDialog(false);
+        // Forcer un rechargement de la page pour actualiser la liste
+        window.location.reload();
+      } else {
+        throw new Error('Erreur suppression');
+      }
+    } catch (error) {
+      console.error('Erreur suppression conversation:', error);
+      toast.error("Impossible de supprimer la conversation");
+    }
+  };
 
   // Organiser et afficher les conversations par catégorie
   const renderConversationsByCategory = useCallback((conversations: Conversation[]) => {
@@ -240,21 +336,31 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
               </Button>
             </div>
             
-            {/* Barre de recherche */}
+            {/* Barre de recherche et bouton contacts */}
             {isSidebarOpen && (
               <motion.div 
-                className="relative"
+                className="space-y-2"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
               >
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <Input
-                  placeholder="Rechercher..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 bg-slate-100 border-0 focus:bg-white focus:border-slate-300"
-                />
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Input
+                    placeholder="Rechercher..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 bg-slate-100 border-0 focus:bg-white focus:border-slate-300"
+                  />
+                </div>
+                <Button 
+                  onClick={() => setShowContactsModal(true)}
+                  className="w-full bg-blue-600 hover:bg-blue-700"
+                  size="sm"
+                >
+                  <Users className="w-4 h-4 mr-2" />
+                  Contacts
+                </Button>
               </motion.div>
             )}
           </div>
@@ -283,12 +389,21 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <h3 className="font-semibold text-slate-900">
+                    <h3 className="font-semibold text-slate-900 flex items-center gap-2">
                       {cleanConversationTitle(selectedConversation.title)}
+                      {participantStatus && !participantStatus.is_active && (
+                        <Badge variant="destructive" className="text-xs">
+                          Désactivé
+                        </Badge>
+                      )}
                     </h3>
-                    <p className="text-sm text-green-600 flex items-center gap-1">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      En ligne
+                    <p className={`text-sm flex items-center gap-1 ${
+                      participantStatus?.is_active === false ? 'text-red-600' : 'text-green-600'
+                    }`}>
+                      <div className={`w-2 h-2 rounded-full ${
+                        participantStatus?.is_active === false ? 'bg-red-500' : 'bg-green-500'
+                      }`}></div>
+                      {participantStatus?.is_active === false ? 'Désinscrit' : 'En ligne'}
                     </p>
                   </div>
                 </div>
@@ -303,12 +418,37 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
                   <Button variant="ghost" size="sm" className="h-9 w-9 p-0">
                     <Info className="w-4 h-4" />
                   </Button>
-                  <Button variant="ghost" size="sm" className="h-9 w-9 p-0">
-                    <MoreVertical className="w-4 h-4" />
-                  </Button>
+                  
+                  {/* Menu contextuel avec suppression */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-9 w-9 p-0">
+                        <MoreVertical className="w-4 h-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => setShowDeleteDialog(true)} className="text-red-600">
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        {user?.type === 'admin' ? 'Supprimer définitivement' : 'Masquer la conversation'}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
             </div>
+
+            {/* Alerte utilisateur désactivé */}
+            {participantStatus && !participantStatus.is_active && (
+              <div className="px-4 py-3 bg-red-50 border-b border-red-200">
+                <div className="flex items-center gap-2 text-red-800 text-sm">
+                  <AlertTriangle className="w-4 h-4" />
+                  <p>
+                    <strong>{participantStatus.name}</strong> s'est désinscrit de la plateforme. 
+                    Vos messages ne seront pas délivrés.
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Zone des messages - Pleine hauteur */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-50">
@@ -371,7 +511,7 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
                 <Button
                   onClick={handleSendMessage}
                   disabled={!messageInput.trim() && selectedFiles.length === 0}
-                  className="h-10 px-6 bg-blue-500 hover:bg-blue-600 flex-shrink-0"
+                  className="h-10 px-6 bg-blue-500 hover:bg-blue-600 flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Send className="w-4 h-4" />
                 </Button>
@@ -407,6 +547,44 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
           </motion.div>
         )}
       </div>
+
+      {/* Modal Contacts */}
+      <ContactsModal 
+        isOpen={showContactsModal}
+        onClose={() => setShowContactsModal(false)}
+        onStartConversation={(contact) => {
+          // Créer ou ouvrir conversation avec ce contact
+          setShowContactsModal(false);
+          toast.success(`Conversation avec ${contact.full_name} ouverte`);
+          // TODO: Implémenter la création de conversation via l'API
+        }}
+        onViewProfile={(contact) => {
+          toast.info(`Profil de ${contact.full_name}`);
+          // TODO: Naviguer vers le profil
+        }}
+      />
+
+      {/* Dialog de confirmation suppression */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {user?.type === 'admin' ? 'Supprimer définitivement ?' : 'Masquer la conversation ?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {user?.type === 'admin' 
+                ? 'Cette action est irréversible. La conversation sera supprimée pour tous les participants.'
+                : 'Cette conversation sera masquée de votre vue mais restera visible pour les autres participants.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConversation} className="bg-red-600 hover:bg-red-700">
+              {user?.type === 'admin' ? 'Supprimer' : 'Masquer'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }; 

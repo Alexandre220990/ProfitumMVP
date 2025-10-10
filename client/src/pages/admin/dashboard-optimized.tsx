@@ -15,6 +15,7 @@ import {
   Download, Settings, TrendingUp, DollarSign,
   Bell, Mail, Target
 } from "lucide-react";
+import { TypeSwitcher } from "@/components/TypeSwitcher";
 import { motion } from "framer-motion";
 
 // ============================================================================
@@ -948,15 +949,20 @@ const AdminDashboardOptimized: React.FC = () => {
                           <p className="text-sm text-blue-700">Dernière mise à jour: {new Date().toLocaleTimeString('fr-FR')}</p>
                         </div>
                       </div>
-                      <div className="flex gap-2">
-                        <Badge variant="default" className="bg-green-100 text-green-800">
-                          <Check className="w-3 h-3 mr-1" />
-                          {kpiData.alertesUrgentes === 0 ? 'Aucune urgence' : `${kpiData.alertesUrgentes} urgences`}
-                        </Badge>
-                        <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
-                          <Clock className="w-3 h-3 mr-1" />
-                          {kpiData.alertesNormales} alertes
-                        </Badge>
+                      <div className="flex gap-3 items-center">
+                        {/* TypeSwitcher */}
+                        <TypeSwitcher />
+                        
+                        <div className="flex gap-2">
+                          <Badge variant="default" className="bg-green-100 text-green-800">
+                            <Check className="w-3 h-3 mr-1" />
+                            {kpiData.alertesUrgentes === 0 ? 'Aucune urgence' : `${kpiData.alertesUrgentes} urgences`}
+                          </Badge>
+                          <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                            <Clock className="w-3 h-3 mr-1" />
+                            {kpiData.alertesNormales} alertes
+                          </Badge>
+                        </div>
                       </div>
                     </div>
                   </CardContent>

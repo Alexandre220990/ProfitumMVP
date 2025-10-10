@@ -507,7 +507,7 @@ class MessagingService {
         .select('*')
         .contains('participant_ids', [this.currentUserId])
         .eq('type', 'admin_support')
-        .single();
+        .maybeSingle();
 
       if (checkError && checkError.code !== 'PGRST116') {
         console.error('Erreur vérification conversation admin:', checkError);

@@ -5,6 +5,7 @@ import { useNotifications } from '@/hooks/use-notifications';
 import ApporteurAuthGuard from './ApporteurAuthGuard';
 import { NotificationSlider } from './NotificationSlider';
 import { Badge } from '@/components/ui/badge';
+import { TypeSwitcher } from '@/components/TypeSwitcher';
 import { 
   LayoutDashboard, 
   Users, 
@@ -217,7 +218,10 @@ export default function ApporteurLayout({ children }: ApporteurLayoutProps) {
                 </div>
               </div>
             </div>
-            <div className="ml-4 flex items-center md:ml-6">
+            <div className="ml-4 flex items-center md:ml-6 gap-3">
+              {/* TypeSwitcher */}
+              <TypeSwitcher />
+
               {/* Notifications */}
               <button
                 type="button"

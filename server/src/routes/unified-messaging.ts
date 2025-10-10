@@ -22,6 +22,7 @@ interface Conversation {
   dossier_id?: string;
   client_id?: string;
   expert_id?: string;
+  apporteur_id?: string;
   produit_id?: string;
   created_by?: string;
   access_level?: string;
@@ -29,6 +30,7 @@ interface Conversation {
   priority?: string;
   category?: string;
   tags?: string[];
+  deleted_for_user_ids?: string[];
 }
 
 interface Message {
@@ -183,10 +185,10 @@ router.get(['/conversations', '/expert/conversations'], async (req, res) => {
 
     // Enrichir avec les informations des participants
     const enrichedConversations = await Promise.all(
-      conversations?.filter((conv: Conversation) => {
+      (conversations as any[])?.filter((conv: any) => {
         // Filtrer les conversations avec UUID nul pour éviter les doublons
         return !conv.participant_ids.includes('00000000-0000-0000-0000-000000000000');
-      }).map(async (conv: Conversation) => {
+      }).map(async (conv: any) => {
         const participants = await Promise.all(
           conv.participant_ids.map(async (participantId: string) => {
             if (participantId === '00000000-0000-0000-0000-000000000000') {
@@ -205,25 +207,39 @@ router.get(['/conversations', '/expert/conversations'], async (req, res) => {
             if (conv.client_id && participantId === conv.client_id) {
               const { data } = await supabaseAdmin
                 .from('Client')
-                .select('id, name, email, company_name')
+                .select('id, name, email, company_name, is_active')
                 .eq('id', conv.client_id)
                 .single();
               userData = data;
             } else if (conv.expert_id && participantId === conv.expert_id) {
               const { data } = await supabaseAdmin
                 .from('Expert')
-                .select('id, name, email, company_name')
+                .select('id, name, email, company_name, is_active')
                 .eq('id', conv.expert_id)
                 .single();
               userData = data;
-            } else {
-              // Fallback vers l'ancienne méthode
+            } else if (conv.apporteur_id && participantId === conv.apporteur_id) {
               const { data } = await supabaseAdmin
-                .from(authUser.type === 'client' ? 'Client' : 'Expert')
-                .select('id, name, email, company_name')
-                .eq('id', participantId)
+                .from('ApporteurAffaires')
+                .select('id, first_name, last_name, email, company_name, is_active')
+                .eq('id', conv.apporteur_id)
                 .single();
-              userData = data;
+              if (data) {
+                userData = {
+                  ...data,
+                  name: `${data.first_name} ${data.last_name}`
+                };
+              }
+            } else {
+              // Fallback: chercher dans toutes les tables
+              const [clientRes, expertRes, apporteurRes] = await Promise.all([
+                supabaseAdmin.from('Client').select('id, name, email, company_name, is_active').eq('id', participantId).maybeSingle(),
+                supabaseAdmin.from('Expert').select('id, name, email, company_name, is_active').eq('id', participantId).maybeSingle(),
+                supabaseAdmin.from('ApporteurAffaires').select('id, first_name, last_name, email, company_name, is_active').eq('id', participantId).maybeSingle()
+              ]);
+              
+              userData = clientRes.data || expertRes.data || 
+                (apporteurRes.data ? { ...apporteurRes.data, name: `${apporteurRes.data.first_name} ${apporteurRes.data.last_name}` } : null);
             }
 
             return {
@@ -231,6 +247,7 @@ router.get(['/conversations', '/expert/conversations'], async (req, res) => {
               name: userData?.name || 'Utilisateur',
               type: authUser.type === 'client' ? 'expert' : 'client',
               company: userData?.company_name,
+              is_active: userData?.is_active !== false,
               avatar: null
             };
           })
@@ -1005,6 +1022,391 @@ router.get('/admin/conversations', async (req, res) => {
 
   } catch (error) {
     console.error('❌ Erreur route GET admin/conversations:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+// GET /api/unified-messaging/contacts - Récupérer les contacts selon le type d'utilisateur
+router.get('/contacts', async (req, res) => {
+  try {
+    const authUser = req.user as AuthUser;
+
+    if (!authUser) {
+      return res.status(401).json({
+        success: false,
+        message: 'Non authentifié'
+      });
+    }
+
+    const userId = authUser.database_id || authUser.id;
+    const userType = authUser.type;
+
+    console.log(`📋 Récupération contacts pour ${userType}:`, userId);
+
+    let clients: any[] = [];
+    let experts: any[] = [];
+    let apporteurs: any[] = [];
+    let admins: any[] = [];
+
+    if (userType === 'admin') {
+      // Admin voit tout le monde
+      const [clientsRes, expertsRes, apporteursRes, adminsRes] = await Promise.all([
+        supabaseAdmin.from('Client').select('id, name, email, company_name, is_active, created_at').eq('is_active', true).order('name'),
+        supabaseAdmin.from('Expert').select('id, name, email, company_name, is_active, created_at').eq('is_active', true).order('name'),
+        supabaseAdmin.from('ApporteurAffaires').select('id, first_name, last_name, email, company_name, is_active, created_at').eq('is_active', true).order('first_name'),
+        supabaseAdmin.from('Admin').select('id, name, email, created_at').order('name')
+      ]);
+
+      clients = (clientsRes.data || []).map(c => ({ ...c, type: 'client', full_name: c.name || c.company_name }));
+      experts = (expertsRes.data || []).map(e => ({ ...e, type: 'expert', full_name: e.name }));
+      apporteurs = (apporteursRes.data || []).map(a => ({ ...a, type: 'apporteur', full_name: `${a.first_name} ${a.last_name}` }));
+      admins = (adminsRes.data || []).map(a => ({ ...a, type: 'admin', full_name: a.name }));
+
+    } else if (userType === 'client') {
+      // Client voit: ses experts + son apporteur + admin
+      
+      // Récupérer le client
+      const { data: client } = await supabaseAdmin
+        .from('Client')
+        .select('apporteur_id')
+        .eq('id', userId)
+        .single();
+
+      // Experts assignés via ClientProduitEligible
+      const { data: assignments } = await supabaseAdmin
+        .from('ClientProduitEligible')
+        .select('expert_id, Expert:Expert(id, name, email, company_name, is_active)')
+        .eq('clientId', userId)
+        .not('expert_id', 'is', null);
+
+      const expertIds = new Set<string>();
+      (assignments || []).forEach((a: any) => {
+        if (a.Expert && a.Expert.is_active !== false) {
+          experts.push({ ...a.Expert, type: 'expert', full_name: a.Expert.name });
+          expertIds.add(a.Expert.id);
+        }
+      });
+
+      // Apporteur
+      if (client?.apporteur_id) {
+        const { data: apporteur } = await supabaseAdmin
+          .from('ApporteurAffaires')
+          .select('id, first_name, last_name, email, company_name, is_active')
+          .eq('id', client.apporteur_id)
+          .eq('is_active', true)
+          .single();
+
+        if (apporteur) {
+          apporteurs = [{ ...apporteur, type: 'apporteur', full_name: `${apporteur.first_name} ${apporteur.last_name}` }];
+        }
+      }
+
+      // Admin support
+      const { data: adminList } = await supabaseAdmin
+        .from('Admin')
+        .select('id, name, email')
+        .limit(1);
+
+      admins = (adminList || []).map(a => ({ ...a, type: 'admin', full_name: a.name }));
+
+    } else if (userType === 'expert') {
+      // Expert voit: ses clients + leurs apporteurs + admin
+
+      // Clients assignés
+      const { data: assignments } = await supabaseAdmin
+        .from('ClientProduitEligible')
+        .select('clientId, Client:Client(id, name, email, company_name, is_active, apporteur_id)')
+        .eq('expert_id', userId)
+        .not('clientId', 'is', null);
+
+      const clientIds = new Set<string>();
+      const apporteurIds = new Set<string>();
+
+      (assignments || []).forEach((a: any) => {
+        if (a.Client && a.Client.is_active !== false && !clientIds.has(a.Client.id)) {
+          clients.push({ ...a.Client, type: 'client', full_name: a.Client.name || a.Client.company_name });
+          clientIds.add(a.Client.id);
+          
+          // Récupérer l'apporteur de ce client
+          if (a.Client.apporteur_id) {
+            apporteurIds.add(a.Client.apporteur_id);
+          }
+        }
+      });
+
+      // Apporteurs qui ont amené ces clients
+      if (apporteurIds.size > 0) {
+        const { data: apporteursList } = await supabaseAdmin
+          .from('ApporteurAffaires')
+          .select('id, first_name, last_name, email, company_name, is_active')
+          .in('id', Array.from(apporteurIds))
+          .eq('is_active', true);
+
+        apporteurs = (apporteursList || []).map(a => ({ ...a, type: 'apporteur', full_name: `${a.first_name} ${a.last_name}` }));
+      }
+
+      // Admin
+      const { data: adminList } = await supabaseAdmin
+        .from('Admin')
+        .select('id, name, email')
+        .limit(1);
+
+      admins = (adminList || []).map(a => ({ ...a, type: 'admin', full_name: a.name }));
+
+    } else if (userType === 'apporteur') {
+      // Apporteur voit: ses clients + experts de ses clients + admin
+
+      // Clients de l'apporteur
+      const { data: clientsList } = await supabaseAdmin
+        .from('Client')
+        .select('id, name, email, company_name, is_active')
+        .eq('apporteur_id', userId)
+        .eq('is_active', true);
+
+      clients = (clientsList || []).map(c => ({ ...c, type: 'client', full_name: c.name || c.company_name }));
+
+      // Experts assignés aux clients de l'apporteur
+      const clientIds = clients.map(c => c.id);
+      if (clientIds.length > 0) {
+        const { data: assignments } = await supabaseAdmin
+          .from('ClientProduitEligible')
+          .select('expert_id, Expert:Expert(id, name, email, company_name, is_active)')
+          .in('clientId', clientIds)
+          .not('expert_id', 'is', null);
+
+        const expertIds = new Set<string>();
+        (assignments || []).forEach((a: any) => {
+          if (a.Expert && a.Expert.is_active !== false && !expertIds.has(a.Expert.id)) {
+            experts.push({ ...a.Expert, type: 'expert', full_name: a.Expert.name });
+            expertIds.add(a.Expert.id);
+          }
+        });
+      }
+
+      // Admin
+      const { data: adminList } = await supabaseAdmin
+        .from('Admin')
+        .select('id, name, email')
+        .limit(1);
+
+      admins = (adminList || []).map(a => ({ ...a, type: 'admin', full_name: a.name }));
+    }
+
+    // Trier par dernière activité (créé récemment = actif)
+    const sortByActivity = (a: any, b: any) => 
+      new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+
+    clients.sort(sortByActivity);
+    experts.sort(sortByActivity);
+    apporteurs.sort(sortByActivity);
+
+    return res.json({
+      success: true,
+      data: {
+        clients,
+        experts,
+        apporteurs,
+        admins
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route contacts:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+// GET /api/unified-messaging/user-status/:userId - Vérifier si utilisateur actif
+router.get('/user-status/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Chercher dans les 3 tables
+    const [clientRes, expertRes, apporteurRes] = await Promise.all([
+      supabaseAdmin.from('Client').select('is_active, updated_at').eq('id', userId).maybeSingle(),
+      supabaseAdmin.from('Expert').select('is_active, updated_at').eq('id', userId).maybeSingle(),
+      supabaseAdmin.from('ApporteurAffaires').select('is_active, updated_at').eq('id', userId).maybeSingle()
+    ]);
+
+    const user = clientRes.data || expertRes.data || apporteurRes.data;
+
+    if (!user) {
+      return res.json({
+        success: true,
+        data: { active: false, deactivated_at: null, not_found: true }
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        active: user.is_active !== false,
+        deactivated_at: user.is_active === false ? user.updated_at : null
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur user-status:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+// DELETE /api/unified-messaging/conversations/:id - Soft delete conversation
+router.delete('/conversations/:id', async (req, res) => {
+  try {
+    const authUser = req.user as AuthUser;
+    const { id: conversationId } = req.params;
+
+    // Récupérer la conversation
+    const { data: conversation, error: fetchError } = await supabaseAdmin
+      .from('conversations')
+      .select('deleted_for_user_ids')
+      .eq('id', conversationId)
+      .single();
+
+    if (fetchError || !conversation) {
+      return res.status(404).json({
+        success: false,
+        message: 'Conversation non trouvée'
+      });
+    }
+
+    // Ajouter l'utilisateur à la liste des suppressions
+    const deletedFor = conversation.deleted_for_user_ids || [];
+    if (!deletedFor.includes(authUser.database_id || authUser.id)) {
+      deletedFor.push(authUser.database_id || authUser.id);
+    }
+
+    const { error: updateError } = await supabaseAdmin
+      .from('conversations')
+      .update({ deleted_for_user_ids: deletedFor })
+      .eq('id', conversationId);
+
+    if (updateError) {
+      throw updateError;
+    }
+
+    return res.json({
+      success: true,
+      message: 'Conversation supprimée'
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur soft delete conversation:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+// DELETE /api/unified-messaging/conversations/:id/hard - Hard delete (admin only)
+router.delete('/conversations/:id/hard', async (req, res) => {
+  try {
+    const authUser = req.user as AuthUser;
+    const { id: conversationId } = req.params;
+
+    if (authUser.type !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Seuls les administrateurs peuvent supprimer définitivement'
+      });
+    }
+
+    // Supprimer les messages d'abord (CASCADE devrait le faire mais on s'assure)
+    await supabaseAdmin
+      .from('messages')
+      .delete()
+      .eq('conversation_id', conversationId);
+
+    // Supprimer la conversation
+    const { error } = await supabaseAdmin
+      .from('conversations')
+      .delete()
+      .eq('id', conversationId);
+
+    if (error) {
+      throw error;
+    }
+
+    return res.json({
+      success: true,
+      message: 'Conversation supprimée définitivement'
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur hard delete conversation:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+// GET/PUT /api/unified-messaging/preferences - Préférences UI messagerie
+router.get('/preferences', async (req, res) => {
+  try {
+    const authUser = req.user as AuthUser;
+    const userId = authUser.database_id || authUser.id;
+
+    const { data, error } = await supabaseAdmin
+      .from('UserMessagingPreferences')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (error && error.code !== 'PGRST116') {
+      throw error;
+    }
+
+    return res.json({
+      success: true,
+      data: data || { user_id: userId, collapsed_groups: {} }
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur get preferences:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+router.put('/preferences', async (req, res) => {
+  try {
+    const authUser = req.user as AuthUser;
+    const userId = authUser.database_id || authUser.id;
+    const { collapsed_groups } = req.body;
+
+    const { error } = await supabaseAdmin
+      .from('UserMessagingPreferences')
+      .upsert({
+        user_id: userId,
+        collapsed_groups,
+        updated_at: new Date().toISOString()
+      });
+
+    if (error) {
+      throw error;
+    }
+
+    return res.json({
+      success: true,
+      message: 'Préférences sauvegardées'
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur update preferences:', error);
     return res.status(500).json({
       success: false,
       message: 'Erreur serveur'

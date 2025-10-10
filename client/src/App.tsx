@@ -61,6 +61,7 @@ const ApporteurNotifications = React.lazy(() => import('./pages/ApporteurNotific
 const ApporteurProducts = React.lazy(() => import('./pages/ApporteurProducts'));
 const ApporteurMessaging = React.lazy(() => import('./pages/ApporteurMessaging'));
 const ApporteurAgenda = React.lazy(() => import('./pages/ApporteurAgenda'));
+const ApporteurSettings = React.lazy(() => import('./pages/apporteur/settings'));
 const ApporteurLayout = React.lazy(() => import('./components/apporteur/ApporteurLayout'));
 const ClientLayout = React.lazy(() => import('./components/client/ClientLayout'));
 const ExpertLayout = React.lazy(() => import('./components/expert/ExpertLayout'));
@@ -160,6 +161,7 @@ function App() {
                         <Route path="commissions" element={<ApporteurCommissions />} />
                         <Route path="statistics" element={<ApporteurStatistics />} />
                         <Route path="notifications" element={<ApporteurNotifications />} />
+                        <Route path="settings" element={<ApporteurSettings />} />
                     </Route>
                     <Route path="/connect-admin" element={<ConnectAdmin />} />
                     <Route path="/register-client" element={<CreateAccountClient />} />
