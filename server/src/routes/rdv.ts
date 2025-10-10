@@ -334,6 +334,16 @@ router.post('/', async (req: Request, res: Response) => {
       });
     }
 
+    // 🔥 Validation des slots 30min (00:00 ou 00:30)
+    const time = rdvData.scheduled_time;
+    const minutes = time.split(':')[1];
+    if (minutes !== '00' && minutes !== '30') {
+      return res.status(400).json({
+        success: false,
+        message: 'Les RDV doivent commencer à l\'heure pile (:00) ou à la demi (:30)'
+      });
+    }
+
     // Créer le RDV
     const newRDV = {
       ...rdvData,
@@ -342,7 +352,7 @@ router.post('/', async (req: Request, res: Response) => {
       category: rdvData.category || 'client_rdv',
       source: user.type === 'apporteur' ? 'apporteur' : user.type,
       priority: rdvData.priority || 2,
-      duration_minutes: rdvData.duration_minutes || 60,
+      duration_minutes: rdvData.duration_minutes || 30, // 🔥 30min par défaut
       timezone: rdvData.timezone || 'Europe/Paris'
     };
 
@@ -666,6 +676,162 @@ router.put('/:id/validate', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * PUT /api/rdv/:id/respond - Répondre à un RDV (tous utilisateurs)
+ * Actions: accept, refuse, propose_alternative
+ */
+router.put('/:id/respond', async (req: Request, res: Response) => {
+  try {
+    const user = req.user as AuthenticatedUser;
+    const { id } = req.params;
+    const { action, alternative_date, alternative_time, refusal_reason, notes } = req.body;
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Non authentifié'
+      });
+    }
+
+    // Actions valides
+    if (!['accept', 'refuse', 'propose_alternative'].includes(action)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Action invalide'
+      });
+    }
+
+    // Récupérer le RDV
+    const { data: rdv, error: fetchError } = await supabase
+      .from('RDV')
+      .select('*, Client(*), Expert(*), ApporteurAffaires(*)')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !rdv) {
+      return res.status(404).json({
+        success: false,
+        message: 'RDV non trouvé'
+      });
+    }
+
+    // Vérifier que l'utilisateur est participant
+    const isParticipant = 
+      rdv.client_id === user.database_id ||
+      rdv.expert_id === user.database_id ||
+      rdv.apporteur_id === user.database_id ||
+      user.type === 'admin';
+
+    if (!isParticipant) {
+      return res.status(403).json({
+        success: false,
+        message: 'Vous n\'êtes pas participant à ce RDV'
+      });
+    }
+
+    let updateData: any = {
+      updated_at: new Date().toISOString()
+    };
+
+    // Gérer l'action
+    if (action === 'accept') {
+      updateData.status = 'confirmed';
+      updateData[`${user.type}_response`] = 'accepted';
+      updateData[`${user.type}_response_date`] = new Date().toISOString();
+    } else if (action === 'refuse') {
+      if (!refusal_reason) {
+        return res.status(400).json({
+          success: false,
+          message: 'Motif de refus requis'
+        });
+      }
+      updateData.status = 'cancelled';
+      updateData[`${user.type}_response`] = 'refused';
+      updateData[`${user.type}_response_date`] = new Date().toISOString();
+      updateData.refusal_reason = refusal_reason;
+    } else if (action === 'propose_alternative') {
+      if (!alternative_date || !alternative_time) {
+        return res.status(400).json({
+          success: false,
+          message: 'Date et heure alternatives requises'
+        });
+      }
+
+      // Validation slot 30min
+      const minutes = alternative_time.split(':')[1];
+      if (minutes !== '00' && minutes !== '30') {
+        return res.status(400).json({
+          success: false,
+          message: 'L\'heure doit être à :00 ou :30'
+        });
+      }
+
+      updateData.original_date = rdv.scheduled_date;
+      updateData.original_time = rdv.scheduled_time;
+      updateData.alternative_date = alternative_date;
+      updateData.alternative_time = alternative_time;
+      updateData[`${user.type}_notes`] = notes;
+      updateData.status = 'rescheduled';
+    }
+
+    // Mettre à jour le RDV
+    const { data: updatedRDV, error: updateError } = await supabase
+      .from('RDV')
+      .update(updateData)
+      .eq('id', id)
+      .select('*, Client(*), Expert(*), ApporteurAffaires(*)')
+      .single();
+
+    if (updateError) {
+      console.error('❌ Erreur réponse RDV:', updateError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la réponse'
+      });
+    }
+
+    // Créer notifications pour les autres participants
+    const participants = [
+      { id: rdv.client_id, type: 'client' },
+      { id: rdv.expert_id, type: 'expert' },
+      { id: rdv.apporteur_id, type: 'apporteur' }
+    ].filter(p => p.id && p.id !== user.database_id);
+
+    for (const participant of participants) {
+      await supabase
+        .from('Notification')
+        .insert({
+          user_id: participant.id,
+          type: `rdv_${action}`,
+          title: action === 'accept' ? 'RDV confirmé' : action === 'refuse' ? 'RDV refusé' : 'Date alternative proposée',
+          message: action === 'accept' 
+            ? `Le RDV du ${rdv.scheduled_date} à ${rdv.scheduled_time} a été confirmé`
+            : action === 'refuse'
+            ? `Le RDV a été refusé. Raison : ${refusal_reason}`
+            : `Une date alternative a été proposée : ${alternative_date} à ${alternative_time}`,
+          metadata: {
+            rdv_id: id,
+            action,
+            responded_by: user.type
+          }
+        });
+    }
+
+    return res.json({
+      success: true,
+      data: updatedRDV,
+      message: action === 'accept' ? 'RDV confirmé' : action === 'refuse' ? 'RDV refusé' : 'Alternative proposée'
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route /rdv/:id/respond:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
 // ============================================================================
 // ROUTES - SUPPRESSION
 // ============================================================================
@@ -731,6 +897,140 @@ router.delete('/:id', async (req: Request, res: Response) => {
 
   } catch (error) {
     console.error('❌ Erreur route DELETE /rdv/:id:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+// ============================================================================
+// POST /rdv/:id/mark-completed - Marquer un RDV comme effectué ou non
+// ============================================================================
+router.post('/:id/mark-completed', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { completed, cancellation_reason } = req.body;
+    const user = (req as any).user;
+
+    if (!user?.database_id) {
+      return res.status(401).json({
+        success: false,
+        message: 'Non authentifié'
+      });
+    }
+
+    // Récupérer le RDV
+    const { data: rdv, error: fetchError } = await supabase
+      .from('RDV')
+      .select('*, Client(*), Expert(*), ApporteurAffaires(*)')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !rdv) {
+      return res.status(404).json({
+        success: false,
+        message: 'RDV non trouvé'
+      });
+    }
+
+    // Vérifier que l'utilisateur est participant
+    const isParticipant = 
+      rdv.client_id === user.database_id ||
+      rdv.expert_id === user.database_id ||
+      rdv.apporteur_id === user.database_id ||
+      user.type === 'admin';
+
+    if (!isParticipant) {
+      return res.status(403).json({
+        success: false,
+        message: 'Vous n\'êtes pas participant à ce RDV'
+      });
+    }
+
+    // Mettre à jour le statut
+    const newStatus = completed ? 'completed' : 'cancelled';
+    const updateData: any = {
+      status: newStatus,
+      updated_at: new Date().toISOString()
+    };
+
+    if (!completed && cancellation_reason) {
+      updateData.cancellation_reason = cancellation_reason;
+    }
+
+    const { error: updateError } = await supabase
+      .from('RDV')
+      .update(updateData)
+      .eq('id', id);
+
+    if (updateError) {
+      console.error('❌ Erreur mise à jour RDV:', updateError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la mise à jour du RDV'
+      });
+    }
+
+    // Envoyer notifications aux autres participants
+    const participants = [
+      rdv.client_id,
+      rdv.expert_id,
+      rdv.apporteur_id
+    ].filter(pid => pid && pid !== user.database_id);
+
+    for (const participantId of participants) {
+      const notificationData = {
+        user_id: participantId,
+        type: completed ? 'rdv_completed' : 'rdv_not_completed',
+        title: completed ? 'RDV effectué' : 'RDV non effectué',
+        message: completed 
+          ? `Le RDV "${rdv.title}" a été marqué comme effectué.`
+          : `Le RDV "${rdv.title}" n'a pas eu lieu. Raison: ${cancellation_reason || 'Non spécifiée'}`,
+        metadata: {
+          rdv_id: id,
+          completed,
+          cancellation_reason
+        }
+      };
+
+      await supabase
+        .from('Notification')
+        .insert(notificationData);
+    }
+
+    // Envoyer emails (optionnel - si EmailService est disponible)
+    try {
+      const emailService = require('../services/EmailService');
+      
+      for (const participantId of participants) {
+        let email = '';
+        if (rdv.Client?.id === participantId) email = rdv.Client.email;
+        else if (rdv.Expert?.id === participantId) email = rdv.Expert.email;
+        else if (rdv.ApporteurAffaires?.id === participantId) email = rdv.ApporteurAffaires.email;
+
+        if (email) {
+          await emailService.default.sendEmail(
+            email,
+            completed ? 'RDV effectué' : 'RDV non effectué',
+            completed
+              ? `Le RDV "${rdv.title}" prévu le ${rdv.scheduled_date} à ${rdv.scheduled_time} a été marqué comme effectué.`
+              : `Le RDV "${rdv.title}" prévu le ${rdv.scheduled_date} à ${rdv.scheduled_time} n'a pas eu lieu.<br>Raison: ${cancellation_reason || 'Non spécifiée'}`
+          );
+        }
+      }
+    } catch (emailError) {
+      console.error('⚠️ Erreur envoi emails (non bloquant):', emailError);
+    }
+
+    return res.json({
+      success: true,
+      message: completed ? 'RDV marqué comme effectué' : 'RDV marqué comme non effectué',
+      data: { id, status: newStatus }
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route POST /rdv/:id/mark-completed:', error);
     return res.status(500).json({
       success: false,
       message: 'Erreur serveur'

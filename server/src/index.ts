@@ -78,6 +78,9 @@ import debugRoutes from './routes/debug';
 import diagnosticRoutes from './routes/diagnostic';
 import dossierStepsRoutes from './routes/dossier-steps';
 import documentsRoutes from './routes/documents';
+
+// Import du service de notification automatique pour RDV terminés
+import rdvCompletionService from './services/rdvCompletionService';
 import { getCorsConfig, corsMiddleware } from './config/cors';
 import { startCalendarRemindersCron } from './cron/calendar-reminders';
 import routes from './routes';
@@ -626,6 +629,13 @@ server.listen(PORT, HOST, () => {
     console.log('✅ Service WebSocket unifié initialisé (port 5003)');
   } catch (error) {
     console.error('❌ Erreur initialisation WebSocket unifié:', error);
+  }
+
+  // Démarrer le service de notification automatique pour RDV terminés
+  try {
+    rdvCompletionService.start();
+  } catch (error) {
+    console.error('❌ Erreur démarrage service RDV Completion:', error);
   }
   
   // Démarrer le cron job pour les rappels calendrier

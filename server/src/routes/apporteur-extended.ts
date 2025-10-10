@@ -165,7 +165,7 @@ router.post('/clients/:clientId/rdv', async (req: any, res: any): Promise<void> 
 
         // Créer le RDV
         const { data: rdv, error: rdvError } = await supabase
-            .from('ClientRDV')
+            .from('RDV')
             .insert({
                 client_id: clientId,
                 expert_id,
@@ -251,7 +251,7 @@ router.get('/clients/:clientId/rdv', async (req: any, res: any): Promise<void> =
         }
 
         const { data: rdvs, error } = await supabase
-            .from('ClientRDV')
+            .from('RDV')
             .select(`
                 *,
                 expert:Expert(id, name, email, specializations),
