@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import cron from 'node-cron';
+import * as cron from 'node-cron';
 
 const supabaseUrl = process.env.SUPABASE_URL || '';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -14,7 +14,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 export class RDVCompletionService {
   private static instance: RDVCompletionService;
-  private cronJob: cron.ScheduledTask | null = null;
+  private cronJob: ReturnType<typeof cron.schedule> | null = null;
 
   private constructor() {}
 
