@@ -5,7 +5,7 @@ const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SE
 
 export interface ApporteurUser {
     id: string;
-    auth_id: string;
+    auth_user_id: string;
     apporteur_id: string;
     type: 'apporteur';
     status: string;
@@ -16,7 +16,7 @@ export interface ApporteurUser {
 
 export interface ExpertUser {
     id: string;
-    auth_id: string;
+    auth_user_id: string;
     expert_id: string;
     type: 'expert';
     status: string;
@@ -53,8 +53,8 @@ export const authApporteur = async (req: ApporteurRequest, res: Response, next: 
         // Vérification du rôle apporteur d'affaires
         const { data: apporteur, error: apporteurError } = await supabase
             .from('ApporteurAffaires')
-            .select('id, auth_id, status, first_name, last_name, email, commission_rate')
-            .eq('auth_id', user.id)
+            .select('id, auth_user_id, status, first_name, last_name, email, commission_rate')
+            .eq('auth_user_id', user.id)
             .single();
 
         if (apporteurError || !apporteur) {
@@ -75,7 +75,7 @@ export const authApporteur = async (req: ApporteurRequest, res: Response, next: 
         // Ajout des informations utilisateur à la requête
         req.user = {
             id: user.id,
-            auth_id: user.id,
+            auth_user_id: user.id,
             apporteur_id: apporteur.id,
             type: 'apporteur',
             status: apporteur.status,
@@ -144,8 +144,8 @@ export const authExpert = async (req: ExpertRequest, res: Response, next: NextFu
         // Vérification du rôle expert
         const { data: expert, error: expertError } = await supabase
             .from('Expert')
-            .select('id, auth_id, status, name, email, specializations')
-            .eq('auth_id', user.id)
+            .select('id, auth_user_id, status, name, email, specializations')
+            .eq('auth_user_id', user.id)
             .single();
 
         if (expertError || !expert) {
@@ -163,7 +163,7 @@ export const authExpert = async (req: ExpertRequest, res: Response, next: NextFu
 
         req.user = {
             id: user.id,
-            auth_id: user.id,
+            auth_user_id: user.id,
             expert_id: expert.id,
             type: 'expert',
             status: expert.status,
@@ -269,8 +269,8 @@ export const authAdmin = async (req: Request, res: Response, next: NextFunction)
         // Vérification du rôle admin
         const { data: admin, error: adminError } = await supabase
             .from('Admin')
-            .select('id, auth_id, status, name, email')
-            .eq('auth_id', user.id)
+            .select('id, auth_user_id, status, name, email')
+            .eq('auth_user_id', user.id)
             .single();
 
         if (adminError || !admin) {
@@ -288,7 +288,7 @@ export const authAdmin = async (req: Request, res: Response, next: NextFunction)
 
         (req as any).user = {
             id: user.id,
-            auth_id: user.id,
+            auth_user_id: user.id,
             admin_id: admin.id,
             type: 'admin',
             status: admin.status,

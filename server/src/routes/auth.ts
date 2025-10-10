@@ -840,8 +840,8 @@ router.post("/register", registerRateLimiter, async (req: Request, res: Response
     if (type === 'client') {
       // Préparation des données client complètes
       const clientData = {
-        id: authData.user.id, // Utiliser directement l'ID Supabase Auth comme ID de la table Client
-        auth_id: authData.user.id, // Référence explicite à l'ID Supabase Auth
+        // Ne PAS utiliser l'ID Supabase Auth comme ID de la table (générer nouveau UUID)
+        auth_user_id: authData.user.id, // 🔥 Lien vers Supabase Auth
         email,
         // ⚠️ PAS de champ password - l'authentification est gérée par Supabase Auth
         username,
@@ -857,6 +857,7 @@ router.post("/register", registerRateLimiter, async (req: Request, res: Response
         nombreEmployes: nombreEmployes || null,
         ancienneteEntreprise: ancienneteEntreprise || null,
         typeProjet: typeProjet || null,
+        is_active: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
@@ -888,15 +889,18 @@ router.post("/register", registerRateLimiter, async (req: Request, res: Response
         email: insertedClient.email
       });
 
-      // Générer le token JWT
+      // Générer le token JWT avec auth multi-profils
       const token = jwt.sign(
         { 
-          id: insertedClient.id, 
+          id: authData.user.id,              // 🔥 ID Supabase Auth
           email: insertedClient.email, 
-          type: insertedClient.type 
+          type: 'client',
+          database_id: insertedClient.id,    // 🔥 ID table Client
+          available_types: ['client'],       // 🔥 Pour l'instant 1 seul type
+          iat: Math.floor(Date.now() / 1000),
+          exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60)
         },
-        jwtConfig.secret,
-        { expiresIn: jwtConfig.expiresIn }
+        jwtConfig.secret
       );
 
       // Préparer la réponse avec tous les champs attendus par le frontend
@@ -905,31 +909,19 @@ router.post("/register", registerRateLimiter, async (req: Request, res: Response
         data: {
           token,
           user: {
-            id: insertedClient.id,
-            email: insertedClient.email,
-            username: insertedClient.username,
-            type: insertedClient.type,
-            company_name: insertedClient.company_name || null,
-            siren: insertedClient.siren || null,
-            phone_number: insertedClient.phone_number || null,
-            address: insertedClient.address || null,
-            city: insertedClient.city || null,
-            postal_code: insertedClient.postal_code || null,
-            revenuAnnuel: insertedClient.revenuAnnuel || null,
-            secteurActivite: insertedClient.secteurActivite || null,
-            nombreEmployes: insertedClient.nombreEmployes || null,
-            ancienneteEntreprise: insertedClient.ancienneteEntreprise || null,
-            typeProjet: insertedClient.typeProjet || null,
-            created_at: insertedClient.created_at,
-            updated_at: insertedClient.updated_at
+            ...insertedClient,
+            type: 'client',
+            database_id: insertedClient.id,
+            auth_user_id: authData.user.id,
+            available_types: ['client']
           }
         }
       });
     } else if (type === 'expert') {
       // Préparation des données expert complètes
       const expertData = {
-        id: authData.user.id, // Utiliser directement l'ID Supabase Auth comme ID de la table Expert
-        auth_id: authData.user.id, // Référence explicite à l'ID Supabase Auth
+        // Laisser Supabase générer un UUID pour l'ID de la table
+        auth_user_id: authData.user.id, // 🔥 Lien vers Supabase Auth
         email,
         // ⚠️ PAS de champ password - l'authentification est gérée par Supabase Auth
         name: username,
@@ -945,6 +937,7 @@ router.post("/register", registerRateLimiter, async (req: Request, res: Response
         description: '',
         approval_status: 'pending', // Les experts nécessitent une approbation
         status: 'inactive', // Inactif jusqu'à approbation
+        is_active: true,
         rating: 0,
         total_dossiers: 0,
         dossiers_en_cours: 0,
@@ -981,15 +974,18 @@ router.post("/register", registerRateLimiter, async (req: Request, res: Response
         approval_status: insertedExpert.approval_status
       });
 
-      // Générer le token JWT (même si non approuvé, pour permettre l'accès au dashboard)
+      // Générer le token JWT avec auth multi-profils
       const token = jwt.sign(
         { 
-          id: insertedExpert.id, 
+          id: authData.user.id,              // 🔥 ID Supabase Auth
           email: insertedExpert.email, 
-          type: insertedExpert.type || 'expert'
+          type: 'expert',
+          database_id: insertedExpert.id,    // 🔥 ID table Expert
+          available_types: ['expert'],       // 🔥 Pour l'instant 1 seul type
+          iat: Math.floor(Date.now() / 1000),
+          exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60)
         },
-        jwtConfig.secret,
-        { expiresIn: jwtConfig.expiresIn }
+        jwtConfig.secret
       );
 
       // Préparer la réponse avec message d'approbation
@@ -999,20 +995,11 @@ router.post("/register", registerRateLimiter, async (req: Request, res: Response
         data: {
           token,
           user: {
-            id: insertedExpert.id,
-            email: insertedExpert.email,
-            name: insertedExpert.name,
+            ...insertedExpert,
             type: 'expert',
-            company_name: insertedExpert.company_name || null,
-            siren: insertedExpert.siren || null,
-            phone_number: insertedExpert.phone_number || null,
-            address: insertedExpert.address || null,
-            city: insertedExpert.city || null,
-            postal_code: insertedExpert.postal_code || null,
-            approval_status: insertedExpert.approval_status,
-            status: insertedExpert.status,
-            created_at: insertedExpert.created_at,
-            updated_at: insertedExpert.updated_at
+            database_id: insertedExpert.id,
+            auth_user_id: authData.user.id,
+            available_types: ['expert']
           }
         }
       });
@@ -1319,7 +1306,7 @@ router.post('/create-user', async (req, res) => {
       const { data: clientData, error: clientError } = await supabase
         .from('Client')
         .insert({
-          id: data.user.id, // Utiliser directement l'ID au lieu de auth_id
+          auth_user_id: data.user.id, // 🔥 Lien vers Supabase Auth
           email: email,
           nom: (user_metadata as any).nom || email.split('@')[0],
           prenom: (user_metadata as any).prenom || '',
@@ -1341,7 +1328,7 @@ router.post('/create-user', async (req, res) => {
       const { data: expertData, error: expertError } = await supabase
         .from('Expert')
         .insert({
-          id: data.user.id, // Utiliser directement l'ID au lieu de auth_id
+          auth_user_id: data.user.id, // 🔥 Lien vers Supabase Auth
           email: email,
           nom: (user_metadata as any).nom || email.split('@')[0],
           prenom: (user_metadata as any).prenom || '',

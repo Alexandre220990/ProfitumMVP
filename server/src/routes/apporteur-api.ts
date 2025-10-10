@@ -10,7 +10,7 @@ interface AuthenticatedRequest extends Request {
     type: 'client' | 'expert' | 'admin' | 'apporteur';
     email: string;
     permissions: string[];
-    auth_id: string;
+    auth_user_id: string;
     database_id: string;
     user_metadata: {
       username: string;

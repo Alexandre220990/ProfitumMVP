@@ -63,7 +63,7 @@ export class ApporteurEmailService {
             const { data: apporteur, error: apporteurError } = await supabase
                 .from('ApporteurAffaires')
                 .insert({
-                    auth_id: authData.user.id,
+                    auth_user_id: authData.user.id,
                     email: apporteurData.email,
                     first_name: apporteurData.first_name,
                     last_name: apporteurData.last_name,

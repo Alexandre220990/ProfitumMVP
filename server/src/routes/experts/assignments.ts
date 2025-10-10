@@ -28,13 +28,13 @@ router.get('/', asyncHandler(async (req, res) => {
         const { data: expert } = await supabase
             .from('Expert')
             .select('id')
-            .eq('auth_id', userId)
+            .eq('auth_user_id', userId)
             .single();
 
         const { data: client } = await supabase
             .from('Client')
             .select('id')
-            .eq('auth_id', userId)
+            .eq('auth_user_id', userId)
             .single();
 
         if (!expert && !client) {
@@ -155,8 +155,8 @@ router.get('/:id', asyncHandler(async (req, res) => {
             .from('ExpertAssignment')
             .select(`
                 *,
-                Expert!inner(auth_id),
-                Client!inner(auth_id),
+                Expert!inner(auth_user_id),
+                Client!inner(auth_user_id),
                 ProduitEligible(*)
             `)
             .eq('id', id)
@@ -170,7 +170,7 @@ router.get('/:id', asyncHandler(async (req, res) => {
         }
 
         // Vérifier que l'utilisateur a accès à cette assignation
-        if (assignment.Expert.auth_id !== userId && assignment.Client.auth_id !== userId) {
+        if (assignment.Expert.auth_user_id !== userId && assignment.Client.auth_user_id !== userId) {
             return res.status(403).json({ 
                 success: false, 
                 message: 'Accès non autorisé' 
@@ -234,8 +234,8 @@ router.put('/:id/status', asyncHandler(async (req, res) => {
             .from('ExpertAssignment')
             .select(`
                 *,
-                Expert!inner(auth_id),
-                Client!inner(auth_id)
+                Expert!inner(auth_user_id),
+                Client!inner(auth_user_id)
             `)
             .eq('id', id)
             .single();
@@ -248,7 +248,7 @@ router.put('/:id/status', asyncHandler(async (req, res) => {
         }
 
         // Vérifier que l'utilisateur a accès à cette assignation
-        if (assignment.Expert.auth_id !== userId && assignment.Client.auth_id !== userId) {
+        if (assignment.Expert.auth_user_id !== userId && assignment.Client.auth_user_id !== userId) {
             return res.status(403).json({ 
                 success: false, 
                 message: 'Accès non autorisé' 
@@ -256,7 +256,7 @@ router.put('/:id/status', asyncHandler(async (req, res) => {
         }
 
         // Déterminer le type d'utilisateur
-        const userType = assignment.Expert.auth_id === userId ? 'expert' : 'client';
+        const userType = assignment.Expert.auth_user_id === userId ? 'expert' : 'client';
 
         // Définir les transitions autorisées
         const allowedTransitions: any = {
@@ -305,7 +305,7 @@ router.put('/:id/status', asyncHandler(async (req, res) => {
 
         // Créer une notification pour l'autre partie
         const notificationData = {
-            user_id: userType === 'expert' ? assignment.Client.auth_id : assignment.Expert.auth_id,
+            user_id: userType === 'expert' ? assignment.Client.auth_user_id : assignment.Expert.auth_user_id,
             user_type: userType === 'expert' ? 'client' : 'expert',
             title: `Assignation ${status}`,
             message: `L'assignation #${id} a été mise à jour vers le statut '${status}'`,
@@ -358,8 +358,8 @@ router.post('/:id/complete', asyncHandler(async (req, res) => {
             .from('ExpertAssignment')
             .select(`
                 *,
-                Expert!inner(auth_id, id),
-                Client!inner(auth_id)
+                Expert!inner(auth_user_id, id),
+                Client!inner(auth_user_id)
             `)
             .eq('id', id)
             .single();
@@ -372,7 +372,7 @@ router.post('/:id/complete', asyncHandler(async (req, res) => {
         }
 
         // Vérifier que l'utilisateur est le client
-        if (assignment.Client.auth_id !== userId) {
+        if (assignment.Client.auth_user_id !== userId) {
             return res.status(403).json({ 
                 success: false, 
                 message: 'Accès réservé au client' 

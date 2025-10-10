@@ -42,7 +42,7 @@ export class AdminApporteurService {
             const { data: apporteur, error: apporteurError } = await supabase
                 .from('ApporteurAffaires')
                 .insert({
-                    auth_id: authUser.user.id,
+                    auth_user_id: authUser.user.id, // 🔥 Utiliser auth_user_id (cohérent)
                     first_name: apporteurData.first_name,
                     last_name: apporteurData.last_name,
                     email: apporteurData.email,
@@ -52,11 +52,12 @@ export class AdminApporteurService {
                     siren: apporteurData.siren,
                     commission_rate: 5.00, // Taux par défaut
                     status: 'candidature', // Statut valide selon la contrainte DB
+                    is_active: true,
                     approved_by: adminId
                 })
                 .select(`
                     id,
-                    auth_id,
+                    auth_user_id,
                     first_name,
                     last_name,
                     email,
@@ -129,7 +130,7 @@ export class AdminApporteurService {
                 .from('ApporteurAffaires')
                 .select(`
                     id,
-                    auth_id,
+                    auth_user_id,
                     first_name,
                     last_name,
                     email,

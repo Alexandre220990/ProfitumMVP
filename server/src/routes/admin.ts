@@ -917,7 +917,8 @@ router.post('/experts', asyncHandler(async (req, res) => {
       hourly_rate: expertData.hourly_rate || 0,
       phone: expertData.phone || null,
       location: expertData.city || null, // Mapping city -> location
-      auth_id: authData.user.id,
+      auth_user_id: authData.user.id, // 🔥 Lien vers Supabase Auth
+      is_active: true,
       created_at: new Date().toISOString()
     };
 

@@ -12,7 +12,7 @@ interface AuthenticatedUser {
   type: UserType;
   database_id: string;
   permissions?: string[];
-  auth_id?: string;
+  auth_user_id?: string;
   user_metadata: {
     username?: string;
     type: UserType;
@@ -78,7 +78,7 @@ export const simpleAuthMiddleware = async (
       type: decoded.type,
       database_id: decoded.database_id || decoded.id,
       permissions: decoded.permissions || [],
-      auth_id: decoded.id,
+      auth_user_id: decoded.id,
       user_metadata: {
         username: decoded.email?.split('@')[0] || 'user',
         type: decoded.type

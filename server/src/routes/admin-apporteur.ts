@@ -221,13 +221,13 @@ router.delete('/:apporteurId', async (req: Request, res: Response): Promise<void
     try {
         const { apporteurId } = req.params;
         
-        // Récupérer l'auth_id avant suppression
+        // Récupérer l'auth_user_id avant suppression
         const { createClient } = await import('@supabase/supabase-js');
         const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
         
         const { data: apporteur, error: fetchError } = await supabase
             .from('ApporteurAffaires')
-            .select('auth_id')
+            .select('auth_user_id')
             .eq('id', apporteurId)
             .single();
 
@@ -248,7 +248,7 @@ router.delete('/:apporteurId', async (req: Request, res: Response): Promise<void
         if (deleteError) throw deleteError;
 
         // Supprimer l'utilisateur auth
-        const { error: authDeleteError } = await supabase.auth.admin.deleteUser(apporteur.auth_id);
+        const { error: authDeleteError } = await supabase.auth.admin.deleteUser(apporteur.auth_user_id);
         
         if (authDeleteError) {
             console.warn('Erreur suppression utilisateur auth:', authDeleteError);

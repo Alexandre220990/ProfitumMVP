@@ -44,7 +44,7 @@ export interface Expert extends PublicExpert {
   card_expiry: string | null;
   card_cvc: string | null;
   abonnement: string | null;
-  auth_id: string | null;
+  auth_user_id: string | null;
   approved_by: string | null;
   approved_at: string | null;
 } 

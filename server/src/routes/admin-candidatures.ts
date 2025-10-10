@@ -217,7 +217,7 @@ router.post('/apporteur-candidatures/:id/process', async (req: any, res: Respons
         const { data: apporteur, error: apporteurError } = await supabase
           .from('ApporteurAffaires')
           .update({
-            auth_id: authUser?.user?.id || null,
+            auth_user_id: authUser?.user?.id || null,
             commission_rate: 0.15, // 15% par défaut
             affiliation_code: `AFF${Date.now().toString().slice(-6)}`,
             updated_at: new Date().toISOString()

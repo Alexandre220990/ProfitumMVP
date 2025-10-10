@@ -324,7 +324,7 @@ export class SessionMigrationService {
       const { data: clientDataResult, error: clientError } = await supabase
         .from('Client')
         .insert({
-          auth_id: authUserId,
+          auth_user_id: authUserId,
           email: clientData.email,
           name: clientData.username,
           company_name: clientData.company_name,
@@ -591,7 +591,7 @@ export class SessionMigrationService {
       const { data: clientDataResult, error: clientError } = await supabase
         .from('Client')
         .insert({
-          auth_id: authUserId, // Lier à l'utilisateur Supabase Auth
+          auth_user_id: authUserId, // Lier à l'utilisateur Supabase Auth
           email: clientData.email,
           password: hashedPassword, // Mot de passe hashé
           name: clientData.username,

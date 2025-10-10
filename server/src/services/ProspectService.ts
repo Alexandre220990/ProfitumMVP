@@ -68,7 +68,7 @@ export class ProspectService {
             // On stocke UNIQUEMENT temp_password pour l'envoi de l'email de bienvenue
             const clientData = {
                 // Auth
-                auth_id: authData.user.id,
+                auth_user_id: authData.user.id,
                 email: prospectData.email,
                 // ⚠️ PAS de champ password - l'authentification est gérée par Supabase Auth
                 type: 'client', // Type = client (sera prospect via status)

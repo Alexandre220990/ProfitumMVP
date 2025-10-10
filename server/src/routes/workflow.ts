@@ -96,7 +96,7 @@ router.post('/step-action', async (req, res) => {
         const { data: adminData, error: adminError } = await supabase
           .from('Admin')
           .select('id')
-          .eq('auth_id', user.id)
+          .eq('auth_user_id', user.id)
           .single();
 
         if (adminError || !adminData) {

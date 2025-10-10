@@ -140,7 +140,7 @@ export interface Expert extends BaseEntity {
   max_clients: number | null;
   hourly_rate: DoublePrecision | null;
   phone: string | null;
-  auth_id: UUID | null;
+  auth_user_id: UUID | null;
   approved_by: UUID | null;
   approved_at: Timestamp | null;
   approval_status: string | null;

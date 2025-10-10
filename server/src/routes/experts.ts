@@ -491,7 +491,7 @@ router.post('/:id/contact', async (req, res) => {
     const { data: clientData, error: clientError } = await supabase
       .from('Client')
       .select('id, name')
-      .eq('auth_id', user.id)
+      .eq('auth_user_id', user.id)
       .single();
 
     if (clientError || !clientData) {

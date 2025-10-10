@@ -141,11 +141,11 @@ router.get('/check-recent/:clientId', async (req: Request, res: Response) => {
     
     // Vérifier que l'utilisateur a accès à ce client
     if (authUser.type === 'client') {
-      // Récupérer le client par auth_id pour vérifier l'accès
+      // Récupérer le client par auth_user_id pour vérifier l'accès
       const { data: client, error: clientError } = await supabase
         .from('Client')
         .select('id')
-        .eq('auth_id', authUser.id)
+        .eq('auth_user_id', authUser.id)
         .single();
 
       if (clientError || !client || client.id !== clientId) {

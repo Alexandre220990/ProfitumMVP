@@ -335,13 +335,13 @@ export class ReminderService {
     try {
       const { data: admins } = await this.supabase
         .from('Admin')
-        .select('auth_id');
+        .select('auth_user_id');
 
       if (!admins) return;
 
       for (const admin of admins) {
         await NotificationService.sendNotification(
-          admin.auth_id,
+          admin.auth_user_id,
           'ALERTE - Relance critique',
           `Relance critique: ${reminderData.message}`,
           'system'

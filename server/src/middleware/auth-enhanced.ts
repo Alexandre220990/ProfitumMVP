@@ -19,7 +19,7 @@ export interface AuthenticatedRequest extends Request {
     type: 'client' | 'expert' | 'admin' | 'apporteur';
     email: string;
     permissions: string[];
-    auth_id: string;
+    auth_user_id: string;
     database_id: string; // ID de la base de données pour les clés étrangères
     user_metadata: {
       username: string;
@@ -481,7 +481,7 @@ export const enhancedAuthMiddleware = async (
       type: userType,
       email: userData.email,
       permissions,
-      auth_id: user.id,
+      auth_user_id: user.id,
       database_id: userData.id, // ID de la base de données pour les clés étrangères
       user_metadata: {
         username: (user.user_metadata as any)?.username || userData.email?.split('@')[0] || 'user',
@@ -522,7 +522,7 @@ export const enhancedAuthMiddleware = async (
       id: authenticatedUser.id,
       type: authenticatedUser.type,
       email: authenticatedUser.email,
-      auth_id: authenticatedUser.auth_id,
+      auth_user_id: authenticatedUser.auth_user_id,
       route: req.path,
       method: req.method
     });

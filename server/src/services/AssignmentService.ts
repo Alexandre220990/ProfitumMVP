@@ -135,8 +135,8 @@ export class AssignmentService {
                 .from('ExpertAssignment')
                 .select(`
                     *,
-                    Expert!inner(auth_id, name, email),
-                    Client!inner(auth_id, name, email)
+                    Expert!inner(auth_user_id, name, email),
+                    Client!inner(auth_user_id, name, email)
                 `)
                 .eq('id', assignmentId)
                 .single();
@@ -146,8 +146,8 @@ export class AssignmentService {
             }
 
             // Vérifier les permissions
-            const isExpert = assignment.Expert.auth_id === userId;
-            const isClient = assignment.Client.auth_id === userId;
+            const isExpert = assignment.Expert.auth_user_id === userId;
+            const isClient = assignment.Client.auth_user_id === userId;
 
             if (!isExpert && !isClient) {
                 throw new Error('Accès non autorisé');
@@ -191,7 +191,7 @@ export class AssignmentService {
 
             // Créer une notification pour l'autre partie
             const notificationData = {
-                user_id: isExpert ? assignment.Client.auth_id : assignment.Expert.auth_id,
+                user_id: isExpert ? assignment.Client.auth_user_id : assignment.Expert.auth_user_id,
                 user_type: isExpert ? 'client' : 'expert',
                 title: `Assignation ${status}`,
                 message: `Votre assignation a été ${this.getStatusLabel(status)}.`,
@@ -231,8 +231,8 @@ export class AssignmentService {
                 .from('ExpertAssignment')
                 .select(`
                     *,
-                    Expert!inner(auth_id),
-                    Client!inner(auth_id)
+                    Expert!inner(auth_user_id),
+                    Client!inner(auth_user_id)
                 `)
                 .eq('id', assignmentId)
                 .eq('status', 'completed')
@@ -243,8 +243,8 @@ export class AssignmentService {
             }
 
             // Vérifier les permissions
-            const isExpert = assignment.Expert.auth_id === userId;
-            const isClient = assignment.Client.auth_id === userId;
+            const isExpert = assignment.Expert.auth_user_id === userId;
+            const isClient = assignment.Client.auth_user_id === userId;
 
             if (!isExpert && !isClient) {
                 throw new Error('Accès non autorisé');

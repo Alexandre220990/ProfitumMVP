@@ -641,12 +641,12 @@ router.post('/create-auth-account', async (req: Request, res: Response) => {
       });
     }
     
-    console.log('✅ Compte Auth créé:', { auth_id: authData.user.id });
+    console.log('✅ Compte Auth créé:', { auth_user_id: authData.user.id });
     
-    // Mettre à jour le client avec l'auth_id
+    // Mettre à jour le client avec l'auth_user_id
     const { error: updateError } = await supabaseClient
       .from('Client')
-      .update({ auth_id: authData.user.id })
+      .update({ auth_user_id: authData.user.id })
       .eq('id', client.id);
     
     if (updateError) {
@@ -667,7 +667,7 @@ router.post('/create-auth-account', async (req: Request, res: Response) => {
       message: 'Compte d\'authentification créé avec succès',
       data: {
         client_id: client.id,
-        auth_id: authData.user.id,
+        auth_user_id: authData.user.id,
         email: email
       }
     });
@@ -701,7 +701,7 @@ router.post('/link-auth-account', async (req: Request, res: Response) => {
     // 1. Vérifier que le client existe
     const { data: client, error: clientError } = await supabaseClient
       .from('Client')
-      .select('id, email, name, company_name, auth_id')
+      .select('id, email, name, company_name, auth_user_id')
       .eq('email', email)
       .single();
     
@@ -716,18 +716,18 @@ router.post('/link-auth-account', async (req: Request, res: Response) => {
     console.log('✅ Client trouvé:', { 
       id: client.id, 
       email: client.email, 
-      auth_id: client.auth_id,
-      auth_id_type: typeof client.auth_id 
+      auth_user_id: client.auth_user_id,
+      auth_user_id_type: typeof client.auth_user_id 
     });
     
-    // 2. Si le client a déjà un auth_id, retourner les informations
-    if (client.auth_id) {
+    // 2. Si le client a déjà un auth_user_id, retourner les informations
+    if (client.auth_user_id) {
       return res.json({
         success: true,
         message: 'Client déjà lié à un compte d\'authentification',
         data: {
           client_id: client.id,
-          auth_id: client.auth_id,
+          auth_user_id: client.auth_user_id,
           email: email
         }
       });
@@ -761,16 +761,16 @@ router.post('/link-auth-account', async (req: Request, res: Response) => {
     }
     
     console.log('✅ Utilisateur Auth trouvé:', { 
-      auth_id: authUser.id, 
+      auth_user_id: authUser.id, 
       email: authUser.email,
-      auth_id_type: typeof authUser.id 
+      auth_user_id_type: typeof authUser.id 
     });
     
-    // 5. Mettre à jour le client avec l'auth_id
-    console.log('🔄 Mise à jour du client avec auth_id:', authUser.id);
+    // 5. Mettre à jour le client avec l'auth_user_id
+    console.log('🔄 Mise à jour du client avec auth_user_id:', authUser.id);
     const { error: updateError } = await supabaseClient
       .from('Client')
-      .update({ auth_id: authUser.id })
+      .update({ auth_user_id: authUser.id })
       .eq('id', client.id);
     
     if (updateError) {
@@ -789,7 +789,7 @@ router.post('/link-auth-account', async (req: Request, res: Response) => {
       message: 'Client lié avec succès au compte d\'authentification',
       data: {
         client_id: client.id,
-        auth_id: authUser.id,
+        auth_user_id: authUser.id,
         email: email
       }
     });

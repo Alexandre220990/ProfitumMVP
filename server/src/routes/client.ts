@@ -498,7 +498,7 @@ router.put('/produits-eligibles/:id/workflow', async (req, res) => {
     const { data: clientData, error: clientError } = await supabase
       .from('Client')
       .select('id')
-      .eq('auth_id', user.id)
+      .eq('auth_user_id', user.id)
       .single();
 
     if (clientError || !clientData) {

@@ -78,7 +78,7 @@ const createAdminNotification = async (expertData: any) => {
     // Récupérer tous les admins
     const { data: admins, error: adminError } = await supabase
       .from('Admin')
-      .select('auth_id');
+      .select('auth_user_id');
 
     if (adminError || !admins) {
       console.error('❌ Erreur récupération admins:', adminError);
@@ -90,7 +90,7 @@ const createAdminNotification = async (expertData: any) => {
       await supabase
         .from('notification')
         .insert({
-          user_id: admin.auth_id,
+          user_id: admin.auth_user_id,
           user_type: 'admin',
           title: 'Nouvelle demande de démo expert',
           message: `${expertData.name} (${expertData.company_name}) souhaite rejoindre la plateforme`,
@@ -180,9 +180,9 @@ router.post('/', async (req: Request, res: Response) => {
       compensation: data.compensation || 20,
       max_clients: data.max_clients || 100,
       certifications: data.certifications || [],
-      // Pas de mot de passe ni d'auth_id pour l'instant
+      // Pas de mot de passe ni d'auth_user_id pour l'instant
       password: null,
-      auth_id: null,
+      auth_user_id: null,
       // Timestamps
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()

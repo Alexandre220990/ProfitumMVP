@@ -59,7 +59,7 @@ export class EmailService {
             const { data: client, error: clientError } = await supabase
                 .from('Client')
                 .insert({
-                    auth_id: authData.user.id,
+                    auth_user_id: authData.user.id,
                     email: clientData.email,
                     name: clientData.name,
                     company_name: clientData.company_name,

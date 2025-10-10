@@ -752,10 +752,10 @@ export class ApporteurService {
     static async getNotifications(apporteurId: string) {
         try {
             // La vue utilise auth.uid(), donc on doit passer par un filtre sur user_id
-            // Récupérer d'abord l'apporteur pour avoir son user_id
+            // Récupérer d'abord l'apporteur pour avoir son auth_user_id
             const { data: apporteur, error: apporteurError } = await supabase
                 .from('ApporteurAffaires')
-                .select('id, auth_id')
+                .select('id, auth_user_id')
                 .eq('id', apporteurId)
                 .maybeSingle();
 

@@ -47,7 +47,7 @@ router.put('/meetings/:meetingId/respond', async (req: Request, res: Response): 
       .from('ClientRDV')
       .select(`
         *,
-        Client (id, name, company_name, email, auth_id),
+        Client (id, name, company_name, email, auth_user_id),
         Expert (id, name, email)
       `)
       .eq('id', meetingId)

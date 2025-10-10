@@ -21,7 +21,7 @@ export interface AuthUser extends User {
   type: 'client' | 'expert' | 'admin' | 'apporteur';
   database_id: string;
   permissions?: string[];
-  auth_id?: string;
+  auth_user_id?: string;
   app_metadata: any;
   aud: string;
   created_at: string;
