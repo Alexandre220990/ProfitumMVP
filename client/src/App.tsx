@@ -49,6 +49,7 @@ const ConnexionExpert = React.lazy(() => import('./pages/connexion-expert'));
 const ConnexionApporteur = React.lazy(() => import('./pages/connexion-apporteur'));
 const ApporteurLogin = React.lazy(() => import('./pages/ApporteurLogin'));
 const ApporteurRegister = React.lazy(() => import('./pages/ApporteurRegister'));
+const BecomeApporteur = React.lazy(() => import('./pages/BecomeApporteur'));
 const ValidationPending = React.lazy(() => import('./pages/validation-pending'));
 const ValidationPendingApporteur = React.lazy(() => import('./pages/validation-pending-apporteur'));
 const ApporteurDashboard = React.lazy(() => import('./pages/apporteur/dashboard'));
@@ -95,6 +96,7 @@ const AdminMonitoring = React.lazy(() => import('./pages/admin/monitoring'));
 const AdminValidationDashboard = React.lazy(() => import('./pages/admin/validation-dashboard'));
 const AdminFormulaireExpert = React.lazy(() => import('./pages/admin/formulaire-expert'));
 const AdminDocumentUpload = React.lazy(() => import('./pages/admin/admin-document-upload'));
+const AdminDocumentsUnified = React.lazy(() => import('./pages/admin/documents-unified'));
 const AdminTerminalTests = React.lazy(() => import('./pages/admin/terminal-tests'));
 const AdminTests = React.lazy(() => import('./pages/admin/tests'));
 
@@ -145,7 +147,7 @@ function App() {
                     <Route path="/connexion-apporteur" element={<ConnexionApporteur />} />
                     <Route path="/apporteur/login" element={<ApporteurLogin />} />
                     <Route path="/apporteur/register" element={<ApporteurRegister />} />
-                    <Route path="/become-apporteur" element={<ApporteurRegister />} />
+                    <Route path="/become-apporteur" element={<BecomeApporteur />} />
                     <Route path="/validation-pending" element={<ValidationPending />} />
                     <Route path="/validation-pending-apporteur" element={<ValidationPendingApporteur />} />
                     
@@ -281,6 +283,7 @@ function App() {
                         
                         {/* GED & Documents */}
                         <Route path="enhanced-admin-documents" element={<AdminDocuments />} />
+                        <Route path="documents-unified" element={<AdminDocumentsUnified />} />
                         <Route path="admin-document-upload" element={<AdminDocumentUpload />} />
                         <Route path="documentation-new" element={<AdminDocumentationNew />} />
                         

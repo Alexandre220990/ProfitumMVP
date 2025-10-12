@@ -8,6 +8,20 @@ export default function PublicHeader() {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  // 🔥 Gestion du scroll vers les sections avec hash
+  const handleNavClick = (path: string, hash?: string) => {
+    navigate(path);
+    if (hash) {
+      setTimeout(() => {
+        const element = document.getElementById(hash);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+    }
+    setMobileMenuOpen(false);
+  };
+
   return (
     <header className="bg-white border-b border-slate-200/60 shadow-sm backdrop-blur-sm sticky top-0 z-50">
       {/* Container principal avec padding responsive */}
@@ -22,25 +36,18 @@ export default function PublicHeader() {
 
           {/* Navigation Desktop - Masquée sur mobile */}
           <nav className="hidden lg:flex items-center space-x-6 xl:space-x-8">
-            <Link 
-              to="/home#services" 
+            <button
+              onClick={() => handleNavClick('/home', 'services')}
               className="text-slate-700 hover:text-blue-600 transition-colors duration-200 font-medium relative group whitespace-nowrap"
             >
               Nos Services
               <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-blue-600 to-purple-600 transition-all duration-300 group-hover:w-full"></span>
-            </Link>
+            </button>
             <Link 
               to="/experts-verifies" 
               className="text-slate-700 hover:text-blue-600 transition-colors duration-200 font-medium relative group whitespace-nowrap"
             >
               Nos Experts
-              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-blue-600 to-purple-600 transition-all duration-300 group-hover:w-full"></span>
-            </Link>
-            <Link 
-              to="/tarifs" 
-              className="text-slate-700 hover:text-blue-600 transition-colors duration-200 font-medium relative group whitespace-nowrap"
-            >
-              Tarifs
               <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-blue-600 to-purple-600 transition-all duration-300 group-hover:w-full"></span>
             </Link>
             <Link 
@@ -105,29 +112,21 @@ export default function PublicHeader() {
         </div>
 
         {/* Menu Mobile - Slide down avec animation */}
-        {mobileMenuOpen && (
+          {mobileMenuOpen && (
           <div className="lg:hidden border-t border-slate-200 bg-white">
             <nav className="px-4 py-6 space-y-4">
-              <Link 
-                to="/home#services" 
-                onClick={() => setMobileMenuOpen(false)}
-                className="block py-3 px-4 text-slate-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200 font-medium"
+              <button
+                onClick={() => handleNavClick('/home', 'services')}
+                className="block w-full text-left py-3 px-4 text-slate-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200 font-medium"
               >
                 Nos Services
-              </Link>
+              </button>
               <Link 
                 to="/experts-verifies" 
                 onClick={() => setMobileMenuOpen(false)}
                 className="block py-3 px-4 text-slate-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200 font-medium"
               >
                 Nos Experts
-              </Link>
-              <Link 
-                to="/tarifs" 
-                onClick={() => setMobileMenuOpen(false)}
-                className="block py-3 px-4 text-slate-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200 font-medium"
-              >
-                Tarifs
               </Link>
               <Link 
                 to="/become-apporteur" 

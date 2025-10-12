@@ -78,6 +78,7 @@ import debugRoutes from './routes/debug';
 import diagnosticRoutes from './routes/diagnostic';
 import dossierStepsRoutes from './routes/dossier-steps';
 import documentsRoutes from './routes/documents';
+import adminDocumentsUnifiedRoutes from './routes/admin-documents-unified';
 
 // Import du service de notification automatique pour RDV terminés
 import rdvCompletionService from './services/rdvCompletionService';
@@ -272,6 +273,7 @@ app.use('/api/expert', enhancedAuthMiddleware, requireUserType('expert'), expert
 // Routes admin - PROTÉGÉES avec permissions spécifiques
 // Routes admin avec authentification
 app.use('/api/admin', enhancedAuthMiddleware, requireUserType('admin'), adminRoutes);
+app.use('/api/admin/documents', enhancedAuthMiddleware, requireUserType('admin'), adminDocumentsUnifiedRoutes);
 
 // Routes de notifications admin - PROTÉGÉES
 app.use('/api/notifications', enhancedAuthMiddleware, adminNotificationsRoutes);
