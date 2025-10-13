@@ -50,7 +50,9 @@ interface EligibilityResult {
   eligibility_score: number;
   estimated_savings: number;
   confidence_level: string;
-  recommendations: string[] 
+  recommendations: string[];
+  type?: 'financier' | 'qualitatif';
+  qualitative_benefits?: string[] | null;
 }
 
 const SimulateurEligibilite = () => { 
@@ -442,20 +444,39 @@ const SimulateurEligibilite = () => {
           const results = await response.json();
           console.log('🔍 Résultats reçus du backend:', results);
           
-          // Le backend retourne {success: true, eligibility_results: [...]}
-          const eligibilityResults = results.eligibility_results || results || [];
+          // Utiliser les ClientProduitEligible réels si disponibles
+          const clientProduits = results.client_produits || [];
+          
+          // Transformer les ClientProduitEligible en format EligibilityResult pour l'affichage
+          const eligibilityResults = clientProduits.map((cp: any) => ({
+            produit_id: cp.ProduitEligible?.nom || 'Produit',
+            eligibility_score: Math.round((cp.tauxFinal || 0) * 100),
+            estimated_savings: cp.montantFinal || 0,
+            confidence_level: (cp.tauxFinal || 0) > 0.7 ? 'high' : (cp.tauxFinal || 0) > 0.5 ? 'medium' : 'low',
+            recommendations: cp.metadata?.details || [cp.notes] || [],
+            // 🆕 Identifier les produits qualitatifs
+            type: cp.metadata?.product_type || 'financier',
+            qualitative_benefits: cp.metadata?.product_type === 'qualitatif' 
+              ? [
+                  "⏱️ 10-15h/mois de gestion administrative gagnées",
+                  "📊 Données 100% fiables et traçables",
+                  "✅ Conformité réglementaire garantie",
+                  "🔒 Sécurité juridique renforcée"
+                ]
+              : null
+          }));
+          
           setEligibilityResults(eligibilityResults);
           setShowResults(true);
           
-          console.log('✅ Résultats d\'éligibilité:', eligibilityResults);
+          console.log(`✅ ${eligibilityResults.length} produits éligibles affichés`);
           
           // Tracking résultats
-          const resultsArray = Array.isArray(eligibilityResults) ? eligibilityResults : [];
           trackEvent('simulator_completed', {
             total_questions: totalSteps,
             session_duration: Date.now() - sessionStartTime,
-            results_count: resultsArray.length,
-            total_savings: resultsArray.reduce((sum: number, r: any) => sum + (r.estimated_savings || 0), 0)
+            results_count: eligibilityResults.length,
+            total_savings: eligibilityResults.reduce((sum: number, r: any) => sum + (r.estimated_savings || 0), 0)
           });
         } else {
           console.error('❌ Erreur calcul éligibilité:', response.status, response.statusText);
@@ -619,9 +640,12 @@ const SimulateurEligibilite = () => {
   // Affichage des résultats
   if (showResults) {
     const resultsArray = Array.isArray(eligibilityResults) ? eligibilityResults : [];
-    const totalSavings = resultsArray.reduce((sum, r) => sum + (r.estimated_savings || 0), 0);
-    const highEligibilityCount = resultsArray.filter(r => (r.eligibility_score || 0) >= 70).length;
-    const eligibleProductsCount = resultsArray.filter(r => (r.estimated_savings || 0) > 0).length;
+    // 🆕 Exclure les produits qualitatifs du total
+    const financialResults = resultsArray.filter(r => r.type !== 'qualitatif');
+    const qualitativeResults = resultsArray.filter(r => r.type === 'qualitatif');
+    const totalSavings = financialResults.reduce((sum, r) => sum + (r.estimated_savings || 0), 0);
+    const highEligibilityCount = financialResults.filter(r => (r.eligibility_score || 0) >= 70).length;
+    const eligibleProductsCount = financialResults.filter(r => (r.estimated_savings || 0) > 0).length;
 
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
@@ -657,15 +681,15 @@ const SimulateurEligibilite = () => {
               <div className="grid grid-cols-3 gap-6 max-w-2xl mx-auto">
                 <div className="text-center">
                   <div className="text-2xl font-bold text-slate-800">{eligibleProductsCount}</div>
-                  <div className="text-sm text-slate-600">Produits éligibles</div>
+                  <div className="text-sm text-slate-600">Produits financiers</div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-slate-800">{highEligibilityCount}</div>
                   <div className="text-sm text-slate-600">Très éligibles</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-slate-800">95%</div>
-                  <div className="text-sm text-slate-600">Taux de succès</div>
+                  <div className="text-2xl font-bold text-slate-800">{qualitativeResults.length}</div>
+                  <div className="text-sm text-slate-600">Services qualitatifs</div>
                 </div>
               </div>
             </div>
@@ -679,7 +703,59 @@ const SimulateurEligibilite = () => {
               const Icon = getProductIcon(result.produit_id);
               const isHighEligibility = (result.eligibility_score || 0) >= 70;
               const hasSavings = (result.estimated_savings || 0) > 0;
+              const isQualitative = result.type === 'qualitatif';
 
+              // 🆕 Affichage spécial pour produits qualitatifs
+              if (isQualitative) {
+                return (
+                  <div 
+                    key={result.produit_id}
+                    className="group relative bg-gradient-to-br from-purple-50/90 to-indigo-50/90 backdrop-blur-sm border-2 border-purple-200 rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-1"
+                  >
+                    {/* Header */}
+                    <div className="p-6 border-b border-purple-100">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center space-x-3">
+                          <div className="p-3 rounded-xl bg-purple-100 text-purple-700">
+                            <Icon className="w-6 h-6" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-slate-800 text-lg">{result.produit_id}</h3>
+                            <p className="text-sm text-purple-600 font-medium">Produit Qualitatif</p>
+                          </div>
+                        </div>
+                        <div className="px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                          ⚙️ Service
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Bénéfices */}
+                    <div className="p-6 space-y-4">
+                      <p className="text-sm text-slate-600 font-medium">
+                        Bénéfices concrets pour votre activité :
+                      </p>
+                      <div className="space-y-2">
+                        {result.qualitative_benefits?.map((benefit, idx) => (
+                          <div key={idx} className="flex items-start gap-2 text-sm text-slate-700">
+                            <CheckCircle className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                            <span>{benefit}</span>
+                          </div>
+                        ))}
+                      </div>
+                      
+                      <Button 
+                        variant="outline" 
+                        className="w-full border-purple-200 hover:bg-purple-50 text-purple-700"
+                      >
+                        Découvrir ce service
+                      </Button>
+                    </div>
+                  </div>
+                );
+              }
+
+              // Affichage normal pour produits financiers
               return (
                 <div 
                   key={result.produit_id} 
@@ -846,58 +922,33 @@ const SimulateurEligibilite = () => {
             </div>
           ) : (
             // Affichage normal pour le mode public
-            <div className="bg-gradient-to-r from-blue-50/80 to-indigo-50/80 backdrop-blur-sm rounded-3xl p-10 border border-blue-200/60">
-              <div className="text-center space-y-8 max-w-4xl mx-auto">
-                <div className="space-y-4">
-                  <h3 className="text-2xl font-bold text-blue-900">
-                    🎁 Offre spéciale simulation
-                  </h3>
-                  <p className="text-lg text-blue-700 font-light max-w-2xl mx-auto leading-relaxed">
-                    Transformez ces opportunités en économies réelles. Créez votre compte gratuitement 
-                    et accédez à nos experts certifiés pour maximiser vos gains.
-                  </p>
-                </div>
+            <div className="text-center space-y-6 max-w-2xl mx-auto">
+              {/* CTA Direct - Plus visible et engageant */}
+              <button
+                onClick={handleInscription}
+                className="group relative bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold py-6 px-12 rounded-2xl shadow-2xl hover:shadow-emerald-500/50 transition-all duration-300 transform hover:-translate-y-2 overflow-hidden text-xl"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/30 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
+                <span className="relative flex items-center justify-center">
+                  <CheckCircle className="w-6 h-6 mr-3" />
+                  Créer mon compte et accéder à mon dashboard
+                  <ArrowRight className="ml-3 w-6 h-6 group-hover:translate-x-2 transition-transform duration-300" />
+                </span>
+              </button>
               
-                {/* Avantages en grille */}
-                <div className="grid md:grid-cols-3 gap-8">
-                  <div className="text-center group">
-                    <div className="w-16 h-16 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                      <span className="text-2xl font-bold text-white">100%</span>
-                    </div>
-                    <div className="text-sm font-medium text-blue-700">Gratuit</div>
-                    <div className="text-xs text-blue-600 mt-1">Aucun engagement</div>
-                  </div>
-                  <div className="text-center group">
-                    <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-2xl mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                      <span className="text-2xl font-bold text-white">24h</span>
-                    </div>
-                    <div className="text-sm font-medium text-blue-700">Mise en relation</div>
-                    <div className="text-xs text-blue-600 mt-1">Expert dédié</div>
-                  </div>
-                  <div className="text-center group">
-                    <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-600 rounded-2xl mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                      <span className="text-2xl font-bold text-white">500+</span>
-                    </div>
-                    <div className="text-sm font-medium text-blue-700">Experts certifiés</div>
-                    <div className="text-xs text-blue-600 mt-1">Sélectionnés</div>
-                  </div>
+              {/* Avantages condensés sous le bouton */}
+              <div className="flex items-center justify-center gap-8 text-sm text-slate-600">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                  <span>100% Gratuit</span>
                 </div>
-
-                {/* Bouton d'action principal */}
-                <div className="pt-4">
-                  <button
-                    onClick={handleInscription}
-                    className="group relative bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold py-4 px-8 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 overflow-hidden"
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
-                    <span className="relative flex items-center justify-center">
-                      Créer mon compte gratuitement
-                      <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
-                    </span>
-                  </button>
-                  <p className="text-sm text-blue-600 mt-4 font-medium">
-                    💰 Inscription gratuite • 💰 Économies immédiates • 💰 Satisfaction garantie
-                  </p>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  <span>Experts certifiés</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                  <span>Mise en relation 24h</span>
                 </div>
               </div>
             </div>

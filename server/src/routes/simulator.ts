@@ -316,9 +316,46 @@ router.post('/calculate-eligibility', async (req, res) => {
 
     console.log('✅ Éligibilité calculée avec succès');
 
+    // Récupérer les ClientProduitEligible créés pour cette simulation
+    const { data: simulation } = await supabaseClient
+      .from('simulations')
+      .select('client_id, id')
+      .eq('session_token', session_token)
+      .single();
+
+    let clientProduits: any[] = [];
+    if (simulation?.client_id) {
+      const { data: produits } = await supabaseClient
+        .from('ClientProduitEligible')
+        .select(`
+          id,
+          statut,
+          tauxFinal,
+          montantFinal,
+          dureeFinale,
+          priorite,
+          notes,
+          metadata,
+          produitId,
+          ProduitEligible:produitId (
+            id,
+            nom,
+            categorie,
+            description
+          )
+        `)
+        .eq('clientId', simulation.client_id)
+        .eq('statut', 'eligible')
+        .order('priorite', { ascending: true });
+
+      clientProduits = produits || [];
+      console.log(`📦 ${clientProduits.length} ClientProduitEligible récupérés`);
+    }
+
     return res.json({
       success: true,
       eligibility_results: data.eligibility_results,
+      client_produits: clientProduits,
       message: 'Éligibilité calculée avec succès'
     });
   } catch (error) {
@@ -392,7 +429,7 @@ router.post('/track', async (req, res) => {
 
     // Récupérer les métadonnées actuelles
     const { data: sessionData, error: fetchError } = await supabaseClient
-      .from('SimulatorSession')
+      .from('simulations')
       .select('metadata')
       .eq('session_token', session_token)
       .single();
@@ -421,7 +458,7 @@ router.post('/track', async (req, res) => {
 
     // Mettre à jour les métadonnées
     const { error } = await supabaseClient
-      .from('SimulatorSession')
+      .from('simulations')
       .update({
         metadata: updatedMetadata
       })
@@ -463,7 +500,7 @@ router.get('/sessions', async (req, res) => {
     console.log('📋 Récupération des sessions...');
 
     let query = supabaseClient
-      .from('SimulatorSession')
+      .from('simulations')
       .select('*')
       .order('created_at', { ascending: false })
       .range(Number(offset), Number(offset) + Number(limit) - 1);
@@ -523,7 +560,7 @@ router.post('/abandon', async (req, res) => {
 
     // Récupérer les métadonnées actuelles
     const { data: sessionData, error: fetchError } = await supabaseClient
-      .from('SimulatorSession')
+      .from('simulations')
       .select('metadata')
       .eq('session_token', session_token)
       .single();
@@ -546,7 +583,7 @@ router.post('/abandon', async (req, res) => {
     };
 
     const { error } = await supabaseClient
-      .from('SimulatorSession')
+      .from('simulations')
       .update({
         status: 'abandoned',
         updated_at: new Date().toISOString(),
@@ -812,7 +849,7 @@ router.get('/health', async (req, res) => {
   try {
     // Vérifier la connexion à la base de données
     const { data, error } = await supabaseClient
-      .from('SimulatorSession')
+      .from('simulations')
       .select('count')
       .limit(1);
 
@@ -857,7 +894,7 @@ router.get('/performance', async (req, res) => {
     // Test de performance de la base de données
     const dbStartTime = Date.now();
     const { data, error } = await supabaseClient
-      .from('SimulatorSession')
+      .from('simulations')
       .select('count')
       .limit(1);
     const dbResponseTime = Date.now() - dbStartTime;

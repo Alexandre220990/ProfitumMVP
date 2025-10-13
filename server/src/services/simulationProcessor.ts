@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import { Database } from '../types/supabase'
 import { DecisionEngine } from './decisionEngine'
 import { RealTimeProcessor } from './realTimeProcessor'
+import { ProductAmountCalculator, SimulationAnswers } from './ProductAmountCalculator'
 
 // Types
 type Operator = '=' | 'in' | '>' | '>=' | '<' | '<=' | 'contains'
@@ -223,6 +224,55 @@ async function verifierSimulationEnCours(
 }
 
 /**
+ * 🆕 Transformer les réponses de la BDD vers le format SimulationAnswers
+ */
+function transformReponsesToAnswers(reponses: any[]): SimulationAnswers {
+  const answers: SimulationAnswers = {};
+  
+  // Mapping question_order → propriété
+  const questionMapping: Record<number, keyof SimulationAnswers> = {
+    1: 'secteur',
+    2: 'ca_tranche',
+    3: 'nb_employes_tranche',
+    4: 'proprietaire_locaux',
+    5: 'contrats_energie',
+    6: 'possede_vehicules',
+    7: 'types_vehicules',
+    8: 'niveau_impayes',
+    9: 'depenses_rd',
+    10: 'montant_rd_tranche',
+    11: 'litres_carburant_mois',
+    12: 'nb_chauffeurs',
+    13: 'montant_taxe_fonciere',
+    14: 'montant_factures_energie_mois',
+    15: 'export_annuel'
+  };
+  
+  for (const reponse of reponses) {
+    const questionOrder = reponse.questionId;
+    const propertyName = questionMapping[questionOrder];
+    
+    if (propertyName) {
+      // Conversion selon le type
+      if (propertyName === 'types_vehicules') {
+        // Choix multiple → array
+        answers[propertyName] = Array.isArray(reponse.valeur) ? reponse.valeur : [reponse.valeur];
+      } else if (['litres_carburant_mois', 'nb_chauffeurs', 'montant_taxe_fonciere', 'montant_factures_energie_mois'].includes(propertyName)) {
+        // Nombre → number
+        answers[propertyName as any] = typeof reponse.valeur === 'number' 
+          ? reponse.valeur 
+          : parseInt(reponse.valeur || '0', 10);
+      } else {
+        // String → string
+        answers[propertyName as any] = reponse.valeur;
+      }
+    }
+  }
+  
+  return answers;
+}
+
+/**
  * Traite une simulation terminée et identifie les produits éligibles
  * @param simulationId ID de la simulation à traiter
  * @returns Résultat du traitement
@@ -285,10 +335,26 @@ export async function traiterSimulation(simulationId: number): Promise<Simulatio
       if (productsError || !allProducts) {
         console.error('⚠️ Erreur récupération produits:', productsError)
       } else {
+        // 🆕 Transformer les réponses pour le nouveau calculateur
+        const simulationAnswers = transformReponsesToAnswers(reponses);
+        
+        // 🆕 Calculer les montants précis avec ProductAmountCalculator
+        const calculatedProducts = ProductAmountCalculator.calculateAllProducts(simulationAnswers);
+        console.log(`💰 Calcul précis effectué pour ${calculatedProducts.length} produits`);
+        
         // Créer les entrées pour TOUS les produits (éligibles ET non éligibles)
         const produitsToInsert = allProducts.map((produit, index) => {
           const eligibility = eligibleProducts.find(ep => ep.productId === produit.id)
           const isEligible = !!eligibility
+          
+          // 🆕 Récupérer le résultat calculé précisément
+          const calculatedResult = calculatedProducts.find(
+            cp => cp.produit_id === produit.nom || cp.produit_nom.includes(produit.nom)
+          );
+          
+          // 🆕 Utiliser le montant calculé au lieu de score * 1000
+          const montantFinal = calculatedResult?.estimated_savings || 
+                              (isEligible ? (eligibility.score * 1000) : null);
           
           return {
             clientId: simulation.client_id,
@@ -296,11 +362,11 @@ export async function traiterSimulation(simulationId: number): Promise<Simulatio
             simulationId: simulationId,
             statut: isEligible ? 'eligible' : 'non_eligible',
             tauxFinal: isEligible ? (eligibility.score / 100) : null,
-            montantFinal: isEligible ? (eligibility.score * 1000) : null, // Estimation
-            dureeFinale: isEligible ? 12 : null, // Durée par défaut
+            montantFinal: montantFinal,
+            dureeFinale: isEligible ? 12 : null,
             priorite: isEligible ? (eligibleProducts.indexOf(eligibility) + 1) : (index + 10),
             notes: isEligible 
-              ? `Produit éligible via simulation - Score: ${eligibility.score.toFixed(2)}%` 
+              ? `Produit éligible via simulation - Score: ${eligibility.score.toFixed(2)}% - Calcul: ${calculatedResult?.calculation_details?.formula || 'N/A'}` 
               : 'Produit non éligible selon simulation',
             metadata: {
               source: 'simulation_processor',
@@ -310,7 +376,10 @@ export async function traiterSimulation(simulationId: number): Promise<Simulatio
               score: isEligible ? eligibility.score : 0,
               satisfied_rules: isEligible ? eligibility.satisfiedRules : 0,
               total_rules: isEligible ? eligibility.totalRules : 0,
-              details: isEligible ? eligibility.details : []
+              details: isEligible ? eligibility.details : [],
+              calculation_method: calculatedResult?.calculation_details?.formula,
+              calculation_inputs: calculatedResult?.calculation_details?.inputs,
+              product_type: calculatedResult?.type
             },
             dateEligibilite: isEligible ? new Date().toISOString() : null,
             current_step: isEligible ? 0 : 0,
