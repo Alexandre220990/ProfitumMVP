@@ -92,6 +92,7 @@ import apporteurRoutes from './routes/apporteur';
 import expertApporteurRoutes from './routes/expert-apporteur';
 import adminApporteurRoutes from './routes/admin-apporteur';
 import apporteurApiRoutes from './routes/apporteur-api';
+import apporteurRegisterRoutes from './routes/apporteur-register';
 
 // Route évaluation éligibilité (nouveau simulateur)
 import eligibilityRoutes from './routes/eligibility';
@@ -215,6 +216,12 @@ app.use('/api/eligibility', publicRouteLogger, eligibilityRoutes);
 
 // 🔄 ROUTES DE MIGRATION DES SESSIONS - PUBLIQUES (pas d'authentification requise)
 app.use('/api/session-migration', publicRouteLogger, sessionMigrationRoutes);
+
+// 📝 ROUTE D'INSCRIPTION APPORTEUR - PUBLIQUE (pas d'authentification requise)
+// IMPORTANT: Cette route DOIT être montée AVANT les routes protégées /api/apporteur
+// pour que /register soit accessible sans authentification
+app.use('/api/apporteur', publicRouteLogger, apporteurRegisterRoutes);
+console.log('📝 Route inscription apporteur montée sur /api/apporteur/register (PUBLIQUE)');
 
 // Route de santé (publique mais loggée) - PLACÉE AVANT LES ROUTES PROTÉGÉES
 app.get('/api/health', publicRouteLogger, (req, res) => {
@@ -556,12 +563,21 @@ app.use('/api/diagnostic', diagnosticRoutes);
 app.use('/api/dossier-steps', dossierStepsRoutes);
 console.log('🔧 Routes dossier-steps montées sur /api/dossier-steps');
 
-// ===== ROUTES APPORTEURS D'AFFAIRES =====
-// Routes apporteur d'affaires - PROTÉGÉES (routes de base)
-app.use('/api/apporteur', simpleAuthMiddleware, requireUserType('apporteur'), apporteurRoutes);
+// ===== ROUTES APPORTEURS D'AFFAIRES PROTÉGÉES =====
+// NOTE: Les routes /register et /verify-sponsor sont PUBLIQUES et déjà montées ligne ~223
+// Middleware conditionnel: Skip auth complètement pour les routes publiques
+const skipAuthForApporteurPublic = (req: Request, res: Response, next: NextFunction) => {
+  if (req.path === '/register' || req.path.startsWith('/verify-sponsor')) {
+    return next('route'); // Skip ce middleware ET le suivant (requireUserType)
+  }
+  return simpleAuthMiddleware(req, res, next);
+};
 
-// Routes API apporteur d'affaires - PROTÉGÉES (routes étendues avec /clients, etc.)
-app.use('/api/apporteur', simpleAuthMiddleware, requireUserType('apporteur'), apporteurApiRoutes);
+// Routes apporteur d'affaires - PROTÉGÉES sauf /register et /verify-sponsor
+app.use('/api/apporteur', skipAuthForApporteurPublic, requireUserType('apporteur'), apporteurRoutes);
+
+// Routes API apporteur d'affaires - PROTÉGÉES sauf /register et /verify-sponsor
+app.use('/api/apporteur', skipAuthForApporteurPublic, requireUserType('apporteur'), apporteurApiRoutes);
 
 
 // Routes expert pour apporteurs - PROTÉGÉES
