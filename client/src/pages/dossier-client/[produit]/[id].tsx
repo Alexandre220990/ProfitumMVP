@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import DossierStepsDisplay from '@/components/DossierStepsDisplay';
+import { WorkflowDocumentUpload } from '@/components/documents/WorkflowDocumentUpload';
+import { toast } from 'sonner';
 
 import { 
   ArrowLeft, 
@@ -24,7 +26,6 @@ import {
   Edit,
   Trash2,
   Eye,
-  Plus,
   Star,
   Target,
   Zap,
@@ -110,8 +111,8 @@ export default function DossierClientProduit() {
   const [clientProduit, setClientProduit] = useState<ClientProduitEligible | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
 
-  useEffect(() => {
-    const fetchDossierData = async () => {
+  // Fonction pour charger les données du dossier (accessible partout)
+  const fetchDossierData = async () => {
       try {
         setLoading(true);
         setError(null);
@@ -158,8 +159,9 @@ export default function DossierClientProduit() {
       } finally {
         setLoading(false);
       }
-    };
+  };
 
+  useEffect(() => {
     if (clientProduitId && produitNom && user?.id) {
       fetchDossierData();
     }
@@ -574,10 +576,17 @@ export default function DossierClientProduit() {
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   <span>Documents</span>
-                  <Button size="sm">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Ajouter un document
-                  </Button>
+                  
+                  {/* ✅ Composant d'upload intégré GED unifiée */}
+                  <WorkflowDocumentUpload
+                    clientProduitId={clientProduitId as string}
+                    produitId={clientProduit.produit?.id}
+                    clientId={clientProduit.client?.id}
+                    onUploadSuccess={() => {
+                      toast.success('Document ajouté au dossier');
+                      fetchDossierData();
+                    }}
+                  />
                 </CardTitle>
               </CardHeader>
               <CardContent>

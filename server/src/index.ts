@@ -69,16 +69,17 @@ import {
 
 import expertNotificationsRoutes from './routes/expert/notifications';
 import sessionMigrationRoutes from './routes/session-migration';
-import clientDocumentsRoutes from './routes/client-documents';
-import enhancedClientDocumentsRoutes from './routes/enhanced-client-documents';
+// SUPPRIMÉ: import clientDocumentsRoutes (obsolète, remplacé par documents-unified-all)
+// SUPPRIMÉ: import enhancedClientDocumentsRoutes (obsolète, remplacé par documents-unified-all)
 import adminNotificationsRoutes from './routes/admin-notifications';
 import analyticsRoutes from './routes/analytics';
 import googleCalendarRoutes from './routes/google-calendar';
 import debugRoutes from './routes/debug';
 import diagnosticRoutes from './routes/diagnostic';
 import dossierStepsRoutes from './routes/dossier-steps';
-import documentsRoutes from './routes/documents';
+// SUPPRIMÉ: import documentsRoutes (obsolète, remplacé par documents-unified-all)
 import adminDocumentsUnifiedRoutes from './routes/admin-documents-unified';
+import documentsUnifiedAllRoutes from './routes/documents-unified-all';
 
 // Import du service de notification automatique pour RDV terminés
 import rdvCompletionService from './services/rdvCompletionService';
@@ -264,8 +265,8 @@ app.use('/api/client/simulation', enhancedAuthMiddleware, requireUserType('clien
 // Routes réactivation client - PROTÉGÉES
 app.use('/api/client', enhancedAuthMiddleware, requireUserType('client'), clientReactivationRoutes);
 
-// Routes documents client améliorées - PROTÉGÉES
-app.use('/api/enhanced-client-documents', enhancedAuthMiddleware, enhancedClientDocumentsRoutes);
+// Routes documents unifiées pour tous les users - PROTÉGÉES
+app.use('/api/documents', enhancedAuthMiddleware, documentsUnifiedAllRoutes);
 
 // Routes expert - PROTÉGÉES avec permissions spécifiques  
 app.use('/api/expert', enhancedAuthMiddleware, requireUserType('expert'), expertRoutes);
@@ -514,9 +515,6 @@ app.use('/api/audit', enhancedAuthMiddleware, auditRoutes);
 // app.use('/api/messaging', enhancedAuthMiddleware, messagingRoutes);
 app.use('/api/unified-messaging', enhancedAuthMiddleware, unifiedMessagingRoutes);
 
-// Routes des documents client - PROTÉGÉES
-app.use('/api/client-documents', enhancedAuthMiddleware, clientDocumentsRoutes);
-
 // Routes de monitoring - PROTÉGÉES avec permissions admin
 // app.use('/api/monitoring', enhancedAuthMiddleware, requireUserType('admin'), monitoringRoutes);
 
@@ -557,9 +555,6 @@ app.use('/api/diagnostic', diagnosticRoutes);
 // Route de gestion des étapes de dossier
 app.use('/api/dossier-steps', dossierStepsRoutes);
 console.log('🔧 Routes dossier-steps montées sur /api/dossier-steps');
-
-// Routes documents - PROTÉGÉES avec authentification
-app.use('/api/documents', documentsRoutes);
 
 // ===== ROUTES APPORTEURS D'AFFAIRES =====
 // Routes apporteur d'affaires - PROTÉGÉES (routes de base)

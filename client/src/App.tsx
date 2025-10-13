@@ -23,8 +23,9 @@ const ProfileClient = React.lazy(() => import('./pages/profile/client'));
 const ProfileExpert = React.lazy(() => import('./pages/profile/expert'));
 const MessagerieClient = React.lazy(() => import('./pages/messagerie-client'));
 const MessagerieAdmin = React.lazy(() => import('./pages/admin/messagerie'));
-const ClientDocuments = React.lazy(() => import('./pages/dashboard/client-documents'));
-const DocumentsClient = React.lazy(() => import('./pages/documents-client'));
+const ClientDocumentsPage = React.lazy(() => import('./pages/client/documents'));
+const ExpertDocumentsPage = React.lazy(() => import('./pages/expert/documents'));
+const ApporteurDocumentsPage = React.lazy(() => import('./pages/apporteur/documents'));
 const NotificationCenter = React.lazy(() => import('./pages/notification-center'));
 const Settings = React.lazy(() => import('./pages/settings'));
 const Experts = React.lazy(() => import('./pages/marketplace-experts'));
@@ -87,7 +88,6 @@ const AdminDashboard = React.lazy(() => import('./pages/admin/dashboard'));
 const AdminDashboardOptimized = React.lazy(() => import('./pages/admin/dashboard-optimized'));
 const AdminClientDetails = React.lazy(() => import('./pages/admin/client-details'));
 const AdminExpertDetails = React.lazy(() => import('./pages/admin/expert-details'));
-const AdminDocuments = React.lazy(() => import('./pages/admin/enhanced-admin-documents'));
 const AdminDocumentationNew = React.lazy(() => import('./pages/admin/documentation-new'));
 const AdminGestionDossiers = React.lazy(() => import('./pages/admin/gestion-dossiers'));
 const AdminGestionExperts = React.lazy(() => import('./pages/admin/gestion-experts'));
@@ -96,7 +96,8 @@ const AdminMonitoring = React.lazy(() => import('./pages/admin/monitoring'));
 const AdminValidationDashboard = React.lazy(() => import('./pages/admin/validation-dashboard'));
 const AdminFormulaireExpert = React.lazy(() => import('./pages/admin/formulaire-expert'));
 const AdminDocumentUpload = React.lazy(() => import('./pages/admin/admin-document-upload'));
-const AdminDocumentsUnified = React.lazy(() => import('./pages/admin/documents-unified'));
+const AdminDocumentsUnified = React.lazy(() => import('./pages/admin/documents-unified')); // Ancienne page (à garder pour /documents-unified)
+const AdminDocumentsPage = React.lazy(() => import('./pages/admin/documents')); // ✅ Nouvelle page GED unifiée
 const AdminTerminalTests = React.lazy(() => import('./pages/admin/terminal-tests'));
 const AdminTests = React.lazy(() => import('./pages/admin/tests'));
 
@@ -158,6 +159,7 @@ function App() {
                         <Route path="meetings" element={<ApporteurMeetings />} />
                         <Route path="experts" element={<ApporteurExperts />} />
                         <Route path="products" element={<ApporteurProducts />} />
+                        <Route path="documents" element={<ApporteurDocumentsPage />} />
                         <Route path="messaging" element={<ApporteurMessaging />} />
                         <Route path="agenda" element={<ApporteurAgenda />} />
                         <Route path="commissions" element={<ApporteurCommissions />} />
@@ -195,8 +197,7 @@ function App() {
                         <Route path="/notification-center" element={<NotificationCenter />} />
                         
                         {/* Documents & Dossiers */}
-                        <Route path="/documents-client" element={<DocumentsClient />} />
-                        <Route path="/client-document" element={<ClientDocuments />} />
+                        <Route path="documents" element={<ClientDocumentsPage />} />
                         <Route path="/dossier-client" element={<DossierClient />} />
                         <Route path="/dossier-client/:id" element={<DossierClient />} />
                         <Route path="/dossier-client/:produit/:id" element={<ProduitClient />} />
@@ -238,6 +239,9 @@ function App() {
                         {/* Mes Affaires */}
                         <Route path="mes-affaires" element={<ExpertMesAffaires />} />
                         <Route path="dossier/:id" element={<ExpertDossier />} />
+                        
+                        {/* Documents */}
+                        <Route path="documents" element={<ExpertDocumentsPage />} />
                         
                         {/* Agenda */}
                         <Route path="agenda" element={<ExpertAgenda />} />
@@ -282,8 +286,8 @@ function App() {
                         <Route path="messagerie-admin" element={<MessagerieAdmin />} />
                         
                         {/* GED & Documents */}
-                        <Route path="enhanced-admin-documents" element={<AdminDocuments />} />
-                        <Route path="documents-unified" element={<AdminDocumentsUnified />} />
+                        <Route path="documents" element={<AdminDocumentsPage />} /> {/* ✅ Nouvelle GED unifiée */}
+                        <Route path="documents-unified" element={<AdminDocumentsUnified />} /> {/* Ancienne version */}
                         <Route path="admin-document-upload" element={<AdminDocumentUpload />} />
                         <Route path="documentation-new" element={<AdminDocumentationNew />} />
                         
