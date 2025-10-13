@@ -577,9 +577,10 @@ export class ProductAmountCalculator {
       "Camions de 3,5 à 7,5 tonnes"
     ];
     
-    const isEligible = 
+    const isEligible = !!(
       secteursEligibles.includes(answers.secteur || '') &&
-      answers.types_vehicules?.some(type => typesVehiculesEligibles.includes(type));
+      answers.types_vehicules?.some(type => typesVehiculesEligibles.includes(type))
+    );
     
     return {
       produit_nom: "Chronotachygraphes Digitaux",

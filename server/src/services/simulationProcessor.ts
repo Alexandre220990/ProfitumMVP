@@ -256,15 +256,15 @@ function transformReponsesToAnswers(reponses: any[]): SimulationAnswers {
       // Conversion selon le type
       if (propertyName === 'types_vehicules') {
         // Choix multiple → array
-        answers[propertyName] = Array.isArray(reponse.valeur) ? reponse.valeur : [reponse.valeur];
+        (answers as any)[propertyName] = Array.isArray(reponse.valeur) ? reponse.valeur : [reponse.valeur];
       } else if (['litres_carburant_mois', 'nb_chauffeurs', 'montant_taxe_fonciere', 'montant_factures_energie_mois'].includes(propertyName)) {
         // Nombre → number
-        answers[propertyName as any] = typeof reponse.valeur === 'number' 
+        (answers as any)[propertyName] = typeof reponse.valeur === 'number' 
           ? reponse.valeur 
           : parseInt(reponse.valeur || '0', 10);
       } else {
         // String → string
-        answers[propertyName as any] = reponse.valeur;
+        (answers as any)[propertyName] = reponse.valeur;
       }
     }
   }
