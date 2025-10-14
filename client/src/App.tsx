@@ -31,7 +31,6 @@ const Settings = React.lazy(() => import('./pages/settings'));
 const Experts = React.lazy(() => import('./pages/marketplace-experts'));
 const MarketplaceExperts = React.lazy(() => import('./pages/marketplace-experts'));
 const ExpertsVerifies = React.lazy(() => import('./pages/experts-verifies'));
-const DossierClient = React.lazy(() => import('./pages/dossier-client/[id]'));
 const ProduitClient = React.lazy(() => import('./pages/dossier-client/[produit]/[id]'));
 const AuditEnergetique = React.lazy(() => import('./pages/produits/audit_energetique'));
 const CeeProduct = React.lazy(() => import('./pages/produits/cee-product'));
@@ -198,8 +197,6 @@ function App() {
                         
                         {/* Documents & Dossiers */}
                         <Route path="documents" element={<ClientDocumentsPage />} />
-                        <Route path="/dossier-client" element={<DossierClient />} />
-                        <Route path="/dossier-client/:id" element={<DossierClient />} />
                         <Route path="/dossier-client/:produit/:id" element={<ProduitClient />} />
                         
                         {/* Produits */}
