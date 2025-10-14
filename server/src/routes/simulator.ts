@@ -146,7 +146,7 @@ setInterval(cleanupExpiredSessions, 60 * 60 * 1000);
  * - Si l'utilisateur est connecté : lie la simulation à son compte client
  * - Si l'utilisateur est anonyme : crée un client temporaire automatique
  */
-router.post('/session', async (req: OptionalAuthRequest, res) => {
+router.post('/session', async (req: OptionalAuthRequest, res: Response) => {
   try {
     const sessionToken = uuidv4();
     const ipAddress = req.ip || req.connection.remoteAddress || 'unknown';
