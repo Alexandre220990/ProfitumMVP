@@ -992,7 +992,7 @@ router.get('/client-produits-eligibles', asyncHandler(async (req, res) => {
         expert_id,
         sessionId,
         Client:Client(id, company_name, email),
-        ProduitEligible:ProduitEligible(id, nom, category, description)
+        ProduitEligible:ProduitEligible(id, nom, categorie, description)
       `)
       .order('updated_at', { ascending: false });
 

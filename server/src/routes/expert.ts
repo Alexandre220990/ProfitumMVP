@@ -1000,7 +1000,7 @@ router.get('/client-produits-eligibles', async (req: Request, res: Response) => 
           id,
           nom,
           description,
-          category
+          categorie
         ),
         Expert (
           id,
