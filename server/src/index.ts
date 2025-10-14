@@ -59,6 +59,9 @@ import {
 // Import du middleware d'authentification simplifié
 import { simpleAuthMiddleware, requireUserType } from './middleware/auth-simple';
 
+// Import du middleware d'authentification optionnelle
+import { optionalAuthMiddleware } from './middleware/optional-auth';
+
 // Import des middlewares de performance
 import { 
   performanceMiddleware, 
@@ -210,9 +213,11 @@ addCorsTestRoute(app);
 app.use('/api/auth', publicRouteLogger, authRoutes);
 app.use('/api/partners', publicRouteLogger, partnersRouter);
 
-// 🚀 ROUTES DU SIMULATEUR - PUBLIQUES (pas d'authentification requise)
-app.use('/api/simulator', publicRouteLogger, simulatorRoutes);
-app.use('/api/eligibility', publicRouteLogger, eligibilityRoutes);
+// 🚀 ROUTES DU SIMULATEUR - PUBLIQUES avec authentification optionnelle
+// Le middleware optionalAuthMiddleware permet de détecter les utilisateurs connectés
+// sans bloquer les utilisateurs anonymes
+app.use('/api/simulator', publicRouteLogger, optionalAuthMiddleware, simulatorRoutes);
+app.use('/api/eligibility', publicRouteLogger, optionalAuthMiddleware, eligibilityRoutes);
 
 // 🔄 ROUTES DE MIGRATION DES SESSIONS - PUBLIQUES (pas d'authentification requise)
 app.use('/api/session-migration', publicRouteLogger, sessionMigrationRoutes);

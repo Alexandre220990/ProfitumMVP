@@ -2,6 +2,7 @@ import express from 'express';
 import { supabaseClient } from '../config/supabase';
 import { v4 as uuidv4 } from 'uuid';
 import { Request, Response } from 'express';
+import { OptionalAuthRequest } from '../middleware/optional-auth';
 
 const router = express.Router();
 
@@ -141,22 +142,94 @@ setInterval(cleanupExpiredSessions, 60 * 60 * 1000);
 
 /**
  * POST /api/simulator/session
- * Crée une nouvelle session de simulation avec client temporaire automatique
+ * Crée une nouvelle session de simulation
+ * - Si l'utilisateur est connecté : lie la simulation à son compte client
+ * - Si l'utilisateur est anonyme : crée un client temporaire automatique
  */
-router.post('/session', async (req, res) => {
+router.post('/session', async (req: OptionalAuthRequest, res) => {
   try {
-    console.log('🔄 Création d\'une nouvelle session simulateur avec client temporaire...');
-    
     const sessionToken = uuidv4();
     const ipAddress = req.ip || req.connection.remoteAddress || 'unknown';
     const userAgent = req.get('User-Agent') || 'unknown';
     const clientData: ClientData = req.body.client_data || {};
 
+    // Vérifier si l'utilisateur est connecté
+    const isAuthenticated = !!req.user;
+    
+    if (isAuthenticated) {
+      console.log('👤 Utilisateur connecté détecté:', req.user!.email, 'Type:', req.user!.type);
+      
+      // Récupérer le client_id depuis la base de données
+      const { data: clientRecord, error: clientError } = await supabaseClient
+        .from('Client')
+        .select('id, email, name, company_name')
+        .eq('email', req.user!.email)
+        .single();
+      
+      if (clientError || !clientRecord) {
+        console.error('❌ Client non trouvé pour l\'utilisateur connecté:', req.user!.email, clientError);
+        // Fallback sur le mode anonyme
+        console.log('⚠️ Fallback sur mode anonyme');
+      } else {
+        // UTILISATEUR CONNECTÉ : Créer la simulation liée au client existant
+        console.log('✅ Client trouvé:', { id: clientRecord.id, email: clientRecord.email });
+        console.log('🔗 Création de simulation liée au compte client existant...');
+        
+        // Créer la simulation directement liée au client existant
+        const { data: simulation, error: simError } = await supabaseClient
+          .from('simulations')
+          .insert({
+            session_token: sessionToken,
+            client_id: clientRecord.id,
+            status: 'in_progress',
+            answers: {},
+            metadata: {
+              ip_address: ipAddress,
+              user_agent: userAgent,
+              authenticated: true,
+              user_email: req.user!.email,
+              user_type: req.user!.type,
+              created_from_dashboard: true
+            }
+          })
+          .select()
+          .single();
+        
+        if (simError) {
+          console.error('❌ Erreur lors de la création de simulation:', simError);
+          return res.status(500).json({
+            success: false,
+            error: 'Erreur lors de la création de simulation',
+            details: simError.message
+          });
+        }
+        
+        console.log('✅ Session créée et liée au compte client:', {
+          sessionToken: sessionToken.substring(0, 8) + '...',
+          clientId: clientRecord.id,
+          simulationId: simulation.id,
+          authenticated: true
+        });
+        
+        return res.json({
+          success: true,
+          session_token: sessionToken,
+          client_id: clientRecord.id,
+          simulation_id: simulation.id,
+          authenticated: true,
+          message: 'Session créée et liée à votre compte'
+        });
+      }
+    }
+    
+    // UTILISATEUR ANONYME : Mode par défaut avec client temporaire
+    console.log('🔄 Création d\'une nouvelle session simulateur avec client temporaire...');
     console.log(`📝 Données de session:`, {
       sessionToken: sessionToken.substring(0, 8) + '...',
       ipAddress,
       userAgent: userAgent.substring(0, 50) + '...',
-      hasClientData: Object.keys(clientData).length > 0
+      hasClientData: Object.keys(clientData).length > 0,
+      authenticated: false
     });
 
     // Préparer les données client avec IP et User-Agent
@@ -185,7 +258,8 @@ router.post('/session', async (req, res) => {
       sessionToken: sessionToken.substring(0, 8) + '...',
       clientId: data.client_id,
       simulationId: data.simulation_id,
-      expiresAt: data.expires_at
+      expiresAt: data.expires_at,
+      authenticated: false
     });
 
     return res.json({
@@ -194,6 +268,7 @@ router.post('/session', async (req, res) => {
       client_id: data.client_id,
       simulation_id: data.simulation_id,
       expires_at: data.expires_at,
+      authenticated: false,
       message: 'Session créée avec client temporaire automatique'
     });
   } catch (error) {

@@ -96,6 +96,21 @@ const SimulateurEligibilite = () => {
     totalSavings: number;
   } | null>(null);
 
+  // Helper pour obtenir les headers avec token si disponible
+  const getHeadersWithAuth = (): HeadersInit => {
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json'
+    };
+    
+    // Ajouter le token JWT si disponible
+    const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    return headers;
+  };
+
   // Tracking analytics
   const trackEvent = (eventName: string, data: Record<string, unknown> = {}) => { 
     try {
@@ -190,19 +205,37 @@ const SimulateurEligibilite = () => {
 
   const initializeSimulator = async () => { 
     try {
-      console.log('🚀 Initialisation du simulateur...', { isClientMode });
+      console.log('🚀 Initialisation du simulateur...', { isClientMode, user });
       setSessionStartTime(Date.now()); // Initialiser le temps de session
       
-      if (isClientMode) {
-        // Mode client connecté - pas besoin de session temporaire
-        console.log('👤 Mode client connecté détecté');
-        setSessionToken(`client_${user?.id}_${Date.now()}`);
+      // Créer une session (pour client connecté ET public)
+      const sessionResponse = await fetch(`${config.API_URL}/api/simulator/session`, { 
+        method: 'POST', 
+        headers: getHeadersWithAuth(),
+        body: JSON.stringify({
+          client_data: {
+            // Données temporaires qui seront migrées plus tard
+            temp_id: `temp_${Date.now()}`,
+            created_at: new Date().toISOString()
+          }
+        })
+      });
+      
+      if (sessionResponse.ok) { 
+        const sessionData = await sessionResponse.json();
+        setSessionToken(sessionData.session_token);
+        console.log('✅ Session créée:', {
+          session_token: sessionData.session_token,
+          authenticated: sessionData.authenticated,
+          client_id: sessionData.client_id
+        });
         
-        // Tracking début de session client
+        // Tracking début de session
         setTimeout(() => {
-          trackEvent('simulator_client_session_start', {
+          trackEvent(isClientMode ? 'simulator_client_session_start' : 'simulator_session_start', {
             timestamp: new Date().toISOString(),
-            client_id: user?.id
+            client_id: sessionData.client_id,
+            authenticated: sessionData.authenticated
           });
         }, 100);
         
@@ -210,39 +243,8 @@ const SimulateurEligibilite = () => {
         console.log('📋 Chargement des questions...');
         await loadQuestions();
       } else {
-        // Mode public - créer une session temporaire
-        const sessionResponse = await fetch(`${config.API_URL}/api/simulator/session`, { 
-          method: 'POST', 
-          headers: {
-            'Content-Type': 'application/json' 
-          },
-          body: JSON.stringify({
-            client_data: {
-              // Données temporaires qui seront migrées plus tard
-              temp_id: `temp_${Date.now()}`,
-              created_at: new Date().toISOString()
-            }
-          })
-        });
-        
-        if (sessionResponse.ok) { 
-          const sessionData = await sessionResponse.json();
-          setSessionToken(sessionData.session_token);
-          console.log('✅ Session créée:', sessionData.session_token);
-          
-          // Tracking début de session (après avoir défini sessionToken)
-          setTimeout(() => {
-            trackEvent('simulator_session_start', {
-              timestamp: new Date().toISOString() 
-            });
-          }, 100);
-          
-          // Charger les questions
-          console.log('📋 Chargement des questions...');
-          await loadQuestions();
-        } else {
-          console.error('❌ Erreur création session:', sessionResponse.status);
-        }
+        console.error('❌ Erreur création session:', sessionResponse.status);
+        toast.error("Impossible de créer la session");
       }
     } catch (error) { 
       console.error('Erreur lors de l\'initialisation: ', error);
