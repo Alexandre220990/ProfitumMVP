@@ -1,7 +1,6 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import { supabaseClient } from '../config/supabase';
 import { v4 as uuidv4 } from 'uuid';
-import { Request, Response } from 'express';
 import { OptionalAuthRequest } from '../middleware/optional-auth';
 
 const router = express.Router();
@@ -146,28 +145,29 @@ setInterval(cleanupExpiredSessions, 60 * 60 * 1000);
  * - Si l'utilisateur est connecté : lie la simulation à son compte client
  * - Si l'utilisateur est anonyme : crée un client temporaire automatique
  */
-router.post('/session', async (req: OptionalAuthRequest, res: Response) => {
+router.post('/session', async (req, res) => {
   try {
+    const optionalReq = req as OptionalAuthRequest;
     const sessionToken = uuidv4();
-    const ipAddress = req.ip || req.connection.remoteAddress || 'unknown';
-    const userAgent = req.get('User-Agent') || 'unknown';
-    const clientData: ClientData = req.body.client_data || {};
+    const ipAddress = optionalReq.ip || optionalReq.connection.remoteAddress || 'unknown';
+    const userAgent = optionalReq.get('User-Agent') || 'unknown';
+    const clientData: ClientData = optionalReq.body.client_data || {};
 
     // Vérifier si l'utilisateur est connecté
-    const isAuthenticated = !!req.user;
+    const isAuthenticated = !!optionalReq.user;
     
     if (isAuthenticated) {
-      console.log('👤 Utilisateur connecté détecté:', req.user!.email, 'Type:', req.user!.type);
+      console.log('👤 Utilisateur connecté détecté:', optionalReq.user!.email, 'Type:', optionalReq.user!.type);
       
       // Récupérer le client_id depuis la base de données
       const { data: clientRecord, error: clientError } = await supabaseClient
         .from('Client')
         .select('id, email, name, company_name')
-        .eq('email', req.user!.email)
+        .eq('email', optionalReq.user!.email)
         .single();
       
       if (clientError || !clientRecord) {
-        console.error('❌ Client non trouvé pour l\'utilisateur connecté:', req.user!.email, clientError);
+        console.error('❌ Client non trouvé pour l\'utilisateur connecté:', optionalReq.user!.email, clientError);
         // Fallback sur le mode anonyme
         console.log('⚠️ Fallback sur mode anonyme');
       } else {
@@ -187,8 +187,8 @@ router.post('/session', async (req: OptionalAuthRequest, res: Response) => {
               ip_address: ipAddress,
               user_agent: userAgent,
               authenticated: true,
-              user_email: req.user!.email,
-              user_type: req.user!.type,
+              user_email: optionalReq.user!.email,
+              user_type: optionalReq.user!.type,
               created_from_dashboard: true
             }
           })
