@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/hooks/use-auth";
 import { useNavigate } from "react-router-dom";
-import { ChangePasswordModal } from "@/components/client/ChangePasswordModal";
+import { toast } from "sonner";
+import ChangePasswordModal from "@/components/client/ChangePasswordModal";
 
 const Settings = () => { 
   const { user } = useAuth();
@@ -85,8 +86,11 @@ const Settings = () => {
       {/* Modal changement de mot de passe */}
       {showPasswordModal && (
         <ChangePasswordModal 
-          open={showPasswordModal}
-          onClose={() => setShowPasswordModal(false)}
+          onSuccess={() => {
+            setShowPasswordModal(false);
+            toast.success('Mot de passe changé avec succès !');
+          }}
+          userName={user?.username}
         />
       )}
     </div>
