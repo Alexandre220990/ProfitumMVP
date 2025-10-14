@@ -5,8 +5,8 @@ import routes from './routes';
 // import { monitoringSystem } from '../lib/monitoring-system';
 import { getCorsConfig, corsMiddleware } from './config/cors';
 
-// Routes pour les documents clients
-import clientDocumentsRouter from './routes/enhanced-client-documents';
+// SUPPRIMÉ: Routes documents clients obsolètes (remplacées par documents-unified-all)
+// import clientDocumentsRouter from './routes/enhanced-client-documents';
 
 const app = express();
 

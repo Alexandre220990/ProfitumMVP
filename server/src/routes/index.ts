@@ -12,9 +12,10 @@ import adminRoutes from "./admin";
 import monitoringRoutes from "./monitoring";
 import testsRoutes from "./tests";
 import terminalTestsRoutes from "./terminal-tests";
-import documentsRoutes from "./documents";
-import clientDocumentsRoutes from "./client-documents";
-import enhancedClientDocumentsRoutes from "./enhanced-client-documents";
+// SUPPRIMÉ: Routes documents obsolètes (remplacées par documents-unified-all)
+// import documentsRoutes from "./documents";
+// import clientDocumentsRoutes from "./client-documents";
+// import enhancedClientDocumentsRoutes from "./enhanced-client-documents";
 import dossiersRoutes from "./dossiers";
 import workflowRoutes from "./documents/workflow";
 import remindersRoutes from "./reminders";
@@ -59,14 +60,10 @@ router.use('/expert', enhancedAuthMiddleware, expertRoutes);
 // Routes des demandes de démo expert
 router.use('/expert/demo-request', expertDemoRequestRoutes);
 
-// Routes des documents (GED)
-router.use('/documents', enhancedAuthMiddleware, documentsRoutes);
-
-// Routes des documents client (sans préfixe api car déjà dans /api)
-router.use('/client-documents', enhancedAuthMiddleware, clientDocumentsRoutes);
-
-// Routes des documents client améliorés
-router.use('/enhanced-client-documents', enhancedAuthMiddleware, enhancedClientDocumentsRoutes);
+// SUPPRIMÉ: Routes des documents obsolètes (remplacées par documents-unified-all dans index.ts)
+// router.use('/documents', enhancedAuthMiddleware, documentsRoutes);
+// router.use('/client-documents', enhancedAuthMiddleware, clientDocumentsRoutes);
+// router.use('/enhanced-client-documents', enhancedAuthMiddleware, enhancedClientDocumentsRoutes);
 
 // Routes des dossiers
 router.use('/dossiers', enhancedAuthMiddleware, dossiersRoutes);
