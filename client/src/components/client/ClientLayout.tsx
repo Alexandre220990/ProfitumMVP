@@ -7,10 +7,8 @@ import {
   Home,
   BarChart3,
   Calendar,
-  Globe,
   MessageSquare,
   FileText,
-  FolderOpen,
   User,
   Settings,
   HelpCircle,
@@ -19,7 +17,8 @@ import {
   Menu,
   X,
   ChevronDown,
-  Briefcase
+  Briefcase,
+  ShoppingBag
 } from 'lucide-react';
 
 interface ClientLayoutProps {
@@ -44,7 +43,6 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
   // États pour les badges dynamiques
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [newDocuments, setNewDocuments] = useState(0);
-  const [pendingDossiers, setDossiersPending] = useState(0);
   const [notificationsCount, setNotificationsCount] = useState(0);
 
   // Charger les compteurs de badges
@@ -58,7 +56,6 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
       // Pour l'instant, simulation
       setUnreadMessages(5);
       setNewDocuments(2);
-      setDossiersPending(1);
       setNotificationsCount(3);
     } catch (error) {
       console.error('Erreur chargement badges:', error);
@@ -71,7 +68,6 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
   };
 
   const navigation: NavigationItem[] = [
-    // Principal
     {
       name: 'Dashboard',
       href: `/dashboard/client/${user?.id || ''}`,
@@ -91,18 +87,10 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
       current: location.pathname === '/agenda-client'
     },
     {
-      name: 'Google Calendar',
-      href: '/google-calendar-integration',
-      icon: Globe,
-      current: location.pathname === '/google-calendar-integration'
-    },
-    
-    // Outils
-    {
       name: 'Messagerie',
-      href: '/messagerie',
+      href: '/messagerie-client',
       icon: MessageSquare,
-      current: location.pathname === '/messagerie',
+      current: location.pathname === '/messagerie-client',
       badge: unreadMessages
     },
     {
@@ -113,14 +101,11 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
       badge: newDocuments
     },
     {
-      name: 'Dossiers',
-      href: '/dossier-client',
-      icon: FolderOpen,
-      current: location.pathname === '/dossier-client',
-      badge: pendingDossiers
+      name: 'Marketplace',
+      href: '/marketplace-experts',
+      icon: ShoppingBag,
+      current: location.pathname === '/marketplace-experts'
     },
-    
-    // Compte
     {
       name: 'Profil',
       href: '/profile/client',
