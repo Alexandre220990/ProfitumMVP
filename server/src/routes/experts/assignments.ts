@@ -30,18 +30,18 @@ router.get('/', asyncHandler(async (req, res) => {
             .from('expertassignment')
             .select(`
                 *,
-                Expert (
+                expert_id:Expert (
                     id,
                     name,
                     company_name,
                     rating
                 ),
-                Client (
+                client_id:Client (
                     id,
                     name,
                     company_name
                 ),
-                ProduitEligible (
+                produit_id:ProduitEligible (
                     id,
                     nom,
                     description
@@ -141,9 +141,9 @@ router.get('/:id', asyncHandler(async (req, res) => {
             .from('expertassignment')
             .select(`
                 *,
-                Expert!inner(auth_user_id),
-                Client!inner(auth_user_id),
-                ProduitEligible(*)
+                expert_id:Expert!inner(auth_user_id, id, name, email),
+                client_id:Client!inner(auth_user_id, id, name, email),
+                produit_id:ProduitEligible(*)
             `)
             .eq('id', id)
             .single();
@@ -220,8 +220,8 @@ router.put('/:id/status', asyncHandler(async (req, res) => {
             .from('expertassignment')
             .select(`
                 *,
-                Expert!inner(auth_user_id),
-                Client!inner(auth_user_id)
+                expert_id:Expert!inner(auth_user_id, id, name),
+                client_id:Client!inner(auth_user_id, id, name)
             `)
             .eq('id', id)
             .single();
@@ -344,8 +344,8 @@ router.post('/:id/complete', asyncHandler(async (req, res) => {
             .from('expertassignment')
             .select(`
                 *,
-                Expert!inner(auth_user_id, id),
-                Client!inner(auth_user_id)
+                expert_id:Expert!inner(auth_user_id, id, name),
+                client_id:Client!inner(auth_user_id, id, name)
             `)
             .eq('id', id)
             .single();

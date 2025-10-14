@@ -118,9 +118,9 @@ class MessagingService {
     this.currentUserType = userType;
     
     try {
-      // Pour les apporteurs d'affaires, on utilise l'authentification JWT personnalisée
-      if (userType === 'apporteur') {
-        console.log('✅ Initialisation messagerie pour apporteur d\'affaires (JWT personnalisé)');
+      // Pour les apporteurs et clients, on utilise l'authentification JWT personnalisée
+      if (userType === 'apporteur' || userType === 'client') {
+        console.log(`✅ Initialisation messagerie pour ${userType} (JWT personnalisé)`);
         // Configurer les subscriptions Realtime optimisées
         await this.setupOptimizedRealtimeSubscriptions();
         
@@ -128,11 +128,11 @@ class MessagingService {
         this.reconnectAttempts = 0;
         this.callbacks.onConnectionStatus?.('connected');
         
-        console.log('✅ Service de messagerie unifié initialisé pour apporteur');
+        console.log(`✅ Service de messagerie unifié initialisé pour ${userType}`);
         return;
       }
 
-      // Pour les autres types d'utilisateurs, vérifier la session Supabase standard
+      // Pour les autres types d'utilisateurs (expert, admin), vérifier la session Supabase standard
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       if (sessionError || !session) {
         throw new Error('Session Supabase invalide');
