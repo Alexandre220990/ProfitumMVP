@@ -141,7 +141,7 @@ router.get('/produits-eligibles', enhancedAuthMiddleware, async (req, res) => {
       .from('ClientProduitEligible')
       .select(`
         *,
-        produitId:ProduitEligible (
+        ProduitEligible:produitId (
           id,
           nom,
           description,
@@ -226,7 +226,7 @@ router.get('/produits-eligibles/:id', enhancedAuthMiddleware, async (req, res) =
       .from('ClientProduitEligible')
       .select(`
         *,
-        produitId:ProduitEligible (
+        ProduitEligible:produitId (
           id,
           nom,
           description,
@@ -238,7 +238,7 @@ router.get('/produits-eligibles/:id', enhancedAuthMiddleware, async (req, res) =
           duree_min,
           duree_max
         ),
-        expert_id:Expert (
+        Expert:expert_id (
           id,
           name,
           email,

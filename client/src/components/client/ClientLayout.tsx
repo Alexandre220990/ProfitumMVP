@@ -18,7 +18,8 @@ import {
   X,
   ChevronDown,
   Briefcase,
-  ShoppingBag
+  ShoppingBag,
+  Calculator
 } from 'lucide-react';
 
 interface ClientLayoutProps {
@@ -73,6 +74,12 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
       href: `/dashboard/client/${user?.id || ''}`,
       icon: Home,
       current: location.pathname.includes('/dashboard/client')
+    },
+    {
+      name: 'Simulation',
+      href: '/simulateur',
+      icon: Calculator,
+      current: location.pathname === '/simulateur'
     },
     {
       name: 'Mes Audits',

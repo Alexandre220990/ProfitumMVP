@@ -156,7 +156,7 @@ router.get(['/conversations', '/expert/conversations'], async (req, res) => {
           is_read
         )
       `)
-      .or(`participant_ids.cs.{${authUser.id}}`);
+      .or(`participant_ids.cs.{${authUser.database_id || authUser.id}}`);
 
     // Filtres
     if (type && type !== 'all') {
@@ -318,7 +318,7 @@ router.post('/conversations', async (req, res) => {
     }
 
     // Vérifier que l'utilisateur fait partie des participants
-    if (!participant_ids.includes(authUser.id)) {
+    if (!participant_ids.includes(authUser.database_id || authUser.id)) {
       return res.status(403).json({
         success: false,
         message: 'Vous devez faire partie des participants'
@@ -396,7 +396,7 @@ router.get('/conversations/:id/messages', async (req, res) => {
     }
 
     // Vérifier les permissions
-    if (!conversation.participant_ids.includes(authUser.id)) {
+    if (!conversation.participant_ids.includes(authUser.database_id || authUser.id)) {
       return res.status(403).json({
         success: false,
         message: 'Accès non autorisé'
@@ -499,7 +499,7 @@ router.post('/conversations/:id/messages', async (req, res) => {
     }
 
     // Vérifier les permissions
-    if (!conversation.participant_ids.includes(authUser.id)) {
+    if (!conversation.participant_ids.includes(authUser.database_id || authUser.id)) {
       return res.status(403).json({
         success: false,
         message: 'Accès non autorisé'
@@ -644,7 +644,7 @@ router.get('/files/:id/download', async (req, res) => {
 
     // Vérifier les permissions
     const conversation = file.messages.conversations;
-    if (!conversation.participant_ids.includes(authUser.id)) {
+    if (!conversation.participant_ids.includes(authUser.database_id || authUser.id)) {
       return res.status(403).json({
         success: false,
         message: 'Accès non autorisé'

@@ -30,18 +30,18 @@ router.get('/', asyncHandler(async (req, res) => {
             .from('expertassignment')
             .select(`
                 *,
-                expert_id:Expert (
+                Expert:expert_id (
                     id,
                     name,
                     company_name,
                     rating
                 ),
-                client_id:Client (
+                Client:client_id (
                     id,
                     name,
                     company_name
                 ),
-                produit_id:ProduitEligible (
+                ProduitEligible:produit_id (
                     id,
                     nom,
                     description
@@ -141,9 +141,9 @@ router.get('/:id', asyncHandler(async (req, res) => {
             .from('expertassignment')
             .select(`
                 *,
-                expert_id:Expert!inner(auth_user_id, id, name, email),
-                client_id:Client!inner(auth_user_id, id, name, email),
-                produit_id:ProduitEligible(*)
+                Expert:expert_id!inner(auth_user_id, id, name, email),
+                Client:client_id!inner(auth_user_id, id, name, email),
+                ProduitEligible:produit_id(*)
             `)
             .eq('id', id)
             .single();
@@ -220,8 +220,8 @@ router.put('/:id/status', asyncHandler(async (req, res) => {
             .from('expertassignment')
             .select(`
                 *,
-                expert_id:Expert!inner(auth_user_id, id, name),
-                client_id:Client!inner(auth_user_id, id, name)
+                Expert:expert_id!inner(auth_user_id, id, name),
+                Client:client_id!inner(auth_user_id, id, name)
             `)
             .eq('id', id)
             .single();
@@ -344,8 +344,8 @@ router.post('/:id/complete', asyncHandler(async (req, res) => {
             .from('expertassignment')
             .select(`
                 *,
-                expert_id:Expert!inner(auth_user_id, id, name),
-                client_id:Client!inner(auth_user_id, id, name)
+                Expert:expert_id!inner(auth_user_id, id, name),
+                Client:client_id!inner(auth_user_id, id, name)
             `)
             .eq('id', id)
             .single();
