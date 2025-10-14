@@ -90,6 +90,7 @@ const Settings = () => {
             setShowPasswordModal(false);
             toast.success('Mot de passe changé avec succès !');
           }}
+          onCancel={() => setShowPasswordModal(false)}
           userName={user?.username}
         />
       )}

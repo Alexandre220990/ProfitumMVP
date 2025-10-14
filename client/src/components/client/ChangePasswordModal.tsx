@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase';
 
 interface ChangePasswordModalProps {
   onSuccess: () => void;
+  onCancel?: () => void;
   userName?: string;
 }
 
@@ -23,7 +24,7 @@ interface PasswordStrength {
   };
 }
 
-export default function ChangePasswordModal({ onSuccess, userName }: ChangePasswordModalProps) {
+export default function ChangePasswordModal({ onSuccess, onCancel, userName }: ChangePasswordModalProps) {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -312,15 +313,27 @@ export default function ChangePasswordModal({ onSuccess, userName }: ChangePassw
               </div>
             )}
 
-            {/* Bouton de validation */}
-            <Button
-              type="submit"
-              disabled={!canSubmit || loading}
-              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-6 text-lg font-semibold"
-            >
-              <Lock className="h-5 w-5 mr-2" />
-              {loading ? 'Changement en cours...' : 'Valider mon nouveau mot de passe'}
-            </Button>
+            {/* Boutons d'action */}
+            <div className="flex gap-4">
+              {onCancel && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={onCancel}
+                  className="flex-1 py-6 text-lg font-semibold"
+                >
+                  Annuler
+                </Button>
+              )}
+              <Button
+                type="submit"
+                disabled={!canSubmit || loading}
+                className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-6 text-lg font-semibold"
+              >
+                <Lock className="h-5 w-5 mr-2" />
+                {loading ? 'Changement en cours...' : 'Valider mon nouveau mot de passe'}
+              </Button>
+            </div>
 
             <p className="text-xs text-center text-gray-500 mt-4">
               🔒 Votre mot de passe est crypté et sécurisé. Profitum ne le stocke jamais en clair.
