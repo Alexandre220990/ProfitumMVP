@@ -1,3 +1,16 @@
+/**
+ * SIMULATEUR CLIENT - Version pour clients CONNECTÉS uniquement
+ * 
+ * Différences avec /simulateur:
+ * - Authentification REQUISE
+ * - Token JWT envoyé automatiquement
+ * - Simulation liée au client_id existant
+ * - PAS de client temporaire
+ * - PAS de formulaire d'inscription à la fin
+ * - Retour au dashboard
+ * - Mise à jour intelligente des produits existants
+ */
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -5,9 +18,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, Clock, Calculator, Building2, Truck, Home, DollarSign, Check, Target, Zap, ArrowRight, CheckCircle } from "lucide-react";
+import { ChevronLeft, Calculator, Check, ArrowRight, CheckCircle, User } from "lucide-react";
 import { config } from "@/config/env";
-import PublicHeader from '@/components/PublicHeader';
+import { useAuth } from '@/hooks/use-auth';
 
 interface QuestionOptions {
   choix?: string[];
@@ -44,18 +57,17 @@ interface Question {
   phase: number;
 }
 
-interface EligibilityResult { 
-  produit_id: string;
-  eligibility_score: number;
-  estimated_savings: number;
-  confidence_level: string;
-  recommendations: string[];
-  type?: 'financier' | 'qualitatif';
-  qualitative_benefits?: string[] | null;
-}
-
-const SimulateurEligibilite = () => { 
+const SimulateurClient = () => { 
   const navigate = useNavigate();
+  const { user } = useAuth();
+  
+  // ✅ VÉRIFICATION AUTHENTIFICATION OBLIGATOIRE
+  useEffect(() => {
+    if (!user) {
+      toast.error("Vous devez être connecté pour accéder au simulateur client");
+      navigate('/connexion-client');
+    }
+  }, [user, navigate]);
   
   // États du simulateur
   const [currentStep, setCurrentStep] = useState(1);
@@ -65,18 +77,43 @@ const SimulateurEligibilite = () => {
   const [responses, setResponses] = useState<Record<string, any>>({});
   const [showWelcomeScreen, setShowWelcomeScreen] = useState(true);
   const [sessionToken, setSessionToken] = useState<string>('');
-  const [eligibilityResults, setEligibilityResults] = useState<EligibilityResult[]>([]);
   const [showResults, setShowResults] = useState(false);
   const [sessionStartTime, setSessionStartTime] = useState<number>(Date.now());
   
   // Nouveaux états pour la validation
   const [currentResponse, setCurrentResponse] = useState<any>(null);
   const [isValidating, setIsValidating] = useState(false);
+  
+  // États pour la mise à jour des produits
+  const [isUpdatingExisting, setIsUpdatingExisting] = useState(false);
+  const [updateProgress, setUpdateProgress] = useState<{
+    productsUpdated: number;
+    productsCreated: number;
+    productsProtected: number;
+    totalSavings: number;
+  } | null>(null);
+
+  // Helper pour obtenir les headers avec token (TOUJOURS avec token)
+  const getHeadersWithAuth = (): HeadersInit => {
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json'
+    };
+    
+    const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    } else {
+      console.error('❌ Token JWT manquant!');
+      toast.error("Token d'authentification manquant. Reconnectez-vous.");
+      navigate('/connexion-client');
+    }
+    
+    return headers;
+  };
 
   // Tracking analytics
   const trackEvent = (eventName: string, data: Record<string, unknown> = {}) => { 
     try {
-      // Ne tracker que si on a un sessionToken
       if (!sessionToken) {
         console.log('⚠️ Tracking ignoré: sessionToken non disponible');
         return;
@@ -85,22 +122,25 @@ const SimulateurEligibilite = () => {
       // Google Analytics 4
       if (typeof window !== 'undefined' && (window as any).gtag) {
         (window as any).gtag('event', eventName, {
-          event_category: 'simulator', 
-          event_label: 'eligibility_check', 
+          event_category: 'simulator_client', 
+          event_label: 'client_eligibility_update', 
           value: (data.eligibility_score as number) || 0, 
           custom_parameters: {
-            session_token: sessionToken, 
+            session_token: sessionToken,
+            client_id: user?.id,
             products_count: (data.products_count as number) || 0, 
             total_savings: (data.total_savings as number) || 0 
           }
         });
       }
 
-      // Mixpanel ou autre outil
+      // Mixpanel
       if (typeof window !== 'undefined' && (window as any).mixpanel) { 
         (window as any).mixpanel.track(eventName, {
           ...data, 
-          session_token: sessionToken, 
+          session_token: sessionToken,
+          client_id: user?.id,
+          authenticated: true,
           timestamp: new Date().toISOString() 
         });
       }
@@ -114,7 +154,7 @@ const SimulateurEligibilite = () => {
         body: JSON.stringify({ 
           session_token: sessionToken, 
           event_type: eventName, 
-          event_data: data 
+          event_data: {...data, client_id: user?.id}
         })
       }).catch(console.error);
 
@@ -126,7 +166,6 @@ const SimulateurEligibilite = () => {
   // Gestion de la session et nettoyage
   useEffect(() => { 
     const handleBeforeUnload = () => {
-      // Marquer la session comme abandonnée
       if (sessionToken) {
         fetch(`${config.API_URL}/api/simulator/abandon`, { 
           method: 'POST', 
@@ -143,7 +182,7 @@ const SimulateurEligibilite = () => {
 
     const handleVisibilityChange = () => { 
       if (document.visibilityState === 'hidden' && sessionToken) {
-        trackEvent('simulator_session_pause', {
+        trackEvent('simulator_client_session_pause', {
           current_step: currentStep, 
           total_steps: totalSteps, 
           progress: Math.round((currentStep / totalSteps) * 100) 
@@ -162,23 +201,23 @@ const SimulateurEligibilite = () => {
 
   // Initialisation du simulateur
   useEffect(() => { 
-    initializeSimulator(); 
-  }, []);
+    if (user) {
+      initializeSimulator(); 
+    }
+  }, [user]);
 
   const initializeSimulator = async () => { 
     try {
-      console.log('🚀 Initialisation du simulateur PUBLIC (mode anonyme)...');
+      console.log('🚀 Initialisation du simulateur CLIENT...', { user: user?.email });
       setSessionStartTime(Date.now());
       
-      // Créer une session SANS token (mode anonyme pur)
+      // Créer une session AVEC token (utilisateur authentifié)
       const sessionResponse = await fetch(`${config.API_URL}/api/simulator/session`, { 
         method: 'POST', 
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: getHeadersWithAuth(),
         body: JSON.stringify({
           client_data: {
-            temp_id: `temp_${Date.now()}`,
+            client_mode: true,
             created_at: new Date().toISOString()
           }
         })
@@ -187,19 +226,25 @@ const SimulateurEligibilite = () => {
       if (sessionResponse.ok) { 
         const sessionData = await sessionResponse.json();
         setSessionToken(sessionData.session_token);
-        console.log('✅ Session anonyme créée:', {
+        console.log('✅ Session client créée:', {
           session_token: sessionData.session_token,
-          authenticated: false,
-          client_id: sessionData.client_id,
-          expires_at: sessionData.expires_at
+          authenticated: sessionData.authenticated,
+          client_id: sessionData.client_id
         });
         
-        // Tracking début de session publique
+        if (!sessionData.authenticated) {
+          console.error('❌ Session non authentifiée alors que le token a été envoyé!');
+          toast.error("Erreur d'authentification. Reconnectez-vous.");
+          navigate('/connexion-client');
+          return;
+        }
+        
+        // Tracking début de session client
         setTimeout(() => {
-          trackEvent('simulator_session_start', {
+          trackEvent('simulator_client_session_start', {
             timestamp: new Date().toISOString(),
             client_id: sessionData.client_id,
-            authenticated: false
+            authenticated: true
           });
         }, 100);
         
@@ -221,8 +266,6 @@ const SimulateurEligibilite = () => {
       const response = await fetch(`${config.API_URL}/api/simulator/questions`);
       if (response.ok) { 
         const questionsData = await response.json();
-        
-        // L'API retourne {success: true, questions: [...]}
         const questions = questionsData.questions || questionsData;
         
         setQuestions(questions);
@@ -240,15 +283,12 @@ const SimulateurEligibilite = () => {
 
   const handleResponse = async (response: string | number | string[] | null) => { 
     try {
-      // Stocker la réponse temporairement
       setCurrentResponse(response);
       
-      // Pour les questions à choix unique, on peut valider automatiquement
+      // Auto-validation pour choix unique
       if (currentQuestion?.question_type === 'choix_unique') {
         await validateAndProceed(response); 
       }
-      // Pour les autres types, on attend que l'utilisateur clique sur "Valider"
-      
     } catch (error) { 
       console.error('Erreur lors de la sauvegarde de la réponse: ', error);
       toast.error("Impossible de sauvegarder votre réponse");
@@ -258,7 +298,6 @@ const SimulateurEligibilite = () => {
   const validateAndProceed = async (response: string | number | string[] | null) => { 
     if (!currentQuestion) return;
     
-    // Validation des données avant envoi
     if (response === null || response === undefined || response === '') {
       toast.error("Veuillez répondre à la question avant de continuer");
       return;
@@ -282,7 +321,6 @@ const SimulateurEligibilite = () => {
       });
 
       if (saveResponse.ok) { 
-        // Marquer comme validé
         setResponses(prev => ({
           ...prev, 
           [currentQuestion.id]: response 
@@ -296,14 +334,13 @@ const SimulateurEligibilite = () => {
           response_value: response 
         });
 
-        // Attendre un peu pour montrer la validation
         await new Promise(resolve => setTimeout(resolve, 500));
 
         // Passer à la question suivante
         if (currentStep < totalSteps) { 
           const nextStep = currentStep + 1;
           setCurrentStep(nextStep);
-          setCurrentQuestion(questions[nextStep - 1]); // -1 car l'index commence à 0
+          setCurrentQuestion(questions[nextStep - 1]);
           setCurrentResponse(null);
         } else { 
           // Dernière question, calculer les résultats
@@ -330,63 +367,60 @@ const SimulateurEligibilite = () => {
 
   const calculateResults = async () => { 
     try {
-      // MODE PUBLIC - Calcul éligibilité standard
-      console.log('🔍 Calcul des résultats en mode public...');
+      // MODE CLIENT - Mise à jour intelligente des produits
+      console.log('👤 Calcul des résultats en mode client connecté...');
+      setIsUpdatingExisting(true);
       
-      const response = await fetch(`${config.API_URL}/api/simulator/calculate-eligibility`, { 
+      const response = await fetch(`${config.API_URL}/api/client/simulation/update`, { 
         method: 'POST', 
-        headers: {
-          'Content-Type': 'application/json' 
-        },
+        headers: getHeadersWithAuth(),
+        credentials: 'include',
         body: JSON.stringify({ 
-          session_token: sessionToken 
+          responses: responses,
+          simulationType: 'update'
         })
       });
 
       if (response.ok) { 
         const results = await response.json();
-        console.log('🔍 Résultats reçus du backend:', results);
+        console.log('🔍 Résultats client reçus:', results);
         
-        // Utiliser les ClientProduitEligible réels si disponibles
-        const clientProduits = results.client_produits || [];
-        
-        // Transformer en format EligibilityResult
-        const eligibilityResults = clientProduits.map((cp: any) => ({
-          produit_id: cp.ProduitEligible?.nom || 'Produit',
-          eligibility_score: Math.round((cp.tauxFinal || 0) * 100),
-          estimated_savings: cp.montantFinal || 0,
-          confidence_level: (cp.tauxFinal || 0) > 0.7 ? 'high' : (cp.tauxFinal || 0) > 0.5 ? 'medium' : 'low',
-          recommendations: cp.metadata?.details || [cp.notes] || [],
-          type: cp.metadata?.product_type || 'financier',
-          qualitative_benefits: cp.metadata?.product_type === 'qualitatif' 
-            ? [
-                "⏱️ 10-15h/mois de gestion administrative gagnées",
-                "📊 Données 100% fiables et traçables",
-                "✅ Conformité réglementaire garantie",
-                "🔒 Sécurité juridique renforcée"
-              ]
-            : null
-        }));
-        
-        setEligibilityResults(eligibilityResults);
-        setShowResults(true);
-        
-        console.log(`✅ ${eligibilityResults.length} produits éligibles affichés`);
-        
-        // Tracking résultats
-        trackEvent('simulator_completed', {
-          total_questions: totalSteps,
-          session_duration: Date.now() - sessionStartTime,
-          results_count: eligibilityResults.length,
-          total_savings: eligibilityResults.reduce((sum: number, r: any) => sum + (r.estimated_savings || 0), 0)
-        });
+        if (results.success) {
+          // Afficher les résultats de fusion
+          setUpdateProgress({
+            productsUpdated: results.data.productsUpdated,
+            productsCreated: results.data.productsCreated,
+            productsProtected: results.data.productsProtected,
+            totalSavings: results.data.totalSavings
+          });
+          
+          // Afficher les résultats
+          setShowResults(true);
+          
+          // Tracking résultats client
+          trackEvent('simulator_client_completed', {
+            total_questions: totalSteps,
+            session_duration: Date.now() - sessionStartTime,
+            products_updated: results.data.productsUpdated,
+            products_created: results.data.productsCreated,
+            products_protected: results.data.productsProtected,
+            total_savings: results.data.totalSavings
+          });
+          
+          toast.success(`Simulation mise à jour ! ${results.data.productsCreated} nouveaux produits, ${results.data.productsUpdated} mis à jour, ${results.data.productsProtected} protégés`);
+        } else {
+          throw new Error(results.message || 'Erreur lors de la mise à jour');
+        }
       } else {
-        console.error('❌ Erreur calcul éligibilité:', response.status, response.statusText);
-        toast.error("Impossible de calculer l'éligibilité");
+        console.error('❌ Erreur mise à jour client:', response.status);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Erreur lors de la mise à jour');
       }
     } catch (error) { 
       console.error('Erreur lors du calcul des résultats: ', error);
       toast.error("Impossible de calculer vos résultats");
+    } finally {
+      setIsUpdatingExisting(false);
     }
   };
 
@@ -399,83 +433,10 @@ const SimulateurEligibilite = () => {
     }
   };
 
-  const handleInscription = () => { 
-    // Tracking conversion
-    const resultsArray = Array.isArray(eligibilityResults) ? eligibilityResults : [];
-    trackEvent('simulator_conversion', {
-      total_savings: resultsArray.reduce((sum, r) => sum + (r.estimated_savings || 0), 0),
-      results_count: resultsArray.length
-    });
-
-    // Naviguer vers la page d'inscription existante avec les données
-    navigate('/inscription-simulateur', {
-      state: {
-        fromSimulator: true,
-        sessionToken: sessionToken,
-        eligibilityResults: eligibilityResults,
-        extractedData: responses // Données extraites des réponses
-      }
-    });
-  };
-
-  const getProductIcon = (produitId: string) => { 
-    const icons: Record<string, React.ComponentType<{ className?: string }>> = {
-      'TICPE': Truck, 
-      'URSSAF': Building2,
-      'DFS': DollarSign,
-      'FONCIER': Home 
-    };
-    return icons[produitId] || DollarSign;
-  };
-
-
-
-  const generatePersonalizedMessage = (result: EligibilityResult) => { 
-    const messages = {
-      high: {
-        title: "🎯 Excellente éligibilité !",
-        subtitle: "Vous êtes parfaitement positionné pour cette optimisation",
-        urgency: "Action recommandée dans les 30 jours pour maximiser vos économies"
-      },
-      medium: {
-        title: "✅ Bonne éligibilité",
-        subtitle: "Cette optimisation peut vous apporter des économies significatives",
-        urgency: "Action recommandée dans les 60 jours"
-      },
-      low: {
-        title: "📋 Éligibilité limitée",
-        subtitle: "Quelques ajustements pourraient améliorer votre éligibilité",
-        urgency: "Consultez nos experts pour optimiser votre situation"
-      }
-    };
-
-    if (result.eligibility_score >= 80) return messages.high;
-    if (result.eligibility_score >= 50) return messages.medium;
-    return messages.low;
-  };
-
-  const generateProductDetails = (result: EligibilityResult) => { 
-    const baseSavings = result.estimated_savings || 0;
-    const confidence = result.confidence_level || 'medium';
-    
-    return {
-      savings: {
-        min: Math.round(baseSavings * 0.8),
-        max: Math.round(baseSavings * 1.2),
-        average: Math.round(baseSavings)
-      },
-      confidence: confidence,
-      processingTime: confidence === 'high' ? '2-3 semaines' : '3-4 semaines',
-      successRate: confidence === 'high' ? '95%' : confidence === 'medium' ? '85%' : '70%'
-    };
-  };
-
   // Écran de bienvenue
   if (showWelcomeScreen) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
-        <PublicHeader />
-        
         <div className="max-w-6xl mx-auto px-4 py-16">
           <div className="text-center space-y-8">
             <div className="space-y-6">
@@ -483,11 +444,21 @@ const SimulateurEligibilite = () => {
                 <Calculator className="w-12 h-12 text-white" />
               </div>
               <h1 className="text-4xl md:text-6xl font-bold text-slate-800">
-                Simulateur d'Éligibilité
+                Mise à jour de votre simulation
               </h1>
               <p className="text-xl text-slate-600 max-w-2xl mx-auto">
-                Découvrez en 2 minutes vos opportunités d'optimisation fiscale et vos économies potentielles
+                Actualisez vos opportunités d'optimisation avec vos nouvelles données
               </p>
+              
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-md mx-auto">
+                <div className="flex items-center gap-2 text-blue-700">
+                  <User className="w-5 h-5" />
+                  <span className="font-medium">Mode client connecté</span>
+                </div>
+                <p className="text-sm text-blue-600 mt-1">
+                  Vos produits existants seront mis à jour intelligemment
+                </p>
+              </div>
             </div>
 
             <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
@@ -496,12 +467,12 @@ const SimulateurEligibilite = () => {
                 <div className="text-slate-600">Temps de simulation</div>
               </div>
               <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-white/60">
-                <div className="text-3xl font-bold text-green-600 mb-2">15 000€</div>
-                <div className="text-slate-600">Gain moyen</div>
+                <div className="text-3xl font-bold text-green-600 mb-2">Intelligent</div>
+                <div className="text-slate-600">Mise à jour sélective</div>
               </div>
               <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-white/60">
-                <div className="text-3xl font-bold text-green-600 mb-2">100%</div>
-                <div className="text-slate-600">Gratuit</div>
+                <div className="text-3xl font-bold text-green-600 mb-2">Sécurisé</div>
+                <div className="text-slate-600">Produits en cours protégés</div>
               </div>
             </div>
 
@@ -512,9 +483,18 @@ const SimulateurEligibilite = () => {
               <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full opacity-0 group-hover:opacity-20 transition-opacity duration-300 blur-xl"></div>
               <span className="relative flex items-center">
                 <Calculator className="w-5 h-5 mr-3" />
-                Commencer ma simulation
+                Commencer la mise à jour
                 <ArrowRight className="w-5 h-5 ml-3 group-hover:translate-x-1 transition-transform duration-300" />
               </span>
+            </Button>
+
+            <Button
+              onClick={() => navigate('/dashboard/client')}
+              variant="outline"
+              className="ml-4"
+            >
+              <ChevronLeft className="w-4 h-4 mr-2" />
+              Retour au dashboard
             </Button>
           </div>
         </div>
@@ -523,259 +503,65 @@ const SimulateurEligibilite = () => {
   }
 
   // Affichage des résultats
-  if (showResults) {
-    const resultsArray = Array.isArray(eligibilityResults) ? eligibilityResults : [];
-    // 🆕 Exclure les produits qualitatifs du total
-    const financialResults = resultsArray.filter(r => r.type !== 'qualitatif');
-    const qualitativeResults = resultsArray.filter(r => r.type === 'qualitatif');
-    const totalSavings = financialResults.reduce((sum, r) => sum + (r.estimated_savings || 0), 0);
-    const highEligibilityCount = financialResults.filter(r => (r.eligibility_score || 0) >= 70).length;
-    const eligibleProductsCount = financialResults.filter(r => (r.estimated_savings || 0) > 0).length;
-
+  if (showResults && updateProgress) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
-        <PublicHeader />
-        
-        {/* Header Section - Compact et élégant */}
         <div className="max-w-7xl mx-auto px-6 py-12">
           <div className="text-center space-y-4 mb-12">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl shadow-lg mb-6">
               <CheckCircle className="w-8 h-8 text-white" />
             </div>
             <h1 className="text-3xl font-bold text-slate-800 tracking-tight">
-              Vos résultats d'éligibilité
+              Simulation mise à jour !
             </h1>
             <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-              Analyse personnalisée de vos opportunités d'optimisation fiscale et financière
+              Vos opportunités d'optimisation ont été actualisées intelligemment
             </p>
           </div>
 
-          {/* Hero Results - Impact visuel modéré */}
-          <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-8 border border-white/60 shadow-xl mb-12">
-            <div className="text-center space-y-6">
-              <div className="space-y-2">
-                <div className="text-5xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
-                  {totalSavings.toLocaleString('fr-FR')}€
-                </div>
-                <div className="text-lg text-slate-600 font-medium">
-                  d'économies potentielles identifiées
-                </div>
-              </div>
-              
-              {/* Métriques clés en grille */}
-              <div className="grid grid-cols-3 gap-6 max-w-2xl mx-auto">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-slate-800">{eligibleProductsCount}</div>
-                  <div className="text-sm text-slate-600">Produits financiers</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-slate-800">{highEligibilityCount}</div>
-                  <div className="text-sm text-slate-600">Très éligibles</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-slate-800">{qualitativeResults.length}</div>
-                  <div className="text-sm text-slate-600">Services qualitatifs</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Products Grid - Layout moderne */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-            {resultsArray.map((result) => {
-              const message = generatePersonalizedMessage(result);
-              const details = generateProductDetails(result);
-              const Icon = getProductIcon(result.produit_id);
-              const isHighEligibility = (result.eligibility_score || 0) >= 70;
-              const hasSavings = (result.estimated_savings || 0) > 0;
-              const isQualitative = result.type === 'qualitatif';
-
-              // 🆕 Affichage spécial pour produits qualitatifs
-              if (isQualitative) {
-                return (
-                  <div 
-                    key={result.produit_id}
-                    className="group relative bg-gradient-to-br from-purple-50/90 to-indigo-50/90 backdrop-blur-sm border-2 border-purple-200 rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-1"
-                  >
-                    {/* Header */}
-                    <div className="p-6 border-b border-purple-100">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center space-x-3">
-                          <div className="p-3 rounded-xl bg-purple-100 text-purple-700">
-                            <Icon className="w-6 h-6" />
-                          </div>
-                          <div>
-                            <h3 className="font-semibold text-slate-800 text-lg">{result.produit_id}</h3>
-                            <p className="text-sm text-purple-600 font-medium">Produit Qualitatif</p>
-                          </div>
-                        </div>
-                        <div className="px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
-                          ⚙️ Service
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Bénéfices */}
-                    <div className="p-6 space-y-4">
-                      <p className="text-sm text-slate-600 font-medium">
-                        Bénéfices concrets pour votre activité :
-                      </p>
-                      <div className="space-y-2">
-                        {result.qualitative_benefits?.map((benefit, idx) => (
-                          <div key={idx} className="flex items-start gap-2 text-sm text-slate-700">
-                            <CheckCircle className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0" />
-                            <span>{benefit}</span>
-                          </div>
-                        ))}
-                      </div>
-                      
-                      <Button 
-                        variant="outline" 
-                        className="w-full border-purple-200 hover:bg-purple-50 text-purple-700"
-                      >
-                        Découvrir ce service
-                      </Button>
-                    </div>
+          {/* Résultats de mise à jour */}
+          <div className="bg-gradient-to-r from-blue-50/80 to-indigo-50/80 backdrop-blur-sm rounded-3xl p-10 border border-blue-200/60">
+            <div className="text-center space-y-8 max-w-4xl mx-auto">
+              {/* Statistiques */}
+              <div className="grid md:grid-cols-3 gap-8">
+                <div className="text-center group">
+                  <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                    <span className="text-2xl font-bold text-white">{updateProgress.productsCreated}</span>
                   </div>
-                );
-              }
-
-              // Affichage normal pour produits financiers
-              return (
-                <div 
-                  key={result.produit_id} 
-                  className={`group relative bg-white/90 backdrop-blur-sm border border-white/60 rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 ${
-                    hasSavings ? 'hover:border-emerald-200' : 'hover:border-slate-200'
-                  }`}
-                >
-                  {/* Header de la card */}
-                  <div className="p-6 border-b border-slate-100">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center space-x-3">
-                        <div className={`p-3 rounded-xl transition-colors duration-300 ${
-                          hasSavings 
-                            ? 'bg-emerald-100 text-emerald-700 group-hover:bg-emerald-200' 
-                            : 'bg-slate-100 text-slate-600'
-                        }`}>
-                          <Icon className="w-6 h-6" />
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-slate-800 text-lg">{result.produit_id}</h3>
-                          <p className="text-sm text-slate-500">
-                            Score: {result.eligibility_score || 0}%
-                          </p>
-                        </div>
-                      </div>
-                      <div className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        isHighEligibility 
-                          ? 'bg-emerald-100 text-emerald-700' 
-                          : 'bg-slate-100 text-slate-600'
-                      }`}>
-                        {isHighEligibility ? 'Très éligible' : 'Éligible'}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Contenu principal */}
-                  <div className="p-6 space-y-6">
-                    {/* Montant principal */}
-                    <div className="text-center">
-                      <div className={`text-3xl font-bold mb-2 ${
-                        hasSavings ? 'text-emerald-600' : 'text-slate-400'
-                      }`}>
-                        {(result.estimated_savings || 0).toLocaleString('fr-FR')}€
-                      </div>
-                      <p className="text-sm text-slate-600">
-                        Économies estimées
-                      </p>
-                    </div>
-
-                    {/* Message personnalisé */}
-                    <div className="bg-gradient-to-r from-slate-50 to-blue-50 rounded-xl p-4">
-                      <h4 className="font-semibold text-slate-800 mb-2 text-sm">
-                        {message.title}
-                      </h4>
-                      <p className="text-sm text-slate-600 leading-relaxed">
-                        {message.subtitle}
-                      </p>
-                    </div>
-
-                    {/* Métriques détaillées */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="text-center p-3 bg-slate-50 rounded-lg">
-                        <div className="font-semibold text-slate-800 text-sm">
-                          {details.savings.average}€
-                        </div>
-                        <div className="text-xs text-slate-600">Gain moyen</div>
-                      </div>
-                      <div className="text-center p-3 bg-slate-50 rounded-lg">
-                        <div className="font-semibold text-slate-800 text-sm">
-                          {details.successRate}
-                        </div>
-                        <div className="text-xs text-slate-600">Taux de succès</div>
-                      </div>
-                    </div>
-
-                    {/* Recommandations */}
-                    {result.recommendations && result.recommendations.length > 0 && (
-                      <div className="space-y-3">
-                        <h4 className="font-semibold text-slate-800 text-sm flex items-center">
-                          <Target className="w-4 h-4 mr-2 text-emerald-600" />
-                          Recommandations
-                        </h4>
-                        <ul className="space-y-2">
-                          {result.recommendations.slice(0, 2).map((rec, index) => (
-                            <li key={index} className="text-sm text-slate-700 flex items-start">
-                              <CheckCircle className="w-3 h-3 text-emerald-500 mr-2 mt-1 flex-shrink-0" />
-                              <span className="leading-relaxed">{rec}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    {/* Urgence */}
-                    <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-l-3 border-amber-400 p-3 rounded-xl">
-                      <p className="text-xs text-amber-800 font-medium flex items-center">
-                        <Zap className="w-3 h-3 mr-2" />
-                        {message.urgency}
-                      </p>
-                    </div>
-                  </div>
+                  <div className="text-sm font-medium text-blue-700">Nouveaux produits</div>
                 </div>
-              );
-            })}
-          </div>
+                <div className="text-center group">
+                  <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-2xl mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                    <span className="text-2xl font-bold text-white">{updateProgress.productsUpdated}</span>
+                  </div>
+                  <div className="text-sm font-medium text-blue-700">Produits mis à jour</div>
+                </div>
+                <div className="text-center group">
+                  <div className="w-16 h-16 bg-gradient-to-r from-orange-500 to-amber-600 rounded-2xl mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                    <span className="text-2xl font-bold text-white">{updateProgress.productsProtected}</span>
+                  </div>
+                  <div className="text-sm font-medium text-blue-700">Produits protégés</div>
+                </div>
+              </div>
 
-          {/* CTA Section - Inscription */}
-          <div className="text-center space-y-6 max-w-2xl mx-auto">
-            {/* CTA Direct - Plus visible et engageant */}
-            <button
-              onClick={handleInscription}
-              className="group relative bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold py-6 px-12 rounded-2xl shadow-2xl hover:shadow-emerald-500/50 transition-all duration-300 transform hover:-translate-y-2 overflow-hidden text-xl"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/30 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
-              <span className="relative flex items-center justify-center">
-                <CheckCircle className="w-6 h-6 mr-3" />
-                Créer mon compte et accéder à mon dashboard
-                <ArrowRight className="ml-3 w-6 h-6 group-hover:translate-x-2 transition-transform duration-300" />
-              </span>
-            </button>
-            
-            {/* Avantages condensés sous le bouton */}
-            <div className="flex items-center justify-center gap-8 text-sm text-slate-600">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                <span>100% Gratuit</span>
+              {/* Économies totales */}
+              <div className="bg-white/50 rounded-2xl p-6">
+                <div className="text-4xl font-bold text-emerald-600 mb-2">
+                  {updateProgress.totalSavings.toLocaleString('fr-FR')}€
+                </div>
+                <div className="text-slate-600">Économies potentielles totales</div>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <span>Experts certifiés</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                <span>Mise en relation 24h</span>
-              </div>
+
+              {/* CTA */}
+              <button
+                onClick={() => navigate('/dashboard/client')}
+                className="group relative bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-4 px-8 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
+              >
+                <span className="relative flex items-center justify-center">
+                  Voir mon tableau de bord
+                  <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
+                </span>
+              </button>
             </div>
           </div>
         </div>
@@ -786,8 +572,7 @@ const SimulateurEligibilite = () => {
   // Affichage des questions
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
-      <PublicHeader />
-      {/* Bandeau du simulateur */}
+      {/* Bandeau */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-6 px-8 shadow-lg">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between">
           <div className="flex items-center space-x-4 mb-4 md:mb-0">
@@ -795,11 +580,9 @@ const SimulateurEligibilite = () => {
               <Calculator className="w-8 h-8 text-yellow-300" />
             </div>
             <div>
-              <h2 className="text-xl font-semibold">
-                🎯 Simulateur d'Éligibilité Fiscale
-              </h2>
+              <h2 className="text-xl font-semibold">🔄 Mise à jour de votre simulation</h2>
               <p className="text-blue-100 text-sm font-light">
-                Découvrez vos opportunités d'optimisation en 2 minutes • 100% gratuit
+                Actualisez vos opportunités • Mode client connecté
               </p>
             </div>
           </div>
@@ -810,18 +593,14 @@ const SimulateurEligibilite = () => {
               <span>Étape {currentStep} sur {totalSteps}</span>
             </div>
             <div className="flex items-center space-x-2">
-              <Clock className="w-4 h-4 text-yellow-300" />
-              <span>2 min restantes</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Target className="w-4 h-4 text-red-300" />
-              <span>Gain moyen : 15 000€</span>
+              <User className="w-4 h-4 text-blue-300" />
+              <span>{user?.email}</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* CONTENU PRINCIPAL DU SIMULATEUR */}
+      {/* Questions */}
       <div className="max-w-4xl mx-auto px-4 py-8">
         {currentQuestion ? (
           <Card className="bg-white/80 backdrop-blur-sm border border-white/60 rounded-3xl shadow-lg overflow-hidden">
@@ -835,7 +614,7 @@ const SimulateurEligibilite = () => {
                     <h2 className="text-2xl font-semibold text-slate-800">
                       Question {currentStep} sur {totalSteps}
                     </h2>
-                    <p className="text-slate-600 font-light">Progression de votre analyse</p>
+                    <p className="text-slate-600 font-light">Mise à jour en cours</p>
                   </div>
                 </div>
                 <Badge variant="outline" className="text-sm font-semibold px-4 py-2">
@@ -843,7 +622,6 @@ const SimulateurEligibilite = () => {
                 </Badge>
               </div>
               
-              {/* Barre de progression */}
               <Progress value={(currentStep / totalSteps) * 100} className="h-3" />
             </CardHeader>
             
@@ -941,23 +719,22 @@ const SimulateurEligibilite = () => {
                 <div className="flex justify-center pt-8">
                   <Button
                     onClick={handleValidate}
-                    disabled={!currentResponse || isValidating}
+                    disabled={!currentResponse || isValidating || isUpdatingExisting}
                     className={`group relative px-10 py-4 text-lg font-semibold rounded-full transition-all duration-300 ${
                       isValidating 
                         ? 'bg-slate-400 cursor-not-allowed' 
                         : 'bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 transform hover:scale-105 shadow-lg hover:shadow-blue-500/25'}`}
                   >
-                    <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full opacity-0 group-hover:opacity-20 transition-opacity duration-300 blur-xl"></div>
                     <span className="relative flex items-center">
-                      {isValidating ? (
+                      {isValidating || isUpdatingExisting ? (
                         <>
                           <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
-                          Validation en cours...
+                          Mise à jour...
                         </>
                       ) : (
                         <>
                           <Check className="w-5 h-5 mr-3" />
-                          Valider ma réponse
+                          Mettre à jour ma simulation
                           <ArrowRight className="w-5 h-5 ml-3 group-hover:translate-x-1 transition-transform duration-300" />
                         </>
                       )}
@@ -981,13 +758,24 @@ const SimulateurEligibilite = () => {
                 <div className="text-sm text-slate-500">
                   Question {currentStep} sur {totalSteps}
                 </div>
+
+                <Button
+                  onClick={() => navigate('/dashboard/client')}
+                  variant="ghost"
+                  className="flex items-center space-x-2"
+                >
+                  Annuler
+                </Button>
               </div>
             </CardContent>
           </Card>
         ) : (
           <div className="text-center py-16">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-            <p className="text-slate-600">Chargement des questions...</p>
+            <p className="text-slate-600">Chargement de votre simulation...</p>
+            <p className="text-sm text-slate-500 mt-2">
+              Préparation de la mise à jour de vos produits éligibles
+            </p>
           </div>
         )}
       </div>
@@ -995,4 +783,5 @@ const SimulateurEligibilite = () => {
   );
 };
 
-export default SimulateurEligibilite; 
+export default SimulateurClient;
+

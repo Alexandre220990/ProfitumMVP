@@ -213,11 +213,11 @@ addCorsTestRoute(app);
 app.use('/api/auth', publicRouteLogger, authRoutes);
 app.use('/api/partners', publicRouteLogger, partnersRouter);
 
-// 🚀 ROUTES DU SIMULATEUR - PUBLIQUES avec authentification optionnelle
-// Le middleware optionalAuthMiddleware permet de détecter les utilisateurs connectés
-// sans bloquer les utilisateurs anonymes
-app.use('/api/simulator', publicRouteLogger, optionalAuthMiddleware, simulatorRoutes);
-app.use('/api/eligibility', publicRouteLogger, optionalAuthMiddleware, eligibilityRoutes);
+// 🚀 ROUTES DU SIMULATEUR - PUBLIQUES (mode anonyme pur)
+// /simulateur → utilisateurs NON connectés uniquement
+// /simulateur-client → utilisateurs connectés (route séparée)
+app.use('/api/simulator', publicRouteLogger, simulatorRoutes);
+app.use('/api/eligibility', publicRouteLogger, eligibilityRoutes);
 
 // 🔄 ROUTES DE MIGRATION DES SESSIONS - PUBLIQUES (pas d'authentification requise)
 app.use('/api/session-migration', publicRouteLogger, sessionMigrationRoutes);
@@ -278,7 +278,8 @@ app.use('/api/client/simulation', enhancedAuthMiddleware, requireUserType('clien
 app.use('/api/client', enhancedAuthMiddleware, requireUserType('client'), clientReactivationRoutes);
 
 // Routes documents unifiées pour tous les users - PROTÉGÉES
-app.use('/api/documents', enhancedAuthMiddleware, documentsUnifiedAllRoutes);
+// Utilisation de simpleAuthMiddleware pour meilleure compatibilité avec tokens JWT clients
+app.use('/api/documents', simpleAuthMiddleware, documentsUnifiedAllRoutes);
 
 // Routes expert - PROTÉGÉES avec permissions spécifiques  
 app.use('/api/expert', enhancedAuthMiddleware, requireUserType('expert'), expertRoutes);

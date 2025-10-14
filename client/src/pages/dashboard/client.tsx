@@ -400,11 +400,11 @@ export default function DashboardClient() {
 
   // L'authentification est gérée par les hooks
 
-  // Redirection automatique vers le simulateur si le client n'a pas de produits éligibles
+  // Redirection automatique vers le simulateur client si le client n'a pas de produits éligibles
   useEffect(() => {
     if (!loadingProducts && !hasProducts && !productsError) {
-      console.log('🔄 Client sans produits éligibles - redirection automatique vers simulateur');
-      navigate('/simulateur');
+      console.log('🔄 Client sans produits éligibles - redirection automatique vers simulateur client');
+      navigate('/simulateur-client');
     }
   }, [loadingProducts, hasProducts, productsError, navigate]);
 
@@ -421,20 +421,20 @@ export default function DashboardClient() {
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.data.canRunNewSimulation) {
-          // Rediriger vers le simulateur en mode client connecté
-          navigate('/simulateur?mode=client');
+          // Rediriger vers le simulateur client (protégé)
+          navigate('/simulateur-client');
         } else {
           // Afficher un message d'information
           toast.info("Une simulation est déjà en cours. Veuillez attendre qu'elle se termine.");
         }
       } else {
-        // En cas d'erreur, rediriger vers le simulateur public
-        navigate('/simulateur');
+        // En cas d'erreur, rediriger vers le simulateur client
+        navigate('/simulateur-client');
       }
     } catch (error) {
       console.error('Erreur vérification statut simulation:', error);
-      // En cas d'erreur, rediriger vers le simulateur public
-      navigate('/simulateur');
+      // En cas d'erreur, rediriger vers le simulateur client
+      navigate('/simulateur-client');
     }
   }, [navigate]);
 

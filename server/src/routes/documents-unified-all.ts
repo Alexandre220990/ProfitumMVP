@@ -160,9 +160,21 @@ router.get('/', async (req: Request, res: Response) => {
       });
     }
     
+    // Ajouter les URLs publiques pour chaque document
+    const documentsWithUrls = (data || []).map((doc: any) => {
+      const { data: publicUrlData } = supabase.storage
+        .from(doc.bucket_name)
+        .getPublicUrl(doc.storage_path);
+      
+      return {
+        ...doc,
+        public_url: publicUrlData.publicUrl
+      };
+    });
+    
     return res.json({
       success: true,
-      data: data || []
+      data: documentsWithUrls
     });
     
   } catch (error) {
@@ -321,9 +333,19 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
     const {
       client_id,
       produit_id,
+      dossier_id, // Support pour format TICPEUploadInline
       document_type,
+      category,
+      description,
+      user_type,
       metadata
     } = req.body;
+    
+    // Support des deux formats : dossier_id ou produit_id
+    const finalProduitId = dossier_id || produit_id;
+    
+    console.log('📤 Upload document - User:', user.email, 'Type:', user.type);
+    console.log('📦 Body reçu:', { client_id, produit_id, dossier_id, document_type, category });
     
     // Vérifier permissions
     if (user.type === 'client' && client_id && client_id !== user.database_id) {
@@ -338,6 +360,8 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
     const filename = file.originalname;
     const storagePath = `${user.database_id}/${document_type}/${timestamp}-${filename}`;
     
+    console.log('📁 Upload vers:', bucketName, '/', storagePath);
+    
     // Upload vers Supabase Storage
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from(bucketName)
@@ -349,15 +373,27 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
     
     if (uploadError) {
       console.error('❌ Upload Storage error:', uploadError);
-      return res.status(500).json({ success: false, message: 'Erreur upload' });
+      return res.status(500).json({ success: false, message: 'Erreur upload', details: uploadError.message });
     }
     
+    console.log('✅ Fichier uploadé vers Storage');
+    
+    // Obtenir l'URL publique
+    const { data: publicUrlData } = supabase.storage
+      .from(bucketName)
+      .getPublicUrl(storagePath);
+    
     // Enregistrer en BDD
+    const docMetadata = metadata ? (typeof metadata === 'string' ? JSON.parse(metadata) : metadata) : {};
+    docMetadata.category = category;
+    docMetadata.description = description;
+    docMetadata.user_type = user_type;
+    
     const { data: doc, error: dbError } = await supabase
       .from('ClientProcessDocument')
       .insert({
         client_id: client_id || user.database_id,
-        produit_id: produit_id || null,
+        produit_id: finalProduitId || null,
         document_type,
         filename,
         storage_path: storagePath,
@@ -367,7 +403,7 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
         uploaded_by: user.database_id,
         uploaded_by_type: user.type,
         status: 'pending',
-        metadata: metadata ? JSON.parse(metadata) : {},
+        metadata: docMetadata,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
@@ -378,13 +414,25 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
       // Rollback storage
       await supabase.storage.from(bucketName).remove([storagePath]);
       console.error('❌ DB error:', dbError);
-      return res.status(500).json({ success: false, message: 'Erreur enregistrement' });
+      return res.status(500).json({ success: false, message: 'Erreur enregistrement', details: dbError.message });
     }
+    
+    console.log('✅ Document enregistré en BDD:', doc.id);
     
     return res.json({
       success: true,
       message: 'Document uploadé avec succès',
-      data: doc
+      data: {
+        id: doc.id,
+        title: doc.filename,
+        original_filename: doc.filename,
+        created_at: doc.created_at,
+        public_url: publicUrlData.publicUrl,
+        file_size: doc.file_size,
+        mime_type: doc.mime_type,
+        document_type: doc.document_type,
+        status: doc.status
+      }
     });
     
   } catch (error) {
