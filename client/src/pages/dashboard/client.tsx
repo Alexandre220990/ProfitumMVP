@@ -191,7 +191,8 @@ interface ProductCardProps {
 }
 
 const ProductCard = ({ produit, onClick, onExpertSelection }: ProductCardProps) => {
-  const getProductIcon = (nom: string) => {
+  const getProductIcon = (nom?: string) => {
+    if (!nom) return <FolderOpen className="w-6 h-6" />;
     const nomLower = nom.toLowerCase();
     if (nomLower.includes('ticpe')) return <Zap className="w-6 h-6" />;
     if (nomLower.includes('urssaf')) return <Target className="w-6 h-6" />;
@@ -221,7 +222,8 @@ const ProductCard = ({ produit, onClick, onExpertSelection }: ProductCardProps) 
   const isHighPriority = produit.priorite === 1;
 
   // Fonction pour obtenir la description courte du produit
-  const getProductDescription = (nom: string) => {
+  const getProductDescription = (nom?: string) => {
+    if (!nom) return 'Optimisation fiscale et sociale';
     const nomLower = nom.toLowerCase();
     if (nomLower.includes('ticpe')) return 'Remboursement de la Taxe Intérieure de Consommation sur les Produits Énergétiques';
     if (nomLower.includes('urssaf')) return 'Optimisation de Charges Sociales';
