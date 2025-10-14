@@ -26,7 +26,7 @@ export interface Expert {
   max_clients: number | null;
   hourly_rate: number | null; // double precision en DB
   phone: string | null;
-  auth_id: string | null; // uuid en DB
+  auth_user_id: string | null; // uuid en DB
   approved_by: string | null; // uuid en DB
   approved_at: string | null; // timestamptz en DB
   approval_status: string | null;

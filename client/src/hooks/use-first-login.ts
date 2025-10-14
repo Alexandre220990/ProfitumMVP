@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/config/supabase';
+import { supabase } from '@/lib/supabase';
 
 export function useFirstLogin(userId?: string) {
   const [isFirstLogin, setIsFirstLogin] = useState(false);
@@ -16,7 +16,7 @@ export function useFirstLogin(userId?: string) {
         const { data, error } = await supabase
           .from('Client')
           .select('first_login')
-          .eq('auth_id', userId)
+          .eq('auth_user_id', userId)
           .single();
 
         if (error) {

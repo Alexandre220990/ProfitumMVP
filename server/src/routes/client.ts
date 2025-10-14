@@ -141,7 +141,7 @@ router.get('/produits-eligibles', enhancedAuthMiddleware, async (req, res) => {
       .from('ClientProduitEligible')
       .select(`
         *,
-        ProduitEligible (
+        produitId:ProduitEligible (
           id,
           nom,
           description,
@@ -226,7 +226,7 @@ router.get('/produits-eligibles/:id', enhancedAuthMiddleware, async (req, res) =
       .from('ClientProduitEligible')
       .select(`
         *,
-        ProduitEligible (
+        produitId:ProduitEligible (
           id,
           nom,
           description,
@@ -238,7 +238,7 @@ router.get('/produits-eligibles/:id', enhancedAuthMiddleware, async (req, res) =
           duree_min,
           duree_max
         ),
-        Expert (
+        expert_id:Expert (
           id,
           name,
           email,
@@ -596,17 +596,17 @@ router.get('/:clientId/assignments', async (req: Request, res: Response) => {
 
     // Récupérer les assignations du client (pagination)
     const { data: assignments, error, count } = await supabase
-      .from('ExpertAssignment')
+      .from('expertassignment')
       .select(`
         *,
-        Expert (
+        expert_id:Expert (
           id,
           name,
           company_name,
           rating,
           specializations
         ),
-        ProduitEligible (
+        produit_id:ProduitEligible (
           id,
           nom,
           description

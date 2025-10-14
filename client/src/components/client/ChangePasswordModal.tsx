@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Eye, EyeOff, Lock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
-import { supabase } from '@/config/supabase';
+import { supabase } from '@/lib/supabase';
 
 interface ChangePasswordModalProps {
   onSuccess: () => void;
@@ -98,10 +98,10 @@ export default function ChangePasswordModal({ onSuccess, userName }: ChangePassw
       }
 
       // Étape 3: Mettre à jour le flag first_login dans la table Client
-      const { error: dbError } = await supabase
-        .from('Client')
+      const { error: dbError } = await (supabase
+        .from('Client') as any)
         .update({ first_login: false })
-        .eq('auth_id', user.user.id);
+        .eq('auth_user_id', user.user.id);
 
       if (dbError) {
         console.error('Erreur mise à jour first_login:', dbError);

@@ -46,7 +46,7 @@ router.get('/', asyncHandler(async (req, res) => {
 
         // Construire la requête selon le type d'utilisateur
         let queryBuilder = supabase
-            .from('ExpertAssignment')
+            .from('expertassignment')
             .select(`
                 *,
                 Expert (
@@ -94,7 +94,7 @@ router.get('/', asyncHandler(async (req, res) => {
 
         // Compter le total
         const { count: totalCount, error: countError } = await supabase
-            .from('ExpertAssignment')
+            .from('expertassignment')
             .select('*', { count: 'exact', head: true })
             .eq(expert ? 'expert_id' : 'client_id', expert ? expert.id : client!.id);
 
@@ -152,7 +152,7 @@ router.get('/:id', asyncHandler(async (req, res) => {
     try {
         // Vérifier les permissions
         const { data: assignment, error: assignmentError } = await supabase
-            .from('ExpertAssignment')
+            .from('expertassignment')
             .select(`
                 *,
                 Expert!inner(auth_user_id),
@@ -231,7 +231,7 @@ router.put('/:id/status', asyncHandler(async (req, res) => {
     try {
         // Récupérer l'assignation
         const { data: assignment, error: assignmentError } = await supabase
-            .from('ExpertAssignment')
+            .from('expertassignment')
             .select(`
                 *,
                 Expert!inner(auth_user_id),
@@ -285,7 +285,7 @@ router.put('/:id/status', asyncHandler(async (req, res) => {
 
         // Mettre à jour l'assignation
         const { data: updatedAssignment, error: updateError } = await supabase
-            .from('ExpertAssignment')
+            .from('expertassignment')
             .update({
                 status,
                 notes: notes || assignment.notes,
@@ -355,7 +355,7 @@ router.post('/:id/complete', asyncHandler(async (req, res) => {
     try {
         // Récupérer l'assignation
         const { data: assignment, error: assignmentError } = await supabase
-            .from('ExpertAssignment')
+            .from('expertassignment')
             .select(`
                 *,
                 Expert!inner(auth_user_id, id),
@@ -389,7 +389,7 @@ router.post('/:id/complete', asyncHandler(async (req, res) => {
 
         // Mettre à jour l'assignation
         const { data: updatedAssignment, error: updateError } = await supabase
-            .from('ExpertAssignment')
+            .from('expertassignment')
             .update({
                 status: 'completed',
                 client_rating: rating,
@@ -411,7 +411,7 @@ router.post('/:id/complete', asyncHandler(async (req, res) => {
 
         // Mettre à jour la note moyenne de l'expert
         const { data: expertStats, error: statsError } = await supabase
-            .from('ExpertAssignment')
+            .from('expertassignment')
             .select('client_rating')
             .eq('expert_id', assignment.Expert.id)
             .eq('status', 'completed')

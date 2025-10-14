@@ -43,7 +43,7 @@ interface ClientProduitEligible {
   taux_final: number;
   montant_final: number;
   duree_finale: number;
-  simulation_id: number;
+  simulationId: number;
   created_at: string;
   updated_at: string;
   produit: {

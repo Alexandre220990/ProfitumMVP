@@ -77,7 +77,7 @@ export const useExpertProfile = () => {
           max_clients,
           hourly_rate,
           phone,
-          auth_id,
+          auth_user_id,
           approved_by,
           approved_at,
           approval_status,
@@ -114,16 +114,17 @@ export const useExpertProfile = () => {
     }
 
     try {
-      // Créer une demande de modification dans la table des notifications ou une table dédiée
-      const { error: requestError } = await supabase
-        .from('Notification')
+      // Créer une notification pour la demande de modification
+      const { error: requestError } = await (supabase
+        .from('notification') as any)
         .insert({
-          recipient_id: user.id,
+          user_id: user.id,
+          user_type: 'expert',
+          title: 'Demande de modification de profil',
           message: `Demande de modification de profil: ${updateReason}`,
-          status: 'pending',
-          type_notification: 'profile_update_request',
-          lu: false,
-          date_notification: new Date().toISOString()
+          notification_type: 'profile_update_request',
+          priority: 'medium',
+          is_read: false
         });
 
       if (requestError) {

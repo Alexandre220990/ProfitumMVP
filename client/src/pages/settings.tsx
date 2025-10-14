@@ -6,19 +6,26 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/hooks/use-auth";
 import { useNavigate } from "react-router-dom";
+import { ChangePasswordModal } from "@/components/client/ChangePasswordModal";
 
-const Settings = () => { const { user } = useAuth();
+const Settings = () => { 
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [notifications, setNotifications] = React.useState(true);
   const [email, setEmail] = React.useState(user?.email || '');
+  const [showPasswordModal, setShowPasswordModal] = React.useState(false);
 
   // Rediriger si l'utilisateur n'est pas connecté
-  React.useEffect(() => { if (!user) {
-      navigate('/auth'); }
+  React.useEffect(() => { 
+    if (!user) {
+      navigate('/auth'); 
+    }
   }, [user, navigate]);
 
-  const handleSave = () => { // TODO: Implémenter la sauvegarde des paramètres
-    console.log('Sauvegarde des paramètres...'); };
+  const handleSave = () => { 
+    // TODO: Implémenter la sauvegarde des paramètres
+    console.log('Sauvegarde des paramètres...'); 
+  };
 
   return (
     <div className="container mx-auto p-6">
@@ -35,11 +42,11 @@ const Settings = () => { const { user } = useAuth();
               <Input
                 id="email"
                 type="email"
-                value={ email }
-                onChange={ (e) => setEmail(e.target.value) }
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
               />
             </div>
-            <Button onClick={ handleSave }>Sauvegarder les modifications</Button>
+            <Button onClick={handleSave}>Sauvegarder les modifications</Button>
           </CardContent>
         </Card>
 
@@ -52,8 +59,8 @@ const Settings = () => { const { user } = useAuth();
               <Label htmlFor="notifications">Activer les notifications</Label>
               <Switch
                 id="notifications"
-                checked={ notifications }
-                onCheckedChange={ setNotifications }
+                checked={notifications}
+                onCheckedChange={setNotifications}
               />
             </div>
           </CardContent>
@@ -64,14 +71,26 @@ const Settings = () => { const { user } = useAuth();
             <CardTitle>Sécurité</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Button variant="outline" className="w-full">
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={() => setShowPasswordModal(true)}
+            >
               Changer le mot de passe
             </Button>
           </CardContent>
         </Card>
       </div>
+
+      {/* Modal changement de mot de passe */}
+      {showPasswordModal && (
+        <ChangePasswordModal 
+          open={showPasswordModal}
+          onClose={() => setShowPasswordModal(false)}
+        />
+      )}
     </div>
   );
 };
 
-export default Settings; 
+export default Settings;
