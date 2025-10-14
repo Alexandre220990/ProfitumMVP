@@ -21,29 +21,10 @@ router.get('/', asyncHandler(async (req, res) => {
         });
     }
 
-    const userId = authenticatedUser.id;
+    const userId = authenticatedUser.database_id || authenticatedUser.id;
+    const userType = authenticatedUser.type;
 
     try {
-        // Déterminer le type d'utilisateur
-        const { data: expert } = await supabase
-            .from('Expert')
-            .select('id')
-            .eq('auth_user_id', userId)
-            .single();
-
-        const { data: client } = await supabase
-            .from('Client')
-            .select('id')
-            .eq('auth_user_id', userId)
-            .single();
-
-        if (!expert && !client) {
-            return res.status(403).json({ 
-                success: false, 
-                message: 'Accès non autorisé' 
-            });
-        }
-
         // Construire la requête selon le type d'utilisateur
         let queryBuilder = supabase
             .from('expertassignment')
@@ -67,10 +48,15 @@ router.get('/', asyncHandler(async (req, res) => {
                 )
             `);
 
-        if (expert) {
-            queryBuilder = queryBuilder.eq('expert_id', expert.id);
+        if (userType === 'expert') {
+            queryBuilder = queryBuilder.eq('expert_id', userId);
+        } else if (userType === 'client') {
+            queryBuilder = queryBuilder.eq('client_id', userId);
         } else {
-            queryBuilder = queryBuilder.eq('client_id', client!.id);
+            return res.status(403).json({ 
+                success: false, 
+                message: 'Accès non autorisé' 
+            });
         }
 
         if (status) {
@@ -96,7 +82,7 @@ router.get('/', asyncHandler(async (req, res) => {
         const { count: totalCount, error: countError } = await supabase
             .from('expertassignment')
             .select('*', { count: 'exact', head: true })
-            .eq(expert ? 'expert_id' : 'client_id', expert ? expert.id : client!.id);
+            .eq(userType === 'expert' ? 'expert_id' : 'client_id', userId);
 
         if (countError) {
             return res.status(500).json({ 
@@ -118,7 +104,7 @@ router.get('/', asyncHandler(async (req, res) => {
                     totalItems: totalCount,
                     itemsPerPage: parseInt(limit as string)
                 },
-                userType: expert ? 'expert' : 'client'
+                userType: userType
             }
         });
 

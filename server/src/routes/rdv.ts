@@ -122,13 +122,13 @@ router.get('/', async (req: Request, res: Response) => {
       .from('RDV')
       .select(`
         *,
-        Client(id, name, company_name, email, phone_number),
-        Expert(id, name, email, specializations),
-        ApporteurAffaires(id, first_name, last_name, company_name),
+        client_id:Client(id, name, company_name, email, phone_number),
+        expert_id:Expert(id, name, email, specializations),
+        apporteur_id:ApporteurAffaires(id, first_name, last_name, company_name),
         RDV_Produits(
           *,
-          ProduitEligible(nom, description),
-          ClientProduitEligible(id, tauxFinal, montantFinal)
+          product_id:ProduitEligible(nom, description),
+          client_produit_eligible_id:ClientProduitEligible(id, tauxFinal, montantFinal)
         )
       `)
       .order('scheduled_date', { ascending: true })
@@ -207,13 +207,13 @@ router.get('/:id', async (req: Request, res: Response) => {
       .from('RDV')
       .select(`
         *,
-        Client(*),
-        Expert(*),
-        ApporteurAffaires(*),
+        client_id:Client(*),
+        expert_id:Expert(*),
+        apporteur_id:ApporteurAffaires(*),
         RDV_Produits(
           *,
-          ProduitEligible(*),
-          ClientProduitEligible(*)
+          product_id:ProduitEligible(*),
+          client_produit_eligible_id:ClientProduitEligible(*)
         )
       `)
       .eq('id', id)
