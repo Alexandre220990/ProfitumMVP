@@ -633,16 +633,11 @@ const server = createServer(app);
 
 server.listen(PORT, HOST, () => {
   console.log(`🚀 Serveur démarré sur le port ${PORT}`);
-  console.log(`🔌 WebSocket classique sur le port 5002`);
-  console.log(`🔌 WebSocket unifié sur le port 5003`);
+  console.log(`📡 Temps réel: Supabase Realtime (natif)`);
+  console.log(`💬 Messagerie: PostgreSQL LISTEN/NOTIFY via Supabase`);
   
-  // Initialiser le service WebSocket unifié avec le serveur HTTP
-  try {
-    // const unifiedWsManager = initializeUnifiedWebSocket(); // This line is removed as per the edit hint
-    console.log('✅ Service WebSocket unifié initialisé (port 5003)');
-  } catch (error) {
-    console.error('❌ Erreur initialisation WebSocket unifié:', error);
-  }
+  // WebSocket custom non nécessaire - Supabase Realtime gère le temps réel
+  // Voir: client/src/hooks/useRealtimeMessages.ts pour l'implémentation
 
   // Démarrer le service de notification automatique pour RDV terminés
   try {
@@ -654,7 +649,7 @@ server.listen(PORT, HOST, () => {
   // Démarrer le cron job pour les rappels calendrier
   try {
     startCalendarRemindersCron();
-    console.log('✅ Cron job rappels calendrier démarré');
+    // La fonction logge déjà le succès du démarrage
   } catch (error) {
     console.error('❌ Erreur démarrage cron job rappels calendrier:', error);
   }

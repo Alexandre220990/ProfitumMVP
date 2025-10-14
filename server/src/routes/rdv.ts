@@ -326,15 +326,27 @@ router.post('/', async (req: Request, res: Response) => {
 
     const rdvData = req.body;
 
-    // Validation des champs requis
-    if (!rdvData.scheduled_date || !rdvData.scheduled_time) {
+    // ✅ Validation COMPLÈTE des champs requis
+    const requiredFields = ['scheduled_date', 'scheduled_time', 'meeting_type', 'client_id', 'expert_id'];
+    const missingFields = requiredFields.filter(field => !rdvData[field]);
+    
+    if (missingFields.length > 0) {
       return res.status(400).json({
         success: false,
-        message: 'Date et heure requises'
+        message: `Champs requis manquants: ${missingFields.join(', ')}`
       });
     }
 
-    // 🔥 Validation des slots 30min (00:00 ou 00:30)
+    // ✅ Validation meeting_type avec valeurs autorisées
+    const validMeetingTypes = ['physical', 'video', 'phone'];
+    if (!validMeetingTypes.includes(rdvData.meeting_type)) {
+      return res.status(400).json({
+        success: false,
+        message: `Type de rendez-vous invalide. Valeurs autorisées: ${validMeetingTypes.join(', ')}`
+      });
+    }
+
+    // ✅ Validation des slots 30min (00:00 ou 00:30)
     const time = rdvData.scheduled_time;
     const minutes = time.split(':')[1];
     if (minutes !== '00' && minutes !== '30') {
@@ -344,7 +356,7 @@ router.post('/', async (req: Request, res: Response) => {
       });
     }
 
-    // Créer le RDV
+    // ✅ Créer le RDV avec tous les champs requis
     const newRDV = {
       ...rdvData,
       created_by: user.database_id,
@@ -352,11 +364,13 @@ router.post('/', async (req: Request, res: Response) => {
       category: rdvData.category || 'client_rdv',
       source: user.type === 'apporteur' ? 'apporteur' : user.type,
       priority: rdvData.priority || 2,
-      duration_minutes: rdvData.duration_minutes || 30, // 🔥 30min par défaut
-      timezone: rdvData.timezone || 'Europe/Paris'
+      duration_minutes: rdvData.duration_minutes || 30,
+      timezone: rdvData.timezone || 'Europe/Paris',
+      // ✅ apporteur_id optionnel (nullable depuis correction SQL)
+      apporteur_id: rdvData.apporteur_id || (user.type === 'apporteur' ? user.database_id : null)
     };
 
-    // Générer le titre si absent
+    // ✅ Générer le titre si absent (meeting_type est garanti maintenant)
     if (!newRDV.title) {
       const typeLabel = getRDVTypeLabel(newRDV.meeting_type);
       newRDV.title = `RDV ${typeLabel}`;
@@ -377,7 +391,8 @@ router.post('/', async (req: Request, res: Response) => {
       console.error('❌ Erreur création RDV:', error);
       return res.status(500).json({
         success: false,
-        message: 'Erreur lors de la création du RDV'
+        message: 'Erreur lors de la création du RDV',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
 

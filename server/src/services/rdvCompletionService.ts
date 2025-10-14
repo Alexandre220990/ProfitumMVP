@@ -71,7 +71,7 @@ export class RDVCompletionService {
       // Récupérer les RDV confirmés dont l'heure de fin est passée
       const { data: rdvs, error } = await supabase
         .from('RDV')
-        .select('*, Client(id, email, name, company_name), Expert(id, email, name), ApporteurAffaires(id, email, name)')
+        .select('*, Client(id, email, name, company_name), Expert(id, email, name), ApporteurAffaires(id, email, first_name, last_name, company_name)')
         .eq('status', 'confirmed')
         .lte('scheduled_date', currentDate);
 
@@ -145,7 +145,13 @@ export class RDVCompletionService {
       const participants = [
         { id: rdv.client_id, email: rdv.Client?.email, name: rdv.Client?.name || rdv.Client?.company_name },
         { id: rdv.expert_id, email: rdv.Expert?.email, name: rdv.Expert?.name },
-        { id: rdv.apporteur_id, email: rdv.ApporteurAffaires?.email, name: rdv.ApporteurAffaires?.name }
+        { 
+          id: rdv.apporteur_id, 
+          email: rdv.ApporteurAffaires?.email, 
+          name: rdv.ApporteurAffaires?.first_name 
+            ? `${rdv.ApporteurAffaires.first_name} ${rdv.ApporteurAffaires.last_name}`.trim()
+            : rdv.ApporteurAffaires?.company_name || 'Apporteur'
+        }
       ].filter(p => p.id);
 
       // Créer notifications
