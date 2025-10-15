@@ -56,51 +56,62 @@ function getBucketName(userType: string): string {
 }
 
 /**
- * Appliquer filtres selon user type et permissions
+ * Récupérer les IDs clients accessibles selon user type
  */
-async function applyUserFilters(
-  baseQuery: any,
-  user: any
-): Promise<any> {
+async function getAccessibleClientIds(user: any): Promise<string[] | null> {
   const { type, database_id } = user;
   
   if (type === 'client') {
-    // Client voit uniquement ses documents
-    return baseQuery.eq('client_id', database_id);
+    return [database_id];
   }
   
   if (type === 'expert') {
-    // Expert voit documents de ses clients assignés via ClientProduitEligible
     const { data: clientIds } = await supabase
       .from('ClientProduitEligible')
       .select('clientId')
       .eq('expert_id', database_id);
     
     if (clientIds && clientIds.length > 0) {
-      const ids = clientIds.map((c: any) => c.clientId);
-      return baseQuery.in('client_id', ids);
+      return clientIds.map((c: any) => c.clientId);
     }
-    
-    return baseQuery.eq('client_id', 'none'); // Aucun résultat
+    return []; // Aucun client
   }
   
   if (type === 'apporteur') {
-    // Apporteur voit documents de ses prospects/clients via Client.apporteur_id
     const { data: clientIds } = await supabase
       .from('Client')
       .select('id')
       .eq('apporteur_id', database_id);
     
     if (clientIds && clientIds.length > 0) {
-      const ids = clientIds.map((c: any) => c.id);
-      return baseQuery.in('client_id', ids);
+      return clientIds.map((c: any) => c.id);
     }
-    
-    return baseQuery.eq('client_id', 'none');
+    return []; // Aucun client
   }
   
   // Admin voit tout
-  return baseQuery;
+  return null;
+}
+
+/**
+ * Appliquer filtres selon user type et permissions
+ */
+function applyClientFilter(baseQuery: any, clientIds: string[] | null): any {
+  if (clientIds === null) {
+    // Admin - pas de filtre
+    return baseQuery;
+  }
+  
+  if (clientIds.length === 0) {
+    // Aucun accès - filtre impossible
+    return baseQuery.eq('client_id', '00000000-0000-0000-0000-000000000000');
+  }
+  
+  if (clientIds.length === 1) {
+    return baseQuery.eq('client_id', clientIds[0]);
+  }
+  
+  return baseQuery.in('client_id', clientIds);
 }
 
 // ============================================================================
@@ -121,6 +132,9 @@ router.get('/', async (req: Request, res: Response) => {
     
     const { produit_id, document_type, status, search } = req.query;
     
+    // Récupérer les clients accessibles
+    const accessibleClientIds = await getAccessibleClientIds(user);
+    
     let query = supabase
       .from('ClientProcessDocument')
       .select(`
@@ -140,7 +154,7 @@ router.get('/', async (req: Request, res: Response) => {
       .order('created_at', { ascending: false });
     
     // Appliquer filtres user
-    query = await applyUserFilters(query, user);
+    query = applyClientFilter(query, accessibleClientIds);
     
     // Filtres additionnels
     if (produit_id) query = query.eq('produit_id', produit_id);
@@ -198,11 +212,14 @@ router.get('/folders', async (req: Request, res: Response) => {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
     }
     
+    // Récupérer les clients accessibles
+    const accessibleClientIds = await getAccessibleClientIds(user);
+    
     let query = supabase
       .from('ClientProcessDocument')
       .select('produit_id, ProduitEligible(nom), client_id, Client(name, company_name)');
     
-    query = await applyUserFilters(query, user);
+    query = applyClientFilter(query, accessibleClientIds);
     
     const { data, error } = await query;
     
@@ -275,11 +292,14 @@ router.get('/stats', async (req: Request, res: Response) => {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
     }
     
+    // Récupérer les clients accessibles
+    const accessibleClientIds = await getAccessibleClientIds(user);
+    
     let query = supabase
       .from('ClientProcessDocument')
       .select('status, document_type, file_size');
     
-    query = await applyUserFilters(query, user);
+    query = applyClientFilter(query, accessibleClientIds);
     
     const { data, error } = await query;
     
@@ -348,12 +368,12 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
     let finalProduitId = produit_id;
     
     // Si dossier_id est fourni, c'est un ClientProduitEligible.id
-    // Il faut récupérer le vrai produit_id depuis ClientProduitEligible
+    // Il faut récupérer le vrai produitId depuis ClientProduitEligible
     if (dossier_id) {
-      console.log('🔍 Résolution produit_id depuis ClientProduitEligible:', dossier_id);
+      console.log('🔍 Résolution produitId depuis ClientProduitEligible:', dossier_id);
       const { data: clientProduit, error: cpError } = await supabase
         .from('ClientProduitEligible')
-        .select('produit_id')
+        .select('produitId')
         .eq('id', dossier_id)
         .single();
       
@@ -366,8 +386,8 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
         });
       }
       
-      finalProduitId = clientProduit.produit_id;
-      console.log('✅ Produit_id résolu:', finalProduitId);
+      finalProduitId = clientProduit.produitId;
+      console.log('✅ produitId résolu:', finalProduitId);
     }
     
     // Vérifier permissions
