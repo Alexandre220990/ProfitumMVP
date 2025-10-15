@@ -105,5 +105,156 @@ router.post('/admin/documents-eligibility', enhancedAuthMiddleware, async (req: 
   }
 });
 
+/**
+ * GET /api/notifications/admin
+ * Récupérer toutes les notifications pour les admins
+ */
+router.get('/admin', enhancedAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const user = (req as AuthenticatedRequest).user;
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur non authentifié'
+      });
+    }
+
+    // Vérifier que l'utilisateur est un admin
+    if (user.type !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux administrateurs'
+      });
+    }
+
+    // Récupérer toutes les notifications pour cet admin
+    const { data: notifications, error } = await supabase
+      .from('notification')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('user_type', 'admin')
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (error) {
+      console.error('❌ Erreur récupération notifications:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la récupération des notifications'
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: notifications || [],
+      count: notifications?.length || 0
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route notifications admin:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+/**
+ * PUT /api/notifications/:id/read
+ * Marquer une notification comme lue
+ */
+router.put('/:id/read', enhancedAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const user = (req as AuthenticatedRequest).user;
+    const { id } = req.params;
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur non authentifié'
+      });
+    }
+
+    const { error } = await supabase
+      .from('notification')
+      .update({
+        is_read: true,
+        read_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .eq('user_id', user.id);
+
+    if (error) {
+      console.error('❌ Erreur marquage lu:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors du marquage'
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: 'Notification marquée comme lue'
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur marquage lu:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+/**
+ * PUT /api/notifications/:id/dismiss
+ * Supprimer/dismisser une notification
+ */
+router.put('/:id/dismiss', enhancedAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const user = (req as AuthenticatedRequest).user;
+    const { id } = req.params;
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur non authentifié'
+      });
+    }
+
+    const { error } = await supabase
+      .from('notification')
+      .update({
+        is_dismissed: true,
+        dismissed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .eq('user_id', user.id);
+
+    if (error) {
+      console.error('❌ Erreur suppression notification:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la suppression'
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: 'Notification supprimée'
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur suppression notification:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
 export default router;
 

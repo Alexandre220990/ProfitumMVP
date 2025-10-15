@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { get } from "@/lib/api";
 import { config } from "@/config/env";
 import ApporteurManagement from "@/components/admin/ApporteurManagement";
+import { NotificationCenter } from "@/components/admin/NotificationCenter";
 import { 
   RefreshCw, UserPlus, Users, FileText, 
   Eye, ClipboardList, Edit, Check, X,
@@ -33,7 +34,7 @@ interface ClientProduitEligible {
   id: string;
   clientId: string;
   produitId: string;
-  statut: 'pending' | 'validated' | 'rejected' | 'in_progress';
+  statut: 'pending' | 'validated' | 'rejected' | 'in_progress' | 'documents_uploaded' | 'eligibility_validated' | 'eligibility_rejected' | 'eligible' | 'en_cours';
   progress: number;
   montantFinal?: number;
   tauxFinal?: number;
@@ -784,7 +785,7 @@ const AdminDashboardOptimized: React.FC = () => {
     }
   };
 
-  const DossiersProcessingSection = ({ dossiers, loading, onRefresh }: any) => {
+  const DossiersProcessingSection = ({ dossiers, loading, onRefresh }: { dossiers: ClientProduitEligible[], loading: boolean, onRefresh: () => void }) => {
     // Calculer les statistiques
     const totalDossiers = dossiers.length;
     const montantCumule = dossiers.reduce((sum: number, dossier: ClientProduitEligible) => {
@@ -1418,27 +1419,41 @@ const AdminDashboardOptimized: React.FC = () => {
 
                 {activeSection === 'validations' && (
                   <div className="space-y-6">
-                    {/* En-tête avec actions en lot */}
+                    {/* En-tête avec statistiques */}
                     <div className="flex items-center justify-between">
                       <div>
-                        <h2 className="text-2xl font-bold text-slate-900">Centre de Validations</h2>
-                        <p className="text-slate-600">Workflow de validation des experts et documents</p>
+                        <h2 className="text-2xl font-bold text-slate-900">Centre de Notifications & Validations</h2>
+                        <p className="text-slate-600">Gérez vos notifications et validez les dossiers en attente</p>
                       </div>
                       <div className="flex gap-2">
-                        <Button variant="outline" size="sm">
-                          <Check className="w-4 h-4 mr-2" />
-                          Valider en lot
-                        </Button>
-                        <Button variant="outline" size="sm">
-                          <X className="w-4 h-4 mr-2" />
-                          Rejeter en lot
-                        </Button>
-                        <Button variant="outline" size="sm">
+                        <Badge variant="destructive" className="px-3 py-1">
+                          <Bell className="w-3 h-3 mr-1" />
+                          {kpiData.validationsPending} en attente
+                        </Badge>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => window.location.reload()}
+                        >
                           <RefreshCw className="w-4 h-4 mr-2" />
                           Actualiser
                         </Button>
                       </div>
                     </div>
+
+                    {/* Centre de notifications intégré */}
+                    <NotificationCenter 
+                      onNotificationAction={async (dossierId: string, action: 'validate' | 'reject') => {
+                        const dossier = sectionData.dossiers.find(d => d.id === dossierId);
+                        const dossierName = dossier?.ProduitEligible?.nom || 'Dossier';
+                        
+                        if (action === 'validate') {
+                          await handleValidateEligibility(dossierId, dossierName);
+                        } else {
+                          await handleRejectEligibility(dossierId, dossierName);
+                        }
+                      }}
+                    />
 
                     {/* Filtres avancés */}
                     <Card>
