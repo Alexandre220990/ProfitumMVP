@@ -13,7 +13,7 @@ const router = express.Router();
 // Route de test d'authentification supprimée - l'authentification est gérée par le middleware enhancedAuthMiddleware
 
 // GET /api/client/dashboard - Dashboard client
-router.get('/dashboard', enhancedAuthMiddleware, async (req, res) => {
+router.get('/dashboard', async (req, res) => {
   try {
     const user = (req as AuthenticatedRequest).user;
     
@@ -111,7 +111,7 @@ router.get('/dashboard', enhancedAuthMiddleware, async (req, res) => {
 });
 
 // GET /api/client/produits-eligibles - Récupérer les produits éligibles du client connecté
-router.get('/produits-eligibles', enhancedAuthMiddleware, async (req, res) => {
+router.get('/produits-eligibles', async (req, res) => {
   try {
     const user = (req as AuthenticatedRequest).user;
     
@@ -195,7 +195,7 @@ router.get('/produits-eligibles', enhancedAuthMiddleware, async (req, res) => {
 });
 
 // GET /api/client/produits-eligibles/:id - Récupérer un produit éligible spécifique
-router.get('/produits-eligibles/:id', enhancedAuthMiddleware, async (req, res) => {
+router.get('/produits-eligibles/:id', async (req, res) => {
   try {
     const user = (req as AuthenticatedRequest).user;
     const { id } = req.params;
@@ -290,7 +290,7 @@ router.get('/produits-eligibles/:id', enhancedAuthMiddleware, async (req, res) =
 });
 
 // PUT /api/client/produits-eligibles/:id - Mettre à jour un produit éligible
-router.put('/produits-eligibles/:id', enhancedAuthMiddleware, async (req, res) => {
+router.put('/produits-eligibles/:id', async (req, res) => {
   try {
     const user = (req as AuthenticatedRequest).user;
     
@@ -399,7 +399,7 @@ router.put('/produits-eligibles/:id', enhancedAuthMiddleware, async (req, res) =
 });
 
 // PUT /api/client/produits-eligibles/:id/assign-expert - Attribuer un expert à un produit éligible
-router.put('/produits-eligibles/:id/assign-expert', enhancedAuthMiddleware, async (req, res) => {
+router.put('/produits-eligibles/:id/assign-expert', async (req, res) => {
   try {
     const user = (req as AuthenticatedRequest).user;
     
