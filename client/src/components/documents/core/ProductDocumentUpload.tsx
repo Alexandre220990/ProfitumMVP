@@ -68,8 +68,6 @@ export default function ProductDocumentUpload({
   const [uploadProgress, setUploadProgress] = useState<UploadProgress>({});
   const [isUploading, setIsUploading] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
-  const [showViewer, setShowViewer] = useState(false);
-  const [selectedDocument, setSelectedDocument] = useState<DocumentFile | null>(null);
 
   // ============================================================================
   // LOGIQUE DE VALIDATION
@@ -575,45 +573,6 @@ export default function ProductDocumentUpload({
         </div>
       )}
 
-      {/* Modal de visualisation de document */}
-      {showViewer && selectedDocument && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowViewer(false)}>
-          <div className="bg-white rounded-lg p-6 max-w-4xl max-h-[90vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-800">
-                {selectedDocument.original_filename}
-              </h3>
-              <button
-                onClick={() => setShowViewer(false)}
-                className="text-gray-500 hover:text-gray-700 transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            
-            <div className="overflow-auto max-h-[70vh]">
-              {selectedDocument.mime_type?.startsWith('image/') ? (
-                <img 
-                  src={selectedDocument.file_url} 
-                  alt={selectedDocument.original_filename}
-                  className="max-w-full h-auto"
-                />
-              ) : (
-                <iframe
-                  src={selectedDocument.file_url}
-                  title={selectedDocument.original_filename}
-                  className="w-full h-[70vh] border-0"
-                />
-              )}
-            </div>
-            
-            <div className="mt-4 flex justify-between items-center text-sm text-gray-600">
-              <span>Taille: {(selectedDocument.file_size / 1024 / 1024).toFixed(2)} MB</span>
-              <span>Type: {selectedDocument.mime_type}</span>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
