@@ -92,6 +92,7 @@ const AdminDocumentationNew = React.lazy(() => import('./pages/admin/documentati
 const AdminGestionDossiers = React.lazy(() => import('./pages/admin/gestion-dossiers'));
 const AdminGestionExperts = React.lazy(() => import('./pages/admin/gestion-experts'));
 const AdminGestionClients = React.lazy(() => import('./pages/admin/gestion-clients'));
+const AdminGestionProduits = React.lazy(() => import('./pages/admin/gestion-produits'));
 const AdminMonitoring = React.lazy(() => import('./pages/admin/monitoring'));
 const AdminValidationDashboard = React.lazy(() => import('./pages/admin/validation-dashboard'));
 const AdminFormulaireExpert = React.lazy(() => import('./pages/admin/formulaire-expert'));
@@ -296,6 +297,7 @@ function App() {
                         <Route path="gestion-experts" element={<AdminGestionExperts />} />
                         <Route path="expert-details/:id" element={<AdminExpertDetails />} />
                         <Route path="gestion-dossiers" element={<AdminGestionDossiers />} />
+                        <Route path="gestion-produits" element={<AdminGestionProduits />} />
                         
                         {/* Outils */}
                         <Route path="validation-dashboard" element={<AdminValidationDashboard />} />

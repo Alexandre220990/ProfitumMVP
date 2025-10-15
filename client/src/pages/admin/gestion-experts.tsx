@@ -9,7 +9,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { UserPlus, MoreHorizontal, Eye, Edit, CheckCircle, XCircle } from 'lucide-react';
+import { UserPlus, MoreHorizontal, Eye, Edit, CheckCircle, XCircle, AlertCircle, Mail, MapPin, Phone, Star } from 'lucide-react';
+import { toast } from 'sonner';
 
 // Configuration Supabase - Utilise l'instance importée depuis @/lib/supabase
 
@@ -133,6 +134,7 @@ const GestionExperts = () => {
       }
     } catch (err) {
       console.error('Erreur approbation: ', err);
+      toast.error('Erreur lors de la validation');
     }
   };
 
@@ -154,6 +156,7 @@ const GestionExperts = () => {
       }
     } catch (err) {
       console.error('Erreur rejet: ', err);
+      toast.error('Erreur lors du rejet');
     }
   };
 
@@ -226,6 +229,114 @@ const GestionExperts = () => {
       </div>
 
       <div className="container mx-auto p-6">
+        
+        {/* ⚠️ SECTION EXPERTS À VALIDER */}
+        {experts.filter(e => e.approval_status === 'pending').length > 0 && (
+          <Card className="mb-6 border-orange-300 bg-orange-50 shadow-lg">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-orange-900">
+                <AlertCircle className="w-5 h-5" />
+                ⚠️ Experts en attente de validation ({experts.filter(e => e.approval_status === 'pending').length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {experts
+                .filter(e => e.approval_status === 'pending')
+                .map(expert => (
+                  <div key={expert.id} className="bg-white border-2 border-orange-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                            <UserPlus className="w-6 h-6 text-blue-600" />
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-gray-900 text-lg">{expert.name}</h4>
+                            <p className="text-sm text-gray-600">{expert.company_name}</p>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 mt-3 text-sm">
+                          <div className="flex items-center gap-2 text-gray-600">
+                            <Mail className="w-4 h-4" />
+                            {expert.email}
+                          </div>
+                          {expert.phone && (
+                            <div className="flex items-center gap-2 text-gray-600">
+                              <Phone className="w-4 h-4" />
+                              {expert.phone}
+                            </div>
+                          )}
+                          {expert.city && (
+                            <div className="flex items-center gap-2 text-gray-600">
+                              <MapPin className="w-4 h-4" />
+                              {expert.city}
+                            </div>
+                          )}
+                          {expert.experience && (
+                            <div className="flex items-center gap-2 text-gray-600">
+                              <Star className="w-4 h-4" />
+                              {expert.experience}
+                            </div>
+                          )}
+                        </div>
+                        {expert.specializations && expert.specializations.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mt-3">
+                            {expert.specializations.map((spec, idx) => (
+                              <Badge key={idx} variant="secondary" className="text-xs">
+                                {spec}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                        <p className="text-xs text-gray-500 mt-2">
+                          Demande soumise le {new Date(expert.created_at).toLocaleDateString('fr-FR')}
+                        </p>
+                      </div>
+                      <div className="flex flex-col gap-2 ml-4">
+                        <Button
+                          size="sm"
+                          variant="default"
+                          className="bg-green-600 hover:bg-green-700 whitespace-nowrap"
+                          onClick={() => {
+                            if (window.confirm(`Valider l'expert ${expert.name} ?`)) {
+                              approveExpert(expert.id);
+                            }
+                          }}
+                        >
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                          Valider
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          className="whitespace-nowrap"
+                          onClick={() => {
+                            const reason = window.prompt(`Rejeter l'expert ${expert.name}\n\nRaison du refus :`);
+                            if (reason) {
+                              rejectExpert(expert.id);
+                            }
+                          }}
+                        >
+                          <XCircle className="w-3 h-3 mr-1" />
+                          Rejeter
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => navigate(`/admin/expert-details/${expert.id}`)}
+                        >
+                          <Eye className="w-3 h-3 mr-1" />
+                          Détails
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              }
+            </CardContent>
+          </Card>
+        )}
+
         {/* Filtres */}
         <Card className="mb-6 bg-white shadow-lg">
           <CardHeader>

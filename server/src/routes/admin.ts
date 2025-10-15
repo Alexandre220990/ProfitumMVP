@@ -3364,6 +3364,148 @@ router.get('/dossiers/pending-validation', asyncHandler(async (req, res) => {
 }));
 
 /**
+ * POST /api/admin/dossiers/:id/propose-expert
+ * Proposer un expert pour un dossier
+ */
+router.post('/dossiers/:id/propose-expert', asyncHandler(async (req, res): Promise<void> => {
+  const { id } = req.params;
+  const { expert_id, message } = req.body;
+  const user = req.user as AuthUser;
+
+  if (!expert_id) {
+    res.status(400).json({ success: false, message: 'Expert ID requis' });
+    return;
+  }
+
+  try {
+    // Vérifier que le dossier existe et est éligible
+    const { data: dossier, error: dossierError } = await supabaseClient
+      .from('ClientProduitEligible')
+      .select(`
+        *,
+        Client:clientId (
+          id,
+          company_name,
+          email
+        )
+      `)
+      .eq('id', id)
+      .single();
+
+    if (dossierError || !dossier) {
+      res.status(404).json({ success: false, message: 'Dossier non trouvé' });
+      return;
+    }
+
+    if (dossier.validation_state !== 'eligibility_validated') {
+      res.status(400).json({ 
+        success: false, 
+        message: 'Le dossier doit être éligible pour proposer un expert' 
+      });
+      return;
+    }
+
+    // Vérifier que l'expert existe et est actif
+    const { data: expert, error: expertError } = await supabaseClient
+      .from('Expert')
+      .select('id, name, email, status, approval_status')
+      .eq('id', expert_id)
+      .single();
+
+    if (expertError || !expert) {
+      res.status(404).json({ success: false, message: 'Expert non trouvé' });
+      return;
+    }
+
+    if (expert.approval_status !== 'approved' || expert.status !== 'active') {
+      res.status(400).json({ 
+        success: false, 
+        message: 'Expert non disponible' 
+      });
+      return;
+    }
+
+    // Mettre à jour le dossier avec l'expert proposé
+    const { error: updateError } = await supabaseClient
+      .from('ClientProduitEligible')
+      .update({
+        expert_id: expert_id,
+        validation_state: 'expert_proposed',
+        current_step: 3,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id);
+
+    if (updateError) {
+      throw updateError;
+    }
+
+    // Envoyer notification au client
+    const { error: notificationError } = await supabaseClient
+      .from('notification')
+      .insert({
+        user_id: dossier.clientId,
+        user_type: 'client',
+        notification_type: 'expert_proposed',
+        title: '🎯 Expert proposé pour votre dossier',
+        message: `L'administrateur vous propose ${expert.name} comme expert pour votre dossier. Vous pouvez accepter ou demander un autre expert.`,
+        priority: 'high',
+        action_url: `/client/dossiers/${id}/expert-selection`,
+        action_data: {
+          dossier_id: id,
+          expert_id: expert_id,
+          expert_name: expert.name,
+          admin_message: message || 'Expert proposé par l\'administrateur'
+        }
+      });
+
+    if (notificationError) {
+      console.error('Erreur notification client:', notificationError);
+    }
+
+    // Envoyer notification à l'expert
+    const { error: expertNotificationError } = await supabaseClient
+      .from('notification')
+      .insert({
+        user_id: expert_id,
+        user_type: 'expert',
+        notification_type: 'assignment_proposed',
+        title: '📋 Proposition d\'assignation',
+        message: `Vous avez été proposé pour le dossier de ${dossier.Client?.company_name || 'un client'}. En attente de confirmation du client.`,
+        priority: 'medium',
+        action_url: `/expert/assignments`,
+        action_data: {
+          dossier_id: id,
+          client_name: dossier.Client?.company_name,
+          client_email: dossier.Client?.email
+        }
+      });
+
+    if (expertNotificationError) {
+      console.error('Erreur notification expert:', expertNotificationError);
+    }
+
+    res.json({
+      success: true,
+      message: 'Expert proposé avec succès',
+      data: {
+        dossier_id: id,
+        expert_id: expert_id,
+        expert_name: expert.name,
+        client_name: dossier.Client?.company_name
+      }
+    });
+
+  } catch (error) {
+    console.error('Erreur proposition expert:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Erreur lors de la proposition d\'expert' 
+    });
+  }
+}));
+
+/**
  * POST /api/admin/dossiers/:id/validate-eligibility
  * Valider ou rejeter l'éligibilité d'un dossier
  */

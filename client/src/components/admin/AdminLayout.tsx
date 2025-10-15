@@ -10,6 +10,7 @@ import {
   Users,
   UserCheck,
   FolderOpen,
+  Package,
   CheckCircle,
   Monitor,
   BookOpen,
@@ -125,6 +126,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       icon: FolderOpen,
       current: location.pathname === '/admin/gestion-dossiers',
       badge: blockedDossiers
+    },
+    {
+      name: 'Produits',
+      href: '/admin/gestion-produits',
+      icon: Package,
+      current: location.pathname === '/admin/gestion-produits'
     },
     
     // Outils

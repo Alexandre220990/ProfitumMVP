@@ -13,7 +13,9 @@ import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { config } from "@/config/env";
-import { Eye, Edit, Plus, ChevronsUpDown, Trash2, ChevronUp, ChevronDown, FolderOpen, Package, FileText, Users, TrendingUp } from "lucide-react";
+import { toast } from "sonner";
+import { NotificationCenter } from "@/components/admin/NotificationCenter";
+import { Eye, Edit, Plus, ChevronsUpDown, Trash2, ChevronUp, ChevronDown, FolderOpen, Package, FileText, Users, TrendingUp, CheckCircle, XCircle, AlertCircle } from "lucide-react";
 
 // Types pour les ProduitEligible
 interface ProduitEligible { id: string;
@@ -98,6 +100,10 @@ export default function GestionDossiers() { const { user } = useAuth();
   const [showEditProduit, setShowEditProduit] = useState(false);
   const [showDeleteProduit, setShowDeleteProduit] = useState(false);
   const [showAddDossier, setShowAddDossier] = useState(false);
+  const [showProposeExpert, setShowProposeExpert] = useState(false);
+  const [availableExperts, setAvailableExperts] = useState<any[]>([]);
+  const [selectedExpert, setSelectedExpert] = useState<string>('');
+  const [expertMessage, setExpertMessage] = useState<string>('');
 
   // États pour les formulaires
   const [newProduit, setNewProduit] = useState({ nom: '', description: '', categorie: '', montant_min: '', montant_max: '', taux_min: '', taux_max: '', duree_min: '', duree_max: '' });
@@ -118,6 +124,182 @@ export default function GestionDossiers() { const { user } = useAuth();
       const produitsTries = sortProduits([...produits]);
       setProduits(produitsTries); }
   }, [sortByProduit, sortOrderProduit]);
+
+  // ===== HANDLERS VALIDATION ÉLIGIBILITÉ =====
+  
+  const handleValidateEligibility = async (dossierId: string, dossierName: string) => {
+    try {
+      const confirmValidation = window.confirm(
+        `Confirmer la validation d'éligibilité pour le dossier "${dossierName}" ?\n\n` +
+        `Le client pourra passer à la sélection d'expert.`
+      );
+
+      if (!confirmValidation) return;
+
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast.error("Token d'authentification manquant");
+        return;
+      }
+
+      const response = await fetch(`${config.API_URL}/api/admin/dossiers/${dossierId}/validate-eligibility`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          action: 'approve',
+          notes: 'Éligibilité validée par l\'administrateur'
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Erreur de validation');
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        toast.success('✅ Éligibilité validée avec succès !', {
+          description: 'Le client peut maintenant sélectionner un expert'
+        });
+        fetchDossiers();
+        fetchStats();
+      }
+    } catch (error: any) {
+      console.error('❌ Erreur validation:', error);
+      toast.error('Erreur lors de la validation', {
+        description: error.message
+      });
+    }
+  };
+
+  const handleRejectEligibility = async (dossierId: string, dossierName: string) => {
+    const reason = window.prompt(
+      `Rejeter l'éligibilité pour "${dossierName}"\n\nVeuillez indiquer la raison du refus :`
+    );
+
+    if (!reason) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast.error("Token d'authentification manquant");
+        return;
+      }
+
+      const response = await fetch(`${config.API_URL}/api/admin/dossiers/${dossierId}/validate-eligibility`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          action: 'reject',
+          notes: reason
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Erreur de rejet');
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        toast.error('❌ Éligibilité rejetée', {
+          description: 'Le client a été notifié'
+        });
+        fetchDossiers();
+        fetchStats();
+      }
+    } catch (error: any) {
+      console.error('❌ Erreur rejet:', error);
+      toast.error('Erreur lors du rejet', {
+        description: error.message
+      });
+    }
+  };
+
+  // Fonction pour ouvrir la proposition d'expert
+  const openProposeExpert = async (dossier: any) => {
+    setSelectedDossier(dossier);
+    setShowProposeExpert(true);
+    
+    try {
+      // Charger la liste des experts disponibles
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const response = await fetch(`${config.API_URL}/api/admin/experts`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableExperts(data.data?.experts?.filter((expert: any) => 
+          expert.approval_status === 'approved' && expert.status === 'active'
+        ) || []);
+      }
+    } catch (error) {
+      console.error('Erreur chargement experts:', error);
+      toast.error('Erreur lors du chargement des experts');
+    }
+  };
+
+  // Fonction pour proposer un expert
+  const handleProposeExpert = async () => {
+    if (!selectedExpert || !selectedDossier) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast.error("Token d'authentification manquant");
+        return;
+      }
+
+      const response = await fetch(`${config.API_URL}/api/admin/dossiers/${selectedDossier.id}/propose-expert`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          expert_id: selectedExpert,
+          message: expertMessage
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Erreur de proposition');
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        toast.success('🎯 Expert proposé avec succès !', {
+          description: 'Le client et l\'expert ont été notifiés'
+        });
+        setShowProposeExpert(false);
+        setSelectedExpert('');
+        setExpertMessage('');
+        fetchDossiers();
+        fetchStats();
+      }
+    } catch (error: any) {
+      console.error('❌ Erreur proposition:', error);
+      toast.error('Erreur lors de la proposition', {
+        description: error.message
+      });
+    }
+  };
 
   // ===== FONCTIONS POUR LES DOSSIERS =====
   const fetchDossiers = async () => { try {
@@ -419,6 +601,92 @@ export default function GestionDossiers() { const { user } = useAuth();
 
           { /* Onglet Dossiers Clients */ }
           <TabsContent value="dossiers" className="space-y-6">
+
+            { /* 🔔 NOTIFICATIONS & ACTIONS RAPIDES */ }
+            <NotificationCenter
+              compact
+              onNotificationAction={async (dossierId: string, action: 'validate' | 'reject') => {
+                const dossier = dossiers.find(d => d.id === dossierId);
+                const dossierName = dossier?.Client?.company_name || dossier?.ProduitEligible?.nom || 'Dossier';
+                
+                if (action === 'validate') {
+                  await handleValidateEligibility(dossierId, dossierName);
+                } else {
+                  await handleRejectEligibility(dossierId, dossierName);
+                }
+              }}
+            />
+
+            { /* ⚠️ DOSSIERS PRÉ-ÉLIGIBILITÉ À VALIDER */ }
+            {dossiers.filter(d => d.validation_state === 'documents_uploaded' || d.validation_state === 'eligible_confirmed').length > 0 && (
+              <Card className="border-red-300 bg-red-50">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-red-900">
+                    <AlertCircle className="w-5 h-5" />
+                    🔴 Pré-éligibilité à valider ({dossiers.filter(d => d.validation_state === 'documents_uploaded' || d.validation_state === 'eligible_confirmed').length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {dossiers
+                    .filter(d => d.validation_state === 'documents_uploaded' || d.validation_state === 'eligible_confirmed')
+                    .map(dossier => (
+                      <div key={dossier.id} className="bg-white border border-red-200 rounded-lg p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-gray-900">
+                              {dossier.Client?.company_name || 'Client inconnu'}
+                            </h4>
+                            <p className="text-sm text-gray-600">
+                              Produit : {dossier.ProduitEligible?.nom || 'N/A'}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              Créé le {formatDate(dossier.created_at)}
+                            </p>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="default"
+                              className="bg-green-600 hover:bg-green-700"
+                              onClick={() => handleValidateEligibility(
+                                dossier.id,
+                                dossier.Client?.company_name || dossier.ProduitEligible?.nom || 'Dossier'
+                              )}
+                            >
+                              <CheckCircle className="w-3 h-3 mr-1" />
+                              Valider
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleRejectEligibility(
+                                dossier.id,
+                                dossier.Client?.company_name || dossier.ProduitEligible?.nom || 'Dossier'
+                              )}
+                            >
+                              <XCircle className="w-3 h-3 mr-1" />
+                              Rejeter
+                            </Button>
+                            {dossier.validation_state === 'eligibility_validated' && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => openProposeExpert(dossier)}
+                                className="bg-blue-50 hover:bg-blue-100 text-blue-700"
+                              >
+                                <Users className="w-3 h-3 mr-1" />
+                                Proposer Expert
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  }
+                </CardContent>
+              </Card>
+            )}
+
             { /* Statistiques */ }
             { stats && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1220,6 +1488,68 @@ export default function GestionDossiers() { const { user } = useAuth();
                 </Button>
                 <Button variant="destructive" onClick={ deleteProduit }>
                   Supprimer
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Modale Proposition Expert */}
+        <Dialog open={showProposeExpert} onOpenChange={setShowProposeExpert}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Users className="w-5 h-5 text-blue-600" />
+                Proposer un Expert
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="expert-select">Sélectionner un expert</Label>
+                <Select value={selectedExpert} onValueChange={setSelectedExpert}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choisir un expert..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableExperts.map((expert) => (
+                      <SelectItem key={expert.id} value={expert.id}>
+                        <div className="flex items-center gap-2">
+                          <div>
+                            <div className="font-medium">{expert.name}</div>
+                            <div className="text-sm text-gray-500">{expert.company_name}</div>
+                          </div>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <Label htmlFor="expert-message">Message pour le client (optionnel)</Label>
+                <Textarea
+                  id="expert-message"
+                  value={expertMessage}
+                  onChange={(e) => setExpertMessage(e.target.value)}
+                  placeholder="Expliquez pourquoi cet expert est adapté pour ce dossier..."
+                  rows={3}
+                />
+              </div>
+
+              <div className="flex gap-3 justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowProposeExpert(false)}
+                >
+                  Annuler
+                </Button>
+                <Button
+                  onClick={handleProposeExpert}
+                  disabled={!selectedExpert}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  <Users className="w-4 h-4 mr-2" />
+                  Proposer l'Expert
                 </Button>
               </div>
             </div>

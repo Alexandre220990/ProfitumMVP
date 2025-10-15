@@ -7,7 +7,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, BookOpen, Tag, Filter, SortAsc, SortDesc, ArrowLeft, Clock, Settings, Calendar, FileText, Download } from "lucide-react";
+import { Search, BookOpen, Tag, Filter, SortAsc, SortDesc, ArrowLeft, Clock, Settings, Calendar, FileText, Download, Trash2, Eye } from "lucide-react";
+import { toast } from "sonner";
 import { DOCUMENTATION_DATA, searchDocuments } from "@/data/documentation";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -68,6 +69,7 @@ export default function DocumentationNewPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'date' | 'title' | 'readTime'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // Afficher un loader pendant la vérification
   if (isLoading) {
@@ -89,6 +91,54 @@ export default function DocumentationNewPage() {
     setSearchResults(results);
     setActiveTab('search');
     setIsSearching(false);
+  };
+
+  const handleDocumentClick = (document: DocumentationItem) => {
+    setSelectedDocument(document);
+  };
+
+  // Fonction pour télécharger un document
+  const handleDownload = async (doc: DocumentationItem) => {
+    try {
+      // Simuler le téléchargement
+      const link = document.createElement('a');
+      link.href = doc.filePath;
+      link.download = `${doc.title}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast.success('📥 Téléchargement démarré');
+    } catch (error) {
+      console.error('Erreur téléchargement:', error);
+      toast.error('Erreur lors du téléchargement');
+    }
+  };
+
+  // Fonction pour supprimer un document
+  const handleDelete = (doc: DocumentationItem) => {
+    setSelectedDocument(doc);
+    setShowDeleteDialog(true);
+  };
+
+  // Confirmer la suppression
+  const confirmDelete = async () => {
+    if (!selectedDocument) return;
+    
+    try {
+      // Ici on ferait l'appel API pour supprimer
+      console.log('Suppression du document:', selectedDocument.id);
+      
+      toast.success('🗑️ Document supprimé avec succès');
+      setShowDeleteDialog(false);
+      setSelectedDocument(null);
+      
+      // Recharger la liste des documents
+      // fetchDocuments();
+    } catch (error) {
+      console.error('Erreur suppression:', error);
+      toast.error('Erreur lors de la suppression');
+    }
   };
 
   // Fonction de tri
@@ -131,7 +181,6 @@ export default function DocumentationNewPage() {
   // Utiliser la fonction pour afficher les documents filtrés
   const filteredDocuments = getFilteredAndSortedDocuments();
 
-  const handleDocumentClick = (document: DocumentationItem) => { setSelectedDocument(document); };
 
   const formatDate = (date: Date) => { return new Date(date).toLocaleDateString('fr-FR', {
       year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -311,6 +360,42 @@ export default function DocumentationNewPage() {
                             ))}
                           </div>
                         </div>
+                        <div className="flex gap-2 mt-3">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDownload(item);
+                            }}
+                            className="flex-1"
+                          >
+                            <Download className="w-3 h-3 mr-1" />
+                            Télécharger
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDocumentClick(item);
+                            }}
+                            className="flex-1"
+                          >
+                            <Eye className="w-3 h-3 mr-1" />
+                            Consulter
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(item);
+                            }}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
                       </CardContent>
                     </Card>
                   ))}
@@ -346,6 +431,42 @@ export default function DocumentationNewPage() {
                           </Badge>
                         ))}
                       </div>
+                    </div>
+                    <div className="flex gap-2 mt-3">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDownload(item);
+                        }}
+                        className="flex-1"
+                      >
+                        <Download className="w-3 h-3 mr-1" />
+                        Télécharger
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDocumentClick(item);
+                        }}
+                        className="flex-1"
+                      >
+                        <Eye className="w-3 h-3 mr-1" />
+                        Consulter
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(item);
+                        }}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -394,6 +515,42 @@ export default function DocumentationNewPage() {
               </div>
             </div>
           </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modale de confirmation de suppression */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <Trash2 className="w-5 h-5" />
+              Confirmer la suppression
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-gray-600">
+              Êtes-vous sûr de vouloir supprimer le document 
+              <strong> "{selectedDocument?.title}"</strong> ?
+            </p>
+            <p className="text-sm text-gray-500">
+              Cette action est irréversible.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setShowDeleteDialog(false)}
+              >
+                Annuler
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={confirmDelete}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Supprimer
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
       </div>
