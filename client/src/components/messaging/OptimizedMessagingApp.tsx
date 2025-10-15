@@ -88,8 +88,22 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
   // ========================================
 
   const handleConversationSelect = useCallback(async (conversation: Conversation) => {
+    console.log('🔍 Sélection conversation:', {
+      id: conversation.id,
+      title: conversation.title,
+      participant_ids: conversation.participant_ids
+    });
+    
     setSelectedConversation(conversation);
     messaging.selectConversation(conversation);
+    
+    console.log('✅ Conversation sélectionnée dans l\'état local et le hook');
+    console.log('📊 État messaging:', {
+      currentConversation: messaging.currentConversation?.id,
+      messagesCount: messaging.messages?.length,
+      loading: messaging.loading,
+      isConnected: messaging.isConnected
+    });
     
     // Vérifier le statut du participant
     await checkParticipantStatus(conversation);
@@ -452,33 +466,50 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
 
             {/* Zone des messages - Pleine hauteur */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-50">
-              <AnimatePresence>
-                {messaging.messages?.map((message, index) => (
-                  <motion.div
-                    key={message.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    className={`flex ${message.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div className={`max-w-md lg:max-w-lg p-4 rounded-2xl shadow-sm ${
-                      message.sender_id === user?.id 
-                        ? 'bg-blue-500 text-white' 
-                        : 'bg-white border border-slate-200'
-                    }`}>
-                      <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
-                      <p className={`text-xs mt-2 ${
-                        message.sender_id === user?.id ? 'text-blue-100' : 'text-slate-500'
+              {/* Debug et indicateur de chargement */}
+              {messaging.loading && (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  <span className="ml-2 text-slate-600">Chargement des messages...</span>
+                </div>
+              )}
+
+              {/* Messages */}
+              {!messaging.loading && messaging.messages && messaging.messages.length > 0 ? (
+                <AnimatePresence>
+                  {messaging.messages.map((message, index) => (
+                    <motion.div
+                      key={message.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                      className={`flex ${message.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div className={`max-w-md lg:max-w-lg p-4 rounded-2xl shadow-sm ${
+                        message.sender_id === user?.id 
+                          ? 'bg-blue-500 text-white' 
+                          : 'bg-white border border-slate-200'
                       }`}>
-                        {new Date(message.created_at).toLocaleTimeString('fr-FR', {
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </p>
-                    </div>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
+                        <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                        <p className={`text-xs mt-2 ${
+                          message.sender_id === user?.id ? 'text-blue-100' : 'text-slate-500'
+                        }`}>
+                          {new Date(message.created_at).toLocaleTimeString('fr-FR', {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </p>
+                      </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              ) : !messaging.loading && (
+                <div className="flex flex-col items-center justify-center py-12 text-slate-400">
+                  <MessageSquare className="w-12 h-12 mb-3" />
+                  <p className="text-sm">Aucun message dans cette conversation</p>
+                  <p className="text-xs mt-1">Soyez le premier à envoyer un message!</p>
+                </div>
+              )}
             </div>
 
             {/* Zone de saisie - Fixée en bas */}

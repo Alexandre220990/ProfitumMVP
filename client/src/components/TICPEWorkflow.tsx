@@ -15,7 +15,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 
-import TICPEUploadInline from './TICPEUploadInline';
+import TICPEUploadInline from './documents/product-uploads/TICPEUploadInline';
 import ExpertSelectionModal from './ExpertSelectionModal';
 import { useDossierSteps } from '@/hooks/use-dossier-steps';
 

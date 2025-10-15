@@ -269,142 +269,36 @@ class MessagingService {
 
   async getConversations(): Promise<Conversation[]> {
     try {
-      const { data, error } = await supabase
-        .from('conversations')
-        .select(`
-          *,
-          messages:messages(
-            id,
-            content,
-            created_at,
-            sender_id,
-            sender_type
-          )
-        `)
-        .contains('participant_ids', [this.currentUserId])
-        .order('last_message_at', { ascending: false });
+      console.log('📥 Chargement conversations via API HTTP...');
+      
+      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
+      
+      const response = await fetch(`${apiUrl}/api/unified-messaging/conversations`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
+      });
 
-      if (error) throw error;
-
-      // Pour les clients, experts et apporteurs, créer automatiquement une conversation admin si elle n'existe pas
-      if (this.currentUserType === 'client' || this.currentUserType === 'expert' || this.currentUserType === 'apporteur') {
-        await this.ensureAdminSupportConversation();
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Erreur API conversations:', response.status, errorText);
+        throw new Error(`Erreur ${response.status}: ${errorText}`);
       }
 
-      // Pour les admins, récupérer toutes les conversations admin_support
-      if (this.currentUserType === 'admin') {
-        const { data: adminConversations, error: adminError } = await supabase
-          .from('conversations')
-          .select(`
-            *,
-            messages:messages(
-              id,
-              content,
-              created_at,
-              sender_id,
-              sender_type
-            )
-          `)
-          .eq('type', 'admin_support')
-          .order('last_message_at', { ascending: false });
-
-        if (!adminError && adminConversations) {
-          // Enrichir les conversations admin
-          const enrichedAdminConversations = await Promise.all(
-            adminConversations.map(async (conv: any) => {
-              const participantId = conv.participant_ids?.find((id: string) => id !== this.currentUserId);
-              let participantData = null;
-              let participantType = 'client';
-              
-              // Déterminer le type de participant et récupérer les données
-              if (conv.client_id && participantId === conv.client_id) {
-                const { data } = await supabase
-                  .from('Client')
-                  .select('id, name, email, company_name')
-                  .eq('id', participantId)
-                  .single();
-                participantData = data as any;
-                participantType = 'client';
-              } else if (conv.expert_id && participantId === conv.expert_id) {
-                const { data } = await supabase
-                  .from('Expert')
-                  .select('id, first_name, last_name, email, company_name')
-                  .eq('id', participantId)
-                  .single();
-                participantData = data as any;
-                participantType = 'expert';
-              }
-              
-              const participantName = participantType === 'expert' 
-                ? `${participantData?.first_name || ''} ${participantData?.last_name || ''}`.trim()
-                : participantData?.name || participantData?.company_name || 'Utilisateur';
-              
-              return {
-                ...conv,
-                otherParticipant: {
-                  id: participantId,
-                  type: participantType as 'client' | 'expert',
-                  name: participantName,
-                  isOnline: await this.isUserOnline(participantId)
-                },
-                last_message: (conv as any).messages?.[0] || null,
-                unread_count: await this.getUnreadCount((conv as any).id)
-              };
-            })
-          );
-
-          return enrichedAdminConversations;
-        }
+      const result = await response.json();
+      console.log('✅ Conversations chargées:', result.data?.length || 0);
+      
+      if (!result.success) {
+        throw new Error(result.message || 'Erreur chargement conversations');
       }
-
-      // Enrichir avec les informations des participants en utilisant les nouvelles colonnes métier
-      const enrichedConversations = await Promise.all(
-        data.map(async (conv) => {
-          const otherParticipantId = conv.participant_ids.find((id: string) => id !== this.currentUserId);
-          let otherParticipant = null;
-          
-          // Utiliser les nouvelles colonnes métier pour identifier le participant
-          if (conv.client_id && otherParticipantId === conv.client_id) {
-            const { data: clientData } = await supabase
-              .from('Client')
-              .select('id, name, email, company_name')
-              .eq('id', conv.client_id)
-              .single();
-            otherParticipant = {
-              ...(clientData as ClientData),
-              type: 'client' as const
-            };
-          } else if (conv.expert_id && otherParticipantId === conv.expert_id) {
-            const { data: expertData } = await supabase
-              .from('Expert')
-              .select('id, first_name, last_name, email, company_name')
-              .eq('id', conv.expert_id)
-              .single();
-            otherParticipant = {
-              ...(expertData as ExpertData),
-              type: 'expert' as const
-            };
-          } else {
-            // Fallback vers l'ancienne méthode
-            otherParticipant = await this.getUserInfo(otherParticipantId);
-          }
-          
-          return {
-            ...conv,
-            otherParticipant: {
-              id: otherParticipantId,
-              type: otherParticipant?.type || 'client',
-              name: otherParticipant?.name || 'Utilisateur',
-              isOnline: await this.isUserOnline(otherParticipantId)
-            },
-            last_message: conv.messages?.[0] || null,
-            unread_count: await this.getUnreadCount(conv.id)
-          };
-        })
-      );
-
-      // Organiser les conversations en catégories et trier
-      return this.organizeConversationsByCategory(enrichedConversations);
+      
+      const conversations = result.data || [];
+      console.log('📦 Conversations reçues:', conversations.map((c: any) => ({ id: c.id, title: c.title })));
+      
+      return conversations;
     } catch (error) {
       console.error('Erreur récupération conversations:', error);
       throw error;
@@ -796,18 +690,38 @@ class MessagingService {
 
   async getMessages(conversationId: string, limit = 50, offset = 0): Promise<Message[]> {
     try {
-      const { data, error } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('conversation_id', conversationId)
-        .order('created_at', { ascending: false })
-        .range(offset, offset + limit - 1);
+      console.log('📨 Chargement messages via API HTTP pour conversation:', conversationId);
+      
+      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
+      
+      const response = await fetch(`${apiUrl}/api/unified-messaging/conversations/${conversationId}/messages?limit=${limit}&offset=${offset}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Erreur API messages:', response.status, errorText);
+        throw new Error(`Erreur ${response.status}: ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ Messages chargés:', result.data?.length || 0);
+      
+      if (!result.success) {
+        throw new Error(result.message || 'Erreur chargement messages');
+      }
+
+      const messages = result.data || [];
+      console.log('📦 Messages reçus:', messages.map((m: any) => ({ id: m.id, content: m.content.substring(0, 30) })));
 
       // Déchiffrer les messages si nécessaire
       const decryptedMessages = await Promise.all(
-        data.map(async (message) => {
+        messages.map(async (message: any) => {
           if (message.metadata?.encrypted) {
             message.content = await this.decryptMessage(message.content);
           }
@@ -815,37 +729,49 @@ class MessagingService {
         })
       );
 
-      return decryptedMessages.reverse();
+      return decryptedMessages;
     } catch (error) {
-      console.error('Erreur récupération messages:', error);
+      console.error('❌ Erreur récupération messages:', error);
       throw error;
     }
   }
 
   async sendMessage(request: SendMessageRequest): Promise<Message> {
     try {
-      const { data, error } = await supabase
-        .from('messages')
-        .insert({
-          ...request,
-          sender_id: this.currentUserId,
-          sender_type: this.currentUserType,
-          created_at: new Date().toISOString()
+      console.log('📤 Envoi message via API HTTP...');
+      
+      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
+      
+      const response = await fetch(`${apiUrl}/api/unified-messaging/messages`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          conversation_id: request.conversation_id,
+          content: request.content,
+          message_type: request.message_type || 'text',
+          metadata: request.metadata || {}
         })
-        .select()
-        .single();
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Erreur envoi message:', response.status, errorText);
+        throw new Error(`Erreur ${response.status}: ${errorText}`);
+      }
 
-      // Mettre à jour la conversation
-      await supabase
-        .from('conversations')
-        .update({
-          last_message_at: new Date().toISOString()
-        })
-        .eq('id', request.conversation_id);
+      const result = await response.json();
+      console.log('✅ Message envoyé:', result.data?.id);
+      
+      if (!result.success) {
+        throw new Error(result.message || 'Erreur envoi message');
+      }
 
-      return data;
+      return result.data;
     } catch (error) {
       console.error('Erreur envoi message:', error);
       throw error;

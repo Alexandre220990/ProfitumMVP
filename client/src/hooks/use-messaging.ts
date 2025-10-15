@@ -221,6 +221,7 @@ export const useMessaging = (options: UseMessagingOptions = {}): UseMessagingRet
   // ========================================
 
   // Query pour les conversations avec cache intelligent
+  // ✅ FIX: Les conversations se chargent via HTTP, pas besoin de connexion temps réel
   const {
     data: conversations = [],
     isLoading: conversationsLoading,
@@ -228,7 +229,7 @@ export const useMessaging = (options: UseMessagingOptions = {}): UseMessagingRet
   } = useQuery({
     queryKey: ['conversations', user?.id],
     queryFn: () => messagingService.getConversations(),
-    enabled: !!user?.id && isConnected,
+    enabled: !!user?.id, // ✅ Suppression de && isConnected
     staleTime: 30000, // 30 secondes
     refetchOnWindowFocus: false,
     retry: 3,
@@ -236,6 +237,8 @@ export const useMessaging = (options: UseMessagingOptions = {}): UseMessagingRet
   });
 
   // Query pour les messages de la conversation actuelle
+  // ✅ FIX: Retrait de la condition isConnected pour permettre le chargement HTTP
+  // Les messages se chargent même sans connexion temps réel
   const {
     data: messages = [],
     isLoading: messagesLoading,
@@ -243,7 +246,7 @@ export const useMessaging = (options: UseMessagingOptions = {}): UseMessagingRet
   } = useQuery({
     queryKey: ['messages', currentConversation?.id],
     queryFn: () => messagingService.getMessages(currentConversation!.id),
-    enabled: !!currentConversation?.id && isConnected,
+    enabled: !!currentConversation?.id, // ✅ Suppression de && isConnected
     staleTime: 10000, // 10 secondes
     refetchOnWindowFocus: false,
     retry: 3
@@ -347,6 +350,25 @@ export const useMessaging = (options: UseMessagingOptions = {}): UseMessagingRet
       messagingService.disconnect();
     };
   }, [initializeService, options.autoConnect]);
+
+  // ✅ FIX: Debug et rechargement forcé quand la conversation change
+  useEffect(() => {
+    if (currentConversation?.id) {
+      console.log('🔄 Conversation changée dans le hook:', {
+        conversationId: currentConversation.id,
+        title: currentConversation.title,
+        messagesCount: messages.length,
+        loading: messagesLoading,
+        isConnected
+      });
+      
+      // Forcer le rechargement des messages si nécessaire
+      if (!messagesLoading && messages.length === 0) {
+        console.log('⚠️ Aucun message chargé, tentative de rechargement...');
+        refetchMessages();
+      }
+    }
+  }, [currentConversation?.id, messages.length, messagesLoading, isConnected, refetchMessages]);
 
   // ========================================
   // ACTIONS UTILISATEUR OPTIMISÉES

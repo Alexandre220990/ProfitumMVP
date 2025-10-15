@@ -3,7 +3,7 @@
  * Utilise le composant générique ProductDocumentUpload
  */
 
-import ProductDocumentUpload, { DocumentFile } from './ProductDocumentUpload';
+import ProductDocumentUpload, { DocumentFile } from '../core/ProductDocumentUpload';
 import { FONCIER_DOCUMENTS, FONCIER_INFO_MESSAGE } from '@/config/product-documents';
 
 interface FoncierUploadInlineProps {

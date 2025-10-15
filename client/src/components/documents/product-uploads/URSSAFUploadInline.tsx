@@ -3,7 +3,7 @@
  * Utilise le composant générique ProductDocumentUpload
  */
 
-import ProductDocumentUpload, { DocumentFile } from './ProductDocumentUpload';
+import ProductDocumentUpload, { DocumentFile } from '../core/ProductDocumentUpload';
 import { URSSAF_DOCUMENTS, URSSAF_INFO_MESSAGE } from '@/config/product-documents';
 
 interface URSSAFUploadInlineProps {
