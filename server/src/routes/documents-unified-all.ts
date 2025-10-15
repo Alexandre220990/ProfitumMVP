@@ -43,6 +43,25 @@ const upload = multer({
 // ============================================================================
 
 /**
+ * Sanitize filename - supprime caractères spéciaux et accents
+ */
+function sanitizeFilename(filename: string): string {
+  return filename
+    // Normaliser les caractères unicode (décomposer les accents)
+    .normalize('NFD')
+    // Supprimer les marques diacritiques (accents)
+    .replace(/[\u0300-\u036f]/g, '')
+    // Remplacer espaces par underscores
+    .replace(/\s+/g, '_')
+    // Supprimer caractères spéciaux sauf .-_
+    .replace(/[^a-zA-Z0-9._-]/g, '')
+    // Éviter les doubles underscores
+    .replace(/_+/g, '_')
+    // Trim underscores au début/fin
+    .replace(/^_+|_+$/g, '');
+}
+
+/**
  * Obtenir le bucket selon user type
  */
 function getBucketName(userType: string): string {
@@ -436,10 +455,17 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
       console.log('✅ Bucket existe:', bucketName);
     }
     
-    // Générer chemin fichier
+    // Générer chemin fichier avec nom sanitizé
     const timestamp = Date.now();
-    const filename = file.originalname;
-    const storagePath = `${user.database_id}/${document_type}/${timestamp}-${filename}`;
+    const originalFilename = file.originalname;
+    const sanitizedFilename = sanitizeFilename(originalFilename);
+    const storagePath = `${user.database_id}/${document_type}/${timestamp}-${sanitizedFilename}`;
+    
+    console.log('📝 Nom fichier:', {
+      original: originalFilename,
+      sanitized: sanitizedFilename,
+      path: storagePath
+    });
     
     console.log('📁 Upload vers:', bucketName, '/', storagePath);
     
@@ -481,8 +507,8 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
         client_id: client_id || user.database_id,
         produit_id: finalProduitId || null,
         document_type,
-        filename,
-        storage_path: storagePath,
+        filename: originalFilename, // Garder le nom original pour l'affichage
+        storage_path: storagePath, // Utiliser le chemin sanitizé pour le storage
         bucket_name: bucketName,
         file_size: file.size,
         mime_type: file.mimetype,
