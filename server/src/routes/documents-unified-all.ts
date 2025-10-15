@@ -558,6 +558,7 @@ router.get('/:id/download', async (req: Request, res: Response) => {
     }
     
     // Vérifier que le bucket existe
+    console.log('🔍 Vérification bucket:', doc.bucket_name);
     const { data: bucketCheck, error: bucketError } = await supabase.storage.getBucket(doc.bucket_name);
     if (bucketError) {
       console.error('❌ Bucket non trouvé:', doc.bucket_name, bucketError);
@@ -567,20 +568,32 @@ router.get('/:id/download', async (req: Request, res: Response) => {
         details: bucketError.message 
       });
     }
+    console.log('✅ Bucket existe:', doc.bucket_name);
     
     // Générer URL signée (valide 1h)
+    console.log('🔗 Génération URL signée:', {
+      bucket: doc.bucket_name,
+      path: doc.storage_path,
+      filename: doc.filename
+    });
     const { data: signedUrl, error: signedUrlError } = await supabase.storage
       .from(doc.bucket_name)
       .createSignedUrl(doc.storage_path, 3600); // 1h
     
     if (signedUrlError || !signedUrl) {
-      console.error('❌ Erreur génération URL signée:', signedUrlError);
+      console.error('❌ Erreur génération URL signée:', {
+        bucket: doc.bucket_name,
+        path: doc.storage_path,
+        error: signedUrlError
+      });
       return res.status(500).json({ 
         success: false, 
         message: 'Erreur génération URL de téléchargement',
         details: signedUrlError?.message 
       });
     }
+    
+    console.log('✅ URL signée générée:', signedUrl.signedUrl.substring(0, 100) + '...');
     
     return res.json({
       success: true,
