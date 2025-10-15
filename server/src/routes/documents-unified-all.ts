@@ -398,6 +398,39 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
     // Obtenir bucket
     const bucketName = getBucketName(user.type);
     
+    // Vérifier/créer le bucket si nécessaire
+    const { data: bucketExists, error: bucketCheckError } = await supabase.storage.getBucket(bucketName);
+    
+    if (bucketCheckError && bucketCheckError.message.includes('not found')) {
+      console.log('📦 Création du bucket:', bucketName);
+      const { error: createError } = await supabase.storage.createBucket(bucketName, {
+        public: false,
+        fileSizeLimit: 52428800, // 50MB
+        allowedMimeTypes: [
+          'application/pdf',
+          'application/msword',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'application/vnd.ms-excel',
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'image/jpeg',
+          'image/png',
+          'image/gif',
+          'text/plain',
+          'text/csv'
+        ]
+      });
+      
+      if (createError) {
+        console.error('❌ Erreur création bucket:', createError);
+        return res.status(500).json({ 
+          success: false, 
+          message: 'Erreur création espace de stockage',
+          details: createError.message 
+        });
+      }
+      console.log('✅ Bucket créé:', bucketName);
+    }
+    
     // Générer chemin fichier
     const timestamp = Date.now();
     const filename = file.originalname;
@@ -519,13 +552,29 @@ router.get('/:id/download', async (req: Request, res: Response) => {
       return res.status(403).json({ success: false, message: 'Accès refusé' });
     }
     
+    // Vérifier que le bucket existe
+    const { data: bucketCheck, error: bucketError } = await supabase.storage.getBucket(doc.bucket_name);
+    if (bucketError) {
+      console.error('❌ Bucket non trouvé:', doc.bucket_name, bucketError);
+      return res.status(404).json({ 
+        success: false, 
+        message: `Espace de stockage '${doc.bucket_name}' non trouvé. Le bucket doit être créé dans Supabase Storage.`,
+        details: bucketError.message 
+      });
+    }
+    
     // Générer URL signée (valide 1h)
-    const { data: signedUrl } = await supabase.storage
+    const { data: signedUrl, error: signedUrlError } = await supabase.storage
       .from(doc.bucket_name)
       .createSignedUrl(doc.storage_path, 3600); // 1h
     
-    if (!signedUrl) {
-      return res.status(500).json({ success: false, message: 'Erreur génération URL' });
+    if (signedUrlError || !signedUrl) {
+      console.error('❌ Erreur génération URL signée:', signedUrlError);
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Erreur génération URL de téléchargement',
+        details: signedUrlError?.message 
+      });
     }
     
     return res.json({
@@ -571,13 +620,29 @@ router.get('/:id/preview', async (req: Request, res: Response) => {
       return res.status(403).json({ success: false, message: 'Accès refusé' });
     }
     
+    // Vérifier que le bucket existe
+    const { data: bucketCheck, error: bucketError } = await supabase.storage.getBucket(doc.bucket_name);
+    if (bucketError) {
+      console.error('❌ Bucket non trouvé:', doc.bucket_name, bucketError);
+      return res.status(404).json({ 
+        success: false, 
+        message: `Espace de stockage '${doc.bucket_name}' non trouvé`,
+        details: bucketError.message 
+      });
+    }
+    
     // URL signée pour preview (24h)
-    const { data: signedUrl } = await supabase.storage
+    const { data: signedUrl, error: signedUrlError } = await supabase.storage
       .from(doc.bucket_name)
       .createSignedUrl(doc.storage_path, 86400); // 24h
     
-    if (!signedUrl) {
-      return res.status(500).json({ success: false, message: 'Erreur génération URL' });
+    if (signedUrlError || !signedUrl) {
+      console.error('❌ Erreur génération URL signée:', signedUrlError);
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Erreur génération URL de prévisualisation',
+        details: signedUrlError?.message 
+      });
     }
     
     return res.json({
