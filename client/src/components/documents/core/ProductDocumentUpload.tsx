@@ -319,7 +319,20 @@ export default function ProductDocumentUpload({
       // Mettre à jour le statut du dossier
       const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
       
+      console.log('🔑 Token disponible:', token ? `OUI (${token.substring(0, 20)}...)` : 'NON');
+      console.log('🔍 LocalStorage keys:', Object.keys(localStorage));
+      
       if (token) {
+        console.log('📤 Appel PUT /produits-eligibles avec:', {
+          url: `${config.API_URL}/api/client/produits-eligibles/${clientProduitId}`,
+          body: {
+            statut: 'eligible_confirmed',
+            notes: `Documents d'éligibilité ${productName} validés par le client`,
+            current_step: 2,
+            progress: 25
+          }
+        });
+
         const updateResponse = await fetch(`${config.API_URL}/api/client/produits-eligibles/${clientProduitId}`, {
           method: 'PUT',
           headers: {
@@ -334,9 +347,20 @@ export default function ProductDocumentUpload({
           }),
         });
 
+        console.log('📥 Réponse:', updateResponse.status, updateResponse.statusText);
+
         if (!updateResponse.ok) {
-          console.warn('⚠️ Erreur mise à jour statut dossier:', updateResponse.status);
+          const errorData = await updateResponse.json().catch(() => ({}));
+          console.error('❌ Erreur mise à jour statut dossier:', {
+            status: updateResponse.status,
+            statusText: updateResponse.statusText,
+            error: errorData
+          });
+        } else {
+          console.log('✅ Mise à jour réussie');
         }
+      } else {
+        console.error('❌ Pas de token trouvé - impossible de mettre à jour le dossier');
       }
 
       toast.success("Vos documents ont été validés avec succès");
