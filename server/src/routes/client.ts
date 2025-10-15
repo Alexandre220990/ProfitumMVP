@@ -304,6 +304,13 @@ router.put('/produits-eligibles/:id', enhancedAuthMiddleware, async (req, res) =
     const { id } = req.params;
     const { statut, notes, current_step, progress } = req.body;
 
+    console.log('📝 Mise à jour produit éligible:', {
+      id,
+      user_id: user.database_id,
+      user_type: user.type,
+      body: { statut, notes, current_step, progress }
+    });
+
     // Vérifier que l'utilisateur est un client
     if (user.type !== 'client') {
       return res.status(403).json({
@@ -321,11 +328,15 @@ router.put('/produits-eligibles/:id', enhancedAuthMiddleware, async (req, res) =
       .single();
 
     if (produitError || !produitData) {
+      console.error('❌ Produit non trouvé:', { id, clientId: user.database_id, error: produitError });
       return res.status(404).json({
         success: false,
-        message: 'Produit éligible non trouvé'
+        message: 'Produit éligible non trouvé',
+        details: produitError?.message
       });
     }
+
+    console.log('✅ Produit trouvé:', { id, clientId: produitData.clientId, statut_actuel: produitData.statut });
 
     // Préparer les données de mise à jour
     const updateData: any = {
@@ -348,6 +359,8 @@ router.put('/produits-eligibles/:id', enhancedAuthMiddleware, async (req, res) =
       updateData.progress = progress;
     }
 
+    console.log('📤 Données de mise à jour:', updateData);
+
     // Mettre à jour le produit éligible
     const { data: updatedProduit, error: updateError } = await supabase
       .from('ClientProduitEligible')
@@ -357,8 +370,11 @@ router.put('/produits-eligibles/:id', enhancedAuthMiddleware, async (req, res) =
       .single();
 
     if (updateError) {
+      console.error('❌ Erreur UPDATE Supabase:', updateError);
       throw updateError;
     }
+
+    console.log('✅ Produit mis à jour avec succès:', { id, current_step: updatedProduit.current_step, progress: updatedProduit.progress });
 
     return res.json({
       success: true,
@@ -366,11 +382,18 @@ router.put('/produits-eligibles/:id', enhancedAuthMiddleware, async (req, res) =
       data: updatedProduit
     });
 
-  } catch (error) {
-    console.error('❌ Erreur mise à jour produit éligible:', error);
+  } catch (error: any) {
+    console.error('❌ Erreur mise à jour produit éligible:', {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+      full_error: error
+    });
     return res.status(500).json({
       success: false,
-      message: 'Erreur lors de la mise à jour'
+      message: 'Erreur lors de la mise à jour',
+      details: error.message || 'Erreur inconnue'
     });
   }
 });
