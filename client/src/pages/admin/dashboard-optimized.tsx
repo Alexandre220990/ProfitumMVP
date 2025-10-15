@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -66,6 +66,7 @@ type ActiveSection = 'overview' | 'experts' | 'clients' | 'dossiers' | 'apporteu
 
 const AdminDashboardOptimized: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   
   // ===== ÉTATS LOCAUX =====
   const [activeSection, setActiveSection] = useState<ActiveSection>('overview');
@@ -1236,8 +1237,8 @@ const AdminDashboardOptimized: React.FC = () => {
                               <span className="font-semibold text-green-600">{kpiData.tauxConversion}%</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-sm text-gray-600">Délai moyen</span>
-                              <span className="font-semibold text-blue-600">18 jours</span>
+                              <span className="text-sm text-gray-600">En retard</span>
+                              <span className="font-semibold text-red-600">{kpiData.dossiersEnRetard}</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-sm text-gray-600">Ce mois</span>
@@ -1308,27 +1309,36 @@ const AdminDashboardOptimized: React.FC = () => {
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-3">
-                          <div className="flex items-center gap-3 p-3 bg-red-50 border border-red-200 rounded">
-                            <AlertTriangle className="w-4 h-4 text-red-600" />
-                            <div>
-                              <p className="font-medium text-red-800">Expert en attente &gt; 48h</p>
-                              <p className="text-sm text-red-600">Cabinet ABC - TICPE</p>
+                          {kpiData.alertesUrgentes > 0 && (
+                            <div className="flex items-center gap-3 p-3 bg-red-50 border border-red-200 rounded">
+                              <AlertTriangle className="w-4 h-4 text-red-600" />
+                              <div>
+                                <p className="font-medium text-red-800">Actions urgentes</p>
+                                <p className="text-sm text-red-600">
+                                  {kpiData.validationsDocuments} validation{kpiData.validationsDocuments > 1 ? 's' : ''} documents + 
+                                  {kpiData.expertsPendingValidation} expert{kpiData.expertsPendingValidation > 1 ? 's' : ''} &gt;48h
+                                </p>
+                              </div>
                             </div>
-                          </div>
-                          <div className="flex items-center gap-3 p-3 bg-yellow-50 border border-yellow-200 rounded">
-                            <Clock className="w-4 h-4 text-yellow-600" />
-                            <div>
-                              <p className="font-medium text-yellow-800">Dossier en retard</p>
-                              <p className="text-sm text-yellow-600">Client XYZ - URSSAF (25 jours)</p>
+                          )}
+                          {kpiData.dossiersEnRetard > 0 && (
+                            <div className="flex items-center gap-3 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                              <Clock className="w-4 h-4 text-yellow-600" />
+                              <div>
+                                <p className="font-medium text-yellow-800">Dossiers en retard</p>
+                                <p className="text-sm text-yellow-600">{kpiData.dossiersEnRetard} dossier{kpiData.dossiersEnRetard > 1 ? 's' : ''} bloqué{kpiData.dossiersEnRetard > 1 ? 's' : ''} &gt;21 jours</p>
+                              </div>
                             </div>
-                          </div>
-                          <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded">
-                            <Check className="w-4 h-4 text-green-600" />
-                            <div>
-                              <p className="font-medium text-green-800">Nouveau dossier validé</p>
-                              <p className="text-sm text-green-600">Client ABC - DFS (15k€)</p>
+                          )}
+                          {kpiData.alertesUrgentes === 0 && kpiData.dossiersEnRetard === 0 && (
+                            <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded">
+                              <Check className="w-4 h-4 text-green-600" />
+                              <div>
+                                <p className="font-medium text-green-800">Aucune alerte</p>
+                                <p className="text-sm text-green-600">Tout est à jour !</p>
+                              </div>
                             </div>
-                          </div>
+                          )}
                         </div>
                       </CardContent>
                     </Card>
@@ -1539,33 +1549,37 @@ const AdminDashboardOptimized: React.FC = () => {
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-4">
-                          {/* Liste des experts */}
-                          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <h4 className="font-semibold text-yellow-800">Expert TICPE - Cabinet ABC</h4>
-                                <p className="text-sm text-yellow-700">En attente depuis 2 jours</p>
-                                <div className="flex gap-2 mt-2">
-                                  <Badge variant="secondary">TICPE</Badge>
-                                  <Badge variant="secondary">Certifié</Badge>
+                          {sectionData.experts?.filter(e => e.approval_status === 'pending').length > 0 ? (
+                            sectionData.experts
+                              .filter(e => e.approval_status === 'pending')
+                              .slice(0, 3)
+                              .map((expert: any) => (
+                                <div key={expert.id} className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <h4 className="font-semibold text-yellow-800">{expert.name}</h4>
+                                      <p className="text-sm text-yellow-700">{expert.company_name}</p>
+                                      <div className="flex gap-2 mt-2">
+                                        {expert.specializations?.slice(0, 2).map((spec: string, idx: number) => (
+                                          <Badge key={idx} variant="secondary">{spec}</Badge>
+                                        ))}
+                                      </div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                      <Button size="sm" variant="default" onClick={() => navigate('/admin/gestion-experts')}>
+                                        <Eye className="w-4 h-4 mr-1" />
+                                        Gérer
+                                      </Button>
+                                    </div>
+                                  </div>
                                 </div>
-                              </div>
-                              <div className="flex gap-2">
-                                <Button size="sm" variant="default">
-                                  <Check className="w-4 h-4 mr-1" />
-                                  Valider
-                                </Button>
-                                <Button size="sm" variant="destructive">
-                                  <X className="w-4 h-4 mr-1" />
-                                  Rejeter
-                                </Button>
-                                <Button size="sm" variant="outline">
-                                  <Eye className="w-4 h-4 mr-1" />
-                                  Voir
-                                </Button>
-                              </div>
+                              ))
+                          ) : (
+                            <div className="text-center py-8 text-gray-500">
+                              <UserCheck className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+                              <p>Aucun expert en attente</p>
                             </div>
-                          </div>
+                          )}
                         </div>
                       </CardContent>
                     </Card>
@@ -1580,32 +1594,43 @@ const AdminDashboardOptimized: React.FC = () => {
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-4">
-                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <h4 className="font-semibold text-blue-800">Dossier TICPE - Client XYZ</h4>
-                                <p className="text-sm text-blue-700">Documents reçus il y a 1 jour</p>
-                                <div className="flex gap-2 mt-2">
-                                  <Badge variant="secondary">TICPE</Badge>
-                                  <Badge variant="secondary">15k€</Badge>
+                          {sectionData.dossiers?.filter(d => 
+                            d.statut === 'documents_uploaded' || d.statut === 'eligible_confirmed'
+                          ).length > 0 ? (
+                            sectionData.dossiers
+                              .filter(d => d.statut === 'documents_uploaded' || d.statut === 'eligible_confirmed')
+                              .slice(0, 3)
+                              .map((dossier: ClientProduitEligible) => (
+                                <div key={dossier.id} className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <h4 className="font-semibold text-blue-800">
+                                        {dossier.Client?.company_name || 'Client inconnu'}
+                                      </h4>
+                                      <p className="text-sm text-blue-700">
+                                        {dossier.ProduitEligible?.nom || 'Produit inconnu'}
+                                      </p>
+                                      <div className="flex gap-2 mt-2">
+                                        {dossier.montantFinal && (
+                                          <Badge variant="secondary">{formatCurrency(dossier.montantFinal)}</Badge>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                      <Button size="sm" variant="default" onClick={() => navigate('/admin/gestion-dossiers')}>
+                                        <Eye className="w-4 h-4 mr-1" />
+                                        Gérer
+                                      </Button>
+                                    </div>
+                                  </div>
                                 </div>
-                              </div>
-                              <div className="flex gap-2">
-                                <Button size="sm" variant="default">
-                                  <Check className="w-4 h-4 mr-1" />
-                                  Valider
-                                </Button>
-                                <Button size="sm" variant="destructive">
-                                  <X className="w-4 h-4 mr-1" />
-                                  Rejeter
-                                </Button>
-                                <Button size="sm" variant="outline">
-                                  <Eye className="w-4 h-4 mr-1" />
-                                  Voir
-                                </Button>
-                              </div>
+                              ))
+                          ) : (
+                            <div className="text-center py-8 text-gray-500">
+                              <FileText className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+                              <p>Aucun document à valider</p>
                             </div>
-                          </div>
+                          )}
                         </div>
                       </CardContent>
                     </Card>
