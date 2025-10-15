@@ -213,40 +213,60 @@ const AdminDashboardOptimized: React.FC = () => {
           return sum + (dossier.montantFinal || 0);
         }, 0);
       
-      // Mettre à jour les KPIs
+      // Charger les apporteurs (données réelles)
+      const apporteursResponse = await get('/admin/apporteurs');
+      const apporteurs = apporteursResponse.success ? (apporteursResponse.data as any)?.apporteurs || [] : [];
+      
+      // Calculer les KPIs à partir des DONNÉES RÉELLES uniquement
+      const expertsPendingValidation = experts.filter((e: any) => {
+        const createdAt = new Date(e.created_at);
+        const now = new Date();
+        const diffHours = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+        return e.approval_status === 'pending' && diffHours > 48;
+      }).length;
+
+      const dossiersEnRetard = dossiers.filter((d: any) => {
+        const createdAt = new Date(d.created_at);
+        const now = new Date();
+        const diffDays = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24);
+        return (d.statut === 'pending' || d.statut === 'in_progress') && diffDays > 21;
+      }).length;
+
+      const validationsExperts = experts.filter((e: any) => e.approval_status === 'pending').length;
+      
+      const validationsDocuments = dossiers.filter((d: any) => 
+        d.statut === 'documents_uploaded' || d.statut === 'eligible_confirmed'
+      ).length;
+
+      const apporteursActifs = apporteurs.filter((a: any) => a.status === 'active').length;
+      
+      const alertesUrgentes = validationsDocuments + expertsPendingValidation;
+      const alertesNormales = dossiersEnRetard;
+
+      // Mettre à jour les KPIs (DONNÉES RÉELLES UNIQUEMENT)
       setKpiData({
         totalClients,
         clientsThisMonth,
-        clientsSatisfaction: 75, // NPS moyen
+        clientsSatisfaction: 0, // À calculer depuis satisfaction réelle si disponible
         totalExperts,
         activeExperts,
         pendingExperts,
-        expertsPendingValidation: sectionData.experts?.filter((e: any) => {
-          const createdAt = new Date(e.created_at);
-          const now = new Date();
-          const diffHours = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
-          return e.status === 'pending' && diffHours > 48;
-        }).length || 0,
-        expertsNPS: 68, // NPS moyen experts
+        expertsPendingValidation,
+        expertsNPS: 0, // À calculer depuis notes réelles si disponible
         totalDossiers,
         pendingDossiers,
-        dossiersEnRetard: sectionData.dossiers?.filter((d: any) => {
-          const createdAt = new Date(d.created_at);
-          const now = new Date();
-          const diffDays = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24);
-          return d.status === 'pending' && diffDays > 21;
-        }).length || 0,
+        dossiersEnRetard,
         montantPotentiel,
         montantRealise,
-        tauxConversion: 42, // Taux de conversion simulateur → dossier
-        apporteursTotal: 15, // Nombre total d'apporteurs
-        apporteursActifs: 12, // Apporteurs actifs
-        apporteursPerformance: 8.5, // Performance moyenne
-        validationsPending: 3, // Validations en attente
-        validationsExperts: 2, // Experts à valider
-        validationsDocuments: 5, // Documents à valider
-        alertesUrgentes: 1, // Alertes urgentes
-        alertesNormales: 4 // Alertes normales
+        tauxConversion: totalDossiers > 0 ? Math.round((totalDossiers / Math.max(totalClients, 1)) * 100) : 0,
+        apporteursTotal: apporteurs.length,
+        apporteursActifs,
+        apporteursPerformance: 0, // À calculer depuis performance réelle si disponible
+        validationsPending: validationsDocuments + validationsExperts,
+        validationsExperts,
+        validationsDocuments,
+        alertesUrgentes,
+        alertesNormales
       });
       
       console.log('✅ KPIs mis à jour:', {
@@ -1098,13 +1118,11 @@ const AdminDashboardOptimized: React.FC = () => {
                 <KPICard
                   title="Clients"
                   value={kpiData.clientsThisMonth}
-                  total={`NPS: ${kpiData.clientsSatisfaction}`}
-                  change={`${kpiData.totalClients} total`}
-                  changeType={kpiData.clientsSatisfaction >= 50 ? "increase" : "decrease"}
+                  total={`${kpiData.totalClients} total`}
+                  change={`Nouveaux ce mois`}
+                  changeType="increase"
                   icon={UserPlus}
-                  color={kpiData.clientsSatisfaction >= 50 ? "blue" : "red"}
-                  alert={kpiData.clientsSatisfaction < 50 && kpiData.clientsSatisfaction > 0}
-                  urgent={kpiData.clientsSatisfaction < 40}
+                  color="blue"
                   onClick={() => setActiveSection('clients')}
                 />
 
@@ -1222,8 +1240,8 @@ const AdminDashboardOptimized: React.FC = () => {
                               <span className="font-semibold text-blue-600">18 jours</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-sm text-gray-600">Satisfaction</span>
-                              <span className="font-semibold text-purple-600">{kpiData.clientsSatisfaction} NPS</span>
+                              <span className="text-sm text-gray-600">Ce mois</span>
+                              <span className="font-semibold text-purple-600">{kpiData.clientsThisMonth}</span>
                             </div>
                           </div>
                         </CardContent>
@@ -1363,9 +1381,9 @@ const AdminDashboardOptimized: React.FC = () => {
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-sm font-medium text-gray-600">Performance Moyenne</p>
-                              <p className="text-2xl font-bold text-gray-900">{kpiData.apporteursPerformance}</p>
-                              <p className="text-sm text-gray-500">dossiers/mois</p>
+                              <p className="text-sm font-medium text-gray-600">Apporteurs Actifs</p>
+                              <p className="text-2xl font-bold text-gray-900">{kpiData.apporteursActifs}</p>
+                              <p className="text-sm text-gray-500">sur {kpiData.apporteursTotal} total</p>
                             </div>
                             <TrendingUp className="w-8 h-8 text-green-600" />
                           </div>
