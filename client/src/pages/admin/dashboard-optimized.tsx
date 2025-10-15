@@ -7,13 +7,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import { get } from "@/lib/api";
+import { config } from "@/config/env";
 import ApporteurManagement from "@/components/admin/ApporteurManagement";
 import { 
   RefreshCw, UserPlus, Users, FileText, 
   Eye, ClipboardList, Edit, Check, X,
   UserCheck, Shield, AlertTriangle, Clock,
   Download, Settings, TrendingUp, DollarSign,
-  Bell, Mail, Target
+  Bell, Mail, Target, CheckCircle, XCircle
 } from "lucide-react";
 import { TypeSwitcher } from "@/components/TypeSwitcher";
 import { motion } from "framer-motion";
@@ -690,6 +691,99 @@ const AdminDashboardOptimized: React.FC = () => {
     );
   };
 
+  // ========================================
+  // HANDLERS VALIDATION ÉLIGIBILITÉ
+  // ========================================
+
+  const handleValidateEligibility = async (dossierId: string, dossierName: string) => {
+    try {
+      const confirmValidation = window.confirm(
+        `Confirmer la validation d'éligibilité pour le dossier "${dossierName}" ?\n\n` +
+        `Le client pourra passer à la sélection d'expert.`
+      );
+
+      if (!confirmValidation) return;
+
+      const response = await fetch(`${config.API_URL}/api/admin/dossiers/${dossierId}/validate-eligibility`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          action: 'approve',
+          notes: 'Éligibilité validée par l\'administrateur'
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Erreur de validation');
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        toast.success('✅ Éligibilité validée avec succès !', {
+          description: 'Le client peut maintenant sélectionner un expert'
+        });
+        // Recharger les dossiers
+        loadSectionData('dossiers');
+      }
+    } catch (error: any) {
+      console.error('❌ Erreur validation:', error);
+      toast.error('Erreur lors de la validation', {
+        description: error.message
+      });
+    }
+  };
+
+  const handleRejectEligibility = async (dossierId: string, dossierName: string) => {
+    const reason = window.prompt(
+      `Refuser l'éligibilité pour "${dossierName}"\n\n` +
+      `Veuillez indiquer la raison du refus :`
+    );
+
+    if (!reason || reason.trim() === '') {
+      toast.error('Refus annulé - Une raison est requise');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${config.API_URL}/api/admin/dossiers/${dossierId}/validate-eligibility`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          action: 'reject',
+          notes: reason
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Erreur de refus');
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        toast.success('Éligibilité refusée', {
+          description: 'Le client a été notifié'
+        });
+        // Recharger les dossiers
+        loadSectionData('dossiers');
+      }
+    } catch (error: any) {
+      console.error('❌ Erreur refus:', error);
+      toast.error('Erreur lors du refus', {
+        description: error.message
+      });
+    }
+  };
+
   const DossiersProcessingSection = ({ dossiers, loading, onRefresh }: any) => {
     // Calculer les statistiques
     const totalDossiers = dossiers.length;
@@ -783,17 +877,45 @@ const AdminDashboardOptimized: React.FC = () => {
                       <Edit className="w-4 h-4 mr-1" />
                       Modifier
                     </Button>
-                    {dossier.statut === 'pending' && (
+                    {(dossier.statut === 'pending' || dossier.statut === 'documents_uploaded') && (
                       <>
-                        <Button size="sm" variant="default" className="text-white">
+                        <Button 
+                          size="sm" 
+                          variant="default" 
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                          onClick={() => handleValidateEligibility(
+                            dossier.id, 
+                            dossier.Client?.company_name || dossier.ProduitEligible?.nom || `Dossier ${dossier.id.substring(0, 8)}`
+                          )}
+                        >
                           <Check className="w-4 h-4 mr-1" />
-                          Valider
+                          Valider éligibilité
                         </Button>
-                        <Button size="sm" variant="destructive" className="text-white">
+                        <Button 
+                          size="sm" 
+                          variant="destructive" 
+                          className="text-white"
+                          onClick={() => handleRejectEligibility(
+                            dossier.id,
+                            dossier.Client?.company_name || dossier.ProduitEligible?.nom || `Dossier ${dossier.id.substring(0, 8)}`
+                          )}
+                        >
                           <X className="w-4 h-4 mr-1" />
                           Refuser
                         </Button>
                       </>
+                    )}
+                    {dossier.statut === 'eligibility_validated' && (
+                      <Badge variant="default" className="bg-green-100 text-green-800">
+                        <CheckCircle className="w-3 h-3 mr-1" />
+                        Éligibilité validée
+                      </Badge>
+                    )}
+                    {dossier.statut === 'eligibility_rejected' && (
+                      <Badge variant="destructive">
+                        <XCircle className="w-3 h-3 mr-1" />
+                        Refusée
+                      </Badge>
                     )}
                   </div>
                 </div>

@@ -326,10 +326,10 @@ export default function ProductDocumentUpload({
         console.log('📤 Appel PUT /produits-eligibles avec:', {
           url: `${config.API_URL}/api/client/produits-eligibles/${clientProduitId}`,
           body: {
-            statut: 'eligible_confirmed',
-            notes: `Documents d'éligibilité ${productName} validés par le client`,
-            current_step: 2,
-            progress: 25
+            statut: 'documents_uploaded',
+            notes: `Documents d'éligibilité ${productName} soumis par le client - En attente de validation admin`,
+            current_step: 1, // Reste sur l'étape 1 en attendant validation admin
+            progress: 15 // 15% : documents uploadés mais pas encore validés
           }
         });
 
@@ -340,10 +340,10 @@ export default function ProductDocumentUpload({
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            statut: 'eligible_confirmed',
-            notes: `Documents d'éligibilité ${productName} validés par le client`,
-            current_step: 2,
-            progress: 25
+            statut: 'documents_uploaded',
+            notes: `Documents d'éligibilité ${productName} soumis par le client - En attente de validation admin`,
+            current_step: 1,
+            progress: 15
           }),
         });
 
@@ -363,8 +363,12 @@ export default function ProductDocumentUpload({
         console.error('❌ Pas de token trouvé - impossible de mettre à jour le dossier');
       }
 
-      toast.success("Vos documents ont été validés avec succès");
+      toast.success("Documents envoyés avec succès ! Nos équipes vérifient votre éligibilité.", {
+        description: "Vous recevrez une notification sous 24-48h",
+        duration: 5000
+      });
 
+      // Appeler onStepComplete pour passer à la vue de l'état de validation
       if (onStepComplete) {
         onStepComplete();
       }

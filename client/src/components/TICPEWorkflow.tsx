@@ -17,7 +17,9 @@ import {
 
 import TICPEUploadInline from './documents/product-uploads/TICPEUploadInline';
 import ExpertSelectionModal from './ExpertSelectionModal';
+import EligibilityValidationStatus from './EligibilityValidationStatus';
 import { useDossierSteps } from '@/hooks/use-dossier-steps';
+import { get } from '@/lib/api';
 
 interface TICPEWorkflowProps {
   clientProduitId: string;
@@ -48,6 +50,21 @@ interface Expert {
   completed_projects: number;
 }
 
+interface ClientProduit {
+  id: string;
+  statut: string;
+  current_step: number;
+  progress: number;
+  metadata?: any;
+  Client?: {
+    company_name?: string;
+    email?: string;
+  };
+  ProduitEligible?: {
+    nom?: string;
+  };
+}
+
 export default function TICPEWorkflow({
   clientProduitId,
   companyName,
@@ -61,6 +78,8 @@ export default function TICPEWorkflow({
   const [documents, setDocuments] = useState<DocumentFile[]>([]);
   const [selectedExpert, setSelectedExpert] = useState<Expert | null>(null);
   const [showExpertModal, setShowExpertModal] = useState(false);
+  const [clientProduit, setClientProduit] = useState<ClientProduit | null>(null);
+  const [loadingProduit, setLoadingProduit] = useState(true);
 
   const [eligibilityValidated, setEligibilityValidated] = useState(false);
 
@@ -123,6 +142,34 @@ export default function TICPEWorkflow({
       component: 'payment'
     }
   ];
+
+  // Charger le clientProduit pour avoir le statut de validation
+  useEffect(() => {
+    const loadClientProduit = async () => {
+      try {
+        setLoadingProduit(true);
+        const response = await get(`/api/client/produits-eligibles/${clientProduitId}`);
+        
+        if (response.success) {
+          setClientProduit(response.data);
+          
+          // Mettre à jour eligibilityValidated basé sur le statut
+          if (response.data.statut === 'eligibility_validated') {
+            setEligibilityValidated(true);
+            setCurrentStep(2); // Déverrouiller étape 2
+          }
+        }
+      } catch (error) {
+        console.error('❌ Erreur chargement ClientProduit:', error);
+      } finally {
+        setLoadingProduit(false);
+      }
+    };
+
+    if (clientProduitId) {
+      loadClientProduit();
+    }
+  }, [clientProduitId]);
 
   // Initialiser les étapes au chargement
   useEffect(() => {
@@ -433,15 +480,34 @@ export default function TICPEWorkflow({
 
               {/* Contenu intégré pour l'étape 1 */}
               {step.id === 1 && (
-                <div className="mt-4 pt-4 border-t border-gray-200">
-                  <TICPEUploadInline
-                    clientProduitId={clientProduitId}
-                    onDocumentsUploaded={handleDocumentsComplete}
-                    onStepComplete={() => {
-                      setEligibilityValidated(true);
-                      setCurrentStep(2);
-                    }}
-                  />
+                <div className="mt-4 pt-4 border-t border-gray-200 space-y-4">
+                  {/* Afficher le statut de validation si documents soumis */}
+                  {clientProduit && (clientProduit.statut === 'documents_uploaded' || 
+                                     clientProduit.statut === 'eligibility_validated' || 
+                                     clientProduit.statut === 'eligibility_rejected') && (
+                    <EligibilityValidationStatus
+                      clientProduit={clientProduit}
+                      onModifyDocuments={() => {
+                        // Permettre de modifier les documents
+                        console.log('📝 Modification des documents demandée');
+                      }}
+                    />
+                  )}
+
+                  {/* Formulaire d'upload des documents (masqué si éligibilité validée) */}
+                  {clientProduit?.statut !== 'eligibility_validated' && (
+                    <TICPEUploadInline
+                      clientProduitId={clientProduitId}
+                      onDocumentsUploaded={handleDocumentsComplete}
+                      onStepComplete={async () => {
+                        // Recharger le clientProduit pour afficher le nouveau statut
+                        const response = await get(`/api/client/produits-eligibles/${clientProduitId}`);
+                        if (response.success) {
+                          setClientProduit(response.data);
+                        }
+                      }}
+                    />
+                  )}
                 </div>
               )}
             </CardContent>

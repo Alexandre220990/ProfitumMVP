@@ -3309,4 +3309,162 @@ router.put('/experts/:id/status', asyncHandler(async (req, res) => {
   }
 }));
 
+// ============================================================================
+// VALIDATION D'ÉLIGIBILITÉ DES DOSSIERS
+// ============================================================================
+
+/**
+ * GET /api/admin/dossiers/pending-validation
+ * Liste des dossiers en attente de validation d'éligibilité
+ */
+router.get('/dossiers/pending-validation', asyncHandler(async (req, res) => {
+  try {
+    console.log('🔍 Récupération des dossiers en attente de validation...');
+    
+    const { data: dossiers, error } = await supabaseClient
+      .from('ClientProduitEligible')
+      .select(`
+        *,
+        Client (
+          id,
+          name,
+          company_name,
+          email,
+          phone_number
+        ),
+        ProduitEligible (
+          id,
+          nom,
+          description,
+          categorie
+        )
+      `)
+      .eq('statut', 'documents_uploaded')
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error('❌ Erreur récupération dossiers pending:', error);
+      throw error;
+    }
+
+    console.log(`✅ ${dossiers?.length || 0} dossiers en attente de validation`);
+
+    return res.json({
+      success: true,
+      data: dossiers || []
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route pending-validation:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des dossiers en attente'
+    });
+  }
+}));
+
+/**
+ * POST /api/admin/dossiers/:id/validate-eligibility
+ * Valider ou rejeter l'éligibilité d'un dossier
+ */
+router.post('/dossiers/:id/validate-eligibility', asyncHandler(async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { action, notes } = req.body; // action: 'approve' | 'reject'
+    const admin = (req as any).user;
+
+    if (!admin || admin.type !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux administrateurs'
+      });
+    }
+
+    if (!action || !['approve', 'reject'].includes(action)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Action invalide (approve ou reject requis)'
+      });
+    }
+
+    console.log('📝 Validation éligibilité:', {
+      dossier_id: id,
+      action,
+      admin_id: admin.database_id,
+      notes
+    });
+
+    // Récupérer le dossier pour vérifier qu'il existe
+    const { data: dossier, error: fetchError } = await supabaseClient
+      .from('ClientProduitEligible')
+      .select('*, Client(email, company_name), ProduitEligible(nom)')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !dossier) {
+      console.error('❌ Dossier non trouvé:', id, fetchError);
+      return res.status(404).json({
+        success: false,
+        message: 'Dossier non trouvé'
+      });
+    }
+
+    // Préparer les métadonnées de validation
+    const currentMetadata = dossier.metadata || {};
+    const validationMetadata = {
+      ...currentMetadata,
+      eligibility_validation: {
+        status: action === 'approve' ? 'validated' : 'rejected',
+        validated_by: admin.database_id,
+        validated_by_email: admin.email,
+        validated_at: new Date().toISOString(),
+        notes: notes || ''
+      }
+    };
+
+    // Déterminer le nouveau statut
+    const newStatut = action === 'approve' ? 'eligibility_validated' : 'eligibility_rejected';
+    const newStep = action === 'approve' ? 2 : 1;
+    const newProgress = action === 'approve' ? 25 : 10;
+
+    // Mettre à jour le dossier
+    const { data: updatedDossier, error: updateError } = await supabaseClient
+      .from('ClientProduitEligible')
+      .update({
+        statut: newStatut,
+        metadata: validationMetadata,
+        current_step: newStep,
+        progress: newProgress,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error('❌ Erreur mise à jour dossier:', updateError);
+      throw updateError;
+    }
+
+    console.log(`✅ Éligibilité ${action === 'approve' ? 'validée' : 'rejetée'} pour le dossier ${id}`);
+
+    // TODO: Envoyer notification au client (email/in-app)
+    // await notifyClient(dossier.Client.email, action, notes);
+
+    return res.json({
+      success: true,
+      message: `Éligibilité ${action === 'approve' ? 'validée' : 'rejetée'} avec succès`,
+      data: updatedDossier
+    });
+
+  } catch (error: any) {
+    console.error('❌ Erreur validation éligibilité:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la validation',
+      details: error.message
+    });
+  }
+}));
+
 export default router;
