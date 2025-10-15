@@ -25,8 +25,7 @@ export class AdminNotificationService {
 
       // Filtrer les utilisateurs de type admin
       const adminUsers = admins.users.filter(user => 
-        user.user_metadata?.type === 'admin' || 
-        user.raw_user_meta_data?.type === 'admin'
+        user.user_metadata?.type === 'admin'
       );
 
       return adminUsers.map(admin => admin.id);

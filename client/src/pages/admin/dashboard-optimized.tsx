@@ -34,7 +34,7 @@ interface ClientProduitEligible {
   id: string;
   clientId: string;
   produitId: string;
-  statut: 'pending' | 'validated' | 'rejected' | 'in_progress' | 'documents_uploaded' | 'eligibility_validated' | 'eligibility_rejected' | 'eligible' | 'en_cours';
+  statut: string; // Tous les statuts possibles : pending, validated, rejected, in_progress, documents_uploaded, eligibility_validated, eligibility_rejected, eligible, en_cours
   progress: number;
   montantFinal?: number;
   tauxFinal?: number;
