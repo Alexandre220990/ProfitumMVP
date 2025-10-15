@@ -101,7 +101,7 @@ export default function GestionDossiers() { const { user } = useAuth();
   const [showDeleteProduit, setShowDeleteProduit] = useState(false);
   const [showAddDossier, setShowAddDossier] = useState(false);
   const [showProposeExpert, setShowProposeExpert] = useState(false);
-  const [availableExperts, setAvailableExperts] = useState<any[]>([]);
+  const [availableExperts, setAvailableExperts] = useState<Array<{id: string; name: string; company_name: string; approval_status: string; status: string}>>([]);
   const [selectedExpert, setSelectedExpert] = useState<string>('');
   const [expertMessage, setExpertMessage] = useState<string>('');
 
@@ -225,7 +225,7 @@ export default function GestionDossiers() { const { user } = useAuth();
   };
 
   // Fonction pour ouvrir la proposition d'expert
-  const openProposeExpert = async (dossier: any) => {
+  const openProposeExpert = async (dossier: Dossier) => {
     setSelectedDossier(dossier);
     setShowProposeExpert(true);
     
@@ -243,9 +243,10 @@ export default function GestionDossiers() { const { user } = useAuth();
 
       if (response.ok) {
         const data = await response.json();
-        setAvailableExperts(data.data?.experts?.filter((expert: any) => 
+        const experts = (data.data?.experts || []).filter((expert: { approval_status: string; status: string }) => 
           expert.approval_status === 'approved' && expert.status === 'active'
-        ) || []);
+        );
+        setAvailableExperts(experts);
       }
     } catch (error) {
       console.error('Erreur chargement experts:', error);
@@ -374,8 +375,8 @@ export default function GestionDossiers() { const { user } = useAuth();
 
   // Fonction de tri côté client pour les produits
   const sortProduits = (produitsList: ProduitEligible[]) => { return produitsList.sort((a, b) => {
-      let aValue: any;
-      let bValue: any;
+      let aValue: string | number;
+      let bValue: string | number;
 
       switch (sortByProduit) {
         case 'nom':
@@ -1510,8 +1511,8 @@ export default function GestionDossiers() { const { user } = useAuth();
                   <SelectTrigger>
                     <SelectValue placeholder="Choisir un expert..." />
                   </SelectTrigger>
-                  <SelectContent>
-                    {availableExperts.map((expert) => (
+                  <SelectContent className="max-h-[300px]">
+                    {availableExperts.slice(0, 20).map((expert) => (
                       <SelectItem key={expert.id} value={expert.id}>
                         <div className="flex items-center gap-2">
                           <div>
@@ -1521,8 +1522,16 @@ export default function GestionDossiers() { const { user } = useAuth();
                         </div>
                       </SelectItem>
                     ))}
+                    {availableExperts.length > 20 && (
+                      <div className="p-2 text-sm text-gray-500 text-center border-t">
+                        +{availableExperts.length - 20} experts disponibles (affinez votre recherche)
+                      </div>
+                    )}
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-gray-500 mt-1">
+                  {availableExperts.length} expert{availableExperts.length > 1 ? 's' : ''} disponible{availableExperts.length > 1 ? 's' : ''}
+                </p>
               </div>
               
               <div>
