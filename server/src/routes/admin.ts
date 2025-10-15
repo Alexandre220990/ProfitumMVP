@@ -3448,8 +3448,35 @@ router.post('/dossiers/:id/validate-eligibility', asyncHandler(async (req, res) 
 
     console.log(`✅ Éligibilité ${action === 'approve' ? 'validée' : 'rejetée'} pour le dossier ${id}`);
 
-    // TODO: Envoyer notification au client (email/in-app)
-    // await notifyClient(dossier.Client.email, action, notes);
+    // ✅ ENVOYER NOTIFICATION AU CLIENT
+    try {
+      const { ClientNotificationService } = await import('../services/client-notification-service');
+      
+      if (action === 'approve') {
+        await ClientNotificationService.notifyEligibilityValidated({
+          client_id: dossier.clientId,
+          client_produit_id: id,
+          product_type: dossier.ProduitEligible?.nom || 'Produit',
+          product_name: dossier.ProduitEligible?.nom,
+          validated_by: admin.database_id,
+          validated_by_email: admin.email,
+          notes: notes
+        });
+      } else {
+        await ClientNotificationService.notifyEligibilityRejected({
+          client_id: dossier.clientId,
+          client_produit_id: id,
+          product_type: dossier.ProduitEligible?.nom || 'Produit',
+          product_name: dossier.ProduitEligible?.nom,
+          rejected_by: admin.database_id,
+          rejected_by_email: admin.email,
+          rejection_reason: notes
+        });
+      }
+      console.log(`✅ Notification ${action === 'approve' ? 'validation' : 'rejet'} envoyée au client`);
+    } catch (notifError) {
+      console.error('❌ Erreur envoi notification client (non bloquant):', notifError);
+    }
 
     return res.json({
       success: true,

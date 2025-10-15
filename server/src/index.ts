@@ -75,6 +75,7 @@ import sessionMigrationRoutes from './routes/session-migration';
 // SUPPRIMÉ: import clientDocumentsRoutes (obsolète, remplacé par documents-unified-all)
 // SUPPRIMÉ: import enhancedClientDocumentsRoutes (obsolète, remplacé par documents-unified-all)
 import adminNotificationsRoutes from './routes/admin-notifications';
+import adminNotificationsNewRoutes from './routes/admin-notifications-new';
 import analyticsRoutes from './routes/analytics';
 import googleCalendarRoutes from './routes/google-calendar';
 import debugRoutes from './routes/debug';
@@ -291,6 +292,7 @@ app.use('/api/admin/documents', enhancedAuthMiddleware, requireUserType('admin')
 
 // Routes de notifications admin - PROTÉGÉES
 app.use('/api/notifications', enhancedAuthMiddleware, adminNotificationsRoutes);
+app.use('/api/notifications', enhancedAuthMiddleware, adminNotificationsNewRoutes);
 
 // Route temporaire pour créer un admin (SANS AUTHENTIFICATION)
 app.post('/api/admin-setup', async (req, res) => {

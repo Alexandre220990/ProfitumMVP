@@ -397,6 +397,36 @@ export default function ProductDocumentUpload({
         console.error('❌ Pas de token trouvé - impossible de mettre à jour le dossier');
       }
 
+      // ✅ NOTIFIER LES ADMINS : Documents pré-éligibilité uploadés
+      if (token) {
+        try {
+          const notifResponse = await fetch(`${config.API_URL}/api/notifications/admin/documents-eligibility`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              client_produit_id: clientProduitId,
+              product_type: productName,
+              documents: uploadedDocuments.map(doc => ({
+                id: doc.id,
+                type: doc.document_type,
+                filename: doc.original_filename
+              }))
+            })
+          });
+
+          if (notifResponse.ok) {
+            console.log('✅ Notification admin envoyée');
+          } else {
+            console.warn('⚠️ Échec envoi notification admin (non bloquant)');
+          }
+        } catch (notifError) {
+          console.warn('⚠️ Erreur notification admin (non bloquant):', notifError);
+        }
+      }
+
       toast.success("Documents envoyés avec succès ! Nos équipes vérifient votre éligibilité.", {
         description: "Vous recevrez une notification sous 24-48h",
         duration: 5000
