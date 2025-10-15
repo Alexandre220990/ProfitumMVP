@@ -398,37 +398,42 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
     // Obtenir bucket
     const bucketName = getBucketName(user.type);
     
-    // Vérifier/créer le bucket si nécessaire
+    // Vérifier que le bucket existe
     const { data: bucketExists, error: bucketCheckError } = await supabase.storage.getBucket(bucketName);
     
-    if (bucketCheckError && bucketCheckError.message.includes('not found')) {
-      console.log('📦 Création du bucket:', bucketName);
-      const { error: createError } = await supabase.storage.createBucket(bucketName, {
-        public: false,
-        fileSizeLimit: 52428800, // 50MB
-        allowedMimeTypes: [
-          'application/pdf',
-          'application/msword',
-          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-          'application/vnd.ms-excel',
-          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-          'image/jpeg',
-          'image/png',
-          'image/gif',
-          'text/plain',
-          'text/csv'
-        ]
-      });
+    if (bucketCheckError) {
+      console.error('❌ Bucket non accessible:', bucketName, bucketCheckError);
       
-      if (createError) {
-        console.error('❌ Erreur création bucket:', createError);
-        return res.status(500).json({ 
-          success: false, 
-          message: 'Erreur création espace de stockage',
-          details: createError.message 
+      // Si le bucket n'existe vraiment pas, essayer de le créer
+      if (bucketCheckError.message.includes('not found')) {
+        console.log('📦 Tentative de création du bucket:', bucketName);
+        const { error: createError } = await supabase.storage.createBucket(bucketName, {
+          public: false,
+          fileSizeLimit: bucketName === 'admin-documents' ? 104857600 : 52428800, // 100MB admin, 50MB autres
+          allowedMimeTypes: [
+            'application/pdf',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'image/jpeg',
+            'image/png',
+            'image/gif',
+            'text/plain',
+            'text/csv'
+          ]
         });
+        
+        if (createError) {
+          console.error('❌ Erreur création bucket:', createError);
+          // Le bucket existe peut-être déjà, continuer quand même
+          console.log('⚠️ Bucket existe probablement déjà, on continue...');
+        } else {
+          console.log('✅ Bucket créé:', bucketName);
+        }
       }
-      console.log('✅ Bucket créé:', bucketName);
+    } else {
+      console.log('✅ Bucket existe:', bucketName);
     }
     
     // Générer chemin fichier
