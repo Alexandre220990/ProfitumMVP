@@ -260,12 +260,41 @@ export default function ProductDocumentUpload({
   // VISUALISATION DE DOCUMENT
   // ============================================================================
 
-  const viewDocument = useCallback((document: DocumentFile) => {
-    if (document.file_url) {
-      setSelectedDocument(document);
-      setShowViewer(true);
-    } else {
-      toast.error("Impossible d'ouvrir le document - URL manquante");
+  const viewDocument = useCallback(async (document: DocumentFile) => {
+    try {
+      // Obtenir l'URL signée depuis le backend
+      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      
+      if (!token) {
+        toast.error("Non authentifié");
+        return;
+      }
+
+      console.log('📥 Récupération URL signée pour document:', document.id);
+      
+      const response = await fetch(`${config.API_URL}/api/documents/${document.id}/download`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Erreur lors de la récupération du document');
+      }
+
+      const result = await response.json();
+      
+      if (result.success && result.data.download_url) {
+        // Ouvrir l'URL signée dans un nouvel onglet
+        window.open(result.data.download_url, '_blank');
+        toast.success('Document ouvert');
+      } else {
+        throw new Error('URL de téléchargement non disponible');
+      }
+    } catch (error) {
+      console.error('❌ Erreur visualisation document:', error);
+      toast.error(error instanceof Error ? error.message : "Impossible d'ouvrir le document");
     }
   }, []);
 
