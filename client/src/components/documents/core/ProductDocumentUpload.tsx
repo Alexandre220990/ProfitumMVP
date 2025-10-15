@@ -25,12 +25,21 @@ export interface RequiredDocument {
   required: boolean;
 }
 
+export interface ClientProduit {
+  id: string;
+  statut: string;
+  current_step: number;
+  progress: number;
+  metadata?: any;
+}
+
 export interface ProductDocumentUploadProps {
   clientProduitId: string;
   productName: string; // Ex: "TICPE", "URSSAF", "Foncier"
   productCategory: string; // Ex: "eligibilite_ticpe", "eligibilite_urssaf"
   requiredDocuments: RequiredDocument[];
   infoMessage?: string; // Message d'information personnalisé
+  clientProduit?: ClientProduit | null; // État du dossier client
   onDocumentsUploaded?: (documents: DocumentFile[]) => void;
   onStepComplete?: () => void;
 }
@@ -60,6 +69,7 @@ export default function ProductDocumentUpload({
   productCategory,
   requiredDocuments,
   infoMessage,
+  clientProduit,
   onDocumentsUploaded,
   onStepComplete
 }: ProductDocumentUploadProps) {
@@ -68,6 +78,23 @@ export default function ProductDocumentUpload({
   const [uploadProgress, setUploadProgress] = useState<UploadProgress>({});
   const [isUploading, setIsUploading] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
+
+  // ============================================================================
+  // GESTION DE L'ÉTAT DE PRÉ-ÉLIGIBILITÉ
+  // ============================================================================
+  
+  const getEligibilityStatus = useCallback(() => {
+    if (!clientProduit) return 'pending';
+    
+    if (clientProduit.statut === 'eligibility_validated') return 'validated';
+    if (clientProduit.statut === 'eligibility_rejected') return 'rejected';
+    if (clientProduit.statut === 'documents_uploaded' || clientProduit.statut === 'eligible_confirmed') return 'waiting';
+    
+    return 'pending';
+  }, [clientProduit]);
+
+  const eligibilityStatus = getEligibilityStatus();
+  const canValidateDocuments = eligibilityStatus !== 'validated'; // Permettre de voir le bouton sauf si déjà validé
 
   // ============================================================================
   // LOGIQUE DE VALIDATION
@@ -306,6 +333,15 @@ export default function ProductDocumentUpload({
       return;
     }
 
+    // ⚠️ VÉRIFICATION PRÉ-ÉLIGIBILITÉ : Bloquer si en attente de validation
+    if (eligibilityStatus === 'waiting') {
+      toast.warning("Documents en cours de validation", {
+        description: "Nos équipes vérifient actuellement votre pré-éligibilité. Vous recevrez une notification sous 24-48h.",
+        duration: 5000
+      });
+      return;
+    }
+
     try {
       setIsValidating(true);
 
@@ -377,7 +413,7 @@ export default function ProductDocumentUpload({
     } finally {
       setIsValidating(false);
     }
-  }, [hasAllRequiredDocuments, uploadedDocuments, clientProduitId, productName, onDocumentsUploaded, onStepComplete]);
+  }, [hasAllRequiredDocuments, uploadedDocuments, clientProduitId, productName, eligibilityStatus, onDocumentsUploaded, onStepComplete]);
 
   // ============================================================================
   // CHARGEMENT DES DOCUMENTS EXISTANTS
@@ -446,8 +482,78 @@ export default function ProductDocumentUpload({
   // RENDU
   // ============================================================================
 
+  // ============================================================================
+  // BORDURES DE COULEUR SELON ÉTAT DE PRÉ-ÉLIGIBILITÉ
+  // ============================================================================
+  
+  const getContainerBorderClass = () => {
+    if (eligibilityStatus === 'validated') {
+      return 'border-2 border-green-500 bg-green-50/30';
+    }
+    if (eligibilityStatus === 'rejected') {
+      return 'border-2 border-red-500 bg-red-50/30';
+    }
+    if (eligibilityStatus === 'waiting') {
+      return 'border-2 border-slate-400 bg-slate-50/30';
+    }
+    return 'border border-gray-200';
+  };
+
   return (
-    <div className="space-y-4">
+    <div className={`space-y-4 p-4 rounded-xl ${getContainerBorderClass()}`}>
+      {/* Message d'état selon pré-éligibilité */}
+      {eligibilityStatus === 'waiting' && (
+        <div className="bg-slate-100 border-2 border-slate-400 rounded-lg p-4 mb-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 bg-slate-200 rounded-full flex items-center justify-center flex-shrink-0">
+              <AlertCircle className="w-5 h-5 text-slate-700 animate-pulse" />
+            </div>
+            <div>
+              <h4 className="font-bold text-slate-900 mb-1">⏳ En attente de validation</h4>
+              <p className="text-sm text-slate-700 leading-relaxed">
+                Vos documents sont actuellement en cours de vérification par nos équipes. 
+                Vous ne pouvez pas valider cette étape tant que la pré-éligibilité n'est pas confirmée.
+              </p>
+              <p className="text-xs text-slate-600 mt-2 font-medium">
+                📅 Délai habituel : 24-48h ouvrées
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {eligibilityStatus === 'rejected' && (
+        <div className="bg-red-100 border-2 border-red-500 rounded-lg p-4 mb-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 bg-red-200 rounded-full flex items-center justify-center flex-shrink-0">
+              <AlertCircle className="w-5 h-5 text-red-700" />
+            </div>
+            <div>
+              <h4 className="font-bold text-red-900 mb-1">❌ Pré-éligibilité non confirmée</h4>
+              <p className="text-sm text-red-700 leading-relaxed">
+                Votre dossier n'a pas été validé. Veuillez corriger ou compléter vos documents et soumettre à nouveau.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {eligibilityStatus === 'validated' && (
+        <div className="bg-green-100 border-2 border-green-500 rounded-lg p-4 mb-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 bg-green-200 rounded-full flex items-center justify-center flex-shrink-0">
+              <CheckCircle className="w-5 h-5 text-green-700" />
+            </div>
+            <div>
+              <h4 className="font-bold text-green-900 mb-1">✅ Pré-éligibilité validée</h4>
+              <p className="text-sm text-green-700 leading-relaxed">
+                Félicitations ! Votre pré-éligibilité a été confirmée. Vous pouvez passer à l'étape suivante.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Documents requis - Design compact */}
       <div className="space-y-3">
         {requiredDocuments.map((doc) => {
@@ -538,18 +644,28 @@ export default function ProductDocumentUpload({
       </div>
 
       {/* Bouton de validation */}
-      {hasAllRequiredDocuments() && (
+      {hasAllRequiredDocuments() && canValidateDocuments && (
         <div className="flex justify-center pt-2">
           <Button
             onClick={handleValidateStep}
-            disabled={isValidating}
+            disabled={isValidating || eligibilityStatus === 'waiting'}
             size="sm"
-            className="bg-green-600 hover:bg-green-700"
+            className={`${
+              eligibilityStatus === 'waiting' 
+                ? 'bg-slate-400 hover:bg-slate-400 cursor-not-allowed' 
+                : 'bg-green-600 hover:bg-green-700'
+            }`}
+            title={eligibilityStatus === 'waiting' ? 'En attente de validation par nos équipes' : ''}
           >
             {isValidating ? (
               <>
                 <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2" />
                 Validation...
+              </>
+            ) : eligibilityStatus === 'waiting' ? (
+              <>
+                <AlertCircle className="w-3 h-3 mr-2" />
+                En attente de validation
               </>
             ) : (
               <>

@@ -79,8 +79,6 @@ export default function TICPEWorkflow({
   const [selectedExpert, setSelectedExpert] = useState<Expert | null>(null);
   const [showExpertModal, setShowExpertModal] = useState(false);
   const [clientProduit, setClientProduit] = useState<ClientProduit | null>(null);
-  const [loadingProduit, setLoadingProduit] = useState(true);
-
   const [eligibilityValidated, setEligibilityValidated] = useState(false);
 
   // Hook pour les étapes du dossier
@@ -147,22 +145,20 @@ export default function TICPEWorkflow({
   useEffect(() => {
     const loadClientProduit = async () => {
       try {
-        setLoadingProduit(true);
         const response = await get(`/api/client/produits-eligibles/${clientProduitId}`);
         
-        if (response.success) {
-          setClientProduit(response.data);
+        if (response.success && response.data) {
+          const produitData = response.data as ClientProduit;
+          setClientProduit(produitData);
           
           // Mettre à jour eligibilityValidated basé sur le statut
-          if (response.data.statut === 'eligibility_validated') {
+          if (produitData.statut === 'eligibility_validated') {
             setEligibilityValidated(true);
             setCurrentStep(2); // Déverrouiller étape 2
           }
         }
       } catch (error) {
         console.error('❌ Erreur chargement ClientProduit:', error);
-      } finally {
-        setLoadingProduit(false);
       }
     };
 
@@ -498,12 +494,13 @@ export default function TICPEWorkflow({
                   {clientProduit?.statut !== 'eligibility_validated' && (
                     <TICPEUploadInline
                       clientProduitId={clientProduitId}
+                      clientProduit={clientProduit}
                       onDocumentsUploaded={handleDocumentsComplete}
                       onStepComplete={async () => {
                         // Recharger le clientProduit pour afficher le nouveau statut
                         const response = await get(`/api/client/produits-eligibles/${clientProduitId}`);
-                        if (response.success) {
-                          setClientProduit(response.data);
+                        if (response.success && response.data) {
+                          setClientProduit(response.data as ClientProduit);
                         }
                       }}
                     />

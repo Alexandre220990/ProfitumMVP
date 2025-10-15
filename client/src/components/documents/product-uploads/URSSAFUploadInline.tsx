@@ -3,17 +3,19 @@
  * Utilise le composant générique ProductDocumentUpload
  */
 
-import ProductDocumentUpload, { DocumentFile } from '../core/ProductDocumentUpload';
+import ProductDocumentUpload, { DocumentFile, ClientProduit } from '../core/ProductDocumentUpload';
 import { URSSAF_DOCUMENTS, URSSAF_INFO_MESSAGE } from '@/config/product-documents';
 
 interface URSSAFUploadInlineProps {
   clientProduitId: string;
+  clientProduit?: ClientProduit | null;
   onDocumentsUploaded: (documents: DocumentFile[]) => void;
   onStepComplete: () => void;
 }
 
 export default function URSSAFUploadInline({
   clientProduitId,
+  clientProduit,
   onDocumentsUploaded,
   onStepComplete
 }: URSSAFUploadInlineProps) {
@@ -24,6 +26,7 @@ export default function URSSAFUploadInline({
       productCategory="eligibilite_urssaf"
       requiredDocuments={URSSAF_DOCUMENTS}
       infoMessage={URSSAF_INFO_MESSAGE}
+      clientProduit={clientProduit}
       onDocumentsUploaded={onDocumentsUploaded}
       onStepComplete={onStepComplete}
     />
