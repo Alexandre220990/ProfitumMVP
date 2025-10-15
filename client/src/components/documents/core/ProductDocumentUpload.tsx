@@ -391,9 +391,10 @@ export default function ProductDocumentUpload({
           return;
         }
 
-        console.log('📥 Chargement documents existants pour:', clientProduitId);
+        console.log('📥 Chargement documents existants pour dossier:', clientProduitId);
 
-        const response = await fetch(`${config.API_URL}/api/documents?produit_id=${clientProduitId}`, {
+        // Charger tous les documents du client
+        const response = await fetch(`${config.API_URL}/api/documents`, {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
@@ -402,8 +403,15 @@ export default function ProductDocumentUpload({
         if (response.ok) {
           const result = await response.json();
           if (result.success && result.data) {
+            // Filtrer les documents pour ce dossier spécifique (via metadata.client_produit_id)
+            const dossierDocs = result.data.filter((doc: any) => 
+              doc.metadata?.client_produit_id === clientProduitId
+            );
+
+            console.log('📄 Documents trouvés:', result.data.length, 'total,', dossierDocs.length, 'pour ce dossier');
+
             // Mapper les données au format attendu
-            const mappedDocs = result.data.map((doc: any) => ({
+            const mappedDocs = dossierDocs.map((doc: any) => ({
               id: doc.id,
               original_filename: doc.filename,
               file_size: doc.file_size,
@@ -414,8 +422,13 @@ export default function ProductDocumentUpload({
               file_url: doc.public_url || doc.metadata?.public_url
             }));
             setUploadedDocuments(mappedDocs);
-            console.log('✅ Documents chargés:', mappedDocs.length);
+            console.log('✅ Documents du dossier chargés:', mappedDocs.length);
+          } else {
+            console.log('⚠️ Aucun document trouvé');
           }
+        } else {
+          const errorData = await response.json().catch(() => ({}));
+          console.error('❌ Erreur chargement documents:', response.status, errorData);
         }
       } catch (error) {
         console.error('❌ Erreur chargement documents existants:', error);
