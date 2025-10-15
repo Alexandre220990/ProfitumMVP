@@ -341,11 +341,34 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
       metadata
     } = req.body;
     
-    // Support des deux formats : dossier_id ou produit_id
-    const finalProduitId = dossier_id || produit_id;
-    
     console.log('📤 Upload document - User:', user.email, 'Type:', user.type);
     console.log('📦 Body reçu:', { client_id, produit_id, dossier_id, document_type, category });
+    
+    // Résoudre le vrai produit_id
+    let finalProduitId = produit_id;
+    
+    // Si dossier_id est fourni, c'est un ClientProduitEligible.id
+    // Il faut récupérer le vrai produit_id depuis ClientProduitEligible
+    if (dossier_id) {
+      console.log('🔍 Résolution produit_id depuis ClientProduitEligible:', dossier_id);
+      const { data: clientProduit, error: cpError } = await supabase
+        .from('ClientProduitEligible')
+        .select('produit_id')
+        .eq('id', dossier_id)
+        .single();
+      
+      if (cpError || !clientProduit) {
+        console.error('❌ ClientProduitEligible non trouvé:', dossier_id, cpError);
+        return res.status(404).json({ 
+          success: false, 
+          message: 'Dossier non trouvé',
+          details: cpError?.message 
+        });
+      }
+      
+      finalProduitId = clientProduit.produit_id;
+      console.log('✅ Produit_id résolu:', finalProduitId);
+    }
     
     // Vérifier permissions
     if (user.type === 'client' && client_id && client_id !== user.database_id) {
@@ -388,6 +411,11 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
     docMetadata.category = category;
     docMetadata.description = description;
     docMetadata.user_type = user_type;
+    
+    // Si dossier_id est fourni, l'ajouter aux métadonnées pour garder la référence
+    if (dossier_id) {
+      docMetadata.client_produit_id = dossier_id;
+    }
     
     const { data: doc, error: dbError } = await supabase
       .from('ClientProcessDocument')
