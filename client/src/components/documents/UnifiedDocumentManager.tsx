@@ -146,9 +146,10 @@ export function UnifiedDocumentManager({ userType, className }: UnifiedDocumentM
           doc.ProduitEligible?.nom === selectedFolder
         );
       } else if (userType === 'expert' || userType === 'apporteur') {
-        filtered = filtered.filter(doc => 
-          (doc.Client?.company_name || doc.Client?.name) === selectedFolder
-        );
+        filtered = filtered.filter(doc => {
+          const clientName = doc.Client?.company_name || `${doc.Client?.first_name || ''} ${doc.Client?.last_name || ''}`.trim() || doc.Client?.email;
+          return clientName === selectedFolder;
+        });
       } else {
         filtered = filtered.filter(doc => doc.document_type === selectedFolder);
       }

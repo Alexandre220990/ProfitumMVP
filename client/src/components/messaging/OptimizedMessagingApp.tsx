@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getUserDisplayName } from '../../../../shared/utils/user-display';
 import { 
   MessageSquare, 
   Send, 
@@ -144,7 +145,7 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
     // Vérifier si l'utilisateur est désactivé
     if (participantStatus && !participantStatus.is_active) {
       toast.error(
-        `${participantStatus.name} s'est désinscrit. Le message ne sera pas délivré.`
+        `${getUserDisplayName(participantStatus)} s'est désinscrit. Le message ne sera pas délivré.`
       );
       return;
     }
@@ -465,7 +466,7 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
                 <div className="flex items-center gap-2 text-red-800 text-sm">
                   <AlertTriangle className="w-4 h-4" />
                   <p>
-                    <strong>{participantStatus.name}</strong> s'est désinscrit de la plateforme. 
+                    <strong>{getUserDisplayName(participantStatus)}</strong> s'est désinscrit de la plateforme. 
                     Vos messages ne seront pas délivrés.
                   </p>
                 </div>

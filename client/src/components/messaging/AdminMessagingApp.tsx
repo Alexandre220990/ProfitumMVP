@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getUserDisplayName } from '../../../../shared/utils/user-display';
 import { 
   MessageSquare, 
   Send, 
@@ -133,7 +134,7 @@ export const AdminMessagingApp: React.FC<AdminMessagingAppProps> = ({
     const testMessages: Message[] = [
       {
         id: '1',
-        content: `Bonjour ${conversation.participant?.name}, comment puis-je vous aider ?`,
+        content: `Bonjour ${conversation.participant ? getUserDisplayName(conversation.participant) : 'Utilisateur'}, comment puis-je vous aider ?`,
         sender_id: user?.id || 'admin',
         sender_name: 'Admin',
         created_at: new Date(Date.now() - 1000 * 60 * 10).toISOString(),
@@ -143,7 +144,7 @@ export const AdminMessagingApp: React.FC<AdminMessagingAppProps> = ({
         id: '2',
         content: conversation.last_message || 'Bonjour, j\'ai une question.',
         sender_id: conversation.participant?.id || 'user',
-        sender_name: conversation.participant?.name || 'Utilisateur',
+        sender_name: conversation.participant ? getUserDisplayName(conversation.participant) : 'Utilisateur',
         created_at: new Date().toISOString(),
         is_read: false
       }
@@ -177,10 +178,11 @@ export const AdminMessagingApp: React.FC<AdminMessagingAppProps> = ({
   // ========================================
 
   const renderConversations = useCallback(() => {
-    const filteredConversations = conversations.filter(conv => 
-      conv.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      conv.participant?.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const filteredConversations = conversations.filter(conv => {
+      const participantName = conv.participant ? getUserDisplayName(conv.participant) : '';
+      return conv.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+             participantName.toLowerCase().includes(searchQuery.toLowerCase());
+    });
 
     return (
       <>

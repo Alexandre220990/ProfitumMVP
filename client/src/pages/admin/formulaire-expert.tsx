@@ -18,7 +18,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 // Configuration Supabase - Utilise l'instance importée depuis @/lib/supabase
 
 interface ExpertForm {
-  name: string;
+  first_name: string;
+  last_name: string;
   email: string;
   company_name: string;
   specializations: string[];
@@ -103,7 +104,8 @@ const FormulaireExpert = () => {
 
   // États du formulaire
   const [form, setForm] = useState<ExpertForm>({
-    name: '',
+    first_name: '',
+    last_name: '',
     email: '',
     company_name: '',
     specializations: [],
@@ -183,8 +185,21 @@ const FormulaireExpert = () => {
       const expertData = data.data.expert;
       
       // Mapping correct des données de la base vers le formulaire
+      // Gestion migration name → first_name/last_name
+      let firstName = expertData.first_name || '';
+      let lastName = expertData.last_name || '';
+      
+      // Si pas de first_name/last_name mais un name legacy, le splitter
+      if (!firstName && !lastName && expertData.name) {
+        const nameParts = expertData.name.trim().split(' ');
+        firstName = nameParts[0] || '';
+        lastName = nameParts.slice(1).join(' ') || '';
+      }
+      
       setForm({
         ...expertData,
+        first_name: firstName,
+        last_name: lastName,
         city: expertData.location || '', // Mapping location -> city
         phone: expertData.phone || '',
         website: expertData.website || '',
@@ -206,7 +221,8 @@ const FormulaireExpert = () => {
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
 
-    if (!form.name.trim()) errors.name = 'Le nom est requis';
+    if (!form.first_name.trim()) errors.first_name = 'Le prénom est requis';
+    if (!form.last_name.trim()) errors.last_name = 'Le nom est requis';
     if (!form.email.trim()) errors.email = 'L\'email est requis';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errors.email = 'Format d\'email invalide';
     
@@ -433,22 +449,42 @@ const FormulaireExpert = () => {
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="name" className="flex items-center">
-                        Nom complet *
-                        {validationErrors.name && <span className="text-red-500 ml-1">*</span>}
-                      </Label>
-                      <Input
-                        id="name"
-                        value={form.name}
-                        onChange={(e) => handleInputChange('name', e.target.value)}
-                        required
-                        placeholder="Prénom Nom"
-                        className={validationErrors.name ? 'border-red-500' : ''}
-                      />
-                      {validationErrors.name && (
-                        <p className="text-red-500 text-sm">{validationErrors.name}</p>
-                      )}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="first_name" className="flex items-center">
+                          Prénom *
+                          {validationErrors.first_name && <span className="text-red-500 ml-1">*</span>}
+                        </Label>
+                        <Input
+                          id="first_name"
+                          value={form.first_name}
+                          onChange={(e) => handleInputChange('first_name', e.target.value)}
+                          required
+                          placeholder="Prénom"
+                          className={validationErrors.first_name ? 'border-red-500' : ''}
+                        />
+                        {validationErrors.first_name && (
+                          <p className="text-red-500 text-sm">{validationErrors.first_name}</p>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="last_name" className="flex items-center">
+                          Nom *
+                          {validationErrors.last_name && <span className="text-red-500 ml-1">*</span>}
+                        </Label>
+                        <Input
+                          id="last_name"
+                          value={form.last_name}
+                          onChange={(e) => handleInputChange('last_name', e.target.value)}
+                          required
+                          placeholder="Nom de famille"
+                          className={validationErrors.last_name ? 'border-red-500' : ''}
+                        />
+                        {validationErrors.last_name && (
+                          <p className="text-red-500 text-sm">{validationErrors.last_name}</p>
+                        )}
+                      </div>
                     </div>
 
                     <div className="space-y-2">

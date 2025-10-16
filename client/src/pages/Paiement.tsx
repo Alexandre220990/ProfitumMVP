@@ -327,19 +327,35 @@ const Paiement = () => {
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="name">Nom complet</Label>
+                      <Label htmlFor="first_name">Prénom</Label>
                       <div className="relative">
                         <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                         <Input 
-                          id="name" 
-                          name="name"
-                          placeholder="Votre nom" 
+                          id="first_name" 
+                          name="first_name"
+                          placeholder="Votre prénom" 
                           className="pl-10"
-                          value={ formData.name }
+                          value={ formData.first_name }
                           onChange={ handleInputChange }
                         />
                       </div>
-                      { errors.name && <p className="text-sm text-red-500">{errors.name }</p>}
+                      { errors.first_name && <p className="text-sm text-red-500">{errors.first_name }</p>}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="last_name">Nom</Label>
+                      <div className="relative">
+                        <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <Input 
+                          id="last_name" 
+                          name="last_name"
+                          placeholder="Votre nom de famille" 
+                          className="pl-10"
+                          value={ formData.last_name }
+                          onChange={ handleInputChange }
+                        />
+                      </div>
+                      { errors.last_name && <p className="text-sm text-red-500">{errors.last_name }</p>}
                     </div>
                     
                     <div className="space-y-2">

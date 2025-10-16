@@ -1,5 +1,6 @@
 import React from 'react';
 import { Conversation } from '../../types/messaging';
+import { getUserDisplayName, getUserInitials } from '../../../../shared/utils/user-display';
 
 interface ConversationDetailsProps {
   conversation: Conversation;
@@ -233,12 +234,12 @@ export const ConversationDetails: React.FC<ConversationDetailsProps> = ({
                 conversation.otherParticipant.type === 'expert' ? 'bg-blue-500' :
                 'bg-green-500'
               }`}>
-                {conversation.otherParticipant.name.charAt(0).toUpperCase()}
+                {getUserInitials(conversation.otherParticipant)}
               </div>
               
               <div>
                 <p className="text-sm font-medium text-gray-900">
-                  {conversation.otherParticipant.name}
+                  {getUserDisplayName(conversation.otherParticipant)}
                 </p>
                 <p className="text-xs text-gray-500 capitalize">
                   {conversation.otherParticipant.type}

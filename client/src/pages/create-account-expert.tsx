@@ -14,7 +14,8 @@ import { RegisterCredentials, UserType, AuthData } from "@/types/api";
 
 // Schéma de validation du formulaire
 const formSchema = z.object({
-  name: z.string().min(2, "Le nom est requis"),
+  first_name: z.string().min(2, "Le prénom est requis"),
+  last_name: z.string().min(2, "Le nom est requis"),
   email: z.string().email("Email invalide"),
   password: z.string().min(8, "Le mot de passe doit contenir au moins 8 caractères"),
   confirmPassword: z.string(),
@@ -39,7 +40,8 @@ type FormData = z.infer<typeof formSchema>;
 
 // Configuration des champs du formulaire
 const formFields = [
-  { name: "name", label: "Nom complet", icon: UserCircle, type: "text" },
+  { name: "first_name", label: "Prénom", icon: UserCircle, type: "text" },
+  { name: "last_name", label: "Nom", icon: UserCircle, type: "text" },
   { name: "email", label: "Email", icon: Mail, type: "email" },
   { name: "password", label: "Mot de passe", icon: Lock, type: "password" },
   { name: "confirmPassword", label: "Confirmer le mot de passe", icon: Lock, type: "password" },

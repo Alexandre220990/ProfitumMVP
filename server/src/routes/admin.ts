@@ -224,7 +224,9 @@ router.get('/dashboard', asyncHandler(async (req, res) => {
       .from('Expert')
       .select(`
         id,
-        name,
+        first_name,
+        last_name,
+        company_name,
         rating,
         compensation,
         specializations
@@ -344,7 +346,7 @@ router.get('/dashboard', asyncHandler(async (req, res) => {
       // Performance par expert
       expertStats: expertStats?.map(expert => ({
         id: expert.id,
-        name: expert.name,
+        name: `${expert.first_name || ''} ${expert.last_name || ''}`.trim() || expert.company_name,
         rating: expert.rating,
         compensation: expert.compensation,
         specializations: expert.specializations
@@ -598,10 +600,10 @@ router.get('/experts/:id', asyncHandler(async (req, res) => {
     if (expert.approved_by) {
       const { data: adminData } = await supabaseClient
         .from('Admin')
-        .select('name')
+        .select('first_name, last_name, company_name')
         .eq('id', expert.approved_by)
         .single();
-      approved_by_name = adminData?.name || null;
+      approved_by_name = `${adminData?.first_name || ''} ${adminData?.last_name || ''}`.trim() || adminData?.company_name || null;
     }
 
     // Récupérer les statistiques de l'expert (utiliser ClientProduitEligible au lieu d'Audit)
@@ -853,7 +855,7 @@ router.post('/experts', asyncHandler(async (req, res) => {
     const expertData = req.body;
 
     // Validation des données requises
-    if (!expertData.name || !expertData.email || !expertData.company_name) {
+    if ((!expertData.first_name && !expertData.last_name) || !expertData.email || !expertData.company_name) {
       return res.status(400).json({
         success: false,
         message: 'Nom, email et nom de l\'entreprise sont requis'
@@ -881,7 +883,7 @@ router.post('/experts', asyncHandler(async (req, res) => {
       email_confirm: true,
       user_metadata: {
         type: 'expert',
-        name: expertData.name
+        name: `${expertData.first_name || ''} ${expertData.last_name || ''}`.trim() || expertData.company_name
       }
     });
 
@@ -894,9 +896,18 @@ router.post('/experts', asyncHandler(async (req, res) => {
     }
 
     // Préparer les données expert avec tous les champs
+    // Migration automatique name → first_name/last_name
+    let firstName = expertData.first_name;
+    let lastName = expertData.last_name;
+    
+    // Utiliser directement first_name et last_name
+    firstName = expertData.first_name || '';
+    lastName = expertData.last_name || '';
+    
     const expertInsertData = {
       id: authData.user.id, // Utiliser l'ID Supabase Auth
-      name: expertData.name,
+      first_name: firstName || expertData.company_name || '',
+      last_name: lastName || '',
       email: expertData.email,
       company_name: expertData.company_name,
       specializations: expertData.specializations || [],
@@ -2521,7 +2532,7 @@ router.get('/analytics/detailed', asyncHandler(async (req, res) => {
         return acc;
       }, {} as Record<string, any>) || {},
       expertPerformance: expertPerformance?.reduce((acc, item) => {
-        const expertName = (item.Expert as any)?.name || 'Inconnu';
+        const expertName = `${(item.Expert as any)?.first_name || ''} ${(item.Expert as any)?.last_name || ''}`.trim() || (item.Expert as any)?.company_name || 'Inconnu';
         if (!acc[expertName]) {
           acc[expertName] = { 
             assignments: 0, 
@@ -2862,7 +2873,7 @@ router.get('/diagnostic-no-auth', asyncHandler(async (req, res) => {
     // Vérifier si l'utilisateur existe dans la table Admin
     const { data: adminUser, error: adminError } = await supabaseClient
       .from('Admin')
-      .select('id, email, name, created_at')
+      .select('id, email, first_name, last_name, company_name, created_at')
       .eq('email', user.email)
       .single();
     
@@ -2885,7 +2896,7 @@ router.get('/diagnostic-no-auth', asyncHandler(async (req, res) => {
         id: user.id,
         email: user.email,
         adminId: adminUser.id,
-        adminName: adminUser.name
+        adminName: `${adminUser.first_name || ''} ${adminUser.last_name || ''}`.trim() || adminUser.company_name
       },
       isAdmin: true
     });
@@ -3657,7 +3668,7 @@ router.post('/dossiers/:id/propose-expert', asyncHandler(async (req, res): Promi
     // Vérifier que l'expert existe et est actif
     const { data: expert, error: expertError } = await supabaseClient
       .from('Expert')
-      .select('id, name, email, status, approval_status')
+      .select('id, first_name, last_name, company_name, email, status, approval_status')
       .eq('id', expert_id)
       .single();
 
@@ -3697,13 +3708,13 @@ router.post('/dossiers/:id/propose-expert', asyncHandler(async (req, res): Promi
         user_type: 'client',
         notification_type: 'expert_proposed',
         title: '🎯 Expert proposé pour votre dossier',
-        message: `L'administrateur vous propose ${expert.name} comme expert pour votre dossier. Vous pouvez accepter ou demander un autre expert.`,
+        message: `L'administrateur vous propose ${`${expert.first_name || ''} ${expert.last_name || ''}`.trim() || expert.company_name} comme expert pour votre dossier. Vous pouvez accepter ou demander un autre expert.`,
         priority: 'high',
         action_url: `/client/dossiers/${id}/expert-selection`,
         action_data: {
           dossier_id: id,
           expert_id: expert_id,
-          expert_name: expert.name,
+          expert_name: `${expert.first_name || ''} ${expert.last_name || ''}`.trim() || expert.company_name,
           admin_message: message || 'Expert proposé par l\'administrateur'
         }
       });
@@ -3740,7 +3751,7 @@ router.post('/dossiers/:id/propose-expert', asyncHandler(async (req, res): Promi
       data: {
         dossier_id: id,
         expert_id: expert_id,
-        expert_name: expert.name,
+        expert_name: `${expert.first_name || ''} ${expert.last_name || ''}`.trim() || expert.company_name,
         client_name: dossier.Client?.company_name
       }
     });

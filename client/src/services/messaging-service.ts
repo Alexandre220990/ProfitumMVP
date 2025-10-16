@@ -2,6 +2,7 @@
 // @ts-nocheck - Suppression temporaire des erreurs TypeScript Supabase
 import { supabase } from '@/lib/supabase';
 import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
+import { getUserDisplayName } from '../../../shared/utils/user-display';
 import { 
   Message, 
   Conversation, 
@@ -325,8 +326,8 @@ class MessagingService {
         }
         
         // Puis par ordre alphabétique du nom du participant
-        const nameA = a.otherParticipant?.name || '';
-        const nameB = b.otherParticipant?.name || '';
+        const nameA = a.otherParticipant ? getUserDisplayName(a.otherParticipant) : '';
+        const nameB = b.otherParticipant ? getUserDisplayName(b.otherParticipant) : '';
         return nameA.localeCompare(nameB, 'fr', { sensitivity: 'base' });
       });
     };
@@ -480,7 +481,7 @@ class MessagingService {
       .insert({
         type: 'expert_client',
         participant_ids: [assignment.client_id, assignment.expert_id],
-        title: `Dossier ${assignment.dossier_id} - ${assignment.Expert.name}`,
+        title: `Dossier ${assignment.dossier_id} - ${getUserDisplayName(assignment.Expert)}`,
         description: `Conversation automatique pour le dossier ${assignment.ClientProduitEligible.product_name}`,
         dossier_id: assignment.dossier_id,
         auto_created: true
@@ -493,7 +494,7 @@ class MessagingService {
     // Envoyer un message de bienvenue automatique
     await this.sendMessage({
       conversation_id: data.id,
-      content: `Bonjour ! Je suis ${assignment.Expert.name}, votre expert pour ce dossier. Je suis là pour vous accompagner tout au long du processus. N'hésitez pas à me contacter pour toute question !`,
+      content: `Bonjour ! Je suis ${getUserDisplayName(assignment.Expert)}, votre expert pour ce dossier. Je suis là pour vous accompagner tout au long du processus. N'hésitez pas à me contacter pour toute question !`,
       message_type: 'text'
     });
 

@@ -37,7 +37,8 @@ const supabaseService = createClient(
 router.post('/register', async (req, res) => {
   try {
     const {
-      name,
+      first_name,
+      last_name,
       email,
       password,
       company,
@@ -52,10 +53,10 @@ router.post('/register', async (req, res) => {
       abonnement
     } = req.body;
 
-    console.log('📝 Inscription expert:', { name, email, company, siren });
+    console.log('📝 Inscription expert:', { first_name, last_name, email, company, siren });
 
     // Validation des données
-    if (!name || !email || !password || !company || !siren) {
+    if ((!first_name && !last_name) || !email || !password || !company || !siren) {
       return res.status(400).json({
         success: false,
         error: "Tous les champs obligatoires doivent être remplis"
@@ -68,7 +69,9 @@ router.post('/register', async (req, res) => {
       password,
       email_confirm: true,
       user_metadata: {
-        name,
+        first_name,
+        last_name,
+        name: `${first_name || ''} ${last_name || ''}`.trim() || company,
         company,
         siren,
         specializations,
@@ -92,7 +95,8 @@ router.post('/register', async (req, res) => {
       id: authData.user.id, // Utiliser l'ID Supabase Auth
       email,
       password: '', // Ne pas stocker le mot de passe en clair
-      name,
+      first_name: first_name || '',
+      last_name: last_name || '',
       company_name: company,
       siren,
       specializations: specializations || [],
@@ -141,7 +145,7 @@ router.post('/register', async (req, res) => {
       data: {
         expert_id: expert.id,
         email: expert.email,
-        name: expert.name
+        name: `${expert.first_name || ''} ${expert.last_name || ''}`.trim() || expert.company_name
       }
     });
 
@@ -161,7 +165,8 @@ router.get('/', async (req, res) => {
       .from('Expert')
       .select(`
         id,
-        name,
+        first_name,
+        last_name,
         email,
         company_name,
         siren,
@@ -185,7 +190,7 @@ router.get('/', async (req, res) => {
     // Conversion sûre des données en PublicExpert[]
     const experts: PublicExpert[] = expertsData.map(expert => ({
       id: expert.id,
-      name: expert.name,
+      name: `${expert.first_name || ''} ${expert.last_name || ''}`.trim() || expert.company_name,
       email: expert.email,
       company_name: expert.company_name,
       siren: expert.siren,
@@ -239,7 +244,8 @@ router.get('/:id', async (req, res) => {
       .from('Expert')
       .select(`
         id,
-        name,
+        first_name,
+        last_name,
         email,
         company_name,
         siren,
@@ -270,7 +276,7 @@ router.get('/:id', async (req, res) => {
     // Conversion sûre des données en PublicExpert
     const expert: PublicExpert = {
       id: expertData.id,
-      name: expertData.name,
+      name: `${expertData.first_name || ''} ${expertData.last_name || ''}`.trim() || expertData.company_name,
       email: expertData.email,
       company_name: expertData.company_name,
       siren: expertData.siren,
@@ -405,7 +411,7 @@ router.post('/client/produits-eligibles/:id/assign-expert', enhancedAuthMiddlewa
     // Vérifier que l'expert existe et est actif
     const { data: expertData, error: expertError } = await supabase
       .from('Expert')
-      .select('id, name, specializations')
+      .select('id, first_name, last_name, company_name, specializations')
       .eq('id', expert_id)
       .eq('status', 'active')
       .single();
@@ -440,7 +446,7 @@ router.post('/client/produits-eligibles/:id/assign-expert', enhancedAuthMiddlewa
         sender_id: user.database_id,
         receiver_id: expert_id,
         subject: `Nouvelle attribution - ${produitData.ProduitEligible?.nom || 'Produit'}`,
-        content: `Bonjour ${expertData.name},\n\nVous avez été sélectionné pour accompagner ce client sur le produit "${produitData.ProduitEligible?.nom || 'Produit'}".\n\nMerci de prendre contact avec le client pour commencer l'accompagnement.\n\nCordialement,\nL'équipe Profitum`,
+        content: `Bonjour ${`${expertData.first_name || ''} ${expertData.last_name || ''}`.trim() || expertData.company_name},\n\nVous avez été sélectionné pour accompagner ce client sur le produit "${produitData.ProduitEligible?.nom || 'Produit'}".\n\nMerci de prendre contact avec le client pour commencer l'accompagnement.\n\nCordialement,\nL'équipe Profitum`,
         message_type: 'expert_assignment',
         created_at: new Date().toISOString()
       });

@@ -42,7 +42,8 @@ import PublicHeader from '@/components/PublicHeader';
 // ============================================================================
 
 const formSchema = z.object({
-  name: z.string().min(2, 'Le nom doit contenir au moins 2 caractères'),
+  first_name: z.string().min(2, 'Le prénom doit contenir au moins 2 caractères'),
+  last_name: z.string().min(2, 'Le nom doit contenir au moins 2 caractères'),
   email: z.string().email('Format d\'email invalide'),
   company_name: z.string().min(2, 'Le nom de l\'entreprise est requis'),
   siren: z.string()
@@ -488,16 +489,37 @@ const WelcomeExpert = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <FormField
                         control={form.control}
-                        name="name"
+                        name="first_name"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-white">Nom complet *</FormLabel>
+                            <FormLabel className="text-white">Prénom *</FormLabel>
                             <FormControl>
                               <div className="relative">
                                 <UserCircle className="absolute left-3 top-3 text-gray-400 w-5 h-5" />
                                 <Input 
                                   {...field} 
-                                  placeholder="Prénom Nom"
+                                  placeholder="Prénom"
+                                  className="pl-10 bg-white/10 border-white/20 text-white placeholder-gray-400"
+                                />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="last_name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-white">Nom *</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <UserCircle className="absolute left-3 top-3 text-gray-400 w-5 h-5" />
+                                <Input 
+                                  {...field} 
+                                  placeholder="Nom de famille"
                                   className="pl-10 bg-white/10 border-white/20 text-white placeholder-gray-400"
                                 />
                               </div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Conversation } from '../../types/messaging';
 import { messagingService } from '../../services/messaging-service';
+import { getUserDisplayName } from '../../../../shared/utils/user-display';
 
 interface ConversationListProps {
   onConversationSelect: (conversation: Conversation) => void;
@@ -163,7 +164,7 @@ export const ConversationList: React.FC<ConversationListProps> = ({
                 
                 {conversation.otherParticipant && (
                   <p className="text-sm text-gray-600 truncate">
-                    {conversation.otherParticipant.name}
+                    {getUserDisplayName(conversation.otherParticipant)}
                   </p>
                 )}
                 

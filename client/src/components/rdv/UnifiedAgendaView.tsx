@@ -254,7 +254,7 @@ export const UnifiedAgendaView = () => {
                   {rdv.Client && (
                     <div className="flex items-center gap-1">
                       <Users className="w-4 h-4" />
-                      {rdv.Client.company_name || rdv.Client.name}
+                      {rdv.Client.company_name || `${rdv.Client.first_name || ''} ${rdv.Client.last_name || ''}`.trim() || rdv.Client.email}
                     </div>
                   )}
                 </div>

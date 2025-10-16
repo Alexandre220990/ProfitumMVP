@@ -142,10 +142,10 @@ function getLoginUrl(type: string): string {
  * Extrait le nom d'affichage d'un profil
  */
 function getTypeName(data: any): string {
-  if (data.name) return data.name;
   if (data.first_name && data.last_name) {
     return `${data.first_name} ${data.last_name}`;
   }
+  if (data.company_name) return data.company_name;
   return data.email || 'Utilisateur';
 }
 
@@ -1204,7 +1204,7 @@ const verifyToken = async (req: Request, res: express.Response) => {
         user: {
           id: userDetails.id,
           email: userEmail,
-          username: userDetails.name,
+          username: `${userDetails.first_name || ''} ${userDetails.last_name || ''}`.trim() || userDetails.company_name,
           type: userType,
           company_name: userDetails.company || userDetails.company_name,
           phone_number: userDetails.phone || userDetails.phone_number,
@@ -1457,7 +1457,8 @@ router.post('/google/callback', async (req, res) => {
         .from('users')
         .insert({
           email: userInfo.email,
-          name: userInfo.name,
+          first_name: userInfo.given_name || '',
+          last_name: userInfo.family_name || '',
           google_access_token: tokens.access_token,
           google_refresh_token: tokens.refresh_token,
           google_token_expiry: tokens.expiry_date,
@@ -1507,7 +1508,7 @@ router.post('/google/callback', async (req, res) => {
         user: {
           id: userId,
           email: userInfo.email,
-          name: userInfo.name
+          name: `${userInfo.given_name || ''} ${userInfo.family_name || ''}`.trim() || userInfo.name
         }
       },
       message: 'Authentification Google réussie'
