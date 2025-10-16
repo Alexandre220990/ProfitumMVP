@@ -40,6 +40,11 @@ interface ClientProduitEligible {
   tauxFinal?: number;
   documents_sent?: string[];
   expert_id?: string;
+  apporteur_id?: string;
+  eligibility_validated_at?: string;
+  pre_eligibility_validated_at?: string;
+  expert_report_status?: string;
+  validation_admin_notes?: string;
   created_at: string;
   updated_at: string;
   Client?: {
@@ -47,13 +52,36 @@ interface ClientProduitEligible {
     company_name: string;
     email: string;
     statut: string;
+    phone?: string;
+    first_name?: string;
+    last_name?: string;
   };
   ProduitEligible?: {
     id: string;
     nom: string;
     description: string;
-    montant: number;
-    taux: number;
+    montant_min?: number;
+    montant_max?: number;
+    taux_min?: number;
+    taux_max?: number;
+    categorie?: string;
+  };
+  Expert?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+    specializations?: string[];
+    rating?: number;
+    approval_status?: string;
+  };
+  ApporteurAffaires?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+    company_name?: string;
+    status?: string;
   };
 }
 
