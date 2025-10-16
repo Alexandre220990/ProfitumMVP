@@ -1897,6 +1897,79 @@ router.get('/produits', async (req, res) => {
   }
 });
 
+// Route pour récupérer les statistiques des produits
+router.get('/produits/stats', asyncHandler(async (req, res): Promise<void> => {
+  try {
+    console.log('📊 Récupération statistiques produits...');
+
+    const { data: produits, error } = await supabaseClient
+      .from('ProduitEligible')
+      .select('*');
+
+    if (error) {
+      console.error('❌ Erreur récupération produits pour stats:', error);
+      return res.status(500).json({ 
+        success: false,
+        error: 'Erreur lors de la récupération des statistiques' 
+      });
+    }
+
+    // Calculer les statistiques
+    const totalProduits = produits?.length || 0;
+    
+    // Regrouper par catégorie
+    const parCategorie: { [key: string]: number } = {};
+    produits?.forEach(p => {
+      const cat = p.categorie || 'Non catégorisé';
+      parCategorie[cat] = (parCategorie[cat] || 0) + 1;
+    });
+
+    // Produits les plus utilisés (basé sur ClientProduitEligible)
+    const { data: utilisations, error: errUtilisations } = await supabaseClient
+      .from('ClientProduitEligible')
+      .select('produitId');
+
+    const produitsPopulaires: { [key: string]: number } = {};
+    utilisations?.forEach(u => {
+      if (u.produitId) {
+        produitsPopulaires[u.produitId] = (produitsPopulaires[u.produitId] || 0) + 1;
+      }
+    });
+
+    // Top 3 produits
+    const top3 = Object.entries(produitsPopulaires)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 3)
+      .map(([id, count]) => {
+        const produit = produits?.find(p => p.id === id);
+        return {
+          id,
+          nom: produit?.nom || 'Inconnu',
+          utilisations: count
+        };
+      });
+
+    console.log('✅ Stats produits calculées:', { totalProduits, categories: Object.keys(parCategorie).length });
+
+    return res.json({
+      success: true,
+      stats: {
+        total_produits: totalProduits,
+        par_categorie: parCategorie,
+        total_utilisations: utilisations?.length || 0,
+        top_3_produits: top3
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur stats produits:', error);
+    return res.status(500).json({ 
+      success: false,
+      error: 'Erreur serveur lors du calcul des statistiques' 
+    });
+  }
+}));
+
 // Route pour ajouter un nouveau produit
 router.post('/produits', async (req, res) => {
   try {
