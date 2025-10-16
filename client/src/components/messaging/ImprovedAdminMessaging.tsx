@@ -7,7 +7,8 @@ import {
   User,
   Users,
   ChevronDown,
-  Filter
+  Filter,
+  UserPlus
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -15,7 +16,9 @@ import { useAuth } from '@/hooks/use-auth';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { config } from '@/config';
+import { toast } from 'sonner';
 
 // ============================================================================
 // TYPES
@@ -80,6 +83,9 @@ export const ImprovedAdminMessaging: React.FC<ImprovedAdminMessagingProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [userTypeFilter, setUserTypeFilter] = useState<string>('all');
   const [loading, setLoading] = useState(true);
+  const [showNewConversationModal, setShowNewConversationModal] = useState(false);
+  const [availableContacts, setAvailableContacts] = useState<any[]>([]);
+  const [loadingContacts, setLoadingContacts] = useState(false);
 
   // ========================================
   // CHARGEMENT DES DONNÉES
@@ -283,6 +289,94 @@ export const ImprovedAdminMessaging: React.FC<ImprovedAdminMessagingProps> = ({
   }, [messageInput, selectedConversation]);
 
   // ========================================
+  // NOUVELLE CONVERSATION
+  // ========================================
+
+  const loadAvailableContacts = async () => {
+    try {
+      setLoadingContacts(true);
+      
+      // Charger tous les utilisateurs (clients, experts, apporteurs)
+      const [clientsResp, expertsResp, apporteursResp] = await Promise.all([
+        fetch(`${config.API_URL}/api/admin/clients`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        }),
+        fetch(`${config.API_URL}/api/admin/experts`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        }),
+        fetch(`${config.API_URL}/api/admin/apporteurs`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        })
+      ]);
+
+      const clientsData = clientsResp.ok ? await clientsResp.json() : { data: { clients: [] } };
+      const expertsData = expertsResp.ok ? await expertsResp.json() : { data: { experts: [] } };
+      const apporteursData = apporteursResp.ok ? await apporteursResp.json() : { data: { apporteurs: [] } };
+
+      const clients = (clientsData.data?.clients || []).map((c: any) => ({
+        id: c.id,
+        name: c.company_name || `${c.first_name} ${c.last_name}`,
+        email: c.email,
+        type: 'client' as const
+      }));
+
+      const experts = (expertsData.data?.experts || []).map((e: any) => ({
+        id: e.id,
+        name: `${e.first_name} ${e.last_name}`,
+        email: e.email,
+        type: 'expert' as const
+      }));
+
+      const apporteurs = (apporteursData.data?.apporteurs || []).map((a: any) => ({
+        id: a.id,
+        name: `${a.first_name} ${a.last_name}`,
+        email: a.email,
+        type: 'apporteur' as const
+      }));
+
+      setAvailableContacts([...clients, ...experts, ...apporteurs]);
+    } catch (error) {
+      console.error('Erreur chargement contacts:', error);
+      toast.error('Erreur lors du chargement des contacts');
+    } finally {
+      setLoadingContacts(false);
+    }
+  };
+
+  const handleCreateConversation = async (contact: any) => {
+    try {
+      const response = await fetch(`${config.API_URL}/api/unified-messaging/conversations/create`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          participant_id: contact.id,
+          participant_type: contact.type
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        toast.success(`Conversation créée avec ${contact.name}`);
+        setShowNewConversationModal(false);
+        // Recharger les conversations
+        await loadConversations();
+        // Sélectionner la nouvelle conversation
+        if (result.data) {
+          handleConversationSelect(result.data);
+        }
+      } else {
+        toast.error('Erreur lors de la création de la conversation');
+      }
+    } catch (error) {
+      console.error('Erreur création conversation:', error);
+      toast.error('Erreur lors de la création de la conversation');
+    }
+  };
+
+  // ========================================
   // HELPERS
   // ========================================
 
@@ -353,14 +447,27 @@ export const ImprovedAdminMessaging: React.FC<ImprovedAdminMessagingProps> = ({
             </SelectContent>
           </Select>
 
-          {/* Compteur */}
-          <div className="text-sm text-gray-600">
-            {filteredConversations.length} conversation(s)
-            {filteredConversations.filter(c => c.unread_count > 0).length > 0 && (
-              <span className="ml-2 text-purple-600 font-semibold">
-                · {filteredConversations.filter(c => c.unread_count > 0).length} non lue(s)
-              </span>
-            )}
+          {/* Compteur + Bouton nouvelle conversation */}
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-gray-600">
+              {filteredConversations.length} conversation(s)
+              {filteredConversations.filter(c => c.unread_count > 0).length > 0 && (
+                <span className="ml-2 text-purple-600 font-semibold">
+                  · {filteredConversations.filter(c => c.unread_count > 0).length} non lue(s)
+                </span>
+              )}
+            </div>
+            <Button 
+              size="sm" 
+              onClick={() => {
+                setShowNewConversationModal(true);
+                loadAvailableContacts();
+              }}
+              className="bg-purple-600 hover:bg-purple-700"
+            >
+              <UserPlus className="h-4 w-4 mr-1" />
+              Nouveau
+            </Button>
           </div>
         </div>
 
@@ -525,6 +632,61 @@ export const ImprovedAdminMessaging: React.FC<ImprovedAdminMessagingProps> = ({
           </div>
         )}
       </div>
+
+      {/* Modale nouvelle conversation */}
+      <Dialog open={showNewConversationModal} onOpenChange={setShowNewConversationModal}>
+        <DialogContent className="max-w-2xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle>Nouvelle conversation</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {loadingContacts ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
+                <p className="text-sm text-gray-600 mt-2">Chargement des contacts...</p>
+              </div>
+            ) : (
+              <>
+                <Input 
+                  placeholder="Rechercher un contact..."
+                  className="mb-4"
+                />
+                <div className="max-h-[400px] overflow-y-auto space-y-2">
+                  {availableContacts.map(contact => (
+                    <div
+                      key={`${contact.type}-${contact.id}`}
+                      onClick={() => handleCreateConversation(contact)}
+                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Avatar>
+                          <AvatarFallback className="bg-purple-100 text-purple-700">
+                            {contact.name.charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium">{contact.name}</p>
+                          <p className="text-sm text-gray-500">{contact.email}</p>
+                        </div>
+                      </div>
+                      <Badge className={getUserTypeBadgeColor(contact.type)}>
+                        {getUserTypeLabel(contact.type)}
+                      </Badge>
+                    </div>
+                  ))}
+                  {availableContacts.length === 0 && (
+                    <div className="text-center py-8 text-gray-500">
+                      <Users className="h-12 w-12 mx-auto mb-3 text-gray-400" />
+                      <p>Aucun contact disponible</p>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
