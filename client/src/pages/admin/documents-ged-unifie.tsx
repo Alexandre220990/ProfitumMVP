@@ -242,17 +242,27 @@ export default function DocumentsGEDUnifiePage() {
 
   const loadAllFiles = async () => {
     try {
-      // Charger les fichiers clients
-      const clientResponse = await getClientFiles('all');
-      const clientFiles = clientResponse.success ? (clientResponse as any).data?.files || [] : [];
+      // Charger les fichiers via endpoint admin global au lieu de 'all'
+      const token = localStorage.getItem('token');
+      const baseUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
       
-      // Charger les fichiers experts
-      const expertResponse = await getExpertFiles('all');
-      const expertFiles = expertResponse.success ? (expertResponse as any).data?.files || [] : [];
+      const response = await fetch(`${baseUrl}/api/admin/documents/all`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
+      });
       
-      // Combiner tous les fichiers
-      const allFilesData = [...clientFiles, ...expertFiles];
-      setAllFiles(allFilesData);
+      if (response.ok) {
+        const result = await response.json();
+        const allFilesData = result.data?.files || [];
+        setAllFiles(allFilesData);
+      } else {
+        console.warn('⚠️ Endpoint /admin/documents/all non disponible, fallback vide');
+        setAllFiles([]);
+      }
       setFilteredFiles(allFilesData);
       
       // Regrouper par client_produit_id (dossier)
