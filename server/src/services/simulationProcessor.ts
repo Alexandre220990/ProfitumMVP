@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { Database } from '../types/supabase'
-import { DecisionEngine } from './decisionEngine'
+import { ModernDecisionEngine } from './modernDecisionEngine'
 import { RealTimeProcessor } from './realTimeProcessor'
 import { ProductAmountCalculator, SimulationAnswers } from './ProductAmountCalculator'
 
@@ -279,7 +279,7 @@ function transformReponsesToAnswers(reponses: any[]): SimulationAnswers {
  */
 export async function traiterSimulation(simulationId: number): Promise<SimulationResult> {
   const supabase = createSupabaseClient()
-  const decisionEngine = new DecisionEngine()
+  const decisionEngine = new ModernDecisionEngine()
   const realTimeProcessor = new RealTimeProcessor()
   
   try {
@@ -306,23 +306,26 @@ export async function traiterSimulation(simulationId: number): Promise<Simulatio
       throw new Error('Erreur lors de la récupération des réponses')
     }
     
-    // 3. Convertir les réponses au format attendu par le moteur de décision
+    // 3. Convertir les réponses au format attendu par le moteur de décision moderne
     const answers = reponses.map(r => ({
       questionId: r.questionId,
       value: r.valeur,
       timestamp: new Date()
     }))
     
-    // 4. Évaluer l'éligibilité avec le nouveau moteur de décision
-    const eligibleProducts = await decisionEngine.evaluateEligibility(
+    // 4. Évaluer l'éligibilité avec le nouveau moteur de décision moderne
+    const allEligibilityResults = await decisionEngine.evaluateEligibility(
       simulationId.toString(),
       answers
     )
     
+    // Filtrer uniquement les produits éligibles
+    const eligibleProducts = allEligibilityResults.filter(p => p.isEligible)
+    
     console.log(`✅ ${eligibleProducts.length} produits éligibles identifiés pour la simulation ${simulationId}`)
     
     // 5. **NOUVEAU** : Créer les ClientProduitEligible (liaison Client ↔ Produits)
-    if (simulation.client_id && eligibleProducts.length > 0) {
+    if (simulation.client_id && allEligibilityResults.length > 0) {
       console.log(`📦 Création des ClientProduitEligible pour le client ${simulation.client_id}`)
       
       // Récupérer TOUS les produits actifs
@@ -344,8 +347,8 @@ export async function traiterSimulation(simulationId: number): Promise<Simulatio
         
         // Créer les entrées pour TOUS les produits (éligibles ET non éligibles)
         const produitsToInsert = allProducts.map((produit, index) => {
-          const eligibility = eligibleProducts.find(ep => ep.productId === produit.id)
-          const isEligible = !!eligibility
+          const eligibility = allEligibilityResults.find(ep => ep.productId === produit.id)
+          const isEligible = eligibility?.isEligible || false
           
           // 🆕 Récupérer le résultat calculé précisément
           const calculatedResult = calculatedProducts.find(
@@ -354,29 +357,29 @@ export async function traiterSimulation(simulationId: number): Promise<Simulatio
           
           // 🆕 Utiliser le montant calculé au lieu de score * 1000
           const montantFinal = calculatedResult?.estimated_savings || 
-                              (isEligible ? (eligibility.score * 1000) : null);
+                              (isEligible && eligibility ? (eligibility.score * 1000) : null);
           
           return {
             clientId: simulation.client_id,
             produitId: produit.id,
             simulationId: simulationId,
             statut: isEligible ? 'eligible' : 'non_eligible',
-            tauxFinal: isEligible ? (eligibility.score / 100) : null,
+            tauxFinal: isEligible ? (eligibility?.score || 0) : null,
             montantFinal: montantFinal,
             dureeFinale: isEligible ? 12 : null,
-            priorite: isEligible ? (eligibleProducts.indexOf(eligibility) + 1) : (index + 10),
+            priorite: isEligible ? (eligibleProducts.findIndex(ep => ep.productId === produit.id) + 1) : (index + 10),
             notes: isEligible 
-              ? `Produit éligible via simulation - Score: ${eligibility.score.toFixed(2)}% - Calcul: ${calculatedResult?.calculation_details?.formula || 'N/A'}` 
+              ? `Produit éligible via simulation - Score: ${((eligibility?.score || 0) * 100).toFixed(1)}% - Calcul: ${calculatedResult?.calculation_details?.formula || 'N/A'}` 
               : 'Produit non éligible selon simulation',
             metadata: {
-              source: 'simulation_processor',
+              source: 'simulation_processor_modern',
               simulation_id: simulationId,
               detected_at: new Date().toISOString(),
               is_eligible: isEligible,
-              score: isEligible ? eligibility.score : 0,
-              satisfied_rules: isEligible ? eligibility.satisfiedRules : 0,
-              total_rules: isEligible ? eligibility.totalRules : 0,
-              details: isEligible ? eligibility.details : [],
+              score: eligibility?.score || 0,
+              satisfied_rules: eligibility?.satisfiedRules || 0,
+              total_rules: eligibility?.totalRules || 0,
+              details: eligibility?.details || [],
               calculation_method: calculatedResult?.calculation_details?.formula,
               calculation_inputs: calculatedResult?.calculation_details?.inputs,
               product_type: calculatedResult?.type

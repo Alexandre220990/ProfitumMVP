@@ -55,9 +55,10 @@ export class DecisionEngine {
     }
 
     const { data: rules, error } = await this.supabase
-      .from('RegleEligibilite')
+      .from('EligibilityRules')
       .select('*')
-      .eq('produitid', productId)
+      .eq('produit_id', productId)
+      .eq('is_active', true)
       .order('priority', { ascending: true });
 
     if (error) {
@@ -65,6 +66,8 @@ export class DecisionEngine {
       throw new Error('Impossible de récupérer les règles');
     }
 
+    console.log(`📋 ${rules?.length || 0} règles trouvées pour le produit ${productId}`);
+    
     this.ruleCache.set(productId, rules as Rule[]);
     return rules as Rule[];
   }
@@ -120,7 +123,7 @@ export class DecisionEngine {
   // Récupère une règle par son ID
   private async getRuleById(ruleId: string): Promise<Rule | null> {
     const { data: rule, error } = await this.supabase
-      .from('RegleEligibilite')
+      .from('EligibilityRules')
       .select('*')
       .eq('id', ruleId)
       .single();
@@ -135,6 +138,18 @@ export class DecisionEngine {
     answers: Answer[]
   ): Promise<ProductEligibility> {
     const rules = await this.getRulesForProduct(productId);
+    
+    if (!rules || rules.length === 0) {
+      console.warn(`⚠️ Aucune règle trouvée pour le produit ${productId}`);
+      return {
+        productId,
+        score: 0,
+        satisfiedRules: 0,
+        totalRules: 0,
+        details: []
+      };
+    }
+
     let satisfiedRules = 0;
     let totalWeight = 0;
     const details: ProductEligibility['details'] = [];
@@ -158,9 +173,13 @@ export class DecisionEngine {
       }
     }
 
+    const score = totalWeight > 0 ? satisfiedRules / totalWeight : 0;
+    
+    console.log(`📊 Produit ${productId}: score ${(score * 100).toFixed(1)}% (${satisfiedRules}/${totalWeight})`);
+
     return {
       productId,
-      score: totalWeight > 0 ? satisfiedRules / totalWeight : 0,
+      score,
       satisfiedRules,
       totalRules: rules.length,
       details
@@ -173,14 +192,20 @@ export class DecisionEngine {
     answers: Answer[]
   ): Promise<ProductEligibility[]> {
     try {
-      // Récupérer tous les produits
+      console.log(`🎯 Début évaluation éligibilité - Simulation ${simulationId} avec ${answers.length} réponses`);
+
+      // Récupérer tous les produits actifs
       const { data: products, error } = await this.supabase
         .from('ProduitEligible')
-        .select('id');
+        .select('id, nom')
+        .eq('active', true);
 
       if (error || !products) {
+        console.error('❌ Erreur récupération produits:', error);
         throw new Error('Impossible de récupérer les produits');
       }
+
+      console.log(`📦 ${products.length} produits actifs à évaluer`);
 
       // Évaluer chaque produit
       const evaluations = await Promise.all(
@@ -189,8 +214,10 @@ export class DecisionEngine {
         )
       );
 
-      // Filtrer les produits éligibles (score > 0.6)
+      // Filtrer les produits éligibles (score >= 0.6 = 60%)
       const eligibleProducts = evaluations.filter(evaluation => evaluation.score >= 0.6);
+
+      console.log(`✅ ${eligibleProducts.length}/${products.length} produits éligibles (score >= 60%)`);
 
       // Mettre en cache les résultats
       this.eligibilityCache.set(simulationId, eligibleProducts);
@@ -206,6 +233,8 @@ export class DecisionEngine {
       const updatedResults = {
         ...(simulation?.results || {}),
         eligible_products: eligibleProducts,
+        eligible_count: eligibleProducts.length,
+        total_evaluated: products.length,
         last_calculation: new Date().toISOString()
       };
 
@@ -220,7 +249,7 @@ export class DecisionEngine {
 
       return eligibleProducts;
     } catch (error) {
-      console.error('Erreur lors de l\'évaluation de l\'éligibilité:', error);
+      console.error('❌ Erreur lors de l\'évaluation de l\'éligibilité:', error);
       throw error;
     }
   }

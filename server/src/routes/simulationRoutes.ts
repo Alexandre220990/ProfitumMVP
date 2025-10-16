@@ -308,6 +308,139 @@ router.get('/:id/answers', async (req: Request, res: Response) => {
   }
 });
 
+// Route pour analyser les réponses et récupérer les produits éligibles
+router.post('/analyser-reponses', async (req: Request, res: Response) => {
+  try {
+    const { answers, simulationId } = req.body;
+    
+    console.log('📊 Analyse des réponses - simulationId:', simulationId);
+    console.log('📊 Nombre de réponses:', answers ? Object.keys(answers).length : 0);
+
+    if (!simulationId) {
+      // Si pas de simulationId fourni, chercher la dernière simulation du client
+      // Récupérer le token JWT pour obtenir le client_id
+      const authHeader = req.headers.authorization;
+      if (!authHeader) {
+        return res.status(401).json({
+          success: false,
+          message: 'Token d\'authentification requis'
+        });
+      }
+
+      const token = authHeader.split(' ')[1];
+      let decoded: any;
+      try {
+        decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+      } catch (error) {
+        return res.status(401).json({
+          success: false,
+          message: 'Token invalide'
+        });
+      }
+
+      // Récupérer la dernière simulation du client
+      const { data: lastSimulation, error: simError } = await supabase
+        .from('simulations')
+        .select('id, client_id')
+        .eq('client_id', decoded.database_id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (simError || !lastSimulation) {
+        console.error('❌ Erreur récupération simulation:', simError);
+        return res.status(404).json({
+          success: false,
+          message: 'Aucune simulation trouvée pour ce client'
+        });
+      }
+
+      const clientId = lastSimulation.client_id;
+      console.log('🔍 Client ID:', clientId);
+
+      // Récupérer les ClientProduitEligible pour ce client
+      const { data: clientProduits, error: cpError } = await supabase
+        .from('ClientProduitEligible')
+        .select(`
+          id,
+          clientId,
+          produitId,
+          statut,
+          tauxFinal,
+          montantFinal,
+          dureeFinale,
+          priorite,
+          notes,
+          metadata,
+          dateEligibilite,
+          created_at,
+          ProduitEligible:produitId (
+            id,
+            nom,
+            categorie,
+            description,
+            montant_min,
+            montant_max,
+            taux_min,
+            taux_max
+          )
+        `)
+        .eq('clientId', clientId)
+        .eq('simulationId', lastSimulation.id)
+        .eq('statut', 'eligible')
+        .order('priorite', { ascending: true });
+
+      if (cpError) {
+        console.error('❌ Erreur récupération ClientProduitEligible:', cpError);
+        return res.status(500).json({
+          success: false,
+          message: 'Erreur lors de la récupération des produits éligibles'
+        });
+      }
+
+      const products = (clientProduits || []).map((cp: any) => ({
+        id: cp.id,
+        produitId: cp.produitId,
+        tauxFinal: cp.tauxFinal || 0,
+        montantFinal: cp.montantFinal || 0,
+        dureeFinale: cp.dureeFinale || 12,
+        statut: cp.statut,
+        priorite: cp.priorite,
+        notes: cp.notes,
+        metadata: cp.metadata,
+        dateEligibilite: cp.dateEligibilite,
+        produit: {
+          id: cp.ProduitEligible?.id || cp.produitId,
+          nom: cp.ProduitEligible?.nom || 'Produit',
+          description: cp.ProduitEligible?.description || '',
+          categorie: cp.ProduitEligible?.categorie || ''
+        }
+      }));
+
+      console.log(`✅ ${products.length} produits éligibles trouvés`);
+
+      return res.json({
+        success: true,
+        data: {
+          products: products
+        }
+      });
+    }
+
+    return res.status(400).json({
+      success: false,
+      message: 'Paramètres insuffisants'
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur lors de l\'analyse des réponses:', error);
+    return res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Erreur inconnue'
+    });
+  }
+});
+
 // Route pour traiter une réponse en temps réel (APPROCHE HYBRIDE)
 router.post('/:id/answer', async (req: Request, res: Response) => {
   try {
