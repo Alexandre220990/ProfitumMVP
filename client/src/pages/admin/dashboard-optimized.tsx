@@ -11,9 +11,9 @@ import { config } from "@/config/env";
 import ApporteurManagement from "@/components/admin/ApporteurManagement";
 import { NotificationCenter } from "@/components/admin/NotificationCenter";
 import { 
-  RefreshCw, UserPlus, Users, FileText, 
+  RefreshCw, Users, FileText, 
   Eye, ClipboardList, Edit, Check, X,
-  UserCheck, Shield, AlertTriangle, Clock,
+  UserCheck, AlertTriangle, Clock,
   Download, Settings, TrendingUp, DollarSign,
   Bell, Mail, Target, CheckCircle, XCircle
 } from "lucide-react";
@@ -69,7 +69,7 @@ const AdminDashboardOptimized: React.FC = () => {
   const navigate = useNavigate();
   
   // ===== ÉTATS LOCAUX =====
-  const [activeSection, setActiveSection] = useState<ActiveSection>('overview');
+  const [activeSection] = useState<ActiveSection>('overview');
   const [sectionData, setSectionData] = useState<SectionData>({
     experts: [],
     clients: [],
@@ -380,89 +380,6 @@ const AdminDashboardOptimized: React.FC = () => {
   // ========================================
   // GESTION DES ACTIONS
   // ========================================
-
-  // ========================================
-  // COMPOSANTS UI
-  // ========================================
-
-  const KPICard = ({ 
-    title, 
-    value, 
-    change, 
-    changeType, 
-    icon: Icon, 
-    color, 
-    subtitle,
-    onClick,
-    alert = false,
-    urgent = false
-  }: any) => (
-    <Card 
-      className={`cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-105 ${
-        onClick ? 'hover:bg-gray-50' : ''
-      } ${urgent ? 'ring-2 ring-red-500 bg-red-50' : ''} ${alert ? 'ring-2 ring-yellow-500 bg-yellow-50' : ''}`}
-      onClick={onClick}
-    >
-      <CardContent className="p-6">
-        <div className="flex items-center justify-between">
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <p className="text-sm font-medium text-gray-600">{title}</p>
-              {urgent && (
-                <Badge variant="destructive" className="text-xs">
-                  <AlertTriangle className="w-3 h-3 mr-1" />
-                  URGENT
-                </Badge>
-              )}
-              {alert && !urgent && (
-                <Badge variant="secondary" className="text-xs">
-                  <Clock className="w-3 h-3 mr-1" />
-                  ALERTE
-                </Badge>
-              )}
-            </div>
-            <p className={`text-2xl font-bold mt-1 ${
-              urgent ? 'text-red-900' : 
-              alert ? 'text-yellow-900' : 
-              'text-gray-900'
-            }`}>
-              {value}
-            </p>
-            {subtitle && (
-              <p className={`text-sm mt-1 ${
-                urgent ? 'text-red-700' : 
-                alert ? 'text-yellow-700' : 
-                'text-gray-500'
-              }`}>
-                {subtitle}
-              </p>
-            )}
-            {change && (
-              <div className="flex items-center mt-2">
-                <span className={`text-sm font-medium ${
-                  changeType === 'increase' ? 'text-green-600' : 
-                  changeType === 'decrease' ? 'text-red-600' : 'text-gray-600'
-                }`}>
-                  {change}
-                </span>
-              </div>
-            )}
-          </div>
-          <div className={`p-3 rounded-full ${
-            urgent ? 'bg-red-100' : 
-            alert ? 'bg-yellow-100' : 
-            `bg-${color}-100`
-          }`}>
-            <Icon className={`w-6 h-6 ${
-              urgent ? 'text-red-600' : 
-              alert ? 'text-yellow-600' : 
-              `text-${color}-600`
-            }`} />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
 
   // ========================================
   // COMPOSANTS DE SECTIONS
@@ -1232,6 +1149,10 @@ const AdminDashboardOptimized: React.FC = () => {
                             <div className="flex justify-between">
                               <span className="text-sm text-gray-600">Apporteurs</span>
                               <span className="font-semibold text-purple-600">{kpiData.apporteursTotal}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-sm text-gray-600">Dossiers Client en cours</span>
+                              <span className="font-semibold text-blue-600">{kpiData.totalDossiers}</span>
                             </div>
                           </div>
                         </CardContent>
