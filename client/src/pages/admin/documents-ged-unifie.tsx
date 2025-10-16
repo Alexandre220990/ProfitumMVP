@@ -114,6 +114,8 @@ export default function DocumentsGEDUnifiePage() {
   const [activeTab, setActiveTab] = useState('ged'); // Par défaut : GED Clients (principal)
   const [refreshKey, setRefreshKey] = useState(0);
   const [dossierDocuments, setDossierDocuments] = useState<{ [key: string]: DocumentFile[] }>({});
+  const [documentationDocs, setDocumentationDocs] = useState<any[]>([]);
+  const [loadingDocs, setLoadingDocs] = useState(false);
 
   // ========================================
   // UTILITAIRES
@@ -481,18 +483,58 @@ export default function DocumentsGEDUnifiePage() {
                     <BookOpen className="w-5 h-5 text-purple-600" />
                     <span>Documentation Technique & Fonctionnelle</span>
                   </div>
-                  <Button size="sm" variant="outline">
-                    <Upload className="w-4 h-4 mr-2" />
-                    Upload Document
+                  <Button size="sm" variant="outline" onClick={() => loadDocumentation()}>
+                    <RefreshCw className={`w-4 h-4 mr-2 ${loadingDocs ? 'animate-spin' : ''}`} />
+                    Actualiser
                   </Button>
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-600 text-center py-8">
-                  Chargement documentation depuis GEDDocument...
-                  <br />
-                  <span className="text-sm">(Fonctionnalité en cours d'intégration)</span>
-                </p>
+                {loadingDocs ? (
+                  <div className="text-center py-8">
+                    <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-gray-400" />
+                    <p className="text-gray-600">Chargement documentation...</p>
+                  </div>
+                ) : documentationDocs.length === 0 ? (
+                  <div className="text-center py-12">
+                    <BookOpen className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                    <p className="text-gray-600 mb-4">Aucune documentation disponible</p>
+                    <p className="text-sm text-gray-500">
+                      La documentation sera chargée depuis la table GEDDocument
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {documentationDocs.map((doc: any) => (
+                      <Card key={doc.id} className="hover:shadow-lg transition-shadow">
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex-1">
+                              <h4 className="font-semibold text-gray-900 mb-1">{doc.title || doc.nom}</h4>
+                              <p className="text-sm text-gray-600">{doc.description || doc.categorie}</p>
+                            </div>
+                            <Badge variant="secondary" className="ml-2">
+                              {doc.category || doc.type || 'Guide'}
+                            </Badge>
+                          </div>
+                          <div className="flex gap-2 mt-4">
+                            <Button size="sm" variant="outline" className="flex-1">
+                              <Download className="w-3 h-3 mr-1" />
+                              Download
+                            </Button>
+                            <Button size="sm" variant="outline" className="flex-1">
+                              <Eye className="w-3 h-3 mr-1" />
+                              Preview
+                            </Button>
+                            <Button size="sm" variant="ghost">
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
