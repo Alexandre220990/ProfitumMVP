@@ -56,6 +56,37 @@ const GestionExperts = () => {
   });
 
   const [currentPage, setCurrentPage] = useState(1);
+  const [expertStats, setExpertStats] = useState<any>(null);
+  const [loadingStats, setLoadingStats] = useState(true);
+
+  // Charger les stats
+  useEffect(() => {
+    fetchExpertStats();
+  }, []);
+
+  const fetchExpertStats = async () => {
+    try {
+      setLoadingStats(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const response = await fetch('/api/admin/experts/stats', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setExpertStats(data.data);
+      }
+    } catch (error) {
+      console.error('Erreur chargement stats experts:', error);
+    } finally {
+      setLoadingStats(false);
+    }
+  };
 
   // Vérification d'authentification
   if (authLoading) {
@@ -230,6 +261,40 @@ const GestionExperts = () => {
       </div>
 
       <div className="container mx-auto p-6">
+        {/* KPI Section */}
+        <KPISection
+          loading={loadingStats}
+          kpis={[
+            {
+              label: 'Experts Approuvés',
+              value: `${expertStats?.experts_approuves || 0}`,
+              subtext: `sur ${expertStats?.total_experts || 0} total`,
+              icon: Users,
+              color: 'text-blue-600'
+            },
+            {
+              label: 'Note Moyenne',
+              value: expertStats?.note_moyenne ? `${expertStats.note_moyenne} ⭐` : '0 ⭐',
+              subtext: 'satisfaction clients',
+              icon: Star,
+              color: 'text-yellow-500'
+            },
+            {
+              label: 'Dossiers Actifs',
+              value: expertStats?.dossiers_actifs || 0,
+              subtext: 'en cours de traitement',
+              icon: FolderOpen,
+              color: 'text-green-600'
+            },
+            {
+              label: 'En Attente Validation',
+              value: expertStats?.en_attente_validation || 0,
+              subtext: 'à approuver',
+              icon: Clock,
+              color: 'text-orange-600'
+            }
+          ]}
+        />
         
         {/* ⚠️ SECTION EXPERTS À VALIDER */}
         {experts.filter(e => e.approval_status === 'pending').length > 0 && (
