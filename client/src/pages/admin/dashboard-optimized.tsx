@@ -217,7 +217,7 @@ const AdminDashboardOptimized: React.FC = () => {
       // Charger les apporteurs (données réelles)
       const apporteursResponse = await get('/admin/apporteurs');
       // L'API retourne directement un tableau dans data, pas data.apporteurs
-      const apporteurs = apporteursResponse.success ? (apporteursResponse.data || []) : [];
+      const apporteurs: any[] = apporteursResponse.success ? (apporteursResponse.data || []) : [];
       
       console.log('📊 Apporteurs chargés:', {
         total: apporteurs.length,
