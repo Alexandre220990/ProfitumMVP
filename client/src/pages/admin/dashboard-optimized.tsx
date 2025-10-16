@@ -439,7 +439,7 @@ const AdminDashboardOptimized: React.FC = () => {
                     <td className="px-6 py-4">
                       <div>
                         <div className="font-medium text-slate-900">
-                          {client.company_name || 'Entreprise Temporaire'}
+                          {client.company_name || 'Entreprise'}
                         </div>
                         {client.siren && (
                           <div className="text-sm text-slate-500">
