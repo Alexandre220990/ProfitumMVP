@@ -40,7 +40,6 @@ interface ClientProduitEligible {
   tauxFinal?: number;
   documents_sent?: string[];
   expert_id?: string;
-  apporteur_id?: string;
   eligibility_validated_at?: string;
   pre_eligibility_validated_at?: string;
   expert_report_status?: string;
@@ -49,12 +48,12 @@ interface ClientProduitEligible {
   updated_at: string;
   Client?: {
     id: string;
-    company_name: string;
+    company_name?: string;
+    name?: string;
     email: string;
     statut: string;
     phone?: string;
-    first_name?: string;
-    last_name?: string;
+    apporteur_id?: string;
   };
   ProduitEligible?: {
     id: string;
@@ -68,20 +67,12 @@ interface ClientProduitEligible {
   };
   Expert?: {
     id: string;
-    first_name: string;
-    last_name: string;
+    name: string;
+    company_name: string;
     email: string;
     specializations?: string[];
     rating?: number;
     approval_status?: string;
-  };
-  ApporteurAffaires?: {
-    id: string;
-    first_name: string;
-    last_name: string;
-    email: string;
-    company_name?: string;
-    status?: string;
   };
 }
 
@@ -880,7 +871,7 @@ const AdminDashboardOptimized: React.FC = () => {
                         <p className="text-xs text-gray-500">Expert attitré</p>
                         {(dossier as any).Expert ? (
                           <p className="text-sm font-medium text-gray-900 truncate">
-                            {(dossier as any).Expert.first_name} {(dossier as any).Expert.last_name}
+                            {(dossier as any).Expert.name}
                             {(dossier as any).Expert.rating && (
                               <span className="text-yellow-600 ml-1">⭐{(dossier as any).Expert.rating}</span>
                             )}
@@ -894,9 +885,9 @@ const AdminDashboardOptimized: React.FC = () => {
                       <Target className="w-4 h-4 text-green-600" />
                       <div className="min-w-0">
                         <p className="text-xs text-gray-500">Apporteur</p>
-                        {(dossier as any).ApporteurAffaires ? (
+                        {dossier.Client?.apporteur_id ? (
                           <p className="text-sm font-medium text-gray-900 truncate">
-                            {(dossier as any).ApporteurAffaires.first_name} {(dossier as any).ApporteurAffaires.last_name}
+                            Via Client
                           </p>
                         ) : (
                           <p className="text-sm text-gray-400">Aucun</p>
