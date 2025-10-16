@@ -794,44 +794,145 @@ const AdminDashboardOptimized: React.FC = () => {
           ) : (
             <div className="space-y-4">
               {dossiers.map((dossier: ClientProduitEligible) => (
-                <div key={dossier.id} className="p-4 border rounded-lg">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                        <ClipboardList className="w-5 h-5 text-purple-600" />
+                <div key={dossier.id} className="p-4 border rounded-lg hover:shadow-md transition-shadow bg-white">
+                  {/* Header avec infos principales */}
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-start space-x-4 flex-1">
+                      <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <ClipboardList className="w-6 h-6 text-white" />
                       </div>
-                      <div>
-                        <h4 className="font-medium text-gray-900">Dossier #{dossier.id}</h4>
-                        <p className="text-sm text-gray-600">Client: {dossier.Client?.company_name || dossier.clientId}</p>
-                        <p className="text-xs text-gray-500">Produit: {dossier.ProduitEligible?.nom || dossier.produitId}</p>
-                        <p className="text-xs text-gray-400">Créé le: {new Date(dossier.created_at).toLocaleDateString('fr-FR')}</p>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="font-semibold text-gray-900">
+                            {dossier.Client?.company_name || `Client #${dossier.clientId}`}
+                          </h4>
+                          <Badge 
+                            variant={dossier.statut === 'pending' ? 'secondary' : 
+                                   dossier.statut === 'eligible' || dossier.statut === 'validated' ? 'default' : 
+                                   dossier.statut === 'rejected' ? 'destructive' : 'secondary'}
+                            className="ml-auto"
+                          >
+                            {dossier.statut}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-1">
+                          📦 {dossier.ProduitEligible?.nom || dossier.produitId}
+                          {dossier.ProduitEligible?.categorie && (
+                            <span className="text-gray-400 ml-2">• {dossier.ProduitEligible.categorie}</span>
+                          )}
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          🕒 Créé le {new Date(dossier.created_at).toLocaleDateString('fr-FR', { 
+                            day: 'numeric', 
+                            month: 'long', 
+                            year: 'numeric' 
+                          })}
+                        </p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <Badge 
-                        variant={dossier.statut === 'pending' ? 'secondary' : 
-                               dossier.statut === 'validated' ? 'default' : 
-                               dossier.statut === 'rejected' ? 'destructive' : 'secondary'}
-                      >
-                        {dossier.statut}
-                      </Badge>
-                      {dossier.montantFinal && (
-                        <p className="text-sm font-medium text-purple-600 mt-1">
-                          {formatCurrency(dossier.montantFinal)}
-                        </p>
+                    <div className="text-right ml-4">
+                      {dossier.montantFinal ? (
+                        <div className="bg-purple-50 px-3 py-2 rounded-lg">
+                          <p className="text-xs text-gray-600">Montant</p>
+                          <p className="text-lg font-bold text-purple-600">
+                            {formatCurrency(dossier.montantFinal)}
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-400">Non évalué</p>
                       )}
+                    </div>
+                  </div>
+
+                  {/* Infos Expert et Apporteur */}
+                  <div className="grid grid-cols-2 gap-3 mb-3 p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4 text-blue-600" />
+                      <div className="min-w-0">
+                        <p className="text-xs text-gray-500">Expert attitré</p>
+                        {(dossier as any).Expert ? (
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {(dossier as any).Expert.first_name} {(dossier as any).Expert.last_name}
+                            {(dossier as any).Expert.rating && (
+                              <span className="text-yellow-600 ml-1">⭐{(dossier as any).Expert.rating}</span>
+                            )}
+                          </p>
+                        ) : (
+                          <p className="text-sm text-gray-400">Non assigné</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Target className="w-4 h-4 text-green-600" />
+                      <div className="min-w-0">
+                        <p className="text-xs text-gray-500">Apporteur</p>
+                        {(dossier as any).ApporteurAffaires ? (
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {(dossier as any).ApporteurAffaires.first_name} {(dossier as any).ApporteurAffaires.last_name}
+                          </p>
+                        ) : (
+                          <p className="text-sm text-gray-400">Aucun</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Étapes de validation */}
+                  <div className="mb-3 p-3 bg-blue-50 rounded-lg">
+                    <p className="text-xs font-medium text-gray-700 mb-2">📋 Étapes de validation</p>
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      <div className="flex items-center gap-1">
+                        {(dossier as any).pre_eligibility_validated_at ? (
+                          <CheckCircle className="w-3 h-3 text-green-600" />
+                        ) : (
+                          <Clock className="w-3 h-3 text-orange-500" />
+                        )}
+                        <span className={`${(dossier as any).pre_eligibility_validated_at ? 'text-green-700' : 'text-gray-600'}`}>
+                          Pré-éligibilité
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {(dossier as any).eligibility_validated_at ? (
+                          <CheckCircle className="w-3 h-3 text-green-600" />
+                        ) : (
+                          <Clock className="w-3 h-3 text-orange-500" />
+                        )}
+                        <span className={`${(dossier as any).eligibility_validated_at ? 'text-green-700' : 'text-gray-600'}`}>
+                          Éligibilité
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {(dossier as any).expert_report_status === 'completed' ? (
+                          <CheckCircle className="w-3 h-3 text-green-600" />
+                        ) : (dossier as any).expert_report_status === 'in_progress' ? (
+                          <Clock className="w-3 h-3 text-orange-500" />
+                        ) : (
+                          <XCircle className="w-3 h-3 text-gray-400" />
+                        )}
+                        <span className={`${
+                          (dossier as any).expert_report_status === 'completed' ? 'text-green-700' : 
+                          (dossier as any).expert_report_status === 'in_progress' ? 'text-orange-600' : 
+                          'text-gray-600'
+                        }`}>
+                          Rapport expert
+                        </span>
+                      </div>
                     </div>
                   </div>
                   
                   {/* Barre de progression */}
                   <div className="mb-3">
                     <div className="flex justify-between text-sm text-gray-600 mb-1">
-                      <span>Progression</span>
-                      <span>{dossier.progress}%</span>
+                      <span>Progression globale</span>
+                      <span className="font-medium">{dossier.progress}%</span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="w-full bg-gray-200 rounded-full h-2.5">
                       <div 
-                        className="bg-purple-600 h-2 rounded-full transition-all duration-300"
+                        className={`h-2.5 rounded-full transition-all duration-300 ${
+                          dossier.progress >= 80 ? 'bg-green-600' : 
+                          dossier.progress >= 50 ? 'bg-blue-600' : 
+                          'bg-orange-500'
+                        }`}
                         style={{ width: `${dossier.progress}%` }}
                       ></div>
                     </div>

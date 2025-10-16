@@ -3369,13 +3369,21 @@ router.get('/dossiers/all', async (req, res) => {
         tauxFinal,
         documents_sent,
         expert_id,
+        apporteur_id,
+        eligibility_validated_at,
+        pre_eligibility_validated_at,
+        expert_report_status,
+        validation_admin_notes,
         created_at,
         updated_at,
         Client(
           id,
           company_name,
           email,
-          statut
+          statut,
+          phone,
+          first_name,
+          last_name
         ),
         ProduitEligible(
           id,
@@ -3384,7 +3392,25 @@ router.get('/dossiers/all', async (req, res) => {
           montant_min,
           montant_max,
           taux_min,
-          taux_max
+          taux_max,
+          categorie
+        ),
+        Expert:expert_id(
+          id,
+          first_name,
+          last_name,
+          email,
+          specializations,
+          rating,
+          approval_status
+        ),
+        ApporteurAffaires:apporteur_id(
+          id,
+          first_name,
+          last_name,
+          email,
+          company_name,
+          status
         )
       `)
       .order('created_at', { ascending: false });
