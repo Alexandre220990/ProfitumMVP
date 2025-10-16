@@ -285,11 +285,8 @@ function App() {
                         {/* Messagerie */}
                         <Route path="messagerie-admin" element={<MessagerieAdmin />} />
                         
-                        {/* GED & Documents */}
-                        <Route path="documents" element={<AdminDocumentsPage />} /> {/* ✅ Nouvelle GED unifiée */}
-                        <Route path="documents-unified" element={<AdminDocumentsUnified />} /> {/* Ancienne version */}
-                        <Route path="admin-document-upload" element={<AdminDocumentUpload />} />
-                        <Route path="documentation-new" element={<AdminDocumentationNew />} />
+                        {/* GED & Documents - PAGE UNIFIÉE */}
+                        <Route path="documents-ged" element={<AdminDocumentsGEDUnifie />} />
                         
                         {/* Gestion */}
                         <Route path="gestion-clients" element={<AdminGestionClients />} />
