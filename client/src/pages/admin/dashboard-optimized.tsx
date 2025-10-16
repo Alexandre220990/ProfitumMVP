@@ -16,7 +16,7 @@ import {
   UserCheck, AlertTriangle, Clock,
   Download, Settings, TrendingUp, DollarSign,
   Bell, Mail, Target, CheckCircle, XCircle,
-  Handshake, Package
+  Handshake, Package, Trash2
 } from "lucide-react";
 import { TypeSwitcher } from "@/components/TypeSwitcher";
 import { motion } from "framer-motion";
@@ -107,6 +107,15 @@ const AdminDashboardOptimized: React.FC = () => {
   const [selectedDossierForExpert, setSelectedDossierForExpert] = useState<any>(null);
   const [availableExperts, setAvailableExperts] = useState<any[]>([]);
   const [loadingExperts, setLoadingExperts] = useState(false);
+  
+  // Historique et Commentaires
+  const [histoireModalOpen, setHistoireModalOpen] = useState(false);
+  const [selectedDossierForHistoire, setSelectedDossierForHistoire] = useState<any>(null);
+  const [historique, setHistorique] = useState<any[]>([]);
+  const [commentaires, setCommentaires] = useState<any[]>([]);
+  const [loadingHistoire, setLoadingHistoire] = useState(false);
+  const [newComment, setNewComment] = useState('');
+  const [isPrivateComment, setIsPrivateComment] = useState(false);
   const [sectionData, setSectionData] = useState<SectionData>({
     experts: [],
     clients: [],
@@ -217,6 +226,13 @@ const AdminDashboardOptimized: React.FC = () => {
       loadAvailableExperts();
     }
   }, [expertModalOpen]);
+
+  // Charger historique et commentaires quand le modal s'ouvre
+  useEffect(() => {
+    if (histoireModalOpen && selectedDossierForHistoire) {
+      loadHistoireEtCommentaires(selectedDossierForHistoire.id);
+    }
+  }, [histoireModalOpen, selectedDossierForHistoire]);
 
   // Test d'authentification admin
   useEffect(() => {
@@ -534,6 +550,100 @@ const AdminDashboardOptimized: React.FC = () => {
     } catch (error) {
       console.error('Erreur assignExpertToDossier:', error);
       toast.error('Erreur lors de l\'assignation');
+    }
+  };
+
+  // ========================================
+  // HISTORIQUE & COMMENTAIRES
+  // ========================================
+
+  const loadHistoireEtCommentaires = async (dossierId: string) => {
+    setLoadingHistoire(true);
+    try {
+      // Charger l'historique
+      const historiqueResponse = await get(`/admin/dossiers/${dossierId}/historique`);
+      if (historiqueResponse.success) {
+        setHistorique((historiqueResponse.data as any)?.historique || []);
+      } else {
+        setHistorique([]);
+      }
+
+      // Charger les commentaires
+      const commentairesResponse = await get(`/admin/dossiers/${dossierId}/commentaires`);
+      if (commentairesResponse.success) {
+        setCommentaires((commentairesResponse.data as any)?.commentaires || []);
+      } else {
+        setCommentaires([]);
+      }
+    } catch (error) {
+      console.error('Erreur chargement historique/commentaires:', error);
+      toast.error('Erreur lors du chargement');
+    } finally {
+      setLoadingHistoire(false);
+    }
+  };
+
+  const addCommentaire = async () => {
+    if (!newComment.trim() || !selectedDossierForHistoire) {
+      toast.error('Veuillez saisir un commentaire');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${config.API_URL}/admin/dossiers/${selectedDossierForHistoire.id}/commentaires`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('supabase.auth.token')}`
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          content: newComment,
+          is_private: isPrivateComment
+        })
+      });
+
+      if (response.ok) {
+        toast.success('Commentaire ajouté');
+        setNewComment('');
+        setIsPrivateComment(false);
+        // Recharger les données
+        loadHistoireEtCommentaires(selectedDossierForHistoire.id);
+      } else {
+        toast.error('Erreur lors de l\'ajout du commentaire');
+      }
+    } catch (error) {
+      console.error('Erreur addCommentaire:', error);
+      toast.error('Erreur lors de l\'ajout');
+    }
+  };
+
+  const deleteCommentaire = async (commentId: string) => {
+    if (!selectedDossierForHistoire) return;
+
+    if (!confirm('Voulez-vous vraiment supprimer ce commentaire ?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${config.API_URL}/admin/dossiers/${selectedDossierForHistoire.id}/commentaires/${commentId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('supabase.auth.token')}`
+        },
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        toast.success('Commentaire supprimé');
+        // Recharger les données
+        loadHistoireEtCommentaires(selectedDossierForHistoire.id);
+      } else {
+        toast.error('Erreur lors de la suppression');
+      }
+    } catch (error) {
+      console.error('Erreur deleteCommentaire:', error);
+      toast.error('Erreur lors de la suppression');
     }
   };
 
@@ -2005,36 +2115,52 @@ const AdminDashboardOptimized: React.FC = () => {
                                                     )}
                                                     
                                                     {/* Actions rapides */}
-                                                    <div className="flex gap-1">
-                                                      <Select 
-                                                        value={dossier.statut} 
-                                                        onValueChange={(newStatut) => updateDossierStatut(dossier.id, newStatut)}
-                                                        disabled={updatingDossier === dossier.id}
-                                                      >
-                                                        <SelectTrigger className="h-7 text-xs w-[100px]">
-                                                          <SelectValue />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                          <SelectItem value="eligible">Éligible</SelectItem>
-                                                          <SelectItem value="pending">En attente</SelectItem>
-                                                          <SelectItem value="validated">Validé</SelectItem>
-                                                          <SelectItem value="rejected">Rejeté</SelectItem>
-                                                        </SelectContent>
-                                                      </Select>
-                                                      
-                                                      {!dossier.Expert && (
-                                                        <Button 
-                                                          size="sm"
-                                                          variant="outline"
-                                                          className="h-7 text-xs"
-                                                          onClick={() => {
-                                                            setSelectedDossierForExpert(dossier);
-                                                            setExpertModalOpen(true);
-                                                          }}
+                                                    <div className="flex flex-col gap-1">
+                                                      <div className="flex gap-1">
+                                                        <Select 
+                                                          value={dossier.statut} 
+                                                          onValueChange={(newStatut) => updateDossierStatut(dossier.id, newStatut)}
+                                                          disabled={updatingDossier === dossier.id}
                                                         >
-                                                          <UserCheck className="w-3 h-3" />
-                                                        </Button>
-                                                      )}
+                                                          <SelectTrigger className="h-7 text-xs w-[100px]">
+                                                            <SelectValue />
+                                                          </SelectTrigger>
+                                                          <SelectContent>
+                                                            <SelectItem value="eligible">Éligible</SelectItem>
+                                                            <SelectItem value="pending">En attente</SelectItem>
+                                                            <SelectItem value="validated">Validé</SelectItem>
+                                                            <SelectItem value="rejected">Rejeté</SelectItem>
+                                                          </SelectContent>
+                                                        </Select>
+                                                        
+                                                        {!dossier.Expert && (
+                                                          <Button 
+                                                            size="sm"
+                                                            variant="outline"
+                                                            className="h-7 text-xs px-2"
+                                                            onClick={() => {
+                                                              setSelectedDossierForExpert(dossier);
+                                                              setExpertModalOpen(true);
+                                                            }}
+                                                            title="Assigner un expert"
+                                                          >
+                                                            <UserCheck className="w-3 h-3" />
+                                                          </Button>
+                                                        )}
+                                                      </div>
+                                                      
+                                                      <Button 
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        className="h-7 text-xs"
+                                                        onClick={() => {
+                                                          setSelectedDossierForHistoire(dossier);
+                                                          setHistoireModalOpen(true);
+                                                        }}
+                                                      >
+                                                        <Clock className="w-3 h-3 mr-1" />
+                                                        Historique
+                                                      </Button>
                                                     </div>
                                                   </div>
                                                 </div>
@@ -2708,6 +2834,234 @@ const AdminDashboardOptimized: React.FC = () => {
       {/* Footer en bas de page */}
       <AdminFooter />
       
+      {/* Modal Historique & Commentaires */}
+      {histoireModalOpen && selectedDossierForHistoire && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={() => {
+            setHistoireModalOpen(false);
+            setSelectedDossierForHistoire(null);
+            setNewComment('');
+            setIsPrivateComment(false);
+          }}
+        >
+          <div 
+            className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="p-6 border-b flex-shrink-0">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-semibold mb-1">Historique & Commentaires</h3>
+                  <p className="text-sm text-gray-600">
+                    <strong>Client:</strong> {selectedDossierForHistoire.Client?.company_name || `${selectedDossierForHistoire.Client?.first_name || ''} ${selectedDossierForHistoire.Client?.last_name || ''}`.trim() || 'N/A'}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    <strong>Produit:</strong> {selectedDossierForHistoire.ProduitEligible?.nom || 'N/A'}
+                  </p>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => {
+                    setHistoireModalOpen(false);
+                    setSelectedDossierForHistoire(null);
+                  }}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Contenu scrollable */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {loadingHistoire ? (
+                <div className="flex items-center justify-center py-12">
+                  <RefreshCw className="w-8 h-8 animate-spin text-blue-600" />
+                  <span className="ml-2 text-gray-600">Chargement...</span>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Timeline Historique */}
+                  <div>
+                    <h4 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                      <Clock className="w-5 h-5 text-blue-600" />
+                      Historique des modifications ({historique.length})
+                    </h4>
+                    
+                    {historique.length > 0 ? (
+                      <div className="space-y-3">
+                        {historique.map((entry: any, index: number) => (
+                          <div key={entry.id} className="relative pl-6 pb-4">
+                            {/* Ligne verticale */}
+                            {index < historique.length - 1 && (
+                              <div className="absolute left-2 top-6 bottom-0 w-0.5 bg-gray-200"></div>
+                            )}
+                            
+                            {/* Point */}
+                            <div className={`absolute left-0 top-1 w-4 h-4 rounded-full border-2 ${
+                              entry.action_type === 'statut_change' ? 'bg-blue-500 border-blue-200' :
+                              entry.action_type === 'expert_assigned' ? 'bg-green-500 border-green-200' :
+                              entry.action_type === 'comment_added' ? 'bg-purple-500 border-purple-200' :
+                              'bg-gray-500 border-gray-200'
+                            }`}></div>
+                            
+                            {/* Contenu */}
+                            <div className="bg-gray-50 rounded-lg p-3">
+                              <div className="flex items-start justify-between mb-1">
+                                <p className="text-sm font-medium text-gray-800">
+                                  {entry.description || entry.action_type}
+                                </p>
+                                <span className="text-xs text-gray-500">
+                                  {new Date(entry.created_at).toLocaleString('fr-FR', {
+                                    day: '2-digit',
+                                    month: 'short',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </span>
+                              </div>
+                              <p className="text-xs text-gray-600">
+                                Par <strong>{entry.user_name}</strong> ({entry.user_type})
+                              </p>
+                              {entry.old_value && entry.new_value && (
+                                <p className="text-xs text-gray-500 mt-1">
+                                  {entry.old_value} → {entry.new_value}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-gray-500">
+                        <Clock className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                        <p>Aucun historique</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Section Commentaires */}
+                  <div>
+                    <h4 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                      <Mail className="w-5 h-5 text-purple-600" />
+                      Commentaires & Notes ({commentaires.length})
+                    </h4>
+                    
+                    {/* Zone de saisie */}
+                    <div className="mb-4 space-y-2">
+                      <textarea
+                        value={newComment}
+                        onChange={(e) => setNewComment(e.target.value)}
+                        placeholder="Ajouter un commentaire..."
+                        className="w-full p-3 border rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        rows={3}
+                      />
+                      <div className="flex items-center justify-between">
+                        <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={isPrivateComment}
+                            onChange={(e) => setIsPrivateComment(e.target.checked)}
+                            className="rounded"
+                          />
+                          <Lock className="w-3 h-3" />
+                          Privé (admin uniquement)
+                        </label>
+                        <Button 
+                          size="sm"
+                          onClick={addCommentaire}
+                          disabled={!newComment.trim()}
+                        >
+                          <Mail className="w-3 h-3 mr-1" />
+                          Envoyer
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Liste commentaires */}
+                    {commentaires.length > 0 ? (
+                      <div className="space-y-3 max-h-96 overflow-y-auto">
+                        {commentaires.map((comment: any) => (
+                          <div key={comment.id} className={`p-3 rounded-lg border ${
+                            comment.is_private ? 'bg-yellow-50 border-yellow-200' : 'bg-white border-gray-200'
+                          }`}>
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold">
+                                  {comment.author_name?.charAt(0)?.toUpperCase() || 'U'}
+                                </div>
+                                <div>
+                                  <p className="text-sm font-medium text-gray-800">
+                                    {comment.author_name}
+                                  </p>
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant="outline" className="text-xs">
+                                      {comment.author_type}
+                                    </Badge>
+                                    {comment.is_private && (
+                                      <Badge variant="secondary" className="text-xs">
+                                        <Lock className="w-2 h-2 mr-1" />
+                                        Privé
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-gray-500">
+                                  {new Date(comment.created_at).toLocaleString('fr-FR', {
+                                    day: '2-digit',
+                                    month: 'short',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </span>
+                                <Button 
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 px-2"
+                                  onClick={() => deleteCommentaire(comment.id)}
+                                >
+                                  <Trash2 className="w-3 h-3 text-red-500" />
+                                </Button>
+                              </div>
+                            </div>
+                            <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                              {comment.content}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-gray-500">
+                        <Mail className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                        <p>Aucun commentaire</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t flex-shrink-0">
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={() => {
+                  setHistoireModalOpen(false);
+                  setSelectedDossierForHistoire(null);
+                }}
+              >
+                Fermer
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal Assignation Expert */}
       {expertModalOpen && selectedDossierForExpert && (
         <div 

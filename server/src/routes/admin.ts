@@ -4025,4 +4025,211 @@ router.post('/dossiers/:id/assign-expert', async (req, res) => {
   }
 });
 
+// GET /api/admin/dossiers/:id/historique - Historique d'un dossier
+router.get('/dossiers/:id/historique', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    console.log(`📜 Récupération historique dossier ${id}`);
+
+    const { data: historique, error } = await supabaseClient
+      .from('DossierHistorique')
+      .select('*')
+      .eq('dossier_id', id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('❌ Erreur récupération historique:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la récupération de l\'historique'
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: { historique: historique || [] }
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route historique:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+// GET /api/admin/dossiers/:id/commentaires - Commentaires d'un dossier
+router.get('/dossiers/:id/commentaires', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    console.log(`💬 Récupération commentaires dossier ${id}`);
+
+    const { data: commentaires, error } = await supabaseClient
+      .from('DossierCommentaire')
+      .select('*')
+      .eq('dossier_id', id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('❌ Erreur récupération commentaires:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la récupération des commentaires'
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: { commentaires: commentaires || [] }
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route commentaires:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+// POST /api/admin/dossiers/:id/commentaires - Ajouter un commentaire
+router.post('/dossiers/:id/commentaires', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { content, is_private = false, parent_comment_id = null } = req.body;
+    const authUser = (req as any).user;
+    
+    console.log(`💬 Ajout commentaire dossier ${id}`);
+
+    if (!content || !content.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Le contenu du commentaire est requis'
+      });
+    }
+
+    // Déterminer le nom de l'auteur
+    let author_name = 'Utilisateur';
+    if (authUser) {
+      if (authUser.type === 'admin') {
+        author_name = authUser.email || 'Admin';
+      } else {
+        author_name = authUser.email || 'Utilisateur';
+      }
+    }
+
+    const { data: commentaire, error } = await supabaseClient
+      .from('DossierCommentaire')
+      .insert({
+        dossier_id: id,
+        author_id: authUser?.database_id || authUser?.auth_user_id || authUser?.id,
+        author_type: authUser?.type || 'admin',
+        author_name,
+        content: content.trim(),
+        is_private,
+        parent_comment_id
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('❌ Erreur ajout commentaire:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de l\'ajout du commentaire'
+      });
+    }
+
+    // Ajouter une entrée dans l'historique
+    await supabaseClient
+      .from('DossierHistorique')
+      .insert({
+        dossier_id: id,
+        user_id: authUser?.database_id || authUser?.auth_user_id || authUser?.id,
+        user_type: authUser?.type || 'admin',
+        user_name: author_name,
+        action_type: 'comment_added',
+        description: `Commentaire ajouté${is_private ? ' (privé)' : ''}`
+      });
+
+    console.log(`✅ Commentaire ajouté`);
+    
+    return res.json({
+      success: true,
+      data: { commentaire }
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route ajout commentaire:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+// DELETE /api/admin/dossiers/:dossierId/commentaires/:commentId - Supprimer un commentaire
+router.delete('/dossiers/:dossierId/commentaires/:commentId', async (req, res) => {
+  try {
+    const { commentId } = req.params;
+    const authUser = (req as any).user;
+    
+    console.log(`🗑️ Suppression commentaire ${commentId}`);
+
+    // Vérifier que l'utilisateur est l'auteur ou un admin
+    const { data: commentaire } = await supabaseClient
+      .from('DossierCommentaire')
+      .select('author_id, author_type')
+      .eq('id', commentId)
+      .single();
+
+    if (!commentaire) {
+      return res.status(404).json({
+        success: false,
+        message: 'Commentaire non trouvé'
+      });
+    }
+
+    const isAuthor = commentaire.author_id === (authUser?.database_id || authUser?.auth_user_id || authUser?.id);
+    const isAdmin = authUser?.type === 'admin';
+
+    if (!isAuthor && !isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: 'Vous n\'êtes pas autorisé à supprimer ce commentaire'
+      });
+    }
+
+    const { error } = await supabaseClient
+      .from('DossierCommentaire')
+      .delete()
+      .eq('id', commentId);
+
+    if (error) {
+      console.error('❌ Erreur suppression commentaire:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la suppression du commentaire'
+      });
+    }
+
+    console.log(`✅ Commentaire supprimé`);
+    
+    return res.json({
+      success: true,
+      data: { message: 'Commentaire supprimé' }
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route suppression commentaire:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
 export default router;
