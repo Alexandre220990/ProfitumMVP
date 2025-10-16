@@ -103,6 +103,7 @@ const AdminDashboardOptimized: React.FC = () => {
     // Clients
     totalClients: 0,
     clientsThisMonth: 0,
+    clientsLastMonth: 0, // Pour calculer la croissance
     clientsSatisfaction: 0, // NPS moyen
     
     // Experts
@@ -114,11 +115,20 @@ const AdminDashboardOptimized: React.FC = () => {
     
     // Dossiers
     totalDossiers: 0,
+    dossiersThisMonth: 0, // Pour objectifs
+    dossiersLastMonth: 0, // Pour croissance
     pendingDossiers: 0,
     dossiersEnRetard: 0, // > 21 jours
     montantPotentiel: 0,
     montantRealise: 0,
+    montantLastMonth: 0, // Pour croissance
     tauxConversion: 0, // simulateur → dossier
+    
+    // Objectifs (calculés dynamiquement)
+    objectifDossiersMonth: 0, // Moyenne des 3 derniers mois * 1.2
+    objectifRevenusMonth: 0, // Moyenne des 3 derniers mois * 1.2
+    croissanceDossiers: 0, // % de croissance mois actuel vs précédent
+    croissanceRevenus: 0, // % de croissance revenus vs mois précédent
     
     // Produits
     totalProduits: 0,
@@ -295,10 +305,52 @@ const AdminDashboardOptimized: React.FC = () => {
       const alertesUrgentes = validationsDocuments + expertsPendingValidation;
       const alertesNormales = dossiersEnRetard;
 
+      // Calculer les données du mois précédent pour la croissance
+      const now = new Date();
+      const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+      
+      const clientsLastMonth = clients.filter((client: any) => {
+        const clientDate = new Date(client.created_at);
+        return clientDate >= lastMonth && clientDate <= lastMonthEnd;
+      }).length;
+      
+      const dossiersThisMonth = dossiers.filter((dossier: any) => {
+        const dossierDate = new Date(dossier.created_at);
+        return dossierDate.getMonth() === now.getMonth() && dossierDate.getFullYear() === now.getFullYear();
+      }).length;
+      
+      const dossiersLastMonth = dossiers.filter((dossier: any) => {
+        const dossierDate = new Date(dossier.created_at);
+        return dossierDate >= lastMonth && dossierDate <= lastMonthEnd;
+      }).length;
+      
+      const montantLastMonth = dossiers
+        .filter((dossier: any) => {
+          const dossierDate = new Date(dossier.created_at);
+          return dossierDate >= lastMonth && dossierDate <= lastMonthEnd && dossier.statut === 'validated';
+        })
+        .reduce((sum: number, dossier: any) => sum + (dossier.montantFinal || 0), 0);
+      
+      // Calculer les objectifs (moyenne des 3 derniers mois * 1.2 pour objectif ambitieux)
+      // Ou simplement mois précédent * 1.5 si pas assez de données
+      const objectifDossiersMonth = Math.max(dossiersLastMonth * 1.5, 10); // Minimum 10 dossiers
+      const objectifRevenusMonth = Math.max(montantLastMonth * 1.5, 50000); // Minimum 50k€
+      
+      // Calculer les croissances (en %)
+      const croissanceDossiers = dossiersLastMonth > 0 
+        ? Math.round(((dossiersThisMonth - dossiersLastMonth) / dossiersLastMonth) * 100)
+        : 0;
+      
+      const croissanceRevenus = montantLastMonth > 0
+        ? Math.round(((montantRealise - montantLastMonth) / montantLastMonth) * 100)
+        : 0;
+
       // Mettre à jour les KPIs (DONNÉES RÉELLES UNIQUEMENT)
       setKpiData({
         totalClients,
         clientsThisMonth,
+        clientsLastMonth,
         clientsSatisfaction: 0, // À calculer depuis satisfaction réelle si disponible
         totalExperts,
         activeExperts,
@@ -306,11 +358,18 @@ const AdminDashboardOptimized: React.FC = () => {
         expertsPendingValidation,
         expertsNPS: 0, // À calculer depuis notes réelles si disponible
         totalDossiers,
+        dossiersThisMonth,
+        dossiersLastMonth,
         pendingDossiers,
         dossiersEnRetard,
         montantPotentiel,
         montantRealise,
+        montantLastMonth,
         tauxConversion: totalDossiers > 0 ? Math.round((totalDossiers / Math.max(totalClients, 1)) * 100) : 0,
+        objectifDossiersMonth,
+        objectifRevenusMonth,
+        croissanceDossiers,
+        croissanceRevenus,
         totalProduits: produits.length,
         apporteursTotal: apporteurs.length,
         apporteursActifs,
@@ -1260,7 +1319,9 @@ const AdminDashboardOptimized: React.FC = () => {
                               onClick={() => setActiveSection('performance')}
                             >
                               <span className="text-sm text-gray-600">📊 Voir Performance →</span>
-                              <span className="font-semibold text-indigo-600">+23%</span>
+                              <span className={`font-semibold ${kpiData.croissanceRevenus >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {kpiData.croissanceRevenus >= 0 ? '+' : ''}{kpiData.croissanceRevenus}%
+                              </span>
                             </div>
                           </div>
                         </CardContent>
@@ -1493,7 +1554,9 @@ const AdminDashboardOptimized: React.FC = () => {
                             </div>
                             <div className="flex justify-between">
                               <span className="text-sm text-gray-600">Croissance</span>
-                              <span className="font-semibold text-purple-600">+23%</span>
+                              <span className={`font-semibold ${kpiData.croissanceRevenus >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {kpiData.croissanceRevenus >= 0 ? '+' : ''}{kpiData.croissanceRevenus}%
+                              </span>
                             </div>
                           </div>
                         </CardContent>
@@ -1511,27 +1574,51 @@ const AdminDashboardOptimized: React.FC = () => {
                           <div className="space-y-4">
                             <div>
                               <div className="flex justify-between mb-2">
-                                <span className="text-sm text-gray-600">Dossiers validés</span>
-                                <span className="font-semibold text-blue-600">{kpiData.totalDossiers}/50</span>
+                                <span className="text-sm text-gray-600">Dossiers ce mois</span>
+                                <span className="font-semibold text-blue-600">
+                                  {kpiData.dossiersThisMonth}/{Math.round(kpiData.objectifDossiersMonth)}
+                                </span>
                               </div>
                               <div className="w-full bg-gray-200 rounded-full h-2">
                                 <div 
-                                  className="bg-blue-600 h-2 rounded-full" 
-                                  style={{ width: `${(kpiData.totalDossiers / 50) * 100}%` }}
+                                  className={`h-2 rounded-full ${
+                                    kpiData.dossiersThisMonth >= kpiData.objectifDossiersMonth 
+                                      ? 'bg-green-600' 
+                                      : kpiData.dossiersThisMonth >= kpiData.objectifDossiersMonth * 0.7
+                                      ? 'bg-blue-600'
+                                      : 'bg-yellow-600'
+                                  }`}
+                                  style={{ width: `${Math.min((kpiData.dossiersThisMonth / Math.max(kpiData.objectifDossiersMonth, 1)) * 100, 100)}%` }}
                                 ></div>
                               </div>
+                              <p className="text-xs text-gray-500 mt-1">
+                                {kpiData.dossiersThisMonth >= kpiData.objectifDossiersMonth 
+                                  ? '🎉 Objectif atteint !' 
+                                  : `Reste ${Math.round(kpiData.objectifDossiersMonth - kpiData.dossiersThisMonth)} dossiers`}
+                              </p>
                             </div>
                             <div>
                               <div className="flex justify-between mb-2">
-                                <span className="text-sm text-gray-600">Revenus</span>
-                                <span className="font-semibold text-green-600">{((kpiData.montantRealise / 100000) * 100).toFixed(0)}%</span>
+                                <span className="text-sm text-gray-600">Revenus ce mois</span>
+                                <span className="font-semibold text-green-600">
+                                  {Math.round((kpiData.montantRealise / Math.max(kpiData.objectifRevenusMonth, 1)) * 100)}%
+                                </span>
                               </div>
                               <div className="w-full bg-gray-200 rounded-full h-2">
                                 <div 
-                                  className="bg-green-600 h-2 rounded-full" 
-                                  style={{ width: `${(kpiData.montantRealise / 100000) * 100}%` }}
+                                  className={`h-2 rounded-full ${
+                                    kpiData.montantRealise >= kpiData.objectifRevenusMonth 
+                                      ? 'bg-green-600' 
+                                      : kpiData.montantRealise >= kpiData.objectifRevenusMonth * 0.7
+                                      ? 'bg-blue-600'
+                                      : 'bg-yellow-600'
+                                  }`}
+                                  style={{ width: `${Math.min((kpiData.montantRealise / Math.max(kpiData.objectifRevenusMonth, 1)) * 100, 100)}%` }}
                                 ></div>
                               </div>
+                              <p className="text-xs text-gray-500 mt-1">
+                                Objectif: {kpiData.objectifRevenusMonth.toLocaleString('fr-FR')}€
+                              </p>
                             </div>
                           </div>
                         </CardContent>
