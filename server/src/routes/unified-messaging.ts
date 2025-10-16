@@ -1040,6 +1040,8 @@ router.get('/admin/conversations', async (req, res) => {
 
     // Enrichir chaque conversation avec le dernier message et le compteur de non-lus
     // ET FILTRER uniquement les conversations avec au moins 1 message
+    const adminId = authUser.database_id || authUser.auth_user_id || authUser.id;
+    
     const enrichedConversations = await Promise.all(
       (conversations || []).map(async (conv) => {
         // Récupérer le dernier message
@@ -1058,13 +1060,88 @@ router.get('/admin/conversations', async (req, res) => {
           .select('*', { count: 'exact', head: true })
           .eq('conversation_id', conv.id)
           .eq('is_read', false)
-          .neq('sender_id', authUser.database_id || authUser.id);
+          .neq('sender_id', adminId);
+
+        // Enrichir avec les informations de l'autre participant
+        let otherParticipant: any = null;
+        const otherParticipantId = conv.participant_ids?.find((id: string) => id !== adminId);
+        
+        if (otherParticipantId) {
+          // Essayer de trouver dans Client
+          if (conv.client_id) {
+            const { data: client } = await supabaseAdmin
+              .from('Client')
+              .select('id, first_name, last_name, company_name, email')
+              .eq('id', conv.client_id)
+              .single();
+            
+            if (client) {
+              otherParticipant = {
+                id: client.id,
+                name: client.company_name || `${client.first_name || ''} ${client.last_name || ''}`.trim() || client.email,
+                type: 'client',
+                email: client.email
+              };
+            }
+          }
+          
+          // Essayer Expert
+          if (!otherParticipant && conv.expert_id) {
+            const { data: expert } = await supabaseAdmin
+              .from('Expert')
+              .select('id, first_name, last_name, company_name, email')
+              .eq('id', conv.expert_id)
+              .single();
+            
+            if (expert) {
+              otherParticipant = {
+                id: expert.id,
+                name: `${expert.first_name || ''} ${expert.last_name || ''}`.trim() || expert.company_name || expert.email,
+                type: 'expert',
+                email: expert.email
+              };
+            }
+          }
+          
+          // Fallback: chercher dans toutes les tables si pas trouvé
+          if (!otherParticipant) {
+            const [clientRes, expertRes, apporteurRes] = await Promise.all([
+              supabaseAdmin.from('Client').select('id, first_name, last_name, company_name, email').eq('id', otherParticipantId).single(),
+              supabaseAdmin.from('Expert').select('id, first_name, last_name, company_name, email').eq('id', otherParticipantId).single(),
+              supabaseAdmin.from('ApporteurAffaires').select('id, first_name, last_name, company_name, email').eq('id', otherParticipantId).single()
+            ]);
+            
+            if (clientRes.data) {
+              otherParticipant = {
+                id: clientRes.data.id,
+                name: clientRes.data.company_name || `${clientRes.data.first_name || ''} ${clientRes.data.last_name || ''}`.trim() || clientRes.data.email,
+                type: 'client',
+                email: clientRes.data.email
+              };
+            } else if (expertRes.data) {
+              otherParticipant = {
+                id: expertRes.data.id,
+                name: `${expertRes.data.first_name || ''} ${expertRes.data.last_name || ''}`.trim() || expertRes.data.company_name || expertRes.data.email,
+                type: 'expert',
+                email: expertRes.data.email
+              };
+            } else if (apporteurRes.data) {
+              otherParticipant = {
+                id: apporteurRes.data.id,
+                name: `${apporteurRes.data.first_name || ''} ${apporteurRes.data.last_name || ''}`.trim() || apporteurRes.data.company_name || apporteurRes.data.email,
+                type: 'apporteur',
+                email: apporteurRes.data.email
+              };
+            }
+          }
+        }
 
         return {
           ...conv,
           last_message: lastMessage || null,
           unread_count: unreadCount || 0,
-          has_messages: lastMessage !== null
+          has_messages: lastMessage !== null,
+          otherParticipant
         };
       })
     );

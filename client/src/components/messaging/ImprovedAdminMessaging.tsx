@@ -251,7 +251,7 @@ export const ImprovedAdminMessaging: React.FC<ImprovedAdminMessagingProps> = ({
 
       if (response.ok) {
         const result = await response.json();
-        setMessages(result.data || []);
+        setMessages(result.data?.messages || result.data || []);
       }
     } catch (error) {
       console.error('Erreur chargement messages:', error);
@@ -262,14 +262,13 @@ export const ImprovedAdminMessaging: React.FC<ImprovedAdminMessagingProps> = ({
     if (!messageInput.trim() || !selectedConversation) return;
 
     try {
-      const response = await fetch(`${config.API_URL}/api/unified-messaging/messages`, {
+      const response = await fetch(`${config.API_URL}/api/unified-messaging/conversations/${selectedConversation.id}/messages`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          conversation_id: selectedConversation.id,
           content: messageInput,
           message_type: 'text'
         })
@@ -279,9 +278,13 @@ export const ImprovedAdminMessaging: React.FC<ImprovedAdminMessagingProps> = ({
         const result = await response.json();
         setMessages(prev => [...prev, result.data]);
         setMessageInput('');
+      } else {
+        const error = await response.json();
+        toast.error(error.message || 'Erreur lors de l\'envoi du message');
       }
     } catch (error) {
       console.error('Erreur envoi message:', error);
+      toast.error('Erreur lors de l\'envoi du message');
     }
   }, [messageInput, selectedConversation]);
 
