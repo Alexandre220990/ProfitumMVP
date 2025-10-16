@@ -123,31 +123,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       badge: pendingValidations
     },
     {
-      name: 'Monitoring',
-      href: '/admin/monitoring',
-      icon: Monitor,
-      current: location.pathname === '/admin/monitoring',
-      badge: 0
-    },
-    {
       name: 'Formulaire Expert',
       href: '/admin/formulaire-expert',
       icon: UserPlus,
       current: location.pathname === '/admin/formulaire-expert'
-    },
-    
-    // Système / Dev
-    {
-      name: 'Terminal Tests',
-      href: '/admin/terminal-tests',
-      icon: Terminal,
-      current: location.pathname === '/admin/terminal-tests'
-    },
-    {
-      name: 'Tests',
-      href: '/admin/tests',
-      icon: Zap,
-      current: location.pathname === '/admin/tests'
     }
   ];
 

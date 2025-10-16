@@ -484,7 +484,7 @@ export default function DocumentsGEDUnifiePage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Uploads Aujourd'hui</p>
-                    <p className="text-2xl font-bold text-gray-900">{stats.recent_activity.uploads_today}</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats?.recent_activity?.uploads_today || 0}</p>
                   </div>
                   <Upload className="w-8 h-8 text-purple-600" />
                 </div>
