@@ -71,6 +71,7 @@ export const AdminMessagingApp: React.FC<AdminMessagingAppProps> = ({
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMessages, setLoadingMessages] = useState(false);
 
   // ========================================
   // DONNÉES DE TEST POUR L'ADMIN
