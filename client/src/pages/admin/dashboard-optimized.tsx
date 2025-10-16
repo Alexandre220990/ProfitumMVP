@@ -78,7 +78,7 @@ interface ClientProduitEligible {
   };
 }
 
-type ActiveSection = 'overview' | 'experts' | 'clients' | 'dossiers' | 'apporteurs' | 'validations';
+type ActiveSection = 'overview' | 'experts' | 'clients' | 'dossiers' | 'apporteurs' | 'validations' | 'performance';
 
 // ============================================================================
 // DASHBOARD ADMIN OPTIMISÉ - VUE MÉTIER PURE
@@ -1209,58 +1209,8 @@ const AdminDashboardOptimized: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Métriques de performance globales */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <Card>
-                        <CardHeader>
-                          <CardTitle className="flex items-center gap-2">
-                            <TrendingUp className="w-5 h-5" />
-                            Performance Globale
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-4">
-                            <div className="flex justify-between">
-                              <span className="text-sm text-gray-600">Taux de conversion</span>
-                              <span className="font-semibold text-green-600">{kpiData.tauxConversion}%</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm text-gray-600">En retard</span>
-                              <span className="font-semibold text-red-600">{kpiData.dossiersEnRetard}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm text-gray-600">Ce mois</span>
-                              <span className="font-semibold text-purple-600">{kpiData.clientsThisMonth}</span>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card>
-                        <CardHeader>
-                          <CardTitle className="flex items-center gap-2">
-                            <DollarSign className="w-5 h-5" />
-                            Revenus
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-4">
-                            <div className="flex justify-between">
-                              <span className="text-sm text-gray-600">Ce mois</span>
-                              <span className="font-semibold text-green-600">{kpiData.montantRealise.toLocaleString('fr-FR')}€</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm text-gray-600">Potentiel</span>
-                              <span className="font-semibold text-blue-600">{kpiData.montantPotentiel.toLocaleString('fr-FR')}€</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm text-gray-600">Croissance</span>
-                              <span className="font-semibold text-purple-600">+23%</span>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-
+                    {/* Métriques écosystème uniquement */}
+                    <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
                       <Card>
                         <CardHeader>
                           <CardTitle className="flex items-center gap-2">
@@ -1304,6 +1254,13 @@ const AdminDashboardOptimized: React.FC = () => {
                             >
                               <span className="text-sm text-gray-600">Produits éligibles</span>
                               <span className="font-semibold text-orange-600">{kpiData.totalProduits || 0}</span>
+                            </div>
+                            <div 
+                              className="flex justify-between p-2 rounded hover:bg-indigo-50 cursor-pointer transition-colors"
+                              onClick={() => setActiveSection('performance')}
+                            >
+                              <span className="text-sm text-gray-600">📊 Voir Performance →</span>
+                              <span className="font-semibold text-indigo-600">+23%</span>
                             </div>
                           </div>
                         </CardContent>
@@ -1466,6 +1423,132 @@ const AdminDashboardOptimized: React.FC = () => {
 
                     {/* Composant ApporteurManagement existant */}
                     <ApporteurManagement />
+                  </div>
+                )}
+
+                {activeSection === 'performance' && (
+                  <div className="space-y-6">
+                    {/* En-tête Performance */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h2 className="text-2xl font-bold text-slate-900">Performance & Revenus</h2>
+                        <p className="text-slate-600">Analyses financières et métriques de conversion</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" onClick={() => setActiveSection('overview')}>
+                          ← Retour
+                        </Button>
+                        <Button variant="outline" size="sm">
+                          <Download className="w-4 h-4 mr-2" />
+                          Exporter Rapport
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* KPI Performance */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      {/* Performance Globale */}
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2">
+                            <TrendingUp className="w-5 h-5 text-indigo-600" />
+                            Performance Globale
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-4">
+                            <div className="flex justify-between">
+                              <span className="text-sm text-gray-600">Taux de conversion</span>
+                              <span className="font-semibold text-green-600">{kpiData.tauxConversion}%</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-sm text-gray-600">En retard</span>
+                              <span className="font-semibold text-red-600">{kpiData.dossiersEnRetard}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-sm text-gray-600">Ce mois</span>
+                              <span className="font-semibold text-purple-600">{kpiData.clientsThisMonth}</span>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* Revenus */}
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2">
+                            <DollarSign className="w-5 h-5 text-green-600" />
+                            Revenus
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-4">
+                            <div className="flex justify-between">
+                              <span className="text-sm text-gray-600">Ce mois</span>
+                              <span className="font-semibold text-green-600">{kpiData.montantRealise.toLocaleString('fr-FR')}€</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-sm text-gray-600">Potentiel</span>
+                              <span className="font-semibold text-blue-600">{kpiData.montantPotentiel.toLocaleString('fr-FR')}€</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-sm text-gray-600">Croissance</span>
+                              <span className="font-semibold text-purple-600">+23%</span>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* Objectifs */}
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2">
+                            <Target className="w-5 h-5 text-blue-600" />
+                            Objectifs du Mois
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-4">
+                            <div>
+                              <div className="flex justify-between mb-2">
+                                <span className="text-sm text-gray-600">Dossiers validés</span>
+                                <span className="font-semibold text-blue-600">{kpiData.totalDossiers}/50</span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div 
+                                  className="bg-blue-600 h-2 rounded-full" 
+                                  style={{ width: `${(kpiData.totalDossiers / 50) * 100}%` }}
+                                ></div>
+                              </div>
+                            </div>
+                            <div>
+                              <div className="flex justify-between mb-2">
+                                <span className="text-sm text-gray-600">Revenus</span>
+                                <span className="font-semibold text-green-600">{((kpiData.montantRealise / 100000) * 100).toFixed(0)}%</span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div 
+                                  className="bg-green-600 h-2 rounded-full" 
+                                  style={{ width: `${(kpiData.montantRealise / 100000) * 100}%` }}
+                                ></div>
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {/* Graphiques et analyses détaillées */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Évolution Mensuelle</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-gray-600 text-center py-8">
+                          📊 Graphiques détaillés disponibles prochainement
+                        </p>
+                      </CardContent>
+                    </Card>
                   </div>
                 )}
 
