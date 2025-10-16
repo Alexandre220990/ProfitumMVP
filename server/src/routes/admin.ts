@@ -1102,6 +1102,161 @@ router.get('/validations/content', asyncHandler(async (req, res) => {
   }
 }));
 
+// ========================================
+// Routes pour les statistiques KPI
+// ========================================
+
+// Stats Clients
+router.get('/clients/stats', asyncHandler(async (req, res): Promise<void> => {
+  try {
+    const { data: clients, error: clientsError } = await supabaseClient
+      .from('Client')
+      .select(`
+        id,
+        status,
+        created_at,
+        ClientProduitEligible (
+          id,
+          statut
+        )
+      `);
+
+    if (clientsError) throw clientsError;
+
+    const clientsList = clients || [];
+    const total_clients = clientsList.length;
+    const clients_actifs = clientsList.filter(c => c.status === 'active').length;
+    const clients_avec_dossiers = clientsList.filter(c => (c.ClientProduitEligible as any[])?.length > 0).length;
+    const taux_engagement = total_clients > 0 ? parseFloat(((clients_avec_dossiers / total_clients) * 100).toFixed(1)) : 0;
+    
+    const dossiers_en_cours = clientsList.reduce((acc, c) => {
+      const dossiers = (c.ClientProduitEligible as any[]) || [];
+      return acc + dossiers.filter(d => ['eligible', 'en_cours'].includes(d.statut)).length;
+    }, 0);
+    
+    const date_30j = new Date();
+    date_30j.setDate(date_30j.getDate() - 30);
+    const nouveaux_ce_mois = clientsList.filter(c => new Date(c.created_at) >= date_30j).length;
+    
+    res.json({
+      success: true,
+      data: {
+        total_clients,
+        clients_actifs,
+        taux_engagement,
+        dossiers_en_cours,
+        nouveaux_ce_mois
+      }
+    });
+  } catch (error) {
+    console.error('Erreur stats clients:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors du chargement des statistiques clients'
+    });
+  }
+}));
+
+// Stats Experts
+router.get('/experts/stats', asyncHandler(async (req, res): Promise<void> => {
+  try {
+    const { data: experts, error: expertsError } = await supabaseClient
+      .from('Expert')
+      .select(`
+        id,
+        approval_status,
+        rating,
+        created_at,
+        ClientProduitEligible (
+          id,
+          statut
+        )
+      `);
+
+    if (expertsError) throw expertsError;
+
+    const expertsList = experts || [];
+    const total_experts = expertsList.length;
+    const experts_approuves = expertsList.filter(e => e.approval_status === 'approved').length;
+    const en_attente_validation = expertsList.filter(e => e.approval_status === 'pending').length;
+    
+    const ratings = expertsList.filter(e => e.rating).map(e => e.rating);
+    const note_moyenne = ratings.length > 0 
+      ? parseFloat((ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1))
+      : 0;
+    
+    const dossiers_actifs = expertsList.reduce((acc, e) => {
+      const dossiers = (e.ClientProduitEligible as any[]) || [];
+      return acc + dossiers.filter(d => d.statut === 'en_cours').length;
+    }, 0);
+    
+    res.json({
+      success: true,
+      data: {
+        total_experts,
+        experts_approuves,
+        note_moyenne,
+        dossiers_actifs,
+        en_attente_validation
+      }
+    });
+  } catch (error) {
+    console.error('Erreur stats experts:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors du chargement des statistiques experts'
+    });
+  }
+}));
+
+// Stats Dossiers
+router.get('/dossiers/stats', asyncHandler(async (req, res): Promise<void> => {
+  try {
+    const { data: dossiers, error: dossiersError } = await supabaseClient
+      .from('ClientProduitEligible')
+      .select('*');
+
+    if (dossiersError) throw dossiersError;
+
+    const dossiersList = dossiers || [];
+    const total_dossiers = dossiersList.length;
+    const dossiers_actifs = dossiersList.filter(d => ['eligible', 'en_cours'].includes(d.statut)).length;
+    const dossiers_valides = dossiersList.filter(d => d.statut === 'validated').length;
+    const taux_reussite = total_dossiers > 0 ? parseFloat(((dossiers_valides / total_dossiers) * 100).toFixed(1)) : 0;
+    
+    const en_pre_eligibilite = dossiersList.filter(d => d.validation_state === 'documents_uploaded').length;
+    
+    // Calculer montants (depuis metadata.montant_estime ou champ direct)
+    const montants = dossiersList
+      .map(d => {
+        const montant = d.metadata?.montant_estime || d.montant_estime || 0;
+        return typeof montant === 'string' ? parseFloat(montant) : montant;
+      })
+      .filter(m => !isNaN(m) && m > 0);
+    
+    const montant_total = montants.reduce((acc, m) => acc + m, 0);
+    const montant_moyen = montants.length > 0 ? montant_total / montants.length : 0;
+    
+    res.json({
+      success: true,
+      data: {
+        total_dossiers,
+        dossiers_actifs,
+        taux_reussite,
+        en_pre_eligibilite,
+        montant_total: Math.round(montant_total),
+        montant_moyen: Math.round(montant_moyen)
+      }
+    });
+  } catch (error) {
+    console.error('Erreur stats dossiers:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors du chargement des statistiques dossiers'
+    });
+  }
+}));
+
 // GET /api/admin/clients - Liste des clients avec filtres
 router.get('/clients', asyncHandler(async (req, res) => {
   try {
