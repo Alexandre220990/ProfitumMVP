@@ -4025,6 +4025,125 @@ router.post('/dossiers/:id/assign-expert', async (req, res) => {
   }
 });
 
+// GET /api/admin/notifications - Récupérer les notifications admin
+router.get('/notifications', async (req, res) => {
+  try {
+    const { status, priority, limit = 50 } = req.query;
+    
+    let query = supabaseClient
+      .from('AdminNotification')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(Number(limit));
+    
+    if (status) {
+      query = query.eq('status', status);
+    }
+    
+    if (priority) {
+      query = query.eq('priority', priority);
+    }
+    
+    const { data: notifications, error } = await query;
+    
+    if (error) {
+      console.error('❌ Erreur récupération notifications:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la récupération des notifications'
+      });
+    }
+    
+    return res.json({
+      success: true,
+      data: { notifications: notifications || [] }
+    });
+    
+  } catch (error) {
+    console.error('❌ Erreur route notifications:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+// PATCH /api/admin/notifications/:id/read - Marquer notification comme lue
+router.patch('/notifications/:id/read', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const { data, error } = await supabaseClient
+      .from('AdminNotification')
+      .update({ 
+        status: 'read',
+        read_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('❌ Erreur mise à jour notification:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la mise à jour de la notification'
+      });
+    }
+    
+    return res.json({
+      success: true,
+      data: { notification: data }
+    });
+    
+  } catch (error) {
+    console.error('❌ Erreur route notification read:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+// DELETE /api/admin/notifications/:id - Archiver notification
+router.delete('/notifications/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const { data, error } = await supabaseClient
+      .from('AdminNotification')
+      .update({ 
+        status: 'archived',
+        archived_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('❌ Erreur archivage notification:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de l\'archivage de la notification'
+      });
+    }
+    
+    return res.json({
+      success: true,
+      data: { notification: data }
+    });
+    
+  } catch (error) {
+    console.error('❌ Erreur route notification archive:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
 // GET /api/admin/dossiers/:id/historique - Historique d'un dossier
 router.get('/dossiers/:id/historique', async (req, res) => {
   try {

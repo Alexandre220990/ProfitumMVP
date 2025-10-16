@@ -711,7 +711,27 @@ const AdminDashboardOptimized: React.FC = () => {
         case 'clients':
           const clientsResponse = await get('/admin/clients');
           if (clientsResponse.success) {
-            data = (clientsResponse.data as any)?.clients || [];
+            const clients = (clientsResponse.data as any)?.clients || [];
+            
+            // Enrichir avec le nombre de dossiers à valider
+            const dossiersResponse = await get('/admin/dossiers/all');
+            if (dossiersResponse.success) {
+              const allDossiers = (dossiersResponse.data as any)?.dossiers || [];
+              
+              data = clients.map((client: any) => {
+                const clientDossiersAValider = allDossiers.filter((d: any) => 
+                  d.clientId === client.id && 
+                  (d.statut === 'documents_uploaded' || d.statut === 'eligible_confirmed')
+                ).length;
+                
+                return {
+                  ...client,
+                  dossiersAValider: clientDossiersAValider
+                };
+              });
+            } else {
+              data = clients;
+            }
           } else {
             console.error('❌ Erreur chargement clients:', clientsResponse.message);
           }
@@ -1868,6 +1888,11 @@ const AdminDashboardOptimized: React.FC = () => {
                                                       }>
                                                         {client.statut}
                                                       </Badge>
+                                                      {client.dossiersAValider > 0 && (
+                                                        <Badge variant="destructive" className="animate-pulse">
+                                                          ⚠️ {client.dossiersAValider} à valider
+                                                        </Badge>
+                                                      )}
                                                     </div>
                                                     
                                                     <div className="text-sm text-gray-600">
@@ -2929,25 +2954,58 @@ const AdminDashboardOptimized: React.FC = () => {
                               .filter(d => d.statut === 'documents_uploaded' || d.statut === 'eligible_confirmed')
                               .slice(0, 3)
                               .map((dossier: ClientProduitEligible) => (
-                                <div key={dossier.id} className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                  <div className="flex items-center justify-between">
-                                    <div>
-                                      <h4 className="font-semibold text-blue-800">
-                                        {dossier.Client?.company_name || 'Client inconnu'}
-                                      </h4>
-                                      <p className="text-sm text-blue-700">
-                                        {dossier.ProduitEligible?.nom || 'Produit inconnu'}
+                                <div key={dossier.id} className="bg-red-50 border border-red-300 rounded-lg p-4">
+                                  <div className="flex items-start justify-between gap-4">
+                                    <div className="flex-1">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <Badge variant="destructive">À VALIDER</Badge>
+                                        <h4 className="font-semibold text-gray-900">
+                                          {dossier.Client?.company_name || 
+                                           `${dossier.Client?.first_name || ''} ${dossier.Client?.last_name || ''}`.trim() || 
+                                           'Client inconnu'}
+                                        </h4>
+                                      </div>
+                                      <p className="text-sm text-gray-700 mb-2">
+                                        📦 {dossier.ProduitEligible?.nom || 'Produit inconnu'}
                                       </p>
-                                      <div className="flex gap-2 mt-2">
+                                      <div className="flex flex-wrap gap-2 text-xs text-gray-600">
                                         {dossier.montantFinal && (
-                                          <Badge variant="secondary">{formatCurrency(dossier.montantFinal)}</Badge>
+                                          <span className="flex items-center gap-1">
+                                            <DollarSign className="w-3 h-3" />
+                                            {formatCurrency(dossier.montantFinal)}
+                                          </span>
                                         )}
+                                        <span className="flex items-center gap-1">
+                                          <Calendar className="w-3 h-3" />
+                                          Soumis le {new Date(dossier.updated_at || dossier.created_at).toLocaleDateString('fr-FR')}
+                                        </span>
                                       </div>
                                     </div>
-                                    <div className="flex gap-2">
-                                      <Button size="sm" variant="default" onClick={() => navigate('/admin/gestion-dossiers')}>
-                                        <Eye className="w-4 h-4 mr-1" />
-                                        Gérer
+                                    <div className="flex flex-col gap-2">
+                                      <Button 
+                                        size="sm" 
+                                        variant="default"
+                                        className="bg-green-600 hover:bg-green-700"
+                                        onClick={() => {
+                                          // TODO: Implémenter validation directe
+                                          toast.success('Validation en cours...');
+                                          navigate('/admin/gestion-dossiers');
+                                        }}
+                                      >
+                                        <CheckCircle className="w-4 h-4 mr-1" />
+                                        Valider
+                                      </Button>
+                                      <Button 
+                                        size="sm" 
+                                        variant="destructive"
+                                        onClick={() => {
+                                          // TODO: Implémenter rejet direct
+                                          toast.error('Rejet en cours...');
+                                          navigate('/admin/gestion-dossiers');
+                                        }}
+                                      >
+                                        <XCircle className="w-4 h-4 mr-1" />
+                                        Rejeter
                                       </Button>
                                     </div>
                                   </div>
