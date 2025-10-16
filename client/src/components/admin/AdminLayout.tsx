@@ -108,26 +108,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     
     // Gestion
     {
-      name: 'Clients',
-      href: '/admin/gestion-clients',
-      icon: Users,
-      current: location.pathname === '/admin/gestion-clients'
-    },
-    {
-      name: 'Experts',
-      href: '/admin/gestion-experts',
-      icon: UserCheck,
-      current: location.pathname === '/admin/gestion-experts',
-      badge: pendingExperts
-    },
-    {
-      name: 'Dossiers',
-      href: '/admin/gestion-dossiers',
-      icon: FolderOpen,
-      current: location.pathname === '/admin/gestion-dossiers',
-      badge: blockedDossiers
-    },
-    {
       name: 'Produits',
       href: '/admin/gestion-produits',
       icon: Package,
