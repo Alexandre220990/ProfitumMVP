@@ -93,6 +93,8 @@ const AdminDashboardOptimized: React.FC = () => {
   // ===== ÉTATS LOCAUX =====
   const [activeSection, setActiveSection] = useState<ActiveSection>('overview');
   const [selectedEcosystemTile, setSelectedEcosystemTile] = useState<string | null>(null);
+  const [selectedTileData, setSelectedTileData] = useState<any[]>([]);
+  const [loadingTileData, setLoadingTileData] = useState(false);
   const [sectionData, setSectionData] = useState<SectionData>({
     experts: [],
     clients: [],
@@ -175,6 +177,13 @@ const AdminDashboardOptimized: React.FC = () => {
       loadSectionData(activeSection);
     }
   }, [activeSection]);
+
+  // Charger les données quand une tuile écosystème est sélectionnée
+  useEffect(() => {
+    if (selectedEcosystemTile) {
+      loadTileData(selectedEcosystemTile);
+    }
+  }, [selectedEcosystemTile]);
 
   // Test d'authentification admin
   useEffect(() => {
@@ -397,6 +406,83 @@ const AdminDashboardOptimized: React.FC = () => {
       
     } catch (error) {
       console.error('❌ Erreur chargement KPIs:', error);
+    }
+  };
+
+  // ========================================
+  // CHARGEMENT DES DONNÉES PAR TUILE ÉCOSYSTÈME
+  // ========================================
+
+  const loadTileData = async (tile: string) => {
+    setLoadingTileData(true);
+    try {
+      console.log(`🔍 Chargement données tuile: ${tile}`);
+      
+      switch (tile) {
+        case 'dossiers':
+          const dossiersResponse = await get('/admin/dossiers/all');
+          if (dossiersResponse.success) {
+            setSelectedTileData((dossiersResponse.data as any)?.dossiers || []);
+          } else {
+            console.error('❌ Erreur chargement dossiers:', dossiersResponse.message);
+            setSelectedTileData([]);
+          }
+          break;
+          
+        case 'clients':
+          const clientsResponse = await get('/admin/clients');
+          if (clientsResponse.success) {
+            setSelectedTileData((clientsResponse.data as any)?.clients || []);
+          } else {
+            console.error('❌ Erreur chargement clients:', clientsResponse.message);
+            setSelectedTileData([]);
+          }
+          break;
+          
+        case 'experts':
+          const expertsResponse = await get('/admin/experts');
+          if (expertsResponse.success) {
+            setSelectedTileData((expertsResponse.data as any)?.experts || []);
+          } else {
+            console.error('❌ Erreur chargement experts:', expertsResponse.message);
+            setSelectedTileData([]);
+          }
+          break;
+          
+        case 'apporteurs':
+          const apporteursResponse = await get('/admin/apporteurs');
+          if (apporteursResponse.success) {
+            setSelectedTileData(Array.isArray(apporteursResponse.data) ? apporteursResponse.data : []);
+          } else {
+            console.error('❌ Erreur chargement apporteurs:', apporteursResponse.message);
+            setSelectedTileData([]);
+          }
+          break;
+          
+        case 'produits':
+          const produitsResponse = await get('/admin/produits');
+          if (produitsResponse.success) {
+            setSelectedTileData((produitsResponse.data as any)?.produits || []);
+          } else {
+            console.error('❌ Erreur chargement produits:', produitsResponse.message);
+            setSelectedTileData([]);
+          }
+          break;
+          
+        case 'performance':
+          // Pour performance, on utilise les données KPI déjà chargées
+          setSelectedTileData([]);
+          break;
+          
+        default:
+          setSelectedTileData([]);
+      }
+      
+    } catch (error) {
+      console.error(`❌ Erreur chargement tuile ${tile}:`, error);
+      setSelectedTileData([]);
+    } finally {
+      setLoadingTileData(false);
     }
   };
 
@@ -1493,16 +1579,84 @@ const AdminDashboardOptimized: React.FC = () => {
                                   )}
                                   
                                   {selectedEcosystemTile === 'dossiers' && (
-                                    <div className="text-center py-8">
-                                      <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                                      <p className="text-gray-500">Tableau des dossiers sera affiché ici</p>
-                                      <Button 
-                                        variant="outline" 
-                                        className="mt-4"
-                                        onClick={() => setActiveSection('dossiers')}
-                                      >
-                                        Voir tous les dossiers
-                                      </Button>
+                                    <div className="space-y-4">
+                                      {loadingTileData ? (
+                                        <div className="flex items-center justify-center py-8">
+                                          <RefreshCw className="w-6 h-6 animate-spin text-blue-600" />
+                                          <span className="ml-2 text-gray-600">Chargement des dossiers...</span>
+                                        </div>
+                                      ) : selectedTileData.length > 0 ? (
+                                        <div className="space-y-3">
+                                          <div className="flex justify-between items-center">
+                                            <h4 className="font-semibold text-gray-800">
+                                              Dossiers ClientProduitEligible ({selectedTileData.length})
+                                            </h4>
+                                            <Button 
+                                              variant="outline" 
+                                              size="sm"
+                                              onClick={() => setActiveSection('dossiers')}
+                                            >
+                                              Voir tous
+                                            </Button>
+                                          </div>
+                                          
+                                          <div className="space-y-2 max-h-96 overflow-y-auto">
+                                            {selectedTileData.slice(0, 10).map((dossier: any) => (
+                                              <div key={dossier.id} className="p-3 border rounded-lg hover:bg-gray-50">
+                                                <div className="flex justify-between items-start">
+                                                  <div className="flex-1">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                      <Badge variant={
+                                                        dossier.statut === 'eligible' ? 'default' :
+                                                        dossier.statut === 'pending' ? 'secondary' :
+                                                        dossier.statut === 'validated' ? 'default' : 'outline'
+                                                      }>
+                                                        {dossier.statut}
+                                                      </Badge>
+                                                      {dossier.montantFinal && (
+                                                        <span className="text-sm font-medium text-green-600">
+                                                          {dossier.montantFinal.toLocaleString('fr-FR')}€
+                                                        </span>
+                                                      )}
+                                                    </div>
+                                                    
+                                                    <div className="text-sm text-gray-600">
+                                                      <p><strong>Client:</strong> {dossier.Client?.company_name || dossier.Client?.first_name || 'N/A'}</p>
+                                                      <p><strong>Produit:</strong> {dossier.ProduitEligible?.nom || 'N/A'}</p>
+                                                      {dossier.Expert && (
+                                                        <p><strong>Expert:</strong> {dossier.Expert.first_name} {dossier.Expert.last_name}</p>
+                                                      )}
+                                                      <p><strong>Créé:</strong> {new Date(dossier.created_at).toLocaleDateString('fr-FR')}</p>
+                                                    </div>
+                                                  </div>
+                                                  
+                                                  <div className="text-right">
+                                                    <div className="text-xs text-gray-500">
+                                                      Progress: {dossier.progress || 0}%
+                                                    </div>
+                                                    {dossier.tauxFinal && (
+                                                      <div className="text-sm font-medium text-blue-600">
+                                                        {dossier.tauxFinal}%
+                                                      </div>
+                                                    )}
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            ))}
+                                            
+                                            {selectedTileData.length > 10 && (
+                                              <div className="text-center py-2 text-sm text-gray-500">
+                                                ... et {selectedTileData.length - 10} autres dossiers
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <div className="text-center py-8">
+                                          <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                                          <p className="text-gray-500">Aucun dossier trouvé</p>
+                                        </div>
+                                      )}
                                     </div>
                                   )}
                                   

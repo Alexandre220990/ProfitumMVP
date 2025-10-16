@@ -100,7 +100,7 @@ export default function DocumentsGEDUnifiePage() {
     };
   }
   
-  const { getClientFiles, getExpertFiles, deleteFile, downloadFile } = documentStorage;
+  const { deleteFile, downloadFile } = documentStorage;
 
   // États locaux
   const [loading, setLoading] = useState(true);
@@ -255,9 +255,10 @@ export default function DocumentsGEDUnifiePage() {
         credentials: 'include'
       });
       
+      let allFilesData: DocumentFile[] = [];
       if (response.ok) {
         const result = await response.json();
-        const allFilesData = result.data?.files || [];
+        allFilesData = result.data?.files || [];
         setAllFiles(allFilesData);
       } else {
         console.warn('⚠️ Endpoint /admin/documents/all non disponible, fallback vide');
@@ -267,7 +268,7 @@ export default function DocumentsGEDUnifiePage() {
       
       // Regrouper par client_produit_id (dossier)
       const grouped: { [key: string]: DocumentFile[] } = {};
-      allFilesData.forEach(file => {
+      allFilesData.forEach((file: DocumentFile) => {
         const dossierId = (file as any).metadata?.client_produit_id || 'sans-dossier';
         if (!grouped[dossierId]) {
           grouped[dossierId] = [];
