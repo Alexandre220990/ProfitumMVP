@@ -138,9 +138,9 @@ export default function DocumentsGEDUnifiePage() {
       setLoadingDocs(true);
       const response = await get('/admin/documentation');
       
-      if (response.success) {
-        setDocumentationDocs(response.data || []);
-        console.log('📚 Documentation chargée:', response.data?.length || 0, 'documents');
+      if (response.success && Array.isArray(response.data)) {
+        setDocumentationDocs(response.data);
+        console.log('📚 Documentation chargée:', response.data.length, 'documents');
       } else {
         console.log('📚 Aucune documentation trouvée');
         setDocumentationDocs([]);
