@@ -14,7 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Edit, Trash2, Eye, MoreHorizontal, Building, Mail, Phone, MapPin, Calendar, CheckCircle, XCircle, Users, Plus } from 'lucide-react';
+import { Edit, Trash2, Eye, MoreHorizontal, Building, Mail, Phone, MapPin, Calendar, CheckCircle, XCircle, Users, Plus, TrendingUp, FolderOpen, UserPlus } from 'lucide-react';
+import { KPISection } from '@/components/admin/KPISection';
 
 // Configuration Supabase - Utilise l'instance importée depuis @/lib/supabase
 
@@ -54,6 +55,8 @@ const GestionClients = () => {
   const [filters, setFilters] = useState<Filters>({ search: '', status: '', sortBy: 'created_at' });
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [creatingClient, setCreatingClient] = useState(false);
+  const [clientStats, setClientStats] = useState<any>(null);
+  const [loadingStats, setLoadingStats] = useState(true);
   const [newClient, setNewClient] = useState({
     email: '',
     company_name: '',
@@ -84,10 +87,39 @@ const GestionClients = () => {
     return <Navigate to="/connect-admin" replace />;
   }
 
+  // Charger les stats
+  useEffect(() => {
+    fetchClientStats();
+  }, []);
+
   // Charger les clients
   useEffect(() => {
     fetchClients();
   }, [currentPage, filters]);
+
+  const fetchClientStats = async () => {
+    try {
+      setLoadingStats(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const response = await fetch('/api/admin/clients/stats', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setClientStats(data.data);
+      }
+    } catch (error) {
+      console.error('Erreur chargement stats clients:', error);
+    } finally {
+      setLoadingStats(false);
+    }
+  };
 
   const fetchClients = async () => {
     try {
