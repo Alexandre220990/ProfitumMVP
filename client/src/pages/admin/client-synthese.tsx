@@ -17,7 +17,6 @@ import {
   TrendingUp,
   DollarSign,
   Target,
-  Clock,
   CheckCircle,
   AlertTriangle,
   Edit,
@@ -27,7 +26,6 @@ import {
 import { useAuth } from '@/hooks/use-auth';
 import { get } from '@/lib/api';
 import { toast } from 'sonner';
-import { config } from '@/config/env';
 import AdminLayout from '@/components/admin/AdminLayout';
 
 interface ClientData {
