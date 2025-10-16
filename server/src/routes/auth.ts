@@ -1453,12 +1453,13 @@ router.post('/google/callback', async (req, res) => {
         .eq('id', userId);
     } else {
       // Création d'un nouvel utilisateur
+      // Pour Google OAuth, utiliser name comme company_name (pas de given_name/family_name disponibles)
       const { data: newUser, error: createError } = await supabase
         .from('users')
         .insert({
           email: userInfo.email,
-          first_name: userInfo.given_name || '',
-          last_name: userInfo.family_name || '',
+          first_name: userInfo.name || '',
+          last_name: '',
           google_access_token: tokens.access_token,
           google_refresh_token: tokens.refresh_token,
           google_token_expiry: tokens.expiry_date,
@@ -1508,7 +1509,7 @@ router.post('/google/callback', async (req, res) => {
         user: {
           id: userId,
           email: userInfo.email,
-          name: `${userInfo.given_name || ''} ${userInfo.family_name || ''}`.trim() || userInfo.name
+          name: userInfo.name
         }
       },
       message: 'Authentification Google réussie'
