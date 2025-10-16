@@ -216,7 +216,14 @@ const AdminDashboardOptimized: React.FC = () => {
       
       // Charger les apporteurs (données réelles)
       const apporteursResponse = await get('/admin/apporteurs');
-      const apporteurs = apporteursResponse.success ? (apporteursResponse.data as any)?.apporteurs || [] : [];
+      // L'API retourne directement un tableau dans data, pas data.apporteurs
+      const apporteurs = apporteursResponse.success ? (apporteursResponse.data || []) : [];
+      
+      console.log('📊 Apporteurs chargés:', {
+        total: apporteurs.length,
+        data: apporteurs,
+        structure: apporteurs[0]
+      });
       
       // Calculer les KPIs à partir des DONNÉES RÉELLES uniquement
       const expertsPendingValidation = experts.filter((e: any) => {
@@ -239,7 +246,19 @@ const AdminDashboardOptimized: React.FC = () => {
         d.statut === 'documents_uploaded' || d.statut === 'eligible_confirmed'
       ).length;
 
-      const apporteursActifs = apporteurs.filter((a: any) => a.status === 'active').length;
+      // Compter les apporteurs actifs (tous sauf rejected/suspended)
+      const apporteursActifs = apporteurs.filter((a: any) => 
+        a.status === 'active' || a.status === 'candidature'
+      ).length;
+      
+      console.log('📊 Apporteurs actifs calculés:', {
+        total: apporteurs.length,
+        actifs: apporteursActifs,
+        parStatut: apporteurs.reduce((acc: any, a: any) => {
+          acc[a.status] = (acc[a.status] || 0) + 1;
+          return acc;
+        }, {})
+      });
       
       const alertesUrgentes = validationsDocuments + expertsPendingValidation;
       const alertesNormales = dossiersEnRetard;
