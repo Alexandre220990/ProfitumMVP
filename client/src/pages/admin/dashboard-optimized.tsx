@@ -15,7 +15,8 @@ import {
   Eye, ClipboardList, Edit, Check, X,
   UserCheck, AlertTriangle, Clock,
   Download, Settings, TrendingUp, DollarSign,
-  Bell, Mail, Target, CheckCircle, XCircle
+  Bell, Mail, Target, CheckCircle, XCircle,
+  Handshake, Package
 } from "lucide-react";
 import { TypeSwitcher } from "@/components/TypeSwitcher";
 import { motion } from "framer-motion";
@@ -91,6 +92,7 @@ const AdminDashboardOptimized: React.FC = () => {
   
   // ===== ÉTATS LOCAUX =====
   const [activeSection, setActiveSection] = useState<ActiveSection>('overview');
+  const [selectedEcosystemTile, setSelectedEcosystemTile] = useState<string | null>(null);
   const [sectionData, setSectionData] = useState<SectionData>({
     experts: [],
     clients: [],
@@ -1278,52 +1280,263 @@ const AdminDashboardOptimized: React.FC = () => {
                           </CardTitle>
                         </CardHeader>
                         <CardContent>
-                          <div className="space-y-2">
+                          {/* Tuiles Écosystème */}
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
+                            {/* Clients */}
                             <div 
-                              className="flex justify-between p-2 rounded hover:bg-green-50 cursor-pointer transition-colors"
-                              onClick={() => setActiveSection('clients')}
+                              className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                                selectedEcosystemTile === 'clients' 
+                                  ? 'border-green-500 bg-green-50 shadow-md' 
+                                  : 'border-gray-200 hover:border-green-300 hover:bg-green-50'
+                              }`}
+                              onClick={() => setSelectedEcosystemTile('clients')}
                             >
-                              <span className="text-sm text-gray-600">Clients actifs</span>
-                              <span className="font-semibold text-green-600">{kpiData.totalClients}</span>
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="text-sm text-gray-600">Clients actifs</p>
+                                  <p className="text-2xl font-bold text-green-600">{kpiData.totalClients}</p>
+                                </div>
+                                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                                  <Users className="w-4 h-4 text-green-600" />
+                                </div>
+                              </div>
                             </div>
+
+                            {/* Experts */}
                             <div 
-                              className="flex justify-between p-2 rounded hover:bg-blue-50 cursor-pointer transition-colors"
-                              onClick={() => setActiveSection('experts')}
+                              className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                                selectedEcosystemTile === 'experts' 
+                                  ? 'border-blue-500 bg-blue-50 shadow-md' 
+                                  : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50'
+                              }`}
+                              onClick={() => setSelectedEcosystemTile('experts')}
                             >
-                              <span className="text-sm text-gray-600">Experts</span>
-                              <span className="font-semibold text-blue-600">{kpiData.totalExperts}</span>
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="text-sm text-gray-600">Experts</p>
+                                  <p className="text-2xl font-bold text-blue-600">{kpiData.totalExperts}</p>
+                                </div>
+                                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                  <UserCheck className="w-4 h-4 text-blue-600" />
+                                </div>
+                              </div>
                             </div>
+
+                            {/* Apporteurs */}
                             <div 
-                              className="flex justify-between p-2 rounded hover:bg-purple-50 cursor-pointer transition-colors"
-                              onClick={() => setActiveSection('apporteurs')}
+                              className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                                selectedEcosystemTile === 'apporteurs' 
+                                  ? 'border-purple-500 bg-purple-50 shadow-md' 
+                                  : 'border-gray-200 hover:border-purple-300 hover:bg-purple-50'
+                              }`}
+                              onClick={() => setSelectedEcosystemTile('apporteurs')}
                             >
-                              <span className="text-sm text-gray-600">Apporteurs</span>
-                              <span className="font-semibold text-purple-600">{kpiData.apporteursTotal}</span>
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="text-sm text-gray-600">Apporteurs</p>
+                                  <p className="text-2xl font-bold text-purple-600">{kpiData.apporteursTotal}</p>
+                                </div>
+                                <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                                  <Handshake className="w-4 h-4 text-purple-600" />
+                                </div>
+                              </div>
                             </div>
+
+                            {/* Dossiers */}
                             <div 
-                              className="flex justify-between p-2 rounded hover:bg-blue-50 cursor-pointer transition-colors"
-                              onClick={() => setActiveSection('dossiers')}
+                              className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                                selectedEcosystemTile === 'dossiers' 
+                                  ? 'border-indigo-500 bg-indigo-50 shadow-md' 
+                                  : 'border-gray-200 hover:border-indigo-300 hover:bg-indigo-50'
+                              }`}
+                              onClick={() => setSelectedEcosystemTile('dossiers')}
                             >
-                              <span className="text-sm text-gray-600">Dossiers Client en cours</span>
-                              <span className="font-semibold text-blue-600">{kpiData.totalDossiers}</span>
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="text-sm text-gray-600">Dossiers en cours</p>
+                                  <p className="text-2xl font-bold text-indigo-600">{kpiData.totalDossiers}</p>
+                                </div>
+                                <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
+                                  <FileText className="w-4 h-4 text-indigo-600" />
+                                </div>
+                              </div>
                             </div>
+
+                            {/* Produits */}
                             <div 
-                              className="flex justify-between p-2 rounded hover:bg-orange-50 cursor-pointer transition-colors"
-                              onClick={() => navigate('/admin/gestion-produits')}
+                              className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                                selectedEcosystemTile === 'produits' 
+                                  ? 'border-orange-500 bg-orange-50 shadow-md' 
+                                  : 'border-gray-200 hover:border-orange-300 hover:bg-orange-50'
+                              }`}
+                              onClick={() => setSelectedEcosystemTile('produits')}
                             >
-                              <span className="text-sm text-gray-600">Produits éligibles</span>
-                              <span className="font-semibold text-orange-600">{kpiData.totalProduits || 0}</span>
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="text-sm text-gray-600">Produits éligibles</p>
+                                  <p className="text-2xl font-bold text-orange-600">{kpiData.totalProduits || 0}</p>
+                                </div>
+                                <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
+                                  <Package className="w-4 h-4 text-orange-600" />
+                                </div>
+                              </div>
                             </div>
+
+                            {/* Performance */}
                             <div 
-                              className="flex justify-between p-2 rounded hover:bg-indigo-50 cursor-pointer transition-colors"
-                              onClick={() => setActiveSection('performance')}
+                              className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                                selectedEcosystemTile === 'performance' 
+                                  ? 'border-emerald-500 bg-emerald-50 shadow-md' 
+                                  : 'border-gray-200 hover:border-emerald-300 hover:bg-emerald-50'
+                              }`}
+                              onClick={() => setSelectedEcosystemTile('performance')}
                             >
-                              <span className="text-sm text-gray-600">📊 Voir Performance →</span>
-                              <span className={`font-semibold ${kpiData.croissanceRevenus >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                {kpiData.croissanceRevenus >= 0 ? '+' : ''}{kpiData.croissanceRevenus}%
-                              </span>
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="text-sm text-gray-600">Performance</p>
+                                  <p className={`text-2xl font-bold ${kpiData.croissanceRevenus >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                    {kpiData.croissanceRevenus >= 0 ? '+' : ''}{kpiData.croissanceRevenus}%
+                                  </p>
+                                </div>
+                                <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center">
+                                  <TrendingUp className="w-4 h-4 text-emerald-600" />
+                                </div>
+                              </div>
                             </div>
                           </div>
+
+                          {/* Tableau dynamique selon la tuile sélectionnée */}
+                          {selectedEcosystemTile && (
+                            <div className="mt-6">
+                              <Card>
+                                <CardHeader>
+                                  <CardTitle className="flex items-center gap-2">
+                                    {selectedEcosystemTile === 'clients' && (
+                                      <>
+                                        <Users className="w-5 h-5 text-green-600" />
+                                        Détails Clients ({kpiData.totalClients})
+                                      </>
+                                    )}
+                                    {selectedEcosystemTile === 'experts' && (
+                                      <>
+                                        <UserCheck className="w-5 h-5 text-blue-600" />
+                                        Détails Experts ({kpiData.totalExperts})
+                                      </>
+                                    )}
+                                    {selectedEcosystemTile === 'apporteurs' && (
+                                      <>
+                                        <Handshake className="w-5 h-5 text-purple-600" />
+                                        Détails Apporteurs ({kpiData.apporteursTotal})
+                                      </>
+                                    )}
+                                    {selectedEcosystemTile === 'dossiers' && (
+                                      <>
+                                        <FileText className="w-5 h-5 text-indigo-600" />
+                                        Détails Dossiers ({kpiData.totalDossiers})
+                                      </>
+                                    )}
+                                    {selectedEcosystemTile === 'produits' && (
+                                      <>
+                                        <Package className="w-5 h-5 text-orange-600" />
+                                        Détails Produits ({kpiData.totalProduits})
+                                      </>
+                                    )}
+                                    {selectedEcosystemTile === 'performance' && (
+                                      <>
+                                        <TrendingUp className="w-5 h-5 text-emerald-600" />
+                                        Détails Performance
+                                      </>
+                                    )}
+                                  </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                  {selectedEcosystemTile === 'clients' && (
+                                    <div className="text-center py-8">
+                                      <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                                      <p className="text-gray-500">Tableau des clients sera affiché ici</p>
+                                      <Button 
+                                        variant="outline" 
+                                        className="mt-4"
+                                        onClick={() => setActiveSection('clients')}
+                                      >
+                                        Voir tous les clients
+                                      </Button>
+                                    </div>
+                                  )}
+                                  
+                                  {selectedEcosystemTile === 'experts' && (
+                                    <div className="text-center py-8">
+                                      <UserCheck className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                                      <p className="text-gray-500">Tableau des experts sera affiché ici</p>
+                                      <Button 
+                                        variant="outline" 
+                                        className="mt-4"
+                                        onClick={() => setActiveSection('experts')}
+                                      >
+                                        Voir tous les experts
+                                      </Button>
+                                    </div>
+                                  )}
+                                  
+                                  {selectedEcosystemTile === 'apporteurs' && (
+                                    <div className="text-center py-8">
+                                      <Handshake className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                                      <p className="text-gray-500">Tableau des apporteurs sera affiché ici</p>
+                                      <Button 
+                                        variant="outline" 
+                                        className="mt-4"
+                                        onClick={() => setActiveSection('apporteurs')}
+                                      >
+                                        Voir tous les apporteurs
+                                      </Button>
+                                    </div>
+                                  )}
+                                  
+                                  {selectedEcosystemTile === 'dossiers' && (
+                                    <div className="text-center py-8">
+                                      <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                                      <p className="text-gray-500">Tableau des dossiers sera affiché ici</p>
+                                      <Button 
+                                        variant="outline" 
+                                        className="mt-4"
+                                        onClick={() => setActiveSection('dossiers')}
+                                      >
+                                        Voir tous les dossiers
+                                      </Button>
+                                    </div>
+                                  )}
+                                  
+                                  {selectedEcosystemTile === 'produits' && (
+                                    <div className="text-center py-8">
+                                      <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                                      <p className="text-gray-500">Tableau des produits sera affiché ici</p>
+                                      <Button 
+                                        variant="outline" 
+                                        className="mt-4"
+                                        onClick={() => navigate('/admin/gestion-produits')}
+                                      >
+                                        Gérer les produits
+                                      </Button>
+                                    </div>
+                                  )}
+                                  
+                                  {selectedEcosystemTile === 'performance' && (
+                                    <div className="text-center py-8">
+                                      <TrendingUp className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                                      <p className="text-gray-500">Graphiques de performance seront affichés ici</p>
+                                      <Button 
+                                        variant="outline" 
+                                        className="mt-4"
+                                        onClick={() => setActiveSection('performance')}
+                                      >
+                                        Voir la section Performance
+                                      </Button>
+                                    </div>
+                                  )}
+                                </CardContent>
+                              </Card>
+                            </div>
+                          )}
                         </CardContent>
                       </Card>
                     </div>
