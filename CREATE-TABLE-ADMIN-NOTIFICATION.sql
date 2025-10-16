@@ -42,6 +42,7 @@ CREATE INDEX IF NOT EXISTS idx_admin_notification_type ON "AdminNotification"(ty
 CREATE INDEX IF NOT EXISTS idx_admin_notification_status_priority ON "AdminNotification"(status, priority);
 
 -- Vue pour notifications actives (non archivées)
+-- CRÉÉE APRÈS LA TABLE pour avoir accès aux colonnes
 CREATE OR REPLACE VIEW "AdminNotificationActive" AS
 SELECT 
   *,
@@ -52,7 +53,7 @@ SELECT
     ELSE 4
   END as priority_order
 FROM "AdminNotification"
-WHERE status != 'archived' AND archived_at IS NULL
+WHERE status != 'archived' OR status IS NULL
 ORDER BY priority_order ASC, created_at DESC;
 
 -- Fonction pour marquer comme lu
