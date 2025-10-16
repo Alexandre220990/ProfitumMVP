@@ -196,6 +196,12 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
 
   // Organiser et afficher les conversations par catégorie
   const renderConversationsByCategory = useCallback((conversations: Conversation[]) => {
+    // Vérifier que conversations est bien un array
+    if (!Array.isArray(conversations)) {
+      console.warn('⚠️ conversations n\'est pas un array:', typeof conversations, conversations);
+      return null;
+    }
+    
     // Séparer les conversations par type
     const adminSupportConversations = conversations.filter(conv => conv.type === 'admin_support');
     const otherConversations = conversations.filter(conv => conv.type !== 'admin_support');
@@ -382,7 +388,9 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
           {/* Liste des conversations organisées par catégorie */}
           <div className="flex-1 overflow-y-auto">
             <AnimatePresence>
-              {renderConversationsByCategory(messaging.conversations || [])}
+              {renderConversationsByCategory(
+                Array.isArray(messaging.conversations) ? messaging.conversations : []
+              )}
             </AnimatePresence>
           </div>
         </div>

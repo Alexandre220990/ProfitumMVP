@@ -6,7 +6,6 @@ import {
   Search,
   User,
   Users,
-  ChevronDown,
   Filter,
   UserPlus
 } from 'lucide-react';
@@ -60,7 +59,6 @@ interface Message {
 }
 
 interface ImprovedAdminMessagingProps {
-  showHeader?: boolean;
   className?: string;
 }
 
@@ -69,7 +67,6 @@ interface ImprovedAdminMessagingProps {
 // ============================================================================
 
 export const ImprovedAdminMessaging: React.FC<ImprovedAdminMessagingProps> = ({
-  showHeader = true,
   className = ''
 }) => {
   const { user } = useAuth();

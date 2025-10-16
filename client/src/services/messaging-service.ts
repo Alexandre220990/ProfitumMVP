@@ -295,8 +295,13 @@ class MessagingService {
         throw new Error(result.message || 'Erreur chargement conversations');
       }
       
-      const conversations = result.data || [];
-      console.log('📦 Conversations reçues:', conversations.map((c: any) => ({ id: c.id, title: c.title })));
+      const conversations = Array.isArray(result.data) ? result.data : [];
+      console.log('📦 Conversations reçues:', conversations.length, 'conversations');
+      console.log('📊 Type de données:', typeof result.data, Array.isArray(result.data) ? 'ARRAY ✅' : 'NOT ARRAY ⚠️');
+      
+      if (!Array.isArray(result.data) && result.data) {
+        console.warn('⚠️ result.data n\'est pas un array:', result.data);
+      }
       
       return conversations;
     } catch (error) {
