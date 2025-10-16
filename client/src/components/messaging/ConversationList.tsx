@@ -12,7 +12,7 @@ interface ConversationListProps {
 export const ConversationList: React.FC<ConversationListProps> = ({
   onConversationSelect,
   selectedConversationId,
-  userType
+  userType: _userType
 }) => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);

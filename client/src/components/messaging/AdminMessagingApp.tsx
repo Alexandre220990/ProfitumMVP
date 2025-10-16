@@ -73,54 +73,22 @@ export const AdminMessagingApp: React.FC<AdminMessagingAppProps> = ({
   // DONNÉES DE TEST POUR L'ADMIN
   // ========================================
 
+  // Charger les vraies conversations depuis le service
   React.useEffect(() => {
-    // Simuler des conversations de test pour l'admin
-    const testConversations: Conversation[] = [
-      {
-        id: '1',
-        title: 'Support Administratif',
-        type: 'admin_support',
-        last_message: 'Comment puis-je vous aider ?',
-        unread_count: 0,
-        updated_at: new Date().toISOString(),
-        participant: {
-          id: 'admin-support',
-          name: 'Support Admin',
-          email: 'support@profitum.com',
-          type: 'admin'
-        }
-      },
-      {
-        id: '2',
-        title: 'Client Test - Entreprise ABC',
-        type: 'client',
-        last_message: 'Bonjour, j\'ai une question sur mon dossier.',
-        unread_count: 2,
-        updated_at: new Date(Date.now() - 1000 * 60 * 30).toISOString(), // 30 min ago
-        participant: {
-          id: 'client-1',
-          name: 'Entreprise ABC',
-          email: 'contact@abc.com',
-          type: 'client'
-        }
-      },
-      {
-        id: '3',
-        title: 'Expert Test - Jean Dupont',
-        type: 'expert',
-        last_message: 'Dossier validé avec succès.',
-        unread_count: 0,
-        updated_at: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), // 2h ago
-        participant: {
-          id: 'expert-1',
-          name: 'Jean Dupont',
-          email: 'jean.dupont@expert.com',
-          type: 'expert'
-        }
+    const loadConversations = async () => {
+      try {
+        setLoading(true);
+        const conversationsData = await messagingService.getConversations();
+        setConversations(conversationsData);
+      } catch (error) {
+        console.error('❌ Erreur chargement conversations admin:', error);
+        toast.error('Erreur lors du chargement des conversations');
+      } finally {
+        setLoading(false);
       }
-    ];
+    };
     
-    setConversations(testConversations);
+    loadConversations();
   }, []);
 
   // ========================================

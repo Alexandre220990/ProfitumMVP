@@ -9,7 +9,7 @@ interface ConversationDetailsProps {
 
 export const ConversationDetails: React.FC<ConversationDetailsProps> = ({
   conversation,
-  userType
+  userType: _userType
 }) => {
   const getConversationTypeLabel = (type: string): string => {
     switch (type) {
