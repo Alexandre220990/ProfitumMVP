@@ -23,12 +23,11 @@ import { useAuth } from '@/hooks/use-auth';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Conversation, Message } from '@/types/messaging';
 
 // ============================================================================
 // MESSAGERIE ADMIN MODERNE - DESIGN PROFESSIONNEL 2025
 // ============================================================================
-
-// Utiliser les types importés de @/types/messaging au lieu de redéfinir localement
 
 interface AdminMessagingAppProps {
   className?: string;
