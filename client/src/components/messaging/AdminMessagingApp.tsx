@@ -30,7 +30,7 @@ import { Card, CardContent } from '@/components/ui/card';
 
 interface Conversation {
   id: string;
-  title: string;
+  title?: string; // Optionnel pour compatibilité avec @/types/messaging
   type: 'admin_support' | 'client' | 'expert';
   last_message?: string;
   unread_count: number;
@@ -99,31 +99,22 @@ export const AdminMessagingApp: React.FC<AdminMessagingAppProps> = ({
   // GESTION DES CONVERSATIONS
   // ========================================
 
-  const handleConversationSelect = useCallback((conversation: Conversation) => {
+  const handleConversationSelect = useCallback(async (conversation: Conversation) => {
     setSelectedConversation(conversation);
     
-    // Simuler des messages de test
-    const testMessages: Message[] = [
-      {
-        id: '1',
-        content: `Bonjour ${conversation.participant ? getUserDisplayName(conversation.participant) : 'Utilisateur'}, comment puis-je vous aider ?`,
-        sender_id: user?.id || 'admin',
-        sender_name: 'Admin',
-        created_at: new Date(Date.now() - 1000 * 60 * 10).toISOString(),
-        is_read: true
-      },
-      {
-        id: '2',
-        content: conversation.last_message || 'Bonjour, j\'ai une question.',
-        sender_id: conversation.participant?.id || 'user',
-        sender_name: conversation.participant ? getUserDisplayName(conversation.participant) : 'Utilisateur',
-        created_at: new Date().toISOString(),
-        is_read: false
-      }
-    ];
-    
-    setMessages(testMessages);
-  }, [user?.id]);
+    // Charger les vrais messages de la conversation
+    try {
+      setLoadingMessages(true);
+      const conversationMessages = await messagingService.getMessages(conversation.id);
+      setMessages(conversationMessages);
+    } catch (error) {
+      console.error('❌ Erreur chargement messages:', error);
+      toast.error('Erreur lors du chargement des messages');
+      setMessages([]);
+    } finally {
+      setLoadingMessages(false);
+    }
+  }, []);
 
   // ========================================
   // GESTION DES MESSAGES
