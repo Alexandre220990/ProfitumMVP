@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import { get } from "@/lib/api";
@@ -98,6 +100,12 @@ const AdminDashboardOptimized: React.FC = () => {
   const [loadingTileData, setLoadingTileData] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filteredTileData, setFilteredTileData] = useState<any[]>([]);
+  
+  // Filtres avancés
+  const [filterDateStart, setFilterDateStart] = useState<string>('');
+  const [filterDateEnd, setFilterDateEnd] = useState<string>('');
+  const [filterMontantMin, setFilterMontantMin] = useState<number>(0);
+  const [filterMontantMax, setFilterMontantMax] = useState<number>(1000000);
   
   // Cache des données pour éviter de recharger inutilement
   const [dataCache, setDataCache] = useState<{[key: string]: {data: any[], timestamp: number}}>({});
@@ -210,16 +218,38 @@ const AdminDashboardOptimized: React.FC = () => {
 
   // Appliquer les filtres sur les données
   useEffect(() => {
-    if (filterStatus === 'all') {
-      setFilteredTileData(selectedTileData);
-    } else {
-      setFilteredTileData(
-        selectedTileData.filter((item: any) => 
-          item.statut === filterStatus || item.status === filterStatus || item.approval_status === filterStatus
-        )
+    let filtered = [...selectedTileData];
+    
+    // Filtre par statut
+    if (filterStatus !== 'all') {
+      filtered = filtered.filter((item: any) => 
+        item.statut === filterStatus || item.status === filterStatus || item.approval_status === filterStatus
       );
     }
-  }, [selectedTileData, filterStatus]);
+    
+    // Filtre par date (pour dossiers)
+    if (selectedEcosystemTile === 'dossiers' && (filterDateStart || filterDateEnd)) {
+      filtered = filtered.filter((item: any) => {
+        const itemDate = new Date(item.created_at);
+        const start = filterDateStart ? new Date(filterDateStart) : null;
+        const end = filterDateEnd ? new Date(filterDateEnd) : null;
+        
+        if (start && itemDate < start) return false;
+        if (end && itemDate > end) return false;
+        return true;
+      });
+    }
+    
+    // Filtre par montant (pour dossiers)
+    if (selectedEcosystemTile === 'dossiers' && (filterMontantMin > 0 || filterMontantMax < 1000000)) {
+      filtered = filtered.filter((item: any) => {
+        const montant = item.montantFinal || 0;
+        return montant >= filterMontantMin && montant <= filterMontantMax;
+      });
+    }
+    
+    setFilteredTileData(filtered);
+  }, [selectedTileData, filterStatus, filterDateStart, filterDateEnd, filterMontantMin, filterMontantMax, selectedEcosystemTile]);
 
   // Charger les experts quand le modal s'ouvre
   useEffect(() => {
@@ -2058,23 +2088,12 @@ const AdminDashboardOptimized: React.FC = () => {
                                         </div>
                                       ) : selectedTileData.length > 0 ? (
                                         <div className="space-y-3">
-                                          <div className="flex justify-between items-center gap-4">
-                                            <h4 className="font-semibold text-gray-800">
-                                              Dossiers ClientProduitEligible ({filteredTileData.length}/{selectedTileData.length})
-                                            </h4>
-                                            <div className="flex items-center gap-2">
-                                              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                                                <SelectTrigger className="w-[140px] h-8">
-                                                  <SelectValue placeholder="Filtrer par statut" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                  <SelectItem value="all">Tous</SelectItem>
-                                                  <SelectItem value="eligible">Éligible</SelectItem>
-                                                  <SelectItem value="pending">En attente</SelectItem>
-                                                  <SelectItem value="validated">Validé</SelectItem>
-                                                  <SelectItem value="rejected">Rejeté</SelectItem>
-                                                </SelectContent>
-                                              </Select>
+                                          <div className="flex flex-col gap-3">
+                                            {/* Header */}
+                                            <div className="flex justify-between items-center">
+                                              <h4 className="font-semibold text-gray-800">
+                                                Dossiers ClientProduitEligible ({filteredTileData.length}/{selectedTileData.length})
+                                              </h4>
                                               <Button 
                                                 variant="outline" 
                                                 size="sm"
@@ -2082,6 +2101,93 @@ const AdminDashboardOptimized: React.FC = () => {
                                               >
                                                 Voir tous
                                               </Button>
+                                            </div>
+                                            
+                                            {/* Filtres */}
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 p-3 bg-gray-50 rounded-lg">
+                                              {/* Filtre Statut */}
+                                              <div>
+                                                <Label className="text-xs text-gray-600 mb-1 block">Statut</Label>
+                                                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                                                  <SelectTrigger className="h-8 text-xs">
+                                                    <SelectValue placeholder="Tous" />
+                                                  </SelectTrigger>
+                                                  <SelectContent>
+                                                    <SelectItem value="all">Tous</SelectItem>
+                                                    <SelectItem value="eligible">Éligible</SelectItem>
+                                                    <SelectItem value="pending">En attente</SelectItem>
+                                                    <SelectItem value="validated">Validé</SelectItem>
+                                                    <SelectItem value="rejected">Rejeté</SelectItem>
+                                                  </SelectContent>
+                                                </Select>
+                                              </div>
+                                              
+                                              {/* Filtre Date */}
+                                              <div className="grid grid-cols-2 gap-1">
+                                                <div>
+                                                  <Label className="text-xs text-gray-600 mb-1 block">Date début</Label>
+                                                  <Input
+                                                    type="date"
+                                                    value={filterDateStart}
+                                                    onChange={(e) => setFilterDateStart(e.target.value)}
+                                                    className="h-8 text-xs"
+                                                  />
+                                                </div>
+                                                <div>
+                                                  <Label className="text-xs text-gray-600 mb-1 block">Date fin</Label>
+                                                  <Input
+                                                    type="date"
+                                                    value={filterDateEnd}
+                                                    onChange={(e) => setFilterDateEnd(e.target.value)}
+                                                    className="h-8 text-xs"
+                                                  />
+                                                </div>
+                                              </div>
+                                              
+                                              {/* Filtre Montant */}
+                                              <div>
+                                                <Label className="text-xs text-gray-600 mb-1 block">
+                                                  Montant: {filterMontantMin.toLocaleString('fr-FR')}€ - {filterMontantMax.toLocaleString('fr-FR')}€
+                                                </Label>
+                                                <div className="flex items-center gap-2">
+                                                  <Input
+                                                    type="number"
+                                                    value={filterMontantMin}
+                                                    onChange={(e) => setFilterMontantMin(Number(e.target.value))}
+                                                    placeholder="Min"
+                                                    className="h-8 text-xs w-24"
+                                                  />
+                                                  <span className="text-xs text-gray-400">-</span>
+                                                  <Input
+                                                    type="number"
+                                                    value={filterMontantMax}
+                                                    onChange={(e) => setFilterMontantMax(Number(e.target.value))}
+                                                    placeholder="Max"
+                                                    className="h-8 text-xs w-24"
+                                                  />
+                                                </div>
+                                              </div>
+                                              
+                                              {/* Reset */}
+                                              {(filterStatus !== 'all' || filterDateStart || filterDateEnd || filterMontantMin > 0 || filterMontantMax < 1000000) && (
+                                                <div className="flex items-end">
+                                                  <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-8 text-xs w-full"
+                                                    onClick={() => {
+                                                      setFilterStatus('all');
+                                                      setFilterDateStart('');
+                                                      setFilterDateEnd('');
+                                                      setFilterMontantMin(0);
+                                                      setFilterMontantMax(1000000);
+                                                    }}
+                                                  >
+                                                    <X className="w-3 h-3 mr-1" />
+                                                    Réinitialiser
+                                                  </Button>
+                                                </div>
+                                              )}
                                             </div>
                                           </div>
                                           
