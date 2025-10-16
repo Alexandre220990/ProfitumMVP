@@ -506,26 +506,28 @@ export const ImprovedAdminMessaging: React.FC<ImprovedAdminMessagingProps> = ({
 
                   {/* Contenu */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      {/* Badge Type */}
-                      <Badge className={`${getUserTypeBadgeColor(conv.otherParticipant?.type || '')} text-xs px-2 py-0.5`}>
-                        {getUserTypeLabel(conv.otherParticipant?.type || '')}
-                      </Badge>
-                      
-                      {/* Nom */}
-                      <span className={`font-medium text-sm truncate ${conv.unread_count > 0 ? 'font-bold text-gray-900' : 'text-gray-700'}`}>
-                        {conv.otherParticipant?.name || 'Utilisateur'}
-                      </span>
+                    <div className="flex items-start justify-between mb-1">
+                      <div className="flex-1 min-w-0">
+                        {/* Nom en haut */}
+                        <h4 className={`font-medium text-sm truncate mb-0.5 ${conv.unread_count > 0 ? 'font-bold text-gray-900' : 'text-gray-700'}`}>
+                          {conv.otherParticipant?.name || 'Utilisateur'}
+                        </h4>
+                        
+                        {/* Type en dessous */}
+                        <p className="text-xs text-gray-500">
+                          {getUserTypeLabel(conv.otherParticipant?.type || '')}
+                        </p>
+                      </div>
 
-                      {/* Badge unread */}
+                      {/* Badge unread à droite */}
                       {conv.unread_count > 0 && (
-                        <Badge className="bg-purple-600 text-white ml-auto">{conv.unread_count}</Badge>
+                        <Badge className="bg-purple-600 text-white flex-shrink-0">{conv.unread_count}</Badge>
                       )}
                     </div>
 
                     {/* Dernier message */}
                     {conv.last_message && (
-                      <p className={`text-sm truncate ${
+                      <p className={`text-sm truncate mt-1 ${
                         conv.unread_count > 0 ? 'font-semibold text-gray-900' : 'text-gray-500'
                       }`}>
                         {conv.last_message.content}
@@ -554,7 +556,7 @@ export const ImprovedAdminMessaging: React.FC<ImprovedAdminMessagingProps> = ({
         {selectedConversation ? (
           <>
             {/* Header conversation */}
-            <div className="p-4 border-b border-gray-200 bg-white">
+            <div className="p-4 border-b border-gray-200 bg-white flex-shrink-0">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Avatar className="w-10 h-10">
@@ -571,15 +573,15 @@ export const ImprovedAdminMessaging: React.FC<ImprovedAdminMessagingProps> = ({
                       {selectedConversation.otherParticipant?.name}
                     </h3>
                     <p className="text-sm text-gray-500">
-                      {getUserTypeLabel(selectedConversation.otherParticipant?.type || '')} · {selectedConversation.otherParticipant?.email}
+                      {getUserTypeLabel(selectedConversation.otherParticipant?.type || '')}
                     </p>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
+            {/* Messages - Zone scrollable */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 min-h-0">
               {messages.map((message) => (
                 <div
                   key={message.id}
@@ -606,15 +608,15 @@ export const ImprovedAdminMessaging: React.FC<ImprovedAdminMessagingProps> = ({
               ))}
             </div>
 
-            {/* Input message */}
-            <div className="p-4 border-t border-gray-200 bg-white">
+            {/* Input message - Fixe en bas */}
+            <div className="p-4 border-t border-gray-200 bg-white flex-shrink-0">
               <div className="flex gap-2">
                 <Input
                   type="text"
                   placeholder="Votre message..."
                   value={messageInput}
                   onChange={(e) => setMessageInput(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                  onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
                   className="flex-1"
                 />
                 <Button onClick={handleSendMessage} className="bg-purple-600 hover:bg-purple-700">

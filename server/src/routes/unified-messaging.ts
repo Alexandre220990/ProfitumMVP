@@ -293,57 +293,108 @@ router.get(['/conversations', '/expert/conversations'], async (req, res) => {
 router.post('/conversations', async (req, res) => {
   try {
     const authUser = req.user as AuthUser;
-    const { 
-      type, 
-      participant_ids, 
-      title, 
-      description, 
-      assignment_id,
-      // Nouvelles colonnes métier
-      dossier_id,
-      client_id,
-      expert_id,
-      produit_id,
-      access_level = 'private',
-      priority = 'medium',
-      category = 'general',
-      tags = []
-    } = req.body;
-
-    if (!type || !participant_ids || participant_ids.length < 2) {
-      return res.status(400).json({
-        success: false,
-        message: 'Type et participants requis'
-      });
-    }
-
-    // Vérifier que l'utilisateur fait partie des participants
-    if (!participant_ids.includes(authUser.database_id || authUser.id)) {
-      return res.status(403).json({
-        success: false,
-        message: 'Vous devez faire partie des participants'
-      });
-    }
-
-    const { data: conversation, error } = await supabaseAdmin
-      .from('conversations')
-      .insert({
-        type,
-        participant_ids,
-        title,
-        description,
+    
+    // Support pour les deux formats : {participant_id, participant_type} OU {participant_ids, type}
+    let finalParticipantIds: string[];
+    let conversationType: string;
+    let conversationTitle: string | undefined;
+    
+    if (req.body.participant_id && req.body.participant_type) {
+      // Format simplifié depuis le frontend
+      const currentUserId = authUser.database_id || authUser.auth_user_id || authUser.id;
+      finalParticipantIds = [currentUserId, req.body.participant_id];
+      conversationType = authUser.type === 'admin' ? 'admin_support' : 'expert_client';
+      
+      // Récupérer le nom du contact pour le titre
+      let contactName = 'Utilisateur';
+      if (req.body.participant_type === 'client') {
+        const { data: client } = await supabaseAdmin
+          .from('Client')
+          .select('first_name, last_name, company_name')
+          .eq('id', req.body.participant_id)
+          .single();
+        contactName = client?.company_name || `${client?.first_name || ''} ${client?.last_name || ''}`.trim() || 'Client';
+      } else if (req.body.participant_type === 'expert') {
+        const { data: expert } = await supabaseAdmin
+          .from('Expert')
+          .select('first_name, last_name, company_name')
+          .eq('id', req.body.participant_id)
+          .single();
+        contactName = `${expert?.first_name || ''} ${expert?.last_name || ''}`.trim() || expert?.company_name || 'Expert';
+      } else if (req.body.participant_type === 'apporteur') {
+        const { data: apporteur } = await supabaseAdmin
+          .from('ApporteurAffaires')
+          .select('first_name, last_name, company_name')
+          .eq('id', req.body.participant_id)
+          .single();
+        contactName = `${apporteur?.first_name || ''} ${apporteur?.last_name || ''}`.trim() || apporteur?.company_name || 'Apporteur';
+      }
+      
+      conversationTitle = `Conversation avec ${contactName}`;
+    } else {
+      // Format complet legacy
+      const { 
+        type, 
+        participant_ids, 
+        title, 
+        description, 
         assignment_id,
-        // Nouvelles colonnes métier
         dossier_id,
         client_id,
         expert_id,
         produit_id,
-        created_by: authUser.id,
-        access_level,
-        priority,
-        category,
-        tags
-      })
+        access_level = 'private',
+        priority = 'medium',
+        category = 'general',
+        tags = []
+      } = req.body;
+
+      if (!type || !participant_ids || participant_ids.length < 2) {
+        return res.status(400).json({
+          success: false,
+          message: 'Type et participants requis'
+        });
+      }
+
+      const currentUserId = authUser.database_id || authUser.auth_user_id || authUser.id;
+      // Vérifier que l'utilisateur fait partie des participants
+      if (!participant_ids.includes(currentUserId)) {
+        return res.status(403).json({
+          success: false,
+          message: 'Vous devez faire partie des participants'
+        });
+      }
+      
+      finalParticipantIds = participant_ids;
+      conversationType = type;
+      conversationTitle = title;
+    }
+
+    const currentUserId = authUser.database_id || authUser.auth_user_id || authUser.id;
+    
+    const insertData: any = {
+      type: conversationType,
+      participant_ids: finalParticipantIds,
+      title: conversationTitle,
+      status: 'active',
+      created_by: currentUserId
+    };
+    
+    // Ajouter les champs optionnels si présents (format legacy)
+    if (req.body.description) insertData.description = req.body.description;
+    if (req.body.assignment_id) insertData.assignment_id = req.body.assignment_id;
+    if (req.body.dossier_id) insertData.dossier_id = req.body.dossier_id;
+    if (req.body.client_id) insertData.client_id = req.body.client_id;
+    if (req.body.expert_id) insertData.expert_id = req.body.expert_id;
+    if (req.body.produit_id) insertData.produit_id = req.body.produit_id;
+    if (req.body.access_level) insertData.access_level = req.body.access_level;
+    if (req.body.priority) insertData.priority = req.body.priority;
+    if (req.body.category) insertData.category = req.body.category;
+    if (req.body.tags) insertData.tags = req.body.tags;
+    
+    const { data: conversation, error } = await supabaseAdmin
+      .from('conversations')
+      .insert(insertData)
       .select()
       .single();
 
@@ -507,11 +558,12 @@ router.post('/conversations/:id/messages', async (req, res) => {
     }
 
     // Créer le message
+    const senderId = authUser.database_id || authUser.auth_user_id || authUser.id;
     const { data: message, error } = await supabaseAdmin
       .from('messages')
       .insert({
         conversation_id: conversationId,
-        sender_id: authUser.id,
+        sender_id: senderId,
         sender_type: authUser.type,
         content: content.trim(),
         message_type
@@ -1463,7 +1515,8 @@ router.post('/admin/conversations', async (req, res) => {
     }
 
     // Vérifier que l'admin fait partie des participants
-    const allParticipants = [authUser.id, ...participant_ids];
+    const adminId = authUser.database_id || authUser.auth_user_id || authUser.id;
+    const allParticipants = [adminId, ...participant_ids];
 
     // Créer la conversation
     const { data: conversation, error } = await supabaseAdmin
@@ -1473,7 +1526,8 @@ router.post('/admin/conversations', async (req, res) => {
         participant_ids: allParticipants,
         title: title || 'Support Administratif',
         description: description || 'Conversation de support avec l\'administrateur',
-        status: 'active'
+        status: 'active',
+        created_by: adminId
       })
       .select()
       .single();
