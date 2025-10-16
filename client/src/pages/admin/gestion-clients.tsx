@@ -451,6 +451,41 @@ const GestionClients = () => {
       </div>
 
       <div className="container mx-auto p-6">
+        {/* KPI Section */}
+        <KPISection
+          loading={loadingStats}
+          kpis={[
+            {
+              label: 'Clients Actifs',
+              value: `${clientStats?.clients_actifs || 0}`,
+              subtext: `sur ${clientStats?.total_clients || 0} total`,
+              icon: Users,
+              color: 'text-blue-600'
+            },
+            {
+              label: "Taux d'Engagement",
+              value: `${clientStats?.taux_engagement || 0}%`,
+              subtext: 'clients avec dossiers',
+              icon: TrendingUp,
+              color: 'text-green-600'
+            },
+            {
+              label: 'Dossiers en Cours',
+              value: clientStats?.dossiers_en_cours || 0,
+              subtext: 'dossiers actifs',
+              icon: FolderOpen,
+              color: 'text-purple-600'
+            },
+            {
+              label: 'Nouveaux ce Mois',
+              value: clientStats?.nouveaux_ce_mois || 0,
+              subtext: '30 derniers jours',
+              icon: UserPlus,
+              color: 'text-orange-600'
+            }
+          ]}
+        />
+
         {/* Filtres */}
         <Card className="mb-6 bg-white shadow-lg">
           <CardHeader>
