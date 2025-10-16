@@ -9,8 +9,9 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { UserPlus, MoreHorizontal, Eye, Edit, CheckCircle, XCircle, AlertCircle, Mail, MapPin, Phone, Star } from 'lucide-react';
+import { UserPlus, MoreHorizontal, Eye, Edit, CheckCircle, XCircle, AlertCircle, Mail, MapPin, Phone, Star, Users, FolderOpen, Clock } from 'lucide-react';
 import { toast } from 'sonner';
+import { KPISection } from '@/components/admin/KPISection';
 
 // Configuration Supabase - Utilise l'instance importée depuis @/lib/supabase
 
