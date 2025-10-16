@@ -15,7 +15,8 @@ import { useNavigate } from "react-router-dom";
 import { config } from "@/config/env";
 import { toast } from "sonner";
 import { NotificationCenter } from "@/components/admin/NotificationCenter";
-import { Eye, Edit, Plus, ChevronsUpDown, Trash2, ChevronUp, ChevronDown, FolderOpen, Package, FileText, Users, TrendingUp, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { Eye, Edit, Plus, ChevronsUpDown, Trash2, ChevronUp, ChevronDown, FolderOpen, Package, FileText, Users, TrendingUp, CheckCircle, XCircle, AlertCircle, Clock, Euro } from "lucide-react";
+import { KPISection } from "@/components/admin/KPISection";
 
 // Types pour les ProduitEligible
 interface ProduitEligible { id: string;
@@ -76,6 +77,8 @@ export default function GestionDossiers() { const { user } = useAuth();
   const [dossiers, setDossiers] = useState<Dossier[]>([]);
   const [stats, setStats] = useState<DossierStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [dossierKpiStats, setDossierKpiStats] = useState<any>(null);
+  const [loadingKpiStats, setLoadingKpiStats] = useState(true);
   
   // États pour les produits
   const [produits, setProduits] = useState<ProduitEligible[]>([]);
@@ -111,6 +114,42 @@ export default function GestionDossiers() { const { user } = useAuth();
   const [editProduit, setEditProduit] = useState({ nom: '', description: '', categorie: '', montant_min: '', montant_max: '', taux_min: '', taux_max: '', duree_min: '', duree_max: '' });
 
   const [newDossier, setNewDossier] = useState({ client_id: '', produit_id: '', expert_id: '', montant: '', taux: '', duree: '' });
+
+  // Helper pour formater les montants
+  const formatMontant = (montant: number) => {
+    if (montant >= 1000000) return `${(montant / 1000000).toFixed(1)}M€`;
+    if (montant >= 1000) return `${(montant / 1000).toFixed(1)}k€`;
+    return `${montant}€`;
+  };
+
+  // Charger les KPI stats
+  useEffect(() => {
+    fetchDossierKpiStats();
+  }, []);
+
+  const fetchDossierKpiStats = async () => {
+    try {
+      setLoadingKpiStats(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const response = await fetch('/api/admin/dossiers/stats', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setDossierKpiStats(data.data);
+      }
+    } catch (error) {
+      console.error('Erreur chargement stats dossiers:', error);
+    } finally {
+      setLoadingKpiStats(false);
+    }
+  };
 
   useEffect(() => { if (user) {
       if (activeTab === 'dossiers') {
@@ -602,6 +641,41 @@ export default function GestionDossiers() { const { user } = useAuth();
 
           { /* Onglet Dossiers Clients */ }
           <TabsContent value="dossiers" className="space-y-6">
+
+            { /* 📊 KPI SECTION */ }
+            <KPISection
+              loading={loadingKpiStats}
+              kpis={[
+                {
+                  label: 'Dossiers Actifs',
+                  value: `${dossierKpiStats?.dossiers_actifs || 0}`,
+                  subtext: `sur ${dossierKpiStats?.total_dossiers || 0} total`,
+                  icon: FolderOpen,
+                  color: 'text-blue-600'
+                },
+                {
+                  label: 'Taux de Réussite',
+                  value: `${dossierKpiStats?.taux_reussite || 0}%`,
+                  subtext: 'dossiers validés',
+                  icon: TrendingUp,
+                  color: 'text-green-600'
+                },
+                {
+                  label: 'En Pré-Éligibilité',
+                  value: dossierKpiStats?.en_pre_eligibilite || 0,
+                  subtext: 'en attente validation',
+                  icon: Clock,
+                  color: 'text-orange-600'
+                },
+                {
+                  label: 'Montant Total',
+                  value: formatMontant(dossierKpiStats?.montant_total || 0),
+                  subtext: `moy: ${formatMontant(dossierKpiStats?.montant_moyen || 0)}`,
+                  icon: Euro,
+                  color: 'text-purple-600'
+                }
+              ]}
+            />
 
             { /* 🔔 NOTIFICATIONS & ACTIONS RAPIDES */ }
             <NotificationCenter
