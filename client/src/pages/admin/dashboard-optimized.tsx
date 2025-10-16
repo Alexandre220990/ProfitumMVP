@@ -49,7 +49,8 @@ interface ClientProduitEligible {
   Client?: {
     id: string;
     company_name?: string;
-    name?: string;
+    first_name?: string;
+    last_name?: string;
     email: string;
     statut: string;
     phone?: string;
@@ -67,7 +68,8 @@ interface ClientProduitEligible {
   };
   Expert?: {
     id: string;
-    name: string;
+    first_name: string;
+    last_name: string;
     company_name: string;
     email: string;
     specializations?: string[];
@@ -871,7 +873,7 @@ const AdminDashboardOptimized: React.FC = () => {
                         <p className="text-xs text-gray-500">Expert attitré</p>
                         {(dossier as any).Expert ? (
                           <p className="text-sm font-medium text-gray-900 truncate">
-                            {(dossier as any).Expert.name}
+                            {(dossier as any).Expert.first_name} {(dossier as any).Expert.last_name}
                             {(dossier as any).Expert.rating && (
                               <span className="text-yellow-600 ml-1">⭐{(dossier as any).Expert.rating}</span>
                             )}

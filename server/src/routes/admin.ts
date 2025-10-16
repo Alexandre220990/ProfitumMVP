@@ -3381,7 +3381,8 @@ router.get('/dossiers/all', async (req, res) => {
         Client(
           id,
           company_name,
-          name,
+          first_name,
+          last_name,
           email,
           statut,
           phone,

@@ -312,14 +312,18 @@ export const ImprovedAdminMessaging: React.FC<ImprovedAdminMessagingProps> = ({
 
       const clients = (clientsData.data?.clients || []).map((c: any) => ({
         id: c.id,
-        name: c.company_name || c.name || c.email,
+        name: c.first_name && c.last_name 
+          ? `${c.first_name} ${c.last_name}`
+          : c.company_name || c.email,
         email: c.email,
         type: 'client' as const
       }));
 
       const experts = (expertsData.data?.experts || []).map((e: any) => ({
         id: e.id,
-        name: e.name || e.company_name || e.email,
+        name: e.first_name && e.last_name
+          ? `${e.first_name} ${e.last_name}`
+          : e.company_name || e.email,
         email: e.email,
         type: 'expert' as const
       }));
