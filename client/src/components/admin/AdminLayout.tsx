@@ -100,10 +100,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       badge: unreadMessages
     },
     {
-      name: 'GED',
-      href: '/admin/enhanced-admin-documents',
+      name: 'Documents & GED',
+      href: '/admin/documents-ged',
       icon: Database,
-      current: location.pathname.includes('/admin/enhanced-admin-documents')
+      current: location.pathname.includes('/admin/documents-ged')
     },
     
     // Gestion
@@ -129,22 +129,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       current: location.pathname === '/admin/monitoring'
     },
     {
-      name: 'Documentation',
-      href: '/admin/documentation-new',
-      icon: BookOpen,
-      current: location.pathname === '/admin/documentation-new'
-    },
-    {
       name: 'Formulaire Expert',
       href: '/admin/formulaire-expert',
       icon: UserPlus,
       current: location.pathname === '/admin/formulaire-expert'
-    },
-    {
-      name: 'Upload Documents',
-      href: '/admin/admin-document-upload',
-      icon: FileUp,
-      current: location.pathname === '/admin/admin-document-upload'
     },
     
     // Système / Dev
