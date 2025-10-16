@@ -447,7 +447,17 @@ router.get('/conversations/:id/messages', async (req, res) => {
     }
 
     // Vérifier les permissions
-    if (!conversation.participant_ids.includes(authUser.database_id || authUser.id)) {
+    const userId = authUser.database_id || authUser.auth_user_id || authUser.id;
+    console.log('🔍 GET Messages - Auth User:', { 
+      database_id: authUser.database_id, 
+      auth_user_id: authUser.auth_user_id,
+      id: authUser.id,
+      type: authUser.type,
+      userId,
+      participant_ids: conversation.participant_ids
+    });
+    
+    if (!conversation.participant_ids.includes(userId)) {
       return res.status(403).json({
         success: false,
         message: 'Accès non autorisé'
@@ -550,7 +560,17 @@ router.post('/conversations/:id/messages', async (req, res) => {
     }
 
     // Vérifier les permissions
-    if (!conversation.participant_ids.includes(authUser.database_id || authUser.id)) {
+    const userId = authUser.database_id || authUser.auth_user_id || authUser.id;
+    console.log('🔍 POST Message - Auth User:', { 
+      database_id: authUser.database_id, 
+      auth_user_id: authUser.auth_user_id,
+      id: authUser.id,
+      type: authUser.type,
+      userId,
+      participant_ids: conversation.participant_ids
+    });
+    
+    if (!conversation.participant_ids.includes(userId)) {
       return res.status(403).json({
         success: false,
         message: 'Accès non autorisé'
@@ -558,7 +578,7 @@ router.post('/conversations/:id/messages', async (req, res) => {
     }
 
     // Créer le message
-    const senderId = authUser.database_id || authUser.auth_user_id || authUser.id;
+    const senderId = userId;
     const { data: message, error } = await supabaseAdmin
       .from('messages')
       .insert({

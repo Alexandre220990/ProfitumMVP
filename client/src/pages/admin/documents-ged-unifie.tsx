@@ -737,7 +737,7 @@ export default function DocumentsGEDUnifiePage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {stats && Object.entries(stats.files_by_category).length > 0 ? (
+                  {stats?.files_by_category && Object.entries(stats.files_by_category).length > 0 ? (
                     <div className="space-y-3">
                       {Object.entries(stats.files_by_category).map(([category, count]) => (
                         <div key={category} className="flex items-center justify-between">

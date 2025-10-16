@@ -3371,7 +3371,7 @@ router.get('/dossiers/all', async (req, res) => {
     console.log('🔍 Récupération de tous les ClientProduitEligible...');
     console.log('✅ Admin authentifié:', (req as any).user?.id);
     
-    const { data: dossiers, error } = await supabaseClient
+    const { data: dossiers, error } = await supabaseAdmin
       .from('ClientProduitEligible')
       .select(`
         id,
