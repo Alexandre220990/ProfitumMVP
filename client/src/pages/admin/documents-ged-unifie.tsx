@@ -6,11 +6,11 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
-  Upload, 
-  Users, 
-  FileText, 
-  Shield, 
+import {
+  Upload,
+  Users,
+  FileText,
+  Shield,
   Download,
   Trash2,
   RefreshCw,
@@ -27,7 +27,11 @@ import {
   Unlock,
   EyeOff,
   FileCheck,
-  FileX
+  FileX,
+  BookOpen,
+  FolderOpen,
+  CheckCircle,
+  XCircle
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useEnhancedDocumentStorage } from '@/hooks/use-enhanced-document-storage';
@@ -110,6 +114,18 @@ export default function DocumentsGEDUnifiePage() {
   const [activeTab, setActiveTab] = useState('ged'); // Par défaut : GED Clients (principal)
   const [refreshKey, setRefreshKey] = useState(0);
   const [dossierDocuments, setDossierDocuments] = useState<{ [key: string]: DocumentFile[] }>({});
+
+  // ========================================
+  // UTILITAIRES
+  // ========================================
+
+  const formatBytes = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+  };
 
   // ========================================
   // CHARGEMENT DES DONNÉES
@@ -576,7 +592,7 @@ export default function DocumentsGEDUnifiePage() {
                                   </div>
                                 </div>
                                 <div className="flex gap-2">
-                                  <Button size="sm" variant="outline" onClick={() => downloadFile(doc.id, doc.original_filename || doc.filename)}>
+                                  <Button size="sm" variant="outline" onClick={() => downloadFile(doc.id)}>
                                     <Download className="w-3 h-3" />
                                   </Button>
                                   <Button size="sm" variant="outline">

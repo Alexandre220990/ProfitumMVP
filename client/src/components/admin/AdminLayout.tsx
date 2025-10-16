@@ -126,7 +126,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       name: 'Monitoring',
       href: '/admin/monitoring',
       icon: Monitor,
-      current: location.pathname === '/admin/monitoring'
+      current: location.pathname === '/admin/monitoring',
+      badge: 0
     },
     {
       name: 'Formulaire Expert',

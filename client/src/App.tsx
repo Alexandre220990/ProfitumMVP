@@ -88,7 +88,6 @@ const AdminDashboard = React.lazy(() => import('./pages/admin/dashboard'));
 const AdminDashboardOptimized = React.lazy(() => import('./pages/admin/dashboard-optimized'));
 const AdminClientDetails = React.lazy(() => import('./pages/admin/client-details'));
 const AdminExpertDetails = React.lazy(() => import('./pages/admin/expert-details'));
-const AdminDocumentationNew = React.lazy(() => import('./pages/admin/documentation-new'));
 const AdminGestionDossiers = React.lazy(() => import('./pages/admin/gestion-dossiers'));
 const AdminGestionExperts = React.lazy(() => import('./pages/admin/gestion-experts'));
 const AdminGestionClients = React.lazy(() => import('./pages/admin/gestion-clients'));
@@ -96,9 +95,7 @@ const AdminGestionProduits = React.lazy(() => import('./pages/admin/gestion-prod
 const AdminMonitoring = React.lazy(() => import('./pages/admin/monitoring'));
 const AdminValidationDashboard = React.lazy(() => import('./pages/admin/validation-dashboard'));
 const AdminFormulaireExpert = React.lazy(() => import('./pages/admin/formulaire-expert'));
-const AdminDocumentUpload = React.lazy(() => import('./pages/admin/admin-document-upload'));
-const AdminDocumentsUnified = React.lazy(() => import('./pages/admin/documents-unified')); // Ancienne page (à garder pour /documents-unified)
-const AdminDocumentsPage = React.lazy(() => import('./pages/admin/documents')); // ✅ Nouvelle page GED unifiée
+const AdminDocumentsGEDUnifie = React.lazy(() => import('./pages/admin/documents-ged-unifie')); // ✅ PAGE UNIFIÉE (GED + Documentation + Upload)
 const AdminTerminalTests = React.lazy(() => import('./pages/admin/terminal-tests'));
 const AdminTests = React.lazy(() => import('./pages/admin/tests'));
 
