@@ -96,6 +96,7 @@ const AdminMonitoring = React.lazy(() => import('./pages/admin/monitoring'));
 const AdminValidationDashboard = React.lazy(() => import('./pages/admin/validation-dashboard'));
 const AdminFormulaireExpert = React.lazy(() => import('./pages/admin/formulaire-expert'));
 const AdminDocumentsGEDUnifie = React.lazy(() => import('./pages/admin/documents-ged-unifie')); // ✅ PAGE UNIFIÉE (GED + Documentation + Upload)
+const AdminClientSynthese = React.lazy(() => import('./pages/admin/client-synthese')); // ✅ PAGE SYNTHÈSE CLIENT
 
 // Expert pages
 const ExpertDashboard = React.lazy(() => import('./pages/expert/dashboard'));
@@ -286,6 +287,7 @@ function App() {
                         {/* Gestion */}
                         <Route path="gestion-clients" element={<AdminGestionClients />} />
                         <Route path="client-details/:id" element={<AdminClientDetails />} />
+                        <Route path="clients/:id" element={<AdminClientSynthese />} />
                         <Route path="gestion-experts" element={<AdminGestionExperts />} />
                         <Route path="expert-details/:id" element={<AdminExpertDetails />} />
                         <Route path="gestion-dossiers" element={<AdminGestionDossiers />} />

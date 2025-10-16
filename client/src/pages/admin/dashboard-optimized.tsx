@@ -1881,10 +1881,8 @@ const AdminDashboardOptimized: React.FC = () => {
                                                     <Button 
                                                       variant="ghost" 
                                                       size="sm"
-                                                      onClick={() => {
-                                                        setActiveSection('clients');
-                                                        setSelectedEcosystemTile(null);
-                                                      }}
+                                                      onClick={() => navigate(`/admin/clients/${client.id}`)}
+                                                      title="Voir la synthèse du client"
                                                     >
                                                       <Eye className="w-4 h-4" />
                                                     </Button>
