@@ -1966,10 +1966,8 @@ const AdminDashboardOptimized: React.FC = () => {
                                                     <Button 
                                                       variant="ghost" 
                                                       size="sm"
-                                                      onClick={() => {
-                                                        setActiveSection('experts');
-                                                        setSelectedEcosystemTile(null);
-                                                      }}
+                                                      onClick={() => navigate(`/admin/experts/${expert.id}`)}
+                                                      title="Voir la synthèse de l'expert"
                                                     >
                                                       <Eye className="w-4 h-4" />
                                                     </Button>
