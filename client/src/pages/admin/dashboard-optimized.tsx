@@ -100,6 +100,11 @@ const AdminDashboardOptimized: React.FC = () => {
   
   // Cache des données pour éviter de recharger inutilement
   const [dataCache, setDataCache] = useState<{[key: string]: {data: any[], timestamp: number}}>({});
+  
+  // Actions rapides
+  const [updatingDossier, setUpdatingDossier] = useState<string | null>(null);
+  const [expertModalOpen, setExpertModalOpen] = useState(false);
+  const [selectedDossierForExpert, setSelectedDossierForExpert] = useState<any>(null);
   const [sectionData, setSectionData] = useState<SectionData>({
     experts: [],
     clients: [],
@@ -425,6 +430,73 @@ const AdminDashboardOptimized: React.FC = () => {
       
     } catch (error) {
       console.error('❌ Erreur chargement KPIs:', error);
+    }
+  };
+
+  // ========================================
+  // ACTIONS RAPIDES
+  // ========================================
+
+  const updateDossierStatut = async (dossierId: string, newStatut: string) => {
+    setUpdatingDossier(dossierId);
+    try {
+      const response = await fetch(`${config.apiUrl}/admin/dossiers/${dossierId}/statut`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('supabase.auth.token')}`
+        },
+        credentials: 'include',
+        body: JSON.stringify({ statut: newStatut })
+      });
+
+      if (response.ok) {
+        toast.success(`Statut mis à jour : ${newStatut}`);
+        
+        // Mettre à jour les données locales
+        setSelectedTileData(prev => 
+          prev.map(d => d.id === dossierId ? { ...d, statut: newStatut } : d)
+        );
+        
+        // Invalider le cache
+        setDataCache(prev => ({ ...prev, dossiers: { data: [], timestamp: 0 } }));
+      } else {
+        toast.error('Erreur lors de la mise à jour du statut');
+      }
+    } catch (error) {
+      console.error('Erreur updateDossierStatut:', error);
+      toast.error('Erreur lors de la mise à jour');
+    } finally {
+      setUpdatingDossier(null);
+    }
+  };
+
+  const assignExpertToDossier = async (dossierId: string, expertId: string) => {
+    try {
+      const response = await fetch(`${config.apiUrl}/admin/dossiers/${dossierId}/assign-expert`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('supabase.auth.token')}`
+        },
+        credentials: 'include',
+        body: JSON.stringify({ expert_id: expertId })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        toast.success(`Expert assigné avec succès`);
+        
+        // Recharger les données
+        loadTileData('dossiers');
+        setExpertModalOpen(false);
+        setSelectedDossierForExpert(null);
+      } else {
+        toast.error('Erreur lors de l\'assignation de l\'expert');
+      }
+    } catch (error) {
+      console.error('Erreur assignExpertToDossier:', error);
+      toast.error('Erreur lors de l\'assignation');
     }
   };
 
@@ -1885,15 +1957,48 @@ const AdminDashboardOptimized: React.FC = () => {
                                                     </div>
                                                   </div>
                                                   
-                                                  <div className="text-right">
-                                                    <div className="text-xs text-gray-500">
+                                                  <div className="flex flex-col gap-2">
+                                                    <div className="text-xs text-gray-500 text-right">
                                                       Progress: {dossier.progress || 0}%
                                                     </div>
                                                     {dossier.tauxFinal && (
-                                                      <div className="text-sm font-medium text-blue-600">
+                                                      <div className="text-sm font-medium text-blue-600 text-right">
                                                         {dossier.tauxFinal}%
                                                       </div>
                                                     )}
+                                                    
+                                                    {/* Actions rapides */}
+                                                    <div className="flex gap-1">
+                                                      <Select 
+                                                        value={dossier.statut} 
+                                                        onValueChange={(newStatut) => updateDossierStatut(dossier.id, newStatut)}
+                                                        disabled={updatingDossier === dossier.id}
+                                                      >
+                                                        <SelectTrigger className="h-7 text-xs w-[100px]">
+                                                          <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                          <SelectItem value="eligible">Éligible</SelectItem>
+                                                          <SelectItem value="pending">En attente</SelectItem>
+                                                          <SelectItem value="validated">Validé</SelectItem>
+                                                          <SelectItem value="rejected">Rejeté</SelectItem>
+                                                        </SelectContent>
+                                                      </Select>
+                                                      
+                                                      {!dossier.Expert && (
+                                                        <Button 
+                                                          size="sm"
+                                                          variant="outline"
+                                                          className="h-7 text-xs"
+                                                          onClick={() => {
+                                                            setSelectedDossierForExpert(dossier);
+                                                            setExpertModalOpen(true);
+                                                          }}
+                                                        >
+                                                          <UserCheck className="w-3 h-3" />
+                                                        </Button>
+                                                      )}
+                                                    </div>
                                                   </div>
                                                 </div>
                                               </div>
@@ -2565,6 +2670,47 @@ const AdminDashboardOptimized: React.FC = () => {
       
       {/* Footer en bas de page */}
       <AdminFooter />
+      
+      {/* Modal Assignation Expert */}
+      {expertModalOpen && selectedDossierForExpert && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">Assigner un Expert</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Dossier : {selectedDossierForExpert.Client?.company_name || selectedDossierForExpert.Client?.first_name}
+            </p>
+            
+            <Select onValueChange={(expertId) => assignExpertToDossier(selectedDossierForExpert.id, expertId)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Sélectionner un expert" />
+              </SelectTrigger>
+              <SelectContent>
+                {kpiData.totalExperts > 0 ? (
+                  // On chargera dynamiquement la liste des experts approuvés
+                  <>
+                    <SelectItem value="loading">Chargement des experts...</SelectItem>
+                  </>
+                ) : (
+                  <SelectItem value="none">Aucun expert disponible</SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+            
+            <div className="flex gap-2 mt-6">
+              <Button 
+                variant="outline" 
+                className="flex-1"
+                onClick={() => {
+                  setExpertModalOpen(false);
+                  setSelectedDossierForExpert(null);
+                }}
+              >
+                Annuler
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

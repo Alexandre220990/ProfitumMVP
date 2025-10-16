@@ -3897,4 +3897,132 @@ router.post('/dossiers/:id/validate-eligibility', asyncHandler(async (req, res) 
   }
 }));
 
+// PATCH /api/admin/dossiers/:id/statut - Modifier le statut d'un dossier
+router.patch('/dossiers/:id/statut', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { statut } = req.body;
+    
+    console.log(`🔄 Mise à jour statut dossier ${id} vers ${statut}`);
+
+    if (!statut) {
+      return res.status(400).json({
+        success: false,
+        message: 'Le statut est requis'
+      });
+    }
+
+    // Mettre à jour le statut
+    const { data: dossier, error } = await supabaseAdmin
+      .from('ClientProduitEligible')
+      .update({ 
+        statut,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('❌ Erreur mise à jour statut:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la mise à jour du statut'
+      });
+    }
+
+    console.log(`✅ Statut mis à jour: ${statut}`);
+    
+    return res.json({
+      success: true,
+      data: { dossier }
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route dossiers/:id/statut:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+// POST /api/admin/dossiers/:id/assign-expert - Assigner un expert à un dossier
+router.post('/dossiers/:id/assign-expert', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { expert_id } = req.body;
+    
+    console.log(`👨‍🏫 Assignation expert ${expert_id} au dossier ${id}`);
+
+    if (!expert_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'L\'ID de l\'expert est requis'
+      });
+    }
+
+    // Vérifier que l'expert existe et est approuvé
+    const { data: expert, error: expertError } = await supabaseAdmin
+      .from('Expert')
+      .select('id, first_name, last_name, approval_status')
+      .eq('id', expert_id)
+      .single();
+
+    if (expertError || !expert) {
+      return res.status(404).json({
+        success: false,
+        message: 'Expert non trouvé'
+      });
+    }
+
+    if (expert.approval_status !== 'approved') {
+      return res.status(400).json({
+        success: false,
+        message: 'L\'expert n\'est pas encore approuvé'
+      });
+    }
+
+    // Assigner l'expert au dossier
+    const { data: dossier, error } = await supabaseAdmin
+      .from('ClientProduitEligible')
+      .update({ 
+        expert_id,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('❌ Erreur assignation expert:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de l\'assignation de l\'expert'
+      });
+    }
+
+    console.log(`✅ Expert ${expert.first_name} ${expert.last_name} assigné`);
+    
+    return res.json({
+      success: true,
+      data: { 
+        dossier,
+        expert: {
+          id: expert.id,
+          first_name: expert.first_name,
+          last_name: expert.last_name
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route dossiers/:id/assign-expert:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
 export default router;
