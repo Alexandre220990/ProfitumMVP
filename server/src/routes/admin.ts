@@ -3411,7 +3411,8 @@ router.get('/dossiers/all', async (req, res) => {
         ),
         Expert:expert_id(
           id,
-          name,
+          first_name,
+          last_name,
           company_name,
           email,
           specializations,

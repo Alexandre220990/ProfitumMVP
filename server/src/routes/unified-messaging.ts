@@ -972,7 +972,6 @@ router.get('/admin/conversations', async (req, res) => {
         category,
         client_id,
         expert_id,
-        apporteur_id,
         created_at,
         updated_at
       `)
@@ -991,13 +990,14 @@ router.get('/admin/conversations', async (req, res) => {
     const enrichedConversations = await Promise.all(
       (conversations || []).map(async (conv) => {
         // Récupérer le dernier message
-        const { data: lastMessage } = await supabaseAdmin
+        const { data: lastMessages } = await supabaseAdmin
           .from('messages')
           .select('content, created_at, is_read, sender_id')
           .eq('conversation_id', conv.id)
           .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
+          .limit(1);
+        
+        const lastMessage = lastMessages && lastMessages.length > 0 ? lastMessages[0] : null;
 
         // Compter les messages non lus
         const { count: unreadCount } = await supabaseAdmin

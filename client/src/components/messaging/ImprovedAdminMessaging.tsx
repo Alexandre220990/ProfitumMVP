@@ -346,7 +346,7 @@ export const ImprovedAdminMessaging: React.FC<ImprovedAdminMessagingProps> = ({
 
   const handleCreateConversation = async (contact: any) => {
     try {
-      const response = await fetch(`${config.API_URL}/api/unified-messaging/conversations/create`, {
+      const response = await fetch(`${config.API_URL}/api/unified-messaging/conversations`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
