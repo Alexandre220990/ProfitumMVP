@@ -987,6 +987,7 @@ router.get('/admin/conversations', async (req, res) => {
     }
 
     // Enrichir chaque conversation avec le dernier message et le compteur de non-lus
+    // ET FILTRER uniquement les conversations avec au moins 1 message
     const enrichedConversations = await Promise.all(
       (conversations || []).map(async (conv) => {
         // Récupérer le dernier message
@@ -1010,14 +1011,18 @@ router.get('/admin/conversations', async (req, res) => {
         return {
           ...conv,
           last_message: lastMessage || null,
-          unread_count: unreadCount || 0
+          unread_count: unreadCount || 0,
+          has_messages: lastMessage !== null
         };
       })
     );
 
+    // Filtrer uniquement les conversations avec au moins 1 message
+    const conversationsWithMessages = enrichedConversations.filter(conv => conv.has_messages);
+
     return res.json({
       success: true,
-      data: enrichedConversations
+      data: conversationsWithMessages
     });
 
   } catch (error) {
@@ -1054,16 +1059,32 @@ router.get('/contacts', async (req, res) => {
     if (userType === 'admin') {
       // Admin voit tout le monde
       const [clientsRes, expertsRes, apporteursRes, adminsRes] = await Promise.all([
-        supabaseAdmin.from('Client').select('id, name, email, company_name, is_active, created_at').eq('is_active', true).order('name'),
-        supabaseAdmin.from('Expert').select('id, name, email, company_name, is_active, created_at').eq('is_active', true).order('name'),
-        supabaseAdmin.from('ApporteurAffaires').select('id, first_name, last_name, email, company_name, is_active, created_at').eq('is_active', true).order('first_name'),
-        supabaseAdmin.from('Admin').select('id, name, email, created_at').order('name')
+        supabaseAdmin.from('Client').select('id, first_name, last_name, email, company_name, is_active, created_at').eq('is_active', true).order('company_name'),
+        supabaseAdmin.from('Expert').select('id, first_name, last_name, email, company_name, is_active, created_at').eq('is_active', true).order('last_name'),
+        supabaseAdmin.from('ApporteurAffaires').select('id, first_name, last_name, email, company_name, is_active, created_at').eq('is_active', true).order('last_name'),
+        supabaseAdmin.from('Admin').select('id, first_name, last_name, email, created_at').order('last_name')
       ]);
 
-      clients = (clientsRes.data || []).map(c => ({ ...c, type: 'client', full_name: c.name || c.company_name }));
-      experts = (expertsRes.data || []).map(e => ({ ...e, type: 'expert', full_name: e.name }));
-      apporteurs = (apporteursRes.data || []).map(a => ({ ...a, type: 'apporteur', full_name: `${a.first_name} ${a.last_name}` }));
-      admins = (adminsRes.data || []).map(a => ({ ...a, type: 'admin', full_name: a.name }));
+      clients = (clientsRes.data || []).map(c => ({ 
+        ...c, 
+        type: 'client', 
+        full_name: c.company_name || `${c.first_name || ''} ${c.last_name || ''}`.trim() || c.email 
+      }));
+      experts = (expertsRes.data || []).map(e => ({ 
+        ...e, 
+        type: 'expert', 
+        full_name: `${e.first_name || ''} ${e.last_name || ''}`.trim() || e.company_name || e.email 
+      }));
+      apporteurs = (apporteursRes.data || []).map(a => ({ 
+        ...a, 
+        type: 'apporteur', 
+        full_name: `${a.first_name || ''} ${a.last_name || ''}`.trim() || a.company_name || a.email 
+      }));
+      admins = (adminsRes.data || []).map(a => ({ 
+        ...a, 
+        type: 'admin', 
+        full_name: `${a.first_name || ''} ${a.last_name || ''}`.trim() || a.email 
+      }));
 
     } else if (userType === 'client') {
       // Client voit: ses experts + son apporteur + admin
@@ -1078,14 +1099,18 @@ router.get('/contacts', async (req, res) => {
       // Experts assignés via ClientProduitEligible
       const { data: assignments } = await supabaseAdmin
         .from('ClientProduitEligible')
-        .select('expert_id, Expert:Expert(id, name, email, company_name, is_active)')
+        .select('expert_id, Expert:Expert(id, first_name, last_name, email, company_name, is_active)')
         .eq('clientId', userId)
         .not('expert_id', 'is', null);
 
       const expertIds = new Set<string>();
       (assignments || []).forEach((a: any) => {
         if (a.Expert && a.Expert.is_active !== false) {
-          experts.push({ ...a.Expert, type: 'expert', full_name: a.Expert.name });
+          experts.push({ 
+            ...a.Expert, 
+            type: 'expert', 
+            full_name: `${a.Expert.first_name || ''} ${a.Expert.last_name || ''}`.trim() || a.Expert.company_name || a.Expert.email 
+          });
           expertIds.add(a.Expert.id);
         }
       });
@@ -1100,17 +1125,25 @@ router.get('/contacts', async (req, res) => {
           .single();
 
         if (apporteur) {
-          apporteurs = [{ ...apporteur, type: 'apporteur', full_name: `${apporteur.first_name} ${apporteur.last_name}` }];
+          apporteurs = [{ 
+            ...apporteur, 
+            type: 'apporteur', 
+            full_name: `${apporteur.first_name || ''} ${apporteur.last_name || ''}`.trim() || apporteur.company_name || apporteur.email 
+          }];
         }
       }
 
       // Admin support
       const { data: adminList } = await supabaseAdmin
         .from('Admin')
-        .select('id, name, email')
+        .select('id, first_name, last_name, email')
         .limit(1);
 
-      admins = (adminList || []).map(a => ({ ...a, type: 'admin', full_name: a.name }));
+      admins = (adminList || []).map(a => ({ 
+        ...a, 
+        type: 'admin', 
+        full_name: `${a.first_name || ''} ${a.last_name || ''}`.trim() || a.email 
+      }));
 
     } else if (userType === 'expert') {
       // Expert voit: ses clients + leurs apporteurs + admin
@@ -1118,7 +1151,7 @@ router.get('/contacts', async (req, res) => {
       // Clients assignés
       const { data: assignments } = await supabaseAdmin
         .from('ClientProduitEligible')
-        .select('clientId, Client:Client(id, name, email, company_name, is_active, apporteur_id)')
+        .select('clientId, Client:Client(id, first_name, last_name, email, company_name, is_active, apporteur_id)')
         .eq('expert_id', userId)
         .not('clientId', 'is', null);
 
@@ -1127,7 +1160,11 @@ router.get('/contacts', async (req, res) => {
 
       (assignments || []).forEach((a: any) => {
         if (a.Client && a.Client.is_active !== false && !clientIds.has(a.Client.id)) {
-          clients.push({ ...a.Client, type: 'client', full_name: a.Client.name || a.Client.company_name });
+          clients.push({ 
+            ...a.Client, 
+            type: 'client', 
+            full_name: a.Client.company_name || `${a.Client.first_name || ''} ${a.Client.last_name || ''}`.trim() || a.Client.email 
+          });
           clientIds.add(a.Client.id);
           
           // Récupérer l'apporteur de ce client
@@ -1145,54 +1182,52 @@ router.get('/contacts', async (req, res) => {
           .in('id', Array.from(apporteurIds))
           .eq('is_active', true);
 
-        apporteurs = (apporteursList || []).map(a => ({ ...a, type: 'apporteur', full_name: `${a.first_name} ${a.last_name}` }));
+        apporteurs = (apporteursList || []).map(a => ({ 
+          ...a, 
+          type: 'apporteur', 
+          full_name: `${a.first_name || ''} ${a.last_name || ''}`.trim() || a.company_name || a.email 
+        }));
       }
 
       // Admin
       const { data: adminList } = await supabaseAdmin
         .from('Admin')
-        .select('id, name, email')
+        .select('id, first_name, last_name, email')
         .limit(1);
 
-      admins = (adminList || []).map(a => ({ ...a, type: 'admin', full_name: a.name }));
+      admins = (adminList || []).map(a => ({ 
+        ...a, 
+        type: 'admin', 
+        full_name: `${a.first_name || ''} ${a.last_name || ''}`.trim() || a.email 
+      }));
 
     } else if (userType === 'apporteur') {
-      // Apporteur voit: ses clients + experts de ses clients + admin
+      // Apporteur voit: ses clients + admin
 
       // Clients de l'apporteur
       const { data: clientsList } = await supabaseAdmin
         .from('Client')
-        .select('id, name, email, company_name, is_active')
+        .select('id, first_name, last_name, email, company_name, is_active')
         .eq('apporteur_id', userId)
         .eq('is_active', true);
 
-      clients = (clientsList || []).map(c => ({ ...c, type: 'client', full_name: c.name || c.company_name }));
-
-      // Experts assignés aux clients de l'apporteur
-      const clientIds = clients.map(c => c.id);
-      if (clientIds.length > 0) {
-        const { data: assignments } = await supabaseAdmin
-          .from('ClientProduitEligible')
-          .select('expert_id, Expert:Expert(id, name, email, company_name, is_active)')
-          .in('clientId', clientIds)
-          .not('expert_id', 'is', null);
-
-        const expertIds = new Set<string>();
-        (assignments || []).forEach((a: any) => {
-          if (a.Expert && a.Expert.is_active !== false && !expertIds.has(a.Expert.id)) {
-            experts.push({ ...a.Expert, type: 'expert', full_name: a.Expert.name });
-            expertIds.add(a.Expert.id);
-          }
-        });
-      }
+      clients = (clientsList || []).map(c => ({ 
+        ...c, 
+        type: 'client', 
+        full_name: c.company_name || `${c.first_name || ''} ${c.last_name || ''}`.trim() || c.email 
+      }));
 
       // Admin
       const { data: adminList } = await supabaseAdmin
         .from('Admin')
-        .select('id, name, email')
+        .select('id, first_name, last_name, email')
         .limit(1);
 
-      admins = (adminList || []).map(a => ({ ...a, type: 'admin', full_name: a.name }));
+      admins = (adminList || []).map(a => ({ 
+        ...a, 
+        type: 'admin', 
+        full_name: `${a.first_name || ''} ${a.last_name || ''}`.trim() || a.email 
+      }));
     }
 
     // Trier par dernière activité (créé récemment = actif)
