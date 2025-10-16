@@ -95,6 +95,11 @@ const AdminDashboardOptimized: React.FC = () => {
   const [selectedEcosystemTile, setSelectedEcosystemTile] = useState<string | null>(null);
   const [selectedTileData, setSelectedTileData] = useState<any[]>([]);
   const [loadingTileData, setLoadingTileData] = useState(false);
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filteredTileData, setFilteredTileData] = useState<any[]>([]);
+  
+  // Cache des données pour éviter de recharger inutilement
+  const [dataCache, setDataCache] = useState<{[key: string]: {data: any[], timestamp: number}}>({});
   const [sectionData, setSectionData] = useState<SectionData>({
     experts: [],
     clients: [],
@@ -182,8 +187,22 @@ const AdminDashboardOptimized: React.FC = () => {
   useEffect(() => {
     if (selectedEcosystemTile) {
       loadTileData(selectedEcosystemTile);
+      setFilterStatus('all'); // Reset filter
     }
   }, [selectedEcosystemTile]);
+
+  // Appliquer les filtres sur les données
+  useEffect(() => {
+    if (filterStatus === 'all') {
+      setFilteredTileData(selectedTileData);
+    } else {
+      setFilteredTileData(
+        selectedTileData.filter((item: any) => 
+          item.statut === filterStatus || item.status === filterStatus || item.approval_status === filterStatus
+        )
+      );
+    }
+  }, [selectedTileData, filterStatus]);
 
   // Test d'authentification admin
   useEffect(() => {
@@ -414,69 +433,85 @@ const AdminDashboardOptimized: React.FC = () => {
   // ========================================
 
   const loadTileData = async (tile: string) => {
+    // Vérifier le cache (valide pendant 5 minutes)
+    const now = Date.now();
+    const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+    
+    if (dataCache[tile] && (now - dataCache[tile].timestamp) < CACHE_DURATION) {
+      console.log(`💾 Utilisation du cache pour: ${tile}`);
+      setSelectedTileData(dataCache[tile].data);
+      return;
+    }
+    
     setLoadingTileData(true);
     try {
       console.log(`🔍 Chargement données tuile: ${tile}`);
+      let data: any[] = [];
       
       switch (tile) {
         case 'dossiers':
           const dossiersResponse = await get('/admin/dossiers/all');
           if (dossiersResponse.success) {
-            setSelectedTileData((dossiersResponse.data as any)?.dossiers || []);
+            data = (dossiersResponse.data as any)?.dossiers || [];
           } else {
             console.error('❌ Erreur chargement dossiers:', dossiersResponse.message);
-            setSelectedTileData([]);
           }
           break;
           
         case 'clients':
           const clientsResponse = await get('/admin/clients');
           if (clientsResponse.success) {
-            setSelectedTileData((clientsResponse.data as any)?.clients || []);
+            data = (clientsResponse.data as any)?.clients || [];
           } else {
             console.error('❌ Erreur chargement clients:', clientsResponse.message);
-            setSelectedTileData([]);
           }
           break;
           
         case 'experts':
           const expertsResponse = await get('/admin/experts');
           if (expertsResponse.success) {
-            setSelectedTileData((expertsResponse.data as any)?.experts || []);
+            data = (expertsResponse.data as any)?.experts || [];
           } else {
             console.error('❌ Erreur chargement experts:', expertsResponse.message);
-            setSelectedTileData([]);
           }
           break;
           
         case 'apporteurs':
           const apporteursResponse = await get('/admin/apporteurs');
           if (apporteursResponse.success) {
-            setSelectedTileData(Array.isArray(apporteursResponse.data) ? apporteursResponse.data : []);
+            data = Array.isArray(apporteursResponse.data) ? apporteursResponse.data : [];
           } else {
             console.error('❌ Erreur chargement apporteurs:', apporteursResponse.message);
-            setSelectedTileData([]);
           }
           break;
           
         case 'produits':
           const produitsResponse = await get('/admin/produits');
           if (produitsResponse.success) {
-            setSelectedTileData((produitsResponse.data as any)?.produits || []);
+            data = (produitsResponse.data as any)?.produits || [];
           } else {
             console.error('❌ Erreur chargement produits:', produitsResponse.message);
-            setSelectedTileData([]);
           }
           break;
           
         case 'performance':
           // Pour performance, on utilise les données KPI déjà chargées
-          setSelectedTileData([]);
           break;
           
         default:
-          setSelectedTileData([]);
+          break;
       }
+      
+      // Stocker dans le cache
+      setDataCache(prev => ({
+        ...prev,
+        [tile]: {
+          data,
+          timestamp: now
+        }
+      }));
+      
+      setSelectedTileData(data);
       
     } catch (error) {
       console.error(`❌ Erreur chargement tuile ${tile}:`, error);
@@ -1537,44 +1572,250 @@ const AdminDashboardOptimized: React.FC = () => {
                                 </CardHeader>
                                 <CardContent>
                                   {selectedEcosystemTile === 'clients' && (
-                                    <div className="text-center py-8">
-                                      <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                                      <p className="text-gray-500">Tableau des clients sera affiché ici</p>
-                                      <Button 
-                                        variant="outline" 
-                                        className="mt-4"
-                                        onClick={() => setActiveSection('clients')}
-                                      >
-                                        Voir tous les clients
-                                      </Button>
+                                    <div className="space-y-4">
+                                      {loadingTileData ? (
+                                        <div className="flex items-center justify-center py-8">
+                                          <RefreshCw className="w-6 h-6 animate-spin text-green-600" />
+                                          <span className="ml-2 text-gray-600">Chargement des clients...</span>
+                                        </div>
+                                      ) : selectedTileData.length > 0 ? (
+                                        <div className="space-y-3">
+                                          <div className="flex justify-between items-center">
+                                            <h4 className="font-semibold text-gray-800">
+                                              Clients actifs ({selectedTileData.length})
+                                            </h4>
+                                            <Button 
+                                              variant="outline" 
+                                              size="sm"
+                                              onClick={() => setActiveSection('clients')}
+                                            >
+                                              Voir tous
+                                            </Button>
+                                          </div>
+                                          
+                                          <div className="space-y-2 max-h-96 overflow-y-auto">
+                                            {selectedTileData.slice(0, 10).map((client: any) => (
+                                              <div key={client.id} className="p-3 border rounded-lg hover:bg-gray-50">
+                                                <div className="flex justify-between items-start">
+                                                  <div className="flex-1">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                      <h5 className="font-medium text-gray-800">
+                                                        {client.company_name || `${client.first_name || ''} ${client.last_name || ''}`.trim() || 'N/A'}
+                                                      </h5>
+                                                      <Badge variant={
+                                                        client.statut === 'active' ? 'default' :
+                                                        client.statut === 'pending' ? 'secondary' : 'outline'
+                                                      }>
+                                                        {client.statut}
+                                                      </Badge>
+                                                    </div>
+                                                    
+                                                    <div className="text-sm text-gray-600">
+                                                      <p>📧 {client.email}</p>
+                                                      {client.phone && <p>📞 {client.phone}</p>}
+                                                      <p>📅 Créé le {new Date(client.created_at).toLocaleDateString('fr-FR')}</p>
+                                                    </div>
+                                                  </div>
+                                                  
+                                                  <div className="text-right">
+                                                    <Button 
+                                                      variant="ghost" 
+                                                      size="sm"
+                                                      onClick={() => {
+                                                        setActiveSection('clients');
+                                                        setSelectedEcosystemTile(null);
+                                                      }}
+                                                    >
+                                                      <Eye className="w-4 h-4" />
+                                                    </Button>
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            ))}
+                                            
+                                            {selectedTileData.length > 10 && (
+                                              <div className="text-center py-2 text-sm text-gray-500">
+                                                ... et {selectedTileData.length - 10} autres clients
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <div className="text-center py-8">
+                                          <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                                          <p className="text-gray-500">Aucun client trouvé</p>
+                                        </div>
+                                      )}
                                     </div>
                                   )}
                                   
                                   {selectedEcosystemTile === 'experts' && (
-                                    <div className="text-center py-8">
-                                      <UserCheck className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                                      <p className="text-gray-500">Tableau des experts sera affiché ici</p>
-                                      <Button 
-                                        variant="outline" 
-                                        className="mt-4"
-                                        onClick={() => setActiveSection('experts')}
-                                      >
-                                        Voir tous les experts
-                                      </Button>
+                                    <div className="space-y-4">
+                                      {loadingTileData ? (
+                                        <div className="flex items-center justify-center py-8">
+                                          <RefreshCw className="w-6 h-6 animate-spin text-blue-600" />
+                                          <span className="ml-2 text-gray-600">Chargement des experts...</span>
+                                        </div>
+                                      ) : selectedTileData.length > 0 ? (
+                                        <div className="space-y-3">
+                                          <div className="flex justify-between items-center">
+                                            <h4 className="font-semibold text-gray-800">
+                                              Experts ({selectedTileData.length})
+                                            </h4>
+                                            <Button 
+                                              variant="outline" 
+                                              size="sm"
+                                              onClick={() => setActiveSection('experts')}
+                                            >
+                                              Voir tous
+                                            </Button>
+                                          </div>
+                                          
+                                          <div className="space-y-2 max-h-96 overflow-y-auto">
+                                            {selectedTileData.slice(0, 10).map((expert: any) => (
+                                              <div key={expert.id} className="p-3 border rounded-lg hover:bg-gray-50">
+                                                <div className="flex justify-between items-start">
+                                                  <div className="flex-1">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                      <h5 className="font-medium text-gray-800">
+                                                        {`${expert.first_name || ''} ${expert.last_name || ''}`.trim() || expert.company_name || 'N/A'}
+                                                      </h5>
+                                                      <Badge variant={
+                                                        expert.approval_status === 'approved' ? 'default' :
+                                                        expert.approval_status === 'pending' ? 'secondary' :
+                                                        expert.approval_status === 'rejected' ? 'destructive' : 'outline'
+                                                      }>
+                                                        {expert.approval_status}
+                                                      </Badge>
+                                                      {expert.rating && (
+                                                        <span className="text-xs text-yellow-600">
+                                                          ⭐ {expert.rating}/5
+                                                        </span>
+                                                      )}
+                                                    </div>
+                                                    
+                                                    <div className="text-sm text-gray-600">
+                                                      {expert.company_name && <p>🏢 {expert.company_name}</p>}
+                                                      <p>📧 {expert.email}</p>
+                                                      {expert.specializations && expert.specializations.length > 0 && (
+                                                        <p>🎯 {expert.specializations.slice(0, 2).join(', ')}</p>
+                                                      )}
+                                                      <p>📅 Créé le {new Date(expert.created_at).toLocaleDateString('fr-FR')}</p>
+                                                    </div>
+                                                  </div>
+                                                  
+                                                  <div className="text-right">
+                                                    <Button 
+                                                      variant="ghost" 
+                                                      size="sm"
+                                                      onClick={() => {
+                                                        setActiveSection('experts');
+                                                        setSelectedEcosystemTile(null);
+                                                      }}
+                                                    >
+                                                      <Eye className="w-4 h-4" />
+                                                    </Button>
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            ))}
+                                            
+                                            {selectedTileData.length > 10 && (
+                                              <div className="text-center py-2 text-sm text-gray-500">
+                                                ... et {selectedTileData.length - 10} autres experts
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <div className="text-center py-8">
+                                          <UserCheck className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                                          <p className="text-gray-500">Aucun expert trouvé</p>
+                                        </div>
+                                      )}
                                     </div>
                                   )}
                                   
                                   {selectedEcosystemTile === 'apporteurs' && (
-                                    <div className="text-center py-8">
-                                      <Handshake className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                                      <p className="text-gray-500">Tableau des apporteurs sera affiché ici</p>
-                                      <Button 
-                                        variant="outline" 
-                                        className="mt-4"
-                                        onClick={() => setActiveSection('apporteurs')}
-                                      >
-                                        Voir tous les apporteurs
-                                      </Button>
+                                    <div className="space-y-4">
+                                      {loadingTileData ? (
+                                        <div className="flex items-center justify-center py-8">
+                                          <RefreshCw className="w-6 h-6 animate-spin text-purple-600" />
+                                          <span className="ml-2 text-gray-600">Chargement des apporteurs...</span>
+                                        </div>
+                                      ) : selectedTileData.length > 0 ? (
+                                        <div className="space-y-3">
+                                          <div className="flex justify-between items-center">
+                                            <h4 className="font-semibold text-gray-800">
+                                              Apporteurs d'affaires ({selectedTileData.length})
+                                            </h4>
+                                            <Button 
+                                              variant="outline" 
+                                              size="sm"
+                                              onClick={() => setActiveSection('apporteurs')}
+                                            >
+                                              Voir tous
+                                            </Button>
+                                          </div>
+                                          
+                                          <div className="space-y-2 max-h-96 overflow-y-auto">
+                                            {selectedTileData.slice(0, 10).map((apporteur: any) => (
+                                              <div key={apporteur.id} className="p-3 border rounded-lg hover:bg-gray-50">
+                                                <div className="flex justify-between items-start">
+                                                  <div className="flex-1">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                      <h5 className="font-medium text-gray-800">
+                                                        {`${apporteur.first_name || ''} ${apporteur.last_name || ''}`.trim() || apporteur.company_name || 'N/A'}
+                                                      </h5>
+                                                      <Badge variant={
+                                                        apporteur.status === 'active' ? 'default' :
+                                                        apporteur.status === 'candidature' ? 'secondary' :
+                                                        apporteur.status === 'suspended' ? 'destructive' : 'outline'
+                                                      }>
+                                                        {apporteur.status}
+                                                      </Badge>
+                                                    </div>
+                                                    
+                                                    <div className="text-sm text-gray-600">
+                                                      {apporteur.company_name && <p>🏢 {apporteur.company_name}</p>}
+                                                      <p>📧 {apporteur.email}</p>
+                                                      {apporteur.phone && <p>📞 {apporteur.phone}</p>}
+                                                      {apporteur.commission_rate && (
+                                                        <p>💰 Commission: {apporteur.commission_rate}%</p>
+                                                      )}
+                                                      <p>📅 Créé le {new Date(apporteur.created_at).toLocaleDateString('fr-FR')}</p>
+                                                    </div>
+                                                  </div>
+                                                  
+                                                  <div className="text-right">
+                                                    <Button 
+                                                      variant="ghost" 
+                                                      size="sm"
+                                                      onClick={() => {
+                                                        setActiveSection('apporteurs');
+                                                        setSelectedEcosystemTile(null);
+                                                      }}
+                                                    >
+                                                      <Eye className="w-4 h-4" />
+                                                    </Button>
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            ))}
+                                            
+                                            {selectedTileData.length > 10 && (
+                                              <div className="text-center py-2 text-sm text-gray-500">
+                                                ... et {selectedTileData.length - 10} autres apporteurs
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <div className="text-center py-8">
+                                          <Handshake className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                                          <p className="text-gray-500">Aucun apporteur trouvé</p>
+                                        </div>
+                                      )}
                                     </div>
                                   )}
                                   
@@ -1587,21 +1828,35 @@ const AdminDashboardOptimized: React.FC = () => {
                                         </div>
                                       ) : selectedTileData.length > 0 ? (
                                         <div className="space-y-3">
-                                          <div className="flex justify-between items-center">
+                                          <div className="flex justify-between items-center gap-4">
                                             <h4 className="font-semibold text-gray-800">
-                                              Dossiers ClientProduitEligible ({selectedTileData.length})
+                                              Dossiers ClientProduitEligible ({filteredTileData.length}/{selectedTileData.length})
                                             </h4>
-                                            <Button 
-                                              variant="outline" 
-                                              size="sm"
-                                              onClick={() => setActiveSection('dossiers')}
-                                            >
-                                              Voir tous
-                                            </Button>
+                                            <div className="flex items-center gap-2">
+                                              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                                                <SelectTrigger className="w-[140px] h-8">
+                                                  <SelectValue placeholder="Filtrer par statut" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                  <SelectItem value="all">Tous</SelectItem>
+                                                  <SelectItem value="eligible">Éligible</SelectItem>
+                                                  <SelectItem value="pending">En attente</SelectItem>
+                                                  <SelectItem value="validated">Validé</SelectItem>
+                                                  <SelectItem value="rejected">Rejeté</SelectItem>
+                                                </SelectContent>
+                                              </Select>
+                                              <Button 
+                                                variant="outline" 
+                                                size="sm"
+                                                onClick={() => setActiveSection('dossiers')}
+                                              >
+                                                Voir tous
+                                              </Button>
+                                            </div>
                                           </div>
                                           
                                           <div className="space-y-2 max-h-96 overflow-y-auto">
-                                            {selectedTileData.slice(0, 10).map((dossier: any) => (
+                                            {filteredTileData.slice(0, 10).map((dossier: any) => (
                                               <div key={dossier.id} className="p-3 border rounded-lg hover:bg-gray-50">
                                                 <div className="flex justify-between items-start">
                                                   <div className="flex-1">
@@ -1644,9 +1899,9 @@ const AdminDashboardOptimized: React.FC = () => {
                                               </div>
                                             ))}
                                             
-                                            {selectedTileData.length > 10 && (
+                                            {filteredTileData.length > 10 && (
                                               <div className="text-center py-2 text-sm text-gray-500">
-                                                ... et {selectedTileData.length - 10} autres dossiers
+                                                ... et {filteredTileData.length - 10} autres dossiers
                                               </div>
                                             )}
                                           </div>
@@ -1661,16 +1916,87 @@ const AdminDashboardOptimized: React.FC = () => {
                                   )}
                                   
                                   {selectedEcosystemTile === 'produits' && (
-                                    <div className="text-center py-8">
-                                      <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                                      <p className="text-gray-500">Tableau des produits sera affiché ici</p>
-                                      <Button 
-                                        variant="outline" 
-                                        className="mt-4"
-                                        onClick={() => navigate('/admin/gestion-produits')}
-                                      >
-                                        Gérer les produits
-                                      </Button>
+                                    <div className="space-y-4">
+                                      {loadingTileData ? (
+                                        <div className="flex items-center justify-center py-8">
+                                          <RefreshCw className="w-6 h-6 animate-spin text-orange-600" />
+                                          <span className="ml-2 text-gray-600">Chargement des produits...</span>
+                                        </div>
+                                      ) : selectedTileData.length > 0 ? (
+                                        <div className="space-y-3">
+                                          <div className="flex justify-between items-center">
+                                            <h4 className="font-semibold text-gray-800">
+                                              Produits éligibles ({selectedTileData.length})
+                                            </h4>
+                                            <Button 
+                                              variant="outline" 
+                                              size="sm"
+                                              onClick={() => navigate('/admin/gestion-produits')}
+                                            >
+                                              Gérer
+                                            </Button>
+                                          </div>
+                                          
+                                          <div className="space-y-2 max-h-96 overflow-y-auto">
+                                            {selectedTileData.slice(0, 10).map((produit: any) => (
+                                              <div key={produit.id} className="p-3 border rounded-lg hover:bg-gray-50">
+                                                <div className="flex justify-between items-start">
+                                                  <div className="flex-1">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                      <h5 className="font-medium text-gray-800">
+                                                        {produit.nom || 'N/A'}
+                                                      </h5>
+                                                      <Badge variant="default">
+                                                        {produit.categorie || 'Autre'}
+                                                      </Badge>
+                                                    </div>
+                                                    
+                                                    <div className="text-sm text-gray-600">
+                                                      {produit.description && (
+                                                        <p className="mb-1 line-clamp-2">{produit.description}</p>
+                                                      )}
+                                                      <div className="flex items-center gap-4">
+                                                        {produit.montant_min && produit.montant_max && (
+                                                          <p>💰 {produit.montant_min.toLocaleString('fr-FR')}€ - {produit.montant_max.toLocaleString('fr-FR')}€</p>
+                                                        )}
+                                                        {produit.taux_min && produit.taux_max && (
+                                                          <p>📊 {produit.taux_min}% - {produit.taux_max}%</p>
+                                                        )}
+                                                      </div>
+                                                      {produit.eligibility_criteria && (
+                                                        <p className="mt-1 text-xs text-gray-500">
+                                                          Critères: {Object.keys(produit.eligibility_criteria).length} conditions
+                                                        </p>
+                                                      )}
+                                                    </div>
+                                                  </div>
+                                                  
+                                                  <div className="text-right">
+                                                    <Button 
+                                                      variant="ghost" 
+                                                      size="sm"
+                                                      onClick={() => navigate('/admin/gestion-produits')}
+                                                    >
+                                                      <Eye className="w-4 h-4" />
+                                                    </Button>
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            ))}
+                                            
+                                            {selectedTileData.length > 10 && (
+                                              <div className="text-center py-2 text-sm text-gray-500">
+                                                ... et {selectedTileData.length - 10} autres produits
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <div className="text-center py-8">
+                                          <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                                          <p className="text-gray-500">Aucun produit trouvé</p>
+                                        </div>
+                                      )}
                                     </div>
                                   )}
                                   
