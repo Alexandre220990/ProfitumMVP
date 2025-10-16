@@ -440,7 +440,7 @@ const AdminDashboardOptimized: React.FC = () => {
   const updateDossierStatut = async (dossierId: string, newStatut: string) => {
     setUpdatingDossier(dossierId);
     try {
-      const response = await fetch(`${config.apiUrl}/admin/dossiers/${dossierId}/statut`, {
+      const response = await fetch(`${config.API_URL}/admin/dossiers/${dossierId}/statut`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -473,7 +473,7 @@ const AdminDashboardOptimized: React.FC = () => {
 
   const assignExpertToDossier = async (dossierId: string, expertId: string) => {
     try {
-      const response = await fetch(`${config.apiUrl}/admin/dossiers/${dossierId}/assign-expert`, {
+      const response = await fetch(`${config.API_URL}/admin/dossiers/${dossierId}/assign-expert`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -484,7 +484,7 @@ const AdminDashboardOptimized: React.FC = () => {
       });
 
       if (response.ok) {
-        const result = await response.json();
+        await response.json();
         toast.success(`Expert assigné avec succès`);
         
         // Recharger les données
