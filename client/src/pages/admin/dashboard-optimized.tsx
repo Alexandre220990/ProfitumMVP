@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { TypeSwitcher } from "@/components/TypeSwitcher";
 import { motion } from "framer-motion";
+import { PerformanceCharts } from "@/components/charts/PerformanceCharts";
 
 // ============================================================================
 // TYPES ET INTERFACES
@@ -782,6 +783,16 @@ const AdminDashboardOptimized: React.FC = () => {
             setSectionData((prev: SectionData) => ({ ...prev, dossiers: (dossiersResponse.data as any)?.dossiers || [] }));
           } else {
             console.error('❌ Erreur dossiers:', dossiersResponse.message);
+          }
+          break;
+
+        case 'performance':
+          console.log('📡 Appel API /admin/dossiers/all pour graphiques...');
+          const perfDossiersResponse = await get('/admin/dossiers/all');
+          if (perfDossiersResponse.success) {
+            setSectionData((prev: SectionData) => ({ ...prev, dossiers: (perfDossiersResponse.data as any)?.dossiers || [] }));
+          } else {
+            console.error('❌ Erreur dossiers performance:', perfDossiersResponse.message);
           }
           break;
       }
@@ -2269,16 +2280,72 @@ const AdminDashboardOptimized: React.FC = () => {
                                   )}
                                   
                                   {selectedEcosystemTile === 'performance' && (
-                                    <div className="text-center py-8">
-                                      <TrendingUp className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                                      <p className="text-gray-500">Graphiques de performance seront affichés ici</p>
-                                      <Button 
-                                        variant="outline" 
-                                        className="mt-4"
-                                        onClick={() => setActiveSection('performance')}
-                                      >
-                                        Voir la section Performance
-                                      </Button>
+                                    <div className="space-y-4">
+                                      <div className="flex justify-between items-center">
+                                        <h4 className="font-semibold text-gray-800">
+                                          Aperçu Performance
+                                        </h4>
+                                        <Button 
+                                          variant="outline" 
+                                          size="sm"
+                                          onClick={() => setActiveSection('performance')}
+                                        >
+                                          Voir détails complets
+                                        </Button>
+                                      </div>
+                                      
+                                      {/* Mini graphiques */}
+                                      <div className="grid grid-cols-2 gap-4">
+                                        <Card>
+                                          <CardHeader className="pb-2">
+                                            <CardTitle className="text-sm flex items-center gap-2">
+                                              <TrendingUp className="w-4 h-4 text-green-600" />
+                                              Revenus
+                                            </CardTitle>
+                                          </CardHeader>
+                                          <CardContent>
+                                            <div className="space-y-2">
+                                              <div className="flex justify-between">
+                                                <span className="text-xs text-gray-600">Ce mois</span>
+                                                <span className="text-sm font-bold text-green-600">
+                                                  {kpiData.montantRealise.toLocaleString('fr-FR')}€
+                                                </span>
+                                              </div>
+                                              <div className="flex justify-between">
+                                                <span className="text-xs text-gray-600">Croissance</span>
+                                                <span className={`text-sm font-bold ${kpiData.croissanceRevenus >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                  {kpiData.croissanceRevenus >= 0 ? '+' : ''}{kpiData.croissanceRevenus}%
+                                                </span>
+                                              </div>
+                                            </div>
+                                          </CardContent>
+                                        </Card>
+
+                                        <Card>
+                                          <CardHeader className="pb-2">
+                                            <CardTitle className="text-sm flex items-center gap-2">
+                                              <FileText className="w-4 h-4 text-blue-600" />
+                                              Dossiers
+                                            </CardTitle>
+                                          </CardHeader>
+                                          <CardContent>
+                                            <div className="space-y-2">
+                                              <div className="flex justify-between">
+                                                <span className="text-xs text-gray-600">Ce mois</span>
+                                                <span className="text-sm font-bold text-blue-600">
+                                                  {kpiData.dossiersThisMonth}
+                                                </span>
+                                              </div>
+                                              <div className="flex justify-between">
+                                                <span className="text-xs text-gray-600">Objectif</span>
+                                                <span className="text-sm font-bold text-gray-600">
+                                                  {Math.round(kpiData.objectifDossiersMonth)}
+                                                </span>
+                                              </div>
+                                            </div>
+                                          </CardContent>
+                                        </Card>
+                                      </div>
                                     </div>
                                   )}
                                 </CardContent>
@@ -2589,12 +2656,16 @@ const AdminDashboardOptimized: React.FC = () => {
                     {/* Graphiques et analyses détaillées */}
                     <Card>
                       <CardHeader>
-                        <CardTitle>Évolution Mensuelle</CardTitle>
+                        <CardTitle className="flex items-center gap-2">
+                          <TrendingUp className="w-5 h-5 text-emerald-600" />
+                          Graphiques de Performance
+                        </CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <p className="text-gray-600 text-center py-8">
-                          📊 Graphiques détaillés disponibles prochainement
-                        </p>
+                        <PerformanceCharts 
+                          kpiData={kpiData} 
+                          dossiers={sectionData.dossiers}
+                        />
                       </CardContent>
                     </Card>
                   </div>
