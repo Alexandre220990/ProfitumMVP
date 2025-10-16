@@ -1908,10 +1908,11 @@ router.get('/produits/stats', asyncHandler(async (req, res): Promise<void> => {
 
     if (error) {
       console.error('❌ Erreur récupération produits pour stats:', error);
-      return res.status(500).json({ 
+      res.status(500).json({ 
         success: false,
         error: 'Erreur lors de la récupération des statistiques' 
       });
+      return;
     }
 
     // Calculer les statistiques
@@ -1951,7 +1952,7 @@ router.get('/produits/stats', asyncHandler(async (req, res): Promise<void> => {
 
     console.log('✅ Stats produits calculées:', { totalProduits, categories: Object.keys(parCategorie).length });
 
-    return res.json({
+    res.json({
       success: true,
       stats: {
         total_produits: totalProduits,
@@ -1960,13 +1961,15 @@ router.get('/produits/stats', asyncHandler(async (req, res): Promise<void> => {
         top_3_produits: top3
       }
     });
+    return;
 
   } catch (error) {
     console.error('❌ Erreur stats produits:', error);
-    return res.status(500).json({ 
+    res.status(500).json({ 
       success: false,
       error: 'Erreur serveur lors du calcul des statistiques' 
     });
+    return;
   }
 }));
 
