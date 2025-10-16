@@ -1,6 +1,8 @@
 import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getUserDisplayName } from '../../../../shared/utils/user-display';
+import { messagingService } from '@/services/messaging-service';
+import { toast } from 'sonner';
 import { 
   MessageSquare, 
   Send, 
@@ -68,6 +70,7 @@ export const AdminMessagingApp: React.FC<AdminMessagingAppProps> = ({
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [loading, setLoading] = useState(false);
 
   // ========================================
   // DONNÉES DE TEST POUR L'ADMIN
