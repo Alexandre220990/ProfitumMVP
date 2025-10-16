@@ -105,6 +105,8 @@ const AdminDashboardOptimized: React.FC = () => {
   const [updatingDossier, setUpdatingDossier] = useState<string | null>(null);
   const [expertModalOpen, setExpertModalOpen] = useState(false);
   const [selectedDossierForExpert, setSelectedDossierForExpert] = useState<any>(null);
+  const [availableExperts, setAvailableExperts] = useState<any[]>([]);
+  const [loadingExperts, setLoadingExperts] = useState(false);
   const [sectionData, setSectionData] = useState<SectionData>({
     experts: [],
     clients: [],
@@ -208,6 +210,13 @@ const AdminDashboardOptimized: React.FC = () => {
       );
     }
   }, [selectedTileData, filterStatus]);
+
+  // Charger les experts quand le modal s'ouvre
+  useEffect(() => {
+    if (expertModalOpen) {
+      loadAvailableExperts();
+    }
+  }, [expertModalOpen]);
 
   // Test d'authentification admin
   useEffect(() => {
@@ -471,7 +480,35 @@ const AdminDashboardOptimized: React.FC = () => {
     }
   };
 
+  const loadAvailableExperts = async () => {
+    setLoadingExperts(true);
+    try {
+      const expertsResponse = await get('/admin/experts');
+      if (expertsResponse.success) {
+        const allExperts = (expertsResponse.data as any)?.experts || [];
+        // Filtrer uniquement les experts approuvés
+        const approvedExperts = allExperts.filter((expert: any) => expert.approval_status === 'approved');
+        setAvailableExperts(approvedExperts);
+      } else {
+        console.error('❌ Erreur chargement experts:', expertsResponse.message);
+        toast.error('Erreur lors du chargement des experts');
+        setAvailableExperts([]);
+      }
+    } catch (error) {
+      console.error('Erreur loadAvailableExperts:', error);
+      toast.error('Erreur lors du chargement des experts');
+      setAvailableExperts([]);
+    } finally {
+      setLoadingExperts(false);
+    }
+  };
+
   const assignExpertToDossier = async (dossierId: string, expertId: string) => {
+    if (!expertId || expertId === 'none') {
+      toast.error('Veuillez sélectionner un expert');
+      return;
+    }
+
     try {
       const response = await fetch(`${config.API_URL}/admin/dossiers/${dossierId}/assign-expert`, {
         method: 'POST',
@@ -2673,28 +2710,67 @@ const AdminDashboardOptimized: React.FC = () => {
       
       {/* Modal Assignation Expert */}
       {expertModalOpen && selectedDossierForExpert && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold mb-4">Assigner un Expert</h3>
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+          onClick={() => {
+            setExpertModalOpen(false);
+            setSelectedDossierForExpert(null);
+          }}
+        >
+          <div 
+            className="bg-white rounded-lg p-6 max-w-md w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold mb-2">Assigner un Expert</h3>
             <p className="text-sm text-gray-600 mb-4">
-              Dossier : {selectedDossierForExpert.Client?.company_name || selectedDossierForExpert.Client?.first_name}
+              <strong>Dossier :</strong> {selectedDossierForExpert.Client?.company_name || `${selectedDossierForExpert.Client?.first_name || ''} ${selectedDossierForExpert.Client?.last_name || ''}`.trim() || 'N/A'}
+            </p>
+            <p className="text-sm text-gray-600 mb-4">
+              <strong>Produit :</strong> {selectedDossierForExpert.ProduitEligible?.nom || 'N/A'}
             </p>
             
-            <Select onValueChange={(expertId) => assignExpertToDossier(selectedDossierForExpert.id, expertId)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Sélectionner un expert" />
-              </SelectTrigger>
-              <SelectContent>
-                {kpiData.totalExperts > 0 ? (
-                  // On chargera dynamiquement la liste des experts approuvés
-                  <>
-                    <SelectItem value="loading">Chargement des experts...</SelectItem>
-                  </>
-                ) : (
-                  <SelectItem value="none">Aucun expert disponible</SelectItem>
+            {loadingExperts ? (
+              <div className="flex items-center justify-center py-8">
+                <RefreshCw className="w-6 h-6 animate-spin text-blue-600" />
+                <span className="ml-2 text-gray-600">Chargement des experts...</span>
+              </div>
+            ) : (
+              <>
+                <Select 
+                  onValueChange={(expertId) => assignExpertToDossier(selectedDossierForExpert.id, expertId)}
+                  disabled={availableExperts.length === 0}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner un expert" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableExperts.length > 0 ? (
+                      availableExperts.map((expert: any) => (
+                        <SelectItem key={expert.id} value={expert.id}>
+                          <div className="flex items-center gap-2">
+                            <span>{`${expert.first_name || ''} ${expert.last_name || ''}`.trim() || expert.company_name || 'N/A'}</span>
+                            {expert.rating && (
+                              <span className="text-xs text-yellow-600">⭐ {expert.rating}/5</span>
+                            )}
+                            {expert.specializations && expert.specializations.length > 0 && (
+                              <span className="text-xs text-gray-500">({expert.specializations[0]})</span>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="none" disabled>Aucun expert approuvé disponible</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+                
+                {availableExperts.length === 0 && (
+                  <p className="text-sm text-red-600 mt-2">
+                    ⚠️ Aucun expert approuvé n'est disponible. Veuillez d'abord approuver des experts.
+                  </p>
                 )}
-              </SelectContent>
-            </Select>
+              </>
+            )}
             
             <div className="flex gap-2 mt-6">
               <Button 

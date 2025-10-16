@@ -3371,7 +3371,7 @@ router.get('/dossiers/all', async (req, res) => {
     console.log('🔍 Récupération de tous les ClientProduitEligible...');
     console.log('✅ Admin authentifié:', (req as any).user?.id);
     
-    const { data: dossiers, error } = await supabaseAdmin
+    const { data: dossiers, error } = await supabaseClient
       .from('ClientProduitEligible')
       .select(`
         id,
@@ -3913,7 +3913,7 @@ router.patch('/dossiers/:id/statut', async (req, res) => {
     }
 
     // Mettre à jour le statut
-    const { data: dossier, error } = await supabaseAdmin
+    const { data: dossier, error } = await supabaseClient
       .from('ClientProduitEligible')
       .update({ 
         statut,
@@ -3963,7 +3963,7 @@ router.post('/dossiers/:id/assign-expert', async (req, res) => {
     }
 
     // Vérifier que l'expert existe et est approuvé
-    const { data: expert, error: expertError } = await supabaseAdmin
+    const { data: expert, error: expertError } = await supabaseClient
       .from('Expert')
       .select('id, first_name, last_name, approval_status')
       .eq('id', expert_id)
@@ -3984,7 +3984,7 @@ router.post('/dossiers/:id/assign-expert', async (req, res) => {
     }
 
     // Assigner l'expert au dossier
-    const { data: dossier, error } = await supabaseAdmin
+    const { data: dossier, error } = await supabaseClient
       .from('ClientProduitEligible')
       .update({ 
         expert_id,
