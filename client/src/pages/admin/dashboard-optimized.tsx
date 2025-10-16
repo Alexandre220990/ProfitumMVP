@@ -69,7 +69,7 @@ const AdminDashboardOptimized: React.FC = () => {
   const navigate = useNavigate();
   
   // ===== ÉTATS LOCAUX =====
-  const [activeSection] = useState<ActiveSection>('overview');
+  const [activeSection, setActiveSection] = useState<ActiveSection>('overview');
   const [sectionData, setSectionData] = useState<SectionData>({
     experts: [],
     clients: [],
@@ -1137,20 +1137,32 @@ const AdminDashboardOptimized: React.FC = () => {
                           </CardTitle>
                         </CardHeader>
                         <CardContent>
-                          <div className="space-y-4">
-                            <div className="flex justify-between">
+                          <div className="space-y-2">
+                            <div 
+                              className="flex justify-between p-2 rounded hover:bg-green-50 cursor-pointer transition-colors"
+                              onClick={() => setActiveSection('clients')}
+                            >
                               <span className="text-sm text-gray-600">Clients actifs</span>
                               <span className="font-semibold text-green-600">{kpiData.totalClients}</span>
                             </div>
-                            <div className="flex justify-between">
+                            <div 
+                              className="flex justify-between p-2 rounded hover:bg-blue-50 cursor-pointer transition-colors"
+                              onClick={() => setActiveSection('experts')}
+                            >
                               <span className="text-sm text-gray-600">Experts</span>
                               <span className="font-semibold text-blue-600">{kpiData.totalExperts}</span>
                             </div>
-                            <div className="flex justify-between">
+                            <div 
+                              className="flex justify-between p-2 rounded hover:bg-purple-50 cursor-pointer transition-colors"
+                              onClick={() => setActiveSection('apporteurs')}
+                            >
                               <span className="text-sm text-gray-600">Apporteurs</span>
                               <span className="font-semibold text-purple-600">{kpiData.apporteursTotal}</span>
                             </div>
-                            <div className="flex justify-between">
+                            <div 
+                              className="flex justify-between p-2 rounded hover:bg-blue-50 cursor-pointer transition-colors"
+                              onClick={() => setActiveSection('dossiers')}
+                            >
                               <span className="text-sm text-gray-600">Dossiers Client en cours</span>
                               <span className="font-semibold text-blue-600">{kpiData.totalDossiers}</span>
                             </div>
