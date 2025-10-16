@@ -127,16 +127,38 @@ export default function GestionProduits() {
   const fetchProduits = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/admin/produits');
+      const response = await fetch('/api/admin/produits', {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include'
+      });
+      
+      console.log('📦 Réponse API produits:', response.status);
       
       if (response.ok) {
         const data = await response.json();
-        const produitsTries = sortProduits(data.produits || []);
-        setProduits(produitsTries);
+        console.log('📦 Produits reçus:', data);
+        
+        // Vérifier si data.produits existe et est un tableau
+        if (data && Array.isArray(data.produits)) {
+          const produitsTries = sortProduits(data.produits);
+          setProduits(produitsTries);
+          console.log('✅ Produits chargés:', produitsTries.length);
+        } else {
+          console.warn('⚠️ Format de réponse invalide:', data);
+          setProduits([]);
+        }
+      } else {
+        const errorText = await response.text();
+        console.error('❌ Erreur API:', response.status, errorText);
+        toast.error(`Erreur ${response.status}: ${errorText}`);
+        setProduits([]);
       }
     } catch (error) {
       console.error('❌ Erreur chargement produits:', error);
       toast.error("Erreur de chargement des produits");
+      setProduits([]);
     } finally {
       setLoading(false);
     }

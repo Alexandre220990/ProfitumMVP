@@ -134,7 +134,7 @@ const AdminDashboardOptimized: React.FC = () => {
   // Charger les données quand la section change
   useEffect(() => {
     console.log('🔄 Section changée:', activeSection);
-    if (activeSection !== 'overview') {
+    if (activeSection !== 'overview' && activeSection !== 'apporteurs' && activeSection !== 'validations') {
       console.log('📡 Chargement des données pour:', activeSection);
       loadSectionData(activeSection);
     }
@@ -187,7 +187,8 @@ const AdminDashboardOptimized: React.FC = () => {
       const experts = expertsResponse.success ? (expertsResponse.data as any)?.experts || [] : [];
       
       // Charger les dossiers
-      const dossiersResponse = await get('/admin/dossiers');
+      const dossiersResponse = await get('/admin/dossiers/all');
+      console.log('📦 Dossiers pour KPI:', dossiersResponse);
       const dossiers = dossiersResponse.success ? (dossiersResponse.data as any)?.dossiers || [] : [];
       
       // Calculer les KPIs

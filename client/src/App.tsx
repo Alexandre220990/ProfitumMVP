@@ -96,8 +96,6 @@ const AdminMonitoring = React.lazy(() => import('./pages/admin/monitoring'));
 const AdminValidationDashboard = React.lazy(() => import('./pages/admin/validation-dashboard'));
 const AdminFormulaireExpert = React.lazy(() => import('./pages/admin/formulaire-expert'));
 const AdminDocumentsGEDUnifie = React.lazy(() => import('./pages/admin/documents-ged-unifie')); // ✅ PAGE UNIFIÉE (GED + Documentation + Upload)
-const AdminTerminalTests = React.lazy(() => import('./pages/admin/terminal-tests'));
-const AdminTests = React.lazy(() => import('./pages/admin/tests'));
 
 // Expert pages
 const ExpertDashboard = React.lazy(() => import('./pages/expert/dashboard'));
@@ -297,10 +295,6 @@ function App() {
                         <Route path="validation-dashboard" element={<AdminValidationDashboard />} />
                         <Route path="monitoring" element={<AdminMonitoring />} />
                         <Route path="formulaire-expert" element={<AdminFormulaireExpert />} />
-                        
-                        {/* Système */}
-                        <Route path="terminal-tests" element={<AdminTerminalTests />} />
-                        <Route path="tests" element={<AdminTests />} />
                       </Route>
                       
                       {/* Routes dashboard/admin pour compatibilité */}

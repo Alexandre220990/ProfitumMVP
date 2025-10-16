@@ -472,7 +472,7 @@ export default function DocumentsGEDUnifiePage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">En Attente</p>
-                    <p className="text-2xl font-bold text-gray-900">{stats.system_health.pending_validations}</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats?.system_health?.pending_validations || 0}</p>
                   </div>
                   <Clock className="w-8 h-8 text-orange-600" />
                 </div>
@@ -759,24 +759,24 @@ export default function DocumentsGEDUnifiePage() {
                           <div className="w-20 bg-gray-200 rounded-full h-2">
                             <div 
                               className="bg-blue-600 h-2 rounded-full" 
-                              style={{ width: `${Math.min(stats.system_health.storage_usage, 100)}%` }}
+                              style={{ width: `${Math.min(stats?.system_health?.storage_usage || 0, 100)}%` }}
                             ></div>
                           </div>
-                          <span className="text-sm font-medium">{stats.system_health.storage_usage}%</span>
+                          <span className="text-sm font-medium">{stats?.system_health?.storage_usage || 0}%</span>
                         </div>
                       </div>
                       
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-gray-600">Documents expirés</span>
-                        <Badge variant={stats.system_health.expired_documents > 0 ? 'destructive' : 'default'}>
-                          {stats.system_health.expired_documents}
+                        <Badge variant={(stats?.system_health?.expired_documents || 0) > 0 ? 'destructive' : 'default'}>
+                          {stats?.system_health?.expired_documents || 0}
                         </Badge>
                       </div>
                       
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-gray-600">Erreurs système</span>
-                        <Badge variant={stats.system_health.system_errors > 0 ? 'destructive' : 'default'}>
-                          {stats.system_health.system_errors}
+                        <Badge variant={(stats?.system_health?.system_errors || 0) > 0 ? 'destructive' : 'default'}>
+                          {stats?.system_health?.system_errors || 0}
                         </Badge>
                       </div>
                     </div>
