@@ -217,7 +217,9 @@ const AdminDashboardOptimized: React.FC = () => {
       // Charger les apporteurs (données réelles)
       const apporteursResponse = await get('/admin/apporteurs');
       // L'API retourne directement un tableau dans data, pas data.apporteurs
-      const apporteurs: any[] = apporteursResponse.success ? (apporteursResponse.data || []) : [];
+      const apporteurs: any[] = apporteursResponse.success && Array.isArray(apporteursResponse.data) 
+        ? apporteursResponse.data 
+        : [];
       
       console.log('📊 Apporteurs chargés:', {
         total: apporteurs.length,
@@ -1132,89 +1134,7 @@ const AdminDashboardOptimized: React.FC = () => {
                 </Card>
               </div>
 
-              {/* Tuiles KPI PROFITUM - Métriques critiques */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
-                {/* Clients - NPS & Satisfaction */}
-                <KPICard
-                  title="Clients"
-                  value={kpiData.clientsThisMonth}
-                  total={`${kpiData.totalClients} total`}
-                  change={`Nouveaux ce mois`}
-                  changeType="increase"
-                  icon={UserPlus}
-                  color="blue"
-                  onClick={() => setActiveSection('clients')}
-                />
-
-                {/* Experts - Validation & Performance */}
-                <KPICard
-                  title="Experts"
-                  value={kpiData.expertsPendingValidation}
-                  total={`${kpiData.pendingExperts} en attente`}
-                  change={`NPS: ${kpiData.expertsNPS}`}
-                  changeType={kpiData.expertsPendingValidation > 0 ? "decrease" : "increase"}
-                  icon={Users}
-                  color={kpiData.expertsPendingValidation > 0 ? "red" : "green"}
-                  alert={kpiData.expertsPendingValidation > 0 && kpiData.expertsPendingValidation <= 3}
-                  urgent={kpiData.expertsPendingValidation > 3}
-                  onClick={() => setActiveSection('experts')}
-                />
-
-                {/* Dossiers - Conversion & Délais */}
-                <KPICard
-                  title="Dossiers"
-                  value={`${kpiData.tauxConversion}%`}
-                  total={`${kpiData.dossiersEnRetard} en retard`}
-                  change={`${kpiData.totalDossiers} total`}
-                  changeType={kpiData.tauxConversion >= 35 ? "increase" : "decrease"}
-                  icon={FileText}
-                  color={kpiData.dossiersEnRetard > 0 ? "red" : "purple"}
-                  alert={kpiData.dossiersEnRetard > 0 && kpiData.dossiersEnRetard <= 5}
-                  urgent={kpiData.dossiersEnRetard > 5}
-                  onClick={() => setActiveSection('dossiers')}
-                />
-
-                {/* Apporteurs - Performance */}
-                <KPICard
-                  title="Apporteurs"
-                  value={kpiData.apporteursPerformance}
-                  total={`${kpiData.apporteursActifs} actifs`}
-                  change={`${kpiData.apporteursTotal} total`}
-                  changeType="increase"
-                  icon={UserCheck}
-                  color="orange"
-                  onClick={() => setActiveSection('apporteurs')}
-                />
-
-                {/* Validations - Workflow */}
-                <KPICard
-                  title="Validations"
-                  value={kpiData.validationsPending}
-                  total={`${kpiData.validationsExperts} experts`}
-                  change={`${kpiData.validationsDocuments} documents`}
-                  changeType={kpiData.validationsPending > 0 ? "decrease" : "increase"}
-                  icon={Shield}
-                  color={kpiData.validationsPending > 0 ? "red" : "green"}
-                  alert={kpiData.validationsPending > 0 && kpiData.validationsPending <= 5}
-                  urgent={kpiData.validationsPending > 5}
-                  onClick={() => setActiveSection('validations')}
-                />
-
-                {/* Alertes - Urgences */}
-                <KPICard
-                  title="Alertes"
-                  value={kpiData.alertesUrgentes}
-                  total={`${kpiData.alertesNormales} normales`}
-                  change="Surveillance"
-                  changeType={kpiData.alertesUrgentes > 0 ? "decrease" : "increase"}
-                  icon={AlertTriangle}
-                  color={kpiData.alertesUrgentes > 0 ? "red" : "green"}
-                  urgent={kpiData.alertesUrgentes > 0}
-                  onClick={() => setActiveSection('overview')}
-                />
-              </div>
-
-              {/* Section dynamique en dessous des tuiles */}
+              {/* Section dynamique */}
               <div className="mt-8">
                 {activeSection === 'overview' && (
                   <div className="space-y-6">
