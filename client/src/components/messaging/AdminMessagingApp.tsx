@@ -28,30 +28,7 @@ import { Card, CardContent } from '@/components/ui/card';
 // MESSAGERIE ADMIN MODERNE - DESIGN PROFESSIONNEL 2025
 // ============================================================================
 
-interface Conversation {
-  id: string;
-  title?: string; // Optionnel pour compatibilité avec @/types/messaging
-  type: 'admin_support' | 'client' | 'expert';
-  last_message?: string;
-  unread_count: number;
-  updated_at?: string;
-  avatar?: string;
-  participant?: {
-    id: string;
-    name: string;
-    email: string;
-    type: 'client' | 'expert';
-  };
-}
-
-interface Message {
-  id: string;
-  content: string;
-  sender_id: string;
-  sender_name: string;
-  created_at: string;
-  is_read: boolean;
-}
+// Utiliser les types importés de @/types/messaging au lieu de redéfinir localement
 
 interface AdminMessagingAppProps {
   className?: string;
@@ -70,8 +47,8 @@ export const AdminMessagingApp: React.FC<AdminMessagingAppProps> = ({
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [loadingMessages, setLoadingMessages] = useState(false);
+  const [_loading, setLoading] = useState(false);
+  const [_loadingMessages, setLoadingMessages] = useState(false);
 
   // ========================================
   // DONNÉES DE TEST POUR L'ADMIN
@@ -143,7 +120,7 @@ export const AdminMessagingApp: React.FC<AdminMessagingAppProps> = ({
   const renderConversations = useCallback(() => {
     const filteredConversations = conversations.filter(conv => {
       const participantName = conv.participant ? getUserDisplayName(conv.participant) : '';
-      return conv.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      return conv.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
              participantName.toLowerCase().includes(searchQuery.toLowerCase());
     });
 
@@ -181,7 +158,7 @@ export const AdminMessagingApp: React.FC<AdminMessagingAppProps> = ({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
                     <h3 className="font-semibold text-slate-900 text-sm truncate">
-                      {conversation.title}
+                      {conversation.title || 'Conversation'}
                     </h3>
                     {conversation.unread_count > 0 && (
                       <Badge className="bg-red-500 text-white text-xs px-2 py-0.5">
