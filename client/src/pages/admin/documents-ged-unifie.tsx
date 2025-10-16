@@ -133,6 +133,26 @@ export default function DocumentsGEDUnifiePage() {
   // CHARGEMENT DES DONNÉES
   // ========================================
 
+  const loadDocumentation = async () => {
+    try {
+      setLoadingDocs(true);
+      const response = await get('/admin/documentation');
+      
+      if (response.success) {
+        setDocumentationDocs(response.data || []);
+        console.log('📚 Documentation chargée:', response.data?.length || 0, 'documents');
+      } else {
+        console.log('📚 Aucune documentation trouvée');
+        setDocumentationDocs([]);
+      }
+    } catch (error) {
+      console.error('Erreur chargement documentation:', error);
+      setDocumentationDocs([]);
+    } finally {
+      setLoadingDocs(false);
+    }
+  };
+
   const loadAdminData = async () => {
     try {
       setLoading(true);
@@ -143,6 +163,9 @@ export default function DocumentsGEDUnifiePage() {
       
       // Charger tous les fichiers
       await loadAllFiles();
+      
+      // Charger documentation
+      await loadDocumentation();
       
     } catch (error) {
       console.error('Erreur chargement données admin:', error);
@@ -231,6 +254,19 @@ export default function DocumentsGEDUnifiePage() {
       const allFilesData = [...clientFiles, ...expertFiles];
       setAllFiles(allFilesData);
       setFilteredFiles(allFilesData);
+      
+      // Regrouper par client_produit_id (dossier)
+      const grouped: { [key: string]: DocumentFile[] } = {};
+      allFilesData.forEach(file => {
+        const dossierId = (file as any).metadata?.client_produit_id || 'sans-dossier';
+        if (!grouped[dossierId]) {
+          grouped[dossierId] = [];
+        }
+        grouped[dossierId].push(file);
+      });
+      
+      setDossierDocuments(grouped);
+      console.log('📂 Documents regroupés:', Object.keys(grouped).length, 'dossiers');
       
     } catch (error) {
       console.error('Erreur chargement fichiers:', error);
