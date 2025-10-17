@@ -271,14 +271,26 @@ router.post('/response', async (req, res) => {
       });
     }
 
+    console.log('🔍 Simulation récupérée:', {
+      id: currentSim.id,
+      answers_type: typeof currentSim.answers,
+      answers_is_null: currentSim.answers === null,
+      answers_keys: currentSim.answers ? Object.keys(currentSim.answers) : 'null'
+    });
+
     // 2. Fusionner les nouvelles réponses avec les existantes
-    const existingAnswers = currentSim.answers || {};
+    // IMPORTANT: S'assurer que existingAnswers est un objet valide
+    const existingAnswers = (currentSim.answers && typeof currentSim.answers === 'object') 
+      ? currentSim.answers 
+      : {};
+    
     const updatedAnswers = {
       ...existingAnswers,
       ...responses
     };
 
-    console.log(`📊 Mise à jour: ${Object.keys(existingAnswers).length} réponses existantes + ${Object.keys(responses).length} nouvelles = ${Object.keys(updatedAnswers).length} total`);
+    console.log(`📊 Fusion: ${Object.keys(existingAnswers).length} existantes + ${Object.keys(responses).length} nouvelles = ${Object.keys(updatedAnswers).length} total`);
+    console.log(`📊 Clés finales:`, Object.keys(updatedAnswers));
 
     // 3. Sauvegarder dans simulations.answers
     const { error: updateError } = await supabaseClient
