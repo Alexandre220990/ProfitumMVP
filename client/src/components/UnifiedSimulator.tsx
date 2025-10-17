@@ -340,20 +340,22 @@ export const UnifiedSimulator: React.FC = () => {
                         <div className="text-center">
                           <div className="flex items-center justify-center mb-2">
                             <TrendingUp className="w-5 h-5 text-blue-500 mr-2" />
-                            <span className="text-sm text-gray-500">Taux</span>
+                            <span className="text-sm text-gray-500">Score</span>
                           </div>
                           <p className="text-lg font-semibold text-blue-600">
-                            {product.tauxFinal}%
+                            {product.tauxFinal ? `${(product.tauxFinal * 100).toFixed(0)}%` : 'N/A'}
                           </p>
                         </div>
                         
                         <div className="text-center">
                           <div className="flex items-center justify-center mb-2">
                             <Euro className="w-5 h-5 text-green-500 mr-2" />
-                            <span className="text-sm text-gray-500">Gain</span>
+                            <span className="text-sm text-gray-500">Économies</span>
                           </div>
                           <p className="text-lg font-semibold text-green-600">
-                            {product.montantFinal.toLocaleString()}€
+                            {product.montantFinal && product.montantFinal > 0 
+                              ? `${product.montantFinal.toLocaleString('fr-FR')}€` 
+                              : 'À estimer'}
                           </p>
                         </div>
                         
@@ -363,7 +365,7 @@ export const UnifiedSimulator: React.FC = () => {
                             <span className="text-sm text-gray-500">Durée</span>
                           </div>
                           <p className="text-lg font-semibold text-purple-600">
-                            {product.dureeFinale} mois
+                            {product.dureeFinale || 12} mois
                           </p>
                         </div>
                       </div>
