@@ -197,42 +197,7 @@ router.post('/:id/answers', async (req: Request, res: Response) => {
       });
     }
 
-    // ÉTAPE 1 : Sauvegarder chaque réponse dans la table Reponse (normalisé)
-    const reponsePromises = Object.entries(answers).map(async ([questionId, valeur]) => {
-      // Vérifier si la réponse existe déjà
-      const { data: existingReponse } = await supabase
-        .from('Reponse')
-        .select('id')
-        .eq('simulationId', simulationId)
-        .eq('questionId', parseInt(questionId))
-        .single();
-
-      if (existingReponse) {
-        // Mettre à jour la réponse existante
-        return supabase
-          .from('Reponse')
-          .update({
-            valeur: Array.isArray(valeur) ? valeur[0] : String(valeur),
-            updatedAt: new Date().toISOString()
-          })
-          .eq('id', existingReponse.id);
-      } else {
-        // Créer une nouvelle réponse
-        return supabase
-          .from('Reponse')
-          .insert({
-            simulationId: simulationId,
-            questionId: parseInt(questionId),
-            valeur: Array.isArray(valeur) ? valeur[0] : String(valeur),
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          });
-      }
-    });
-
-    await Promise.all(reponsePromises);
-
-    // ÉTAPE 2 : Mettre à jour answers (JSON) dans simulations pour récupération rapide
+    // Sauvegarder les réponses directement dans simulations.answers (JSON)
     const { error: updateError } = await supabase
       .from('simulations')
       .update({
@@ -461,44 +426,14 @@ router.post('/:id/answer', async (req: Request, res: Response) => {
       });
     }
 
-    // ÉTAPE 1 : Sauvegarder dans la table Reponse (normalisé)
-    const { data: existingReponse } = await supabase
-      .from('Reponse')
-      .select('id')
-      .eq('simulationId', simulationId)
-      .eq('questionId', parseInt(questionId))
-      .single();
-
-    if (existingReponse) {
-      // Mettre à jour la réponse existante
-      await supabase
-        .from('Reponse')
-        .update({
-          valeur: String(answer),
-          updatedAt: new Date().toISOString()
-        })
-        .eq('id', existingReponse.id);
-    } else {
-      // Créer une nouvelle réponse
-      await supabase
-        .from('Reponse')
-        .insert({
-          simulationId: simulationId,
-          questionId: parseInt(questionId),
-          valeur: String(answer),
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        });
-    }
-
-    // ÉTAPE 2 : Récupérer la simulation actuelle
+    // ÉTAPE 1 : Récupérer la simulation actuelle
     const { data: currentSim } = await supabase
       .from('simulations')
       .select('answers, metadata')
       .eq('id', simulationId)
       .single();
 
-    // ÉTAPE 3 : Mettre à jour answers (JSON) pour récupération rapide
+    // ÉTAPE 2 : Mettre à jour answers (JSON) pour récupération rapide
     const updatedAnswers = {
       ...(currentSim?.answers || {}),
       [questionId]: answer
@@ -526,7 +461,7 @@ router.post('/:id/answer', async (req: Request, res: Response) => {
       })
       .eq('id', simulationId);
 
-    // ÉTAPE 5 : Traiter avec le processeur en temps réel (si disponible)
+    // ÉTAPE 3 : Traiter avec le processeur en temps réel (si disponible)
     try {
       const realTimeProcessor = new RealTimeProcessor();
       await realTimeProcessor.processAnswer(simulationId.toString(), {

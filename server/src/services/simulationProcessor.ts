@@ -288,7 +288,7 @@ export async function traiterSimulation(simulationId: number): Promise<Simulatio
     // 1. Récupérer la simulation et vérifier son existence
     const { data: simulation, error: simError } = await supabase
       .from('simulations')
-      .select('*, client_id')
+      .select('*, client_id, answers')
       .eq('id', simulationId)
       .single()
     
@@ -296,15 +296,23 @@ export async function traiterSimulation(simulationId: number): Promise<Simulatio
       throw new Error(`Simulation ${simulationId} non trouvée`)
     }
     
-    // 2. Récupérer toutes les réponses de la simulation
-    const { data: reponses, error: repError } = await supabase
-      .from('Reponse')
-      .select('questionId, valeur')
-      .eq('simulationId', simulationId)
+    console.log(`📋 Simulation ${simulationId} trouvée - Status: ${simulation.status}`)
     
-    if (repError || !reponses) {
-      throw new Error('Erreur lors de la récupération des réponses')
+    // 2. Convertir les réponses du format JSON vers tableau
+    // Les réponses sont stockées dans simulation.answers (JSON)
+    // Format: { "1": ["Transport"], "2": ["Plus de 500 000€"], ... }
+    const answersObj = simulation.answers || {};
+    const reponses = Object.entries(answersObj).map(([questionId, valeur]) => ({
+      questionId: parseInt(questionId),
+      valeur: Array.isArray(valeur) ? valeur[0] : String(valeur)
+    }))
+    
+    if (reponses.length === 0) {
+      console.warn('⚠️ Aucune réponse trouvée dans simulation.answers')
+      throw new Error('Aucune réponse trouvée pour cette simulation')
     }
+    
+    console.log(`📝 ${reponses.length} réponses récupérées depuis simulation.answers`)
     
     // 3. Convertir les réponses au format attendu par le moteur de décision moderne
     const answers = reponses.map(r => ({

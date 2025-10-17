@@ -253,28 +253,57 @@ router.post('/response', async (req, res) => {
     }
 
     console.log(`💾 Sauvegarde des réponses pour la session: ${session_token.substring(0, 8)}...`);
+    console.log(`📝 Réponses à sauvegarder:`, responses);
 
-    // Utiliser la nouvelle fonction pour sauvegarder les réponses
-    const { data, error } = await supabaseClient.rpc('save_simulator_responses', {
-      p_session_token: session_token,
-      p_responses: responses
-    });
+    // 1. Récupérer la simulation actuelle
+    const { data: currentSim, error: getError } = await supabaseClient
+      .from('simulations')
+      .select('id, answers')
+      .eq('session_token', session_token)
+      .single();
 
-    if (error) {
-      console.error('❌ Erreur lors de la sauvegarde des réponses:', error);
-      return res.status(500).json({
+    if (getError || !currentSim) {
+      console.error('❌ Simulation non trouvée:', getError);
+      return res.status(404).json({
         success: false,
-        error: 'Erreur lors de la sauvegarde des réponses',
-        details: error.message
+        error: 'Simulation non trouvée'
       });
     }
 
-    console.log('✅ Réponses sauvegardées avec succès');
+    // 2. Fusionner les nouvelles réponses avec les existantes
+    const existingAnswers = currentSim.answers || {};
+    const updatedAnswers = {
+      ...existingAnswers,
+      ...responses
+    };
+
+    console.log(`📊 Mise à jour: ${Object.keys(existingAnswers).length} réponses existantes + ${Object.keys(responses).length} nouvelles = ${Object.keys(updatedAnswers).length} total`);
+
+    // 3. Sauvegarder dans simulations.answers
+    const { error: updateError } = await supabaseClient
+      .from('simulations')
+      .update({
+        answers: updatedAnswers,
+        updated_at: new Date().toISOString()
+      })
+      .eq('session_token', session_token);
+
+    if (updateError) {
+      console.error('❌ Erreur sauvegarde:', updateError);
+      return res.status(500).json({
+        success: false,
+        error: 'Erreur lors de la sauvegarde des réponses',
+        details: updateError.message
+      });
+    }
+
+    console.log('✅ Réponses sauvegardées avec succès dans simulations.answers');
 
     return res.json({
       success: true,
       message: 'Réponses sauvegardées avec succès',
-      questions_saved: data.questions_saved
+      questions_saved: Object.keys(responses).length,
+      total_answers: Object.keys(updatedAnswers).length
     });
   } catch (error) {
     console.error('❌ Erreur inattendue lors de la sauvegarde des réponses:', error);
@@ -289,6 +318,7 @@ router.post('/response', async (req, res) => {
 /**
  * POST /api/simulator/calculate-eligibility
  * Calcule l'éligibilité pour une session
+ * NOUVELLE VERSION: Utilise traiterSimulation() au lieu de RPC
  */
 router.post('/calculate-eligibility', async (req, res) => {
   try {
@@ -303,31 +333,61 @@ router.post('/calculate-eligibility', async (req, res) => {
 
     console.log(`🎯 Calcul d'éligibilité pour la session: ${session_token.substring(0, 8)}...`);
 
-    // Utiliser la nouvelle fonction pour calculer l'éligibilité
-    const { data, error } = await supabaseClient.rpc('calculate_simulator_eligibility', {
-      p_session_token: session_token
-    });
-
-    if (error) {
-      console.error('❌ Erreur lors du calcul d\'éligibilité:', error);
-      return res.status(500).json({
-        success: false,
-        error: 'Erreur lors du calcul d\'éligibilité',
-        details: error.message
-      });
-    }
-
-    console.log('✅ Éligibilité calculée avec succès');
-
-    // Récupérer les ClientProduitEligible créés pour cette simulation
-    const { data: simulation } = await supabaseClient
+    // 1. Récupérer la simulation par session_token
+    const { data: simulation, error: simError } = await supabaseClient
       .from('simulations')
-      .select('client_id, id')
+      .select('id, client_id, answers, status')
       .eq('session_token', session_token)
       .single();
 
+    if (simError || !simulation) {
+      console.error('❌ Simulation non trouvée:', simError);
+      return res.status(404).json({
+        success: false,
+        error: 'Simulation non trouvée',
+        details: simError?.message
+      });
+    }
+
+    console.log(`📋 Simulation trouvée: ID=${simulation.id}, Client=${simulation.client_id}`);
+    console.log(`📝 Réponses disponibles: ${Object.keys(simulation.answers || {}).length}`);
+
+    // 2. Vérifier qu'il y a des réponses
+    if (!simulation.answers || Object.keys(simulation.answers).length === 0) {
+      console.warn('⚠️ Aucune réponse dans simulation.answers');
+      return res.status(400).json({
+        success: false,
+        error: 'Aucune réponse trouvée pour cette simulation'
+      });
+    }
+
+    // 3. Marquer la simulation comme complétée
+    await supabaseClient
+      .from('simulations')
+      .update({
+        status: 'completed',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', simulation.id);
+
+    // 4. Traiter la simulation avec notre fonction corrigée
+    const { traiterSimulation } = await import('../services/simulationProcessor.js');
+    
+    try {
+      await traiterSimulation(parseInt(simulation.id));
+      console.log(`✅ Simulation ${simulation.id} traitée avec succès`);
+    } catch (processError) {
+      console.error('❌ Erreur traitement simulation:', processError);
+      return res.status(500).json({
+        success: false,
+        error: 'Erreur lors du traitement de la simulation',
+        details: processError instanceof Error ? processError.message : 'Erreur inconnue'
+      });
+    }
+
+    // 5. Récupérer les ClientProduitEligible créés
     let clientProduits: any[] = [];
-    if (simulation?.client_id) {
+    if (simulation.client_id) {
       const { data: produits } = await supabaseClient
         .from('ClientProduitEligible')
         .select(`
@@ -348,6 +408,7 @@ router.post('/calculate-eligibility', async (req, res) => {
           )
         `)
         .eq('clientId', simulation.client_id)
+        .eq('simulationId', simulation.id)
         .eq('statut', 'eligible')
         .order('priorite', { ascending: true });
 
@@ -357,9 +418,9 @@ router.post('/calculate-eligibility', async (req, res) => {
 
     return res.json({
       success: true,
-      eligibility_results: data.eligibility_results,
+      eligibility_results: clientProduits,
       client_produits: clientProduits,
-      message: 'Éligibilité calculée avec succès'
+      message: `${clientProduits.length} produits éligibles identifiés`
     });
   } catch (error) {
     console.error('❌ Erreur inattendue lors du calcul d\'éligibilité:', error);
