@@ -457,7 +457,13 @@ router.get('/conversations/:id/messages', async (req, res) => {
       participant_ids: conversation.participant_ids
     });
     
-    if (!conversation.participant_ids.includes(userId)) {
+    // ✅ CORRECTION: Vérifier que participant_ids est un tableau avant d'utiliser includes()
+    const participantIds = Array.isArray(conversation.participant_ids) 
+      ? conversation.participant_ids 
+      : [];
+    
+    if (!participantIds.includes(userId)) {
+      console.warn('❌ Utilisateur non autorisé:', { userId, participantIds });
       return res.status(403).json({
         success: false,
         message: 'Accès non autorisé'
@@ -1300,7 +1306,7 @@ router.get('/contacts', async (req, res) => {
       // Clients assignés
       const { data: assignments } = await supabaseAdmin
         .from('ClientProduitEligible')
-        .select('clientId, Client:Client(id, first_name, last_name, email, company_name, is_active, apporteur_id)')
+        .select('clientId, Client:clientId(id, first_name, last_name, email, company_name, is_active, apporteur_id)')
         .eq('expert_id', userId)
         .not('clientId', 'is', null);
 

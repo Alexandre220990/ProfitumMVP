@@ -219,7 +219,9 @@ export default function MarketplaceExperts() {
   // Contacter un expert
   const contactExpert = async (expertId: string) => {
     try {
-      const response = await post(`/api/experts/marketplace/${expertId}/contact`, {
+      // ✅ CORRECTION: Utiliser la bonne route sans '/marketplace'
+      const response = await post(`/api/experts/${expertId}/contact`, {
+        subject: "Demande de contact",
         message: "Je souhaite vous contacter pour une prestation.",
         clientId: user?.id
       });

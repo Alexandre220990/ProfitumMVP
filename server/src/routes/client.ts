@@ -240,7 +240,8 @@ router.get('/produits-eligibles/:id', async (req, res) => {
         ),
         Expert:expert_id (
           id,
-          name,
+          first_name,
+          last_name,
           email,
           company_name,
           specializations

@@ -19,7 +19,8 @@ import terminalTestsRoutes from "./terminal-tests";
 import dossiersRoutes from "./dossiers";
 import workflowRoutes from "./documents/workflow";
 import remindersRoutes from "./reminders";
-import simulatorRoutes from "./simulator";
+// SUPPRIMÉ: import simulatorRoutes (doublon, déjà monté directement dans index.ts)
+// import simulatorRoutes from "./simulator";
 import notificationsRoutes from "./notifications";
 import calendarRoutes from "./calendar";
 import staticAssetsRoutes from "./static-assets";
@@ -74,8 +75,8 @@ router.use('/workflow', enhancedAuthMiddleware, workflowRoutes);
 // Routes des relances
 router.use('/reminders', enhancedAuthMiddleware, remindersRoutes);
 
-// Routes du simulateur d'éligibilité
-router.use('/simulator', simulatorRoutes);
+// SUPPRIMÉ: Routes du simulateur d'éligibilité (doublon, déjà monté dans index.ts ligne 220)
+// router.use('/simulator', simulatorRoutes);
 
 // Routes des notifications
 router.use('/notifications', enhancedAuthMiddleware, notificationsRoutes);

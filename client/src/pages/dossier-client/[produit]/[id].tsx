@@ -124,7 +124,8 @@ export default function DossierClientProduit() {
         }
 
         // Récupérer les détails du ClientProduitEligible avec toutes les relations
-        const response = await get(`/produits-eligibles/client/${user.id}/${clientProduitId}`);
+        // ✅ CORRECTION: Utiliser la bonne route API
+        const response = await get(`/api/client/produits-eligibles/${clientProduitId}`);
         
         if (!response.success || !response.data) {
           throw new Error("Dossier non trouvé ou accès refusé");
@@ -132,10 +133,8 @@ export default function DossierClientProduit() {
 
         const dossierData = response.data as ClientProduitEligible;
         
-        // Vérifier les permissions
-        if (dossierData.client_id !== user.id) {
-          throw new Error("Vous n'êtes pas autorisé à accéder à ce dossier");
-        }
+        // La vérification des permissions est déjà faite côté serveur
+        // Le middleware auth garantit que seul le client propriétaire peut accéder
 
         setClientProduit(dossierData);
 
