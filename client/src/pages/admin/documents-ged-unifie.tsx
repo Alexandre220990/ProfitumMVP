@@ -821,9 +821,9 @@ export default function DocumentsGEDUnifiePage() {
                   <Upload className="w-4 h-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{stats?.recent_activity.uploads_week || 0}</div>
+                  <div className="text-2xl font-bold">{stats?.recent_activity?.uploads_week || 0}</div>
                   <p className="text-xs text-muted-foreground">
-                    +{stats?.recent_activity.uploads_today || 0} aujourd'hui
+                    +{stats?.recent_activity?.uploads_today || 0} aujourd'hui
                   </p>
                 </CardContent>
               </Card>
@@ -834,7 +834,7 @@ export default function DocumentsGEDUnifiePage() {
                   <Clock className="w-4 h-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{stats?.system_health.pending_validations || 0}</div>
+                  <div className="text-2xl font-bold">{stats?.system_health?.pending_validations || 0}</div>
                   <p className="text-xs text-muted-foreground">
                     À valider
                   </p>
@@ -847,7 +847,7 @@ export default function DocumentsGEDUnifiePage() {
                   <HardDrive className="w-4 h-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{stats?.system_health.storage_usage || 0}%</div>
+                  <div className="text-2xl font-bold">{stats?.system_health?.storage_usage || 0}%</div>
                   <p className="text-xs text-muted-foreground">
                     Utilisation
                   </p>
