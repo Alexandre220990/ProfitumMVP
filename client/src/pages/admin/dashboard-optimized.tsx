@@ -18,7 +18,7 @@ import {
   UserCheck, AlertTriangle, Clock,
   Download, Settings, TrendingUp, DollarSign,
   Bell, Mail, Target, CheckCircle, XCircle,
-  Handshake, Package, Trash2
+  Handshake, Package, Trash2, Calendar, Lock
 } from "lucide-react";
 import { TypeSwitcher } from "@/components/TypeSwitcher";
 import { motion } from "framer-motion";
