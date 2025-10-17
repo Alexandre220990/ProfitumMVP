@@ -264,7 +264,7 @@ export function AdminDashboard() {
             <CardTitle className="text-sm font-medium">Taux de Completion</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{kpis.tauxCompletionGlobal.toFixed(1)}%</div>
+            <div className="text-2xl font-bold">{(kpis.tauxCompletionGlobal || 0).toFixed(1)}%</div>
             <p className="text-xs text-muted-foreground">Dossiers terminés</p>
           </CardContent>
         </Card>
@@ -274,7 +274,7 @@ export function AdminDashboard() {
             <CardTitle className="text-sm font-medium">Taux de Conversion</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{kpis.tauxConversion.toFixed(1)}%</div>
+            <div className="text-2xl font-bold">{(kpis.tauxConversion || 0).toFixed(1)}%</div>
             <p className="text-xs text-muted-foreground">Prospects → Clients</p>
           </CardContent>
         </Card>
