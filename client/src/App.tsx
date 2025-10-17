@@ -93,7 +93,8 @@ const AdminGestionExperts = React.lazy(() => import('./pages/admin/gestion-exper
 const AdminGestionClients = React.lazy(() => import('./pages/admin/gestion-clients'));
 const AdminGestionProduits = React.lazy(() => import('./pages/admin/gestion-produits'));
 const AdminMonitoring = React.lazy(() => import('./pages/admin/monitoring'));
-const AdminValidationDashboard = React.lazy(() => import('./pages/admin/validation-dashboard'));
+// SUPPRIMÉ: AdminValidationDashboard (remplacé par Centre de Notifications dans dashboard-optimized)
+// const AdminValidationDashboard = React.lazy(() => import('./pages/admin/validation-dashboard'));
 const AdminFormulaireExpert = React.lazy(() => import('./pages/admin/formulaire-expert'));
 const AdminDocumentsGEDUnifie = React.lazy(() => import('./pages/admin/documents-ged-unifie')); // ✅ PAGE UNIFIÉE (GED + Documentation + Upload)
 const AdminClientSynthese = React.lazy(() => import('./pages/admin/client-synthese')); // ✅ PAGE SYNTHÈSE CLIENT
@@ -296,7 +297,7 @@ function App() {
                         <Route path="gestion-produits" element={<AdminGestionProduits />} />
                         
                         {/* Outils */}
-                        <Route path="validation-dashboard" element={<AdminValidationDashboard />} />
+                        {/* SUPPRIMÉ: validation-dashboard - Utilisez /admin/dashboard-optimized?section=validations */}
                         <Route path="monitoring" element={<AdminMonitoring />} />
                         <Route path="formulaire-expert" element={<AdminFormulaireExpert />} />
                       </Route>

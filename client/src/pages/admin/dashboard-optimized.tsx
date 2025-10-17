@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Navigate, useNavigate } from "react-router-dom";
+import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -94,7 +94,19 @@ const AdminDashboardOptimized: React.FC = () => {
   const navigate = useNavigate();
   
   // ===== ÉTATS LOCAUX =====
-  const [activeSection, setActiveSection] = useState<ActiveSection>('overview');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeSection, setActiveSection] = useState<ActiveSection>(
+    (searchParams.get('section') as ActiveSection) || 'overview'
+  );
+
+  // Synchroniser activeSection avec l'URL
+  useEffect(() => {
+    if (activeSection !== 'overview') {
+      setSearchParams({ section: activeSection });
+    } else {
+      setSearchParams({});
+    }
+  }, [activeSection, setSearchParams]);
   const [selectedEcosystemTile, setSelectedEcosystemTile] = useState<string | null>(null);
   const [selectedTileData, setSelectedTileData] = useState<any[]>([]);
   const [loadingTileData, setLoadingTileData] = useState(false);

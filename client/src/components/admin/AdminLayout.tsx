@@ -117,9 +117,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     // Outils
     {
       name: 'Validation',
-      href: '/admin/validation-dashboard',
+      href: '/admin/dashboard-optimized?section=validations',
       icon: CheckCircle,
-      current: location.pathname === '/admin/validation-dashboard',
+      current: location.pathname === '/admin/dashboard-optimized' && location.search === '?section=validations',
       badge: pendingValidations
     },
     {
