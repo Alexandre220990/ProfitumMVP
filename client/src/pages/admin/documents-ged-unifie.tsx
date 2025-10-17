@@ -96,11 +96,12 @@ export default function DocumentsGEDUnifiePage() {
       getClientFiles: () => Promise.resolve({ success: false, error: 'Hook non disponible' }),
       getExpertFiles: () => Promise.resolve({ success: false, error: 'Hook non disponible' }),
       deleteFile: () => Promise.resolve({ success: false, error: 'Hook non disponible' }),
-      downloadFile: () => Promise.resolve({ success: false, error: 'Hook non disponible' })
+      downloadFile: () => Promise.resolve({ success: false, error: 'Hook non disponible' }),
+      previewFile: () => Promise.resolve({ success: false, error: 'Hook non disponible' })
     };
   }
   
-  const { deleteFile, downloadFile } = documentStorage;
+  const { deleteFile, downloadFile, previewFile } = documentStorage;
 
   // États locaux
   const [loading, setLoading] = useState(true);
@@ -565,11 +566,11 @@ export default function DocumentsGEDUnifiePage() {
                             </Badge>
                           </div>
                           <div className="flex gap-2 mt-4">
-                            <Button size="sm" variant="outline" className="flex-1">
+                            <Button size="sm" variant="outline" className="flex-1" onClick={() => downloadFile(doc.id)}>
                               <Download className="w-3 h-3 mr-1" />
                               Download
                             </Button>
-                            <Button size="sm" variant="outline" className="flex-1">
+                            <Button size="sm" variant="outline" className="flex-1" onClick={() => previewFile(doc.id)}>
                               <Eye className="w-3 h-3 mr-1" />
                               Preview
                             </Button>
@@ -684,7 +685,7 @@ export default function DocumentsGEDUnifiePage() {
                                   <Button size="sm" variant="outline" onClick={() => downloadFile(doc.id)}>
                                     <Download className="w-3 h-3" />
                                   </Button>
-                                  <Button size="sm" variant="outline">
+                                  <Button size="sm" variant="outline" onClick={() => previewFile(doc.id)}>
                                     <Eye className="w-3 h-3" />
                                   </Button>
                                   {doc.status === 'pending' && (
@@ -1005,7 +1006,7 @@ export default function DocumentsGEDUnifiePage() {
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() => {}}
+                              onClick={() => previewFile(file.id)}
                             >
                               <Eye className="w-4 h-4" />
                             </Button>
@@ -1062,7 +1063,7 @@ export default function DocumentsGEDUnifiePage() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-blue-600">
-                    {stats?.bucket_stats.client_bucket || 0}
+                    {stats?.bucket_stats?.client_bucket || 0}
                   </div>
                   <p className="text-sm text-gray-600">Fichiers clients</p>
                 </CardContent>
@@ -1077,7 +1078,7 @@ export default function DocumentsGEDUnifiePage() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-green-600">
-                    {stats?.bucket_stats.expert_bucket || 0}
+                    {stats?.bucket_stats?.expert_bucket || 0}
                   </div>
                   <p className="text-sm text-gray-600">Fichiers experts</p>
                 </CardContent>
@@ -1092,7 +1093,7 @@ export default function DocumentsGEDUnifiePage() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-purple-600">
-                    {stats?.bucket_stats.admin_bucket || 0}
+                    {stats?.bucket_stats?.admin_bucket || 0}
                   </div>
                   <p className="text-sm text-gray-600">Fichiers admin</p>
                 </CardContent>
@@ -1107,7 +1108,7 @@ export default function DocumentsGEDUnifiePage() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-orange-600">
-                    {stats?.bucket_stats.public_bucket || 0}
+                    {stats?.bucket_stats?.public_bucket || 0}
                   </div>
                   <p className="text-sm text-gray-600">Fichiers publics</p>
                 </CardContent>

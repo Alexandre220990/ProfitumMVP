@@ -141,6 +141,25 @@ export const useEnhancedDocumentStorage = () => {
 
   // ===== TÉLÉCHARGEMENT DE FICHIERS =====
 
+  const previewFile = useCallback(async (fileId: string): Promise<{ success: boolean; error?: string }> => {
+    if (!user) {
+      return { success: false, error: 'Utilisateur non authentifié' };
+    }
+
+    try {
+      const baseUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
+      const url = `${baseUrl}/api/enhanced-client-documents/download/${fileId}`;
+      
+      // Ouvrir dans un nouvel onglet
+      window.open(url, '_blank');
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Erreur prévisualisation:', error);
+      return { success: false, error: 'Erreur lors de la prévisualisation' };
+    }
+  }, [user]);
+
   const downloadFile = useCallback(async (fileId: string): Promise<{ success: boolean; error?: string }> => {
     if (!user) {
       return { success: false, error: 'Utilisateur non authentifié' };
@@ -475,6 +494,7 @@ export const useEnhancedDocumentStorage = () => {
     // Actions
     uploadFile,
     downloadFile,
+    previewFile,
     getClientFiles,
     getExpertFiles,
     validateFile,
