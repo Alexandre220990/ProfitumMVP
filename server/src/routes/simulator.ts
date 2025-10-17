@@ -361,11 +361,48 @@ router.post('/calculate-eligibility', async (req, res) => {
       });
     }
 
-    // 3. Marquer la simulation comme complétée
+    console.log(`📝 Réponses brutes (UUIDs):`, Object.keys(simulation.answers));
+
+    // 3. IMPORTANT: Convertir les UUIDs des questions en question_id textuels
+    // Les réponses sont sauvegardées avec UUID (ex: "d3207985...")
+    // Mais les règles utilisent question_id (ex: "GENERAL_001")
+    const { data: questions, error: questionsError } = await supabaseClient
+      .from('QuestionnaireQuestion')
+      .select('id, question_id')
+      .in('id', Object.keys(simulation.answers));
+
+    if (questionsError || !questions) {
+      console.error('❌ Erreur récupération questions:', questionsError);
+      return res.status(500).json({
+        success: false,
+        error: 'Erreur lors de la récupération des questions'
+      });
+    }
+
+    // Créer un mapping UUID → question_id
+    const uuidToQuestionId: Record<string, string> = {};
+    questions.forEach(q => {
+      uuidToQuestionId[q.id] = q.question_id;
+    });
+
+    // Convertir les réponses UUID → question_id
+    const convertedAnswers: Record<string, any> = {};
+    Object.entries(simulation.answers).forEach(([uuid, value]) => {
+      const questionId = uuidToQuestionId[uuid];
+      if (questionId) {
+        convertedAnswers[questionId] = value;
+      }
+    });
+
+    console.log(`🔄 Conversion: ${Object.keys(simulation.answers).length} UUIDs → ${Object.keys(convertedAnswers).length} question_id`);
+    console.log(`📝 Question IDs convertis:`, Object.keys(convertedAnswers));
+
+    // Sauvegarder aussi les réponses converties pour éviter de refaire la conversion
     await supabaseClient
       .from('simulations')
       .update({
         status: 'completed',
+        answers: convertedAnswers,  // Remplacer par les IDs convertis
         updated_at: new Date().toISOString()
       })
       .eq('id', simulation.id);
