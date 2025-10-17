@@ -323,12 +323,17 @@ router.post('/response', async (req, res) => {
  */
 router.post('/calculate-eligibility', async (req, res) => {
   try {
+    console.log('📥 Requête calculate-eligibility reçue');
+    console.log('📥 Body:', req.body);
+    
     const { session_token } = req.body;
 
     if (!session_token) {
+      console.error('❌ session_token manquant dans le body');
       return res.status(400).json({
         success: false,
-        error: 'session_token est requis'
+        error: 'session_token est requis',
+        received_body: req.body
       });
     }
 
