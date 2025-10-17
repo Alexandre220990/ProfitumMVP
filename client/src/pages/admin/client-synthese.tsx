@@ -200,11 +200,18 @@ const ClientSynthese: React.FC = () => {
               <p className="text-gray-600">
                 {loading ? 'Chargement...' : getClientDisplayName()}
               </p>
+              {client?.company_name && (
+                <p className="text-sm text-gray-500">
+                  🏢 {client.company_name}
+                </p>
+              )}
             </div>
-            <Button variant="outline" onClick={loadClientData}>
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Actualiser
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={loadClientData}>
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Actualiser
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -221,7 +228,7 @@ const ClientSynthese: React.FC = () => {
         ) : (
           <div className="space-y-6">
             {/* KPIs Rapides */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm flex items-center gap-2">
@@ -275,6 +282,19 @@ const ClientSynthese: React.FC = () => {
                 <CardContent>
                   <p className="text-2xl font-bold text-orange-600">{experts.length}</p>
                   <p className="text-xs text-gray-500">experts assignés</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Target className="w-4 h-4 text-indigo-600" />
+                    Performance
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-bold text-indigo-600">{stats.tauxConversion}%</p>
+                  <p className="text-xs text-gray-500">taux de conversion</p>
                 </CardContent>
               </Card>
             </div>
