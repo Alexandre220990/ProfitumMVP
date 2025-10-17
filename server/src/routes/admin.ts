@@ -12,6 +12,9 @@ const supabaseClient = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+// Alias pour la compatibilité
+const supabaseAdmin = supabaseClient;
+
 // Types pour les statistiques
 interface StatusCount {
   [key: string]: number;
@@ -1886,25 +1889,32 @@ router.get('/produits', async (req, res) => {
   try {
     console.log('✅ Récupération des produits éligibles');
 
-    const { data: produits, error } = await supabaseClient
+    const { data: produits, error } = await supabaseAdmin
       .from('ProduitEligible')
       .select('*')
       .order('created_at', { ascending: false });
 
     if (error) {
       console.error('❌ Erreur récupération produits:', error);
-      return res.status(500).json({ error: 'Erreur lors de la récupération des produits' });
+      return res.status(500).json({ 
+        success: false,
+        error: 'Erreur lors de la récupération des produits' 
+      });
     }
 
     console.log('✅ Produits récupérés:', produits?.length || 0);
 
     return res.json({
+      success: true,
       produits: produits || []
     });
 
   } catch (error) {
     console.error('❌ Erreur route produits:', error);
-    return res.status(500).json({ error: 'Erreur serveur' });
+    return res.status(500).json({ 
+      success: false,
+      error: 'Erreur serveur' 
+    });
   }
 });
 
@@ -1913,7 +1923,7 @@ router.get('/produits/stats', asyncHandler(async (req, res): Promise<void> => {
   try {
     console.log('📊 Récupération statistiques produits...');
 
-    const { data: produits, error } = await supabaseClient
+    const { data: produits, error } = await supabaseAdmin
       .from('ProduitEligible')
       .select('*');
 
@@ -1931,18 +1941,18 @@ router.get('/produits/stats', asyncHandler(async (req, res): Promise<void> => {
     
     // Regrouper par catégorie
     const parCategorie: { [key: string]: number } = {};
-    produits?.forEach(p => {
+    produits?.forEach((p: any) => {
       const cat = p.categorie || 'Non catégorisé';
       parCategorie[cat] = (parCategorie[cat] || 0) + 1;
     });
 
     // Produits les plus utilisés (basé sur ClientProduitEligible)
-    const { data: utilisations, error: errUtilisations } = await supabaseClient
+    const { data: utilisations, error: errUtilisations } = await supabaseAdmin
       .from('ClientProduitEligible')
       .select('produitId');
 
     const produitsPopulaires: { [key: string]: number } = {};
-    utilisations?.forEach(u => {
+    utilisations?.forEach((u: any) => {
       if (u.produitId) {
         produitsPopulaires[u.produitId] = (produitsPopulaires[u.produitId] || 0) + 1;
       }
@@ -1953,7 +1963,7 @@ router.get('/produits/stats', asyncHandler(async (req, res): Promise<void> => {
       .sort(([, a], [, b]) => b - a)
       .slice(0, 3)
       .map(([id, count]) => {
-        const produit = produits?.find(p => p.id === id);
+        const produit = produits?.find((p: any) => p.id === id);
         return {
           id,
           nom: produit?.nom || 'Inconnu',
@@ -2001,7 +2011,7 @@ router.post('/produits', async (req, res) => {
       duree_max
     } = req.body;
 
-    const { data: produit, error } = await supabaseClient
+    const { data: produit, error } = await supabaseAdmin
       .from('ProduitEligible')
       .insert({
         nom,
@@ -2053,7 +2063,7 @@ router.put('/produits/:id', async (req, res) => {
       duree_max
     } = req.body;
 
-    const { data: produit, error } = await supabaseClient
+    const { data: produit, error } = await supabaseAdmin
       .from('ProduitEligible')
       .update({
         nom,
@@ -2101,7 +2111,7 @@ router.delete('/produits/:id', async (req, res) => {
     const { id } = req.params;
 
     // Vérifier si le produit est utilisé dans des dossiers
-    const { data: dossiers, error: checkError } = await supabaseClient
+    const { data: dossiers, error: checkError } = await supabaseAdmin
       .from('ClientProduitEligible')
       .select('id')
       .eq('produitId', id);
@@ -2117,7 +2127,7 @@ router.delete('/produits/:id', async (req, res) => {
       });
     }
 
-    const { error } = await supabaseClient
+    const { error } = await supabaseAdmin
       .from('ProduitEligible')
       .delete()
       .eq('id', id);

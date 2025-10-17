@@ -107,6 +107,14 @@ const AdminDashboardOptimized: React.FC = () => {
       setSearchParams({});
     }
   }, [activeSection, setSearchParams]);
+  
+  // Synchroniser l'URL avec activeSection au chargement
+  useEffect(() => {
+    const sectionFromUrl = searchParams.get('section') as ActiveSection;
+    if (sectionFromUrl && sectionFromUrl !== activeSection) {
+      setActiveSection(sectionFromUrl);
+    }
+  }, [searchParams]);
   const [selectedEcosystemTile, setSelectedEcosystemTile] = useState<string | null>(null);
   const [selectedTileData, setSelectedTileData] = useState<any[]>([]);
   const [loadingTileData, setLoadingTileData] = useState(false);
@@ -203,6 +211,35 @@ const AdminDashboardOptimized: React.FC = () => {
   };
 
   // ========================================
+  // FONCTION DE RÉINITIALISATION DASHBOARD
+  // ========================================
+  
+  const resetDashboard = () => {
+    // Réinitialiser la section active
+    setActiveSection('overview');
+    
+    // Réinitialiser tous les filtres
+    setFilterStatus('all');
+    setFilterDateStart('');
+    setFilterDateEnd('');
+    setFilterMontantMin(0);
+    setFilterMontantMax(1000000);
+    
+    // Réinitialiser les tuiles sélectionnées
+    setSelectedEcosystemTile(null);
+    setSelectedTileData([]);
+    setFilteredTileData([]);
+    
+    // Réinitialiser les URL params
+    setSearchParams({});
+    
+    // Recharger les données
+    loadKPIData();
+    
+    toast.success('Dashboard réinitialisé');
+  };
+
+  // ========================================
   // CHARGEMENT DES DONNÉES
   // ========================================
 
@@ -214,7 +251,7 @@ const AdminDashboardOptimized: React.FC = () => {
   // Charger les données quand la section change
   useEffect(() => {
     console.log('🔄 Section changée:', activeSection);
-    if (activeSection !== 'overview' && activeSection !== 'apporteurs' && activeSection !== 'validations') {
+    if (activeSection !== 'overview' && activeSection !== 'apporteurs') {
       console.log('📡 Chargement des données pour:', activeSection);
       loadSectionData(activeSection);
     }
@@ -857,6 +894,31 @@ const AdminDashboardOptimized: React.FC = () => {
             console.error('❌ Erreur dossiers performance:', perfDossiersResponse.message);
           }
           break;
+        
+        case 'validations':
+          console.log('📡 Chargement données pour validations...');
+          // Charger les dossiers et experts pour la section validations
+          const validationsDossiersResponse = await get('/admin/dossiers/all');
+          const validationsExpertsResponse = await get('/admin/experts');
+          
+          if (validationsDossiersResponse.success) {
+            setSectionData((prev: SectionData) => ({ 
+              ...prev, 
+              dossiers: (validationsDossiersResponse.data as any)?.dossiers || [] 
+            }));
+          } else {
+            console.error('❌ Erreur dossiers validations:', validationsDossiersResponse.message);
+          }
+          
+          if (validationsExpertsResponse.success) {
+            setSectionData((prev: SectionData) => ({ 
+              ...prev, 
+              experts: (validationsExpertsResponse.data as any)?.experts || [] 
+            }));
+          } else {
+            console.error('❌ Erreur experts validations:', validationsExpertsResponse.message);
+          }
+          break;
       }
     } catch (error) {
       console.error(`❌ Erreur chargement ${section}:`, error);
@@ -912,6 +974,15 @@ const AdminDashboardOptimized: React.FC = () => {
             <p className="text-slate-600 mt-1">
               Gestion complète des entreprises inscrites
             </p>
+          </div>
+          <div>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={resetDashboard}
+            >
+              ← Retour au dashboard
+            </Button>
           </div>
         </div>
 
@@ -1033,6 +1104,13 @@ const AdminDashboardOptimized: React.FC = () => {
           
           {/* Filtre par statut */}
           <div className="flex items-center space-x-4">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={resetDashboard}
+            >
+              ← Retour au dashboard
+            </Button>
             <div className="flex items-center space-x-2">
               <span className="text-sm font-medium text-slate-700">Filtrer par statut :</span>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -1265,6 +1343,13 @@ const AdminDashboardOptimized: React.FC = () => {
               <span>Tous les dossiers ClientProduitEligible ({totalDossiers})</span>
             </div>
             <div className="flex items-center space-x-4">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={resetDashboard}
+              >
+                ← Retour au dashboard
+              </Button>
               <div className="text-right">
                 <p className="text-sm text-gray-600">Montant cumulé</p>
                 <p className="text-lg font-bold text-purple-600">{formatCurrency(montantCumule)}</p>
@@ -2579,6 +2664,13 @@ const AdminDashboardOptimized: React.FC = () => {
                         <p className="text-slate-600">Performance, pipeline et paiements</p>
                       </div>
                       <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={resetDashboard}
+                        >
+                          ← Retour au dashboard
+                        </Button>
                         <Button variant="outline" size="sm">
                           <RefreshCw className="w-4 h-4 mr-2" />
                           Actualiser
@@ -2663,8 +2755,12 @@ const AdminDashboardOptimized: React.FC = () => {
                         <p className="text-slate-600">Analyses financières et métriques de conversion</p>
                       </div>
                       <div className="flex gap-2">
-                        <Button variant="outline" size="sm" onClick={() => setActiveSection('overview')}>
-                          ← Retour
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={resetDashboard}
+                        >
+                          ← Retour au dashboard
                         </Button>
                         <Button variant="outline" size="sm">
                           <Download className="w-4 h-4 mr-2" />
@@ -2819,6 +2915,13 @@ const AdminDashboardOptimized: React.FC = () => {
                         <p className="text-slate-600">Gérez vos notifications et validez les dossiers en attente</p>
                       </div>
                       <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={resetDashboard}
+                        >
+                          ← Retour au dashboard
+                        </Button>
                         <Badge variant="destructive" className="px-3 py-1">
                           <Bell className="w-3 h-3 mr-1" />
                           {kpiData.validationsPending} en attente

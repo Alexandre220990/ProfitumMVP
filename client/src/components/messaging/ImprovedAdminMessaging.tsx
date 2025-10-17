@@ -95,6 +95,7 @@ export const ImprovedAdminMessaging: React.FC<ImprovedAdminMessagingProps> = ({
   const loadConversations = async () => {
     try {
       setLoading(true);
+      console.log('🔍 Chargement conversations admin...');
       const response = await fetch(`${config.API_URL}/api/unified-messaging/admin/conversations`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -102,8 +103,11 @@ export const ImprovedAdminMessaging: React.FC<ImprovedAdminMessagingProps> = ({
         }
       });
 
+      console.log('📡 Réponse conversations:', response.status, response.statusText);
+      
       if (response.ok) {
         const result = await response.json();
+        console.log('📦 Données conversations reçues:', result);
         const convs = result.data || [];
         
         // Enrichir les conversations avec les infos des participants
@@ -111,9 +115,11 @@ export const ImprovedAdminMessaging: React.FC<ImprovedAdminMessagingProps> = ({
         
         setConversations(enrichedConvs);
         setFilteredConversations(enrichedConvs);
+      } else {
+        console.error('❌ Erreur API conversations:', response.status, await response.text());
       }
     } catch (error) {
-      console.error('Erreur chargement conversations:', error);
+      console.error('❌ Erreur chargement conversations:', error);
     } finally {
       setLoading(false);
     }
@@ -239,8 +245,9 @@ export const ImprovedAdminMessaging: React.FC<ImprovedAdminMessagingProps> = ({
     
     // Charger les messages
     try {
+      console.log('🔍 Chargement messages pour conversation:', conversation.id);
       const response = await fetch(
-        `${config.API_URL}/api/unified-messaging/conversations/${conversation.id}/messages`,
+        `${config.API_URL}/api/messaging/conversations/${conversation.id}/messages`,
         {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -249,12 +256,17 @@ export const ImprovedAdminMessaging: React.FC<ImprovedAdminMessagingProps> = ({
         }
       );
 
+      console.log('📡 Réponse API messages:', response.status, response.statusText);
+      
       if (response.ok) {
         const result = await response.json();
+        console.log('📦 Données messages reçues:', result);
         setMessages(result.data?.messages || result.data || []);
+      } else {
+        console.error('❌ Erreur API messages:', response.status, await response.text());
       }
     } catch (error) {
-      console.error('Erreur chargement messages:', error);
+      console.error('❌ Erreur chargement messages:', error);
     }
   }, []);
 
@@ -262,7 +274,7 @@ export const ImprovedAdminMessaging: React.FC<ImprovedAdminMessagingProps> = ({
     if (!messageInput.trim() || !selectedConversation) return;
 
     try {
-      const response = await fetch(`${config.API_URL}/api/unified-messaging/conversations/${selectedConversation.id}/messages`, {
+      const response = await fetch(`${config.API_URL}/api/messaging/conversations/${selectedConversation.id}/messages`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -585,30 +597,38 @@ export const ImprovedAdminMessaging: React.FC<ImprovedAdminMessagingProps> = ({
 
             {/* Messages - Zone scrollable */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 min-h-0">
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`flex ${message.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}
-                >
+              {messages.length > 0 ? (
+                messages.map((message) => (
                   <div
-                    className={`max-w-[70%] rounded-lg p-3 ${
-                      message.sender_id === user?.id
-                        ? 'bg-purple-600 text-white'
-                        : 'bg-white text-gray-900 border border-gray-200'
-                    }`}
+                    key={message.id}
+                    className={`flex ${message.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}
                   >
-                    <p className="text-sm">{message.content}</p>
-                    <p className={`text-xs mt-1 ${
-                      message.sender_id === user?.id ? 'text-purple-200' : 'text-gray-400'
-                    }`}>
-                      {new Date(message.created_at).toLocaleTimeString('fr-FR', {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </p>
+                    <div
+                      className={`max-w-[70%] rounded-lg p-3 ${
+                        message.sender_id === user?.id
+                          ? 'bg-purple-600 text-white'
+                          : 'bg-white text-gray-900 border border-gray-200'
+                      }`}
+                    >
+                      <p className="text-sm">{message.content}</p>
+                      <p className={`text-xs mt-1 ${
+                        message.sender_id === user?.id ? 'text-purple-200' : 'text-gray-400'
+                      }`}>
+                        {new Date(message.created_at).toLocaleTimeString('fr-FR', {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </p>
+                    </div>
                   </div>
+                ))
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-gray-500">
+                  <MessageSquare className="h-12 w-12 mb-3 text-gray-400" />
+                  <p className="text-sm">Aucun message dans cette conversation</p>
+                  <p className="text-xs mt-1">Soyez le premier à envoyer un message!</p>
                 </div>
-              ))}
+              )}
             </div>
 
             {/* Input message - Fixe en bas */}

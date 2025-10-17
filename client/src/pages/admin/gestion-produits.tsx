@@ -127,24 +127,32 @@ export default function GestionProduits() {
   const fetchProduits = async () => {
     try {
       setLoading(true);
+      console.log('🔍 Chargement des produits éligibles...');
+      
       const response = await fetch('/api/admin/produits', {
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         credentials: 'include'
       });
       
-      console.log('📦 Réponse API produits:', response.status);
+      console.log('📦 Réponse API produits:', response.status, response.statusText);
       
       if (response.ok) {
         const data = await response.json();
-        console.log('📦 Produits reçus:', data);
+        console.log('📦 Données reçues:', data);
         
-        // Vérifier si data.produits existe et est un tableau
-        if (data && Array.isArray(data.produits)) {
+        // Vérifier le format de la réponse
+        if (data.success && Array.isArray(data.produits)) {
           const produitsTries = sortProduits(data.produits);
           setProduits(produitsTries);
           console.log('✅ Produits chargés:', produitsTries.length);
+        } else if (Array.isArray(data.produits)) {
+          // Format legacy
+          const produitsTries = sortProduits(data.produits);
+          setProduits(produitsTries);
+          console.log('✅ Produits chargés (format legacy):', produitsTries.length);
         } else {
           console.warn('⚠️ Format de réponse invalide:', data);
           setProduits([]);
