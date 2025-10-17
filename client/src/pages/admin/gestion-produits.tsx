@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/use-auth";
 import { useNavigate, Navigate } from "react-router-dom";
 import { toast } from "sonner";
+import api from "@/lib/api";
 import { 
   Package, Plus, Eye, Edit, Trash2, 
   ChevronUp, ChevronDown, ChevronsUpDown,
@@ -129,43 +130,29 @@ export default function GestionProduits() {
       setLoading(true);
       console.log('🔍 Chargement des produits éligibles...');
       
-      const response = await fetch('/api/admin/produits', {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        credentials: 'include'
-      });
+      const response = await api.get('/api/admin/produits');
       
       console.log('📦 Réponse API produits:', response.status, response.statusText);
+      console.log('📦 Données reçues:', response.data);
       
-      if (response.ok) {
-        const data = await response.json();
-        console.log('📦 Données reçues:', data);
-        
-        // Vérifier le format de la réponse
-        if (data.success && Array.isArray(data.produits)) {
-          const produitsTries = sortProduits(data.produits);
-          setProduits(produitsTries);
-          console.log('✅ Produits chargés:', produitsTries.length);
-        } else if (Array.isArray(data.produits)) {
-          // Format legacy
-          const produitsTries = sortProduits(data.produits);
-          setProduits(produitsTries);
-          console.log('✅ Produits chargés (format legacy):', produitsTries.length);
-        } else {
-          console.warn('⚠️ Format de réponse invalide:', data);
-          setProduits([]);
-        }
+      // Vérifier le format de la réponse
+      if (response.data.success && Array.isArray(response.data.produits)) {
+        const produitsTries = sortProduits(response.data.produits);
+        setProduits(produitsTries);
+        console.log('✅ Produits chargés:', produitsTries.length);
+      } else if (Array.isArray(response.data.produits)) {
+        // Format legacy
+        const produitsTries = sortProduits(response.data.produits);
+        setProduits(produitsTries);
+        console.log('✅ Produits chargés (format legacy):', produitsTries.length);
       } else {
-        const errorText = await response.text();
-        console.error('❌ Erreur API:', response.status, errorText);
-        toast.error(`Erreur ${response.status}: ${errorText}`);
+        console.warn('⚠️ Format de réponse invalide:', response.data);
         setProduits([]);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Erreur chargement produits:', error);
-      toast.error("Erreur de chargement des produits");
+      const message = error.response?.data?.message || error.message || "Erreur de chargement des produits";
+      toast.error(message);
       setProduits([]);
     } finally {
       setLoading(false);
@@ -174,10 +161,9 @@ export default function GestionProduits() {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch('/api/admin/produits/stats');
-      if (response.ok) {
-        const data = await response.json();
-        setStats(data.stats);
+      const response = await api.get('/api/admin/produits/stats');
+      if (response.data.stats) {
+        setStats(response.data.stats);
       }
     } catch (error) {
       console.error('❌ Erreur stats produits:', error);
@@ -233,13 +219,9 @@ export default function GestionProduits() {
 
   const addProduit = async () => {
     try {
-      const response = await fetch('/api/admin/produits', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newProduit)
-      });
+      const response = await api.post('/api/admin/produits', newProduit);
       
-      if (response.ok) {
+      if (response.data.success) {
         toast.success("Produit créé avec succès");
         setShowAddModal(false);
         setNewProduit({
@@ -258,9 +240,10 @@ export default function GestionProduits() {
       } else {
         toast.error("Erreur lors de la création");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Erreur création produit:', error);
-      toast.error("Erreur lors de la création");
+      const message = error.response?.data?.error || "Erreur lors de la création";
+      toast.error(message);
     }
   };
 
@@ -268,13 +251,9 @@ export default function GestionProduits() {
     if (!selectedProduit) return;
     
     try {
-      const response = await fetch(`/api/admin/produits/${selectedProduit.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editForm)
-      });
+      const response = await api.put(`/api/admin/produits/${selectedProduit.id}`, editForm);
       
-      if (response.ok) {
+      if (response.data.success) {
         toast.success("Produit modifié avec succès");
         setShowEditModal(false);
         fetchProduits();
@@ -282,9 +261,10 @@ export default function GestionProduits() {
       } else {
         toast.error("Erreur lors de la modification");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Erreur modification produit:', error);
-      toast.error("Erreur lors de la modification");
+      const message = error.response?.data?.error || "Erreur lors de la modification";
+      toast.error(message);
     }
   };
 
@@ -292,11 +272,9 @@ export default function GestionProduits() {
     if (!selectedProduit) return;
     
     try {
-      const response = await fetch(`/api/admin/produits/${selectedProduit.id}`, {
-        method: 'DELETE'
-      });
+      const response = await api.delete(`/api/admin/produits/${selectedProduit.id}`);
       
-      if (response.ok) {
+      if (response.data.success) {
         toast.success("Produit supprimé avec succès");
         setShowDeleteModal(false);
         setSelectedProduit(null);
@@ -305,9 +283,10 @@ export default function GestionProduits() {
       } else {
         toast.error("Erreur lors de la suppression");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Erreur suppression produit:', error);
-      toast.error("Erreur lors de la suppression");
+      const message = error.response?.data?.error || "Erreur lors de la suppression";
+      toast.error(message);
     }
   };
 
