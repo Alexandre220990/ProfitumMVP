@@ -38,6 +38,7 @@ import unifiedMessagingRoutes from './routes/unified-messaging';
 import simulatorRoutes from './routes/simulator';
 import { createClient } from '@supabase/supabase-js';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import morgan from 'morgan';
 import helmet from 'helmet';
@@ -610,9 +611,9 @@ if (process.env.NODE_ENV !== 'production') {
 // Router centralisé pour toutes les routes API
 app.use('/api', routes);
 
-// Route de fallback pour les routes non trouvées
+// Route de fallback pour les routes non trouvées API
 app.use('/api/*', (req, res) => {
-  console.log(`❌ Route non trouvée: ${req.method} ${req.originalUrl}`);
+  console.log(`❌ Route API non trouvée: ${req.method} ${req.originalUrl}`);
   res.status(404).json({
     success: false,
     message: 'Route non trouvée',
@@ -620,6 +621,20 @@ app.use('/api/*', (req, res) => {
     method: req.method,
     timestamp: new Date().toISOString()
   });
+});
+
+// ✅ SPA CATCH-ALL: Servir index.html pour toutes les routes frontend
+// Doit être APRÈS les routes API mais AVANT les error handlers
+app.get('*', (req, res) => {
+  const indexPath = path.join(__dirname, '../public/index.html');
+  
+  // Vérifier si le fichier existe
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    console.error('❌ index.html non trouvé à:', indexPath);
+    res.status(404).send('Application non construite. Exécutez: npm run build');
+  }
 });
 
 // The error handler must be registered before any other error middleware and after all controllers
