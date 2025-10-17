@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import { supabaseClient } from '../config/supabase';
 import { v4 as uuidv4 } from 'uuid';
+import { traiterSimulation } from '../services/simulationProcessor';
 
 const router = express.Router();
 
@@ -408,8 +409,6 @@ router.post('/calculate-eligibility', async (req, res) => {
       .eq('id', simulation.id);
 
     // 4. Traiter la simulation avec notre fonction corrigée
-    const { traiterSimulation } = await import('../services/simulationProcessor.js');
-    
     try {
       await traiterSimulation(parseInt(simulation.id));
       console.log(`✅ Simulation ${simulation.id} traitée avec succès`);
