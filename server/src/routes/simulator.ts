@@ -486,14 +486,17 @@ router.post('/calculate-eligibility', async (req, res) => {
           const { data: created, error: insertError } = await supabaseClient
             .from('ClientProduitEligible')
             .insert(insertData)
-            .select('*')
-            .single();
+            .select('*');
+          
+          // Supabase peut retourner un tableau, extraire le premier élément
+          const createdItem = Array.isArray(created) && created.length > 0 ? created[0] : created;
 
           console.log(`🔍 Résultat insertion:`, {
             error: insertError,
             created: created,
+            createdItem: createdItem,
             hasError: !!insertError,
-            hasData: !!created
+            hasData: !!createdItem
           });
           
           if (insertError) {
@@ -503,8 +506,18 @@ router.post('/calculate-eligibility', async (req, res) => {
               hint: insertError.hint,
               code: insertError.code
             });
-          } else if (created) {
-            clientProduits.push(created);
+          } else if (createdItem) {
+            // Enrichir avec les infos du produit pour le frontend
+            const enrichedCPE = {
+              ...createdItem,
+              ProduitEligible: {
+                id: produit.produit_id,
+                nom: produit.produit_nom,
+                type_produit: produit.type_produit,
+                notes_affichage: produit.notes
+              }
+            };
+            clientProduits.push(enrichedCPE);
             console.log(`✅ ClientProduitEligible créé: ${produit.produit_nom} - ${produit.montant_estime}€`);
           } else {
             console.warn(`⚠️ Insertion pour ${produit.produit_nom}: pas d'erreur mais pas de données retournées`);
