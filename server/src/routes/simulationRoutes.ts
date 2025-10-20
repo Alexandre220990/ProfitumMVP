@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { createClient } from '@supabase/supabase-js';
-import { traiterSimulation } from '../services/simulationProcessor';
+// Import traiterSimulation supprimé - utilise maintenant les fonctions SQL
 import { Database } from '../types/supabase';
 import * as dotenv from 'dotenv';
 import jwt from 'jsonwebtoken';
@@ -110,8 +110,13 @@ router.post('/', async (req: Request, res: Response) => {
     // Traiter la simulation si des réponses sont fournies
     if (answers && Object.keys(answers).length > 0) {
       try {
-        await traiterSimulation(simulation.id);
-        console.log(`Simulation ${simulation.id} traitée avec succès`);
+        // Utiliser la fonction SQL pour calculer l'éligibilité
+        const { data: resultatsSQL } = await supabase
+          .rpc('evaluer_eligibilite_avec_calcul', {
+            p_simulation_id: simulation.id
+          });
+        
+        console.log(`Simulation ${simulation.id} calculée avec succès (${resultatsSQL?.total_eligible || 0} éligibles)`);
       } catch (error) {
         console.error('Erreur lors du traitement de la simulation:', error);
         // On continue même si le traitement échoue
@@ -160,8 +165,13 @@ router.post('/:id/terminer', async (req: Request, res: Response) => {
       throw updateError;
     }
 
-    // Traiter la simulation
-    await traiterSimulation(simulationId);
+    // Traiter la simulation avec fonction SQL
+    const { data: resultatsSQL } = await supabase
+      .rpc('evaluer_eligibilite_avec_calcul', {
+        p_simulation_id: simulationId
+      });
+    
+    console.log(`Simulation ${simulationId} calculée: ${resultatsSQL?.total_eligible || 0} produits éligibles`);
 
     return res.json({
       success: true,

@@ -1,7 +1,7 @@
 import express, { Request, Response } from 'express';
 import { supabaseClient } from '../config/supabase';
 import { v4 as uuidv4 } from 'uuid';
-import { traiterSimulation } from '../services/simulationProcessor';
+// Import traiterSimulation supprimé - utilise maintenant les fonctions SQL
 
 const router = express.Router();
 
@@ -425,54 +425,98 @@ router.post('/calculate-eligibility', async (req, res) => {
       })
       .eq('id', simulation.id);
 
-    // 4. Traiter la simulation avec notre fonction corrigée
-    try {
-      await traiterSimulation(parseInt(simulation.id));
-      console.log(`✅ Simulation ${simulation.id} traitée avec succès`);
-    } catch (processError) {
-      console.error('❌ Erreur traitement simulation:', processError);
+    // 4. Appeler la fonction SQL pour calculer l'éligibilité
+    console.log('🧮 Appel fonction SQL evaluer_eligibilite_avec_calcul...');
+    
+    const { data: resultatsSQL, error: calculError } = await supabaseClient
+      .rpc('evaluer_eligibilite_avec_calcul', {
+        p_simulation_id: simulation.id
+      });
+
+    if (calculError) {
+      console.error('❌ Erreur calcul SQL:', calculError);
       return res.status(500).json({
         success: false,
-        error: 'Erreur lors du traitement de la simulation',
-        details: processError instanceof Error ? processError.message : 'Erreur inconnue'
+        error: 'Erreur lors du calcul d\'éligibilité',
+        details: calculError.message
       });
     }
 
-    // 5. Récupérer les ClientProduitEligible créés
-    let clientProduits: any[] = [];
-    if (simulation.client_id) {
-      const { data: produits } = await supabaseClient
-        .from('ClientProduitEligible')
-        .select(`
-          id,
-          statut,
-          tauxFinal,
-          montantFinal,
-          dureeFinale,
-          priorite,
-          notes,
-          metadata,
-          produitId,
-          ProduitEligible:produitId (
-            id,
-            nom,
-            categorie,
-            description
-          )
-        `)
-        .eq('clientId', simulation.client_id)
-        .eq('simulationId', simulation.id)
-        .eq('statut', 'eligible')
-        .order('priorite', { ascending: true });
+    console.log(`✅ Calcul SQL réussi: ${resultatsSQL.total_eligible} produits éligibles`);
 
-      clientProduits = produits || [];
-      console.log(`📦 ${clientProduits.length} ClientProduitEligible récupérés`);
+    // 5. Créer les ClientProduitEligible pour les produits éligibles
+    let clientProduits: any[] = [];
+    
+    if (simulation.client_id && resultatsSQL.produits) {
+      for (const produit of resultatsSQL.produits) {
+        if (produit.is_eligible) {
+          const { data: created, error: insertError } = await supabaseClient
+            .from('ClientProduitEligible')
+            .insert({
+              clientId: simulation.client_id,
+              produitId: produit.produit_id,
+              simulationId: simulation.id,
+              statut: 'eligible',
+              montantFinal: produit.montant_estime,
+              tauxFinal: null,
+              dureeFinale: null,
+              notes: produit.notes,
+              calcul_details: produit.calcul_details,
+              metadata: {
+                source: 'simulation_sql',
+                calculated_at: new Date().toISOString(),
+                type_produit: produit.type_produit
+              }
+            })
+            .select(`
+              id,
+              statut,
+              tauxFinal,
+              montantFinal,
+              dureeFinale,
+              priorite,
+              notes,
+              metadata,
+              calcul_details,
+              produitId,
+              ProduitEligible:produitId (
+                id,
+                nom,
+                categorie,
+                description,
+                type_produit,
+                notes_affichage
+              )
+            `)
+            .single();
+
+          if (!insertError && created) {
+            clientProduits.push(created);
+            console.log(`✅ ClientProduitEligible créé: ${produit.produit_nom} - ${produit.montant_estime}€`);
+          } else {
+            console.error(`❌ Erreur création CPE pour ${produit.produit_nom}:`, insertError);
+          }
+        }
+      }
     }
+
+    console.log(`📦 ${clientProduits.length} ClientProduitEligible créés`);
+
+    // 6. Mettre à jour la simulation avec les résultats
+    await supabaseClient
+      .from('simulations')
+      .update({
+        results: resultatsSQL,
+        status: 'completed',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', simulation.id);
 
     return res.json({
       success: true,
       eligibility_results: clientProduits,
       client_produits: clientProduits,
+      total_eligible: resultatsSQL.total_eligible,
       message: `${clientProduits.length} produits éligibles identifiés`
     });
   } catch (error) {
