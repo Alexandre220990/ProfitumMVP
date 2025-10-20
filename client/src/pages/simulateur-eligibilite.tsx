@@ -238,6 +238,71 @@ const SimulateurEligibilite = () => {
     }
   };
 
+  /**
+   * Trouver la prochaine question visible en fonction des conditions
+   */
+  const findNextVisibleQuestion = (currentOrder: number): Question | null => {
+    // Chercher la prochaine question après currentOrder
+    for (let i = 0; i < questions.length; i++) {
+      const q = questions[i];
+      
+      // Ignorer les questions déjà passées ou la question actuelle
+      if (q.question_order <= currentOrder) continue;
+      
+      // Vérifier si la question a des conditions
+      if (!q.conditions || Object.keys(q.conditions).length === 0) {
+        // Pas de condition = toujours visible
+        return q;
+      }
+      
+      // Vérifier si les conditions sont satisfaites
+      const dependsOn = q.conditions.depends_on;
+      const requiredValue = q.conditions.value;
+      const operator = q.conditions.operator || 'equals';
+      
+      if (!dependsOn) {
+        // Pas de depends_on = visible
+        return q;
+      }
+      
+      // Trouver la question dont on dépend
+      const dependencyQuestion = questions.find(
+        dq => dq.id === dependsOn || dq.question_id === dependsOn
+      );
+      
+      if (!dependencyQuestion) {
+        // Question de dépendance introuvable = ignorer cette question
+        continue;
+      }
+      
+      // Vérifier la réponse à la question de dépendance
+      const dependencyAnswer = responses[dependencyQuestion.id];
+      
+      if (!dependencyAnswer) {
+        // Pas encore répondu à la dépendance = question invisible
+        continue;
+      }
+      
+      // Vérifier si la condition est satisfaite
+      let conditionMet = false;
+      
+      if (operator === 'equals') {
+        conditionMet = dependencyAnswer === requiredValue;
+      } else if (operator === 'includes' && Array.isArray(dependencyAnswer)) {
+        conditionMet = dependencyAnswer.includes(requiredValue);
+      }
+      
+      if (conditionMet) {
+        // Condition satisfaite = question visible
+        return q;
+      }
+      // Sinon, continuer à chercher
+    }
+    
+    // Plus de question visible
+    return null;
+  };
+
   const handleResponse = async (response: string | number | string[] | null) => { 
     try {
       // Stocker la réponse temporairement
@@ -299,14 +364,17 @@ const SimulateurEligibilite = () => {
         // Attendre un peu pour montrer la validation
         await new Promise(resolve => setTimeout(resolve, 500));
 
-        // Passer à la question suivante
-        if (currentStep < totalSteps) { 
-          const nextStep = currentStep + 1;
-          setCurrentStep(nextStep);
-          setCurrentQuestion(questions[nextStep - 1]); // -1 car l'index commence à 0
+        // Trouver la prochaine question visible (en tenant compte des conditions)
+        const nextVisibleQuestion = findNextVisibleQuestion(currentStep);
+        
+        if (nextVisibleQuestion) {
+          // Il y a une prochaine question
+          setCurrentStep(nextVisibleQuestion.question_order);
+          setCurrentQuestion(nextVisibleQuestion);
           setCurrentResponse(null);
         } else { 
-          // Dernière question, calculer les résultats
+          // Plus de question visible = terminé, calculer les résultats
+          console.log('✅ Toutes les questions visibles répondues - calcul des résultats...');
           await calculateResults(); 
         }
       } else { 
