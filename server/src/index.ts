@@ -98,6 +98,7 @@ import expertApporteurRoutes from './routes/expert-apporteur';
 import adminApporteurRoutes from './routes/admin-apporteur';
 import apporteurApiRoutes from './routes/apporteur-api';
 import apporteurRegisterRoutes from './routes/apporteur-register';
+import apporteurSimulationRoutes from './routes/apporteur-simulation';
 
 // Route évaluation éligibilité (nouveau simulateur)
 import eligibilityRoutes from './routes/eligibility';
@@ -587,6 +588,10 @@ app.use('/api/apporteur', skipAuthForApporteurPublic, requireUserType('apporteur
 
 // Routes API apporteur d'affaires - PROTÉGÉES sauf /register et /verify-sponsor
 app.use('/api/apporteur', skipAuthForApporteurPublic, requireUserType('apporteur'), apporteurApiRoutes);
+
+// Routes simulation apporteur - PROTÉGÉES
+app.use('/api/apporteur/prospects', enhancedAuthMiddleware, requireUserType('apporteur'), apporteurSimulationRoutes);
+console.log('✅ Routes simulation apporteur montées sur /api/apporteur/prospects');
 
 
 // Routes expert pour apporteurs - PROTÉGÉES

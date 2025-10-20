@@ -10,6 +10,7 @@ import {
   HelpCircle
 } from 'lucide-react';
 import { config } from '@/config';
+import { toast } from 'sonner';
 
 // ============================================================================
 // TYPES
@@ -39,7 +40,7 @@ interface EmbeddedSimulatorProps {
     secteur_activite?: string;
   };
   prefilledAnswers?: Record<number, string | string[]>;
-  onComplete: (answers: Record<number, string | string[]>) => void;
+  onComplete: (results: any) => void; // Peut être answers OU ProspectSimulationResult
   onCancel?: () => void;
 }
 
@@ -112,12 +113,63 @@ export function EmbeddedSimulator({
     setCurrentInput('');
   };
   
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentStep < questions.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
-      // Terminé
+      // Dernière question - Soumettre au backend pour calcul
+      await submitSimulation();
+    }
+  };
+  
+  /**
+   * Soumettre la simulation au backend pour calcul de l'éligibilité
+   */
+  const submitSimulation = async () => {
+    try {
+      setLoading(true);
+      console.log('🚀 Soumission de la simulation au backend...');
+      
+      // Si on n'a pas de prospectId, on ne peut pas créer la simulation
+      if (!prospectId) {
+        console.error('❌ Pas de prospectId - impossible de créer la simulation');
+        onComplete(answers); // Fallback sur l'ancien comportement
+        return;
+      }
+      
+      const response = await fetch(`${config.API_URL}/api/apporteur/prospects/${prospectId}/simulation`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          answers: answers,
+          prospect_data: prospectData
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Erreur API: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      console.log('✅ Résultats de simulation reçus:', result);
+      
+      // Retourner les résultats complets au lieu des réponses brutes
+      if (result.success && result.data) {
+        onComplete(result.data);
+      } else {
+        throw new Error(result.message || 'Erreur lors du calcul');
+      }
+      
+    } catch (error) {
+      console.error('❌ Erreur soumission simulation:', error);
+      toast.error('Erreur lors du calcul de l\'éligibilité');
+      // Fallback sur l'ancien comportement en cas d'erreur
       onComplete(answers);
+    } finally {
+      setLoading(false);
     }
   };
   
@@ -356,11 +408,20 @@ export function EmbeddedSimulator({
         <Button
           type="button"
           onClick={handleNext}
-          disabled={!canGoNext()}
+          disabled={!canGoNext() || loading}
           className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600"
         >
-          {currentStep === questions.length - 1 ? 'Terminer' : 'Suivant'}
-          <ArrowRight className="h-4 w-4" />
+          {loading ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Calcul en cours...
+            </>
+          ) : (
+            <>
+              {currentStep === questions.length - 1 ? 'Terminer' : 'Suivant'}
+              <ArrowRight className="h-4 w-4" />
+            </>
+          )}
         </Button>
       </div>
     </div>
