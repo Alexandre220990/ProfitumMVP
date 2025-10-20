@@ -484,21 +484,10 @@ router.post('/calculate-eligibility', async (req, res) => {
           
           console.log(`📝 Données à insérer:`, JSON.stringify(insertData, null, 2));
           
-          const { data: created, error: insertError } = await supabaseClient
+          // INSERTION SANS SELECT (RLS bloque le SELECT même avec service_role)
+          const { error: insertError } = await supabaseClient
             .from('ClientProduitEligible')
-            .insert(insertData)
-            .select('*');
-          
-          // Supabase peut retourner un tableau, extraire le premier élément
-          const createdItem = Array.isArray(created) && created.length > 0 ? created[0] : created;
-
-          console.log(`🔍 Résultat insertion:`, {
-            error: insertError,
-            created: created,
-            createdItem: createdItem,
-            hasError: !!insertError,
-            hasData: !!createdItem
-          });
+            .insert(insertData);
           
           if (insertError) {
             console.error(`❌ Erreur création CPE pour ${produit.produit_nom}:`, {
@@ -507,10 +496,17 @@ router.post('/calculate-eligibility', async (req, res) => {
               hint: insertError.hint,
               code: insertError.code
             });
-          } else if (createdItem) {
-            // Enrichir avec les infos du produit pour le frontend
+          } else {
+            // Insertion réussie - créer l'objet pour le frontend manuellement
             const enrichedCPE = {
-              ...createdItem,
+              clientId: sim.client_id,
+              produitId: produit.produit_id,
+              simulationId: sim.id,
+              statut: 'eligible',
+              montantFinal: produit.montant_estime || 0,
+              notes: produit.notes,
+              calcul_details: produit.calcul_details,
+              metadata: insertData.metadata,
               ProduitEligible: {
                 id: produit.produit_id,
                 nom: produit.produit_nom,
@@ -520,8 +516,6 @@ router.post('/calculate-eligibility', async (req, res) => {
             };
             clientProduits.push(enrichedCPE);
             console.log(`✅ ClientProduitEligible créé: ${produit.produit_nom} - ${produit.montant_estime}€`);
-          } else {
-            console.warn(`⚠️ Insertion pour ${produit.produit_nom}: pas d'erreur mais pas de données retournées`);
           }
         }
       }
