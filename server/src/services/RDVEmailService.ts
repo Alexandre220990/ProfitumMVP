@@ -82,6 +82,12 @@ export class RDVEmailService {
     platform_url: string;
   }): Promise<boolean> {
     try {
+      // ⛔ BLOQUER les emails temporaires pour éviter les bounces
+      if (rdvData.client_email.includes('@profitum.temp') || rdvData.client_email.includes('temp_')) {
+        console.log(`⛔ Email temporaire bloqué (bounce prevention): ${rdvData.client_email}`);
+        return true; // Retourner success pour ne pas bloquer le workflow
+      }
+
       this.initializeTransporter();
 
       // Charger et compiler le template

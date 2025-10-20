@@ -726,6 +726,12 @@ export class NotificationService {
       const email = await this.getUserEmail(notification.recipient_id);
       if (!email) return false;
 
+      // ⛔ BLOQUER les emails temporaires pour éviter les bounces
+      if (email.includes('@profitum.temp') || email.includes('temp_')) {
+        console.log(`⛔ Email temporaire bloqué (bounce prevention): ${email}`);
+        return true; // Retourner success pour ne pas bloquer le workflow
+      }
+
       // Envoyer l'email
       await this.emailTransporter.sendMail({
         from: process.env.SMTP_FROM,
