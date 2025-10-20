@@ -1,5 +1,5 @@
 import express, { Request, Response } from 'express';
-import { supabaseClient } from '../config/supabase';
+import { supabaseAdmin as supabaseClient } from '../config/supabase';
 import { v4 as uuidv4 } from 'uuid';
 // Import traiterSimulation supprimé - utilise maintenant les fonctions SQL
 
