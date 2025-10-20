@@ -259,7 +259,7 @@ router.post('/response', async (req, res) => {
     // 1. Récupérer la simulation actuelle
     const { data: currentSim, error: getError } = await supabaseClient
       .from('simulations')
-      .select('id, answers')
+      .select('*')  // Sélectionner toutes les colonnes pour déboguer
       .eq('session_token', session_token)
       .single();
 
@@ -271,12 +271,8 @@ router.post('/response', async (req, res) => {
       });
     }
 
-    console.log('🔍 Simulation récupérée:', {
-      id: currentSim.id,
-      answers_type: typeof currentSim.answers,
-      answers_is_null: currentSim.answers === null,
-      answers_keys: currentSim.answers ? Object.keys(currentSim.answers) : 'null'
-    });
+    console.log('🔍 Simulation récupérée - Colonnes:', Object.keys(currentSim));
+    console.log('🔍 Simulation complète:', JSON.stringify(currentSim, null, 2));
 
     // 2. Fusionner les nouvelles réponses avec les existantes
     // IMPORTANT: S'assurer que existingAnswers est un objet valide
@@ -354,7 +350,7 @@ router.post('/calculate-eligibility', async (req, res) => {
     // 1. Récupérer la simulation par session_token
     const { data: simulation, error: simError } = await supabaseClient
       .from('simulations')
-      .select('id, client_id, answers, status')
+      .select('*')  // Sélectionner toutes les colonnes pour déboguer
       .eq('session_token', session_token)
       .single();
 
@@ -367,7 +363,8 @@ router.post('/calculate-eligibility', async (req, res) => {
       });
     }
 
-    console.log(`📋 Simulation trouvée: ID=${simulation.id}, Client=${simulation.client_id}`);
+    console.log(`📋 Simulation trouvée - Colonnes disponibles:`, Object.keys(simulation));
+    console.log(`📋 Simulation complète:`, JSON.stringify(simulation, null, 2));
     console.log(`📝 Réponses disponibles: ${Object.keys(simulation.answers || {}).length}`);
 
     // 2. Vérifier qu'il y a des réponses
