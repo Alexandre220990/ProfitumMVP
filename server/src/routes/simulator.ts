@@ -446,31 +446,46 @@ router.post('/calculate-eligibility', async (req, res) => {
     }
 
     console.log(`✅ Calcul SQL réussi: ${resultatsSQL.total_eligible} produits éligibles`);
+    console.log(`📊 Produits retournés par SQL:`, JSON.stringify(resultatsSQL.produits, null, 2));
 
     // 5. Créer les ClientProduitEligible pour les produits éligibles
     let clientProduits: any[] = [];
     
     if (sim.client_id && resultatsSQL.produits) {
+      console.log(`🔍 Client ID: ${sim.client_id}`);
+      console.log(`🔍 Simulation ID: ${sim.id}`);
+      
       for (const produit of resultatsSQL.produits) {
+        console.log(`🔍 Traitement produit:`, {
+          nom: produit.produit_nom,
+          id: produit.produit_id,
+          eligible: produit.is_eligible,
+          montant: produit.montant_estime
+        });
+        
         if (produit.is_eligible) {
+          const insertData = {
+            clientId: sim.client_id,
+            produitId: produit.produit_id,
+            simulationId: sim.id,
+            statut: 'eligible',
+            montantFinal: produit.montant_estime,
+            tauxFinal: null,
+            dureeFinale: null,
+            notes: produit.notes,
+            calcul_details: produit.calcul_details,
+            metadata: {
+              source: 'simulation_sql',
+              calculated_at: new Date().toISOString(),
+              type_produit: produit.type_produit
+            }
+          };
+          
+          console.log(`📝 Données à insérer:`, JSON.stringify(insertData, null, 2));
+          
           const { data: created, error: insertError } = await supabaseClient
             .from('ClientProduitEligible')
-            .insert({
-              clientId: sim.client_id,
-              produitId: produit.produit_id,
-              simulationId: sim.id,
-              statut: 'eligible',
-              montantFinal: produit.montant_estime,
-              tauxFinal: null,
-              dureeFinale: null,
-              notes: produit.notes,
-              calcul_details: produit.calcul_details,
-              metadata: {
-                source: 'simulation_sql',
-                calculated_at: new Date().toISOString(),
-                type_produit: produit.type_produit
-              }
-            })
+            .insert(insertData)
             .select(`
               id,
               statut,
