@@ -56,13 +56,15 @@ router.post('/update', enhancedAuthMiddleware, asyncHandler(async (req: Request,
       responsesCount: Object.keys(responses || {}).length
     });
 
-    // 1. Créer une nouvelle simulation
+    // 1. Créer une nouvelle simulation avec les réponses
     const { data: simulation, error: simulationError } = await supabaseClient
       .from('simulations')
       .insert({
         client_id: user.database_id,
-        type: simulationType,
-        status: 'processing',
+        session_token: `client-sim-${Date.now()}-${user.database_id.substring(0, 8)}`,
+        type: 'authentifiee',
+        status: 'in_progress',
+        answers: responses, // Déjà avec les codes questions
         created_at: new Date().toISOString()
       })
       .select()
@@ -76,27 +78,35 @@ router.post('/update', enhancedAuthMiddleware, asyncHandler(async (req: Request,
       });
     }
 
-    // 2. Appeler le service Python pour analyser les réponses
-    const pythonResponse = await callPythonSimulationService(responses, user.database_id);
-    
-    if (!pythonResponse.success) {
-      // Marquer la simulation comme échouée
+    console.log(`📋 Simulation créée: ${simulation.id}`);
+
+    // 2. Calculer l'éligibilité avec les fonctions SQL
+    const { data: resultatsSQL, error: calculError } = await supabaseClient
+      .rpc('evaluer_eligibilite_avec_calcul', {
+        p_simulation_id: simulation.id
+      });
+
+    if (calculError || !resultatsSQL || !resultatsSQL.success) {
+      console.error('❌ Erreur calcul SQL:', calculError);
+      
       await supabaseClient
         .from('simulations')
-        .update({ status: 'failed', error_message: pythonResponse.error })
+        .update({ status: 'failed' })
         .eq('id', simulation.id);
         
       return res.status(500).json({
         success: false,
-        message: 'Erreur lors de l\'analyse de la simulation'
+        message: 'Erreur lors du calcul d\'éligibilité'
       });
     }
 
+    console.log(`✅ Calcul SQL réussi: ${resultatsSQL.total_eligible} produits éligibles`);
+
     // 3. Fusionner intelligemment avec les produits existants
-    const mergeResult = await mergeClientProducts(
+    const mergeResult = await mergeClientProductsSQL(
       user.database_id,
       simulation.id,
-      pythonResponse.eligibleProducts || []
+      resultatsSQL.produits || []
     );
 
     // 4. Mettre à jour la simulation avec les résultats
@@ -104,8 +114,8 @@ router.post('/update', enhancedAuthMiddleware, asyncHandler(async (req: Request,
       .from('simulations')
       .update({
         status: 'completed',
-        results: mergeResult,
-        completed_at: new Date().toISOString()
+        results: resultatsSQL,
+        updated_at: new Date().toISOString()
       })
       .eq('id', simulation.id);
 
@@ -286,59 +296,122 @@ router.get('/status', enhancedAuthMiddleware, asyncHandler(async (req: Request, 
 // ============================================================================
 
 /**
- * Appelle le service Python pour analyser les réponses
+ * Fusionne les produits avec la logique intelligente (VERSION SQL)
+ * - NE PAS remplacer les produits en cours de traitement
+ * - Créer les nouveaux produits éligibles
+ * - Mettre à jour les produits 'eligible' existants si amélioration
  */
-async function callPythonSimulationService(responses: Record<string, any>, clientId: string) {
+async function mergeClientProductsSQL(clientId: string, simulationId: string, produitsCalcules: any[]) {
   try {
-    // TODO: Implémenter l'appel au service Python
-    // Pour l'instant, retourner des données de test
-    console.log('🔍 Appel service Python pour client:', clientId);
+    console.log('🔄 Fusion intelligente SQL pour client:', clientId);
     
-    // Simulation de réponse Python
-    return {
-      success: true,
-      eligibleProducts: [
-        {
-          produitId: '123e4567-e89b-12d3-a456-426614174000',
-          tauxFinal: 0.85,
-          montantFinal: 7500,
-          dureeFinale: 12,
-          metadata: { confidence: 0.9 }
+    let productsCreated = 0;
+    let productsUpdated = 0;
+    let productsProtected = 0;
+    let totalSavings = 0;
+    const conflicts: any[] = [];
+
+    // Récupérer tous les produits existants du client
+    const { data: existingProducts } = await supabaseClient
+      .from('ClientProduitEligible')
+      .select('id, produitId, statut, montantFinal, metadata, created_at')
+      .eq('clientId', clientId);
+
+    const existingMap = new Map(existingProducts?.map(p => [p.produitId, p]) || []);
+
+    // Pour chaque produit éligible calculé
+    for (const produit of produitsCalcules) {
+      if (!produit.is_eligible) continue; // Ignorer les non éligibles
+
+      const existing = existingMap.get(produit.produit_id);
+      totalSavings += produit.montant_estime || 0;
+
+      if (existing) {
+        // Produit existe déjà
+        
+        // Cas 1 : Produit en cours de traitement → PROTÉGER
+        if (['en_cours', 'documents_collecte', 'expert_assigne', 'en_attente_expert', 'dossier_constitue'].includes(existing.statut)) {
+          console.log(`🔒 Produit protégé (en cours): ${produit.produit_nom}`);
+          productsProtected++;
+          conflicts.push({
+            produitId: produit.produit_id,
+            produitNom: produit.produit_nom,
+            reason: 'Produit en cours de traitement',
+            existingStatut: existing.statut
+          });
+          continue;
         }
-      ]
-    };
-  } catch (error) {
-    console.error('❌ Erreur service Python:', error);
-    return {
-      success: false,
-      error: 'Erreur lors de l\'analyse Python'
-    };
-  }
-}
 
-/**
- * Fusionne les produits avec la logique intelligente
- */
-async function mergeClientProducts(clientId: string, simulationId: string, newProducts: any[]) {
-  try {
-    console.log('🔄 Fusion intelligente pour client:', clientId);
-    
-    // Convertir en JSONB pour la fonction PostgreSQL
-    const productsJsonb = JSON.stringify(newProducts);
-    
-    // Appeler la fonction PostgreSQL
-    const { data, error } = await supabaseClient.rpc('merge_client_products', {
-      p_client_id: clientId,
-      p_new_simulation_id: simulationId,
-      p_new_products: productsJsonb
-    });
+        // Cas 2 : Produit 'eligible' → METTRE À JOUR si amélioration
+        if (existing.statut === 'eligible') {
+          const nouveauMontant = produit.montant_estime || 0;
+          const ancienMontant = existing.montantFinal || 0;
 
-    if (error) {
-      console.error('❌ Erreur fusion PostgreSQL:', error);
-      throw error;
+          if (nouveauMontant > ancienMontant) {
+            await supabaseClient
+              .from('ClientProduitEligible')
+              .update({
+                montantFinal: nouveauMontant,
+                tauxFinal: null,
+                dureeFinale: null,
+                simulationId: simulationId,
+                calcul_details: produit.calcul_details,
+                notes: produit.notes,
+                metadata: {
+                  ...(existing.metadata || {}),
+                  updated_from_simulation: simulationId,
+                  previous_amount: ancienMontant,
+                  updated_at: new Date().toISOString()
+                },
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', existing.id);
+
+            console.log(`✅ Produit mis à jour: ${produit.produit_nom} (${ancienMontant}€ → ${nouveauMontant}€)`);
+            productsUpdated++;
+          } else {
+            console.log(`→ Produit inchangé: ${produit.produit_nom} (${ancienMontant}€ >= ${nouveauMontant}€)`);
+            productsProtected++;
+          }
+        }
+      } else {
+        // Nouveau produit → CRÉER
+        const { error: insertError } = await supabaseClient
+          .from('ClientProduitEligible')
+          .insert({
+            clientId: clientId,
+            produitId: produit.produit_id,
+            simulationId: simulationId,
+            statut: 'eligible',
+            montantFinal: produit.montant_estime,
+            tauxFinal: null,
+            dureeFinale: null,
+            notes: produit.notes,
+            calcul_details: produit.calcul_details,
+            metadata: {
+              source: 'simulation_client_sql',
+              type_produit: produit.type_produit,
+              calculated_at: new Date().toISOString()
+            }
+          });
+
+        if (!insertError) {
+          console.log(`✅ Nouveau produit créé: ${produit.produit_nom} - ${produit.montant_estime}€`);
+          productsCreated++;
+        } else {
+          console.error(`❌ Erreur création produit ${produit.produit_nom}:`, insertError);
+        }
+      }
     }
 
-    return data;
+    return {
+      products_created: productsCreated,
+      products_updated: productsUpdated,
+      products_protected: productsProtected,
+      total_savings: totalSavings,
+      conflicts: conflicts,
+      history_id: simulationId
+    };
   } catch (error) {
     console.error('❌ Erreur fusion produits:', error);
     throw error;

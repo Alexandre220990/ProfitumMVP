@@ -365,6 +365,8 @@ const SimulateurClient = () => {
     }
   };
 
+  const [clientProduits, setClientProduits] = useState<any[]>([]);
+
   const calculateResults = async () => { 
     try {
       // MODE CLIENT - Mise à jour intelligente des produits
@@ -393,6 +395,23 @@ const SimulateurClient = () => {
             productsProtected: results.data.productsProtected,
             totalSavings: results.data.totalSavings
           });
+
+          // Récupérer les ClientProduitEligible créés/mis à jour
+          const produitsResponse = await fetch(
+            `${config.API_URL}/api/client/produits-eligibles`,
+            { 
+              headers: getHeadersWithAuth(),
+              credentials: 'include'
+            }
+          );
+
+          if (produitsResponse.ok) {
+            const produitsData = await produitsResponse.json();
+            if (produitsData.success && produitsData.data) {
+              setClientProduits(produitsData.data);
+              console.log(`📦 ${produitsData.data.length} produits récupérés`);
+            }
+          }
           
           // Afficher les résultats
           setShowResults(true);
@@ -564,6 +583,46 @@ const SimulateurClient = () => {
               </button>
             </div>
           </div>
+
+          {/* Liste des produits éligibles */}
+          {clientProduits.length > 0 && (
+            <div className="mt-12">
+              <h2 className="text-2xl font-bold text-slate-800 mb-6 text-center">
+                Vos produits éligibles
+              </h2>
+              
+              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 max-h-[600px] overflow-y-auto">
+                {clientProduits.map((produit) => (
+                  <Card 
+                    key={produit.id}
+                    className="h-[280px] flex flex-col bg-white/80 backdrop-blur-sm hover:shadow-lg transition-all duration-300"
+                  >
+                    <CardHeader className="pb-3">
+                      <h3 className="font-semibold text-slate-800 text-sm line-clamp-2">
+                        {produit.ProduitEligible?.nom || 'Produit'}
+                      </h3>
+                      <Badge 
+                        variant={produit.statut === 'eligible' ? 'default' : 'secondary'}
+                        className="w-fit"
+                      >
+                        {produit.statut}
+                      </Badge>
+                    </CardHeader>
+                    <CardContent className="flex-1 flex flex-col justify-between overflow-y-auto">
+                      <div className="space-y-2">
+                        <div className="text-2xl font-bold text-emerald-600">
+                          {(produit.montantFinal || 0).toLocaleString('fr-FR')}€
+                        </div>
+                        <p className="text-xs text-slate-600 line-clamp-3">
+                          {produit.notes || produit.ProduitEligible?.notes_affichage}
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );

@@ -146,6 +146,8 @@ router.get('/produits-eligibles', async (req, res) => {
           nom,
           description,
           categorie,
+          type_produit,
+          notes_affichage,
           montant_min,
           montant_max,
           taux_min,
