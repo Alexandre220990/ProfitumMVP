@@ -235,14 +235,14 @@ const HeroSection = ({ navigate }: { navigate: (path: string) => void }) => (
         <div className="flex-1 w-full max-w-full lg:max-w-3xl xl:max-w-4xl">
           {/* Titre principal - Responsive et centré sur mobile */}
           <div className="mb-8 sm:mb-10 lg:mb-12 text-center lg:text-left">
-            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-4xl xl:text-5xl font-light text-slate-900 mb-4 sm:mb-6 leading-tight">
-              <span className="block font-light text-slate-700">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-slate-900 mb-4 sm:mb-6 leading-tight">
+              <span className="block font-bold text-slate-900">
                 Profitum connecte les entreprises aux
               </span>
               <span className="block font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mt-1">
                 meilleurs experts
               </span>
-              <span className="block font-light text-slate-700 mt-2">
+              <span className="block font-bold text-slate-900 mt-2">
                 pour transformer contraintes en opportunités financières
               </span>
             </h1>
