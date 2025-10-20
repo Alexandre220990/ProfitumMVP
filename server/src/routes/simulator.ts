@@ -469,9 +469,10 @@ router.post('/calculate-eligibility', async (req, res) => {
             produitId: produit.produit_id,
             simulationId: sim.id,
             statut: 'eligible',
-            montantFinal: produit.montant_estime,
-            tauxFinal: null,
-            dureeFinale: null,
+            montantFinal: produit.montant_estime || 0,
+            // NE PAS envoyer tauxFinal et dureeFinale s'ils sont null (contraintes CHECK)
+            // tauxFinal: null,
+            // dureeFinale: null,
             notes: produit.notes,
             calcul_details: produit.calcul_details,
             metadata: {
