@@ -271,13 +271,16 @@ router.post('/response', async (req, res) => {
       });
     }
 
-    console.log('🔍 Simulation récupérée - Colonnes:', Object.keys(currentSim));
-    console.log('🔍 Simulation complète:', JSON.stringify(currentSim, null, 2));
+    // CORRECTION: Supabase peut retourner un tableau au lieu d'un objet avec .single()
+    const sim = Array.isArray(currentSim) ? currentSim[0] : currentSim;
+    
+    console.log('🔍 Simulation récupérée - ID:', sim.id);
+    console.log('🔍 Réponses actuelles:', sim.answers);
 
     // 2. Fusionner les nouvelles réponses avec les existantes
     // IMPORTANT: S'assurer que existingAnswers est un objet valide
-    const existingAnswers = (currentSim.answers && typeof currentSim.answers === 'object') 
-      ? currentSim.answers 
+    const existingAnswers = (sim.answers && typeof sim.answers === 'object') 
+      ? sim.answers 
       : {};
     
     const updatedAnswers = {
@@ -363,12 +366,15 @@ router.post('/calculate-eligibility', async (req, res) => {
       });
     }
 
-    console.log(`📋 Simulation trouvée - Colonnes disponibles:`, Object.keys(simulation));
-    console.log(`📋 Simulation complète:`, JSON.stringify(simulation, null, 2));
-    console.log(`📝 Réponses disponibles: ${Object.keys(simulation.answers || {}).length}`);
+    // CORRECTION: Supabase peut retourner un tableau au lieu d'un objet avec .single()
+    const sim = Array.isArray(simulation) ? simulation[0] : simulation;
+    
+    console.log(`📋 Simulation trouvée - ID: ${sim.id}`);
+    console.log(`📝 Réponses disponibles: ${Object.keys(sim.answers || {}).length}`);
+    console.log(`📝 Contenu answers:`, sim.answers);
 
     // 2. Vérifier qu'il y a des réponses
-    if (!simulation.answers || Object.keys(simulation.answers).length === 0) {
+    if (!sim.answers || Object.keys(sim.answers).length === 0) {
       console.warn('⚠️ Aucune réponse dans simulation.answers');
       return res.status(400).json({
         success: false,
@@ -376,7 +382,7 @@ router.post('/calculate-eligibility', async (req, res) => {
       });
     }
 
-    console.log(`📝 Réponses brutes (UUIDs):`, Object.keys(simulation.answers));
+    console.log(`📝 Réponses brutes (UUIDs):`, Object.keys(sim.answers));
 
     // 3. IMPORTANT: Convertir les UUIDs des questions en question_id textuels
     // Les réponses sont sauvegardées avec UUID (ex: "d3207985...")
@@ -384,7 +390,7 @@ router.post('/calculate-eligibility', async (req, res) => {
     const { data: questions, error: questionsError } = await supabaseClient
       .from('QuestionnaireQuestion')
       .select('id, question_id')
-      .in('id', Object.keys(simulation.answers));
+      .in('id', Object.keys(sim.answers));
 
     if (questionsError || !questions) {
       console.error('❌ Erreur récupération questions:', questionsError);
@@ -402,14 +408,14 @@ router.post('/calculate-eligibility', async (req, res) => {
 
     // Convertir les réponses UUID → question_id
     const convertedAnswers: Record<string, any> = {};
-    Object.entries(simulation.answers).forEach(([uuid, value]) => {
+    Object.entries(sim.answers).forEach(([uuid, value]) => {
       const questionId = uuidToQuestionId[uuid];
       if (questionId) {
         convertedAnswers[questionId] = value;
       }
     });
 
-    console.log(`🔄 Conversion: ${Object.keys(simulation.answers).length} UUIDs → ${Object.keys(convertedAnswers).length} question_id`);
+    console.log(`🔄 Conversion: ${Object.keys(sim.answers).length} UUIDs → ${Object.keys(convertedAnswers).length} question_id`);
     console.log(`📝 Question IDs convertis:`, Object.keys(convertedAnswers));
 
     // Sauvegarder aussi les réponses converties pour éviter de refaire la conversion
@@ -420,14 +426,14 @@ router.post('/calculate-eligibility', async (req, res) => {
         answers: convertedAnswers,  // Remplacer par les IDs convertis
         updated_at: new Date().toISOString()
       })
-      .eq('id', simulation.id);
+      .eq('id', sim.id);
 
     // 4. Appeler la fonction SQL pour calculer l'éligibilité
     console.log('🧮 Appel fonction SQL evaluer_eligibilite_avec_calcul...');
     
     const { data: resultatsSQL, error: calculError } = await supabaseClient
       .rpc('evaluer_eligibilite_avec_calcul', {
-        p_simulation_id: simulation.id
+        p_simulation_id: sim.id
       });
 
     if (calculError) {
@@ -444,15 +450,15 @@ router.post('/calculate-eligibility', async (req, res) => {
     // 5. Créer les ClientProduitEligible pour les produits éligibles
     let clientProduits: any[] = [];
     
-    if (simulation.client_id && resultatsSQL.produits) {
+    if (sim.client_id && resultatsSQL.produits) {
       for (const produit of resultatsSQL.produits) {
         if (produit.is_eligible) {
           const { data: created, error: insertError } = await supabaseClient
             .from('ClientProduitEligible')
             .insert({
-              clientId: simulation.client_id,
+              clientId: sim.client_id,
               produitId: produit.produit_id,
-              simulationId: simulation.id,
+              simulationId: sim.id,
               statut: 'eligible',
               montantFinal: produit.montant_estime,
               tauxFinal: null,
@@ -507,7 +513,7 @@ router.post('/calculate-eligibility', async (req, res) => {
         status: 'completed',
         updated_at: new Date().toISOString()
       })
-      .eq('id', simulation.id);
+      .eq('id', sim.id);
 
     return res.json({
       success: true,
