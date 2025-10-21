@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApporteurSimple } from '../../hooks/use-apporteur-simple';
 import { useApporteurEnhanced } from '../../hooks/use-apporteur-enhanced';
@@ -49,10 +49,10 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
   // Utiliser les données enrichies si disponibles, sinon fallback sur les données de base
   const loading = isLoading || basicLoading;
   const error = hasError ? enhancedError : basicError;
-  const refresh = () => {
+  const refresh = useCallback(() => {
     refreshEnhanced();
     refreshBasic();
-  };
+  }, [refreshEnhanced, refreshBasic]);
 
   if (loading) {
     return (
@@ -107,7 +107,7 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
   const objectivesData = hasEnhancedData ? objectives : null;
 
   // Charger les dossiers quand la vue change
-  const loadDossiers = async () => {
+  const loadDossiers = useCallback(async () => {
     if (!apporteurId) return;
     
     try {
@@ -129,10 +129,10 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
     } finally {
       setDossiersLoading(false);
     }
-  };
+  }, [apporteurId]);
 
   // Charger les stats de conversion
-  const loadConversionStats = async () => {
+  const loadConversionStats = useCallback(async () => {
     if (!apporteurId) return;
     
     try {
@@ -154,24 +154,22 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
     } finally {
       setConversionLoading(false);
     }
-  };
+  }, [apporteurId]);
 
   // Charger les stats de conversion au montage pour le KPI
   useEffect(() => {
     loadConversionStats();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apporteurId]);
+  }, [loadConversionStats]);
 
   // Charger dossiers quand on clique sur dossiers/montant
   useEffect(() => {
     if (activeView === 'dossiers' || activeView === 'montant') {
       loadDossiers();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeView, apporteurId]);
+  }, [activeView, loadDossiers]);
 
-  // Fonction de tri des dossiers
-  const getSortedDossiers = () => {
+  // Tri des dossiers mémoïsé
+  const sortedDossiers = useMemo(() => {
     if (!dossiers || dossiers.length === 0) return [];
     
     const sorted = [...dossiers];
@@ -192,9 +190,7 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
       default:
         return sorted;
     }
-  };
-
-  const sortedDossiers = getSortedDossiers();
+  }, [dossiers, sortOption]);
 
   return (
     <div className="bg-gradient-to-br from-slate-50 to-blue-50">

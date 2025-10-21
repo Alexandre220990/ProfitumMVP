@@ -53,18 +53,17 @@ export function useApporteurEnhanced(apporteurId: string | null) {
 
   useEffect(() => {
     loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apporteurId]);
+  }, [loadData]);
 
-  // Méthodes utilitaires pour accéder facilement aux données
-  const getDashboardData = () => data?.dashboard?.data || null;
-  const getProspectsData = () => data?.prospects?.data || [];
-  const getActivityData = () => data?.activite?.data || [];
-  const getObjectivesData = () => data?.objectifs?.data || null;
-  const getPerformanceData = () => data?.performance?.data || [];
+  // Méthodes utilitaires pour accéder facilement aux données (mémoïsées)
+  const getDashboardData = useCallback(() => data?.dashboard?.data || null, [data]);
+  const getProspectsData = useCallback(() => data?.prospects?.data || [], [data]);
+  const getActivityData = useCallback(() => data?.activite?.data || [], [data]);
+  const getObjectivesData = useCallback(() => data?.objectifs?.data || null, [data]);
+  const getPerformanceData = useCallback(() => data?.performance?.data || [], [data]);
 
   // Statistiques calculées
-  const getStats = () => {
+  const getStats = useCallback(() => {
     const dashboardData = getDashboardData();
     if (!dashboardData) {
       return {
@@ -85,10 +84,10 @@ export function useApporteurEnhanced(apporteurId: string | null) {
       tauxConversion: dashboardData.taux_conversion_pourcent || 0,
       dossiersAcceptes: dashboardData.dossiers_acceptes || 0
     };
-  };
+  }, [getDashboardData]);
 
   // Objectifs et performance
-  const getObjectives = () => {
+  const getObjectives = useCallback(() => {
     const objectivesData = getObjectivesData();
     if (!objectivesData) {
       return {
@@ -109,10 +108,10 @@ export function useApporteurEnhanced(apporteurId: string | null) {
       realisationConversion: objectivesData.realisation_conversion_pourcent || 0,
       realisationCommission: objectivesData.realisation_commission_mois || 0
     };
-  };
+  }, [getObjectivesData]);
 
   // Performance par produit
-  const getProductPerformance = () => {
+  const getProductPerformance = useCallback(() => {
     return getPerformanceData().map((product: any) => ({
       produitId: product.produit_id,
       produitNom: product.produit_nom,
@@ -121,10 +120,10 @@ export function useApporteurEnhanced(apporteurId: string | null) {
       montantMoyen: product.montant_moyen_demande || 0,
       montantAccepte: product.montant_accepte || 0
     }));
-  };
+  }, [getPerformanceData]);
 
   // Activité récente formatée
-  const getRecentActivity = () => {
+  const getRecentActivity = useCallback(() => {
     return getActivityData().map((activity: any) => {
       // Construire le libelle selon le type d'activité
       let libelle = '';
@@ -150,10 +149,10 @@ export function useApporteurEnhanced(apporteurId: string | null) {
         produit_nom: activity.produit_nom
       };
     });
-  };
+  }, [getActivityData]);
 
   // Prospects avec informations enrichies
-  const getEnrichedProspects = () => {
+  const getEnrichedProspects = useCallback(() => {
     return getProspectsData().map((prospect: any) => ({
       id: prospect.prospect_id,
       nom: prospect.prospect_name || prospect.company_name,
@@ -165,14 +164,14 @@ export function useApporteurEnhanced(apporteurId: string | null) {
       dateCreation: prospect.date_creation,
       anciennete: prospect.anciennete || 'Nouveau'
     }));
-  };
+  }, [getProspectsData]);
 
   // Mémoïser les données calculées pour éviter les re-renders inutiles
-  const stats = useMemo(() => getStats(), [data]);
-  const objectives = useMemo(() => getObjectives(), [data]);
-  const productPerformance = useMemo(() => getProductPerformance(), [data]);
-  const recentActivity = useMemo(() => getRecentActivity(), [data]);
-  const enrichedProspects = useMemo(() => getEnrichedProspects(), [data]);
+  const stats = useMemo(() => getStats(), [getStats]);
+  const objectives = useMemo(() => getObjectives(), [getObjectives]);
+  const productPerformance = useMemo(() => getProductPerformance(), [getProductPerformance]);
+  const recentActivity = useMemo(() => getRecentActivity(), [getRecentActivity]);
+  const enrichedProspects = useMemo(() => getEnrichedProspects(), [getEnrichedProspects]);
 
   return {
     // État principal
