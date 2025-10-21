@@ -66,7 +66,7 @@ export function useNotifications() {
     
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
+  }, []);
 
   const markAsRead = useCallback(async (notificationId: string) => {
     try {
