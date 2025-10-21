@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { ApporteurViewsService } from '../services/apporteur-views-service';
 
 /**
@@ -167,6 +167,13 @@ export function useApporteurEnhanced(apporteurId: string | null) {
     }));
   };
 
+  // Mémoïser les données calculées pour éviter les re-renders inutiles
+  const stats = useMemo(() => getStats(), [data]);
+  const objectives = useMemo(() => getObjectives(), [data]);
+  const productPerformance = useMemo(() => getProductPerformance(), [data]);
+  const recentActivity = useMemo(() => getRecentActivity(), [data]);
+  const enrichedProspects = useMemo(() => getEnrichedProspects(), [data]);
+
   return {
     // État principal
     data,
@@ -181,12 +188,12 @@ export function useApporteurEnhanced(apporteurId: string | null) {
     getObjectivesData,
     getPerformanceData,
 
-    // Données formatées
-    stats: getStats(),
-    objectives: getObjectives(),
-    productPerformance: getProductPerformance(),
-    recentActivity: getRecentActivity(),
-    enrichedProspects: getEnrichedProspects(),
+    // Données formatées (mémoïsées)
+    stats,
+    objectives,
+    productPerformance,
+    recentActivity,
+    enrichedProspects,
 
     // Utilitaires
     hasData: !!data,
