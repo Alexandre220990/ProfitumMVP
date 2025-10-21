@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ApporteurViewsService } from '../../services/apporteur-views-service';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
@@ -33,16 +33,35 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
   const [conversionLoading, setConversionLoading] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   
+  // Protection absolue contre les doubles chargements avec useRef
+  const isLoadingRef = useRef(false);
+  const lastApporteurIdRef = useRef<string | null>(null);
+  
   // Fonction refresh simple
   const refresh = () => setRefreshKey(prev => prev + 1);
   
   // Charger les données principales UNE SEULE FOIS au montage ou refresh
   useEffect(() => {
-    if (!apporteurId) return;
+    if (!apporteurId) {
+      setDashboard(null);
+      setRawProspects([]);
+      setObjectifs(null);
+      setActivite([]);
+      return;
+    }
+    
+    // Protection absolue : ne pas recharger si déjà en cours
+    if (isLoadingRef.current && lastApporteurIdRef.current === apporteurId) {
+      console.log('⚠️ Chargement déjà en cours, ignoré');
+      return;
+    }
     
     let isMounted = true;
     
     const loadMainData = async () => {
+      isLoadingRef.current = true;
+      lastApporteurIdRef.current = apporteurId;
+      
       setLoading(true);
       setError(null);
       
@@ -69,13 +88,16 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
       } finally {
         if (isMounted) {
           setLoading(false);
+          isLoadingRef.current = false;
         }
       }
     };
     
     loadMainData();
     
-    return () => { isMounted = false; };
+    return () => { 
+      isMounted = false;
+    };
   }, [apporteurId, refreshKey]);
 
   if (loading) {
@@ -162,11 +184,18 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
 
   // Charger les stats de conversion UNE SEULE FOIS
   useEffect(() => {
-    if (!apporteurId) return;
+    if (!apporteurId) {
+      setConversionStats(null);
+      return;
+    }
     
     let isMounted = true;
+    let hasLoaded = false;
     
     const loadConversionStats = async () => {
+      if (hasLoaded) return;
+      hasLoaded = true;
+      
       setConversionLoading(true);
       try {
         const response = await fetch(`${config.API_URL}/api/apporteur/conversion-stats`, {
@@ -198,14 +227,21 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
 
   // Charger dossiers UNIQUEMENT quand nécessaire
   useEffect(() => {
-    if (!apporteurId) return;
+    if (!apporteurId) {
+      setDossiers([]);
+      return;
+    }
     if (activeView !== 'dossiers' && activeView !== 'montant') {
       return;
     }
     
     let isMounted = true;
+    let hasLoaded = false;
     
     const loadDossiers = async () => {
+      if (hasLoaded) return;
+      hasLoaded = true;
+      
       setDossiersLoading(true);
       try {
         const response = await fetch(`${config.API_URL}/api/apporteur/dossiers`, {

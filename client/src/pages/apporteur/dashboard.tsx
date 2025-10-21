@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ApporteurDashboardSimple } from '../../components/apporteur/ApporteurDashboardSimple';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
@@ -14,8 +15,8 @@ export default function ApporteurDashboardPage() {
   const navigate = useNavigate();
   const { user, isLoading } = useAuth();
   
-  // Récupérer l'ID depuis le contexte d'authentification
-  const apporteurId = user?.id;
+  // STABILISER l'ID pour éviter les re-rendus en cascade
+  const apporteurId = useMemo(() => user?.id, [user?.id]);
 
   // État de chargement
   if (isLoading) {
