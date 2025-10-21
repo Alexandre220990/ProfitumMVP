@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApporteurSimple } from '../../hooks/use-apporteur-simple';
 import { useApporteurEnhanced } from '../../hooks/use-apporteur-enhanced';
@@ -49,10 +49,12 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
   // Utiliser les données enrichies si disponibles, sinon fallback sur les données de base
   const loading = isLoading || basicLoading;
   const error = hasError ? enhancedError : basicError;
-  const refresh = useCallback(() => {
+  
+  // Fonction refresh simple (pas de useCallback car utilisée uniquement pour les événements)
+  const refresh = () => {
     refreshEnhanced();
     refreshBasic();
-  }, [refreshEnhanced, refreshBasic]);
+  };
 
   if (loading) {
     return (
@@ -106,67 +108,64 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
   const activityData = hasEnhancedData ? recentActivity : [];
   const objectivesData = hasEnhancedData ? objectives : null;
 
-  // Charger les dossiers quand la vue change
-  const loadDossiers = useCallback(async () => {
-    if (!apporteurId) return;
-    
-    try {
-      setDossiersLoading(true);
-      const response = await fetch(`${config.API_URL}/api/apporteur/dossiers`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        const result = await response.json();
-        setDossiers(result.data || []);
-        console.log(`✅ ${result.data?.length || 0} dossiers chargés`);
-      }
-    } catch (error) {
-      console.error('Erreur chargement dossiers:', error);
-    } finally {
-      setDossiersLoading(false);
-    }
-  }, [apporteurId]);
-
-  // Charger les stats de conversion
-  const loadConversionStats = useCallback(async () => {
-    if (!apporteurId) return;
-    
-    try {
-      setConversionLoading(true);
-      const response = await fetch(`${config.API_URL}/api/apporteur/conversion-stats`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        const result = await response.json();
-        setConversionStats(result.data);
-        console.log('✅ Stats conversion chargées:', result.data);
-      }
-    } catch (error) {
-      console.error('Erreur chargement stats conversion:', error);
-    } finally {
-      setConversionLoading(false);
-    }
-  }, [apporteurId]);
-
   // Charger les stats de conversion au montage pour le KPI
   useEffect(() => {
+    if (!apporteurId) return;
+    
+    const loadConversionStats = async () => {
+      try {
+        setConversionLoading(true);
+        const response = await fetch(`${config.API_URL}/api/apporteur/conversion-stats`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          setConversionStats(result.data);
+          console.log('✅ Stats conversion chargées:', result.data);
+        }
+      } catch (error) {
+        console.error('Erreur chargement stats conversion:', error);
+      } finally {
+        setConversionLoading(false);
+      }
+    };
+    
     loadConversionStats();
-  }, [loadConversionStats]);
+  }, [apporteurId]);
 
   // Charger dossiers quand on clique sur dossiers/montant
   useEffect(() => {
-    if (activeView === 'dossiers' || activeView === 'montant') {
-      loadDossiers();
-    }
-  }, [activeView, loadDossiers]);
+    if (!apporteurId) return;
+    if (activeView !== 'dossiers' && activeView !== 'montant') return;
+    
+    const loadDossiers = async () => {
+      try {
+        setDossiersLoading(true);
+        const response = await fetch(`${config.API_URL}/api/apporteur/dossiers`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          setDossiers(result.data || []);
+          console.log(`✅ ${result.data?.length || 0} dossiers chargés`);
+        }
+      } catch (error) {
+        console.error('Erreur chargement dossiers:', error);
+      } finally {
+        setDossiersLoading(false);
+      }
+    };
+    
+    loadDossiers();
+  }, [activeView, apporteurId]);
 
   // Tri des dossiers mémoïsé
   const sortedDossiers = useMemo(() => {
