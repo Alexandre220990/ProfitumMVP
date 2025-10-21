@@ -74,7 +74,14 @@ const InscriptionSimulateur = () => {
   // Récupérer les données du simulateur depuis la navigation
   useEffect(() => { 
     const state = location.state as any;
+    console.log('📋 État reçu:', state);
+    
     if (state?.fromSimulator && state?.sessionToken && state?.eligibilityResults) {
+      console.log('✅ Données simulateur présentes:', {
+        sessionToken: state.sessionToken,
+        resultsCount: state.eligibilityResults.length
+      });
+      
       setEligibilityResults(state.eligibilityResults);
       setTotalSavings(state.eligibilityResults.reduce((sum: number, r: any) => sum + r.estimated_savings, 0));
       setHighEligibilityCount(state.eligibilityResults.filter((r: any) => r.eligibility_score >= 70).length);
@@ -88,6 +95,11 @@ const InscriptionSimulateur = () => {
       }
     } else { 
       // Rediriger si pas de données du simulateur
+      console.error('❌ Données simulateur manquantes:', {
+        fromSimulator: state?.fromSimulator,
+        hasSessionToken: !!state?.sessionToken,
+        hasResults: !!state?.eligibilityResults
+      });
       toast.error("Accès direct non autorisé. Veuillez utiliser le simulateur");
       navigate('/simulateur-eligibilite');
     }
