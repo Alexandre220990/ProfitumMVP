@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApporteurSimple } from '../../hooks/use-apporteur-simple';
 import { useApporteurEnhanced } from '../../hooks/use-apporteur-enhanced';
@@ -77,55 +77,35 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
     );
   }
 
-  // Mémoïser toutes les données calculées pour éviter les re-renders
-  const prospects = useMemo(() => analytics.prospects || [], [analytics.prospects]);
-  const prospectsActifs = useMemo(() => 
-    prospects.filter(prospect => prospect.statutActivite === 'active'), 
-    [prospects]
-  );
+  // Calculs simples sans useMemo (pas de dépendances circulaires possibles)
+  const prospects = analytics.prospects || [];
+  const prospectsActifs = prospects.filter(prospect => prospect.statutActivite === 'active');
 
-  // Dashboard data mémoïsé (évite nouvelles références à chaque render)
-  const dashboardData = useMemo(() => {
-    if (hasEnhancedData) {
-      return {
-        total_prospects: stats.totalProspects || 0,
-        total_active_clients: stats.totalClients || 0,
-        nouveaux_clients_30j: stats.nouveaux30j || 0,
-        total_montant_demande: stats.montantTotal || 0,
-        taux_conversion_pourcent: stats.tauxConversion || 0,
-        dossiers_acceptes: stats.dossiersAcceptes || 0
-      };
-    }
-    
-    return {
-      total_prospects: prospects.length,
-      total_active_clients: prospectsActifs.length,
-      nouveaux_clients_30j: prospects.filter(p => {
-        const created = new Date(p.createdAt);
-        const now = new Date();
-        const diffDays = (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24);
-        return diffDays <= 30;
-      }).length,
-      total_montant_demande: 0,
-      taux_conversion_pourcent: 0,
-      dossiers_acceptes: 0
-    };
-  }, [hasEnhancedData, stats, prospects, prospectsActifs]);
+  // Dashboard data (calcul simple)
+  const dashboardData = hasEnhancedData ? {
+    total_prospects: stats.totalProspects || 0,
+    total_active_clients: stats.totalClients || 0,
+    nouveaux_clients_30j: stats.nouveaux30j || 0,
+    total_montant_demande: stats.montantTotal || 0,
+    taux_conversion_pourcent: stats.tauxConversion || 0,
+    dossiers_acceptes: stats.dossiersAcceptes || 0
+  } : {
+    total_prospects: prospects.length,
+    total_active_clients: prospectsActifs.length,
+    nouveaux_clients_30j: prospects.filter(p => {
+      const created = new Date(p.createdAt);
+      const now = new Date();
+      const diffDays = (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24);
+      return diffDays <= 30;
+    }).length,
+    total_montant_demande: 0,
+    taux_conversion_pourcent: 0,
+    dossiers_acceptes: 0
+  };
 
-  const prospectsData = useMemo(() => 
-    hasEnhancedData ? enrichedProspects : prospects, 
-    [hasEnhancedData, enrichedProspects, prospects]
-  );
-  
-  const activityData = useMemo(() => 
-    hasEnhancedData ? recentActivity : [], 
-    [hasEnhancedData, recentActivity]
-  );
-  
-  const objectivesData = useMemo(() => 
-    hasEnhancedData ? objectives : null, 
-    [hasEnhancedData, objectives]
-  );
+  const prospectsData = hasEnhancedData ? enrichedProspects : prospects;
+  const activityData = hasEnhancedData ? recentActivity : [];
+  const objectivesData = hasEnhancedData ? objectives : null;
 
   // Charger les stats de conversion au montage pour le KPI
   useEffect(() => {
@@ -186,8 +166,8 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
     loadDossiers();
   }, [activeView, apporteurId]);
 
-  // Tri des dossiers mémoïsé
-  const sortedDossiers = useMemo(() => {
+  // Tri des dossiers (calcul simple)
+  const getSortedDossiers = () => {
     if (!dossiers || dossiers.length === 0) return [];
     
     const sorted = [...dossiers];
@@ -208,7 +188,9 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
       default:
         return sorted;
     }
-  }, [dossiers, sortOption]);
+  };
+  
+  const sortedDossiers = getSortedDossiers();
 
   return (
     <div className="bg-gradient-to-br from-slate-50 to-blue-50">
