@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApporteurSimple } from '../../hooks/use-apporteur-simple';
 import { useApporteurEnhanced } from '../../hooks/use-apporteur-enhanced';
@@ -31,12 +31,12 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
     refresh: refreshBasic
   } = useApporteurSimple(apporteurId);
 
-  // Hook pour les données enrichies depuis les vues SQL
+  // Hook pour les données enrichies depuis les vues SQL (SIMPLIFIÉ)
   const {
-    stats,
-    objectives,
-    recentActivity,
-    enrichedProspects,
+    dashboard: enhancedDashboard,
+    prospects: enhancedProspects,
+    objectifs: enhancedObjectifs,
+    activite: enhancedActivite,
     loading: enhancedLoading,
     error: enhancedError,
     refresh: refreshEnhanced,
@@ -49,11 +49,11 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
   const loading = isLoading || basicLoading;
   const error = hasError ? enhancedError : basicError;
   
-  // Fonction refresh simple (pas de useCallback car utilisée uniquement pour les événements)
-  const refresh = () => {
+  // Fonction refresh stable avec useCallback
+  const refresh = useCallback(() => {
     refreshEnhanced();
     refreshBasic();
-  };
+  }, [refreshEnhanced, refreshBasic]);
 
   if (loading) {
     return (
@@ -77,39 +77,100 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
     );
   }
 
-  // Calculs simples sans useMemo (pas de dépendances circulaires possibles)
-  const prospects = analytics.prospects || [];
-  const prospectsActifs = prospects.filter(prospect => prospect.statutActivite === 'active');
+  // Calculs STABLES avec useMemo pour éviter les re-rendus inutiles
+  const prospects = useMemo(() => analytics.prospects || [], [analytics.prospects]);
+  const prospectsActifs = useMemo(
+    () => prospects.filter(prospect => prospect.statutActivite === 'active'),
+    [prospects]
+  );
 
-  // Dashboard data (calcul simple)
-  const dashboardData = hasEnhancedData ? {
-    total_prospects: stats.totalProspects || 0,
-    total_active_clients: stats.totalClients || 0,
-    nouveaux_clients_30j: stats.nouveaux30j || 0,
-    total_montant_demande: stats.montantTotal || 0,
-    taux_conversion_pourcent: stats.tauxConversion || 0,
-    dossiers_acceptes: stats.dossiersAcceptes || 0
-  } : {
-    total_prospects: prospects.length,
-    total_active_clients: prospectsActifs.length,
-    nouveaux_clients_30j: prospects.filter(p => {
-      const created = new Date(p.createdAt);
-      const now = new Date();
-      const diffDays = (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24);
-      return diffDays <= 30;
-    }).length,
-    total_montant_demande: 0,
-    taux_conversion_pourcent: 0,
-    dossiers_acceptes: 0
-  };
+  // Dashboard data STABLE (ne change que si les données sources changent)
+  const dashboardData = useMemo(() => {
+    if (hasEnhancedData && enhancedDashboard) {
+      return {
+        total_prospects: enhancedDashboard.total_prospects || 0,
+        total_active_clients: enhancedDashboard.total_active_clients || 0,
+        nouveaux_clients_30j: enhancedDashboard.nouveaux_clients_30j || 0,
+        total_montant_demande: enhancedDashboard.total_montant_demande || 0,
+        taux_conversion_pourcent: enhancedDashboard.taux_conversion_pourcent || 0,
+        dossiers_acceptes: enhancedDashboard.dossiers_acceptes || 0
+      };
+    }
+    
+    return {
+      total_prospects: prospects.length,
+      total_active_clients: prospectsActifs.length,
+      nouveaux_clients_30j: prospects.filter(p => {
+        const created = new Date(p.createdAt);
+        const now = new Date();
+        const diffDays = (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24);
+        return diffDays <= 30;
+      }).length,
+      total_montant_demande: 0,
+      taux_conversion_pourcent: 0,
+      dossiers_acceptes: 0
+    };
+  }, [hasEnhancedData, enhancedDashboard, prospects, prospectsActifs]);
 
-  const prospectsData = hasEnhancedData ? enrichedProspects : prospects;
-  const activityData = hasEnhancedData ? recentActivity : [];
-  const objectivesData = hasEnhancedData ? objectives : null;
+  // Données formatées STABLES
+  const prospectsData = useMemo(() => {
+    if (hasEnhancedData && enhancedProspects) {
+      return enhancedProspects.map((p: any) => ({
+        id: p.prospect_id,
+        nom: p.prospect_name || p.company_name,
+        email: p.prospect_email,
+        company_name: p.company_name,
+        status: p.prospect_status,
+        statut: p.prospect_status
+      }));
+    }
+    return prospects;
+  }, [hasEnhancedData, enhancedProspects, prospects]);
+
+  const activityData = useMemo(() => {
+    if (hasEnhancedData && enhancedActivite) {
+      return enhancedActivite.map((activity: any) => {
+        let libelle = '';
+        if (activity.type_activite === 'nouveau_client') {
+          libelle = `Nouveau client : ${activity.client_name || activity.client_company || 'Client'}`;
+        } else if (activity.type_activite === 'nouveau_produit') {
+          const client = activity.client_name || activity.client_company || 'Client';
+          const produit = activity.produit_nom || 'Produit';
+          libelle = `${client} - ${produit}${activity.montant ? ` (${activity.montant.toLocaleString('fr-FR')}€)` : ''}`;
+        } else {
+          libelle = `${activity.client_name || 'Activité'} - ${activity.produit_nom || ''}`;
+        }
+        return {
+          id: activity.source_id,
+          type: activity.type_activite,
+          date: activity.date_activite,
+          montant: activity.montant || 0,
+          libelle: libelle.trim()
+        };
+      });
+    }
+    return [];
+  }, [hasEnhancedData, enhancedActivite]);
+
+  const objectivesData = useMemo(() => {
+    if (hasEnhancedData && enhancedObjectifs) {
+      return {
+        objectifProspects: enhancedObjectifs.objectif_prospects_mois || 0,
+        objectifConversion: enhancedObjectifs.objectif_conversion_pourcent || 0,
+        objectifCommission: enhancedObjectifs.objectif_commission_mois || 0,
+        realisationProspects: enhancedObjectifs.realisation_prospects_mois || 0,
+        realisationConversion: enhancedObjectifs.realisation_conversion_pourcent || 0,
+        realisationCommission: enhancedObjectifs.realisation_commission_mois || 0
+      };
+    }
+    return null;
+  }, [hasEnhancedData, enhancedObjectifs]);
 
   // Charger les stats de conversion au montage pour le KPI
   useEffect(() => {
     if (!apporteurId) return;
+    
+    let isMounted = true; // Prévenir les mises à jour après démontage
     
     const loadConversionStats = async () => {
       try {
@@ -121,25 +182,35 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
           }
         });
         
-        if (response.ok) {
+        if (response.ok && isMounted) {
           const result = await response.json();
           setConversionStats(result.data);
           console.log('✅ Stats conversion chargées:', result.data);
         }
       } catch (error) {
-        console.error('Erreur chargement stats conversion:', error);
+        if (isMounted) {
+          console.error('Erreur chargement stats conversion:', error);
+        }
       } finally {
-        setConversionLoading(false);
+        if (isMounted) {
+          setConversionLoading(false);
+        }
       }
     };
     
     loadConversionStats();
+    
+    return () => {
+      isMounted = false; // Cleanup pour éviter l'erreur #310
+    };
   }, [apporteurId]);
 
   // Charger dossiers quand on clique sur dossiers/montant
   useEffect(() => {
     if (!apporteurId) return;
     if (activeView !== 'dossiers' && activeView !== 'montant') return;
+    
+    let isMounted = true; // Prévenir les mises à jour après démontage
     
     const loadDossiers = async () => {
       try {
@@ -151,23 +222,31 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
           }
         });
         
-        if (response.ok) {
+        if (response.ok && isMounted) {
           const result = await response.json();
           setDossiers(result.data || []);
           console.log(`✅ ${result.data?.length || 0} dossiers chargés`);
         }
       } catch (error) {
-        console.error('Erreur chargement dossiers:', error);
+        if (isMounted) {
+          console.error('Erreur chargement dossiers:', error);
+        }
       } finally {
-        setDossiersLoading(false);
+        if (isMounted) {
+          setDossiersLoading(false);
+        }
       }
     };
     
     loadDossiers();
+    
+    return () => {
+      isMounted = false; // Cleanup pour éviter l'erreur #310
+    };
   }, [activeView, apporteurId]);
 
-  // Tri des dossiers (calcul simple)
-  const getSortedDossiers = () => {
+  // Tri des dossiers STABLE avec useMemo
+  const sortedDossiers = useMemo(() => {
     if (!dossiers || dossiers.length === 0) return [];
     
     const sorted = [...dossiers];
@@ -188,9 +267,7 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
       default:
         return sorted;
     }
-  };
-  
-  const sortedDossiers = getSortedDossiers();
+  }, [dossiers, sortOption]);
 
   return (
     <div className="bg-gradient-to-br from-slate-50 to-blue-50">
