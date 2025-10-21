@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { ApporteurViewsService } from '../services/apporteur-views-service';
 
 /**
@@ -93,15 +93,15 @@ export function useApporteurEnhanced(apporteurId: string | null) {
     fetchData();
   }, [apporteurId]);
 
-  // Méthodes utilitaires pour accéder facilement aux données (simples, pas mémoïsées)
+  // Méthodes utilitaires pour accéder facilement aux données
   const getDashboardData = () => data?.dashboard?.data || null;
   const getProspectsData = () => data?.prospects?.data || [];
   const getActivityData = () => data?.activite?.data || [];
   const getObjectivesData = () => data?.objectifs?.data || null;
   const getPerformanceData = () => data?.performance?.data || [];
 
-  // Statistiques calculées (mémoïsées directement sur data)
-  const stats = useMemo(() => {
+  // Statistiques calculées (calculs directs sans useMemo)
+  const getStats = () => {
     const dashboardData = getDashboardData();
     if (!dashboardData) {
       return {
@@ -122,10 +122,9 @@ export function useApporteurEnhanced(apporteurId: string | null) {
       tauxConversion: dashboardData.taux_conversion_pourcent || 0,
       dossiersAcceptes: dashboardData.dossiers_acceptes || 0
     };
-  }, [data]);
+  };
 
-  // Objectifs et performance (mémoïsés directement sur data)
-  const objectives = useMemo(() => {
+  const getObjectives = () => {
     const objectivesData = getObjectivesData();
     if (!objectivesData) {
       return {
@@ -146,10 +145,9 @@ export function useApporteurEnhanced(apporteurId: string | null) {
       realisationConversion: objectivesData.realisation_conversion_pourcent || 0,
       realisationCommission: objectivesData.realisation_commission_mois || 0
     };
-  }, [data]);
+  };
 
-  // Performance par produit (mémoïsée directement sur data)
-  const productPerformance = useMemo(() => {
+  const getProductPerformance = () => {
     return getPerformanceData().map((product: any) => ({
       produitId: product.produit_id,
       produitNom: product.produit_nom,
@@ -158,12 +156,10 @@ export function useApporteurEnhanced(apporteurId: string | null) {
       montantMoyen: product.montant_moyen_demande || 0,
       montantAccepte: product.montant_accepte || 0
     }));
-  }, [data]);
+  };
 
-  // Activité récente formatée (mémoïsée directement sur data)
-  const recentActivity = useMemo(() => {
+  const getRecentActivity = () => {
     return getActivityData().map((activity: any) => {
-      // Construire le libelle selon le type d'activité
       let libelle = '';
       
       if (activity.type_activite === 'nouveau_client') {
@@ -187,10 +183,9 @@ export function useApporteurEnhanced(apporteurId: string | null) {
         produit_nom: activity.produit_nom
       };
     });
-  }, [data]);
+  };
 
-  // Prospects avec informations enrichies (mémoïsés directement sur data)
-  const enrichedProspects = useMemo(() => {
+  const getEnrichedProspects = () => {
     return getProspectsData().map((prospect: any) => ({
       id: prospect.prospect_id,
       nom: prospect.prospect_name || prospect.company_name,
@@ -202,7 +197,14 @@ export function useApporteurEnhanced(apporteurId: string | null) {
       dateCreation: prospect.date_creation,
       anciennete: prospect.anciennete || 'Nouveau'
     }));
-  }, [data]);
+  };
+
+  // Valeurs calculées
+  const stats = getStats();
+  const objectives = getObjectives();
+  const productPerformance = getProductPerformance();
+  const recentActivity = getRecentActivity();
+  const enrichedProspects = getEnrichedProspects();
 
   return {
     // État principal
