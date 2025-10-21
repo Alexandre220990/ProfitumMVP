@@ -195,9 +195,9 @@ app.use('/api/auth', publicRouteLogger, authRoutes);
 app.use('/api/partners', publicRouteLogger, partnersRouter);
 
 // 🚀 ROUTES DU SIMULATEUR - PUBLIQUES (mode anonyme pur)
-// /simulateur → utilisateurs NON connectés uniquement
-// /simulateur-client → utilisateurs connectés (route séparée)
-app.use('/api/simulator', publicRouteLogger, simulatorRoutes);
+// /simulateur → utilisateurs NON connectés ET connectés (détection automatique)
+// Le middleware optionalAuthMiddleware vérifie le token mais n'impose pas l'authentification
+app.use('/api/simulator', publicRouteLogger, optionalAuthMiddleware, simulatorRoutes);
 
 // 🔄 ROUTES DE MIGRATION DES SESSIONS - PUBLIQUES (pas d'authentification requise)
 app.use('/api/session-migration', publicRouteLogger, sessionMigrationRoutes);

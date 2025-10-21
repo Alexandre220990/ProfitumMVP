@@ -141,65 +141,138 @@ setInterval(cleanupExpiredSessions, 60 * 60 * 1000);
 
 /**
  * POST /api/simulator/session
- * Crée une nouvelle session de simulation avec client temporaire
- * MODE ANONYME uniquement - Pour /simulateur (public)
+ * Crée une nouvelle session de simulation
+ * MODE HYBRIDE : Détecte automatiquement si l'utilisateur est connecté
+ * - Si authentifié : crée une session liée au client réel
+ * - Si anonyme : crée une session avec client temporaire
  */
 router.post('/session', async (req, res) => {
   try {
-    console.log('🔄 Création session simulateur PUBLIC (mode anonyme uniquement)...');
-    
     const sessionToken = uuidv4();
     const ipAddress = req.ip || req.connection.remoteAddress || 'unknown';
     const userAgent = req.get('User-Agent') || 'unknown';
     const clientData: ClientData = req.body.client_data || {};
+    
+    // Vérifier si l'utilisateur est authentifié (via optionalAuthMiddleware)
+    const authenticatedUser = (req as any).user;
+    const isAuthenticated = !!authenticatedUser;
+    
+    if (isAuthenticated) {
+      // ========================================
+      // MODE AUTHENTIFIÉ : Client connecté
+      // ========================================
+      console.log('🔐 Création session simulateur AUTHENTIFIÉ pour client:', authenticatedUser.email);
+      
+      const clientId = authenticatedUser.database_id;
+      
+      console.log(`📝 Données de session authentifiée:`, {
+        sessionToken: sessionToken.substring(0, 8) + '...',
+        clientId,
+        email: authenticatedUser.email,
+        ipAddress,
+        authenticated: true
+      });
+      
+      // Créer la simulation directement liée au client authentifié
+      const { data: newSimulation, error: simError } = await supabaseClient
+        .from('simulations')
+        .insert({
+          session_token: sessionToken,
+          client_id: clientId,
+          status: 'pending',
+          answers: {},
+          metadata: {
+            ip_address: ipAddress,
+            user_agent: userAgent,
+            authenticated: true,
+            client_email: authenticatedUser.email,
+            created_via: 'simulateur-client'
+          },
+          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24h
+        })
+        .select()
+        .single();
+      
+      if (simError || !newSimulation) {
+        console.error('❌ Erreur création simulation authentifiée:', simError);
+        return res.status(500).json({
+          success: false,
+          error: 'Erreur lors de la création de session',
+          details: simError?.message
+        });
+      }
+      
+      console.log('✅ Session authentifiée créée:', {
+        sessionToken: sessionToken.substring(0, 8) + '...',
+        clientId,
+        simulationId: newSimulation.id,
+        authenticated: true
+      });
+      
+      return res.json({
+        success: true,
+        session_token: sessionToken,
+        client_id: clientId,
+        simulation_id: newSimulation.id,
+        expires_at: newSimulation.expires_at,
+        authenticated: true,
+        message: 'Session créée pour client authentifié'
+      });
+      
+    } else {
+      // ========================================
+      // MODE ANONYME : Utilisateur non connecté
+      // ========================================
+      console.log('🔄 Création session simulateur PUBLIC (mode anonyme)...');
+      
+      console.log(`📝 Données de session:`, {
+        sessionToken: sessionToken.substring(0, 8) + '...',
+        ipAddress,
+        userAgent: userAgent.substring(0, 50) + '...',
+        hasClientData: Object.keys(clientData).length > 0,
+        authenticated: false
+      });
 
-    console.log(`📝 Données de session:`, {
-      sessionToken: sessionToken.substring(0, 8) + '...',
-      ipAddress,
-      userAgent: userAgent.substring(0, 50) + '...',
-      hasClientData: Object.keys(clientData).length > 0,
-      authenticated: false
-    });
+      // Préparer les données client avec IP et User-Agent
+      const enrichedClientData = {
+        ...clientData,
+        ip_address: ipAddress,
+        user_agent: userAgent
+      };
 
-    // Préparer les données client avec IP et User-Agent
-    const enrichedClientData = {
-      ...clientData,
-      ip_address: ipAddress,
-      user_agent: userAgent
-    };
+      // Créer la simulation avec client temporaire
+      const { data, error } = await supabaseClient.rpc('create_simulation_with_temporary_client', {
+        p_session_token: sessionToken,
+        p_client_data: enrichedClientData
+      });
 
-    // Créer la simulation avec client temporaire
-    const { data, error } = await supabaseClient.rpc('create_simulation_with_temporary_client', {
-      p_session_token: sessionToken,
-      p_client_data: enrichedClientData
-    });
+      if (error) {
+        console.error('❌ Erreur lors de la création de session:', error);
+        return res.status(500).json({
+          success: false,
+          error: 'Erreur lors de la création de session',
+          details: error.message
+        });
+      }
 
-    if (error) {
-      console.error('❌ Erreur lors de la création de session:', error);
-      return res.status(500).json({
-        success: false,
-        error: 'Erreur lors de la création de session',
-        details: error.message
+      console.log('✅ Session anonyme créée avec client temporaire:', {
+        sessionToken: sessionToken.substring(0, 8) + '...',
+        clientId: data.client_id,
+        simulationId: data.simulation_id,
+        expiresAt: data.expires_at,
+        authenticated: false
+      });
+
+      return res.json({
+        success: true,
+        session_token: sessionToken,
+        client_id: data.client_id,
+        simulation_id: data.simulation_id,
+        expires_at: data.expires_at,
+        authenticated: false,
+        message: 'Session créée avec client temporaire automatique'
       });
     }
-
-    console.log('✅ Session anonyme créée avec client temporaire:', {
-      sessionToken: sessionToken.substring(0, 8) + '...',
-      clientId: data.client_id,
-      simulationId: data.simulation_id,
-      expiresAt: data.expires_at,
-      authenticated: false
-    });
-
-    return res.json({
-      success: true,
-      session_token: sessionToken,
-      client_id: data.client_id,
-      simulation_id: data.simulation_id,
-      expires_at: data.expires_at,
-      authenticated: false,
-      message: 'Session créée avec client temporaire automatique'
-    });
   } catch (error) {
     console.error('❌ Erreur inattendue lors de la création de session:', error);
     return res.status(500).json({

@@ -410,11 +410,15 @@ export default function DashboardClient() {
 
   const handleSimulation = useCallback(async () => {
     try {
+      // Récupérer le token d'authentification
+      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      
       // Vérifier si l'utilisateur peut faire une nouvelle simulation
       const response = await fetch(`${config.API_URL}/api/client/simulation/status`, {
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` })
         }
       });
       
