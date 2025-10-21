@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useApporteurEnhanced } from '../../hooks/use-apporteur-enhanced';
+import { ApporteurViewsService } from '../../services/apporteur-views-service';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -16,23 +16,67 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
   const navigate = useNavigate();
   const [showProspectForm, setShowProspectForm] = useState(false);
   const [activeView, setActiveView] = useState<'clients' | 'prospects' | 'dossiers' | 'montant' | 'conversion'>('prospects');
+  const [sortOption, setSortOption] = useState<'date_desc' | 'date_asc' | 'alpha_az' | 'alpha_za' | 'montant_desc' | 'montant_asc'>('date_desc');
+  
+  // États pour les données principales
+  const [dashboard, setDashboard] = useState<any>(null);
+  const [rawProspects, setRawProspects] = useState<any[]>([]);
+  const [objectifs, setObjectifs] = useState<any>(null);
+  const [activite, setActivite] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  // États pour les données secondaires
   const [dossiers, setDossiers] = useState<any[]>([]);
   const [dossiersLoading, setDossiersLoading] = useState(false);
   const [conversionStats, setConversionStats] = useState<any>(null);
   const [conversionLoading, setConversionLoading] = useState(false);
-  const [sortOption, setSortOption] = useState<'date_desc' | 'date_asc' | 'alpha_az' | 'alpha_za' | 'montant_desc' | 'montant_asc'>('date_desc');
+  const [refreshKey, setRefreshKey] = useState(0);
   
-  // Utilisation UNIQUE du hook enrichi (suppression du hook simple)
-  const { 
-    dashboard,
-    prospects: rawProspects,
-    objectifs,
-    activite,
-    loading, 
-    error, 
-    refresh,
-    hasEnhancedData
-  } = useApporteurEnhanced(apporteurId);
+  // Fonction refresh simple
+  const refresh = () => setRefreshKey(prev => prev + 1);
+  
+  // Charger les données principales UNE SEULE FOIS au montage ou refresh
+  useEffect(() => {
+    if (!apporteurId) return;
+    
+    let isMounted = true;
+    
+    const loadMainData = async () => {
+      setLoading(true);
+      setError(null);
+      
+      try {
+        const service = new ApporteurViewsService();
+        const [dashboardRes, prospectsRes, objectifsRes, activiteRes] = await Promise.all([
+          service.getDashboardPrincipal(),
+          service.getProspectsDetaille(),
+          service.getObjectifsPerformance(),
+          service.getActiviteRecente()
+        ]);
+        
+        if (isMounted) {
+          setDashboard(dashboardRes?.data || null);
+          setRawProspects(prospectsRes?.data || []);
+          setObjectifs(objectifsRes?.data || null);
+          setActivite(activiteRes?.data || []);
+        }
+      } catch (err) {
+        if (isMounted) {
+          setError(err instanceof Error ? err.message : 'Erreur de chargement');
+          console.error('Erreur chargement dashboard:', err);
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+    
+    loadMainData();
+    
+    return () => { isMounted = false; };
+  }, [apporteurId, refreshKey]);
 
   if (loading) {
     return (
@@ -56,7 +100,7 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
     );
   }
 
-  // Utiliser directement les données du hook enhanced
+  // Données formatées - calculs purs sans dépendances
   const dashboardData = dashboard || {
     total_prospects: 0,
     total_active_clients: 0,
@@ -66,18 +110,17 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
     dossiers_acceptes: 0
   };
 
-  // Formater les prospects
-  const prospectsData = rawProspects.map((p: any) => ({
+  const prospectsData = (rawProspects || []).map((p: any) => ({
     id: p.prospect_id || p.id,
     nom: p.prospect_name || p.company_name,
     name: p.prospect_name || p.company_name,
     email: p.prospect_email || p.email,
     company_name: p.company_name,
     status: p.prospect_status || 'prospect',
-    statut: p.prospect_status || 'prospect'
+    statut: p.prospect_status || 'prospect',
+    qualification_score: p.qualification_score
   }));
 
-  // Formater l'activité
   const activityData = (activite || []).map((activity: any) => {
     let libelle = '';
     if (activity.type_activite === 'nouveau_client') {
@@ -98,7 +141,6 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
     };
   });
 
-  // Formater les objectifs
   const objectivesData = objectifs ? {
     objectifProspects: objectifs.objectif_prospects_mois || 0,
     objectifConversion: objectifs.objectif_conversion_pourcent || 0,
@@ -107,16 +149,18 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
     realisationConversion: objectifs.realisation_conversion_pourcent || 0,
     realisationCommission: objectifs.realisation_commission_mois || 0
   } : null;
+  
+  const hasEnhancedData = !!(dashboard && rawProspects.length > 0);
 
-  // Charger les stats de conversion au montage pour le KPI
+  // Charger les stats de conversion UNE SEULE FOIS
   useEffect(() => {
     if (!apporteurId) return;
     
-    let isMounted = true; // Prévenir les mises à jour après démontage
+    let isMounted = true;
     
     const loadConversionStats = async () => {
+      setConversionLoading(true);
       try {
-        setConversionLoading(true);
         const response = await fetch(`${config.API_URL}/api/apporteur/conversion-stats`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -127,11 +171,10 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
         if (response.ok && isMounted) {
           const result = await response.json();
           setConversionStats(result.data);
-          console.log('✅ Stats conversion chargées:', result.data);
         }
       } catch (error) {
         if (isMounted) {
-          console.error('Erreur chargement stats conversion:', error);
+          console.error('Erreur stats conversion:', error);
         }
       } finally {
         if (isMounted) {
@@ -142,21 +185,21 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
     
     loadConversionStats();
     
-    return () => {
-      isMounted = false; // Cleanup pour éviter l'erreur #310
-    };
-  }, [apporteurId]);
+    return () => { isMounted = false; };
+  }, [apporteurId, refreshKey]);
 
-  // Charger dossiers quand on clique sur dossiers/montant
+  // Charger dossiers UNIQUEMENT quand nécessaire
   useEffect(() => {
     if (!apporteurId) return;
-    if (activeView !== 'dossiers' && activeView !== 'montant') return;
+    if (activeView !== 'dossiers' && activeView !== 'montant') {
+      return;
+    }
     
-    let isMounted = true; // Prévenir les mises à jour après démontage
+    let isMounted = true;
     
     const loadDossiers = async () => {
+      setDossiersLoading(true);
       try {
-        setDossiersLoading(true);
         const response = await fetch(`${config.API_URL}/api/apporteur/dossiers`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -167,11 +210,10 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
         if (response.ok && isMounted) {
           const result = await response.json();
           setDossiers(result.data || []);
-          console.log(`✅ ${result.data?.length || 0} dossiers chargés`);
         }
       } catch (error) {
         if (isMounted) {
-          console.error('Erreur chargement dossiers:', error);
+          console.error('Erreur dossiers:', error);
         }
       } finally {
         if (isMounted) {
@@ -182,13 +224,11 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
     
     loadDossiers();
     
-    return () => {
-      isMounted = false; // Cleanup pour éviter l'erreur #310
-    };
-  }, [activeView, apporteurId]);
+    return () => { isMounted = false; };
+  }, [activeView, apporteurId, refreshKey]);
 
-  // Tri des dossiers SIMPLE (sans useMemo pour debug)
-  const getSortedDossiers = () => {
+  // Tri des dossiers - fonction pure sans state
+  const sortedDossiers = (() => {
     if (!dossiers || dossiers.length === 0) return [];
     const sorted = [...dossiers];
     
@@ -208,9 +248,7 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
       default:
         return sorted;
     }
-  };
-  
-  const sortedDossiers = getSortedDossiers();
+  })();
 
   return (
     <div className="bg-gradient-to-br from-slate-50 to-blue-50">
