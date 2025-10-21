@@ -1,6 +1,5 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useApporteurSimple } from '../../hooks/use-apporteur-simple';
 import { useApporteurEnhanced } from '../../hooks/use-apporteur-enhanced';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
@@ -23,37 +22,17 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
   const [conversionLoading, setConversionLoading] = useState(false);
   const [sortOption, setSortOption] = useState<'date_desc' | 'date_asc' | 'alpha_az' | 'alpha_za' | 'montant_desc' | 'montant_asc'>('date_desc');
   
-  // Hook pour les données de base (fallback)
+  // Utilisation UNIQUE du hook enrichi (suppression du hook simple)
   const { 
-    analytics, 
-    loading: basicLoading, 
-    error: basicError, 
-    refresh: refreshBasic
-  } = useApporteurSimple(apporteurId);
-
-  // Hook pour les données enrichies depuis les vues SQL (SIMPLIFIÉ)
-  const {
-    dashboard: enhancedDashboard,
-    prospects: enhancedProspects,
-    objectifs: enhancedObjectifs,
-    activite: enhancedActivite,
-    loading: enhancedLoading,
-    error: enhancedError,
-    refresh: refreshEnhanced,
-    hasEnhancedData,
-    isLoading,
-    hasError
+    dashboard,
+    prospects: rawProspects,
+    objectifs,
+    activite,
+    loading, 
+    error, 
+    refresh,
+    hasEnhancedData
   } = useApporteurEnhanced(apporteurId);
-
-  // Utiliser les données enrichies si disponibles, sinon fallback sur les données de base
-  const loading = isLoading || basicLoading;
-  const error = hasError ? enhancedError : basicError;
-  
-  // Fonction refresh stable avec useCallback
-  const refresh = useCallback(() => {
-    refreshEnhanced();
-    refreshBasic();
-  }, [refreshEnhanced, refreshBasic]);
 
   if (loading) {
     return (
@@ -77,94 +56,57 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
     );
   }
 
-  // Calculs STABLES avec useMemo pour éviter les re-rendus inutiles
-  const prospects = useMemo(() => analytics.prospects || [], [analytics.prospects]);
-  const prospectsActifs = useMemo(
-    () => prospects.filter(prospect => prospect.statutActivite === 'active'),
-    [prospects]
-  );
+  // Utiliser directement les données du hook enhanced
+  const dashboardData = dashboard || {
+    total_prospects: 0,
+    total_active_clients: 0,
+    nouveaux_clients_30j: 0,
+    total_montant_demande: 0,
+    taux_conversion_pourcent: 0,
+    dossiers_acceptes: 0
+  };
 
-  // Dashboard data STABLE (ne change que si les données sources changent)
-  const dashboardData = useMemo(() => {
-    if (hasEnhancedData && enhancedDashboard) {
-      return {
-        total_prospects: enhancedDashboard.total_prospects || 0,
-        total_active_clients: enhancedDashboard.total_active_clients || 0,
-        nouveaux_clients_30j: enhancedDashboard.nouveaux_clients_30j || 0,
-        total_montant_demande: enhancedDashboard.total_montant_demande || 0,
-        taux_conversion_pourcent: enhancedDashboard.taux_conversion_pourcent || 0,
-        dossiers_acceptes: enhancedDashboard.dossiers_acceptes || 0
-      };
+  // Formater les prospects
+  const prospectsData = rawProspects.map((p: any) => ({
+    id: p.prospect_id || p.id,
+    nom: p.prospect_name || p.company_name,
+    name: p.prospect_name || p.company_name,
+    email: p.prospect_email || p.email,
+    company_name: p.company_name,
+    status: p.prospect_status || 'prospect',
+    statut: p.prospect_status || 'prospect'
+  }));
+
+  // Formater l'activité
+  const activityData = (activite || []).map((activity: any) => {
+    let libelle = '';
+    if (activity.type_activite === 'nouveau_client') {
+      libelle = `Nouveau client : ${activity.client_name || activity.client_company || 'Client'}`;
+    } else if (activity.type_activite === 'nouveau_produit') {
+      const client = activity.client_name || activity.client_company || 'Client';
+      const produit = activity.produit_nom || 'Produit';
+      libelle = `${client} - ${produit}${activity.montant ? ` (${activity.montant.toLocaleString('fr-FR')}€)` : ''}`;
+    } else {
+      libelle = `${activity.client_name || 'Activité'} - ${activity.produit_nom || ''}`;
     }
-    
     return {
-      total_prospects: prospects.length,
-      total_active_clients: prospectsActifs.length,
-      nouveaux_clients_30j: prospects.filter(p => {
-        const created = new Date(p.createdAt);
-        const now = new Date();
-        const diffDays = (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24);
-        return diffDays <= 30;
-      }).length,
-      total_montant_demande: 0,
-      taux_conversion_pourcent: 0,
-      dossiers_acceptes: 0
+      id: activity.source_id,
+      type: activity.type_activite,
+      date: activity.date_activite,
+      montant: activity.montant || 0,
+      libelle: libelle.trim()
     };
-  }, [hasEnhancedData, enhancedDashboard, prospects, prospectsActifs]);
+  });
 
-  // Données formatées STABLES
-  const prospectsData = useMemo(() => {
-    if (hasEnhancedData && enhancedProspects) {
-      return enhancedProspects.map((p: any) => ({
-        id: p.prospect_id,
-        nom: p.prospect_name || p.company_name,
-        email: p.prospect_email,
-        company_name: p.company_name,
-        status: p.prospect_status,
-        statut: p.prospect_status
-      }));
-    }
-    return prospects;
-  }, [hasEnhancedData, enhancedProspects, prospects]);
-
-  const activityData = useMemo(() => {
-    if (hasEnhancedData && enhancedActivite) {
-      return enhancedActivite.map((activity: any) => {
-        let libelle = '';
-        if (activity.type_activite === 'nouveau_client') {
-          libelle = `Nouveau client : ${activity.client_name || activity.client_company || 'Client'}`;
-        } else if (activity.type_activite === 'nouveau_produit') {
-          const client = activity.client_name || activity.client_company || 'Client';
-          const produit = activity.produit_nom || 'Produit';
-          libelle = `${client} - ${produit}${activity.montant ? ` (${activity.montant.toLocaleString('fr-FR')}€)` : ''}`;
-        } else {
-          libelle = `${activity.client_name || 'Activité'} - ${activity.produit_nom || ''}`;
-        }
-        return {
-          id: activity.source_id,
-          type: activity.type_activite,
-          date: activity.date_activite,
-          montant: activity.montant || 0,
-          libelle: libelle.trim()
-        };
-      });
-    }
-    return [];
-  }, [hasEnhancedData, enhancedActivite]);
-
-  const objectivesData = useMemo(() => {
-    if (hasEnhancedData && enhancedObjectifs) {
-      return {
-        objectifProspects: enhancedObjectifs.objectif_prospects_mois || 0,
-        objectifConversion: enhancedObjectifs.objectif_conversion_pourcent || 0,
-        objectifCommission: enhancedObjectifs.objectif_commission_mois || 0,
-        realisationProspects: enhancedObjectifs.realisation_prospects_mois || 0,
-        realisationConversion: enhancedObjectifs.realisation_conversion_pourcent || 0,
-        realisationCommission: enhancedObjectifs.realisation_commission_mois || 0
-      };
-    }
-    return null;
-  }, [hasEnhancedData, enhancedObjectifs]);
+  // Formater les objectifs
+  const objectivesData = objectifs ? {
+    objectifProspects: objectifs.objectif_prospects_mois || 0,
+    objectifConversion: objectifs.objectif_conversion_pourcent || 0,
+    objectifCommission: objectifs.objectif_commission_mois || 0,
+    realisationProspects: objectifs.realisation_prospects_mois || 0,
+    realisationConversion: objectifs.realisation_conversion_pourcent || 0,
+    realisationCommission: objectifs.realisation_commission_mois || 0
+  } : null;
 
   // Charger les stats de conversion au montage pour le KPI
   useEffect(() => {
@@ -245,10 +187,9 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
     };
   }, [activeView, apporteurId]);
 
-  // Tri des dossiers STABLE avec useMemo
-  const sortedDossiers = useMemo(() => {
+  // Tri des dossiers SIMPLE (sans useMemo pour debug)
+  const getSortedDossiers = () => {
     if (!dossiers || dossiers.length === 0) return [];
-    
     const sorted = [...dossiers];
     
     switch (sortOption) {
@@ -267,7 +208,9 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
       default:
         return sorted;
     }
-  }, [dossiers, sortOption]);
+  };
+  
+  const sortedDossiers = getSortedDossiers();
 
   return (
     <div className="bg-gradient-to-br from-slate-50 to-blue-50">
@@ -774,7 +717,7 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
                     ? 'Vues SQL enrichies actives'
                     : 'Prêt pour les vues SQL enrichies'
                   }
-                  {enhancedLoading && " Chargement..."}
+                  {loading && " Chargement..."}
                 </p>
               </div>
             </CardContent>
