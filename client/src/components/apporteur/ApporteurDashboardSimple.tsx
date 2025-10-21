@@ -28,8 +28,7 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
     analytics, 
     loading: basicLoading, 
     error: basicError, 
-    refresh: refreshBasic,
-    getProspectsByStatus
+    refresh: refreshBasic
   } = useApporteurSimple(apporteurId);
 
   // Hook pour les données enrichies depuis les vues SQL
