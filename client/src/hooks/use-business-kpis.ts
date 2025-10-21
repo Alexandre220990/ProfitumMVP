@@ -259,13 +259,15 @@ export const useBusinessKPIs = () => {
 
   useEffect(() => {
     loadAllData();
-  }, [loadAllData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (businessKPIs) {
       loadUserData();
     }
-  }, [businessKPIs, loadUserData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [businessKPIs]);
 
   // ===== ACTIONS =====
   

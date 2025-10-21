@@ -351,7 +351,8 @@ export function useGED() {
   useEffect(() => { 
     loadDocuments();
     loadLabels(); 
-  }, [loadDocuments, loadLabels]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return { 
     // État

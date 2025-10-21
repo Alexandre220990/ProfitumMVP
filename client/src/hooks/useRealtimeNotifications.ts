@@ -220,7 +220,8 @@ export function useRealtimeNotifications(): UseRealtimeNotificationsReturn {
       }
       setIsConnected(false);
     };
-  }, [user?.id, loadNotifications]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   /**
    * Marquer une notification comme lue

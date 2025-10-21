@@ -246,7 +246,8 @@ export const useExpert = () => {
     return () => {
       controller.abort();
     };
-  }, [loadExpertData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   return {
     // Données

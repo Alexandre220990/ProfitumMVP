@@ -111,7 +111,8 @@ export const useClientProducts = (): UseClientProductsReturn => {
 
   useEffect(() => {
     fetchProducts();
-  }, [fetchProducts]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   // Calculs dérivés
   const eligibleProducts = produits.filter(p => p.statut === 'eligible').length;

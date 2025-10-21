@@ -102,7 +102,8 @@ export function useGEDFavorites() {
   // Charger les favoris au montage
   useEffect(() => {
     loadFavorites();
-  }, [loadFavorites]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return {
     favorites,

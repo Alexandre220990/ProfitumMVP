@@ -700,7 +700,8 @@ export function useDocuments(userType: 'client' | 'expert' | 'apporteur' | 'admi
     loadDocuments();
     loadFolders();
     loadStats();
-  }, [loadDocuments, loadFolders, loadStats]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   
   return {
     // Data

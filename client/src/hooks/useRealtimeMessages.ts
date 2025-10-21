@@ -211,7 +211,8 @@ export function useRealtimeMessages(
       }
       setIsConnected(false);
     };
-  }, [conversationId, user, autoConnect, loadMessages]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversationId, user, autoConnect]);
 
   /**
    * Envoyer un nouveau message

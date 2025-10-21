@@ -129,7 +129,8 @@ export const useDossierSteps = (dossierId?: string): UseDossierStepsReturn => {
   // Charger les étapes au montage et quand dossierId change
   useEffect(() => {
     fetchSteps();
-  }, [fetchSteps]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dossierId]);
 
   return {
     steps,

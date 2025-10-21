@@ -334,7 +334,8 @@ export const useBusinessPipeline = (options: UseBusinessPipelineOptions = {}) =>
       const interval = setInterval(loadPipelineData, refreshInterval);
       return () => clearInterval(interval);
     }
-  }, [loadPipelineData, autoRefresh, refreshInterval]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoRefresh, refreshInterval]);
 
   // ===== FONCTIONS UTILITAIRES =====
 

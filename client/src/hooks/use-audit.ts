@@ -153,7 +153,8 @@ export function useAudits(clientId?: string) {
     } catch (error) {
       console.error('Erreur lors de la récupération des données: ', error);
     }
-  }, [fetchAuditsData, checkRecentSimulationStatus]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   useEffect(() => {
     if (user) {

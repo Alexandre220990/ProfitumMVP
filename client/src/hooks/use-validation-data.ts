@@ -302,7 +302,8 @@ export const useValidationData = (options: UseValidationDataOptions = {}): UseVa
 
   useEffect(() => {
     loadValidationItems();
-  }, [loadValidationItems]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!autoRefresh) return;

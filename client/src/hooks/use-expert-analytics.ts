@@ -419,7 +419,8 @@ export const useExpertAnalytics = (filters: ExpertAnalyticsFilters = { timeRange
     return () => {
       controller.abort();
     };
-  }, [loadData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.timeRange]);
 
   return {
     data,

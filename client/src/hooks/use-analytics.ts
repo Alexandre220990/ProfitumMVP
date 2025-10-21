@@ -128,7 +128,8 @@ export const useAnalytics = (initialFilters: AnalyticsFilters = { timeRange: '30
   // Charger les données au montage et quand les filtres changent
   useEffect(() => {
     loadData();
-  }, [loadData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters]);
 
   // Nettoyer le monitoring temps réel au démontage
   useEffect(() => {
