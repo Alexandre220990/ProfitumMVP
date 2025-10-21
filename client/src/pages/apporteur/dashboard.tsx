@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from 'react';
+import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ApporteurDashboardSimple } from '../../components/apporteur/ApporteurDashboardSimple';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
@@ -7,27 +7,19 @@ import { RefreshCw, AlertTriangle, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../hooks/use-auth';
 
 /**
- * Page Dashboard Apporteur Optimisée
- * Utilise le contexte d'authentification pour récupérer l'ID apporteur
- * Gestion d'erreurs avancée et interface utilisateur améliorée
+ * Page Dashboard Apporteur - Architecture identique au dashboard client
  */
 export default function ApporteurDashboardPage() {
   const navigate = useNavigate();
   const { user, isLoading } = useAuth();
   
-  // FIXER l'ID une fois pour toutes avec useRef - NE JAMAIS LE CHANGER
-  const apporteurIdRef = useRef<string | null>(null);
-  const [apporteurIdFixed, setApporteurIdFixed] = useState<string | null>(null);
-  
-  useEffect(() => {
-    if (user?.id && !apporteurIdRef.current) {
-      apporteurIdRef.current = user.id;
-      setApporteurIdFixed(user.id);
-      console.log('✅ ApporteurId fixé pour toujours:', user.id);
-    }
-  }, [user?.id]);
-  
-  const apporteurId = apporteurIdFixed;
+  // Récupérer l'ID directement comme le dashboard client
+  const apporteurId = user?.id;
+
+  // Fonctions de navigation avec useCallback comme dashboard client
+  const handleNavigation = useCallback((path: string) => {
+    navigate(path);
+  }, [navigate]);
 
   // État de chargement
   if (isLoading) {
@@ -66,7 +58,7 @@ export default function ApporteurDashboardPage() {
             
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Button 
-                onClick={() => navigate('/apporteur/login')}
+                onClick={() => handleNavigation('/apporteur/login')}
                 className="flex items-center gap-2"
               >
                 <ArrowLeft className="h-4 w-4" />

@@ -1,12 +1,11 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ApporteurViewsService } from '../../services/apporteur-views-service';
+import { useApporteurData } from '../../hooks/use-apporteur-data';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { RefreshCw, AlertTriangle, Users, TrendingUp, DollarSign, BarChart3, Target, Award, Activity, Eye, ArrowUpDown } from 'lucide-react';
 import ProspectForm from './ProspectForm';
-import { config } from '@/config';
 
 interface ApporteurDashboardSimpleProps {
   apporteurId: string;
@@ -14,100 +13,31 @@ interface ApporteurDashboardSimpleProps {
 
 export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimpleProps) {
   const navigate = useNavigate();
-  
-  // États UI simples
   const [showProspectForm, setShowProspectForm] = useState(false);
   const [activeView, setActiveView] = useState<'clients' | 'prospects' | 'dossiers' | 'montant' | 'conversion'>('prospects');
   const [sortOption, setSortOption] = useState<'date_desc' | 'date_asc' | 'alpha_az' | 'alpha_za' | 'montant_desc' | 'montant_asc'>('date_desc');
   
-  // États pour les données principales - initialisés avec des valeurs par défaut
-  const [dashboard, setDashboard] = useState<any>(null);
-  const [rawProspects, setRawProspects] = useState<any[]>([]);
-  const [objectifs, setObjectifs] = useState<any>(null);
-  const [activite, setActivite] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true); // Démarrer en loading
-  const [error, setError] = useState<string | null>(null);
-  
-  // États pour les données secondaires
-  const [dossiers, setDossiers] = useState<any[]>([]);
-  const [dossiersLoading, setDossiersLoading] = useState(false);
-  const [conversionStats, setConversionStats] = useState<any>(null);
-  const [conversionLoading, setConversionLoading] = useState(false);
-  
-  // Compteur de refresh - référence stable
-  const refreshKeyRef = useRef(0);
-  const refresh = () => {
-    refreshKeyRef.current += 1;
-    // Forcer un re-fetch en mettant loading à true
-    setLoading(true);
-  };
-  
-  // Protection absolue contre les doubles chargements
-  const hasInitializedRef = useRef(false);
-  const isLoadingMainRef = useRef(false);
-  const isLoadingConversionRef = useRef(false);
-  const isLoadingDossiersRef = useRef(false);
-  
-  // Charger les données principales UNE SEULE FOIS - JAMAIS PLUS
-  useEffect(() => {
-    // Ne charger QU'UNE SEULE FOIS au premier montage
-    if (hasInitializedRef.current) {
-      console.log('⚠️ Déjà initialisé, ignoré');
-      return;
-    }
-    
-    if (!apporteurId) {
-      console.log('⚠️ Pas d\'apporteurId, attente...');
-      return;
-    }
-    
-    // Marquer comme initialisé IMMÉDIATEMENT
-    hasInitializedRef.current = true;
-    console.log('🚀 Initialisation du dashboard pour:', apporteurId);
-    
-    let isMounted = true;
-    
-    const loadMainData = async () => {
-      isLoadingMainRef.current = true;
-      
-      try {
-        const service = new ApporteurViewsService();
-        const [dashboardRes, prospectsRes, objectifsRes, activiteRes] = await Promise.all([
-          service.getDashboardPrincipal(),
-          service.getProspectsDetaille(),
-          service.getObjectifsPerformance(),
-          service.getActiviteRecente()
-        ]);
-        
-        if (isMounted) {
-          console.log('✅ Données chargées avec succès');
-          setDashboard(dashboardRes?.data || null);
-          setRawProspects(prospectsRes?.data || []);
-          setObjectifs(objectifsRes?.data || null);
-          setActivite(activiteRes?.data || []);
-          setError(null);
-        }
-      } catch (err) {
-        if (isMounted) {
-          const errorMessage = err instanceof Error ? err.message : 'Erreur de chargement';
-          setError(errorMessage);
-          console.error('❌ Erreur chargement dashboard:', err);
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-          isLoadingMainRef.current = false;
-        }
-      }
-    };
-    
-    loadMainData();
-    
-    return () => { 
-      isMounted = false;
-    };
-  }, [apporteurId]); // SEULEMENT apporteurId, pas de refreshKey
+  // Hook principal - Architecture identique au dashboard client
+  const { data, loading, error, refresh, loadDossiers } = useApporteurData(apporteurId);
 
+  // Charger les dossiers quand on clique sur la vue dossiers/montant
+  useEffect(() => {
+    if ((activeView === 'dossiers' || activeView === 'montant') && data && data.dossiers.length === 0) {
+      loadDossiers();
+    }
+  }, [activeView, data, loadDossiers]);
+
+  // Fonctions de navigation avec useCallback
+  const handleRefresh = useCallback(() => {
+    refresh();
+  }, [refresh]);
+
+  const handleProspectSuccess = useCallback(() => {
+    setShowProspectForm(false);
+    refresh();
+  }, [refresh]);
+
+  // État de chargement
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -117,12 +47,13 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
     );
   }
 
+  // État d'erreur
   if (error) {
     return (
       <div className="flex items-center justify-center h-64">
         <AlertTriangle className="h-8 w-8 text-red-500" />
         <span className="ml-2 text-red-500">Erreur: {error}</span>
-        <Button onClick={refresh} className="ml-4">
+        <Button onClick={handleRefresh} className="ml-4">
           <RefreshCw className="h-4 w-4 mr-2" />
           Réessayer
         </Button>
@@ -130,76 +61,57 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
     );
   }
 
-  // Données formatées - MÉMORISÉES pour éviter les re-rendus
-  const dashboardData = useMemo(() => dashboard || {
+  // Données formatées - Calculs simples sans useMemo
+  const dashboardData = data?.dashboard || {
     total_prospects: 0,
     total_active_clients: 0,
     nouveaux_clients_30j: 0,
     total_montant_demande: 0,
     taux_conversion_pourcent: 0,
     dossiers_acceptes: 0
-  }, [dashboard]);
+  };
 
-  const prospectsData = useMemo(() => 
-    (rawProspects || []).map((p: any) => ({
-      id: p.prospect_id || p.id,
-      nom: p.prospect_name || p.company_name,
-      name: p.prospect_name || p.company_name,
-      email: p.prospect_email || p.email,
-      company_name: p.company_name,
-      status: p.prospect_status || 'prospect',
-      statut: p.prospect_status || 'prospect',
-      qualification_score: p.qualification_score
-    }))
-  , [rawProspects]);
+  const prospectsData = (data?.prospects || []).map((p: any) => ({
+    id: p.prospect_id || p.id,
+    nom: p.prospect_name || p.company_name,
+    name: p.prospect_name || p.company_name,
+    email: p.prospect_email || p.email,
+    company_name: p.company_name,
+    status: p.prospect_status || 'prospect',
+    statut: p.prospect_status || 'prospect',
+    qualification_score: p.qualification_score
+  }));
 
-  const activityData = useMemo(() => 
-    (activite || []).map((activity: any) => {
-      let libelle = '';
-      if (activity.type_activite === 'nouveau_client') {
-        libelle = `Nouveau client : ${activity.client_name || activity.client_company || 'Client'}`;
-      } else if (activity.type_activite === 'nouveau_produit') {
-        const client = activity.client_name || activity.client_company || 'Client';
-        const produit = activity.produit_nom || 'Produit';
-        libelle = `${client} - ${produit}${activity.montant ? ` (${activity.montant.toLocaleString('fr-FR')}€)` : ''}`;
-      } else {
-        libelle = `${activity.client_name || 'Activité'} - ${activity.produit_nom || ''}`;
-      }
-      return {
-        id: activity.source_id,
-        type: activity.type_activite,
-        date: activity.date_activite,
-        montant: activity.montant || 0,
-        libelle: libelle.trim()
-      };
-    })
-  , [activite]);
+  const activityData = (data?.activite || []).map((activity: any) => {
+    let libelle = '';
+    if (activity.type_activite === 'nouveau_client') {
+      libelle = `Nouveau client : ${activity.client_name || activity.client_company || 'Client'}`;
+    } else if (activity.type_activite === 'nouveau_produit') {
+      const client = activity.client_name || activity.client_company || 'Client';
+      const produit = activity.produit_nom || 'Produit';
+      libelle = `${client} - ${produit}${activity.montant ? ` (${activity.montant.toLocaleString('fr-FR')}€)` : ''}`;
+    } else {
+      libelle = `${activity.client_name || 'Activité'} - ${activity.produit_nom || ''}`;
+    }
+    return {
+      id: activity.source_id,
+      type: activity.type_activite,
+      date: activity.date_activite,
+      montant: activity.montant || 0,
+      libelle: libelle.trim()
+    };
+  });
 
-  const objectivesData = useMemo(() => 
-    objectifs ? {
-      objectifProspects: objectifs.objectif_prospects_mois || 0,
-      objectifConversion: objectifs.objectif_conversion_pourcent || 0,
-      objectifCommission: objectifs.objectif_commission_mois || 0,
-      realisationProspects: objectifs.realisation_prospects_mois || 0,
-      realisationConversion: objectifs.realisation_conversion_pourcent || 0,
-      realisationCommission: objectifs.realisation_commission_mois || 0
-    } : null
-  , [objectifs]);
-  
-  const hasEnhancedData = useMemo(() => 
-    !!(dashboard && rawProspects.length > 0)
-  , [dashboard, rawProspects]);
+  const objectivesData = data?.objectifs ? {
+    objectifProspects: data.objectifs.objectif_prospects_mois || 0,
+    objectifConversion: data.objectifs.objectif_conversion_pourcent || 0,
+    objectifCommission: data.objectifs.objectif_commission_mois || 0,
+    realisationProspects: data.objectifs.realisation_prospects_mois || 0,
+    realisationConversion: data.objectifs.realisation_conversion_pourcent || 0,
+    realisationCommission: data.objectifs.realisation_commission_mois || 0
+  } : null;
 
-  // Charger les stats de conversion - désactivé temporairement pour debug
-  // useEffect(() => {
-  //   if (!apporteurId || !hasInitializedRef.current) return;
-  //   if (isLoadingConversionRef.current) return;
-  //   
-  //   // ... code commenté pour debug
-  // }, [apporteurId]);
-  
-  // Valeurs par défaut pour conversion stats (temporaire)
-  const conversionStatsDefault = conversionStats || {
+  const conversionStats = data?.conversionStats || {
     taux_prospect_rdv: 0,
     prospects_avec_rdv: 0,
     total_prospects: 0,
@@ -210,18 +122,13 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
     recent_clients: []
   };
 
-  // Charger dossiers - désactivé temporairement pour debug
-  // useEffect(() => {
-  //   if (!apporteurId || !hasInitializedRef.current) return;
-  //   if (activeView !== 'dossiers' && activeView !== 'montant') return;
-  //   if (isLoadingDossiersRef.current) return;
-  //   
-  //   // ... code commenté pour debug
-  // }, [activeView, apporteurId]);
+  const hasEnhancedData = !!(data?.dashboard && data?.prospects.length > 0);
 
-  // Tri des dossiers - MÉMORISÉ
-  const sortedDossiers = useMemo(() => {
-    if (!dossiers || dossiers.length === 0) return [];
+  // Tri des dossiers - fonction simple
+  const getSortedDossiers = () => {
+    const dossiers = data?.dossiers || [];
+    if (dossiers.length === 0) return [];
+    
     const sorted = [...dossiers];
     
     switch (sortOption) {
@@ -240,7 +147,10 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
       default:
         return sorted;
     }
-  }, [dossiers, sortOption]);
+  };
+
+  const sortedDossiers = getSortedDossiers();
+  const dossiersLoading = false; // Pas de loading séparé
 
   return (
     <div className="bg-gradient-to-br from-slate-50 to-blue-50">
@@ -252,7 +162,7 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
             <p className="text-sm text-gray-600">Aperçu de votre activité</p>
           </div>
           <div className="flex gap-2">
-            <Button onClick={refresh} variant="outline" size="sm">
+            <Button onClick={handleRefresh} variant="outline" size="sm">
               <RefreshCw className="h-4 w-4 mr-1" />
               Actualiser
             </Button>
@@ -346,7 +256,7 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
             </CardContent>
           </Card>
 
-          {/* 5. Conversion - KPI Principal: Prospect → Signature */}
+          {/* 5. Conversion */}
           <Card 
             className={`hover:shadow-lg transition-all cursor-pointer ${
               activeView === 'conversion' ? 'ring-2 ring-indigo-500 shadow-lg' : ''
@@ -358,7 +268,7 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
                 <div>
                   <p className="text-sm font-medium text-gray-600">Conversion</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {dashboardData.taux_conversion_pourcent}%
+                    {conversionStats.taux_prospect_signature || dashboardData.taux_conversion_pourcent}%
                   </p>
                   <p className="text-xs text-gray-500 mt-1">Prospect → Signature</p>
                 </div>
@@ -516,7 +426,7 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
                 </>
               )}
 
-              {/* Vue Montant - Même que dossiers mais focus sur montants */}
+              {/* Vue Montant */}
               {activeView === 'montant' && (
                 <>
                   {/* Tri */}
@@ -573,78 +483,69 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
                 </>
               )}
 
-              {/* Vue Conversion - Multi-niveaux */}
+              {/* Vue Conversion */}
               {activeView === 'conversion' && (
                 <>
-                  {false ? ( // conversionLoading désactivé
-                    <div className="text-center py-8">
-                      <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2 text-gray-400" />
-                      <p className="text-gray-500 text-sm">Chargement des stats...</p>
-                    </div>
-                  ) : (
-                    <>
-                      {/* 3 Métriques de conversion */}
-                      <div className="p-4 border-b bg-gradient-to-r from-indigo-50 to-purple-50">
-                        <div className="grid grid-cols-3 gap-4">
-                          {/* Prospect → RDV */}
-                          <div className="text-center p-3 bg-white rounded-lg shadow-sm">
-                            <p className="text-xs font-medium text-gray-600 mb-1">Prospect → RDV</p>
-                            <p className="text-2xl font-bold text-blue-600">{conversionStatsDefault.taux_prospect_rdv}%</p>
-                            <p className="text-xs text-gray-500 mt-1">
-                              {conversionStatsDefault.prospects_avec_rdv}/{conversionStatsDefault.total_prospects}
-                            </p>
-                          </div>
-                          
-                          {/* Prospect → Signature */}
-                          <div className="text-center p-3 bg-white rounded-lg shadow-sm border-2 border-green-300">
-                            <p className="text-xs font-medium text-gray-600 mb-1">Prospect → Signature</p>
-                            <p className="text-2xl font-bold text-green-600">{conversionStatsDefault.taux_prospect_signature}%</p>
-                            <p className="text-xs text-gray-500 mt-1">
-                              {conversionStatsDefault.total_signatures}/{conversionStatsDefault.total_prospects}
-                            </p>
-                          </div>
-                          
-                          {/* RDV → Signature */}
-                          <div className="text-center p-3 bg-white rounded-lg shadow-sm">
-                            <p className="text-xs font-medium text-gray-600 mb-1">RDV → Signature</p>
-                            <p className="text-2xl font-bold text-purple-600">{conversionStatsDefault.taux_rdv_signature}%</p>
-                            <p className="text-xs text-gray-500 mt-1">
-                              {conversionStatsDefault.rdv_avec_signature}/{conversionStatsDefault.prospects_avec_rdv}
-                            </p>
-                          </div>
-                        </div>
+                  {/* 3 Métriques de conversion */}
+                  <div className="p-4 border-b bg-gradient-to-r from-indigo-50 to-purple-50">
+                    <div className="grid grid-cols-3 gap-4">
+                      {/* Prospect → RDV */}
+                      <div className="text-center p-3 bg-white rounded-lg shadow-sm">
+                        <p className="text-xs font-medium text-gray-600 mb-1">Prospect → RDV</p>
+                        <p className="text-2xl font-bold text-blue-600">{conversionStats.taux_prospect_rdv}%</p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {conversionStats.prospects_avec_rdv}/{conversionStats.total_prospects}
+                        </p>
                       </div>
                       
-                      {/* Liste des clients convertis */}
-                      {conversionStatsDefault.recent_clients && conversionStatsDefault.recent_clients.length > 0 ? (
-                        <div className="divide-y">
-                          <div className="px-4 py-2 bg-gray-50">
-                            <p className="text-xs font-medium text-gray-600">Dernières Conversions Réussies</p>
-                          </div>
-                          {conversionStatsDefault.recent_clients.map((client: any) => (
-                            <div key={client.id} className="p-4 hover:bg-gray-50 transition-colors">
-                              <div className="flex items-center justify-between">
-                                <div className="flex-1">
-                                  <h4 className="font-medium text-sm">{client.company_name || client.name || 'Client'}</h4>
-                                  <p className="text-xs text-gray-500">{client.email}</p>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Badge className="bg-green-100 text-green-800 text-xs">✓ Converti</Badge>
-                                  <span className="text-xs text-gray-400">
-                                    {new Date(client.created_at).toLocaleDateString('fr-FR')}
-                                  </span>
-                                </div>
-                              </div>
+                      {/* Prospect → Signature */}
+                      <div className="text-center p-3 bg-white rounded-lg shadow-sm border-2 border-green-300">
+                        <p className="text-xs font-medium text-gray-600 mb-1">Prospect → Signature</p>
+                        <p className="text-2xl font-bold text-green-600">{conversionStats.taux_prospect_signature}%</p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {conversionStats.total_signatures}/{conversionStats.total_prospects}
+                        </p>
+                      </div>
+                      
+                      {/* RDV → Signature */}
+                      <div className="text-center p-3 bg-white rounded-lg shadow-sm">
+                        <p className="text-xs font-medium text-gray-600 mb-1">RDV → Signature</p>
+                        <p className="text-2xl font-bold text-purple-600">{conversionStats.taux_rdv_signature}%</p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {conversionStats.rdv_avec_signature}/{conversionStats.prospects_avec_rdv}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Liste des clients convertis */}
+                  {conversionStats.recent_clients && conversionStats.recent_clients.length > 0 ? (
+                    <div className="divide-y">
+                      <div className="px-4 py-2 bg-gray-50">
+                        <p className="text-xs font-medium text-gray-600">Dernières Conversions Réussies</p>
+                      </div>
+                      {conversionStats.recent_clients.map((client: any) => (
+                        <div key={client.id} className="p-4 hover:bg-gray-50 transition-colors">
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <h4 className="font-medium text-sm">{client.company_name || client.name || 'Client'}</h4>
+                              <p className="text-xs text-gray-500">{client.email}</p>
                             </div>
-                          ))}
+                            <div className="flex items-center gap-2">
+                              <Badge className="bg-green-100 text-green-800 text-xs">✓ Converti</Badge>
+                              <span className="text-xs text-gray-400">
+                                {new Date(client.created_at).toLocaleDateString('fr-FR')}
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                      ) : (
-                        <div className="text-center py-8 px-6">
-                          <Target className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                          <p className="text-gray-500 text-sm">Aucune conversion encore</p>
-                        </div>
-                      )}
-                    </>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 px-6">
+                      <Target className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                      <p className="text-gray-500 text-sm">Aucune conversion encore</p>
+                    </div>
                   )}
                 </>
               )}
@@ -742,7 +643,6 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
                     ? 'Vues SQL enrichies actives'
                     : 'Prêt pour les vues SQL enrichies'
                   }
-                  {loading && " Chargement..."}
                 </p>
               </div>
             </CardContent>
@@ -754,10 +654,7 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
       {showProspectForm && (
         <ProspectForm 
           onCancel={() => setShowProspectForm(false)}
-          onSuccess={() => {
-            setShowProspectForm(false);
-            refresh(); // Rafraîchir les données après création
-          }}
+          onSuccess={handleProspectSuccess}
         />
       )}
     </div>
