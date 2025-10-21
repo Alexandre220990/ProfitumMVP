@@ -14,16 +14,18 @@ interface ApporteurDashboardSimpleProps {
 
 export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimpleProps) {
   const navigate = useNavigate();
+  
+  // États UI simples
   const [showProspectForm, setShowProspectForm] = useState(false);
   const [activeView, setActiveView] = useState<'clients' | 'prospects' | 'dossiers' | 'montant' | 'conversion'>('prospects');
   const [sortOption, setSortOption] = useState<'date_desc' | 'date_asc' | 'alpha_az' | 'alpha_za' | 'montant_desc' | 'montant_asc'>('date_desc');
   
-  // États pour les données principales
+  // États pour les données principales - initialisés avec des valeurs par défaut
   const [dashboard, setDashboard] = useState<any>(null);
   const [rawProspects, setRawProspects] = useState<any[]>([]);
   const [objectifs, setObjectifs] = useState<any>(null);
   const [activite, setActivite] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // Démarrer en loading
   const [error, setError] = useState<string | null>(null);
   
   // États pour les données secondaires
@@ -31,41 +33,42 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
   const [dossiersLoading, setDossiersLoading] = useState(false);
   const [conversionStats, setConversionStats] = useState<any>(null);
   const [conversionLoading, setConversionLoading] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
   
-  // Protection absolue contre les doubles chargements avec useRef
+  // Compteur de refresh - référence stable
+  const refreshKeyRef = useRef(0);
+  const refresh = () => {
+    refreshKeyRef.current += 1;
+    // Forcer un re-fetch en mettant loading à true
+    setLoading(true);
+  };
+  
+  // Protection absolue contre les doubles chargements
+  const hasInitializedRef = useRef(false);
   const isLoadingMainRef = useRef(false);
   const isLoadingConversionRef = useRef(false);
   const isLoadingDossiersRef = useRef(false);
-  const lastApporteurIdRef = useRef<string | null>(null);
   
-  // Fonction refresh simple
-  const refresh = () => setRefreshKey(prev => prev + 1);
-  
-  // Charger les données principales UNE SEULE FOIS au montage ou refresh
+  // Charger les données principales UNE SEULE FOIS - JAMAIS PLUS
   useEffect(() => {
-    if (!apporteurId) {
-      setDashboard(null);
-      setRawProspects([]);
-      setObjectifs(null);
-      setActivite([]);
+    // Ne charger QU'UNE SEULE FOIS au premier montage
+    if (hasInitializedRef.current) {
+      console.log('⚠️ Déjà initialisé, ignoré');
       return;
     }
     
-    // Protection absolue : ne pas recharger si déjà en cours
-    if (isLoadingMainRef.current && lastApporteurIdRef.current === apporteurId) {
-      console.log('⚠️ Chargement principal déjà en cours, ignoré');
+    if (!apporteurId) {
+      console.log('⚠️ Pas d\'apporteurId, attente...');
       return;
     }
+    
+    // Marquer comme initialisé IMMÉDIATEMENT
+    hasInitializedRef.current = true;
+    console.log('🚀 Initialisation du dashboard pour:', apporteurId);
     
     let isMounted = true;
     
     const loadMainData = async () => {
       isLoadingMainRef.current = true;
-      lastApporteurIdRef.current = apporteurId;
-      
-      setLoading(true);
-      setError(null);
       
       try {
         const service = new ApporteurViewsService();
@@ -77,15 +80,18 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
         ]);
         
         if (isMounted) {
+          console.log('✅ Données chargées avec succès');
           setDashboard(dashboardRes?.data || null);
           setRawProspects(prospectsRes?.data || []);
           setObjectifs(objectifsRes?.data || null);
           setActivite(activiteRes?.data || []);
+          setError(null);
         }
       } catch (err) {
         if (isMounted) {
-          setError(err instanceof Error ? err.message : 'Erreur de chargement');
-          console.error('Erreur chargement dashboard:', err);
+          const errorMessage = err instanceof Error ? err.message : 'Erreur de chargement';
+          setError(errorMessage);
+          console.error('❌ Erreur chargement dashboard:', err);
         }
       } finally {
         if (isMounted) {
@@ -100,7 +106,7 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
     return () => { 
       isMounted = false;
     };
-  }, [apporteurId, refreshKey]);
+  }, [apporteurId]); // SEULEMENT apporteurId, pas de refreshKey
 
   if (loading) {
     return (
@@ -184,108 +190,34 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
     !!(dashboard && rawProspects.length > 0)
   , [dashboard, rawProspects]);
 
-  // Charger les stats de conversion UNE SEULE FOIS
-  useEffect(() => {
-    if (!apporteurId) {
-      setConversionStats(null);
-      return;
-    }
-    
-    // Protection avec useRef
-    if (isLoadingConversionRef.current) {
-      console.log('⚠️ Chargement conversion déjà en cours, ignoré');
-      return;
-    }
-    
-    let isMounted = true;
-    
-    const loadConversionStats = async () => {
-      isLoadingConversionRef.current = true;
-      
-      setConversionLoading(true);
-      try {
-        const response = await fetch(`${config.API_URL}/api/apporteur/conversion-stats`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (response.ok && isMounted) {
-          const result = await response.json();
-          setConversionStats(result.data);
-        }
-      } catch (error) {
-        if (isMounted) {
-          console.error('Erreur stats conversion:', error);
-        }
-      } finally {
-        if (isMounted) {
-          setConversionLoading(false);
-          isLoadingConversionRef.current = false;
-        }
-      }
-    };
-    
-    loadConversionStats();
-    
-    return () => { 
-      isMounted = false;
-    };
-  }, [apporteurId, refreshKey]);
+  // Charger les stats de conversion - désactivé temporairement pour debug
+  // useEffect(() => {
+  //   if (!apporteurId || !hasInitializedRef.current) return;
+  //   if (isLoadingConversionRef.current) return;
+  //   
+  //   // ... code commenté pour debug
+  // }, [apporteurId]);
+  
+  // Valeurs par défaut pour conversion stats (temporaire)
+  const conversionStatsDefault = conversionStats || {
+    taux_prospect_rdv: 0,
+    prospects_avec_rdv: 0,
+    total_prospects: 0,
+    taux_prospect_signature: 0,
+    total_signatures: 0,
+    taux_rdv_signature: 0,
+    rdv_avec_signature: 0,
+    recent_clients: []
+  };
 
-  // Charger dossiers UNIQUEMENT quand nécessaire
-  useEffect(() => {
-    if (!apporteurId) {
-      setDossiers([]);
-      return;
-    }
-    if (activeView !== 'dossiers' && activeView !== 'montant') {
-      return;
-    }
-    
-    // Protection avec useRef
-    if (isLoadingDossiersRef.current) {
-      console.log('⚠️ Chargement dossiers déjà en cours, ignoré');
-      return;
-    }
-    
-    let isMounted = true;
-    
-    const loadDossiers = async () => {
-      isLoadingDossiersRef.current = true;
-      
-      setDossiersLoading(true);
-      try {
-        const response = await fetch(`${config.API_URL}/api/apporteur/dossiers`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (response.ok && isMounted) {
-          const result = await response.json();
-          setDossiers(result.data || []);
-        }
-      } catch (error) {
-        if (isMounted) {
-          console.error('Erreur dossiers:', error);
-        }
-      } finally {
-        if (isMounted) {
-          setDossiersLoading(false);
-          isLoadingDossiersRef.current = false;
-        }
-      }
-    };
-    
-    loadDossiers();
-    
-    return () => { 
-      isMounted = false;
-    };
-  }, [activeView, apporteurId, refreshKey]);
+  // Charger dossiers - désactivé temporairement pour debug
+  // useEffect(() => {
+  //   if (!apporteurId || !hasInitializedRef.current) return;
+  //   if (activeView !== 'dossiers' && activeView !== 'montant') return;
+  //   if (isLoadingDossiersRef.current) return;
+  //   
+  //   // ... code commenté pour debug
+  // }, [activeView, apporteurId]);
 
   // Tri des dossiers - MÉMORISÉ
   const sortedDossiers = useMemo(() => {
@@ -426,7 +358,7 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
                 <div>
                   <p className="text-sm font-medium text-gray-600">Conversion</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {conversionStats?.taux_prospect_signature || dashboardData.taux_conversion_pourcent}%
+                    {dashboardData.taux_conversion_pourcent}%
                   </p>
                   <p className="text-xs text-gray-500 mt-1">Prospect → Signature</p>
                 </div>
@@ -644,15 +576,10 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
               {/* Vue Conversion - Multi-niveaux */}
               {activeView === 'conversion' && (
                 <>
-                  {conversionLoading ? (
+                  {false ? ( // conversionLoading désactivé
                     <div className="text-center py-8">
                       <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2 text-gray-400" />
                       <p className="text-gray-500 text-sm">Chargement des stats...</p>
-                    </div>
-                  ) : !conversionStats ? (
-                    <div className="text-center py-8 px-6">
-                      <Target className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                      <p className="text-gray-500 text-sm">Aucune donnée de conversion</p>
                     </div>
                   ) : (
                     <>
@@ -662,39 +589,39 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
                           {/* Prospect → RDV */}
                           <div className="text-center p-3 bg-white rounded-lg shadow-sm">
                             <p className="text-xs font-medium text-gray-600 mb-1">Prospect → RDV</p>
-                            <p className="text-2xl font-bold text-blue-600">{conversionStats.taux_prospect_rdv}%</p>
+                            <p className="text-2xl font-bold text-blue-600">{conversionStatsDefault.taux_prospect_rdv}%</p>
                             <p className="text-xs text-gray-500 mt-1">
-                              {conversionStats.prospects_avec_rdv}/{conversionStats.total_prospects}
+                              {conversionStatsDefault.prospects_avec_rdv}/{conversionStatsDefault.total_prospects}
                             </p>
                           </div>
                           
                           {/* Prospect → Signature */}
                           <div className="text-center p-3 bg-white rounded-lg shadow-sm border-2 border-green-300">
                             <p className="text-xs font-medium text-gray-600 mb-1">Prospect → Signature</p>
-                            <p className="text-2xl font-bold text-green-600">{conversionStats.taux_prospect_signature}%</p>
+                            <p className="text-2xl font-bold text-green-600">{conversionStatsDefault.taux_prospect_signature}%</p>
                             <p className="text-xs text-gray-500 mt-1">
-                              {conversionStats.total_signatures}/{conversionStats.total_prospects}
+                              {conversionStatsDefault.total_signatures}/{conversionStatsDefault.total_prospects}
                             </p>
                           </div>
                           
                           {/* RDV → Signature */}
                           <div className="text-center p-3 bg-white rounded-lg shadow-sm">
                             <p className="text-xs font-medium text-gray-600 mb-1">RDV → Signature</p>
-                            <p className="text-2xl font-bold text-purple-600">{conversionStats.taux_rdv_signature}%</p>
+                            <p className="text-2xl font-bold text-purple-600">{conversionStatsDefault.taux_rdv_signature}%</p>
                             <p className="text-xs text-gray-500 mt-1">
-                              {conversionStats.rdv_avec_signature}/{conversionStats.prospects_avec_rdv}
+                              {conversionStatsDefault.rdv_avec_signature}/{conversionStatsDefault.prospects_avec_rdv}
                             </p>
                           </div>
                         </div>
                       </div>
                       
                       {/* Liste des clients convertis */}
-                      {conversionStats.recent_clients && conversionStats.recent_clients.length > 0 ? (
+                      {conversionStatsDefault.recent_clients && conversionStatsDefault.recent_clients.length > 0 ? (
                         <div className="divide-y">
                           <div className="px-4 py-2 bg-gray-50">
                             <p className="text-xs font-medium text-gray-600">Dernières Conversions Réussies</p>
                           </div>
-                          {conversionStats.recent_clients.map((client: any) => (
+                          {conversionStatsDefault.recent_clients.map((client: any) => (
                             <div key={client.id} className="p-4 hover:bg-gray-50 transition-colors">
                               <div className="flex items-center justify-between">
                                 <div className="flex-1">

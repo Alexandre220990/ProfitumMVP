@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ApporteurDashboardSimple } from '../../components/apporteur/ApporteurDashboardSimple';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
@@ -15,8 +15,19 @@ export default function ApporteurDashboardPage() {
   const navigate = useNavigate();
   const { user, isLoading } = useAuth();
   
-  // STABILISER l'ID pour éviter les re-rendus en cascade
-  const apporteurId = useMemo(() => user?.id, [user?.id]);
+  // FIXER l'ID une fois pour toutes avec useRef - NE JAMAIS LE CHANGER
+  const apporteurIdRef = useRef<string | null>(null);
+  const [apporteurIdFixed, setApporteurIdFixed] = useState<string | null>(null);
+  
+  useEffect(() => {
+    if (user?.id && !apporteurIdRef.current) {
+      apporteurIdRef.current = user.id;
+      setApporteurIdFixed(user.id);
+      console.log('✅ ApporteurId fixé pour toujours:', user.id);
+    }
+  }, [user?.id]);
+  
+  const apporteurId = apporteurIdFixed;
 
   // État de chargement
   if (isLoading) {
