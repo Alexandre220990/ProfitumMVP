@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { ApporteurSimpleService } from '../services/apporteur-simple-service';
 
 interface ApporteurKPIs {
@@ -126,7 +126,7 @@ export function useApporteurSimple(apporteurId: string) {
     loadAnalytics();
   }, [apporteurId]);
 
-  const refresh = useCallback(async () => {
+  const refresh = async () => {
     if (!apporteurId) return;
     
     setLoading(true);
@@ -158,7 +158,7 @@ export function useApporteurSimple(apporteurId: string) {
     } finally {
       setLoading(false);
     }
-  }, [apporteurId]);
+  };
 
   const getProspectsByStatus = (status: string) => {
     return analytics.prospects.filter(prospect => prospect.statutActivite === status);

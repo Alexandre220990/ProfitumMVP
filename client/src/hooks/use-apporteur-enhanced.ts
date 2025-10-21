@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { ApporteurViewsService } from '../services/apporteur-views-service';
 
 /**
@@ -10,7 +10,8 @@ export function useApporteurEnhanced(apporteurId: string | null) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadData = useCallback(async () => {
+  // Fonction de chargement (pas de useCallback pour éviter dépendances circulaires)
+  const loadData = async () => {
     if (!apporteurId) {
       setData(null);
       return;
@@ -45,15 +46,52 @@ export function useApporteurEnhanced(apporteurId: string | null) {
     } finally {
       setLoading(false);
     }
-  }, [apporteurId]);
+  };
 
-  const refresh = useCallback(() => {
+  const refresh = () => {
     loadData();
-  }, [loadData]);
+  };
 
+  // useEffect avec dépendance stable (apporteurId directement, pas loadData)
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (!apporteurId) {
+      setData(null);
+      return;
+    }
+
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const service = new ApporteurViewsService();
+        
+        const [dashboard, prospects, objectifs, activite, performance] = await Promise.all([
+          service.getDashboardPrincipal(),
+          service.getProspectsDetaille(),
+          service.getObjectifsPerformance(),
+          service.getActiviteRecente(),
+          service.getPerformanceProduits()
+        ]);
+
+        setData({
+          dashboard,
+          prospects,
+          objectifs,
+          activite,
+          performance
+        });
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Erreur lors du chargement des données';
+        setError(errorMessage);
+        console.error('Erreur useApporteurEnhanced:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [apporteurId]);
 
   // Méthodes utilitaires pour accéder facilement aux données (simples, pas mémoïsées)
   const getDashboardData = () => data?.dashboard?.data || null;
