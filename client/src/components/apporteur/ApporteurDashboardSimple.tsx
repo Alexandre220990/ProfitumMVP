@@ -34,7 +34,9 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
   const [refreshKey, setRefreshKey] = useState(0);
   
   // Protection absolue contre les doubles chargements avec useRef
-  const isLoadingRef = useRef(false);
+  const isLoadingMainRef = useRef(false);
+  const isLoadingConversionRef = useRef(false);
+  const isLoadingDossiersRef = useRef(false);
   const lastApporteurIdRef = useRef<string | null>(null);
   
   // Fonction refresh simple
@@ -51,15 +53,15 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
     }
     
     // Protection absolue : ne pas recharger si déjà en cours
-    if (isLoadingRef.current && lastApporteurIdRef.current === apporteurId) {
-      console.log('⚠️ Chargement déjà en cours, ignoré');
+    if (isLoadingMainRef.current && lastApporteurIdRef.current === apporteurId) {
+      console.log('⚠️ Chargement principal déjà en cours, ignoré');
       return;
     }
     
     let isMounted = true;
     
     const loadMainData = async () => {
-      isLoadingRef.current = true;
+      isLoadingMainRef.current = true;
       lastApporteurIdRef.current = apporteurId;
       
       setLoading(true);
@@ -88,7 +90,7 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
       } finally {
         if (isMounted) {
           setLoading(false);
-          isLoadingRef.current = false;
+          isLoadingMainRef.current = false;
         }
       }
     };
@@ -189,12 +191,16 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
       return;
     }
     
+    // Protection avec useRef
+    if (isLoadingConversionRef.current) {
+      console.log('⚠️ Chargement conversion déjà en cours, ignoré');
+      return;
+    }
+    
     let isMounted = true;
-    let hasLoaded = false;
     
     const loadConversionStats = async () => {
-      if (hasLoaded) return;
-      hasLoaded = true;
+      isLoadingConversionRef.current = true;
       
       setConversionLoading(true);
       try {
@@ -216,13 +222,16 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
       } finally {
         if (isMounted) {
           setConversionLoading(false);
+          isLoadingConversionRef.current = false;
         }
       }
     };
     
     loadConversionStats();
     
-    return () => { isMounted = false; };
+    return () => { 
+      isMounted = false;
+    };
   }, [apporteurId, refreshKey]);
 
   // Charger dossiers UNIQUEMENT quand nécessaire
@@ -235,12 +244,16 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
       return;
     }
     
+    // Protection avec useRef
+    if (isLoadingDossiersRef.current) {
+      console.log('⚠️ Chargement dossiers déjà en cours, ignoré');
+      return;
+    }
+    
     let isMounted = true;
-    let hasLoaded = false;
     
     const loadDossiers = async () => {
-      if (hasLoaded) return;
-      hasLoaded = true;
+      isLoadingDossiersRef.current = true;
       
       setDossiersLoading(true);
       try {
@@ -262,13 +275,16 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
       } finally {
         if (isMounted) {
           setDossiersLoading(false);
+          isLoadingDossiersRef.current = false;
         }
       }
     };
     
     loadDossiers();
     
-    return () => { isMounted = false; };
+    return () => { 
+      isMounted = false;
+    };
   }, [activeView, apporteurId, refreshKey]);
 
   // Tri des dossiers - MÉMORISÉ
