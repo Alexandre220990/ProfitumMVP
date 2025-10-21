@@ -53,7 +53,8 @@ export function useApporteurEnhanced(apporteurId: string | null) {
 
   useEffect(() => {
     loadData();
-  }, [loadData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apporteurId]);
 
   // Méthodes utilitaires pour accéder facilement aux données
   const getDashboardData = () => data?.dashboard?.data || null;

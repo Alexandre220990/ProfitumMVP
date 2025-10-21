@@ -11,7 +11,7 @@ interface AuthContextType {
   login: (credentials: LoginCredentials) => Promise<void>;
   register: (data: any) => Promise<void>;
   logout: () => void;
-  checkAuth: () => Promise<boolean>;
+  checkAuth: (shouldNavigate?: boolean) => Promise<boolean>;
   setUser: (user: UserType | null) => void;
 }
 
@@ -22,7 +22,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
-  const checkAuth = async (): Promise<boolean> => {
+  const checkAuth = async (shouldNavigate: boolean = true): Promise<boolean> => {
     try {
       console.log('🔍 Vérification de l\'authentification avec Supabase...');
       
@@ -45,24 +45,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(userData);
       console.log('✅ Utilisateur authentifié:', user.email, user.type);
       
-      // Rediriger vers le dashboard approprié selon le type d'utilisateur
-      console.log('🔀 Redirection utilisateur (checkAuth):', { type: user.type, email: user.email });
-      if (user.type === 'client') {
-        console.log('➡️ Redirection vers dashboard client');
-        navigate('/dashboard/client');
-      } else if (user.type === 'expert') {
-        console.log('➡️ Redirection vers dashboard expert');
-        navigate('/expert/dashboard');
-      } else if (user.type === 'admin') {
-        console.log('➡️ Redirection vers dashboard admin optimisé');
-        navigate("/admin/dashboard-optimized");
-      } else if (user.type === 'apporteur') {
-        console.log('➡️ Redirection vers dashboard apporteur');
-        navigate('/apporteur/dashboard');
-      } else {
-        console.warn('⚠️ Type utilisateur non reconnu:', user.type);
-        console.log('➡️ Redirection par défaut vers dashboard client');
-        navigate('/dashboard/client');
+      // Rediriger vers le dashboard approprié selon le type d'utilisateur (seulement si demandé)
+      if (shouldNavigate) {
+        console.log('🔀 Redirection utilisateur (checkAuth):', { type: user.type, email: user.email });
+        if (user.type === 'client') {
+          console.log('➡️ Redirection vers dashboard client');
+          navigate('/dashboard/client');
+        } else if (user.type === 'expert') {
+          console.log('➡️ Redirection vers dashboard expert');
+          navigate('/expert/dashboard');
+        } else if (user.type === 'admin') {
+          console.log('➡️ Redirection vers dashboard admin optimisé');
+          navigate("/admin/dashboard-optimized");
+        } else if (user.type === 'apporteur') {
+          console.log('➡️ Redirection vers dashboard apporteur');
+          navigate('/apporteur/dashboard');
+        } else {
+          console.warn('⚠️ Type utilisateur non reconnu:', user.type);
+          console.log('➡️ Redirection par défaut vers dashboard client');
+          navigate('/dashboard/client');
+        }
       }
       
       return true;
@@ -212,11 +214,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const initializeAuth = async () => {
       console.log('🚀 Initialisation de l\'authentification...');
-      await checkAuth();
+      // Ne pas naviguer automatiquement lors de l'initialisation pour éviter les boucles
+      await checkAuth(false);
       setIsLoading(false);
     };
 
     initializeAuth();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

@@ -159,6 +159,7 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
   // Charger les stats de conversion au montage pour le KPI
   useEffect(() => {
     loadConversionStats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apporteurId]);
 
   // Charger dossiers quand on clique sur dossiers/montant
@@ -166,6 +167,7 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
     if (activeView === 'dossiers' || activeView === 'montant') {
       loadDossiers();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeView, apporteurId]);
 
   // Fonction de tri des dossiers
