@@ -17,7 +17,7 @@ import { toast } from 'sonner';
 // ============================================================================
 
 interface Question {
-  id: number;
+  id: string; // UUID de QuestionnaireQuestion
   texte: string;
   type: 'choix_unique' | 'choix_multiple' | 'nombre' | 'texte';
   ordre: number;
@@ -39,7 +39,7 @@ interface EmbeddedSimulatorProps {
     timeline?: string;
     secteur_activite?: string;
   };
-  prefilledAnswers?: Record<number, string | string[]>;
+  prefilledAnswers?: Record<string, string | string[]>; // UUID keys
   onComplete: (results: any) => void; // Peut être answers OU ProspectSimulationResult
   onCancel?: () => void;
 }
@@ -59,7 +59,7 @@ export function EmbeddedSimulator({
   const [started, setStarted] = useState(false);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentStep, setCurrentStep] = useState(0);
-  const [answers, setAnswers] = useState<Record<number, string | string[]>>(prefilledAnswers);
+  const [answers, setAnswers] = useState<Record<string, string | string[]>>(prefilledAnswers || {});
   const [loading, setLoading] = useState(false);
   const [currentInput, setCurrentInput] = useState('');
   

@@ -103,7 +103,8 @@ const InscriptionSimulateur = () => {
       toast.error("Accès direct non autorisé. Veuillez utiliser le simulateur");
       navigate('/simulateur-eligibilite');
     }
-  }, [location, navigate, form]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
 
   // Vérifier si la session peut être migrée
   useEffect(() => { 
@@ -134,7 +135,8 @@ const InscriptionSimulateur = () => {
     };
 
     checkMigrationEligibility();
-  }, [location, toast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
 
   const onSubmit = async (data: FormData) => { 
     setIsLoading(true);

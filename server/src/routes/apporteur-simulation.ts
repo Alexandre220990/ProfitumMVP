@@ -141,6 +141,9 @@ router.post('/experts/optimize', async (req: Request, res: Response) => {
 /**
  * POST /api/apporteur/prospects/:prospectId/schedule-meetings
  * Créer les RDV recommandés pour un prospect
+ * 
+ * Cette route crée plusieurs RDV entre le prospect et les experts recommandés.
+ * Utilisée après la simulation pour planifier les rencontres.
  */
 router.post('/:prospectId/schedule-meetings', async (req: Request, res: Response) => {
   try {
@@ -163,56 +166,76 @@ router.post('/:prospectId/schedule-meetings', async (req: Request, res: Response
       });
     }
     
-    const result = await ProspectSimulationService.createRecommendedMeetings({
-      prospect_id: prospectId,
-      apporteur_id: user.database_id,
-      meetings: meetings
-    });
+    console.log(`📅 Création de ${meetings.length} RDV pour prospect ${prospectId}...`);
     
-    return res.status(201).json({
-      success: true,
-      message: `${result.created_meetings.length} RDV créés, ${result.notifications_sent.length} experts notifiés`,
-      data: result
-    });
+    // Utiliser le client Supabase pour créer les RDV
+    const { createClient } = require('@supabase/supabase-js');
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
     
-  } catch (error) {
-    console.error('❌ Erreur création RDV:', error);
-    return res.status(500).json({
-      success: false,
-      message: error instanceof Error ? error.message : 'Erreur serveur'
-    });
-  }
-});
-
-/**
- * GET /api/apporteur/simulation/questions/prefilled
- * Obtenir les questions pré-remplies basées sur les données prospect
- */
-router.post('/simulation/questions/prefilled', async (req: Request, res: Response) => {
-  try {
-    const user = req.user as any;
+    const createdMeetings = [];
+    const errors = [];
     
-    if (!user || user.type !== 'apporteur') {
-      return res.status(403).json({
-        success: false,
-        message: 'Accès réservé aux apporteurs d\'affaires'
-      });
+    // Créer chaque RDV
+    for (const meeting of meetings) {
+      try {
+        const { data: rdv, error: rdvError } = await supabase
+          .from('RDV')
+          .insert({
+            clientId: prospectId,
+            expertId: meeting.expert_id,
+            apporteurId: user.database_id,
+            dateRdv: meeting.scheduled_date && meeting.scheduled_time 
+              ? `${meeting.scheduled_date}T${meeting.scheduled_time}:00`
+              : null,
+            type: meeting.meeting_type || 'video',
+            lieu: meeting.location || '',
+            statut: 'planifie',
+            notes: meeting.notes || '',
+            duration_minutes: meeting.estimated_duration || 60,
+            metadata: {
+              source: 'apporteur_simulation',
+              product_ids: meeting.product_ids || [],
+              client_produit_eligible_ids: meeting.client_produit_eligible_ids || [],
+              estimated_savings: meeting.estimated_savings || 0,
+              created_by: user.database_id
+            },
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .select('*')
+          .single();
+        
+        if (rdvError) {
+          console.error(`❌ Erreur création RDV pour expert ${meeting.expert_id}:`, rdvError);
+          errors.push({ expert_id: meeting.expert_id, error: rdvError.message });
+        } else {
+          console.log(`✅ RDV créé: ${rdv.id}`);
+          createdMeetings.push(rdv);
+        }
+      } catch (meetingError) {
+        console.error('❌ Erreur création RDV individuel:', meetingError);
+        errors.push({ expert_id: meeting.expert_id, error: 'Erreur inconnue' });
+      }
     }
     
-    const { prospect_data } = req.body;
+    console.log(`📦 ${createdMeetings.length}/${meetings.length} RDV créés`);
     
-    const prefilledAnswers = ProspectSimulationService.prefillSimulationAnswers(prospect_data || {});
-    
-    return res.json({
-      success: true,
+    return res.status(createdMeetings.length > 0 ? 201 : 500).json({
+      success: createdMeetings.length > 0,
+      message: `${createdMeetings.length} RDV créé(s) avec succès${errors.length > 0 ? `, ${errors.length} erreur(s)` : ''}`,
       data: {
-        prefilled_answers: prefilledAnswers,
-        total_prefilled: Object.keys(prefilledAnswers).length
+        created_meetings: createdMeetings,
+        errors: errors,
+        total_created: createdMeetings.length,
+        total_errors: errors.length
       }
     });
     
   } catch (error) {
-    console.error('❌ Erreur pré-remplissage questions:', error);
+    console.error('❌ Erreur création RDV:', error);
     return res.status(500).json({
       success: false,
       message: error instanceof Error ? error.message : 'Erreur serveur'

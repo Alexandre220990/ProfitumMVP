@@ -100,9 +100,6 @@ import apporteurApiRoutes from './routes/apporteur-api';
 import apporteurRegisterRoutes from './routes/apporteur-register';
 import apporteurSimulationRoutes from './routes/apporteur-simulation';
 
-// Route évaluation éligibilité (nouveau simulateur)
-import eligibilityRoutes from './routes/eligibility';
-
 // Routes RDV unifiées (remplace ClientRDV)
 import rdvRoutes from './routes/rdv';
 // Routes test email - uniquement en dev
@@ -173,40 +170,21 @@ const limiter = rateLimit({
 
 app.use('/api/', limiter);
 
-// Middleware pour logger les requêtes et origines (debug CORS)
-app.use((req, res, next) => {
-  const origin = req.headers.origin || 'Origine inconnue';
-  const method = req.method;
-  const path = req.url;
-  const ipAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'IP inconnue';
-  
-  console.log(`[${new Date().toISOString()}] ${method} ${path}`);
-  console.log(`Origine: ${origin} | IP: ${ipAddress}`);
-  
-  if (Object.keys(req.headers).length > 0) {
-    console.log('Headers entrants:');
-    for (const [key, value] of Object.entries(req.headers)) {
-      console.log(`  ${key}: ${value}`);
+// Middleware pour logger les requêtes (UNIQUEMENT en développement et réduit)
+if (process.env.NODE_ENV !== 'production') {
+  app.use((req, res, next) => {
+    const method = req.method;
+    const path = req.url;
+    const origin = req.headers.origin || 'no-origin';
+    
+    // Log simple uniquement pour les routes importantes
+    if (path.includes('/auth/') || path.includes('/error')) {
+      console.log(`[${new Date().toISOString()}] ${method} ${path} - ${origin}`);
     }
-  }
-  
-  if (req.body && Object.keys(req.body).length > 0) {
-    console.log('Body:', JSON.stringify(req.body, null, 2).substring(0, 500) + (JSON.stringify(req.body).length > 500 ? '...' : ''));
-  }
-  
-  // Intercept response to log CORS headers being sent
-  const originalSend = res.send;
-  res.send = function(body) {
-    console.log('Headers sortants:');
-    const headers = res.getHeaders();
-    for (const [key, value] of Object.entries(headers)) {
-      console.log(`  ${key}: ${value}`);
-    }
-    return originalSend.call(this, body);
-  };
-  
-  next();
-});
+    
+    next();
+  });
+}
 
 // Ajouter la route de test CORS
 addCorsTestRoute(app);
@@ -220,7 +198,6 @@ app.use('/api/partners', publicRouteLogger, partnersRouter);
 // /simulateur → utilisateurs NON connectés uniquement
 // /simulateur-client → utilisateurs connectés (route séparée)
 app.use('/api/simulator', publicRouteLogger, simulatorRoutes);
-app.use('/api/eligibility', publicRouteLogger, eligibilityRoutes);
 
 // 🔄 ROUTES DE MIGRATION DES SESSIONS - PUBLIQUES (pas d'authentification requise)
 app.use('/api/session-migration', publicRouteLogger, sessionMigrationRoutes);

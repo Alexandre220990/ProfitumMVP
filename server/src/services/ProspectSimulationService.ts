@@ -1,5 +1,4 @@
 import { createClient } from '@supabase/supabase-js';
-import { DecisionEngine } from './decisionEngine';
 import { ExpertOptimizationService, ProductEligibility, OptimizationResult } from './ExpertOptimizationService';
 
 const supabase = createClient(
@@ -14,7 +13,7 @@ const supabase = createClient(
 export interface ProspectSimulationRequest {
   prospect_id: string;
   apporteur_id: string;
-  answers: Record<number, string | string[]>;
+  answers: Record<string, any>; // Changé : string keys (UUIDs des questions)
   prospect_data?: {
     company_name: string;
     budget_range: string;
@@ -30,10 +29,10 @@ export interface ProspectSimulationResult {
   expert_optimization: OptimizationResult;
   total_savings: number;
   summary: {
-    highly_eligible: number; // score >= 80
-    eligible: number; // score 60-79
-    to_confirm: number; // score 40-59
-    not_eligible: number; // score < 40
+    highly_eligible: number; // montant >= 10000
+    eligible: number; // montant > 0
+    to_confirm: number; // montant == 0 mais is_eligible
+    not_eligible: number; // not is_eligible
   };
 }
 
@@ -44,19 +43,18 @@ export interface ClientProduitEligibleWithScore {
   produit_name: string;
   produit_description: string;
   statut: 'eligible' | 'non_eligible' | 'to_confirm';
-  score: number;
+  montant_estime: number;
   tauxFinal: number | null;
   montantFinal: number | null;
   dureeFinale: number | null;
   priorite: number;
+  calcul_details: any;
   metadata: {
-    source: 'simulation_apporteur';
+    source: 'simulation_apporteur_sql';
     simulation_id: string;
     apporteur_id: string;
     detected_at: string;
-    score: number;
-    satisfied_rules: number;
-    total_rules: number;
+    type_produit: string;
   };
   recommended_expert?: {
     id: string;
@@ -68,14 +66,14 @@ export interface ClientProduitEligibleWithScore {
 }
 
 // ============================================================================
-// SERVICE DE SIMULATION PROSPECT
+// SERVICE DE SIMULATION PROSPECT - VERSION SQL
 // ============================================================================
 
 export class ProspectSimulationService {
   
   /**
    * Créer une simulation pour un prospect (par apporteur)
-   * Processus complet : évaluation + création ClientProduitEligible + optimisation experts
+   * Processus complet : évaluation SQL + création ClientProduitEligible + optimisation experts
    */
   static async createProspectSimulation(
     request: ProspectSimulationRequest
@@ -90,8 +88,8 @@ export class ProspectSimulationService {
         .insert({
           client_id: request.prospect_id,
           type: 'apporteur_prospect',
-          status: 'completed',
-          answers: request.answers,
+          status: 'pending',
+          answers: request.answers, // Format: { uuid: value }
           metadata: {
             source: 'apporteur',
             apporteur_id: request.apporteur_id,
@@ -105,32 +103,35 @@ export class ProspectSimulationService {
         .single();
       
       if (simError || !simulation) {
-        throw new Error('Erreur lors de la création de la simulation');
+        throw new Error('Erreur lors de la création de la simulation: ' + simError?.message);
       }
       
       console.log(`✅ Simulation créée: ${simulation.id}`);
       
-      // 2. Évaluer l'éligibilité avec le DecisionEngine
-      const decisionEngine = new DecisionEngine();
+      // 2. Appeler la fonction SQL pour évaluer l'éligibilité
+      console.log('🧮 Appel fonction SQL evaluer_eligibilite_avec_calcul...');
       
-      // Convertir les réponses au format attendu
-      const formattedAnswers = Object.entries(request.answers).map(([questionId, value]) => ({
-        questionId: parseInt(questionId),
-        value: Array.isArray(value) ? value[0] : String(value),
-        timestamp: new Date()
-      }));
-      
-      const eligibleProducts = await decisionEngine.evaluateEligibility(
-        simulation.id,
-        formattedAnswers
+      const { data: resultatsSQL, error: sqlError } = await supabase.rpc(
+        'evaluer_eligibilite_avec_calcul',
+        { p_simulation_id: simulation.id }
       );
       
-      console.log(`✅ ${eligibleProducts.length} produits évalués`);
+      if (sqlError) {
+        console.error('❌ Erreur fonction SQL:', sqlError);
+        throw new Error('Erreur calcul éligibilité SQL: ' + sqlError.message);
+      }
       
-      // 3. Récupérer TOUS les produits actifs
+      if (!resultatsSQL || !resultatsSQL.success) {
+        throw new Error('Fonction SQL n\'a pas retourné de résultats valides');
+      }
+      
+      console.log(`✅ Calcul SQL réussi: ${resultatsSQL.total_eligible} produits éligibles`);
+      console.log('📊 Produits retournés:', resultatsSQL.produits);
+      
+      // 3. Récupérer TOUS les produits actifs pour info
       const { data: allProducts, error: productsError } = await supabase
         .from('ProduitEligible')
-        .select('id, nom, description, categorie')
+        .select('id, nom, description, categorie, type_produit')
         .eq('active', true)
         .order('nom');
       
@@ -138,46 +139,53 @@ export class ProspectSimulationService {
         throw new Error('Erreur lors de la récupération des produits');
       }
       
-      // 4. Créer les ClientProduitEligible pour TOUS les produits
-      const clientProduitsToCreate = allProducts.map((produit, index) => {
-        const eligibility = eligibleProducts.find(ep => ep.productId === produit.id);
-        const isEligible = !!eligibility;
-        const score = isEligible ? eligibility.score : 0;
+      // 4. Créer les ClientProduitEligible UNIQUEMENT pour les produits éligibles
+      const clientProduitsToCreate = [];
+      
+      for (const produitSQL of resultatsSQL.produits) {
+        // Ne créer que les produits éligibles
+        if (!produitSQL.is_eligible) {
+          console.log(`⏭️ Produit non éligible ignoré: ${produitSQL.produit_nom}`);
+          continue;
+        }
         
-        // Déterminer le statut selon le score
+        const produitInfo = allProducts.find(p => p.id === produitSQL.produit_id);
+        const montant = produitSQL.montant_estime || 0;
+        
+        // Déterminer le statut selon le montant
         let statut: 'eligible' | 'non_eligible' | 'to_confirm';
-        if (score >= 60) statut = 'eligible';
-        else if (score >= 40) statut = 'to_confirm';
+        if (montant >= 1000) statut = 'eligible';
+        else if (montant > 0) statut = 'to_confirm';
         else statut = 'non_eligible';
         
-        return {
+        clientProduitsToCreate.push({
           clientId: request.prospect_id,
-          produitId: produit.id,
+          produitId: produitSQL.produit_id,
           simulationId: simulation.id,
           statut: statut,
-          tauxFinal: isEligible ? (score / 100) : null,
-          montantFinal: isEligible ? (score * 1000) : null, // Estimation
-          dureeFinale: isEligible ? 12 : null,
-          priorite: isEligible ? (eligibleProducts.indexOf(eligibility) + 1) : (index + 10),
-          notes: isEligible 
-            ? `Identifié via simulation apporteur - Score: ${score.toFixed(0)}%`
-            : 'Non éligible selon simulation',
+          tauxFinal: null, // SQL ne retourne pas de taux
+          montantFinal: montant,
+          dureeFinale: 12,
+          priorite: montant >= 10000 ? 1 : montant >= 5000 ? 2 : 3,
+          notes: `${produitSQL.notes || 'Produit éligible'} - Montant: ${montant.toLocaleString()}€`,
           metadata: {
-            source: 'simulation_apporteur',
+            source: 'simulation_apporteur_sql',
             simulation_id: simulation.id,
             apporteur_id: request.apporteur_id,
             detected_at: new Date().toISOString(),
-            score: score,
-            satisfied_rules: isEligible ? eligibility.satisfiedRules : 0,
-            total_rules: isEligible ? eligibility.totalRules : 0
+            type_produit: produitSQL.type_produit,
+            calcul_details: produitSQL.calcul_details
           },
-          dateEligibilite: isEligible ? new Date().toISOString() : null,
+          calcul_details: produitSQL.calcul_details,
+          dateEligibilite: new Date().toISOString(),
           current_step: 0,
           progress: 0,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
-        };
-      });
+        });
+      }
+      
+      console.log(`📝 Création de ${clientProduitsToCreate.length} ClientProduitEligible...`);
       
       // Insérer les ClientProduitEligible
       const { data: createdCPE, error: cpeError } = await supabase
@@ -192,14 +200,18 @@ export class ProspectSimulationService {
       
       console.log(`✅ ${createdCPE?.length || 0} ClientProduitEligible créés`);
       
-      // 5. Optimiser la sélection des experts
-      const eligibleForOptimization: ProductEligibility[] = eligibleProducts.map(ep => ({
-        productId: ep.productId,
-        productName: allProducts.find(p => p.id === ep.productId)?.nom || '',
-        score: ep.score,
-        estimatedSavings: ep.score * 1000, // Estimation
-        priority: eligibleProducts.indexOf(ep) + 1
-      }));
+      // 5. Préparer les produits pour l'optimisation des experts
+      const eligibleForOptimization: ProductEligibility[] = resultatsSQL.produits
+        .filter((p: any) => p.is_eligible && p.montant_estime > 0)
+        .map((p: any, index: number) => ({
+          productId: p.produit_id,
+          productName: p.produit_nom,
+          score: p.montant_estime >= 10000 ? 90 : p.montant_estime >= 5000 ? 75 : 60,
+          estimatedSavings: p.montant_estime,
+          priority: index + 1
+        }));
+      
+      console.log(`🎯 Optimisation experts pour ${eligibleForOptimization.length} produits...`);
       
       const expertOptimization = await ExpertOptimizationService.optimizeExpertSelection(
         eligibleForOptimization,
@@ -211,8 +223,7 @@ export class ProspectSimulationService {
       // 6. Enrichir les ClientProduitEligible avec experts recommandés
       const enrichedProducts: ClientProduitEligibleWithScore[] = (createdCPE || []).map(cpe => {
         const produit = allProducts.find(p => p.id === cpe.produitId);
-        const eligibility = eligibleProducts.find(ep => ep.productId === cpe.produitId);
-        const score = eligibility?.score || 0;
+        const produitSQL = resultatsSQL.produits.find((p: any) => p.produit_id === cpe.produitId);
         
         // Trouver l'expert recommandé pour ce produit
         let recommendedExpert;
@@ -236,11 +247,12 @@ export class ProspectSimulationService {
           produit_name: produit?.nom || '',
           produit_description: produit?.description || '',
           statut: cpe.statut as 'eligible' | 'non_eligible' | 'to_confirm',
-          score: score,
+          montant_estime: produitSQL?.montant_estime || 0,
           tauxFinal: cpe.tauxFinal,
           montantFinal: cpe.montantFinal,
           dureeFinale: cpe.dureeFinale,
           priorite: cpe.priorite || 999,
+          calcul_details: produitSQL?.calcul_details,
           metadata: cpe.metadata as any,
           recommended_expert: recommendedExpert
         };
@@ -248,22 +260,26 @@ export class ProspectSimulationService {
       
       // 7. Calculer le résumé
       const summary = {
-        highly_eligible: enrichedProducts.filter(p => p.score >= 80).length,
-        eligible: enrichedProducts.filter(p => p.score >= 60 && p.score < 80).length,
-        to_confirm: enrichedProducts.filter(p => p.score >= 40 && p.score < 60).length,
-        not_eligible: enrichedProducts.filter(p => p.score < 40).length
+        highly_eligible: enrichedProducts.filter(p => p.montant_estime >= 10000).length,
+        eligible: enrichedProducts.filter(p => p.montant_estime > 0 && p.montant_estime < 10000).length,
+        to_confirm: enrichedProducts.filter(p => p.montant_estime === 0 && p.statut === 'to_confirm').length,
+        not_eligible: 0 // On ne crée que les éligibles maintenant
       };
       
       const totalSavings = enrichedProducts
-        .filter(p => p.score >= 60)
         .reduce((sum, p) => sum + (p.montantFinal || 0), 0);
       
       // 8. Mettre à jour la simulation avec les résultats
       await supabase
         .from('simulations')
         .update({
-          results: {
-            eligible_products: eligibleProducts,
+          results: resultatsSQL,
+          status: 'completed',
+          metadata: {
+            source: 'apporteur',
+            apporteur_id: request.apporteur_id,
+            prospect_data: request.prospect_data,
+            created_at: new Date().toISOString(),
             expert_optimization: {
               recommended_meetings: expertOptimization.recommended.meetings.length,
               total_experts: expertOptimization.recommended.experts.length
@@ -292,11 +308,11 @@ export class ProspectSimulationService {
   }
   
   /**
-   * Récupérer une simulation existante pour un prospect
+   * Récupérer une simulation existante
    */
   static async getProspectSimulation(prospectId: string): Promise<ProspectSimulationResult | null> {
     try {
-      // Récupérer la simulation la plus récente
+      // Récupérer la dernière simulation du prospect
       const { data: simulation, error: simError } = await supabase
         .from('simulations')
         .select('*')
@@ -310,261 +326,63 @@ export class ProspectSimulationService {
         return null;
       }
       
-      // Récupérer les ClientProduitEligible
-      const { data: cpe, error: cpeError } = await supabase
+      // Récupérer les ClientProduitEligible associés
+      const { data: cpes, error: cpeError } = await supabase
         .from('ClientProduitEligible')
         .select(`
           *,
-          ProduitEligible (id, nom, description, categorie)
+          ProduitEligible (
+            id,
+            nom,
+            description,
+            categorie
+          )
         `)
         .eq('clientId', prospectId)
         .eq('simulationId', simulation.id);
       
-      if (cpeError || !cpe) {
-        return null;
+      if (cpeError) {
+        throw cpeError;
       }
       
-      // Reconstruire le résultat (structure identique à createProspectSimulation)
-      // TODO: Implémenter reconstruction complète si nécessaire
+      const enrichedProducts: ClientProduitEligibleWithScore[] = (cpes || []).map((cpe: any) => ({
+        id: cpe.id,
+        client_id: cpe.clientId,
+        produit_id: cpe.produitId,
+        produit_name: cpe.ProduitEligible?.nom || '',
+        produit_description: cpe.ProduitEligible?.description || '',
+        statut: cpe.statut,
+        montant_estime: cpe.montantFinal || 0,
+        tauxFinal: cpe.tauxFinal,
+        montantFinal: cpe.montantFinal,
+        dureeFinale: cpe.dureeFinale,
+        priorite: cpe.priorite,
+        calcul_details: cpe.calcul_details,
+        metadata: cpe.metadata
+      }));
       
-      return null; // À implémenter si besoin de récupération
+      const summary = {
+        highly_eligible: enrichedProducts.filter(p => p.montant_estime >= 10000).length,
+        eligible: enrichedProducts.filter(p => p.montant_estime > 0 && p.montant_estime < 10000).length,
+        to_confirm: enrichedProducts.filter(p => p.statut === 'to_confirm').length,
+        not_eligible: enrichedProducts.filter(p => p.statut === 'non_eligible').length
+      };
       
-    } catch (error) {
-      console.error('Erreur récupération simulation:', error);
-      return null;
-    }
-  }
-  
-  /**
-   * Pré-remplir les questions de simulation avec les données du formulaire
-   */
-  static prefillSimulationAnswers(prospectData: {
-    budget_range?: string;
-    timeline?: string;
-    secteur_activite?: string;
-    nombre_employes?: number;
-    qualification_score?: number;
-  }): Partial<Record<number, string>> {
-    
-    const prefilled: Record<number, string> = {};
-    
-    // Mapping des données formulaire → questions simulation
-    // TODO: À adapter selon vos questions réelles
-    
-    if (prospectData.budget_range) {
-      // Question budget (exemple: question_id = 5)
-      prefilled[5] = prospectData.budget_range;
-    }
-    
-    if (prospectData.timeline) {
-      // Question délai (exemple: question_id = 6)
-      prefilled[6] = prospectData.timeline;
-    }
-    
-    if (prospectData.secteur_activite) {
-      // Question secteur (exemple: question_id = 1)
-      prefilled[1] = prospectData.secteur_activite;
-    }
-    
-    if (prospectData.nombre_employes) {
-      // Question taille entreprise (exemple: question_id = 3)
-      prefilled[3] = prospectData.nombre_employes.toString();
-    }
-    
-    return prefilled;
-  }
-  
-  /**
-   * Créer les RDV pour les experts recommandés
-   */
-  static async createRecommendedMeetings(request: {
-    prospect_id: string;
-    apporteur_id: string;
-    meetings: Array<{
-      expert_id: string;
-      product_ids: string[];
-      client_produit_eligible_ids: string[];
-      meeting_type: 'physical' | 'video' | 'phone';
-      scheduled_date: string;
-      scheduled_time: string;
-      location?: string;
-      notes?: string;
-      estimated_duration?: number;
-    }>;
-  }): Promise<{
-    created_meetings: any[];
-    notifications_sent: string[];
-  }> {
-    
-    console.log(`📅 Création de ${request.meetings.length} RDV pour prospect ${request.prospect_id}`);
-    
-    const createdMeetings: any[] = [];
-    const notificationsSent: string[] = [];
-    
-    try {
-      for (const meetingData of request.meetings) {
-        // 1. Créer le RDV
-        const { data: rdv, error: rdvError } = await supabase
-          .from('ClientRDV')
-          .insert({
-            client_id: request.prospect_id,
-            expert_id: meetingData.expert_id,
-            apporteur_id: request.apporteur_id,
-            meeting_type: meetingData.meeting_type,
-            scheduled_date: meetingData.scheduled_date,
-            scheduled_time: meetingData.scheduled_time,
-            duration_minutes: meetingData.estimated_duration || (meetingData.product_ids.length * 45),
-            location: meetingData.location,
-            status: 'proposed', // Statut initial: proposé (expert doit valider)
-            notes: meetingData.notes,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .select('*')
-          .single();
-        
-        if (rdvError || !rdv) {
-          console.error('❌ Erreur création RDV:', rdvError);
-          continue;
-        }
-        
-        console.log(`✅ RDV créé: ${rdv.id} avec expert ${meetingData.expert_id}`);
-        
-        // 2. Lier les produits au RDV
-        const produitLinks = meetingData.product_ids.map((productId, index) => ({
-          rdv_id: rdv.id,
-          client_produit_eligible_id: meetingData.client_produit_eligible_ids[index],
-          product_id: productId,
-          priority: index + 1,
-          estimated_duration_minutes: 45,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }));
-        
-        const { error: linkError } = await supabase
-          .from('ClientRDV_Produits')
-          .insert(produitLinks);
-        
-        if (linkError) {
-          console.error('❌ Erreur liaison produits-RDV:', linkError);
-        } else {
-          console.log(`✅ ${produitLinks.length} produits liés au RDV ${rdv.id}`);
-        }
-        
-        // 3. Mettre à jour les ClientProduitEligible avec l'expert assigné
-        for (const cpeId of meetingData.client_produit_eligible_ids) {
-          await supabase
-            .from('ClientProduitEligible')
-            .update({
-              expert_id: meetingData.expert_id,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', cpeId);
-        }
-        
-        // 4. Créer notification pour l'expert
-        const { data: expert } = await supabase
-          .from('Expert')
-          .select('name, email')
-          .eq('id', meetingData.expert_id)
-          .single();
-        
-        const { data: client } = await supabase
-          .from('Client')
-          .select('name, company_name')
-          .eq('id', request.prospect_id)
-          .single();
-        
-        // Récupérer les noms de produits
-        const { data: produitsDetails } = await supabase
-          .from('ProduitEligible')
-          .select('nom')
-          .in('id', meetingData.product_ids);
-        
-        const produitsNames = produitsDetails?.map(p => p.nom).join(', ') || '';
-        
-        const notificationData = {
-          expert_id: meetingData.expert_id,
-          notification_type: 'EXPERT_PROSPECT_RDV_PROPOSED',
-          title: 'Nouveau RDV Proposé',
-          message: `RDV avec ${client?.company_name || client?.name} le ${meetingData.scheduled_date} à ${meetingData.scheduled_time}`,
-          data: {
-            rdv_id: rdv.id,
-            prospect_id: request.prospect_id,
-            prospect_name: client?.company_name || client?.name,
-            products: produitsNames,
-            product_ids: meetingData.product_ids,
-            meeting_date: meetingData.scheduled_date,
-            meeting_time: meetingData.scheduled_time,
-            meeting_type: meetingData.meeting_type,
-            location: meetingData.location
-          },
-          priority: 'high',
-          status: 'unread',
-          created_at: new Date().toISOString()
-        };
-        
-        // Insérer dans la table notification (table générique)
-        const { error: notifError } = await supabase
-          .from('notification')
-          .insert({
-            recipient_id: meetingData.expert_id,
-            recipient_type: 'expert',
-            type: notificationData.notification_type,
-            title: notificationData.title,
-            message: notificationData.message,
-            data: notificationData.data,
-            priority: notificationData.priority,
-            read: false,
-            created_at: new Date().toISOString()
-          });
-        
-        if (notifError) {
-          console.error('❌ Erreur création notification:', notifError);
-        } else {
-          console.log(`✅ Notification envoyée à expert ${meetingData.expert_id}`);
-          notificationsSent.push(meetingData.expert_id);
-        }
-        
-        createdMeetings.push(rdv);
-      }
-      
-      console.log(`✅ ${createdMeetings.length} RDV créés, ${notificationsSent.length} notifications envoyées`);
+      const totalSavings = enrichedProducts.reduce((sum, p) => sum + (p.montantFinal || 0), 0);
       
       return {
-        created_meetings: createdMeetings,
-        notifications_sent: notificationsSent
+        simulation_id: simulation.id,
+        eligible_products: enrichedProducts,
+        expert_optimization: simulation.metadata?.expert_optimization || { recommended: { meetings: [], experts: [] } },
+        total_savings: totalSavings,
+        summary: summary
       };
       
     } catch (error) {
-      console.error('❌ Erreur création RDV recommandés:', error);
+      console.error('❌ Erreur récupération simulation:', error);
       throw error;
-    }
-  }
-  
-  /**
-   * Mettre à jour l'assignation d'expert sur un ClientProduitEligible
-   */
-  static async assignExpertToProduct(
-    clientProduitEligibleId: string,
-    expertId: string
-  ): Promise<boolean> {
-    try {
-      const { error } = await supabase
-        .from('ClientProduitEligible')
-        .update({
-          expert_id: expertId,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', clientProduitEligibleId);
-      
-      if (error) throw error;
-      
-      return true;
-    } catch (error) {
-      console.error('Erreur assignation expert:', error);
-      return false;
     }
   }
 }
 
+export default ProspectSimulationService;

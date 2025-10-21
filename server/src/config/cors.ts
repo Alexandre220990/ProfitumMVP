@@ -37,18 +37,18 @@ export const corsOptions: CorsOptions = {
   origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
     // Autoriser les requêtes sans origin (ex: curl, Postman, tests)
     if (!origin) {
-      console.log('🔓 CORS: Requête sans origin autorisée (tests/curl)');
       return callback(null, true);
     }
     
     // Vérifier si l'origine est autorisée
     if (allowedOrigins.includes(origin)) {
-      console.log(`✅ CORS: Origine autorisée - ${origin}`);
       return callback(null, true);
     }
     
-    // Log pour debug
-    console.log(`🚫 CORS bloqué pour l'origine: ${origin}`);
+    // Log uniquement les origines bloquées (pour debug)
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`🚫 CORS bloqué pour l'origine: ${origin}`);
+    }
     return callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
@@ -107,16 +107,6 @@ export const corsMiddleware = (req: any, res: any, next: any) => {
   res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-CSRF-Token, Accept, Origin');
-  
-  // Log de debug pour les routes problématiques
-  if (req.path.includes('/api/client/produits-eligibles') || req.path.includes('/api/simulations/check-recent')) {
-    console.log(`🔍 Route appelée: ${req.method} ${req.path}`);
-    console.log(`🔍 Headers:`, {
-      authorization: req.headers.authorization ? 'présent' : 'absent',
-      origin: req.headers.origin,
-      userAgent: req.headers['user-agent']
-    });
-  }
   
   next();
 }; 

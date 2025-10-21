@@ -69,9 +69,7 @@ interface ProspectFormData {
   decision_maker_position?: string;
   
   // Qualification
-  qualification_score: number;
   interest_level: 'high' | 'medium' | 'low';
-  budget_range: '0-10k' | '10k-50k' | '50k-100k' | '100k+';
   timeline: 'immediate' | '1-3months' | '3-6months' | '6months+';
   
   // Expert présélectionné
@@ -112,9 +110,7 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
     email: '',
     phone_number: '',
     decision_maker_position: '',
-    qualification_score: 5,
     interest_level: 'medium',
-    budget_range: '10k-50k',
     timeline: '1-3months',
     meeting_type: 'physical',
     scheduled_date: '',
@@ -142,7 +138,6 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
   const [expertOptimization, setExpertOptimization] = useState<any>(null);
   const [selectedExperts, setSelectedExperts] = useState<string[]>([]);
   const [scheduledMeetings, setScheduledMeetings] = useState<MeetingData[]>([]);
-  const [prefilledAnswers, setPrefilledAnswers] = useState<Record<number, string>>({});
 
   useEffect(() => {
     fetchProducts();
@@ -215,42 +210,9 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
         if (result.data.preselected_expert_id) {
           fetchExpertDetails(result.data.preselected_expert_id);
         }
-        
-        // Pré-remplir les questions de simulation
-        await prefillSimulationQuestions();
       }
     } catch (err) {
       console.error('Erreur fetchProspect:', err);
-    }
-  };
-
-  /**
-   * Pré-remplir les questions de simulation avec les données prospect
-   */
-  const prefillSimulationQuestions = async () => {
-    try {
-      const response = await fetch(`${config.API_URL}/api/apporteur/simulation/questions/prefilled`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          prospect_data: {
-            budget_range: formData.budget_range,
-            timeline: formData.timeline,
-            qualification_score: formData.qualification_score,
-            secteur_activite: formData.company_name
-          }
-        })
-      });
-      
-      if (response.ok) {
-        const result = await response.json();
-        setPrefilledAnswers(result.data?.prefilled_answers || {});
-      }
-    } catch (error) {
-      console.error('Erreur pré-remplissage questions:', error);
     }
   };
 
@@ -458,9 +420,7 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
         decision_maker_position: formData.decision_maker_position,
         
         // Qualification
-        qualification_score: formData.qualification_score,
         interest_level: formData.interest_level,
-        budget_range: formData.budget_range,
         timeline: formData.timeline,
         
         // Expert présélectionné
@@ -708,18 +668,6 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="qualification_score">Score de qualification (1-10) *</Label>
-                  <Input
-                    id="qualification_score"
-                    type="number"
-                    min="1"
-                    max="10"
-                    value={formData.qualification_score}
-                    onChange={(e) => setFormData(prev => ({ ...prev, qualification_score: parseInt(e.target.value) }))}
-                    required
-                  />
-                </div>
-                <div>
                   <Label htmlFor="interest_level">Niveau d'intérêt *</Label>
                   <select
                     id="interest_level"
@@ -731,21 +679,6 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
                     <option value="high">Élevé</option>
                     <option value="medium">Moyen</option>
                     <option value="low">Faible</option>
-                  </select>
-                </div>
-                <div>
-                  <Label htmlFor="budget_range">Budget *</Label>
-                  <select
-                    id="budget_range"
-                    value={formData.budget_range}
-                    onChange={(e) => setFormData(prev => ({ ...prev, budget_range: e.target.value as any }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  >
-                    <option value="0-10k">0 - 10k€</option>
-                    <option value="10k-50k">10k - 50k€</option>
-                    <option value="50k-100k">50k - 100k€</option>
-                    <option value="100k+">100k€+</option>
                   </select>
                 </div>
                 <div>
@@ -782,11 +715,10 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
                   prospectId={prospectId}
                   prospectData={{
                     company_name: formData.company_name,
-                    budget_range: formData.budget_range,
                     timeline: formData.timeline,
                     secteur_activite: formData.company_name
                   }}
-                  prefilledAnswers={prefilledAnswers}
+                  prefilledAnswers={{}}
                   onComplete={handleSimulationComplete}
                   onCancel={() => setIdentificationMode('manual')}
                 />

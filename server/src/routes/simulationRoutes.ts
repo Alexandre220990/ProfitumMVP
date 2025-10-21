@@ -1,10 +1,8 @@
 import { Router, Request, Response } from 'express';
 import { createClient } from '@supabase/supabase-js';
-// Import traiterSimulation supprimé - utilise maintenant les fonctions SQL
 import { Database } from '../types/supabase';
 import * as dotenv from 'dotenv';
 import jwt from 'jsonwebtoken';
-import { RealTimeProcessor } from '../services/realTimeProcessor';
 
 dotenv.config();
 
@@ -152,34 +150,109 @@ router.post('/:id/terminer', async (req: Request, res: Response) => {
       });
     }
 
-    // Mettre à jour le statut de la simulation
+    console.log(`🎯 Terminaison simulation ${simulationId}...`);
+
+    // 1. Récupérer la simulation pour obtenir le client_id
+    const { data: simulation, error: simError } = await supabase
+      .from('simulations')
+      .select('client_id, answers')
+      .eq('id', simulationId)
+      .single();
+
+    if (simError || !simulation) {
+      throw new Error('Simulation non trouvée');
+    }
+
+    // 2. Appeler la fonction SQL pour calculer l'éligibilité
+    console.log('🧮 Appel fonction SQL evaluer_eligibilite_avec_calcul...');
+    const { data: resultatsSQL, error: sqlError } = await supabase
+      .rpc('evaluer_eligibilite_avec_calcul', {
+        p_simulation_id: simulationId
+      });
+    
+    if (sqlError) {
+      console.error('❌ Erreur fonction SQL:', sqlError);
+      throw sqlError;
+    }
+
+    if (!resultatsSQL || !resultatsSQL.success) {
+      throw new Error('Fonction SQL n\'a pas retourné de résultats valides');
+    }
+
+    console.log(`✅ Calcul SQL réussi: ${resultatsSQL.total_eligible} produits éligibles`);
+
+    // 3. Créer les ClientProduitEligible pour les produits éligibles
+    if (simulation.client_id && resultatsSQL.produits) {
+      console.log(`📝 Création des ClientProduitEligible pour client ${simulation.client_id}...`);
+      
+      let createdCount = 0;
+      for (const produit of resultatsSQL.produits) {
+        if (produit.is_eligible && produit.montant_estime > 0) {
+          const { error: cpeError } = await supabase
+            .from('ClientProduitEligible')
+            .insert({
+              clientId: simulation.client_id,
+              produitId: produit.produit_id,
+              simulationId: simulationId,
+              statut: produit.montant_estime >= 1000 ? 'eligible' : 'to_confirm',
+              montantFinal: produit.montant_estime,
+              dureeFinale: 12,
+              notes: produit.notes || `Éligible - Montant estimé: ${produit.montant_estime.toLocaleString()}€`,
+              calcul_details: produit.calcul_details,
+              metadata: {
+                source: 'simulation_client_sql',
+                simulation_id: simulationId,
+                type_produit: produit.type_produit,
+                calculated_at: new Date().toISOString()
+              },
+              priorite: produit.montant_estime >= 10000 ? 1 : produit.montant_estime >= 5000 ? 2 : 3,
+              dateEligibilite: new Date().toISOString(),
+              current_step: 0,
+              progress: 0
+            });
+
+          if (cpeError) {
+            console.error(`⚠️ Erreur création CPE pour ${produit.produit_nom}:`, cpeError.message);
+          } else {
+            createdCount++;
+            console.log(`✅ ClientProduitEligible créé: ${produit.produit_nom} - ${produit.montant_estime}€`);
+          }
+        }
+      }
+
+      console.log(`📦 ${createdCount} ClientProduitEligible créés sur ${resultatsSQL.produits.length} produits`);
+    }
+
+    // 4. Mettre à jour le statut de la simulation avec les résultats
     const { error: updateError } = await supabase
       .from('simulations')
       .update({
         status: 'completed',
+        results: resultatsSQL,
+        metadata: {
+          completed_at: new Date().toISOString(),
+          total_eligible: resultatsSQL.total_eligible,
+          total_produits: resultatsSQL.produits?.length || 0
+        },
         updated_at: new Date().toISOString()
       })
       .eq('id', simulationId);
 
     if (updateError) {
-      throw updateError;
+      console.error('⚠️ Erreur mise à jour simulation:', updateError);
     }
-
-    // Traiter la simulation avec fonction SQL
-    const { data: resultatsSQL } = await supabase
-      .rpc('evaluer_eligibilite_avec_calcul', {
-        p_simulation_id: simulationId
-      });
-    
-    console.log(`Simulation ${simulationId} calculée: ${resultatsSQL?.total_eligible || 0} produits éligibles`);
 
     return res.json({
       success: true,
-      message: 'Simulation terminée et traitée avec succès'
+      message: `Simulation terminée: ${resultatsSQL.total_eligible} produits éligibles identifiés`,
+      data: {
+        total_eligible: resultatsSQL.total_eligible,
+        produits: resultatsSQL.produits
+      }
     });
 
   } catch (error) {
-    console.error('Erreur lors de la terminaison de la simulation:', error);
+    console.error('❌ Erreur lors de la terminaison de la simulation:', error);
     return res.status(500).json({
       success: false,
       message: error instanceof Error ? error.message : 'Erreur inconnue'
@@ -471,17 +544,34 @@ router.post('/:id/answer', async (req: Request, res: Response) => {
       })
       .eq('id', simulationId);
 
-    // ÉTAPE 3 : Traiter avec le processeur en temps réel (si disponible)
+    // ÉTAPE 3 : Calcul en temps réel avec SQL (OPTIONNEL - pour résultats intermédiaires)
+    // On calcule l'éligibilité après chaque réponse pour donner un aperçu en temps réel
     try {
-      const realTimeProcessor = new RealTimeProcessor();
-      await realTimeProcessor.processAnswer(simulationId.toString(), {
-        questionId,
-        value: answer,
-        timestamp: new Date(timestamp)
-      });
-    } catch (processorError) {
-      console.warn('Processeur temps réel non disponible ou erreur:', processorError);
-      // On continue même si le processeur échoue
+      console.log(`🧮 Calcul intermédiaire pour simulation ${simulationId}...`);
+      const { data: resultatsSQL, error: sqlError } = await supabase.rpc(
+        'evaluer_eligibilite_avec_calcul',
+        { p_simulation_id: simulationId }
+      );
+
+      if (!sqlError && resultatsSQL && resultatsSQL.success) {
+        // Mettre à jour les résultats intermédiaires dans la simulation
+        await supabase
+          .from('simulations')
+          .update({
+            results: resultatsSQL,
+            metadata: {
+              ...metadata,
+              last_calculation: new Date().toISOString(),
+              total_eligible: resultatsSQL.total_eligible
+            }
+          })
+          .eq('id', simulationId);
+        
+        console.log(`✅ Calcul intermédiaire: ${resultatsSQL.total_eligible} produits éligibles`);
+      }
+    } catch (calculError) {
+      console.warn('⚠️ Calcul intermédiaire échoué (non bloquant):', calculError);
+      // On continue même si le calcul intermédiaire échoue
     }
 
     // Récupérer la simulation mise à jour

@@ -180,7 +180,27 @@ export class SessionMigrationService {
    * Récupérer les réponses de la session
    */
   private static async getSessionResponses(sessionIdOrToken: string) {
-    // D'abord récupérer la session pour avoir l'ID
+    // Essayer de récupérer depuis la nouvelle table simulations
+    const { data: simulationData, error: simError } = await supabase
+      .from('simulations')
+      .select('answers')
+      .eq('session_token', sessionIdOrToken)
+      .single();
+
+    if (!simError && simulationData?.answers) {
+      console.log('✅ Réponses récupérées depuis la table simulations (nouveau système)');
+      
+      // Le format dans simulations.answers est un objet { question_id: réponse }
+      // Transformer en array pour compatibilité avec le code existant
+      return Object.entries(simulationData.answers).map(([questionId, value]) => ({
+        response_value: value,
+        question_id: questionId,
+        QuestionnaireQuestion: null // Pas besoin des détails de question pour la migration
+      }));
+    }
+
+    // Fallback: essayer l'ancien système TemporaryResponse
+    console.log('⚠️ Fallback sur TemporaryResponse (ancien système)');
     const sessionData = await this.getSessionData(sessionIdOrToken);
     if (!sessionData) {
       return null;
@@ -210,7 +230,34 @@ export class SessionMigrationService {
    * Récupérer les résultats d'éligibilité
    */
   private static async getSessionEligibility(sessionIdOrToken: string) {
-    // D'abord récupérer la session pour avoir l'ID
+    // Essayer de récupérer depuis la nouvelle table simulations
+    const { data: simulationData, error: simError } = await supabase
+      .from('simulations')
+      .select('results, client_id')
+      .eq('session_token', sessionIdOrToken)
+      .single();
+
+    if (!simError && simulationData?.results) {
+      console.log('✅ Résultats récupérés depuis la table simulations (nouveau système)');
+      
+      // Le format des résultats SQL contient { produits: [...] }
+      const produits = simulationData.results?.produits || [];
+      
+      // Transformer au format attendu par createClientProduitEligibles
+      return produits.map((p: any) => ({
+        produit_id: p.produit_nom,
+        produit_nom: p.produit_nom,
+        eligibility_score: 85, // Score par défaut pour produits éligibles
+        estimated_savings: p.montant_estime || 0,
+        confidence_level: 'high',
+        recommendations: p.notes ? [p.notes] : [],
+        calcul_details: p.calcul_details, // ⬅️ IMPORTANT: préserver les détails de calcul
+        type_produit: p.type_produit
+      }));
+    }
+
+    // Fallback: essayer l'ancien système TemporaryEligibility
+    console.log('⚠️ Fallback sur TemporaryEligibility (ancien système)');
     const sessionData = await this.getSessionData(sessionIdOrToken);
     if (!sessionData) {
       return null;
@@ -402,7 +449,9 @@ export class SessionMigrationService {
               eligibility_score: result.eligibility_score,
               confidence_level: result.confidence_level,
               recommendations: result.recommendations,
-              session_responses: responses.length
+              session_responses: responses.length,
+              calcul_details: result.calcul_details, // ⬅️ IMPORTANT: détails de calcul SQL
+              product_type: result.type_produit
             },
             notes: `Migration depuis simulateur - Score: ${result.eligibility_score}%`,
             priorite: result.eligibility_score >= 70 ? 1 : 2,

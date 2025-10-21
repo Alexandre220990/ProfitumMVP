@@ -27,7 +27,7 @@ interface ValidationRules {
 interface QuestionConditions {
   depends_on?: string;
   value?: any;
-  operator?: 'equals' | 'not_equals' | 'greater_than' | 'less_than';
+  operator?: 'equals' | 'not_equals' | 'greater_than' | 'less_than' | 'includes';
 }
 
 interface Question { 
@@ -267,7 +267,7 @@ const SimulateurEligibilite = () => {
       
       // Trouver la question dont on dépend
       const dependencyQuestion = questions.find(
-        dq => dq.id === dependsOn || dq.question_id === dependsOn
+        dq => dq.id === dependsOn
       );
       
       if (!dependencyQuestion) {
@@ -419,22 +419,48 @@ const SimulateurEligibilite = () => {
         const clientProduits = results.client_produits || [];
         
         // Transformer en format EligibilityResult
-        const eligibilityResults = clientProduits.map((cp: any) => ({
-          produit_id: cp.ProduitEligible?.nom || 'Produit',
-          eligibility_score: Math.round((cp.tauxFinal || 0) * 100),
-          estimated_savings: cp.montantFinal || 0,
-          confidence_level: (cp.tauxFinal || 0) > 0.7 ? 'high' : (cp.tauxFinal || 0) > 0.5 ? 'medium' : 'low',
-          recommendations: cp.metadata?.details || [cp.notes] || [],
-          type: cp.metadata?.product_type || 'financier',
-          qualitative_benefits: cp.metadata?.product_type === 'qualitatif' 
-            ? [
-                "⏱️ 10-15h/mois de gestion administrative gagnées",
-                "📊 Données 100% fiables et traçables",
-                "✅ Conformité réglementaire garantie",
-                "🔒 Sécurité juridique renforcée"
-              ]
-            : null
-        }));
+        // Support de deux formats: nouveau (avec ProduitEligible) et ancien (direct)
+        const eligibilityResults = clientProduits
+          .filter((cp: any) => cp.statut === 'eligible' || cp.is_eligible === true)
+          .map((cp: any) => {
+            // Format enrichi avec ProduitEligible (nouveau)
+            if (cp.ProduitEligible) {
+              return {
+                produit_id: cp.ProduitEligible.nom || 'Produit',
+                eligibility_score: Math.round((cp.tauxFinal || 0.85) * 100),
+                estimated_savings: cp.montantFinal || 0,
+                confidence_level: (cp.tauxFinal || 0.85) > 0.7 ? 'high' : (cp.tauxFinal || 0.85) > 0.5 ? 'medium' : 'low',
+                recommendations: cp.metadata?.details || (cp.notes ? [cp.notes] : []),
+                type: cp.metadata?.product_type || cp.ProduitEligible.type_produit || 'financier',
+                qualitative_benefits: (cp.metadata?.product_type || cp.ProduitEligible.type_produit) === 'qualitatif' 
+                  ? [
+                      "⏱️ 10-15h/mois de gestion administrative gagnées",
+                      "📊 Données 100% fiables et traçables",
+                      "✅ Conformité réglementaire garantie",
+                      "🔒 Sécurité juridique renforcée"
+                    ]
+                  : null
+              };
+            }
+            
+            // Format direct du SQL (ancien - pour compatibilité)
+            return {
+              produit_id: cp.produit_nom || cp.produit_id || 'Produit',
+              eligibility_score: 85, // Score par défaut pour produits éligibles
+              estimated_savings: cp.montant_estime || cp.montantFinal || 0,
+              confidence_level: 'high',
+              recommendations: cp.notes ? [cp.notes] : [],
+              type: cp.type_produit || 'financier',
+              qualitative_benefits: cp.type_produit === 'qualitatif'
+                ? [
+                    "⏱️ 10-15h/mois de gestion administrative gagnées",
+                    "📊 Données 100% fiables et traçables",
+                    "✅ Conformité réglementaire garantie",
+                    "🔒 Sécurité juridique renforcée"
+                  ]
+                : null
+            };
+          });
         
         setEligibilityResults(eligibilityResults);
         setShowResults(true);
