@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ApporteurViewsService } from '../../services/apporteur-views-service';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
@@ -100,57 +100,65 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
     );
   }
 
-  // Données formatées - calculs purs sans dépendances
-  const dashboardData = dashboard || {
+  // Données formatées - MÉMORISÉES pour éviter les re-rendus
+  const dashboardData = useMemo(() => dashboard || {
     total_prospects: 0,
     total_active_clients: 0,
     nouveaux_clients_30j: 0,
     total_montant_demande: 0,
     taux_conversion_pourcent: 0,
     dossiers_acceptes: 0
-  };
+  }, [dashboard]);
 
-  const prospectsData = (rawProspects || []).map((p: any) => ({
-    id: p.prospect_id || p.id,
-    nom: p.prospect_name || p.company_name,
-    name: p.prospect_name || p.company_name,
-    email: p.prospect_email || p.email,
-    company_name: p.company_name,
-    status: p.prospect_status || 'prospect',
-    statut: p.prospect_status || 'prospect',
-    qualification_score: p.qualification_score
-  }));
+  const prospectsData = useMemo(() => 
+    (rawProspects || []).map((p: any) => ({
+      id: p.prospect_id || p.id,
+      nom: p.prospect_name || p.company_name,
+      name: p.prospect_name || p.company_name,
+      email: p.prospect_email || p.email,
+      company_name: p.company_name,
+      status: p.prospect_status || 'prospect',
+      statut: p.prospect_status || 'prospect',
+      qualification_score: p.qualification_score
+    }))
+  , [rawProspects]);
 
-  const activityData = (activite || []).map((activity: any) => {
-    let libelle = '';
-    if (activity.type_activite === 'nouveau_client') {
-      libelle = `Nouveau client : ${activity.client_name || activity.client_company || 'Client'}`;
-    } else if (activity.type_activite === 'nouveau_produit') {
-      const client = activity.client_name || activity.client_company || 'Client';
-      const produit = activity.produit_nom || 'Produit';
-      libelle = `${client} - ${produit}${activity.montant ? ` (${activity.montant.toLocaleString('fr-FR')}€)` : ''}`;
-    } else {
-      libelle = `${activity.client_name || 'Activité'} - ${activity.produit_nom || ''}`;
-    }
-    return {
-      id: activity.source_id,
-      type: activity.type_activite,
-      date: activity.date_activite,
-      montant: activity.montant || 0,
-      libelle: libelle.trim()
-    };
-  });
+  const activityData = useMemo(() => 
+    (activite || []).map((activity: any) => {
+      let libelle = '';
+      if (activity.type_activite === 'nouveau_client') {
+        libelle = `Nouveau client : ${activity.client_name || activity.client_company || 'Client'}`;
+      } else if (activity.type_activite === 'nouveau_produit') {
+        const client = activity.client_name || activity.client_company || 'Client';
+        const produit = activity.produit_nom || 'Produit';
+        libelle = `${client} - ${produit}${activity.montant ? ` (${activity.montant.toLocaleString('fr-FR')}€)` : ''}`;
+      } else {
+        libelle = `${activity.client_name || 'Activité'} - ${activity.produit_nom || ''}`;
+      }
+      return {
+        id: activity.source_id,
+        type: activity.type_activite,
+        date: activity.date_activite,
+        montant: activity.montant || 0,
+        libelle: libelle.trim()
+      };
+    })
+  , [activite]);
 
-  const objectivesData = objectifs ? {
-    objectifProspects: objectifs.objectif_prospects_mois || 0,
-    objectifConversion: objectifs.objectif_conversion_pourcent || 0,
-    objectifCommission: objectifs.objectif_commission_mois || 0,
-    realisationProspects: objectifs.realisation_prospects_mois || 0,
-    realisationConversion: objectifs.realisation_conversion_pourcent || 0,
-    realisationCommission: objectifs.realisation_commission_mois || 0
-  } : null;
+  const objectivesData = useMemo(() => 
+    objectifs ? {
+      objectifProspects: objectifs.objectif_prospects_mois || 0,
+      objectifConversion: objectifs.objectif_conversion_pourcent || 0,
+      objectifCommission: objectifs.objectif_commission_mois || 0,
+      realisationProspects: objectifs.realisation_prospects_mois || 0,
+      realisationConversion: objectifs.realisation_conversion_pourcent || 0,
+      realisationCommission: objectifs.realisation_commission_mois || 0
+    } : null
+  , [objectifs]);
   
-  const hasEnhancedData = !!(dashboard && rawProspects.length > 0);
+  const hasEnhancedData = useMemo(() => 
+    !!(dashboard && rawProspects.length > 0)
+  , [dashboard, rawProspects]);
 
   // Charger les stats de conversion UNE SEULE FOIS
   useEffect(() => {
@@ -227,8 +235,8 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
     return () => { isMounted = false; };
   }, [activeView, apporteurId, refreshKey]);
 
-  // Tri des dossiers - fonction pure sans state
-  const sortedDossiers = (() => {
+  // Tri des dossiers - MÉMORISÉ
+  const sortedDossiers = useMemo(() => {
     if (!dossiers || dossiers.length === 0) return [];
     const sorted = [...dossiers];
     
@@ -248,7 +256,7 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
       default:
         return sorted;
     }
-  })();
+  }, [dossiers, sortOption]);
 
   return (
     <div className="bg-gradient-to-br from-slate-50 to-blue-50">
