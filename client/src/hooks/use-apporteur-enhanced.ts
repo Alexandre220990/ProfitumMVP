@@ -55,15 +55,15 @@ export function useApporteurEnhanced(apporteurId: string | null) {
     loadData();
   }, [loadData]);
 
-  // Méthodes utilitaires pour accéder facilement aux données (mémoïsées)
-  const getDashboardData = useCallback(() => data?.dashboard?.data || null, [data]);
-  const getProspectsData = useCallback(() => data?.prospects?.data || [], [data]);
-  const getActivityData = useCallback(() => data?.activite?.data || [], [data]);
-  const getObjectivesData = useCallback(() => data?.objectifs?.data || null, [data]);
-  const getPerformanceData = useCallback(() => data?.performance?.data || [], [data]);
+  // Méthodes utilitaires pour accéder facilement aux données (simples, pas mémoïsées)
+  const getDashboardData = () => data?.dashboard?.data || null;
+  const getProspectsData = () => data?.prospects?.data || [];
+  const getActivityData = () => data?.activite?.data || [];
+  const getObjectivesData = () => data?.objectifs?.data || null;
+  const getPerformanceData = () => data?.performance?.data || [];
 
-  // Statistiques calculées
-  const getStats = useCallback(() => {
+  // Statistiques calculées (mémoïsées directement sur data)
+  const stats = useMemo(() => {
     const dashboardData = getDashboardData();
     if (!dashboardData) {
       return {
@@ -84,10 +84,10 @@ export function useApporteurEnhanced(apporteurId: string | null) {
       tauxConversion: dashboardData.taux_conversion_pourcent || 0,
       dossiersAcceptes: dashboardData.dossiers_acceptes || 0
     };
-  }, [getDashboardData]);
+  }, [data]);
 
-  // Objectifs et performance
-  const getObjectives = useCallback(() => {
+  // Objectifs et performance (mémoïsés directement sur data)
+  const objectives = useMemo(() => {
     const objectivesData = getObjectivesData();
     if (!objectivesData) {
       return {
@@ -108,10 +108,10 @@ export function useApporteurEnhanced(apporteurId: string | null) {
       realisationConversion: objectivesData.realisation_conversion_pourcent || 0,
       realisationCommission: objectivesData.realisation_commission_mois || 0
     };
-  }, [getObjectivesData]);
+  }, [data]);
 
-  // Performance par produit
-  const getProductPerformance = useCallback(() => {
+  // Performance par produit (mémoïsée directement sur data)
+  const productPerformance = useMemo(() => {
     return getPerformanceData().map((product: any) => ({
       produitId: product.produit_id,
       produitNom: product.produit_nom,
@@ -120,10 +120,10 @@ export function useApporteurEnhanced(apporteurId: string | null) {
       montantMoyen: product.montant_moyen_demande || 0,
       montantAccepte: product.montant_accepte || 0
     }));
-  }, [getPerformanceData]);
+  }, [data]);
 
-  // Activité récente formatée
-  const getRecentActivity = useCallback(() => {
+  // Activité récente formatée (mémoïsée directement sur data)
+  const recentActivity = useMemo(() => {
     return getActivityData().map((activity: any) => {
       // Construire le libelle selon le type d'activité
       let libelle = '';
@@ -149,10 +149,10 @@ export function useApporteurEnhanced(apporteurId: string | null) {
         produit_nom: activity.produit_nom
       };
     });
-  }, [getActivityData]);
+  }, [data]);
 
-  // Prospects avec informations enrichies
-  const getEnrichedProspects = useCallback(() => {
+  // Prospects avec informations enrichies (mémoïsés directement sur data)
+  const enrichedProspects = useMemo(() => {
     return getProspectsData().map((prospect: any) => ({
       id: prospect.prospect_id,
       nom: prospect.prospect_name || prospect.company_name,
@@ -164,14 +164,7 @@ export function useApporteurEnhanced(apporteurId: string | null) {
       dateCreation: prospect.date_creation,
       anciennete: prospect.anciennete || 'Nouveau'
     }));
-  }, [getProspectsData]);
-
-  // Mémoïser les données calculées pour éviter les re-renders inutiles
-  const stats = useMemo(() => getStats(), [getStats]);
-  const objectives = useMemo(() => getObjectives(), [getObjectives]);
-  const productPerformance = useMemo(() => getProductPerformance(), [getProductPerformance]);
-  const recentActivity = useMemo(() => getRecentActivity(), [getRecentActivity]);
-  const enrichedProspects = useMemo(() => getEnrichedProspects(), [getEnrichedProspects]);
+  }, [data]);
 
   return {
     // État principal
