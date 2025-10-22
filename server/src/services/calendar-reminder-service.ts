@@ -20,7 +20,7 @@ export class CalendarReminderService {
       
       // Récupérer tous les rappels non envoyés
       const { data: reminders, error } = await supabase
-        .from('CalendarEventReminder')
+        .from('RDV_Reminders')
         .select(`
           *,
           CalendarEvent (
@@ -78,7 +78,7 @@ export class CalendarReminderService {
         
         // Marquer le rappel comme envoyé
         await supabase
-          .from('CalendarEventReminder')
+          .from('RDV_Reminders')
           .update({
             sent: true,
             sent_at: now.toISOString()
@@ -216,7 +216,7 @@ export class CalendarReminderService {
 
       for (const reminder of defaultReminders) {
         await supabase
-          .from('CalendarEventReminder')
+          .from('RDV_Reminders')
           .insert({
             event_id: eventId,
             type: reminder.type,
@@ -238,7 +238,7 @@ export class CalendarReminderService {
   async deleteEventReminders(eventId: string): Promise<void> {
     try {
       await supabase
-        .from('CalendarEventReminder')
+        .from('RDV_Reminders')
         .delete()
         .eq('event_id', eventId);
 
@@ -258,7 +258,7 @@ export class CalendarReminderService {
       
       // Récupérer les événements en retard
       const { data: overdueEvents, error } = await supabase
-        .from('CalendarEvent')
+        .from('RDV')
         .select('*')
         .lt('end_date', now.toISOString())
         .eq('status', 'pending');
@@ -290,7 +290,7 @@ export class CalendarReminderService {
     try {
       // Marquer l'événement comme terminé
       await supabase
-        .from('CalendarEvent')
+        .from('RDV')
         .update({
           status: 'completed',
           updated_at: new Date().toISOString()

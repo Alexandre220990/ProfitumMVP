@@ -89,14 +89,20 @@ export class CollaborativeEventsService {
         throw new Error('Organisateur et participants requis');
       }
 
-      // Créer l'événement principal
+      // Créer l'événement principal  
+      const startDate = new Date(eventData.start_date!);
+      const endDate = new Date(eventData.end_date!);
+      const durationMinutes = Math.round((endDate.getTime() - startDate.getTime()) / 60000);
+      
       const { data: event, error: eventError } = await supabase
-        .from('CalendarEvent')
+        .from('RDV')
         .insert({
           title: eventData.title,
           description: eventData.description,
-          start_date: eventData.start_date,
-          end_date: eventData.end_date,
+          scheduled_date: startDate.toISOString().split('T')[0],
+          scheduled_time: startDate.toISOString().split('T')[1].substring(0, 8),
+          duration_minutes: durationMinutes,
+          meeting_type: eventData.is_online ? 'video' : 'physical',
           type: 'meeting',
           priority: eventData.priority || 'medium',
           status: 'pending',
@@ -149,7 +155,7 @@ export class CollaborativeEventsService {
     }));
 
     const { error } = await supabase
-      .from('CalendarEventParticipant')
+      .from('RDV_Participants')
       .insert(participantData);
 
     if (error) throw error;
@@ -219,7 +225,7 @@ export class CollaborativeEventsService {
 
       // Récupérer l'événement complet
       const { data: event, error: fetchError } = await supabase
-        .from('CalendarEvent')
+        .from('RDV')
         .select('*')
         .eq('id', eventId)
         .single();
@@ -267,7 +273,7 @@ export class CollaborativeEventsService {
 
       // Mettre à jour le statut du participant
       const { error: participantError } = await supabase
-        .from('CalendarEventParticipant')
+        .from('RDV_Participants')
         .update({
           status: response
         })
@@ -316,14 +322,15 @@ export class CollaborativeEventsService {
   async getUserCollaborativeEvents(userId: string, userType: string): Promise<CollaborativeEvent[]> {
     try {
       const { data: events, error } = await supabase
-        .from('CalendarEvent')
+        .from('RDV')
         .select(`
           *,
-          CalendarEventParticipant!inner(user_id, user_type, status)
+          RDV_Participants!inner(user_id, user_type, status)
         `)
         .eq('category', 'collaborative')
-        .eq('CalendarEventParticipant.user_id', userId)
-        .order('start_date', { ascending: true });
+        .eq('RDV_Participants.user_id', userId)
+        .order('scheduled_date', { ascending: true })
+        .order('scheduled_time', { ascending: true});
 
       if (error) throw error;
 
@@ -346,7 +353,7 @@ export class CollaborativeEventsService {
   private async enrichEventWithCollaborativeData(event: any): Promise<CollaborativeEvent> {
     // Récupérer les participants
     const { data: participants, error: participantsError } = await supabase
-      .from('CalendarEventParticipant')
+      .from('RDV_Participants')
       .select(`
         user_id,
         user_type,
@@ -427,7 +434,7 @@ export class CollaborativeEventsService {
     try {
       // Vérifier que l'utilisateur est l'organisateur
       const { data: event, error: fetchError } = await supabase
-        .from('CalendarEvent')
+        .from('RDV')
         .select('metadata')
         .eq('id', eventId)
         .single();
@@ -442,7 +449,7 @@ export class CollaborativeEventsService {
 
       // Mettre à jour l'événement principal
       const { error: updateError } = await supabase
-        .from('CalendarEvent')
+        .from('RDV')
         .update({
           title: updates.title,
           description: updates.description,
@@ -478,7 +485,7 @@ export class CollaborativeEventsService {
   private async updateEventParticipants(eventId: string, participants: CollaborativeEventParticipant[]): Promise<void> {
     // Supprimer les participants existants
     await supabase
-      .from('CalendarEventParticipant')
+      .from('RDV_Participants')
       .delete()
       .eq('event_id', eventId);
 
@@ -493,7 +500,7 @@ export class CollaborativeEventsService {
     try {
       // Vérifier que l'utilisateur est l'organisateur
       const { data: event, error: fetchError } = await supabase
-        .from('CalendarEvent')
+        .from('RDV')
         .select('metadata')
         .eq('id', eventId)
         .single();
@@ -508,7 +515,7 @@ export class CollaborativeEventsService {
 
       // Mettre à jour le statut de l'événement
       const { error: updateError } = await supabase
-        .from('CalendarEvent')
+        .from('RDV')
         .update({
           status: 'cancelled'
         })
@@ -545,7 +552,7 @@ export class CollaborativeEventsService {
   }> {
     try {
       const { data: events, error } = await supabase
-        .from('CalendarEvent')
+        .from('RDV')
         .select(`
           id,
           start_date,

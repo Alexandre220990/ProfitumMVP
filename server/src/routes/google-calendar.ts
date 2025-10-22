@@ -647,7 +647,7 @@ router.post('/sync-event', googleCalendarLimiter, asyncHandler(async (req: Reque
 
     // 2. Récupérer l'événement
     const { data: event, error: eventError } = await supabase
-      .from('CalendarEvent')
+      .from('RDV')
       .select('*')
       .eq('id', event_id)
       .single();
@@ -678,7 +678,7 @@ router.post('/sync-event', googleCalendarLimiter, asyncHandler(async (req: Reque
 
     // 5. Mettre à jour l'événement avec l'ID Google
     await supabase
-      .from('CalendarEvent')
+      .from('RDV')
       .update({
         metadata: {
           ...event.metadata,

@@ -14,6 +14,49 @@ import { NotificationService } from '../services/NotificationService';
 const router = express.Router();
 
 // ============================================================================
+// FONCTIONS DE TRANSFORMATION RDV ↔ CalendarEvent (COMPATIBILITÉ)
+// ============================================================================
+
+/**
+ * Transformer un RDV en format CalendarEvent pour compatibilité API
+ */
+function transformRDVToCalendarEvent(rdv: any): any {
+  const start_date = `${rdv.scheduled_date}T${rdv.scheduled_time}`;
+  const end_date = new Date(
+    new Date(start_date).getTime() + (rdv.duration_minutes || 60) * 60000
+  ).toISOString();
+  
+  return {
+    ...rdv,
+    start_date,
+    end_date,
+    is_online: rdv.meeting_type === 'video',
+    // Garder les champs RDV aussi pour compatibilité
+  };
+}
+
+/**
+ * Transformer des données CalendarEvent (API) en format RDV (BDD)
+ */
+function transformCalendarEventToRDV(eventData: any): any {
+  const start_date = new Date(eventData.start_date);
+  const end_date = new Date(eventData.end_date);
+  const duration_minutes = Math.round((end_date.getTime() - start_date.getTime()) / 60000);
+  
+  return {
+    ...eventData,
+    scheduled_date: start_date.toISOString().split('T')[0],
+    scheduled_time: start_date.toISOString().split('T')[1].substring(0, 8),
+    duration_minutes,
+    meeting_type: eventData.is_online ? 'video' : (eventData.phone_number ? 'phone' : 'physical'),
+    // Supprimer start_date et end_date du résultat
+    start_date: undefined,
+    end_date: undefined,
+    is_online: undefined
+  };
+}
+
+// ============================================================================
 // RATE LIMITING ET SÉCURITÉ
 // ============================================================================
 
@@ -186,9 +229,10 @@ router.get('/events', calendarLimiter, asyncHandler(async (req: Request, res: Re
 
   try {
     let query = supabase
-      .from('CalendarEvent')
+      .from('RDV')
       .select('*')
-      .order('start_date', { ascending: true })
+      .order('scheduled_date', { ascending: true })
+      .order('scheduled_time', { ascending: true })
       .range(parseInt(offset as string), parseInt(offset as string) + parseInt(limit as string) - 1);
 
     // Filtres selon le type d'utilisateur
@@ -228,10 +272,10 @@ router.get('/events', calendarLimiter, asyncHandler(async (req: Request, res: Re
 
     // Filtres optionnels
     if (start_date) {
-      query = query.gte('start_date', start_date as string);
+      query = query.gte('scheduled_date', (start_date as string).split('T')[0]);
     }
     if (end_date) {
-      query = query.lte('end_date', end_date as string);
+      query = query.lte('scheduled_date', (end_date as string).split('T')[0]);
     }
     if (type) {
       query = query.eq('type', type as string);
@@ -260,9 +304,12 @@ router.get('/events', calendarLimiter, asyncHandler(async (req: Request, res: Re
       { filters: req.query }
     );
 
+    // Transformer les RDV en format CalendarEvent pour compatibilité API
+    const transformedEvents = (events || []).map(transformRDVToCalendarEvent);
+    
     return res.json({
       success: true,
-      data: events || [],
+      data: transformedEvents,
       count: count || 0,
       pagination: {
         limit: parseInt(limit as string),
@@ -288,24 +335,29 @@ router.post('/events', calendarLimiter, validateEvent, asyncHandler(async (req: 
   const eventData = req.body;
 
   try {
+    // Transformer les données CalendarEvent vers format RDV
+    const rdvData = transformCalendarEventToRDV(eventData);
+    
     // Ajouter les informations de création
     const newEvent = {
-      ...eventData,
-      status: 'pending', // Status défini automatiquement par le système
-      created_by: authUser.database_id, // Utiliser l'ID de la base de données
+      ...rdvData,
+      status: rdvData.status || 'scheduled', // Status par défaut pour RDV
+      created_by: authUser.database_id,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
 
     // Ajouter l'ID client/expert selon le type d'utilisateur
     if (authUser.type === 'client') {
-      newEvent.client_id = authUser.database_id; // Utiliser l'ID de la base de données
+      newEvent.client_id = authUser.database_id;
     } else if (authUser.type === 'expert') {
-      newEvent.expert_id = authUser.database_id; // Utiliser l'ID de la base de données
+      newEvent.expert_id = authUser.database_id;
+    } else if (authUser.type === 'apporteur') {
+      newEvent.apporteur_id = authUser.database_id;
     }
 
     const { data: event, error } = await supabase
-      .from('CalendarEvent')
+      .from('RDV')
       .insert(newEvent)
       .select()
       .single();
@@ -329,27 +381,32 @@ router.post('/events', calendarLimiter, validateEvent, asyncHandler(async (req: 
     if (eventData.reminders && Array.isArray(eventData.reminders)) {
       for (const reminder of eventData.reminders) {
         await supabase
-          .from('CalendarEventReminder')
+          .from('RDV_Reminders')
           .insert({
-            event_id: event.id,
-            type: reminder.type,
-            time_minutes: reminder.time
+            rdv_id: event.id,
+            reminder_type: reminder.type,
+            minutes_before: reminder.time,
+            status: 'pending'
           });
       }
     }
 
     // Envoyer les notifications aux participants
     try {
+      // Construire la date/heure complète depuis RDV
+      const eventDateTime = `${event.scheduled_date}T${event.scheduled_time}`;
+      const eventDate = new Date(eventDateTime);
+      
       // Notification pour l'organisateur
       await NotificationService.sendSystemNotification({
         userId: authUser.id,
         title: 'Rappel événement calendrier',
-        message: `Rappel pour l'événement "${event.title}" le ${new Date(event.start_date).toLocaleDateString('fr-FR')} à ${new Date(event.start_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`,
+        message: `Rappel pour l'événement "${event.title}" le ${eventDate.toLocaleDateString('fr-FR')} à ${eventDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`,
         metadata: {
           event_title: event.title,
-          event_date: new Date(event.start_date).toLocaleDateString('fr-FR'),
-          event_time: new Date(event.start_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
-          event_duration: `${Math.round((new Date(event.end_date).getTime() - new Date(event.start_date).getTime()) / (1000 * 60))} min`,
+          event_date: eventDate.toLocaleDateString('fr-FR'),
+          event_time: eventDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+          event_duration: `${event.duration_minutes || 60} min`,
           event_type: event.type,
           event_location: event.location || 'Non spécifié',
           event_description: event.description || 'Aucune description',
@@ -365,11 +422,11 @@ router.post('/events', calendarLimiter, validateEvent, asyncHandler(async (req: 
             await NotificationService.sendSystemNotification({
               userId: participantId,
               title: 'Invitation événement calendrier',
-              message: `Vous êtes invité à l'événement "${event.title}" le ${new Date(event.start_date).toLocaleDateString('fr-FR')} à ${new Date(event.start_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`,
+              message: `Vous êtes invité à l'événement "${event.title}" le ${eventDate.toLocaleDateString('fr-FR')} à ${eventDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`,
               metadata: {
                 event_title: event.title,
-                event_date: new Date(event.start_date).toLocaleDateString('fr-FR'),
-                event_time: new Date(event.start_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+                event_date: eventDate.toLocaleDateString('fr-FR'),
+                event_time: eventDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
                 event_location: event.location || 'Non spécifié',
                 organizer_name: (authUser as any).name || 'Organisateur',
                 event_description: event.description || 'Aucune description',
@@ -412,7 +469,7 @@ router.put('/events/:id', calendarLimiter, validateEvent, asyncHandler(async (re
   try {
     // Vérifier que l'événement existe et que l'utilisateur a les droits
     const { data: existingEvent, error: fetchError } = await supabase
-      .from('CalendarEvent')
+      .from('RDV')
       .select('*')
       .eq('id', id)
       .single();
@@ -431,7 +488,7 @@ router.put('/events/:id', calendarLimiter, validateEvent, asyncHandler(async (re
 
     // Mettre à jour l'événement
     const { data: updatedEvent, error } = await supabase
-      .from('CalendarEvent')
+      .from('RDV')
       .update({
         ...updates,
         updated_at: new Date().toISOString()
@@ -480,7 +537,7 @@ router.delete('/events/:id', calendarLimiter, asyncHandler(async (req: Request, 
   try {
     // Vérifier que l'événement existe et que l'utilisateur a les droits
     const { data: existingEvent, error: fetchError } = await supabase
-      .from('CalendarEvent')
+      .from('RDV')
       .select('*')
       .eq('id', id)
       .single();
@@ -499,7 +556,7 @@ router.delete('/events/:id', calendarLimiter, asyncHandler(async (req: Request, 
 
     // Supprimer l'événement (les rappels et participants seront supprimés en cascade)
     const { error } = await supabase
-      .from('CalendarEvent')
+      .from('RDV')
       .delete()
       .eq('id', id);
 
@@ -842,7 +899,7 @@ router.get('/stats', calendarLimiter, asyncHandler(async (req: Request, res: Res
       // Événements aujourd'hui
       (async () => {
         let query = supabase
-          .from('CalendarEvent')
+          .from('RDV')
           .select('*', { count: 'exact' })
           .eq('start_date', new Date().toISOString().split('T')[0]);
         
@@ -858,7 +915,7 @@ router.get('/stats', calendarLimiter, asyncHandler(async (req: Request, res: Res
       // Réunions cette semaine
       (async () => {
         let query = supabase
-          .from('CalendarEvent')
+          .from('RDV')
           .select('*', { count: 'exact' })
           .eq('type', 'meeting')
           .gte('start_date', new Date().toISOString())
@@ -956,7 +1013,7 @@ router.post('/events/:id/participants', calendarLimiter, asyncHandler(async (req
   try {
     // Vérifier que l'événement existe et que l'utilisateur a les droits
     const { data: event, error: eventError } = await supabase
-      .from('CalendarEvent')
+      .from('RDV')
       .select('*')
       .eq('id', id)
       .single();
@@ -984,7 +1041,7 @@ router.post('/events/:id/participants', calendarLimiter, asyncHandler(async (req
     }));
 
     const { data: addedParticipants, error } = await supabase
-      .from('CalendarEventParticipant')
+      .from('RDV_Participants')
       .insert(participantData)
       .select();
 
@@ -1032,7 +1089,7 @@ router.get('/events/:id/reminders', calendarLimiter, asyncHandler(async (req: Re
   try {
     // Vérifier que l'événement existe et que l'utilisateur a les droits
     const { data: event, error: eventError } = await supabase
-      .from('CalendarEvent')
+      .from('RDV')
       .select('*')
       .eq('id', id)
       .single();
@@ -1051,7 +1108,7 @@ router.get('/events/:id/reminders', calendarLimiter, asyncHandler(async (req: Re
 
     // Récupérer les rappels
     const { data: reminders, error } = await supabase
-      .from('CalendarEventReminder')
+      .from('RDV_Reminders')
       .select('*')
       .eq('event_id', id)
       .order('time_minutes', { ascending: true });
@@ -1093,7 +1150,7 @@ router.post('/reminders', calendarLimiter, asyncHandler(async (req: Request, res
   try {
     // Vérifier que l'événement existe et que l'utilisateur a les droits
     const { data: event, error: eventError } = await supabase
-      .from('CalendarEvent')
+      .from('RDV')
       .select('*')
       .eq('id', event_id)
       .single();
@@ -1112,7 +1169,7 @@ router.post('/reminders', calendarLimiter, asyncHandler(async (req: Request, res
 
     // Créer le rappel
     const { data: reminder, error } = await supabase
-      .from('CalendarEventReminder')
+      .from('RDV_Reminders')
       .insert({
         event_id,
         type,

@@ -442,7 +442,7 @@ router.get('/search',
 
     try {
       let query = supabase
-        .from('CalendarEvent')
+        .from('RDV')
         .select(`
           *,
           CalendarEventParticipant!inner(user_id, user_type, status)

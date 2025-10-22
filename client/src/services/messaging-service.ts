@@ -569,7 +569,7 @@ class MessagingService {
     try {
       // 1. Créer l'événement en base de données locale
       const { data, error } = await supabase
-        .from('CalendarEvent')
+        .from('RDV')
         .insert({
           ...eventData,
           created_by: this.currentUserId,
@@ -1059,7 +1059,7 @@ class MessagingService {
 
     try {
       const { data, error } = await supabase
-        .from('CalendarEvent')
+        .from('RDV')
         .select('id')
         .or(`created_by.eq.${this.currentUserId},client_id.eq.${this.currentUserId},expert_id.eq.${this.currentUserId}`);
 

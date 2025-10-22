@@ -172,7 +172,7 @@ export class IntelligentSyncService {
 
       // Récupérer les événements Profitum existants
       const { data: profitumEvents, error: fetchError } = await supabase
-        .from('CalendarEvent')
+        .from('RDV')
         .select('*')
         .eq('client_id', integration.user_id)
         .gte('start_date', options.timeRange.start.toISOString())
@@ -199,7 +199,7 @@ export class IntelligentSyncService {
               );
 
               const { error: updateError } = await supabase
-                .from('CalendarEvent')
+                .from('RDV')
                 .update(updatedEvent)
                 .eq('id', existingEvent.id);
 
@@ -218,7 +218,7 @@ export class IntelligentSyncService {
               );
 
               const { error: createError } = await supabase
-                .from('CalendarEvent')
+                .from('RDV')
                 .insert(newEvent);
 
               if (createError) {
@@ -278,7 +278,7 @@ export class IntelligentSyncService {
     try {
       // Récupérer les événements Profitum
       const { data: profitumEvents, error: fetchError } = await supabase
-        .from('CalendarEvent')
+        .from('RDV')
         .select('*')
         .eq('client_id', integration.user_id)
         .gte('start_date', options.timeRange.start.toISOString())
