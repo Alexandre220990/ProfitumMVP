@@ -490,36 +490,44 @@ router.post('/prospects/:clientId/assign-experts', async (req: Request, res: Res
     for (const assignment of expert_assignments) {
       const { product_id, expert_id } = assignment;
       
-      // Trouver le ClientProduitEligible correspondant
+      if (!product_id) {
+        results.failed++;
+        results.errors.push(`product_id manquant dans l'assignation`);
+        continue;
+      }
+      
+      // product_id est l'ID du ClientProduitEligible (pas du ProduitEligible)
+      // Vérifier que le CPE appartient bien au client et existe
       const { data: cpe, error: cpeError } = await supabase
         .from('ClientProduitEligible')
-        .select('id')
+        .select('id, produitId')
         .eq('clientId', clientId)
-        .eq('id', product_id) // product_id est en fait le CPE id
+        .eq('id', product_id)
         .single();
       
       if (cpeError || !cpe) {
         results.failed++;
-        results.errors.push(`Produit ${product_id} non trouvé`);
+        results.errors.push(`CPE ${product_id} non trouvé pour ce client`);
+        console.error(`❌ CPE ${product_id} introuvable:`, cpeError);
         continue;
       }
       
-      // Mettre à jour l'expert_id
+      // Mettre à jour l'expert_id dans le CPE
       const { error: updateError } = await supabase
         .from('ClientProduitEligible')
         .update({
-          expert_id: expert_id,
+          expert_id: expert_id || null, // Permettre de retirer un expert en passant null
           updated_at: new Date().toISOString()
         })
         .eq('id', cpe.id);
       
       if (updateError) {
         results.failed++;
-        results.errors.push(`Erreur mise à jour ${product_id}: ${updateError.message}`);
+        results.errors.push(`Erreur mise à jour CPE ${product_id}: ${updateError.message}`);
         console.error(`❌ Erreur assignation expert pour CPE ${cpe.id}:`, updateError);
       } else {
         results.success++;
-        console.log(`✅ Expert ${expert_id || 'aucun'} assigné au CPE ${cpe.id}`);
+        console.log(`✅ Expert ${expert_id || 'non assigné'} assigné au CPE ${cpe.id} (produit: ${cpe.produitId})`);
       }
     }
     

@@ -23,8 +23,8 @@ interface Expert {
 }
 
 interface Product {
-  id: string;
-  produit_id: string;
+  id: string; // ID du ClientProduitEligible (utilisé pour l'assignation expert)
+  produit_id: string; // ID du ProduitEligible (utilisé pour charger les experts disponibles)
   produit_name: string;
   produit_description: string;
   statut: 'eligible' | 'to_confirm' | 'non_eligible';

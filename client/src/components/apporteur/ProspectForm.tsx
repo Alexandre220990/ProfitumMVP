@@ -300,13 +300,24 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
 
   /**
    * ✅ NOUVEAU: Sauvegarder les experts sélectionnés manuellement
+   * Cette fonction assigne les experts aux ClientProduitEligible créés
    */
   const saveManualExpertSelections = async (clientId: string) => {
     try {
-      const updates = Object.entries(manualExpertSelections).map(([productId, expertId]) => ({
-        product_id: productId,
-        expert_id: expertId
-      }));
+      // Filtrer uniquement les assignations avec un expert sélectionné
+      const updates = Object.entries(manualExpertSelections)
+        .filter(([_, expertId]) => expertId !== null)
+        .map(([cpeId, expertId]) => ({
+          product_id: cpeId, // En mode simulation, c'est le CPE ID
+          expert_id: expertId
+        }));
+      
+      if (updates.length === 0) {
+        console.log('ℹ️ Aucun expert à assigner');
+        return;
+      }
+      
+      console.log(`🔍 Assignation de ${updates.length} expert(s) pour le client ${clientId}...`);
       
       const response = await fetch(`${config.API_URL}/api/apporteur/prospects/${clientId}/assign-experts`, {
         method: 'POST',
@@ -318,18 +329,23 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
       });
 
       if (!response.ok) {
-        throw new Error('Erreur assignation experts');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Erreur assignation experts');
       }
 
       const result = await response.json();
       console.log('✅ Résultat assignation experts:', result);
-      const assignedCount = updates.filter(u => u.expert_id).length;
-      if (assignedCount > 0) {
-        toast.success(`${assignedCount} expert(s) assigné(s) avec succès !`);
+      
+      if (result.data?.success > 0) {
+        toast.success(`${result.data.success} expert(s) assigné(s) avec succès !`);
+      }
+      
+      if (result.data?.errors?.length > 0) {
+        console.warn('⚠️ Erreurs lors de l\'assignation:', result.data.errors);
       }
       
     } catch (error) {
-      console.error('Erreur assignation experts:', error);
+      console.error('❌ Erreur assignation experts:', error);
       toast.warning('Prospect créé mais erreur lors de l\'assignation des experts');
     }
   };
@@ -512,12 +528,13 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
       
       const createdProspectId: string | undefined = result.data?.prospect?.id || prospectId;
       
-      // ✅ NOUVEAU: Sauvegarder les experts sélectionnés manuellement par l'apporteur
+      // ✅ Sauvegarder les experts sélectionnés manuellement (mode simulation uniquement)
+      // Note: En mode simulation, les CPE sont déjà créés avec leurs IDs
       if (identificationMode === 'simulation' && simulationCompleted && Object.keys(manualExpertSelections).length > 0 && createdProspectId) {
         await saveManualExpertSelections(createdProspectId);
       }
       
-      // Si mode simulation avec RDV multiples, créer les RDV
+      // ✅ Créer les RDV multiples (mode simulation uniquement)
       if (identificationMode === 'simulation' && simulationCompleted && scheduledMeetings.length > 0 && createdProspectId) {
         await createMultipleMeetings(createdProspectId);
       }

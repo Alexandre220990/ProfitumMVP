@@ -560,15 +560,18 @@ const skipAuthForApporteurPublic = (req: Request, res: Response, next: NextFunct
   return simpleAuthMiddleware(req, res, next);
 };
 
-// Routes apporteur d'affaires - PROTÉGÉES sauf /register et /verify-sponsor
-app.use('/api/apporteur', skipAuthForApporteurPublic, requireUserType('apporteur'), apporteurRoutes);
+// ⚠️ IMPORTANT: Monter les routes dans l'ordre du plus spécifique au plus général
+// pour éviter les conflits de routing Express
 
-// Routes API apporteur d'affaires - PROTÉGÉES sauf /register et /verify-sponsor
-app.use('/api/apporteur', skipAuthForApporteurPublic, requireUserType('apporteur'), apporteurApiRoutes);
-
-// Routes simulation apporteur - PROTÉGÉES
+// 1. Routes simulation apporteur - PROTÉGÉES (plus spécifiques)
 app.use('/api/apporteur/prospects', enhancedAuthMiddleware, requireUserType('apporteur'), apporteurSimulationRoutes);
 console.log('✅ Routes simulation apporteur montées sur /api/apporteur/prospects');
+
+// 2. Routes apporteur d'affaires - PROTÉGÉES sauf /register et /verify-sponsor
+app.use('/api/apporteur', skipAuthForApporteurPublic, requireUserType('apporteur'), apporteurRoutes);
+
+// 3. Routes API apporteur d'affaires - PROTÉGÉES sauf /register et /verify-sponsor
+app.use('/api/apporteur', skipAuthForApporteurPublic, requireUserType('apporteur'), apporteurApiRoutes);
 
 
 // Routes expert pour apporteurs - PROTÉGÉES
