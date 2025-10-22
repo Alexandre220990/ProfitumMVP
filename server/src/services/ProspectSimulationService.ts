@@ -87,11 +87,12 @@ export class ProspectSimulationService {
         .from('simulations')
         .insert({
           client_id: request.prospect_id,
-          type: 'apporteur_prospect',
-          status: 'pending',
+          type: 'authentifiee', // Simulation par apporteur = authentifiée
+          status: 'en_cours',
           answers: request.answers, // Format: { uuid: value }
           metadata: {
             source: 'apporteur',
+            simulation_context: 'prospect', // Indique que c'est pour un prospect
             apporteur_id: request.apporteur_id,
             prospect_data: request.prospect_data,
             created_at: new Date().toISOString()
@@ -322,7 +323,7 @@ export class ProspectSimulationService {
         .from('simulations')
         .select('*')
         .eq('client_id', prospectId)
-        .eq('type', 'apporteur_prospect')
+        .eq('type', 'authentifiee')
         .order('created_at', { ascending: false })
         .limit(1)
         .single();
