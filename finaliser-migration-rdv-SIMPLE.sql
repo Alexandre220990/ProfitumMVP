@@ -201,7 +201,7 @@ AND table_name LIKE '%CalendarEvent%';
 SELECT 'Vues créées' as info, COUNT(*) as nombre
 FROM information_schema.views
 WHERE table_schema = 'public'
-AND view_name IN ('v_calendar_events_with_participants', 'v_today_events', 'vue_apporteur_agenda', 'vue_apporteur_rendez_vous');
+AND table_name IN ('v_calendar_events_with_participants', 'v_today_events', 'vue_apporteur_agenda', 'vue_apporteur_rendez_vous');
 
 COMMIT;
 
