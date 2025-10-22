@@ -157,7 +157,13 @@ SELECT
     'Événements à migrer' as info,
     COUNT(*) as total,
     COUNT(*) FILTER (WHERE client_id IS NOT NULL) as avec_client,
-    COUNT(*) FILTER (WHERE client_id IS NULL) as sans_client_skip
+    COUNT(*) FILTER (WHERE client_id IS NULL) as sans_client_skip,
+    COUNT(*) FILTER (
+        WHERE client_id IS NOT NULL
+        AND (client_id IS NULL OR EXISTS (SELECT 1 FROM "Client" WHERE id = client_id))
+        AND (expert_id IS NULL OR EXISTS (SELECT 1 FROM "Expert" WHERE id = expert_id))
+        AND (created_by IS NULL OR EXISTS (SELECT 1 FROM "ApporteurAffaires" WHERE id = created_by))
+    ) as migrables_reels
 FROM "CalendarEvent";
 
 -- Migrer les événements
@@ -229,7 +235,11 @@ FROM "CalendarEvent" ce
 WHERE ce.client_id IS NOT NULL  -- ✅ Skip les événements sans client
 AND NOT EXISTS (
     SELECT 1 FROM "RDV" WHERE id = ce.id
-);
+)
+-- ✅ Vérifier que les foreign keys existent
+AND (ce.client_id IS NULL OR EXISTS (SELECT 1 FROM "Client" WHERE id = ce.client_id))
+AND (ce.expert_id IS NULL OR EXISTS (SELECT 1 FROM "Expert" WHERE id = ce.expert_id))
+AND (ce.created_by IS NULL OR EXISTS (SELECT 1 FROM "ApporteurAffaires" WHERE id = ce.created_by));
 
 -- Vérifier la migration
 SELECT 
