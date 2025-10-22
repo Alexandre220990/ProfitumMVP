@@ -16,15 +16,49 @@ BEGIN;
 SELECT '📊 ÉTAPE 1 : Ajout colonnes manquantes à RDV' as info;
 
 -- Colonnes de CalendarEvent qui n'existent pas dans RDV
-ALTER TABLE "RDV" 
-ADD COLUMN IF NOT EXISTS description text,
-ADD COLUMN IF NOT EXISTS type character varying DEFAULT 'meeting',
-ADD COLUMN IF NOT EXISTS phone_number character varying,
-ADD COLUMN IF NOT EXISTS color character varying DEFAULT '#3B82F6',
-ADD COLUMN IF NOT EXISTS is_recurring boolean DEFAULT false,
-ADD COLUMN IF NOT EXISTS recurrence_rule text,
-ADD COLUMN IF NOT EXISTS dossier_id uuid,
-ADD COLUMN IF NOT EXISTS dossier_name character varying;
+-- PostgreSQL ne supporte pas ADD COLUMN IF NOT EXISTS avec DEFAULT dans une seule commande
+DO $$ 
+BEGIN
+    -- description
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'RDV' AND column_name = 'description') THEN
+        ALTER TABLE "RDV" ADD COLUMN description text;
+    END IF;
+    
+    -- type
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'RDV' AND column_name = 'type') THEN
+        ALTER TABLE "RDV" ADD COLUMN type character varying DEFAULT 'meeting';
+    END IF;
+    
+    -- phone_number
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'RDV' AND column_name = 'phone_number') THEN
+        ALTER TABLE "RDV" ADD COLUMN phone_number character varying;
+    END IF;
+    
+    -- color
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'RDV' AND column_name = 'color') THEN
+        ALTER TABLE "RDV" ADD COLUMN color character varying DEFAULT '#3B82F6';
+    END IF;
+    
+    -- is_recurring
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'RDV' AND column_name = 'is_recurring') THEN
+        ALTER TABLE "RDV" ADD COLUMN is_recurring boolean DEFAULT false;
+    END IF;
+    
+    -- recurrence_rule
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'RDV' AND column_name = 'recurrence_rule') THEN
+        ALTER TABLE "RDV" ADD COLUMN recurrence_rule text;
+    END IF;
+    
+    -- dossier_id
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'RDV' AND column_name = 'dossier_id') THEN
+        ALTER TABLE "RDV" ADD COLUMN dossier_id uuid;
+    END IF;
+    
+    -- dossier_name
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'RDV' AND column_name = 'dossier_name') THEN
+        ALTER TABLE "RDV" ADD COLUMN dossier_name character varying;
+    END IF;
+END $$;
 
 -- Vérifier l'ajout
 SELECT 
