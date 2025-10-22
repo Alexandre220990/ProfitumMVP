@@ -267,6 +267,9 @@ router.get('/events', calendarLimiter, asyncHandler(async (req: Request, res: Re
 
     } else if (authUser.type === 'expert') {
       query = query.eq('expert_id', authUser.database_id);
+    } else if (authUser.type === 'apporteur') {
+      // Apporteurs voient leurs RDV (où ils sont participants)
+      query = query.eq('apporteur_id', authUser.database_id);
     }
     // Admin voit tous les événements
 
@@ -907,6 +910,8 @@ router.get('/stats', calendarLimiter, asyncHandler(async (req: Request, res: Res
           query = query.eq('client_id', authUser.database_id);
         } else if (authUser.type === 'expert') {
           query = query.eq('expert_id', authUser.database_id);
+        } else if (authUser.type === 'apporteur') {
+          query = query.eq('apporteur_id', authUser.database_id);
         }
         
         return query;
@@ -925,6 +930,8 @@ router.get('/stats', calendarLimiter, asyncHandler(async (req: Request, res: Res
           query = query.eq('client_id', authUser.database_id);
         } else if (authUser.type === 'expert') {
           query = query.eq('expert_id', authUser.database_id);
+        } else if (authUser.type === 'apporteur') {
+          query = query.eq('apporteur_id', authUser.database_id);
         }
         
         return query;
