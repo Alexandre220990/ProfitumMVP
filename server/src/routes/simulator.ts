@@ -664,15 +664,24 @@ router.get('/results/:session_token', async (req, res) => {
       });
     }
 
+    console.log('🔍 Simulation trouvée:', {
+      id: simulation.id,
+      client_id: simulation.client_id,
+      status: simulation.status,
+      answers_type: typeof simulation.answers,
+      answers_keys: simulation.answers ? Object.keys(simulation.answers).length : 0,
+      answers_raw: simulation.answers
+    });
+
     // Vérifier si la session peut être migrée
     let canMigrate = false;
     let migrationError = null;
 
     // 1. Vérifier si la session n'est pas expirée
-    const isExpired = simulation.expires_at && new Date(simulation.expires_at) < new Date();
+    const isExpired = simulation.expires_at ? new Date(simulation.expires_at) < new Date() : false;
     
     // 2. Vérifier si la session a des réponses
-    const hasAnswers = simulation.answers && Object.keys(simulation.answers).length > 0;
+    const hasAnswers = !!(simulation.answers && typeof simulation.answers === 'object' && Object.keys(simulation.answers).length > 0);
     
     // 3. Vérifier si le client est temporaire (UUID)
     const { data: client, error: clientError } = await supabaseClient
