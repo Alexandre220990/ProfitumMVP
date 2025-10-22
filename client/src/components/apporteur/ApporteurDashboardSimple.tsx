@@ -4,7 +4,7 @@ import { useApporteurData } from '../../hooks/use-apporteur-data';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
-import { RefreshCw, AlertTriangle, Users, TrendingUp, DollarSign, BarChart3, Target, Award, Activity, Eye, ArrowUpDown } from 'lucide-react';
+import { RefreshCw, AlertTriangle, Users, TrendingUp, DollarSign, BarChart3, Award, Activity, Eye, ArrowUpDown } from 'lucide-react';
 import ProspectForm from './ProspectForm';
 
 interface ApporteurDashboardSimpleProps {
@@ -102,15 +102,6 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
     };
   });
 
-  const objectivesData = data?.objectifs ? {
-    objectifProspects: data.objectifs.objectif_prospects_mois || 0,
-    objectifConversion: data.objectifs.objectif_conversion_pourcent || 0,
-    objectifCommission: data.objectifs.objectif_commission_mois || 0,
-    realisationProspects: data.objectifs.realisation_prospects_mois || 0,
-    realisationConversion: data.objectifs.realisation_conversion_pourcent || 0,
-    realisationCommission: data.objectifs.realisation_commission_mois || 0
-  } : null;
-
   const conversionStats = data?.conversionStats || {
     taux_prospect_rdv: 0,
     prospects_avec_rdv: 0,
@@ -121,8 +112,6 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
     rdv_avec_signature: 0,
     recent_clients: []
   };
-
-  const hasEnhancedData = !!(data?.dashboard && data?.prospects.length > 0);
 
   // Tri des dossiers - fonction simple
   const getSortedDossiers = () => {
@@ -272,7 +261,7 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
                   </p>
                   <p className="text-xs text-gray-500 mt-1">Prospect → Signature</p>
                 </div>
-                <Target className="h-8 w-8 text-indigo-500" />
+                <TrendingUp className="h-8 w-8 text-indigo-500" />
               </div>
             </CardContent>
           </Card>
@@ -543,7 +532,7 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
                     </div>
                   ) : (
                     <div className="text-center py-8 px-6">
-                      <Target className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                      <TrendingUp className="h-8 w-8 text-gray-400 mx-auto mb-2" />
                       <p className="text-gray-500 text-sm">Aucune conversion encore</p>
                     </div>
                   )}
@@ -594,60 +583,7 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
           </Card>
         </div>
 
-        {/* Objectifs et Messages d'information */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Objectifs */}
-          {objectivesData && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Target className="h-5 w-5" />
-                  Objectifs
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="text-center p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-blue-600">
-                      {objectivesData.objectifProspects}
-                    </div>
-                    <p className="text-xs text-gray-600">Prospects</p>
-                  </div>
-                  <div className="text-center p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-green-600">
-                      {objectivesData.objectifConversion}%
-                    </div>
-                    <p className="text-xs text-gray-600">Conversion</p>
-                  </div>
-                  <div className="text-center p-3 border rounded-lg">
-                    <div className="text-lg font-bold text-purple-600">
-                      {objectivesData.objectifCommission}€
-                    </div>
-                    <p className="text-xs text-gray-600">Commission</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Status */}
-          <Card className={`border-2 ${hasEnhancedData ? 'border-green-200 bg-green-50' : 'border-blue-200 bg-blue-50'}`}>
-            <CardContent className="pt-6">
-              <div className="text-center">
-                <AlertTriangle className={`h-6 w-6 mx-auto mb-2 ${hasEnhancedData ? 'text-green-500' : 'text-blue-500'}`} />
-                <h3 className={`font-medium mb-1 text-sm ${hasEnhancedData ? 'text-green-900' : 'text-blue-900'}`}>
-                  {hasEnhancedData ? 'Dashboard Enrichi Actif' : 'Dashboard Optimisé'}
-                </h3>
-                <p className={`text-xs ${hasEnhancedData ? 'text-green-700' : 'text-blue-700'}`}>
-                  {hasEnhancedData 
-                    ? 'Vues SQL enrichies actives'
-                    : 'Prêt pour les vues SQL enrichies'
-                  }
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        {/* Section objectifs et status masquée */}
       </div>
       
       {/* Formulaire de création de prospect */}

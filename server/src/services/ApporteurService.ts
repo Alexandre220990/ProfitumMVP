@@ -585,85 +585,250 @@ export class ApporteurService {
 
     // ===== VUES SQL =====
     
-    // Vue dashboard principal
+    // Dashboard principal - Calcul direct depuis les tables
     static async getDashboardPrincipal(apporteurId: string) {
         try {
-            const { data, error } = await supabase
-                .from('vue_apporteur_dashboard_principal')
-                .select('*')
-                .eq('apporteur_id', apporteurId)
-                .maybeSingle();
+            console.log('🔍 Calcul dashboard principal pour apporteur:', apporteurId);
 
-            if (error) {
-                console.error('Erreur vue dashboard principal:', error);
-                return { success: false, error: error.message };
+            // 1. Récupérer tous les clients de l'apporteur
+            const { data: clients, error: clientsError } = await supabase
+                .from('Client')
+                .select('id, status, created_at')
+                .eq('apporteur_id', apporteurId);
+
+            if (clientsError) throw clientsError;
+
+            // 2. Compter prospects et clients actifs
+            const allClients = clients || [];
+            const totalProspects = allClients.filter(c => c.status === 'prospect').length;
+            const totalActiveClients = allClients.filter(c => c.status === 'client').length;
+
+            // Nouveaux clients dans les 30 derniers jours
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            const nouveauxClients30j = allClients.filter(c => 
+                c.status === 'client' && new Date(c.created_at) >= thirtyDaysAgo
+            ).length;
+
+            // 3. Récupérer les ClientProduitEligible (dossiers)
+            if (allClients.length === 0) {
+                return {
+                    success: true,
+                    data: {
+                        total_prospects: 0,
+                        total_active_clients: 0,
+                        nouveaux_clients_30j: 0,
+                        dossiers_acceptes: 0,
+                        total_montant_demande: 0,
+                        taux_conversion_pourcent: 0
+                    }
+                };
             }
 
-            return { success: true, data: data || null };
+            const clientIds = allClients.map(c => c.id);
+
+            const { data: dossiers, error: dossiersError } = await supabase
+                .from('ClientProduitEligible')
+                .select('id, statut, montantFinal, clientId')
+                .in('clientId', clientIds);
+
+            if (dossiersError) throw dossiersError;
+
+            // 4. Calculer les statistiques des dossiers
+            const allDossiers = dossiers || [];
+            const dossiersAcceptes = allDossiers.filter(d => 
+                d.statut === 'eligible' || d.statut === 'validated' || d.statut === 'in_progress'
+            ).length;
+
+            const totalMontantDemande = allDossiers.reduce((sum, d) => {
+                return sum + (d.montantFinal || 0);
+            }, 0);
+
+            // 5. Calculer le taux de conversion
+            const tauxConversionPourcent = totalProspects > 0 
+                ? Math.round((totalActiveClients / (totalProspects + totalActiveClients)) * 100)
+                : 0;
+
+            console.log('✅ Dashboard calculé:', {
+                totalProspects,
+                totalActiveClients,
+                dossiersAcceptes,
+                totalMontantDemande
+            });
+
+            return {
+                success: true,
+                data: {
+                    total_prospects: totalProspects,
+                    total_active_clients: totalActiveClients,
+                    nouveaux_clients_30j: nouveauxClients30j,
+                    dossiers_acceptes: dossiersAcceptes,
+                    total_montant_demande: totalMontantDemande,
+                    taux_conversion_pourcent: tauxConversionPourcent
+                }
+            };
         } catch (error) {
             console.error('Erreur getDashboardPrincipal:', error);
             return { success: false, error: 'Erreur lors de la récupération du dashboard' };
         }
     }
 
-    // Vue prospects détaillés
+    // Prospects détaillés - Calcul direct depuis la table Client
     static async getProspectsDetaille(apporteurId: string) {
         try {
-            const { data, error } = await supabase
-                .from('vue_apporteur_prospects_detaille')
-                .select('*')
+            console.log('🔍 Récupération prospects détaillés pour apporteur:', apporteurId);
+
+            const { data: clients, error } = await supabase
+                .from('Client')
+                .select(`
+                    id,
+                    company_name,
+                    email,
+                    phone_number,
+                    status,
+                    source,
+                    qualification_score,
+                    created_at,
+                    updated_at
+                `)
                 .eq('apporteur_id', apporteurId)
-                .order('date_creation', { ascending: false });
+                .order('created_at', { ascending: false });
 
             if (error) {
-                console.error('Erreur vue prospects détaillés:', error);
+                console.error('Erreur récupération prospects:', error);
                 return { success: false, error: error.message };
             }
 
-            return { success: true, data: data || [] };
+            // Formater les données pour le frontend
+            const formattedData = (clients || []).map(client => ({
+                prospect_id: client.id,
+                prospect_name: client.company_name,
+                prospect_email: client.email,
+                prospect_status: client.status,
+                company_name: client.company_name,
+                email: client.email,
+                phone_number: client.phone_number,
+                source: client.source,
+                qualification_score: client.qualification_score,
+                date_creation: client.created_at,
+                derniere_activite: client.updated_at
+            }));
+
+            console.log(`✅ ${formattedData.length} prospects récupérés`);
+
+            return { success: true, data: formattedData };
         } catch (error) {
             console.error('Erreur getProspectsDetaille:', error);
             return { success: false, error: 'Erreur lors de la récupération des prospects' };
         }
     }
 
-    // Vue objectifs et performance
+    // Objectifs et performance - Calcul direct
     static async getObjectifsPerformance(apporteurId: string) {
         try {
-            const { data, error } = await supabase
-                .from('vue_apporteur_objectifs_performance')
-                .select('*')
-                .eq('apporteur_id', apporteurId)
-                .maybeSingle();
+            console.log('🔍 Calcul objectifs performance pour apporteur:', apporteurId);
 
-            if (error) {
-                console.error('Erreur vue objectifs performance:', error);
-                return { success: false, error: error.message };
-            }
-
-            return { success: true, data: data || null };
+            // Pour l'instant, retourner null car les objectifs ne sont pas définis dans la BDD
+            // Cette fonctionnalité sera implémentée plus tard si nécessaire
+            return { 
+                success: true, 
+                data: null 
+            };
         } catch (error) {
             console.error('Erreur getObjectifsPerformance:', error);
             return { success: false, error: 'Erreur lors de la récupération des objectifs' };
         }
     }
 
-    // Vue activité récente
+    // Activité récente - Calcul direct depuis les tables
     static async getActiviteRecente(apporteurId: string) {
         try {
-            const { data, error } = await supabase
-                .from('vue_apporteur_activite_recente')
-                .select('*')
-                .eq('apporteur_id', apporteurId)
-                .order('date_activite', { ascending: false })
-                .limit(20);
+            console.log('🔍 Calcul activité récente pour apporteur:', apporteurId);
 
-            if (error) {
-                console.error('Erreur vue activité récente:', error);
-                return { success: false, error: error.message };
+            // 1. Récupérer les nouveaux clients
+            const { data: clients, error: clientsError } = await supabase
+                .from('Client')
+                .select('id, company_name, email, status, created_at')
+                .eq('apporteur_id', apporteurId)
+                .order('created_at', { ascending: false })
+                .limit(10);
+
+            if (clientsError) throw clientsError;
+
+            // 2. Récupérer les nouveaux dossiers (ClientProduitEligible)
+            const clientIds = (clients || []).map(c => c.id);
+            
+            let dossiers: any[] = [];
+            if (clientIds.length > 0) {
+                const { data: dossiersData, error: dossiersError } = await supabase
+                    .from('ClientProduitEligible')
+                    .select(`
+                        id,
+                        clientId,
+                        produitId,
+                        statut,
+                        montantFinal,
+                        created_at,
+                        Client!inner(
+                            id,
+                            company_name,
+                            email
+                        ),
+                        ProduitEligible!inner(
+                            id,
+                            nom
+                        )
+                    `)
+                    .in('clientId', clientIds)
+                    .order('created_at', { ascending: false })
+                    .limit(10);
+
+                if (!dossiersError) {
+                    dossiers = dossiersData || [];
+                }
             }
 
-            return { success: true, data: data || [] };
+            // 3. Formater les activités
+            const activities: any[] = [];
+
+            // Ajouter les nouveaux clients
+            (clients || []).forEach(client => {
+                if (client.status === 'client') {
+                    activities.push({
+                        source_id: client.id,
+                        type_activite: 'nouveau_client',
+                        date_activite: client.created_at,
+                        client_name: client.company_name,
+                        client_company: client.company_name,
+                        client_email: client.email,
+                        montant: null,
+                        produit_nom: null
+                    });
+                }
+            });
+
+            // Ajouter les nouveaux dossiers
+            dossiers.forEach(dossier => {
+                activities.push({
+                    source_id: dossier.id,
+                    type_activite: 'nouveau_produit',
+                    date_activite: dossier.created_at,
+                    client_name: dossier.Client?.company_name,
+                    client_company: dossier.Client?.company_name,
+                    client_email: dossier.Client?.email,
+                    montant: dossier.montantFinal,
+                    produit_nom: dossier.ProduitEligible?.nom
+                });
+            });
+
+            // Trier par date
+            activities.sort((a, b) => 
+                new Date(b.date_activite).getTime() - new Date(a.date_activite).getTime()
+            );
+
+            console.log(`✅ ${activities.length} activités récupérées`);
+
+            return { success: true, data: activities.slice(0, 20) };
         } catch (error) {
             console.error('Erreur getActiviteRecente:', error);
             return { success: false, error: 'Erreur lors de la récupération de l\'activité' };
