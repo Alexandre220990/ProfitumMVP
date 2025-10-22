@@ -163,8 +163,8 @@ SELECT
         WHEN ce.phone_number IS NOT NULL THEN 'phone'
         ELSE 'physical'
     END as meeting_type,
-    DATE(ce.start_date) as scheduled_date,
-    TIME(ce.start_date) as scheduled_time,
+    ce.start_date::date as scheduled_date,
+    ce.start_date::time as scheduled_time,
     EXTRACT(EPOCH FROM (ce.end_date - ce.start_date)) / 60 as duration_minutes,
     ce.location,
     ce.meeting_url,
