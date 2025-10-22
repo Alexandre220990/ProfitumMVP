@@ -167,13 +167,13 @@ export class CalendarReminderService {
 
     // Ajouter les participants
     const { data: participants } = await supabase
-      .from('CalendarEventParticipant')
+      .from('RDV_Participants')
       .select(`
         user_id,
         user_type,
         user_name
       `)
-      .eq('event_id', event.id);
+      .eq('rdv_id', event.id);
 
     if (participants) {
       for (const participant of participants) {
@@ -240,7 +240,7 @@ export class CalendarReminderService {
       await supabase
         .from('RDV_Reminders')
         .delete()
-        .eq('event_id', eventId);
+        .eq('rdv_id', eventId);
 
       console.log(`✅ Rappels supprimés pour l'événement: ${eventId}`);
 

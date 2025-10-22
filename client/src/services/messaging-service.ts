@@ -585,9 +585,9 @@ class MessagingService {
         await Promise.all(
           eventData.participants.map(participantId =>
             supabase
-              .from('CalendarEventParticipant')
+              .from('RDV_Participants')
               .insert({
-                event_id: data.id,
+                rdv_id: data.id,
                 user_id: participantId,
                 user_type: 'client', // TODO: Déterminer le type
                 status: 'pending'
@@ -601,11 +601,12 @@ class MessagingService {
         await Promise.all(
           eventData.reminders.map(reminder =>
             supabase
-              .from('CalendarEventReminder')
+              .from('RDV_Reminders')
               .insert({
-                event_id: data.id,
-                type: reminder.type,
-                time_minutes: reminder.time
+                rdv_id: data.id,
+                reminder_type: reminder.type,
+                minutes_before: reminder.time,
+                status: 'pending'
               })
           )
         );

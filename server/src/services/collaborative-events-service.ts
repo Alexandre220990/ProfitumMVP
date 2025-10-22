@@ -202,9 +202,17 @@ export class CollaborativeEventsService {
       }
     ]);
 
+    // Adapter les champs pour RDV_Reminders
+    const adaptedReminders = reminderData.map((r: any) => ({
+      rdv_id: r.event_id,
+      reminder_type: r.type,
+      minutes_before: r.time_minutes,
+      status: 'pending'
+    }));
+    
     const { error } = await supabase
-      .from('CalendarEventReminder')
-      .insert(reminderData);
+      .from('RDV_Reminders')
+      .insert(adaptedReminders);
 
     if (error) throw error;
   }

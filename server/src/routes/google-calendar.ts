@@ -766,9 +766,9 @@ async function logGoogleCalendarActivity(
 
 async function checkEventParticipation(eventId: string, userId: string): Promise<boolean> {
   const { data, error } = await supabase
-    .from('CalendarEventParticipant')
+    .from('RDV_Participants')
     .select('id')
-    .eq('event_id', eventId)
+    .eq('rdv_id', eventId)
     .eq('user_id', userId)
     .single();
 
