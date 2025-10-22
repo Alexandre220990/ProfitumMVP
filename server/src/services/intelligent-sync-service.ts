@@ -175,8 +175,8 @@ export class IntelligentSyncService {
         .from('RDV')
         .select('*')
         .eq('client_id', integration.user_id)
-        .gte('start_date', options.timeRange.start.toISOString())
-        .lte('end_date', options.timeRange.end.toISOString());
+        .gte('scheduled_date', options.timeRange.start.toISOString().split('T')[0])
+        .lte('scheduled_date', options.timeRange.end.toISOString().split('T')[0]);
 
       if (fetchError) throw fetchError;
 
@@ -281,8 +281,8 @@ export class IntelligentSyncService {
         .from('RDV')
         .select('*')
         .eq('client_id', integration.user_id)
-        .gte('start_date', options.timeRange.start.toISOString())
-        .lte('end_date', options.timeRange.end.toISOString());
+        .gte('scheduled_date', options.timeRange.start.toISOString().split('T')[0])
+        .lte('scheduled_date', options.timeRange.end.toISOString().split('T')[0]);
 
       if (fetchError) throw fetchError;
 

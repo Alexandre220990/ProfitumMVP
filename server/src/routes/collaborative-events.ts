@@ -460,18 +460,18 @@ router.get('/search',
       }
 
       if (start_date) {
-        query = query.gte('start_date', start_date);
+        query = query.gte('scheduled_date', (start_date as string).split('T')[0]);
       }
 
       if (end_date) {
-        query = query.lte('end_date', end_date);
+        query = query.lte('scheduled_date', (end_date as string).split('T')[0]);
       }
 
       if (user_type) {
         query = query.eq('CalendarEventParticipant.user_type', user_type);
       }
 
-      const { data: events, error } = await query.order('start_date', { ascending: true });
+      const { data: events, error } = await query.order('scheduled_date', { ascending: true }).order('scheduled_time', { ascending: true });
 
       if (error) throw error;
 

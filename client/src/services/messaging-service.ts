@@ -1023,10 +1023,12 @@ class MessagingService {
       
       // Notification push pour nouveaux événements
       if (eventType === 'INSERT' && (newEvent as any).created_by !== this.currentUserId) {
+        const rdv = newEvent as any;
+        const eventDateTime = `${rdv.scheduled_date}T${rdv.scheduled_time}`;
         this.sendPushNotification(
           this.currentUserId!,
           'Nouvel événement calendrier',
-          `${(newEvent as CalendarEvent).title} - ${new Date((newEvent as CalendarEvent).start_date).toLocaleString('fr-FR')}`
+          `${rdv.title} - ${new Date(eventDateTime).toLocaleString('fr-FR')}`
         );
       }
     }

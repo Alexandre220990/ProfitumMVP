@@ -69,7 +69,7 @@ export class CalendarReminderService {
         return;
       }
 
-      const eventStart = new Date(event.start_date);
+      const eventStart = new Date(`${event.scheduled_date}T${event.scheduled_time}`);
       const reminderTime = new Date(eventStart.getTime() - (reminder.time_minutes * 60 * 1000));
 
       // Vérifier si c'est le moment d'envoyer le rappel
@@ -98,7 +98,7 @@ export class CalendarReminderService {
    */
   private async sendReminderNotification(reminder: any, event: any): Promise<void> {
     try {
-      const eventStart = new Date(event.start_date);
+      const eventStart = new Date(`${event.scheduled_date}T${event.scheduled_time}`);
       const now = new Date();
       const timeUntilEvent = Math.round((eventStart.getTime() - now.getTime()) / (1000 * 60));
 
@@ -307,8 +307,8 @@ export class CalendarReminderService {
           message: `L'événement "${event.title}" est maintenant terminé.`,
           type: 'system',
           event_title: event.title,
-          event_date: new Date(event.start_date).toLocaleDateString('fr-FR'),
-          event_time: new Date(event.start_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+          event_date: new Date(`${event.scheduled_date}T${event.scheduled_time}`).toLocaleDateString('fr-FR'),
+          event_time: new Date(`${event.scheduled_date}T${event.scheduled_time}`).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
           event_location: event.location || 'Non spécifié',
           reminder_time: 'Événement terminé',
           event_url: `${process.env.FRONTEND_URL}/calendar/event/${event.id}`,

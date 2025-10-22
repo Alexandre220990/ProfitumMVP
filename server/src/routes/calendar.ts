@@ -901,7 +901,7 @@ router.get('/stats', calendarLimiter, asyncHandler(async (req: Request, res: Res
         let query = supabase
           .from('RDV')
           .select('*', { count: 'exact' })
-          .eq('start_date', new Date().toISOString().split('T')[0]);
+          .eq('scheduled_date', new Date().toISOString().split('T')[0]);
         
         if (authUser.type === 'client') {
           query = query.eq('client_id', authUser.database_id);
@@ -918,8 +918,8 @@ router.get('/stats', calendarLimiter, asyncHandler(async (req: Request, res: Res
           .from('RDV')
           .select('*', { count: 'exact' })
           .eq('type', 'meeting')
-          .gte('start_date', new Date().toISOString())
-          .lte('start_date', new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString());
+          .gte('scheduled_date', new Date().toISOString().split('T')[0])
+          .lte('scheduled_date', new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
         
         if (authUser.type === 'client') {
           query = query.eq('client_id', authUser.database_id);
