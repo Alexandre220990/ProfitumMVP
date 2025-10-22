@@ -82,7 +82,7 @@ CREATE OR REPLACE VIEW v_calendar_events_with_participants AS
 SELECT 
     r.id,
     r.title,
-    r.description,
+    r.notes as description, -- RDV utilise 'notes' au lieu de 'description'
     (r.scheduled_date::text || ' ' || r.scheduled_time::text)::timestamp with time zone AS start_date,
     ((r.scheduled_date::text || ' ' || r.scheduled_time::text)::timestamp + 
      (COALESCE(r.duration_minutes, 60) || ' minutes')::interval) AS end_date,
@@ -121,7 +121,7 @@ CREATE OR REPLACE VIEW v_today_events AS
 SELECT 
     r.id,
     r.title,
-    r.description,
+    r.notes as description,
     (r.scheduled_date::text || ' ' || r.scheduled_time::text)::timestamp with time zone AS start_date,
     ((r.scheduled_date::text || ' ' || r.scheduled_time::text)::timestamp + 
      (COALESCE(r.duration_minutes, 60) || ' minutes')::interval) AS end_date,
@@ -162,7 +162,7 @@ CREATE OR REPLACE VIEW vue_apporteur_agenda AS
 SELECT 
     r.id,
     r.title AS titre,
-    r.description,
+    r.notes as description,
     (r.scheduled_date::text || ' ' || r.scheduled_time::text)::timestamp with time zone AS date_rdv,
     EXTRACT(hour FROM r.scheduled_time::time) AS heure_debut,
     EXTRACT(hour FROM (r.scheduled_time::time + (COALESCE(r.duration_minutes, 60) || ' minutes')::interval)) AS heure_fin,
@@ -196,7 +196,7 @@ CREATE OR REPLACE VIEW vue_apporteur_rendez_vous AS
 SELECT 
     r.id,
     r.title AS titre,
-    r.description,
+    r.notes as description,
     (r.scheduled_date::text || ' ' || r.scheduled_time::text)::timestamp with time zone AS date_rdv,
     EXTRACT(hour FROM r.scheduled_time::time) AS heure_debut,
     EXTRACT(hour FROM (r.scheduled_time::time + (COALESCE(r.duration_minutes, 60) || ' minutes')::interval)) AS heure_fin,
