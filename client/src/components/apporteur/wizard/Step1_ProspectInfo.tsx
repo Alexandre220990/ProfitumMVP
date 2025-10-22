@@ -84,28 +84,23 @@ export function Step1_ProspectInfo({ data, onUpdate, onNext, onSaveAndClose }: S
   };
 
   return (
-    <div className="space-y-6">
-      {/* Introduction */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h3 className="font-semibold text-blue-900 mb-1">Étape 1 : Informations de base</h3>
-        <p className="text-sm text-blue-700">
-          Renseignez les informations minimales pour créer le prospect. Vous pourrez ensuite :
+    <div className="space-y-4">
+      {/* Introduction compacte */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+        <p className="text-sm text-blue-800">
+          <strong>Étape 1 :</strong> Renseignez les informations minimales. 
+          Ensuite vous pourrez lancer une simulation, sélectionner des experts et planifier des RDV.
         </p>
-        <ul className="text-sm text-blue-700 mt-2 ml-4 list-disc">
-          <li>Lancer une simulation d'éligibilité (optionnel)</li>
-          <li>Sélectionner des experts (optionnel)</li>
-          <li>Planifier des rendez-vous (optionnel)</li>
-        </ul>
       </div>
 
       {/* Informations Entreprise */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-semibold flex items-center gap-2">
-          <Building className="h-5 w-5" />
+      <div className="space-y-3">
+        <h3 className="text-base font-semibold flex items-center gap-2">
+          <Building className="h-4 w-4" />
           Informations Entreprise
         </h3>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
             <Label htmlFor="company_name">
               Nom de l'entreprise <span className="text-red-500">*</span>
@@ -153,13 +148,13 @@ export function Step1_ProspectInfo({ data, onUpdate, onNext, onSaveAndClose }: S
       </div>
 
       {/* Décisionnaire */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-semibold flex items-center gap-2">
-          <User className="h-5 w-5" />
+      <div className="space-y-3">
+        <h3 className="text-base font-semibold flex items-center gap-2">
+          <User className="h-4 w-4" />
           Décisionnaire
         </h3>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
             <Label htmlFor="name">
               Nom complet <span className="text-red-500">*</span>
@@ -213,10 +208,10 @@ export function Step1_ProspectInfo({ data, onUpdate, onNext, onSaveAndClose }: S
       </div>
 
       {/* Qualification */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-semibold">Qualification</h3>
+      <div className="space-y-3">
+        <h3 className="text-base font-semibold">Qualification</h3>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
             <Label htmlFor="interest_level">Niveau d'intérêt</Label>
             <select
@@ -249,7 +244,7 @@ export function Step1_ProspectInfo({ data, onUpdate, onNext, onSaveAndClose }: S
       </div>
 
       {/* Actions */}
-      <div className="flex justify-end gap-3 pt-6 border-t">
+      <div className="flex justify-end gap-3 pt-4 border-t mt-4">
         <Button
           type="button"
           variant="outline"

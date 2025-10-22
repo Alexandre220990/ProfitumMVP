@@ -54,27 +54,29 @@ export function ProspectFormWizard({ onClose, onSuccess }: ProspectFormWizardPro
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg max-w-5xl w-full max-h-[95vh] overflow-y-auto">
-        <Card className="border-0 shadow-2xl">
-          <CardHeader className="sticky top-0 bg-white z-10 border-b">
-            <div className="flex items-center justify-between mb-4">
-              <CardTitle className="flex items-center gap-2 text-2xl">
+    <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4">
+      <div className="bg-white rounded-lg w-full max-w-4xl h-[96vh] flex flex-col">
+        <Card className="border-0 shadow-2xl flex-1 flex flex-col overflow-hidden">
+          {/* Header fixe (pas de scroll) */}
+          <CardHeader className="flex-shrink-0 bg-white border-b pb-3">
+            <div className="flex items-center justify-between mb-2">
+              <CardTitle className="flex items-center gap-2 text-xl">
                 Nouveau Prospect
               </CardTitle>
               <button
                 onClick={handleClose}
-                className="rounded-full p-2 hover:bg-gray-100 transition-colors"
+                className="rounded-full p-1.5 hover:bg-gray-100 transition-colors"
               >
-                <X className="h-6 w-6" />
+                <X className="h-5 w-5" />
               </button>
             </div>
             
-            {/* Barre de progression */}
+            {/* Barre de progression compacte */}
             <StepIndicator currentStep={state.currentStep} steps={WIZARD_STEPS} />
           </CardHeader>
 
-          <CardContent className="pt-6">
+          {/* Contenu scrollable */}
+          <CardContent className="flex-1 overflow-y-auto pt-4 pb-4">
             {/* Étape 1 : Informations Prospect (OBLIGATOIRE) */}
             {state.currentStep === 1 && (
               <Step1_ProspectInfo

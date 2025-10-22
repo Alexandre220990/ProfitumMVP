@@ -14,7 +14,7 @@ interface StepIndicatorProps {
 
 export function StepIndicator({ currentStep, steps }: StepIndicatorProps) {
   return (
-    <div className="w-full py-6">
+    <div className="w-full py-3">
       <div className="flex items-center justify-between">
         {steps.map((step, index) => {
           const isCompleted = currentStep > step.number;
@@ -24,7 +24,7 @@ export function StepIndicator({ currentStep, steps }: StepIndicatorProps) {
             <React.Fragment key={step.number}>
               {/* Connecteur (ligne entre les étapes) */}
               {index > 0 && (
-                <div className="flex-1 h-0.5 mx-2">
+                <div className="flex-1 h-0.5 mx-1">
                   <div 
                     className={`h-full transition-colors duration-300 ${
                       isCompleted ? 'bg-blue-600' : 'bg-gray-300'
@@ -35,25 +35,25 @@ export function StepIndicator({ currentStep, steps }: StepIndicatorProps) {
               
               {/* Étape */}
               <div className="flex flex-col items-center">
-                {/* Cercle numéro */}
+                {/* Cercle numéro (plus petit) */}
                 <div
                   className={`
                     relative flex items-center justify-center
-                    w-10 h-10 rounded-full border-2 transition-all duration-300
+                    w-8 h-8 rounded-full border-2 transition-all duration-300
                     ${isCompleted 
                       ? 'bg-blue-600 border-blue-600' 
                       : isCurrent 
-                        ? 'bg-white border-blue-600 ring-4 ring-blue-100' 
+                        ? 'bg-white border-blue-600 ring-2 ring-blue-100' 
                         : 'bg-white border-gray-300'
                     }
                   `}
                 >
                   {isCompleted ? (
-                    <Check className="w-5 h-5 text-white" />
+                    <Check className="w-4 h-4 text-white" />
                   ) : (
                     <span
                       className={`
-                        text-sm font-semibold
+                        text-xs font-semibold
                         ${isCurrent ? 'text-blue-600' : 'text-gray-400'}
                       `}
                     >
@@ -62,19 +62,19 @@ export function StepIndicator({ currentStep, steps }: StepIndicatorProps) {
                   )}
                 </div>
                 
-                {/* Titre */}
-                <div className="mt-2 text-center">
+                {/* Titre (plus compact) */}
+                <div className="mt-1.5 text-center">
                   <div
                     className={`
-                      text-sm font-medium whitespace-nowrap
+                      text-xs font-medium whitespace-nowrap
                       ${isCurrent ? 'text-blue-600' : isCompleted ? 'text-gray-900' : 'text-gray-400'}
                     `}
                   >
                     {step.title}
                   </div>
                   {step.optional && (
-                    <div className="text-xs text-gray-500 mt-0.5">
-                      (optionnel)
+                    <div className="text-[10px] text-gray-500 mt-0.5">
+                      (opt.)
                     </div>
                   )}
                 </div>
