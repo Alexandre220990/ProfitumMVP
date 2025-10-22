@@ -70,7 +70,7 @@ export class ProspectService {
                 // Auth
                 auth_user_id: authData.user.id,
                 email: prospectData.email,
-                // ⚠️ PAS de champ password - l'authentification est gérée par Supabase Auth
+                password: hashedPassword, // ✅ Ajouter le mot de passe haché pour satisfaire la contrainte NOT NULL
                 type: 'client', // Type = client (sera prospect via status)
                 
                 // Informations entreprise

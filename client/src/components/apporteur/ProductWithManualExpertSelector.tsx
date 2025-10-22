@@ -60,7 +60,8 @@ export function ProductWithManualExpertSelector({
     if (showExpertSelector) {
       loadExperts();
     }
-  }, [showExpertSelector, product.produit_id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showExpertSelector]);
   
   const loadExperts = async () => {
     try {

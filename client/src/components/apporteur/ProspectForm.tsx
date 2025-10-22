@@ -436,13 +436,14 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
   // Charger les experts quand les produits sélectionnés changent
   useEffect(() => {
     const hasSelectedProducts = (formData.selected_products || []).some(p => p.selected);
-    if (hasSelectedProducts) {
+    if (hasSelectedProducts && identificationMode === 'manual') {
       fetchExpertsByProducts();
     } else {
       setAvailableExperts([]);
       setSelectedExpert(null);
     }
-  }, [formData.selected_products]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.selected_products.map(p => `${p.id}-${p.selected}`).join(','), identificationMode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
