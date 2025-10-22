@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { RefreshCw, AlertTriangle, Users, TrendingUp, DollarSign, BarChart3, Award, Activity, Eye, ArrowUpDown } from 'lucide-react';
-import ProspectForm from './ProspectForm';
+import { ProspectFormWizard } from './wizard';
 
 interface ApporteurDashboardSimpleProps {
   apporteurId: string;
@@ -586,10 +586,10 @@ export function ApporteurDashboardSimple({ apporteurId }: ApporteurDashboardSimp
         {/* Section objectifs et status masquée */}
       </div>
       
-      {/* Formulaire de création de prospect */}
+      {/* Formulaire Wizard de création de prospect */}
       {showProspectForm && (
-        <ProspectForm 
-          onCancel={() => setShowProspectForm(false)}
+        <ProspectFormWizard 
+          onClose={() => setShowProspectForm(false)}
           onSuccess={handleProspectSuccess}
         />
       )}
