@@ -117,18 +117,33 @@ async function sendHighEligibilityNotification(sessionData: SessionData, results
 
 /**
  * Nettoie les sessions expirées automatiquement
+ * ✅ Désactivé car la fonction SQL cleanup_expired_simulator_sessions n'existe plus
+ * Les simulations sont maintenant gérées via la table "simulations"
  */
 async function cleanupExpiredSessions() {
   try {
-    const { data, error } = await supabaseClient.rpc('cleanup_expired_simulator_sessions');
+    // Nettoyer les simulations anonymes expirées (> 7 jours)
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
     
+    const { error, count } = await supabaseClient
+      .from('simulations')
+      .delete()
+      .eq('type', 'anonymous')
+      .lt('created_at', sevenDaysAgo);
+
     if (error) {
-      console.error('Erreur lors du nettoyage des sessions:', error);
-    } else {
-      console.log(`🧹 ${data} sessions expirées nettoyées`);
+      // ⚠️ Gérer silencieusement si la table n'existe pas
+      if (error.code !== '42P01') { // 42P01 = table does not exist
+        console.error('⚠️ Erreur nettoyage simulations:', error.message);
+      }
+    } else if (count && count > 0) {
+      console.log(`🧹 ${count} simulation(s) anonyme(s) expirée(s) nettoyée(s)`);
     }
-  } catch (error) {
-    console.error('Erreur lors du nettoyage des sessions:', error);
+  } catch (error: any) {
+    // Ignorer l'erreur si la table/fonction n'existe pas
+    if (error?.code !== '42P01' && error?.code !== '42883') {
+      console.error('⚠️ Erreur nettoyage:', error?.message || error);
+    }
   }
 }
 

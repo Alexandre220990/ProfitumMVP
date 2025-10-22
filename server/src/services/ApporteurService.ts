@@ -282,7 +282,9 @@ export class ApporteurService {
                 .from('Expert')
                 .select(`
                     id, 
-                    name, 
+                    name,
+                    first_name,
+                    last_name,
                     email, 
                     phone, 
                     company_name, 
@@ -321,6 +323,11 @@ export class ApporteurService {
                 const completedAssignments = expert.completed_assignments || 0;
                 const rating = expert.rating || 4.5;
                 
+                // ✅ Construire name à partir de first_name + last_name (avec fallback sur name)
+                const expertName = expert.first_name && expert.last_name
+                    ? `${expert.first_name} ${expert.last_name}`.trim()
+                    : expert.name || expert.company_name || 'Expert';
+                
                 let successRate = 0;
                 try {
                     if (totalAssignments > 0) {
@@ -343,9 +350,9 @@ export class ApporteurService {
 
                 return {
                     ...expert,
+                    name: expertName, // ✅ Name construit depuis first_name + last_name
                     success_rate: successRate,
                     specializations: expertSpecs,
-                    name: expert.name || 'Expert sans nom',
                     company_name: expert.company_name || 'Entreprise non spécifiée',
                     email: expert.email || '',
                     phone_number: expert.phone || '',

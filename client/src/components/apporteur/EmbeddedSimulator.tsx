@@ -71,21 +71,39 @@ export function EmbeddedSimulator({
   const loadQuestions = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${config.API_URL}/api/simulations/questions`, {
+      
+      // ✅ Utiliser la route publique /api/simulator/questions
+      // au lieu de /api/simulations/questions (route protégée)
+      const response = await fetch(`${config.API_URL}/api/simulator/questions`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Content-Type': 'application/json'
         }
       });
       
-      if (!response.ok) throw new Error('Erreur chargement questions');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Erreur ${response.status}: ${response.statusText}`);
+      }
       
       const result = await response.json();
-      const questionsData = result.data || [];
       
+      // La route /api/simulator/questions retourne { success: true, questions: [...] }
+      // au lieu de { success: true, data: [...] }
+      const questionsData = result.questions || result.data || [];
+      
+      if (questionsData.length === 0) {
+        console.warn('⚠️ Aucune question chargée depuis l\'API');
+        toast.error('Aucune question disponible pour le simulateur');
+        return;
+      }
+      
+      console.log(`✅ ${questionsData.length} questions chargées depuis /api/simulator/questions`);
       setQuestions(questionsData.sort((a: Question, b: Question) => a.ordre - b.ordre));
+      
     } catch (error) {
-      console.error('Erreur chargement questions:', error);
+      console.error('❌ Erreur chargement questions:', error);
+      toast.error(`Impossible de charger les questions: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
     } finally {
       setLoading(false);
     }
@@ -130,12 +148,22 @@ export function EmbeddedSimulator({
       setLoading(true);
       console.log('🚀 Soumission de la simulation au backend...');
       
-      // Si on n'a pas de prospectId, on ne peut pas créer la simulation
+      // ✅ VALIDATION 1 : Vérifier que prospectId existe
       if (!prospectId) {
         console.error('❌ Pas de prospectId - impossible de créer la simulation');
-        onComplete(answers); // Fallback sur l'ancien comportement
-        return;
+        toast.error('Erreur : Le prospect doit être créé avant de lancer la simulation');
+        throw new Error('prospectId manquant');
       }
+      
+      // ✅ VALIDATION 2 : Vérifier qu'il y a des réponses
+      const answersCount = Object.keys(answers).length;
+      if (answersCount === 0) {
+        console.error('❌ Aucune réponse fournie');
+        toast.error('Veuillez répondre à au moins une question');
+        throw new Error('Aucune réponse');
+      }
+      
+      console.log(`📝 Envoi de ${answersCount} réponse(s) pour le prospect ${prospectId}`);
       
       const response = await fetch(`${config.API_URL}/api/apporteur/prospects/${prospectId}/simulation`, {
         method: 'POST',
@@ -149,25 +177,67 @@ export function EmbeddedSimulator({
         })
       });
       
+      // ✅ GESTION ERREURS HTTP DÉTAILLÉE
       if (!response.ok) {
-        throw new Error(`Erreur API: ${response.status}`);
+        const errorData = await response.json().catch(() => null);
+        
+        if (response.status === 401) {
+          toast.error('Session expirée. Veuillez vous reconnecter.');
+          throw new Error('Non authentifié (401)');
+        } else if (response.status === 403) {
+          toast.error('Accès refusé. Vous n\'avez pas les droits nécessaires.');
+          throw new Error('Accès refusé (403)');
+        } else if (response.status === 404) {
+          toast.error('Prospect non trouvé. Veuillez créer le prospect d\'abord.');
+          throw new Error('Prospect non trouvé (404)');
+        } else if (response.status >= 500) {
+          toast.error('Erreur serveur. Veuillez réessayer dans quelques instants.');
+          throw new Error(`Erreur serveur (${response.status})`);
+        } else {
+          const errorMsg = errorData?.message || `Erreur ${response.status}`;
+          toast.error(`Erreur : ${errorMsg}`);
+          throw new Error(errorMsg);
+        }
       }
       
       const result = await response.json();
       console.log('✅ Résultats de simulation reçus:', result);
       
-      // Retourner les résultats complets au lieu des réponses brutes
-      if (result.success && result.data) {
-        onComplete(result.data);
-      } else {
-        throw new Error(result.message || 'Erreur lors du calcul');
+      // ✅ VALIDATION 3 : Vérifier la structure de la réponse
+      if (!result.success) {
+        toast.error(result.message || 'Erreur lors du calcul d\'éligibilité');
+        throw new Error(result.message || 'Réponse success: false');
       }
+      
+      if (!result.data) {
+        toast.error('Aucune donnée retournée par le serveur');
+        throw new Error('result.data est vide');
+      }
+      
+      // ✅ VALIDATION 4 : Vérifier les produits éligibles
+      const eligibleCount = result.data.eligible_products?.length || 0;
+      
+      if (eligibleCount === 0) {
+        console.warn('⚠️ Aucun produit éligible identifié pour ce prospect');
+        toast.warning('Aucun produit éligible identifié. Vous pouvez continuer en mode manuel.');
+      } else {
+        console.log(`✅ ${eligibleCount} produit(s) éligible(s) identifié(s)`);
+        const totalSavings = result.data.total_savings || 0;
+        toast.success(`${eligibleCount} produit(s) éligible(s) ! Économies estimées : ${totalSavings.toLocaleString()}€`);
+      }
+      
+      // ✅ Retourner les résultats complets
+      onComplete(result.data);
       
     } catch (error) {
       console.error('❌ Erreur soumission simulation:', error);
-      toast.error('Erreur lors du calcul de l\'éligibilité');
-      // Fallback sur l'ancien comportement en cas d'erreur
-      onComplete(answers);
+      
+      // ✅ NE PAS faire de fallback silencieux - laisser l'utilisateur décider
+      // L'erreur a déjà été affichée via toast, ne pas rappeler onComplete
+      
+      // Si vous voulez quand même offrir un fallback, décommenter :
+      // if (onCancel) onCancel();
+      
     } finally {
       setLoading(false);
     }

@@ -221,11 +221,12 @@ export class ProspectSimulationService {
       console.log(`✅ Optimisation experts: ${expertOptimization.recommended.meetings.length} RDV recommandés`);
       
       // 6. Enrichir les ClientProduitEligible avec experts recommandés
+      // ⚠️ NE PAS assigner automatiquement - L'apporteur choisira manuellement
       const enrichedProducts: ClientProduitEligibleWithScore[] = (createdCPE || []).map(cpe => {
         const produit = allProducts.find(p => p.id === cpe.produitId);
         const produitSQL = resultatsSQL.produits.find((p: any) => p.produit_id === cpe.produitId);
         
-        // Trouver l'expert recommandé pour ce produit
+        // Trouver l'expert recommandé pour ce produit (pour suggestion à l'apporteur)
         let recommendedExpert;
         for (const meeting of expertOptimization.recommended.meetings) {
           if (meeting.productIds.includes(cpe.produitId)) {
@@ -239,6 +240,10 @@ export class ProspectSimulationService {
             break;
           }
         }
+        
+        // 💡 L'expert recommandé est seulement une SUGGESTION
+        // L'apporteur pourra le sélectionner manuellement (ou laisser vide)
+        console.log(`💡 Expert recommandé pour ${produit?.nom || cpe.produitId}: ${recommendedExpert?.name || 'aucun'}`);
         
         return {
           id: cpe.id,

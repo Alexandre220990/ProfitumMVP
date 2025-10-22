@@ -665,4 +665,273 @@ router.get('/:clientId/assignments', async (req: Request, res: Response) => {
   }
 });
 
+// ============================================================================
+// GESTION DES EXPERTS - VALIDATION/SÉLECTION PAR LE CLIENT
+// ============================================================================
+
+/**
+ * GET /api/client/products/:cpeId/available-experts
+ * Récupérer les experts disponibles pour un ClientProduitEligible
+ */
+router.get('/products/:cpeId/available-experts', async (req: Request, res: Response) => {
+  try {
+    const user = (req as AuthenticatedRequest).user;
+    const { cpeId } = req.params;
+    
+    if (!user || user.type !== 'client') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux clients'
+      });
+    }
+    
+    // Vérifier que le CPE appartient au client
+    const { data: cpe, error: cpeError } = await supabase
+      .from('ClientProduitEligible')
+      .select('id, clientId, produitId')
+      .eq('id', cpeId)
+      .eq('clientId', user.database_id)
+      .single();
+    
+    if (cpeError || !cpe) {
+      return res.status(404).json({
+        success: false,
+        message: 'Produit non trouvé ou non autorisé'
+      });
+    }
+    
+    // Récupérer les experts spécialisés pour ce produit
+    const { data: produit } = await supabase
+      .from('ProduitEligible')
+      .select('categorie')
+      .eq('id', cpe.produitId)
+      .single();
+    
+    const categorie = produit?.categorie || 'general';
+    
+    // Récupérer tous les experts ayant cette spécialisation
+    const { data: expertsRaw, error: expertsError } = await supabase
+      .from('Expert')
+      .select('id, name, first_name, last_name, email, company_name, specializations, rating')
+      .eq('status', 'active')
+      .overlaps('specializations', [categorie])
+      .order('rating', { ascending: false });
+    
+    // ✅ Construire name à partir de first_name + last_name (avec fallback sur name)
+    const experts = (expertsRaw || []).map(expert => ({
+      ...expert,
+      name: expert.first_name && expert.last_name
+        ? `${expert.first_name} ${expert.last_name}`.trim()
+        : expert.name || expert.company_name || 'Expert'
+    }));
+    
+    if (expertsError) {
+      console.error('Erreur récupération experts:', expertsError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la récupération des experts'
+      });
+    }
+    
+    console.log(`✅ ${experts?.length || 0} expert(s) disponible(s) pour produit ${cpeId}`);
+    
+    return res.json({
+      success: true,
+      data: experts || []
+    });
+    
+  } catch (error) {
+    console.error('Erreur récupération experts disponibles:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+/**
+ * POST /api/client/products/:cpeId/validate-expert
+ * Valider l'expert proposé par l'apporteur
+ */
+router.post('/products/:cpeId/validate-expert', async (req: Request, res: Response) => {
+  try {
+    const user = (req as AuthenticatedRequest).user;
+    const { cpeId } = req.params;
+    const { expert_id } = req.body;
+    
+    if (!user || user.type !== 'client') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux clients'
+      });
+    }
+    
+    // Vérifier que le CPE appartient au client
+    const { data: cpe, error: cpeError } = await supabase
+      .from('ClientProduitEligible')
+      .select('id, clientId, expert_id, metadata')
+      .eq('id', cpeId)
+      .eq('clientId', user.database_id)
+      .single();
+    
+    if (cpeError || !cpe) {
+      return res.status(404).json({
+        success: false,
+        message: 'Produit non trouvé ou non autorisé'
+      });
+    }
+    
+    // Vérifier que l'expert_id correspond (sécurité)
+    if (cpe.expert_id !== expert_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'L\'expert à valider ne correspond pas à celui assigné'
+      });
+    }
+    
+    // Mettre à jour avec validation
+    const { error: updateError } = await supabase
+      .from('ClientProduitEligible')
+      .update({
+        metadata: {
+          ...(cpe.metadata || {}),
+          expert_validated_by_client: true,
+          expert_validated_at: new Date().toISOString()
+        },
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', cpeId);
+    
+    if (updateError) {
+      console.error('Erreur validation expert:', updateError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la validation'
+      });
+    }
+    
+    console.log(`✅ Expert ${expert_id} validé par client pour CPE ${cpeId}`);
+    
+    return res.json({
+      success: true,
+      message: 'Expert validé avec succès'
+    });
+    
+  } catch (error) {
+    console.error('Erreur validation expert:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+/**
+ * POST /api/client/products/:cpeId/select-expert
+ * Sélectionner/Changer d'expert pour un CPE
+ */
+router.post('/products/:cpeId/select-expert', async (req: Request, res: Response) => {
+  try {
+    const user = (req as AuthenticatedRequest).user;
+    const { cpeId } = req.params;
+    const { expert_id } = req.body;
+    
+    if (!user || user.type !== 'client') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux clients'
+      });
+    }
+    
+    if (!expert_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID expert requis'
+      });
+    }
+    
+    // Vérifier que le CPE appartient au client
+    const { data: cpe, error: cpeError } = await supabase
+      .from('ClientProduitEligible')
+      .select('id, clientId, expert_id, metadata')
+      .eq('id', cpeId)
+      .eq('clientId', user.database_id)
+      .single();
+    
+    if (cpeError || !cpe) {
+      return res.status(404).json({
+        success: false,
+        message: 'Produit non trouvé ou non autorisé'
+      });
+    }
+    
+    // Vérifier que l'expert existe et est actif
+    const { data: expertRaw, error: expertError } = await supabase
+      .from('Expert')
+      .select('id, name, first_name, last_name, status')
+      .eq('id', expert_id)
+      .single();
+    
+    if (expertError || !expertRaw) {
+      return res.status(404).json({
+        success: false,
+        message: 'Expert non trouvé ou non disponible'
+      });
+    }
+    
+    // ✅ Construire name avec fallback
+    const expert = {
+      ...expertRaw,
+      name: expertRaw.first_name && expertRaw.last_name
+        ? `${expertRaw.first_name} ${expertRaw.last_name}`.trim()
+        : expertRaw.name || 'Expert'
+    };
+    
+    if (expertError || !expert || expert.status !== 'active') {
+      return res.status(404).json({
+        success: false,
+        message: 'Expert non trouvé ou non disponible'
+      });
+    }
+    
+    // Mettre à jour l'expert_id
+    const { error: updateError } = await supabase
+      .from('ClientProduitEligible')
+      .update({
+        expert_id: expert_id,
+        metadata: {
+          ...(cpe.metadata || {}),
+          expert_selected_by_client: true,
+          expert_selected_at: new Date().toISOString(),
+          previous_expert_id: cpe.expert_id // Garder trace si changement
+        },
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', cpeId);
+    
+    if (updateError) {
+      console.error('Erreur sélection expert:', updateError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la sélection'
+      });
+    }
+    
+    console.log(`✅ Expert ${expert.name} sélectionné par client pour CPE ${cpeId}`);
+    
+    return res.json({
+      success: true,
+      message: 'Expert sélectionné avec succès',
+      data: { expert_id, expert_name: expert.name }
+    });
+    
+  } catch (error) {
+    console.error('Erreur sélection expert:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
 export default router; 

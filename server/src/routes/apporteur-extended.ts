@@ -14,18 +14,30 @@ router.use(authApporteur as any);
 // Lister les experts avec spécialisations + disponibilité + performance
 router.get('/experts', async (req: any, res: any): Promise<void> => {
     try {
-        const { data: experts, error } = await supabase
+        const { data: expertsRaw, error } = await supabase
             .from('Expert')
             .select(`
                 id,
                 name,
+                first_name,
+                last_name,
                 email,
                 specializations,
                 phone_number,
                 company_name,
                 created_at
             `)
-            .order('name');
+            .order('last_name', { ascending: true, nullsFirst: false });
+        
+        if (error) throw error;
+        
+        // ✅ Construire name à partir de first_name + last_name (avec fallback sur name)
+        const experts = (expertsRaw || []).map(expert => ({
+            ...expert,
+            name: expert.first_name && expert.last_name
+                ? `${expert.first_name} ${expert.last_name}`.trim()
+                : expert.name || expert.company_name || 'Expert'
+        }));
 
         if (error) throw error;
 

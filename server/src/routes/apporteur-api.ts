@@ -439,4 +439,103 @@ router.post('/prospects', async (req: Request, res: Response): Promise<void> => 
   }
 });
 
+// ✅ NOUVEAU: POST /api/apporteur/prospects/:clientId/assign-experts
+// Assigner les experts sélectionnés manuellement par l'apporteur aux CPE
+router.post('/prospects/:clientId/assign-experts', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const user = req.user as any;
+    const { clientId } = req.params;
+    const { expert_assignments } = req.body;
+    
+    if (!user || user.type !== 'apporteur') {
+      res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux apporteurs d\'affaires'
+      });
+      return;
+    }
+    
+    if (!Array.isArray(expert_assignments)) {
+      res.status(400).json({
+        success: false,
+        message: 'expert_assignments doit être un tableau'
+      });
+      return;
+    }
+    
+    // Vérifier que le client appartient à l'apporteur
+    const { data: client, error: clientError } = await supabase
+      .from('Client')
+      .select('id, apporteur_id')
+      .eq('id', clientId)
+      .single();
+    
+    if (clientError || !client || client.apporteur_id !== user.database_id) {
+      res.status(404).json({
+        success: false,
+        message: 'Client non trouvé ou non autorisé'
+      });
+      return;
+    }
+    
+    console.log(`✅ Assignation de ${expert_assignments.length} experts pour client ${clientId}`);
+    
+    // Mettre à jour chaque ClientProduitEligible avec son expert
+    const results = {
+      success: 0,
+      failed: 0,
+      errors: [] as string[]
+    };
+    
+    for (const assignment of expert_assignments) {
+      const { product_id, expert_id } = assignment;
+      
+      // Trouver le ClientProduitEligible correspondant
+      const { data: cpe, error: cpeError } = await supabase
+        .from('ClientProduitEligible')
+        .select('id')
+        .eq('clientId', clientId)
+        .eq('id', product_id) // product_id est en fait le CPE id
+        .single();
+      
+      if (cpeError || !cpe) {
+        results.failed++;
+        results.errors.push(`Produit ${product_id} non trouvé`);
+        continue;
+      }
+      
+      // Mettre à jour l'expert_id
+      const { error: updateError } = await supabase
+        .from('ClientProduitEligible')
+        .update({
+          expert_id: expert_id,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', cpe.id);
+      
+      if (updateError) {
+        results.failed++;
+        results.errors.push(`Erreur mise à jour ${product_id}: ${updateError.message}`);
+        console.error(`❌ Erreur assignation expert pour CPE ${cpe.id}:`, updateError);
+      } else {
+        results.success++;
+        console.log(`✅ Expert ${expert_id || 'aucun'} assigné au CPE ${cpe.id}`);
+      }
+    }
+    
+    res.json({
+      success: true,
+      message: `${results.success} expert(s) assigné(s) avec succès`,
+      data: results
+    });
+    
+  } catch (error) {
+    console.error('❌ Erreur assignation experts:', error);
+    res.status(500).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'Erreur serveur'
+    });
+  }
+});
+
 export default router;

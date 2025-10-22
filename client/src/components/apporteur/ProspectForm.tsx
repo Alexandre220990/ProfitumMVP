@@ -27,7 +27,7 @@ import { toast } from 'sonner';
 import { SimulationToggle } from './SimulationToggle';
 import { EmbeddedSimulator } from './EmbeddedSimulator';
 import { SimulationResultsSummary } from './SimulationResultsSummary';
-import { ProductEligibilityCardWithExpert } from './ProductEligibilityCardWithExpert';
+import { ProductWithManualExpertSelector } from './ProductWithManualExpertSelector';
 import { ExpertRecommendationOptimized } from './ExpertRecommendationOptimized';
 import { MultiMeetingScheduler, MeetingData } from './MultiMeetingScheduler';
 
@@ -138,6 +138,10 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
   const [expertOptimization, setExpertOptimization] = useState<any>(null);
   const [selectedExperts, setSelectedExperts] = useState<string[]>([]);
   const [scheduledMeetings, setScheduledMeetings] = useState<MeetingData[]>([]);
+  
+  // ✅ NOUVEAU: État pour les experts sélectionnés manuellement par l'apporteur
+  // Format: { productId: expertId | null }
+  const [manualExpertSelections, setManualExpertSelections] = useState<Record<string, string | null>>({});
 
   useEffect(() => {
     fetchProducts();
@@ -272,7 +276,19 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
       setExpertOptimization(null);
       setSelectedExperts([]);
       setScheduledMeetings([]);
+      setManualExpertSelections({});
     }
+  };
+  
+  /**
+   * ✅ NOUVEAU: Gérer la sélection manuelle d'un expert par l'apporteur
+   */
+  const handleManualExpertSelection = (productId: string, expertId: string | null) => {
+    setManualExpertSelections(prev => ({
+      ...prev,
+      [productId]: expertId
+    }));
+    console.log(`✅ Expert ${expertId || 'aucun'} sélectionné pour produit ${productId}`);
   };
 
   /**
@@ -282,6 +298,42 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
     setScheduledMeetings(meetings);
   };
 
+  /**
+   * ✅ NOUVEAU: Sauvegarder les experts sélectionnés manuellement
+   */
+  const saveManualExpertSelections = async (clientId: string) => {
+    try {
+      const updates = Object.entries(manualExpertSelections).map(([productId, expertId]) => ({
+        product_id: productId,
+        expert_id: expertId
+      }));
+      
+      const response = await fetch(`${config.API_URL}/api/apporteur/prospects/${clientId}/assign-experts`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ expert_assignments: updates })
+      });
+
+      if (!response.ok) {
+        throw new Error('Erreur assignation experts');
+      }
+
+      const result = await response.json();
+      console.log('✅ Résultat assignation experts:', result);
+      const assignedCount = updates.filter(u => u.expert_id).length;
+      if (assignedCount > 0) {
+        toast.success(`${assignedCount} expert(s) assigné(s) avec succès !`);
+      }
+      
+    } catch (error) {
+      console.error('Erreur assignation experts:', error);
+      toast.warning('Prospect créé mais erreur lors de l\'assignation des experts');
+    }
+  };
+  
   /**
    * Créer plusieurs RDV pour le prospect
    */
@@ -458,6 +510,11 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
       console.log('✅ Prospect sauvegardé:', result);
       
       const createdProspectId: string | undefined = result.data?.prospect?.id || prospectId;
+      
+      // ✅ NOUVEAU: Sauvegarder les experts sélectionnés manuellement par l'apporteur
+      if (identificationMode === 'simulation' && simulationCompleted && Object.keys(manualExpertSelections).length > 0 && createdProspectId) {
+        await saveManualExpertSelections(createdProspectId);
+      }
       
       // Si mode simulation avec RDV multiples, créer les RDV
       if (identificationMode === 'simulation' && simulationCompleted && scheduledMeetings.length > 0 && createdProspectId) {
@@ -711,17 +768,52 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
             {/* Simulateur Intégré - NOUVEAU */}
             {identificationMode === 'simulation' && !simulationCompleted && (
               <div className="my-6">
-                <EmbeddedSimulator
-                  prospectId={prospectId}
-                  prospectData={{
-                    company_name: formData.company_name,
-                    timeline: formData.timeline,
-                    secteur_activite: formData.company_name
-                  }}
-                  prefilledAnswers={{}}
-                  onComplete={handleSimulationComplete}
-                  onCancel={() => setIdentificationMode('manual')}
-                />
+                {!prospectId ? (
+                  /* ⚠️ Mode Edition uniquement : Le simulateur nécessite un prospectId */
+                  <Card className="p-6 bg-yellow-50 border-2 border-yellow-400">
+                    <div className="flex items-start gap-4">
+                      <AlertCircle className="h-6 w-6 text-yellow-600 flex-shrink-0 mt-1" />
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-yellow-900 mb-2">
+                          Simulateur disponible uniquement en mode édition
+                        </h4>
+                        <p className="text-sm text-yellow-800 mb-4">
+                          Pour utiliser le simulateur intelligent, vous devez d'abord créer le prospect avec les informations de base (entreprise + décisionnaire).
+                        </p>
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium text-yellow-900">Options :</p>
+                          <ul className="text-sm text-yellow-800 list-disc list-inside space-y-1">
+                            <li>Sauvegardez d'abord ce prospect (bouton en bas), puis revenez le modifier pour lancer la simulation</li>
+                            <li>Ou utilisez le mode "Sélection Manuelle" pour sélectionner les produits directement</li>
+                          </ul>
+                        </div>
+                        <div className="mt-4 flex gap-2">
+                          <Button 
+                            type="button" 
+                            variant="outline"
+                            onClick={() => setIdentificationMode('manual')}
+                            className="bg-white"
+                          >
+                            Passer en mode manuel
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                ) : (
+                  /* ✅ Mode Edition : Lancer le simulateur */
+                  <EmbeddedSimulator
+                    prospectId={prospectId}
+                    prospectData={{
+                      company_name: formData.company_name,
+                      timeline: formData.timeline,
+                      secteur_activite: formData.company_name
+                    }}
+                    prefilledAnswers={{}}
+                    onComplete={handleSimulationComplete}
+                    onCancel={() => setIdentificationMode('manual')}
+                  />
+                )}
               </div>
             )}
 
@@ -746,12 +838,19 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
               </div>
             )}
 
-            {/* RDV - Mode conditionnel selon simulation */}
+            {/* RDV - OPTIONNEL - Mode conditionnel selon simulation */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
-                Rendez-vous
-              </h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <Calendar className="h-5 w-5" />
+                  Rendez-vous
+                </h3>
+                <span className="text-sm text-gray-500">(Optionnel)</span>
+              </div>
+              
+              <p className="text-sm text-gray-600">
+                Vous pouvez planifier un RDV ou simplement envoyer un email au prospect.
+              </p>
               
               {/* Mode Simulation : Planification RDV Multiples */}
               {identificationMode === 'simulation' && simulationCompleted && scheduledMeetings.length > 0 ? (
@@ -761,40 +860,40 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
                   prospectName={formData.company_name || formData.name}
                 />
               ) : (
-                /* Mode Manuel : RDV Simple */
+                /* Mode Manuel : RDV Simple OPTIONNEL */
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="meeting_type">Type de meeting *</Label>
+                    <Label htmlFor="meeting_type">Type de meeting</Label>
                     <select
                       id="meeting_type"
                       value={formData.meeting_type}
                       onChange={(e) => setFormData(prev => ({ ...prev, meeting_type: e.target.value as any }))}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
                     >
+                      <option value="">-- Aucun RDV --</option>
                       <option value="physical">Physique</option>
                       <option value="video">Visio</option>
                       <option value="phone">Téléphone</option>
                     </select>
                   </div>
                   <div>
-                    <Label htmlFor="scheduled_date">Date *</Label>
+                    <Label htmlFor="scheduled_date">Date</Label>
                     <Input
                       id="scheduled_date"
                       type="date"
                       value={formData.scheduled_date}
                       onChange={(e) => setFormData(prev => ({ ...prev, scheduled_date: e.target.value }))}
-                      required
+                      disabled={!formData.meeting_type}
                     />
                   </div>
                   <div>
-                    <Label htmlFor="scheduled_time">Heure *</Label>
+                    <Label htmlFor="scheduled_time">Heure</Label>
                     <Input
                       id="scheduled_time"
                       type="time"
                       value={formData.scheduled_time}
                       onChange={(e) => setFormData(prev => ({ ...prev, scheduled_time: e.target.value }))}
-                      required
+                      disabled={!formData.meeting_type}
                     />
                   </div>
                   <div>
@@ -804,6 +903,7 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
                       value={formData.location}
                       onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
                       placeholder="Adresse ou lien visio"
+                      disabled={!formData.meeting_type}
                     />
                   </div>
                 </div>
@@ -817,13 +917,21 @@ export default function ProspectForm({ prospectId, onSuccess, onCancel }: {
                 Produits Éligibles
               </h3>
               
-              {/* Mode Simulation : Afficher produits avec experts optimisés */}
+              {/* Mode Simulation : Afficher produits avec sélection manuelle d'experts */}
               {identificationMode === 'simulation' && simulationCompleted && identifiedProducts.length > 0 ? (
                 <div className="space-y-4">
+                  <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-blue-900">
+                      💡 Pour chaque produit, vous pouvez sélectionner un expert ou laisser vide. 
+                      Le client pourra valider ou choisir lui-même sur son espace.
+                    </p>
+                  </div>
                   {identifiedProducts.map((product) => (
-                    <ProductEligibilityCardWithExpert
+                    <ProductWithManualExpertSelector
                       key={product.id}
                       product={product}
+                      selectedExpertId={manualExpertSelections[product.id]}
+                      onExpertSelected={handleManualExpertSelection}
                     />
                   ))}
                 </div>
