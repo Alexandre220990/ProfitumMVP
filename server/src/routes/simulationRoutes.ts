@@ -46,10 +46,10 @@ router.get('/questions', async (req: Request, res: Response) => {
       texte: q.question_text,
       type: q.question_type,
       ordre: q.question_order,
-      categorie: q.category || 'general',
-      options: q.response_options || {},
-      description: q.help_text || '',
-      importance: 5 // Valeur par défaut
+      categorie: q.section || 'general',
+      options: q.options || {},
+      description: null, // Pas de colonne description dans QuestionnaireQuestion
+      importance: q.importance || 5
     }));
 
     return res.json({

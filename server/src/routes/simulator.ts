@@ -83,12 +83,23 @@ async function getQuestionsWithCache() {
     throw error;
   }
   
+  // Mapper les colonnes de la BDD vers les noms attendus par le frontend
+  const mappedQuestions = data?.map(q => ({
+    id: q.id,
+    texte: q.question_text,
+    type: q.question_type,
+    ordre: q.question_order,
+    categorie: q.section || 'Général',
+    options: q.options || {},
+    description: null // Pas de colonne description dans QuestionnaireQuestion
+  })) || [];
+  
   // Mettre à jour le cache
-  questionsCache = data;
+  questionsCache = mappedQuestions;
   questionsCacheTimestamp = now;
   
-  console.log(`✅ ${data?.length || 0} questions mises en cache`);
-  return data;
+  console.log(`✅ ${mappedQuestions.length} questions mises en cache`);
+  return mappedQuestions;
 }
 
 /**
