@@ -648,32 +648,90 @@ router.get('/results/:session_token', async (req, res) => {
 
     console.log(`📊 Récupération des résultats pour la session: ${session_token.substring(0, 8)}...`);
 
-    // Utiliser la nouvelle fonction pour récupérer les résultats
-    const { data, error } = await supabaseClient.rpc('get_simulation_results', {
-      p_session_token: session_token
-    });
+    // Récupérer la simulation
+    const { data: simulation, error: simError } = await supabaseClient
+      .from('simulations')
+      .select('id, client_id, answers, status, expires_at, created_at')
+      .eq('session_token', session_token)
+      .single();
 
-    if (error) {
-      console.error('❌ Erreur lors de la récupération des résultats:', error);
-      return res.status(500).json({
+    if (simError || !simulation) {
+      console.error('❌ Simulation non trouvée:', simError);
+      return res.status(404).json({
         success: false,
-        error: 'Erreur lors de la récupération des résultats',
-        details: error.message
+        error: 'Session non trouvée',
+        can_migrate: false
       });
     }
 
-    console.log('✅ Résultats récupérés avec succès');
+    // Vérifier si la session peut être migrée
+    let canMigrate = false;
+    let migrationError = null;
+
+    // 1. Vérifier si la session n'est pas expirée
+    const isExpired = simulation.expires_at && new Date(simulation.expires_at) < new Date();
+    
+    // 2. Vérifier si la session a des réponses
+    const hasAnswers = simulation.answers && Object.keys(simulation.answers).length > 0;
+    
+    // 3. Vérifier si le client est temporaire (UUID)
+    const { data: client, error: clientError } = await supabaseClient
+      .from('Client')
+      .select('id, email, is_temporary')
+      .eq('id', simulation.client_id)
+      .single();
+
+    const isTemporaryClient = client?.is_temporary === true || !client?.email;
+
+    if (isExpired) {
+      migrationError = 'Session expirée';
+    } else if (!hasAnswers) {
+      migrationError = 'Aucune réponse trouvée';
+    } else if (!isTemporaryClient) {
+      migrationError = 'Client déjà permanent';
+    } else {
+      canMigrate = true;
+    }
+
+    console.log(`📋 Vérification migration:`, {
+      sessionToken: session_token.substring(0, 8),
+      canMigrate,
+      isExpired,
+      hasAnswers,
+      isTemporaryClient,
+      migrationError
+    });
+
+    // Utiliser la fonction RPC pour récupérer les résultats détaillés
+    const { data: resultsData, error: resultsError } = await supabaseClient.rpc('get_simulation_results', {
+      p_session_token: session_token
+    });
+
+    if (resultsError) {
+      console.error('❌ Erreur lors de la récupération des résultats:', resultsError);
+      return res.status(500).json({
+        success: false,
+        error: 'Erreur lors de la récupération des résultats',
+        details: resultsError.message,
+        can_migrate: canMigrate
+      });
+    }
+
+    console.log('✅ Résultats récupérés avec succès', canMigrate ? '- Migration possible' : `- Migration impossible: ${migrationError}`);
 
     return res.json({
       success: true,
-      ...data
+      can_migrate: canMigrate,
+      migration_error: migrationError,
+      ...resultsData
     });
   } catch (error) {
     console.error('❌ Erreur inattendue lors de la récupération des résultats:', error);
     return res.status(500).json({
       success: false,
       error: 'Erreur inattendue lors de la récupération des résultats',
-      details: error instanceof Error ? error.message : 'Erreur inconnue'
+      details: error instanceof Error ? error.message : 'Erreur inconnue',
+      can_migrate: false
     });
   }
 });
