@@ -18,25 +18,26 @@ export class CalendarReminderService {
     try {
       const now = new Date();
       
-      // Récupérer tous les rappels non envoyés
+      // Récupérer tous les rappels non envoyés avec leurs RDV
       const { data: reminders, error } = await supabase
         .from('RDV_Reminders')
         .select(`
           *,
-          CalendarEvent (
+          RDV!rdv_id (
             id,
             title,
             description,
-            start_date,
-            end_date,
+            scheduled_date,
+            scheduled_time,
+            duration_minutes,
             location,
             created_by,
             client_id,
             expert_id
           )
         `)
-        .eq('sent', false)
-        .order('time_minutes', { ascending: true });
+        .eq('status', 'pending')
+        .order('minutes_before', { ascending: true });
 
       if (error) {
         console.error('❌ Erreur récupération rappels:', error);
@@ -63,7 +64,7 @@ export class CalendarReminderService {
    */
   private async processReminder(reminder: any, now: Date): Promise<void> {
     try {
-      const event = reminder.CalendarEvent;
+      const event = reminder.RDV;
       if (!event) {
         console.warn('⚠️ Événement non trouvé pour le rappel:', reminder.id);
         return;

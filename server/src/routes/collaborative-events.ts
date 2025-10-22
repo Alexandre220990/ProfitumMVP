@@ -388,21 +388,22 @@ router.get('/invitations',
     try {
       // Récupérer les invitations de l'utilisateur
       const { data: invitations, error } = await supabase
-        .from('EventInvitation')
+        .from('RDV_Invitations')
         .select(`
           *,
-          CalendarEvent!inner(
+          RDV!rdv_id (
             id,
             title,
             description,
-            start_date,
-            end_date,
+            scheduled_date,
+            scheduled_time,
+            duration_minutes,
             location,
-            is_online,
+            meeting_type,
             meeting_url
           )
         `)
-        .eq('user_id', authUser.id)
+        .eq('invitee_email', authUser.email)
         .order('sent_at', { ascending: false });
 
       if (error) throw error;
@@ -445,10 +446,10 @@ router.get('/search',
         .from('RDV')
         .select(`
           *,
-          CalendarEventParticipant!inner(user_id, user_type, status)
+          RDV_Participants!inner(user_id, user_type, status)
         `)
         .eq('category', 'collaborative')
-        .eq('CalendarEventParticipant.user_id', authUser.id);
+        .eq('RDV_Participants.user_id', authUser.id);
 
       // Filtres
       if (q) {
