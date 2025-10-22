@@ -116,8 +116,10 @@ export function EmbeddedSimulator({
     if (!currentQuestion) return;
     
     const isMultiple = currentQuestion.type === 'choix_multiple';
+    const isChoixUnique = currentQuestion.type === 'choix_unique';
     
     if (isMultiple) {
+      // Choix multiple : juste enregistrer (pas d'avancement auto)
       const current = (answers[currentQuestion.id] as string[]) || [];
       const updated = current.includes(value)
         ? current.filter(v => v !== value)
@@ -125,7 +127,15 @@ export function EmbeddedSimulator({
       
       setAnswers(prev => ({ ...prev, [currentQuestion.id]: updated }));
     } else {
+      // Choix unique ou autre : enregistrer la réponse
       setAnswers(prev => ({ ...prev, [currentQuestion.id]: value }));
+      
+      // ✅ AVANCEMENT AUTOMATIQUE pour choix unique
+      if (isChoixUnique) {
+        setTimeout(() => {
+          handleNext();
+        }, 300); // Petit délai pour voir la sélection
+      }
     }
     
     setCurrentInput('');
@@ -395,6 +405,13 @@ export function EmbeddedSimulator({
         
         {/* Réponses */}
         <div className="space-y-3">
+          {/* Indicateur pour choix unique */}
+          {currentQuestion.type === 'choix_unique' && (
+            <p className="text-xs text-blue-600 font-medium mb-2">
+              ⚡ Cliquez sur votre choix pour avancer automatiquement
+            </p>
+          )}
+          
           {currentQuestion.type === 'choix_unique' || currentQuestion.type === 'choix_multiple' ? (
             currentQuestion.options.choix?.map((choix, index) => {
               const isSelected = Array.isArray(answers[currentQuestion.id])
@@ -427,7 +444,7 @@ export function EmbeddedSimulator({
               );
             })
           ) : currentQuestion.type === 'nombre' ? (
-            <div>
+            <div className="space-y-2">
               <Input
                 type="number"
                 min={currentQuestion.options.min}
@@ -440,9 +457,12 @@ export function EmbeddedSimulator({
                 placeholder={`Entrez un nombre${currentQuestion.options.unite ? ` (${currentQuestion.options.unite})` : ''}`}
                 className="text-lg p-4"
               />
+              <p className="text-xs text-gray-500 italic">
+                💡 Entrez votre réponse puis cliquez sur "Suivant" pour valider
+              </p>
             </div>
           ) : (
-            <div>
+            <div className="space-y-2">
               <Input
                 type="text"
                 value={answers[currentQuestion.id] || currentInput}
@@ -453,6 +473,9 @@ export function EmbeddedSimulator({
                 placeholder="Votre réponse..."
                 className="text-lg p-4"
               />
+              <p className="text-xs text-gray-500 italic">
+                💡 Entrez votre réponse puis cliquez sur "Suivant" pour valider
+              </p>
             </div>
           )}
         </div>
