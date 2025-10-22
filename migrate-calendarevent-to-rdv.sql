@@ -155,7 +155,9 @@ SELECT '📊 ÉTAPE 5 : Migration des données CalendarEvent → RDV' as info;
 -- Compter les événements à migrer
 SELECT 
     'Événements à migrer' as info,
-    COUNT(*) as nombre
+    COUNT(*) as total,
+    COUNT(*) FILTER (WHERE client_id IS NOT NULL) as avec_client,
+    COUNT(*) FILTER (WHERE client_id IS NULL) as sans_client_skip
 FROM "CalendarEvent";
 
 -- Migrer les événements
@@ -224,7 +226,8 @@ SELECT
     ce.updated_at,
     ce.metadata
 FROM "CalendarEvent" ce
-WHERE NOT EXISTS (
+WHERE ce.client_id IS NOT NULL  -- ✅ Skip les événements sans client
+AND NOT EXISTS (
     SELECT 1 FROM "RDV" WHERE id = ce.id
 );
 
