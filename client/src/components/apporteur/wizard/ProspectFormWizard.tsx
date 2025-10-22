@@ -1,4 +1,3 @@
-import React from 'react';
 import { X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { StepIndicator } from './StepIndicator';
@@ -27,7 +26,6 @@ export function ProspectFormWizard({ onClose, onSuccess }: ProspectFormWizardPro
     state,
     nextStep,
     previousStep,
-    goToStep,
     updateProspectData,
     setProspectId,
     setSimulationResults,
