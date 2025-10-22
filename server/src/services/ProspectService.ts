@@ -8,6 +8,7 @@ import {
 } from '../types/apporteur';
 import { PasswordService } from './PasswordService';
 import { EmailService } from './EmailService';
+import { RDVService } from './RDVService';
 import { getExchangeEmailTemplate, getPresentationEmailTemplate } from '../templates/prospect-emails';
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
@@ -165,86 +166,39 @@ export class ProspectService {
             if (prospectData.meeting_type && prospectData.scheduled_date && prospectData.scheduled_time) {
                 console.log('🔍 ProspectService.createProspect - Création du RDV');
                 
-                // Calculer l'heure de fin (1h après le début par défaut)
-                const startDateTime = new Date(`${prospectData.scheduled_date}T${prospectData.scheduled_time}:00`);
-                const endDateTime = new Date(startDateTime.getTime() + 60 * 60 * 1000); // +1h
-                
-                // Créer l'événement calendrier
-                const { data: calendarEvent, error: rdvError } = await supabase
-                    .from('CalendarEvent')
-                    .insert({
-                        title: `RDV Prospect - ${prospectData.company_name}`,
-                        description: `Rendez-vous avec ${prospectData.name} (${prospectData.email})${prospectData.preselected_expert_id ? '\nExpert présélectionné inclus' : ''}`,
-                        start_date: startDateTime.toISOString(),
-                        end_date: endDateTime.toISOString(),
-                        type: 'meeting',
-                        priority: 'high',
-                        status: 'scheduled',
-                        category: 'prospect',
-                        created_by: apporteurId,
+                try {
+                    // Utiliser le RDVService pour créer le RDV
+                    const rdv = await RDVService.createRDV({
                         client_id: prospect.id,
                         expert_id: prospectData.preselected_expert_id || null,
+                        apporteur_id: apporteurId,
+                        meeting_type: prospectData.meeting_type,
+                        scheduled_date: prospectData.scheduled_date,
+                        scheduled_time: prospectData.scheduled_time,
+                        duration_minutes: 60,
                         location: prospectData.location,
-                        is_online: prospectData.meeting_type === 'video',
-                        created_at: new Date().toISOString(),
-                        updated_at: new Date().toISOString()
-                    })
-                    .select()
-                    .single();
-
-                if (rdvError) {
+                        meeting_url: prospectData.meeting_url,
+                        title: `RDV Prospect - ${prospectData.company_name}`,
+                        notes: `Rendez-vous avec ${prospectData.name} (${prospectData.email})${prospectData.preselected_expert_id ? '\nExpert présélectionné inclus' : ''}`,
+                        source: 'apporteur',
+                        category: 'prospect',
+                        priority: 3, // High priority
+                        created_by: apporteurId,
+                        metadata: {
+                            prospect_name: prospectData.name,
+                            company_name: prospectData.company_name
+                        }
+                    });
+                    
+                    console.log('✅ RDV créé:', rdv.id);
+                    console.log('   - Client/Prospect:', prospect.id);
+                    console.log('   - Apporteur:', apporteurId);
+                    if (prospectData.preselected_expert_id) {
+                        console.log('   - Expert présélectionné:', prospectData.preselected_expert_id);
+                    }
+                } catch (rdvError) {
                     console.error('⚠️ Erreur création RDV:', rdvError);
                     // On ne bloque pas la création du prospect
-                } else if (calendarEvent) {
-                    console.log('✅ RDV créé dans le calendrier:', calendarEvent.id);
-                    
-                    // Créer les participants du RDV
-                    const participants = [
-                        // 1. L'apporteur (créateur)
-                        {
-                            event_id: calendarEvent.id,
-                            user_id: apporteurId,
-                            user_type: 'apporteur',
-                            status: 'accepted', // Le créateur accepte automatiquement
-                            created_at: new Date().toISOString()
-                        },
-                        // 2. Le client/prospect
-                        {
-                            event_id: calendarEvent.id,
-                            user_id: prospect.id,
-                            user_type: 'client',
-                            status: 'pending', // En attente de confirmation
-                            created_at: new Date().toISOString()
-                        }
-                    ];
-
-                    // 3. Ajouter l'expert s'il est présélectionné
-                    if (prospectData.preselected_expert_id) {
-                        participants.push({
-                            event_id: calendarEvent.id,
-                            user_id: prospectData.preselected_expert_id,
-                            user_type: 'expert',
-                            status: 'pending', // En attente de confirmation
-                            created_at: new Date().toISOString()
-                        });
-                        console.log('✅ Expert présélectionné ajouté comme participant:', prospectData.preselected_expert_id);
-                    }
-
-                    // Insérer tous les participants
-                    const { error: participantsError } = await supabase
-                        .from('CalendarEventParticipant')
-                        .insert(participants);
-
-                    if (participantsError) {
-                        console.error('⚠️ Erreur création participants RDV:', participantsError);
-                    } else {
-                        console.log(`✅ ${participants.length} participant(s) ajouté(s) au RDV`);
-                        console.log('   - Apporteur (créateur):', apporteurId);
-                        console.log('   - Client/Prospect:', prospect.id);
-                        if (prospectData.preselected_expert_id) {
-                            console.log('   - Expert:', prospectData.preselected_expert_id);
-                        }
-                    }
                 }
             }
 

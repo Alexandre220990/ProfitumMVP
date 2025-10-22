@@ -1,6 +1,7 @@
 import express, { Router, Request, Response } from 'express';
 import { ProspectSimulationService } from '../services/ProspectSimulationService';
 import { ExpertOptimizationService } from '../services/ExpertOptimizationService';
+import { RDVService } from '../services/RDVService';
 
 const router = express.Router();
 
@@ -168,58 +169,37 @@ router.post('/:prospectId/schedule-meetings', async (req: Request, res: Response
     
     console.log(`📅 Création de ${meetings.length} RDV pour prospect ${prospectId}...`);
     
-    // Utiliser le client Supabase pour créer les RDV
-    const { createClient } = require('@supabase/supabase-js');
-    const supabase = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-    
-    const createdMeetings = [];
-    const errors = [];
-    
-    // Créer chaque RDV
-    for (const meeting of meetings) {
-      try {
-        const { data: rdv, error: rdvError } = await supabase
-          .from('RDV')
-          .insert({
-            clientId: prospectId,
-            expertId: meeting.expert_id,
-            apporteurId: user.database_id,
-            dateRdv: meeting.scheduled_date && meeting.scheduled_time 
-              ? `${meeting.scheduled_date}T${meeting.scheduled_time}:00`
-              : null,
-            type: meeting.meeting_type || 'video',
-            lieu: meeting.location || '',
-            statut: 'planifie',
-            notes: meeting.notes || '',
-            duration_minutes: meeting.estimated_duration || 60,
-            metadata: {
-              source: 'apporteur_simulation',
-              product_ids: meeting.product_ids || [],
-              client_produit_eligible_ids: meeting.client_produit_eligible_ids || [],
-              estimated_savings: meeting.estimated_savings || 0,
-              created_by: user.database_id
-            },
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .select('*')
-          .single();
-        
-        if (rdvError) {
-          console.error(`❌ Erreur création RDV pour expert ${meeting.expert_id}:`, rdvError);
-          errors.push({ expert_id: meeting.expert_id, error: rdvError.message });
-        } else {
-          console.log(`✅ RDV créé: ${rdv.id}`);
-          createdMeetings.push(rdv);
-        }
-      } catch (meetingError) {
-        console.error('❌ Erreur création RDV individuel:', meetingError);
-        errors.push({ expert_id: meeting.expert_id, error: 'Erreur inconnue' });
+    // Préparer les RDV pour le service
+    const rdvToCreate = meetings.map(meeting => ({
+      client_id: prospectId,
+      expert_id: meeting.expert_id || null,
+      apporteur_id: user.database_id,
+      meeting_type: meeting.meeting_type || 'video',
+      scheduled_date: meeting.scheduled_date,
+      scheduled_time: meeting.scheduled_time,
+      duration_minutes: meeting.estimated_duration || 60,
+      location: meeting.location || null,
+      meeting_url: meeting.meeting_url || null,
+      notes: meeting.notes || '',
+      source: 'apporteur_simulation',
+      category: 'client_rdv',
+      priority: 1,
+      created_by: user.database_id,
+      product_ids: meeting.client_produit_eligible_ids || meeting.product_ids || [],
+      metadata: {
+        estimated_savings: meeting.estimated_savings || 0,
+        simulation_id: meeting.simulation_id || null
       }
-    }
+    }));
+    
+    // Créer tous les RDV via le service
+    const results = await RDVService.createMultipleRDV(rdvToCreate);
+    
+    const createdMeetings = results.success;
+    const errors = results.failed.map(f => ({
+      expert_id: f.data.expert_id,
+      error: f.error
+    }));
     
     console.log(`📦 ${createdMeetings.length}/${meetings.length} RDV créés`);
     
