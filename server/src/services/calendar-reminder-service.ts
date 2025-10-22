@@ -255,13 +255,15 @@ export class CalendarReminderService {
   async checkOverdueEvents(): Promise<void> {
     try {
       const now = new Date();
+      const currentDate = now.toISOString().split('T')[0];
+      const currentTime = now.toISOString().split('T')[1].substring(0, 8);
       
-      // Récupérer les événements en retard
+      // Récupérer les événements en retard (date passée)
       const { data: overdueEvents, error } = await supabase
         .from('RDV')
         .select('*')
-        .lt('end_date', now.toISOString())
-        .eq('status', 'pending');
+        .lt('scheduled_date', currentDate)
+        .eq('status', 'scheduled');
 
       if (error) {
         console.error('❌ Erreur récupération événements en retard:', error);
