@@ -271,6 +271,68 @@ router.delete('/prospects/:prospectId', checkProspectOwnership as any, async (re
     }
 });
 
+// Récupérer les RDV d'un prospect
+router.get('/prospects/:prospectId/meetings', checkProspectOwnership as any, async (req: any, res: any): Promise<void> => {
+    try {
+        const { prospectId } = req.params;
+        
+        // Récupérer les RDV depuis la table CalendarEvent
+        const { data: meetings, error } = await supabase
+            .from('CalendarEvent')
+            .select(`
+                id,
+                title,
+                description,
+                start_date,
+                end_date,
+                type,
+                status,
+                location,
+                is_online,
+                expert:Expert!expert_id (
+                    id,
+                    name,
+                    first_name,
+                    last_name,
+                    company_name
+                )
+            `)
+            .eq('client_id', prospectId)
+            .order('start_date', { ascending: true });
+
+        if (error) {
+            console.error('Erreur récupération RDV:', error);
+            throw error;
+        }
+
+        // Formater les données
+        const formattedMeetings = (meetings || []).map((meeting: any) => ({
+            id: meeting.id,
+            title: meeting.title,
+            description: meeting.description,
+            start_date: meeting.start_date,
+            end_date: meeting.end_date,
+            type: meeting.type,
+            status: meeting.status,
+            location: meeting.location || (meeting.is_online ? 'En ligne' : null),
+            expert_name: meeting.expert 
+                ? (meeting.expert.first_name && meeting.expert.last_name 
+                    ? `${meeting.expert.first_name} ${meeting.expert.last_name}`
+                    : meeting.expert.name)
+                : null,
+            expert_company: meeting.expert?.company_name || null
+        }));
+
+        res.json({ success: true, data: formattedMeetings });
+    } catch (error) {
+        console.error('Erreur récupération RDV prospect:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: 'Erreur lors de la récupération des rendez-vous' 
+        });
+    }
+});
+
 // Convertir prospect en client
 router.post('/prospects/:prospectId/convert', checkProspectOwnership as any, async (req: any, res: any): Promise<void> => {
     try {

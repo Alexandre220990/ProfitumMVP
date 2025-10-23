@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import ProspectForm from './ProspectForm';
+import ProspectDetailsView from './ProspectDetailsView';
 import { 
   Users, 
   Calendar, 
@@ -52,6 +53,7 @@ export default function ProspectManagement() {
   const [showProspectForm, setShowProspectForm] = useState(false);
   const [selectedProspect, setSelectedProspect] = useState<Prospect | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   useEffect(() => {
     fetchProspects();
@@ -486,16 +488,31 @@ export default function ProspectManagement() {
           />
         )}
 
-        {/* Modal de détails du prospect avec possibilité de modification */}
+        {/* Modal de détails du prospect (lecture seule avec option d'édition) */}
         {showDetailsModal && selectedProspect && (
-          <ProspectForm 
+          <ProspectDetailsView
             prospectId={selectedProspect.id}
-            onCancel={() => {
+            onClose={() => {
               setShowDetailsModal(false);
               setSelectedProspect(null);
             }}
-            onSuccess={() => {
+            onEdit={() => {
               setShowDetailsModal(false);
+              setShowEditModal(true);
+            }}
+          />
+        )}
+
+        {/* Modal d'édition du prospect */}
+        {showEditModal && selectedProspect && (
+          <ProspectForm 
+            prospectId={selectedProspect.id}
+            onCancel={() => {
+              setShowEditModal(false);
+              setSelectedProspect(null);
+            }}
+            onSuccess={() => {
+              setShowEditModal(false);
               setSelectedProspect(null);
               fetchProspects(); // Rafraîchir la liste après modification
             }}
