@@ -43,16 +43,44 @@ function transformCalendarEventToRDV(eventData: any): any {
   const end_date = new Date(eventData.end_date);
   const duration_minutes = Math.round((end_date.getTime() - start_date.getTime()) / 60000);
   
+  // Convertir priority string vers integer
+  const priorityMap: { [key: string]: number } = {
+    'low': 1,
+    'medium': 2,
+    'high': 3,
+    'critical': 4
+  };
+  const priority = typeof eventData.priority === 'string' 
+    ? priorityMap[eventData.priority] || 1 
+    : (eventData.priority || 1);
+
+  // Déterminer meeting_type (obligatoire)
+  const meeting_type = eventData.is_online 
+    ? 'video' 
+    : (eventData.phone_number ? 'phone' : 'physical');
+
+  // Construire metadata avec type et color
+  const metadata = {
+    ...(eventData.metadata || {}),
+    event_type: eventData.type, // appointment, deadline, meeting, task, reminder
+    color: eventData.color || '#3B82F6'
+  };
+
+  // Ne garder que les colonnes qui existent dans la table RDV
   return {
-    ...eventData,
+    title: eventData.title,
+    description: eventData.description || null,
     scheduled_date: start_date.toISOString().split('T')[0],
     scheduled_time: start_date.toISOString().split('T')[1].substring(0, 8),
     duration_minutes,
-    meeting_type: eventData.is_online ? 'video' : (eventData.phone_number ? 'phone' : 'physical'),
-    // Supprimer start_date et end_date du résultat
-    start_date: undefined,
-    end_date: undefined,
-    is_online: undefined
+    meeting_type,
+    location: eventData.location || null,
+    meeting_url: eventData.meeting_url || null,
+    status: 'scheduled', // Valeur par défaut
+    category: eventData.category || 'client_rdv',
+    priority,
+    metadata,
+    notes: eventData.description || null // Dupliquer description dans notes pour compatibilité
   };
 }
 
@@ -338,11 +366,15 @@ router.post('/events', calendarLimiter, validateEvent, asyncHandler(async (req: 
   const eventData = req.body;
 
   try {
+    console.log('📝 Création événement - Données reçues:', eventData);
+    
     // Transformer les données CalendarEvent vers format RDV
     const rdvData = transformCalendarEventToRDV(eventData);
     
+    console.log('📝 Données RDV transformées:', rdvData);
+    
     // Ajouter les informations de création
-    const newEvent = {
+    const newEvent: any = {
       ...rdvData,
       status: rdvData.status || 'scheduled', // Status par défaut pour RDV
       created_by: authUser.database_id,
@@ -351,13 +383,24 @@ router.post('/events', calendarLimiter, validateEvent, asyncHandler(async (req: 
     };
 
     // Ajouter l'ID client/expert selon le type d'utilisateur
+    // IMPORTANT: client_id est NOT NULL dans la table RDV
     if (authUser.type === 'client') {
       newEvent.client_id = authUser.database_id;
     } else if (authUser.type === 'expert') {
       newEvent.expert_id = authUser.database_id;
+      // Si un client_id est fourni, l'utiliser, sinon utiliser l'expert_id
+      newEvent.client_id = eventData.client_id || authUser.database_id;
     } else if (authUser.type === 'apporteur') {
       newEvent.apporteur_id = authUser.database_id;
+      // Pour un apporteur, client_id est obligatoire
+      // Utiliser le client_id fourni, ou l'apporteur_id par défaut
+      newEvent.client_id = eventData.client_id || authUser.database_id;
+    } else if (authUser.type === 'admin') {
+      // Pour un admin, client_id est obligatoire
+      newEvent.client_id = eventData.client_id || authUser.database_id;
     }
+
+    console.log('📝 Événement à insérer:', newEvent);
 
     const { data: event, error } = await supabase
       .from('RDV')
@@ -367,7 +410,17 @@ router.post('/events', calendarLimiter, validateEvent, asyncHandler(async (req: 
 
     if (error) {
       console.error('❌ Erreur création événement:', error);
-      return res.status(500).json({ success: false, message: 'Erreur serveur' });
+      console.error('❌ Détails erreur:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      });
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Erreur serveur',
+        error: error.message 
+      });
     }
 
     // Log de l'activité
