@@ -864,23 +864,35 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
               
               <div>
                 <Label htmlFor="expert_id" className="text-blue-900">Expert <span className="text-xs text-blue-600">(Optionnel)</span></Label>
-                <Select 
-                  value={formData.expert_id} 
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, expert_id: value }))}
-                  disabled={loadingLists}
-                >
-                  <SelectTrigger className="bg-white">
-                    <SelectValue placeholder={loadingLists ? "Chargement..." : "Sélectionner un expert (optionnel)"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">Aucun expert</SelectItem>
-                    {experts.map((expert) => (
-                      <SelectItem key={expert.id} value={expert.id}>
-                        {expert.first_name} {expert.last_name} {expert.company_name ? `(${expert.company_name})` : ''}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex gap-2">
+                  <Select 
+                    value={formData.expert_id} 
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, expert_id: value }))}
+                    disabled={loadingLists}
+                  >
+                    <SelectTrigger className="bg-white flex-1">
+                      <SelectValue placeholder={loadingLists ? "Chargement..." : "Sélectionner un expert (optionnel)"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {experts.map((expert) => (
+                        <SelectItem key={expert.id} value={expert.id}>
+                          {expert.first_name} {expert.last_name} {expert.company_name ? `(${expert.company_name})` : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {formData.expert_id && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setFormData(prev => ({ ...prev, expert_id: '' }))}
+                      className="shrink-0"
+                    >
+                      Retirer
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           )}
