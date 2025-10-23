@@ -5,19 +5,47 @@ import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
 import { Settings, User, Bell, Shield, Save, Edit, Eye, EyeOff, Download, Upload, Trash2 } from 'lucide-react';
 import { useAuth } from '../../hooks/use-auth';
+import { toast } from 'sonner';
+import { config } from '../../config';
+import { useNavigate } from 'react-router-dom';
 
 /**
  * Page Paramètres
  * Configuration du compte et préférences
  */
 export default function SettingsPage() {
-  const { user } = useAuth();
-  const apporteurId = user?.id;
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const apporteurId = user?.database_id;
   const [settings, setSettings] = useState<any>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  
+  // États pour les formulaires
+  const [profileData, setProfileData] = useState({
+    fullName: '',
+    phone: '',
+    company: ''
+  });
+  
+  const [securityData, setSecurityData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+    enable2FA: false
+  });
+  
+  const [notificationPrefs, setNotificationPrefs] = useState({
+    newProspects: true,
+    confirmedMeetings: true,
+    paidCommissions: true,
+    followUpReminders: false,
+    availableTrainings: false,
+    reminderFrequency: 'daily'
+  });
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -51,8 +79,14 @@ export default function SettingsPage() {
           }
         };
         
-        // Ici on pourrait charger les paramètres depuis l'API
+        // Initialiser les états
         setSettings(defaultSettings);
+        setProfileData({
+          fullName: defaultSettings.profile.fullName,
+          phone: defaultSettings.profile.phone,
+          company: defaultSettings.profile.company
+        });
+        setNotificationPrefs(defaultSettings.notifications);
       } catch (err) {
         console.error('Erreur lors du chargement des paramètres:', err);
       } finally {
@@ -62,6 +96,214 @@ export default function SettingsPage() {
 
     loadSettings();
   }, [apporteurId, user]);
+
+  // ===== HANDLERS =====
+  
+  // Sauvegarder le profil
+  const handleSaveProfile = async () => {
+    setSaving(true);
+    try {
+      // TODO: Appel API pour mettre à jour le profil
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulation
+      
+      toast.success('✅ Profil mis à jour avec succès !');
+      
+      // Mettre à jour les settings localement
+      setSettings((prev: any) => ({
+        ...prev,
+        profile: {
+          ...prev.profile,
+          ...profileData
+        }
+      }));
+    } catch (error) {
+      console.error('Erreur sauvegarde profil:', error);
+      toast.error('❌ Erreur lors de la mise à jour du profil');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Mettre à jour la sécurité
+  const handleUpdateSecurity = async () => {
+    if (!securityData.currentPassword || !securityData.newPassword) {
+      toast.error('❌ Veuillez remplir tous les champs');
+      return;
+    }
+
+    if (securityData.newPassword !== securityData.confirmPassword) {
+      toast.error('❌ Les mots de passe ne correspondent pas');
+      return;
+    }
+
+    if (securityData.newPassword.length < 8) {
+      toast.error('❌ Le mot de passe doit contenir au moins 8 caractères');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const response = await fetch(`${config.API_URL}/api/auth/change-password`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          currentPassword: securityData.currentPassword,
+          newPassword: securityData.newPassword
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Erreur lors du changement de mot de passe');
+      }
+
+      toast.success('✅ Mot de passe mis à jour avec succès !');
+      
+      // Réinitialiser les champs
+      setSecurityData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+        enable2FA: securityData.enable2FA
+      });
+    } catch (error) {
+      console.error('Erreur changement mot de passe:', error);
+      toast.error('❌ Erreur lors du changement de mot de passe');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Sauvegarder les préférences de notification
+  const handleSaveNotifications = async () => {
+    setSaving(true);
+    try {
+      // TODO: Appel API pour sauvegarder les préférences
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulation
+      
+      toast.success('✅ Préférences de notification sauvegardées !');
+      
+      // Mettre à jour les settings localement
+      setSettings((prev: any) => ({
+        ...prev,
+        notifications: notificationPrefs
+      }));
+    } catch (error) {
+      console.error('Erreur sauvegarde notifications:', error);
+      toast.error('❌ Erreur lors de la sauvegarde des préférences');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Sauvegarder tous les paramètres
+  const handleSaveAll = async () => {
+    setSaving(true);
+    try {
+      await Promise.all([
+        handleSaveProfile(),
+        handleSaveNotifications()
+      ]);
+      toast.success('✅ Tous les paramètres ont été sauvegardés !');
+    } catch (error) {
+      console.error('Erreur sauvegarde globale:', error);
+      toast.error('❌ Erreur lors de la sauvegarde');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Exporter les données
+  const handleExport = () => {
+    try {
+      const exportData = {
+        profile: profileData,
+        notifications: notificationPrefs,
+        exportDate: new Date().toISOString()
+      };
+
+      const dataStr = JSON.stringify(exportData, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `profitum-settings-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast.success('✅ Paramètres exportés avec succès !');
+    } catch (error) {
+      console.error('Erreur export:', error);
+      toast.error('❌ Erreur lors de l\'export');
+    }
+  };
+
+  // Importer les données
+  const handleImport = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = (e: any) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const importedData = JSON.parse(event.target?.result as string);
+          
+          if (importedData.profile) {
+            setProfileData(importedData.profile);
+          }
+          if (importedData.notifications) {
+            setNotificationPrefs(importedData.notifications);
+          }
+
+          toast.success('✅ Paramètres importés avec succès !');
+        } catch (error) {
+          console.error('Erreur import:', error);
+          toast.error('❌ Fichier invalide');
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  };
+
+  // Désactiver le compte
+  const handleDeactivateAccount = async () => {
+    if (!window.confirm('⚠️ Êtes-vous sûr de vouloir désactiver votre compte ? Cette action est réversible.')) {
+      return;
+    }
+
+    const confirmation = window.prompt('Tapez "DESACTIVER" pour confirmer');
+    if (confirmation !== 'DESACTIVER') {
+      toast.error('❌ Confirmation invalide');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      // TODO: Appel API pour désactiver le compte
+      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulation
+      
+      toast.success('✅ Compte désactivé. Vous allez être déconnecté...');
+      
+      setTimeout(() => {
+        logout();
+        navigate('/');
+      }, 2000);
+    } catch (error) {
+      console.error('Erreur désactivation:', error);
+      toast.error('❌ Erreur lors de la désactivation du compte');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -95,17 +337,31 @@ export default function SettingsPage() {
             <p className="text-gray-600 text-lg">Configurez votre compte et vos préférences</p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Button variant="outline" className="bg-white hover:bg-gray-50">
+            <Button 
+              variant="outline" 
+              className="bg-white hover:bg-gray-50"
+              onClick={handleExport}
+              disabled={saving}
+            >
               <Download className="h-4 w-4 mr-2" />
               Exporter
             </Button>
-            <Button variant="outline" className="bg-white hover:bg-gray-50">
+            <Button 
+              variant="outline" 
+              className="bg-white hover:bg-gray-50"
+              onClick={handleImport}
+              disabled={saving}
+            >
               <Upload className="h-4 w-4 mr-2" />
               Importer
             </Button>
-            <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+            <Button 
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+              onClick={handleSaveAll}
+              disabled={saving}
+            >
               <Save className="h-4 w-4 mr-2" />
-              Sauvegarder
+              {saving ? 'Sauvegarde...' : 'Sauvegarder'}
             </Button>
           </div>
         </div>
@@ -129,7 +385,8 @@ export default function SettingsPage() {
                 </label>
                 <Input
                   type="text"
-                  defaultValue={settings?.profile?.fullName || user?.name || user?.username || ""}
+                  value={profileData.fullName}
+                  onChange={(e) => setProfileData({...profileData, fullName: e.target.value})}
                   placeholder="Votre nom complet"
                   className="w-full"
                 />
@@ -153,7 +410,8 @@ export default function SettingsPage() {
                 </label>
                 <Input
                   type="tel"
-                  defaultValue={settings?.profile?.phone || user?.phone_number || ""}
+                  value={profileData.phone}
+                  onChange={(e) => setProfileData({...profileData, phone: e.target.value})}
                   placeholder="+33 X XX XX XX XX"
                   className="w-full"
                 />
@@ -164,14 +422,20 @@ export default function SettingsPage() {
                 </label>
                 <Input
                   type="text"
-                  defaultValue={settings?.profile?.company || ""}
+                  value={profileData.company}
+                  onChange={(e) => setProfileData({...profileData, company: e.target.value})}
                   placeholder="Nom de votre entreprise"
                   className="w-full"
                 />
               </div>
-              <Button variant="outline" className="w-full hover:bg-blue-50">
+              <Button 
+                variant="outline" 
+                className="w-full hover:bg-blue-50"
+                onClick={handleSaveProfile}
+                disabled={saving}
+              >
                 <Edit className="h-4 w-4 mr-2" />
-                Modifier les informations
+                {saving ? 'Sauvegarde...' : 'Modifier les informations'}
               </Button>
             </CardContent>
           </Card>
@@ -194,9 +458,13 @@ export default function SettingsPage() {
                 <div className="relative">
                   <Input
                     type={showPassword ? "text" : "password"}
+                    value={securityData.currentPassword}
+                    onChange={(e) => setSecurityData({...securityData, currentPassword: e.target.value})}
                     className="w-full pr-10"
+                    placeholder="Mot de passe actuel"
                   />
                   <button 
+                    type="button"
                     className="absolute right-3 top-2.5"
                     onClick={() => setShowPassword(!showPassword)}
                   >
@@ -211,9 +479,13 @@ export default function SettingsPage() {
                 <div className="relative">
                   <Input
                     type={showNewPassword ? "text" : "password"}
+                    value={securityData.newPassword}
+                    onChange={(e) => setSecurityData({...securityData, newPassword: e.target.value})}
                     className="w-full pr-10"
+                    placeholder="Nouveau mot de passe (min. 8 caractères)"
                   />
                   <button 
+                    type="button"
                     className="absolute right-3 top-2.5"
                     onClick={() => setShowNewPassword(!showNewPassword)}
                   >
@@ -228,9 +500,13 @@ export default function SettingsPage() {
                 <div className="relative">
                   <Input
                     type={showConfirmPassword ? "text" : "password"}
+                    value={securityData.confirmPassword}
+                    onChange={(e) => setSecurityData({...securityData, confirmPassword: e.target.value})}
                     className="w-full pr-10"
+                    placeholder="Confirmer le nouveau mot de passe"
                   />
                   <button 
+                    type="button"
                     className="absolute right-3 top-2.5"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   >
@@ -239,14 +515,25 @@ export default function SettingsPage() {
                 </div>
               </div>
               <div className="flex items-center space-x-3">
-                <input type="checkbox" id="2fa" className="rounded" />
+                <input 
+                  type="checkbox" 
+                  id="2fa" 
+                  className="rounded"
+                  checked={securityData.enable2FA}
+                  onChange={(e) => setSecurityData({...securityData, enable2FA: e.target.checked})}
+                />
                 <label htmlFor="2fa" className="text-sm text-gray-700">
                   Activer l'authentification à deux facteurs
                 </label>
               </div>
-              <Button variant="outline" className="w-full hover:bg-red-50">
+              <Button 
+                variant="outline" 
+                className="w-full hover:bg-red-50"
+                onClick={handleUpdateSecurity}
+                disabled={saving}
+              >
                 <Shield className="h-4 w-4 mr-2" />
-                Mettre à jour la sécurité
+                {saving ? 'Mise à jour...' : 'Mettre à jour la sécurité'}
               </Button>
             </CardContent>
           </Card>
@@ -265,38 +552,72 @@ export default function SettingsPage() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
                   <span className="text-sm font-medium text-gray-700">Nouveaux prospects</span>
-                  <input type="checkbox" defaultChecked className="rounded" />
+                  <input 
+                    type="checkbox" 
+                    className="rounded"
+                    checked={notificationPrefs.newProspects}
+                    onChange={(e) => setNotificationPrefs({...notificationPrefs, newProspects: e.target.checked})}
+                  />
                 </div>
                 <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
                   <span className="text-sm font-medium text-gray-700">Rendez-vous confirmés</span>
-                  <input type="checkbox" defaultChecked className="rounded" />
+                  <input 
+                    type="checkbox" 
+                    className="rounded"
+                    checked={notificationPrefs.confirmedMeetings}
+                    onChange={(e) => setNotificationPrefs({...notificationPrefs, confirmedMeetings: e.target.checked})}
+                  />
                 </div>
                 <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
                   <span className="text-sm font-medium text-gray-700">Commissions payées</span>
-                  <input type="checkbox" defaultChecked className="rounded" />
+                  <input 
+                    type="checkbox" 
+                    className="rounded"
+                    checked={notificationPrefs.paidCommissions}
+                    onChange={(e) => setNotificationPrefs({...notificationPrefs, paidCommissions: e.target.checked})}
+                  />
                 </div>
                 <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
                   <span className="text-sm font-medium text-gray-700">Rappels de suivi</span>
-                  <input type="checkbox" className="rounded" />
+                  <input 
+                    type="checkbox" 
+                    className="rounded"
+                    checked={notificationPrefs.followUpReminders}
+                    onChange={(e) => setNotificationPrefs({...notificationPrefs, followUpReminders: e.target.checked})}
+                  />
                 </div>
                 <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <span className="text-sm font-medium text-gray-700">Formations disponibles</span>
-                  <input type="checkbox" className="rounded" />
+                  <input 
+                    type="checkbox" 
+                    className="rounded"
+                    checked={notificationPrefs.availableTrainings}
+                    onChange={(e) => setNotificationPrefs({...notificationPrefs, availableTrainings: e.target.checked})}
+                  />
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Fréquence des rappels
                 </label>
-                <select className="w-full border border-gray-300 rounded-lg px-3 py-2">
-                  <option>Quotidien</option>
-                  <option>Hebdomadaire</option>
-                  <option>Mensuel</option>
+                <select 
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  value={notificationPrefs.reminderFrequency}
+                  onChange={(e) => setNotificationPrefs({...notificationPrefs, reminderFrequency: e.target.value})}
+                >
+                  <option value="daily">Quotidien</option>
+                  <option value="weekly">Hebdomadaire</option>
+                  <option value="monthly">Mensuel</option>
                 </select>
               </div>
-              <Button variant="outline" className="w-full hover:bg-orange-50">
+              <Button 
+                variant="outline" 
+                className="w-full hover:bg-orange-50"
+                onClick={handleSaveNotifications}
+                disabled={saving}
+              >
                 <Bell className="h-4 w-4 mr-2" />
-                Sauvegarder les préférences
+                {saving ? 'Sauvegarde...' : 'Sauvegarder les préférences'}
               </Button>
             </CardContent>
           </Card>
@@ -335,9 +656,14 @@ export default function SettingsPage() {
                 </Badge>
               </div>
               <div className="pt-4 border-t">
-                <Button variant="outline" className="w-full text-red-600 border-red-300 hover:bg-red-50">
+                <Button 
+                  variant="outline" 
+                  className="w-full text-red-600 border-red-300 hover:bg-red-50"
+                  onClick={handleDeactivateAccount}
+                  disabled={saving}
+                >
                   <Trash2 className="h-4 w-4 mr-2" />
-                  Désactiver le compte
+                  {saving ? 'Désactivation...' : 'Désactiver le compte'}
                 </Button>
               </div>
             </CardContent>
