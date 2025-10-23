@@ -318,6 +318,8 @@ export class ProspectSimulationService {
    */
   static async getProspectSimulation(prospectId: string): Promise<ProspectSimulationResult | null> {
     try {
+      console.log(`📊 Récupération simulation pour prospect ${prospectId}`);
+      
       // Récupérer la dernière simulation du prospect
       const { data: simulation, error: simError } = await supabase
         .from('simulations')
@@ -328,44 +330,81 @@ export class ProspectSimulationService {
         .limit(1)
         .single();
       
-      if (simError || !simulation) {
+      if (simError) {
+        console.log(`ℹ️ Aucune simulation trouvée pour ${prospectId}:`, simError.message);
         return null;
       }
       
-      // Récupérer les ClientProduitEligible associés
+      if (!simulation) {
+        console.log(`ℹ️ Aucune simulation trouvée pour ${prospectId}`);
+        return null;
+      }
+      
+      console.log(`✅ Simulation trouvée: ${simulation.id}`);
+      
+      // Récupérer les ClientProduitEligible associés avec une requête plus robuste
+      console.log(`🔍 Récupération CPE pour simulation ${simulation.id}`);
+      
       const { data: cpes, error: cpeError } = await supabase
         .from('ClientProduitEligible')
         .select(`
-          *,
-          ProduitEligible (
-            id,
-            nom,
-            description,
-            categorie
-          )
+          id,
+          "clientId",
+          "produitId",
+          statut,
+          "montantFinal",
+          "tauxFinal",
+          "dureeFinale",
+          priorite,
+          calcul_details,
+          metadata,
+          "simulationId"
         `)
-        .eq('clientId', prospectId)
-        .eq('simulationId', simulation.id);
+        .eq('"clientId"', prospectId)
+        .eq('"simulationId"', simulation.id);
       
       if (cpeError) {
+        console.error('❌ Erreur récupération CPE:', cpeError);
         throw cpeError;
       }
       
-      const enrichedProducts: ClientProduitEligibleWithScore[] = (cpes || []).map((cpe: any) => ({
-        id: cpe.id,
-        client_id: cpe.clientId,
-        produit_id: cpe.produitId,
-        produit_name: cpe.ProduitEligible?.nom || '',
-        produit_description: cpe.ProduitEligible?.description || '',
-        statut: cpe.statut,
-        montant_estime: cpe.montantFinal || 0,
-        tauxFinal: cpe.tauxFinal,
-        montantFinal: cpe.montantFinal,
-        dureeFinale: cpe.dureeFinale,
-        priorite: cpe.priorite,
-        calcul_details: cpe.calcul_details,
-        metadata: cpe.metadata
-      }));
+      console.log(`✅ ${cpes?.length || 0} CPE trouvés`);
+      
+      // Récupérer les infos produits séparément pour éviter les problèmes de join
+      let enrichedProducts: ClientProduitEligibleWithScore[] = [];
+      
+      if (cpes && cpes.length > 0) {
+        const productIds = cpes.map((cpe: any) => cpe.produitId);
+        const { data: products, error: productsError } = await supabase
+          .from('ProduitEligible')
+          .select('id, nom, description, categorie')
+          .in('id', productIds);
+        
+        if (productsError) {
+          console.error('❌ Erreur récupération produits:', productsError);
+          throw productsError;
+        }
+        
+        // Mapper les produits avec leurs infos
+        enrichedProducts = cpes.map((cpe: any) => {
+          const produit = products?.find((p: any) => p.id === cpe.produitId);
+          return {
+            id: cpe.id,
+            client_id: cpe.clientId,
+            produit_id: cpe.produitId,
+            produit_name: produit?.nom || '',
+            produit_description: produit?.description || '',
+            statut: cpe.statut,
+            montant_estime: cpe.montantFinal || 0,
+            tauxFinal: cpe.tauxFinal,
+            montantFinal: cpe.montantFinal,
+            dureeFinale: cpe.dureeFinale,
+            priorite: cpe.priorite,
+            calcul_details: cpe.calcul_details,
+            metadata: cpe.metadata
+          };
+        });
+      }
       
       const summary = {
         highly_eligible: enrichedProducts.filter(p => p.montant_estime >= 10000).length,
