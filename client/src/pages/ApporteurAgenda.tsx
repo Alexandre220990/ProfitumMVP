@@ -41,9 +41,6 @@ export default function ApporteurAgenda() {
         enableGoogleSync={true}
         enableRealTime={true}
         defaultView="month"
-        filters={{
-          category: 'apporteur'
-        }}
       />
     </div>
   );

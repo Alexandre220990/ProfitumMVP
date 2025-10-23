@@ -52,7 +52,6 @@ export default function AgendaClient() {
           showHeader={false}
           enableRealTime={true}
           defaultView="month"
-          filters={{ category: 'client' }}
         />
       ) : (
         <UnifiedAgendaView />

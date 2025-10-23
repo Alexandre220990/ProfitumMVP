@@ -54,7 +54,6 @@ export default function AgendaAdmin() {
           enableGoogleSync={true}
           enableRealTime={true}
           defaultView="month"
-          filters={{ category: 'admin' }}
         />
       ) : (
         <UnifiedAgendaView />

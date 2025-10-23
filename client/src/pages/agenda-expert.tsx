@@ -42,9 +42,6 @@ export default function AgendaExpertPage() {
           enableGoogleSync={true}
           enableRealTime={true}
           defaultView="agenda"
-          filters={{
-            category: 'expert'
-          }}
         />
     </div>
   );
