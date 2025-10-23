@@ -116,19 +116,20 @@ router.get('/:prospectId/meetings', async (req: Request, res: Response) => {
     
     console.log(`📅 Récupération RDV pour prospect ${prospectId}`);
     
-    // Récupérer les RDV depuis la table CalendarEvent
+    // Récupérer les RDV depuis la table RDV (nouvelle table)
     const { data: meetings, error } = await supabase
-      .from('CalendarEvent')
+      .from('RDV')
       .select(`
         id,
         title,
         description,
-        start_date,
-        end_date,
-        type,
+        scheduled_date,
+        scheduled_time,
+        duration_minutes,
+        meeting_type,
         status,
         location,
-        is_online,
+        meeting_url,
         expert:Expert!expert_id (
           id,
           name,
@@ -138,23 +139,27 @@ router.get('/:prospectId/meetings', async (req: Request, res: Response) => {
         )
       `)
       .eq('client_id', prospectId)
-      .order('start_date', { ascending: true });
+      .order('scheduled_date', { ascending: true });
 
     if (error) {
       console.error('❌ Erreur récupération RDV:', error);
       throw error;
     }
 
-    // Formater les données
+    // Formater les données au format attendu par le frontend
     const formattedMeetings = (meetings || []).map((meeting: any) => ({
       id: meeting.id,
       title: meeting.title,
-      description: meeting.description,
-      start_date: meeting.start_date,
-      end_date: meeting.end_date,
-      type: meeting.type,
+      description: meeting.description || '',
+      start_date: `${meeting.scheduled_date}T${meeting.scheduled_time}`,
+      end_date: meeting.scheduled_date && meeting.scheduled_time && meeting.duration_minutes
+        ? new Date(new Date(`${meeting.scheduled_date}T${meeting.scheduled_time}`).getTime() + meeting.duration_minutes * 60000).toISOString()
+        : null,
+      type: meeting.meeting_type,
       status: meeting.status,
-      location: meeting.location || (meeting.is_online ? 'En ligne' : null),
+      location: meeting.location || (meeting.meeting_type === 'video' ? 'En ligne' : null),
+      is_online: meeting.meeting_type === 'video',
+      meeting_url: meeting.meeting_url,
       expert_name: meeting.expert 
         ? (meeting.expert.first_name && meeting.expert.last_name 
             ? `${meeting.expert.first_name} ${meeting.expert.last_name}`
