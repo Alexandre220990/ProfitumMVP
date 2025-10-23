@@ -26,32 +26,10 @@ router.get('/profile', async (req: Request, res: Response): Promise<void> => {
 
     console.log(`📋 Récupération profil apporteur ${user.database_id}`);
 
+    // Récupérer d'abord toutes les colonnes pour voir ce qui existe
     const { data: apporteur, error } = await supabase
       .from('ApporteurAffaires')
-      .select(`
-        id,
-        auth_user_id,
-        first_name,
-        last_name,
-        email,
-        phone,
-        company_name,
-        company_type,
-        siren,
-        address,
-        city,
-        postal_code,
-        commission_rate,
-        status,
-        is_active,
-        approved_at,
-        created_at,
-        updated_at,
-        notification_preferences,
-        bio,
-        specializations,
-        website
-      `)
+      .select('*')
       .eq('id', user.database_id)
       .single();
 
@@ -59,7 +37,8 @@ router.get('/profile', async (req: Request, res: Response): Promise<void> => {
       console.error('❌ Erreur récupération profil:', error);
       res.status(500).json({
         success: false,
-        message: 'Erreur lors de la récupération du profil'
+        message: 'Erreur lors de la récupération du profil',
+        error: error.message
       });
       return;
     }
@@ -73,6 +52,7 @@ router.get('/profile', async (req: Request, res: Response): Promise<void> => {
     }
 
     console.log('✅ Profil récupéré avec succès');
+    console.log('📊 Colonnes disponibles:', Object.keys(apporteur));
 
     res.json({
       success: true,
@@ -110,16 +90,13 @@ router.put('/profile', async (req: Request, res: Response): Promise<void> => {
       phone,
       company_name,
       company_type,
-      address,
-      city,
-      postal_code,
-      bio,
-      website
+      siren,
+      sector
     } = req.body;
 
     console.log(`📝 Mise à jour profil apporteur ${user.database_id}`);
 
-    // Construire l'objet de mise à jour (seulement les champs fournis)
+    // Construire l'objet de mise à jour (seulement les champs fournis et qui existent dans la table)
     const updateData: any = {
       updated_at: new Date().toISOString()
     };
@@ -129,11 +106,8 @@ router.put('/profile', async (req: Request, res: Response): Promise<void> => {
     if (phone !== undefined) updateData.phone = phone;
     if (company_name !== undefined) updateData.company_name = company_name;
     if (company_type !== undefined) updateData.company_type = company_type;
-    if (address !== undefined) updateData.address = address;
-    if (city !== undefined) updateData.city = city;
-    if (postal_code !== undefined) updateData.postal_code = postal_code;
-    if (bio !== undefined) updateData.bio = bio;
-    if (website !== undefined) updateData.website = website;
+    if (siren !== undefined) updateData.siren = siren;
+    if (sector !== undefined) updateData.sector = sector;
 
     const { data: updatedApporteur, error } = await supabase
       .from('ApporteurAffaires')

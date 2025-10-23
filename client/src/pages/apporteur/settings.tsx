@@ -93,17 +93,12 @@ export default function SettingsPage() {
               company: apporteurData.company_name || '',
               companyType: apporteurData.company_type || '',
               siren: apporteurData.siren || '',
-              address: apporteurData.address || '',
-              city: apporteurData.city || '',
-              postalCode: apporteurData.postal_code || '',
-              bio: apporteurData.bio || '',
-              website: apporteurData.website || '',
-              specializations: apporteurData.specializations || []
+              sector: apporteurData.sector || ''
             },
             notifications: notifPrefs,
-            account: {
+          account: {
               status: apporteurData.status || 'active',
-              isActive: apporteurData.is_active,
+              isActive: apporteurData.is_active !== undefined ? apporteurData.is_active : true,
               registrationDate: apporteurData.created_at ? new Date(apporteurData.created_at).toLocaleDateString('fr-FR') : '',
               lastLogin: apporteurData.updated_at ? new Date(apporteurData.updated_at).toLocaleString('fr-FR') : 'Maintenant',
               accessLevel: 'Apporteur d\'Affaires',
@@ -510,6 +505,32 @@ export default function SettingsPage() {
                   className="w-full"
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  SIREN
+                </label>
+                <Input
+                  type="text"
+                  value={settings?.profile?.siren || ''}
+                  placeholder="123456789"
+                  className="w-full"
+                  disabled
+                />
+                <p className="text-xs text-gray-500 mt-1">Le SIREN ne peut pas être modifié</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Secteur d'activité
+                </label>
+                <Input
+                  type="text"
+                  value={settings?.profile?.sector || ''}
+                  placeholder="Secteur d'activité"
+                  className="w-full"
+                  disabled
+                />
+                <p className="text-xs text-gray-500 mt-1">Le secteur ne peut pas être modifié</p>
+              </div>
               <Button 
                 variant="outline" 
                 className="w-full hover:bg-blue-50"
@@ -533,69 +554,73 @@ export default function SettingsPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Mot de passe actuel
-                </label>
-                <div className="relative">
-                  <Input
-                    type={showPassword ? "text" : "password"}
-                    value={securityData.currentPassword}
-                    onChange={(e) => setSecurityData({...securityData, currentPassword: e.target.value})}
-                    className="w-full pr-10"
-                    placeholder="Mot de passe actuel"
-                  />
-                  <button 
-                    type="button"
-                    className="absolute right-3 top-2.5"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4 text-gray-400" /> : <Eye className="h-4 w-4 text-gray-400" />}
-                  </button>
+              <form onSubmit={(e) => { e.preventDefault(); handleUpdateSecurity(); }}>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Mot de passe actuel
+                  </label>
+                  <div className="relative">
+                    <Input
+                      type={showPassword ? "text" : "password"}
+                      value={securityData.currentPassword}
+                      onChange={(e) => setSecurityData({...securityData, currentPassword: e.target.value})}
+                      className="w-full pr-10"
+                      placeholder="Mot de passe actuel"
+                      autoComplete="current-password"
+                    />
+                    <button 
+                      type="button"
+                      className="absolute right-3 top-2.5"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4 text-gray-400" /> : <Eye className="h-4 w-4 text-gray-400" />}
+                    </button>
+                  </div>
                 </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Nouveau mot de passe
-                </label>
-                <div className="relative">
-                  <Input
-                    type={showNewPassword ? "text" : "password"}
-                    value={securityData.newPassword}
-                    onChange={(e) => setSecurityData({...securityData, newPassword: e.target.value})}
-                    className="w-full pr-10"
-                    placeholder="Nouveau mot de passe (min. 8 caractères)"
-                  />
-                  <button 
-                    type="button"
-                    className="absolute right-3 top-2.5"
-                    onClick={() => setShowNewPassword(!showNewPassword)}
-                  >
-                    {showNewPassword ? <EyeOff className="h-4 w-4 text-gray-400" /> : <Eye className="h-4 w-4 text-gray-400" />}
-                  </button>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Nouveau mot de passe
+                  </label>
+                  <div className="relative">
+                    <Input
+                      type={showNewPassword ? "text" : "password"}
+                      value={securityData.newPassword}
+                      onChange={(e) => setSecurityData({...securityData, newPassword: e.target.value})}
+                      className="w-full pr-10"
+                      placeholder="Nouveau mot de passe (min. 8 caractères)"
+                      autoComplete="new-password"
+                    />
+                    <button 
+                      type="button"
+                      className="absolute right-3 top-2.5"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                    >
+                      {showNewPassword ? <EyeOff className="h-4 w-4 text-gray-400" /> : <Eye className="h-4 w-4 text-gray-400" />}
+                    </button>
+                  </div>
                 </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Confirmer le mot de passe
-                </label>
-                <div className="relative">
-                  <Input
-                    type={showConfirmPassword ? "text" : "password"}
-                    value={securityData.confirmPassword}
-                    onChange={(e) => setSecurityData({...securityData, confirmPassword: e.target.value})}
-                    className="w-full pr-10"
-                    placeholder="Confirmer le nouveau mot de passe"
-                  />
-                  <button 
-                    type="button"
-                    className="absolute right-3 top-2.5"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  >
-                    {showConfirmPassword ? <EyeOff className="h-4 w-4 text-gray-400" /> : <Eye className="h-4 w-4 text-gray-400" />}
-                  </button>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Confirmer le mot de passe
+                  </label>
+                  <div className="relative">
+                    <Input
+                      type={showConfirmPassword ? "text" : "password"}
+                      value={securityData.confirmPassword}
+                      onChange={(e) => setSecurityData({...securityData, confirmPassword: e.target.value})}
+                      className="w-full pr-10"
+                      placeholder="Confirmer le nouveau mot de passe"
+                      autoComplete="new-password"
+                    />
+                    <button 
+                      type="button"
+                      className="absolute right-3 top-2.5"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    >
+                      {showConfirmPassword ? <EyeOff className="h-4 w-4 text-gray-400" /> : <Eye className="h-4 w-4 text-gray-400" />}
+                    </button>
+                  </div>
                 </div>
-              </div>
               <div className="flex items-center space-x-3">
                 <input 
                   type="checkbox" 
@@ -608,15 +633,16 @@ export default function SettingsPage() {
                   Activer l'authentification à deux facteurs
                 </label>
               </div>
-              <Button 
-                variant="outline" 
-                className="w-full hover:bg-red-50"
-                onClick={handleUpdateSecurity}
-                disabled={saving}
-              >
-                <Shield className="h-4 w-4 mr-2" />
-                {saving ? 'Mise à jour...' : 'Mettre à jour la sécurité'}
-              </Button>
+                <Button 
+                  type="submit"
+                  variant="outline" 
+                  className="w-full hover:bg-red-50"
+                  disabled={saving}
+                >
+                  <Shield className="h-4 w-4 mr-2" />
+                  {saving ? 'Mise à jour...' : 'Mettre à jour la sécurité'}
+                </Button>
+              </form>
             </CardContent>
           </Card>
 
