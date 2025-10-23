@@ -101,25 +101,39 @@ export const checkProspectOwnership = async (req: ApporteurRequest, res: Respons
             return;
         }
 
+        console.log(`🔐 Vérification ownership prospect ${prospectId} pour apporteur ${req.user?.apporteur_id}`);
+
+        // Les prospects sont stockés dans la table Client avec status='prospect'
         const { data: prospect, error } = await supabase
-            .from('Prospect')
-            .select('apporteur_id')
+            .from('Client')
+            .select('apporteur_id, status')
             .eq('id', prospectId)
             .single();
 
-        if (error || !prospect) {
+        if (error) {
+            console.error('❌ Erreur récupération prospect:', error);
             res.status(404).json({ error: 'Prospect non trouvé' });
             return;
         }
 
+        if (!prospect) {
+            console.log('❌ Prospect introuvable');
+            res.status(404).json({ error: 'Prospect non trouvé' });
+            return;
+        }
+
+        console.log(`📋 Prospect trouvé: apporteur_id=${prospect.apporteur_id}, status=${prospect.status}`);
+
         if (prospect.apporteur_id !== req.user?.apporteur_id) {
+            console.log(`❌ Accès refusé: ${prospect.apporteur_id} !== ${req.user?.apporteur_id}`);
             res.status(403).json({ error: 'Accès refusé - Prospect non autorisé' });
             return;
         }
 
+        console.log('✅ Ownership vérifié');
         next();
     } catch (error) {
-        console.error('Erreur de vérification ownership:', error);
+        console.error('❌ Erreur de vérification ownership:', error);
         res.status(500).json({ error: 'Erreur de vérification des permissions' });
     }
 };
