@@ -1,5 +1,6 @@
 import express, { Request, Response } from 'express';
 import { createClient } from '@supabase/supabase-js';
+import { AuthenticatedRequest } from '../middleware/auth-enhanced';
 
 const router = express.Router();
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
@@ -12,9 +13,9 @@ const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SE
  * GET /api/apporteur/profile
  * Récupérer le profil complet de l'apporteur connecté
  */
-router.get('/profile', async (req: Request, res: Response): Promise<void> => {
+router.get('/profile', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const user = (req as any).user;
+    const user = req.user;
     
     if (!user || user.type !== 'apporteur') {
       res.status(403).json({
@@ -72,9 +73,9 @@ router.get('/profile', async (req: Request, res: Response): Promise<void> => {
  * PUT /api/apporteur/profile
  * Mettre à jour le profil de l'apporteur connecté
  */
-router.put('/profile', async (req: Request, res: Response): Promise<void> => {
+router.put('/profile', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const user = (req as any).user;
+    const user = req.user;
     
     if (!user || user.type !== 'apporteur') {
       res.status(403).json({
@@ -146,9 +147,9 @@ router.put('/profile', async (req: Request, res: Response): Promise<void> => {
  * PUT /api/apporteur/notifications
  * Mettre à jour les préférences de notification
  */
-router.put('/notifications', async (req: Request, res: Response): Promise<void> => {
+router.put('/notifications', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const user = (req as any).user;
+    const user = req.user;
     
     if (!user || user.type !== 'apporteur') {
       res.status(403).json({
@@ -202,9 +203,9 @@ router.put('/notifications', async (req: Request, res: Response): Promise<void> 
  * POST /api/apporteur/deactivate
  * Désactiver le compte de l'apporteur
  */
-router.post('/deactivate', async (req: Request, res: Response): Promise<void> => {
+router.post('/deactivate', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const user = (req as any).user;
+    const user = req.user;
     
     if (!user || user.type !== 'apporteur') {
       res.status(403).json({
