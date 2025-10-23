@@ -2,8 +2,10 @@ import express, { Router, Request, Response } from 'express';
 import { ProspectSimulationService } from '../services/ProspectSimulationService';
 import { ExpertOptimizationService } from '../services/ExpertOptimizationService';
 import { RDVService } from '../services/RDVService';
+import { createClient } from '@supabase/supabase-js';
 
 const router = express.Router();
+const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
 // ============================================================================
 // ROUTES SIMULATION PROSPECT PAR APPORTEUR
@@ -92,6 +94,87 @@ router.get('/:prospectId/simulation', async (req: Request, res: Response) => {
     return res.status(500).json({
       success: false,
       message: error instanceof Error ? error.message : 'Erreur serveur'
+    });
+  }
+});
+
+/**
+ * GET /api/apporteur/prospects/:prospectId/meetings
+ * Récupérer les RDV d'un prospect
+ */
+router.get('/:prospectId/meetings', async (req: Request, res: Response) => {
+  try {
+    const { prospectId } = req.params;
+    const user = req.user as any;
+    
+    if (!user || user.type !== 'apporteur') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux apporteurs d\'affaires'
+      });
+    }
+    
+    console.log(`📅 Récupération RDV pour prospect ${prospectId}`);
+    
+    // Récupérer les RDV depuis la table CalendarEvent
+    const { data: meetings, error } = await supabase
+      .from('CalendarEvent')
+      .select(`
+        id,
+        title,
+        description,
+        start_date,
+        end_date,
+        type,
+        status,
+        location,
+        is_online,
+        expert:Expert!expert_id (
+          id,
+          name,
+          first_name,
+          last_name,
+          company_name
+        )
+      `)
+      .eq('client_id', prospectId)
+      .order('start_date', { ascending: true });
+
+    if (error) {
+      console.error('❌ Erreur récupération RDV:', error);
+      throw error;
+    }
+
+    // Formater les données
+    const formattedMeetings = (meetings || []).map((meeting: any) => ({
+      id: meeting.id,
+      title: meeting.title,
+      description: meeting.description,
+      start_date: meeting.start_date,
+      end_date: meeting.end_date,
+      type: meeting.type,
+      status: meeting.status,
+      location: meeting.location || (meeting.is_online ? 'En ligne' : null),
+      expert_name: meeting.expert 
+        ? (meeting.expert.first_name && meeting.expert.last_name 
+            ? `${meeting.expert.first_name} ${meeting.expert.last_name}`
+            : meeting.expert.name)
+        : null,
+      expert_company: meeting.expert?.company_name || null
+    }));
+
+    console.log(`✅ ${formattedMeetings.length} RDV trouvés`);
+
+    return res.json({ 
+      success: true, 
+      data: formattedMeetings 
+    });
+    
+  } catch (error) {
+    console.error('❌ Erreur récupération RDV prospect:', error);
+    return res.status(500).json({ 
+      success: false, 
+      message: error instanceof Error ? error.message : 'Erreur lors de la récupération des rendez-vous'
     });
   }
 });
