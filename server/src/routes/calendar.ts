@@ -77,7 +77,7 @@ function transformCalendarEventToRDV(eventData: any): any {
     location: eventData.location || null,
     meeting_url: eventData.meeting_url || null,
     status: 'scheduled', // Valeur par défaut
-    category: eventData.category || 'premier_contact',
+    category: eventData.category || 'qualification',
     priority,
     metadata,
     notes: eventData.description || null // Dupliquer description dans notes pour compatibilité
@@ -114,19 +114,13 @@ const eventSchema = Joi.object({
   priority: Joi.string().valid('low', 'medium', 'high', 'critical').default('medium'),
   status: Joi.string().valid('pending', 'confirmed', 'completed', 'cancelled').forbidden(),
   category: Joi.string().valid(
-    'premier_contact',
-    'qualification_besoin', 
-    'analyse_situation',
+    'qualification',
     'presentation_expert',
     'proposition_commerciale',
-    'negociation',
-    'validation_signature',
-    'remise_rapport_expert',
-    'suivi_dossier',
-    'cloture_dossier',
-    'relance',
+    'signature',
+    'suivi',
     'autre'
-  ).default('premier_contact'),
+  ).default('qualification'),
   dossier_id: Joi.string().uuid().optional(),
   dossier_name: Joi.string().max(255).optional(),
   client_id: Joi.string().uuid().optional(),

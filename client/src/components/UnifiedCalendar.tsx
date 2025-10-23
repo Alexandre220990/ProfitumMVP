@@ -695,7 +695,7 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
       : formatDateTimeLocal(getDefaultEndTime(new Date())),
     type: event?.type || 'appointment',
     priority: event?.priority || 'medium',
-    category: event?.category || 'premier_contact',
+    category: event?.category || 'qualification',
     location: event?.location || '',
     is_online: event?.is_online || false,
     meeting_url: event?.meeting_url || '',
@@ -943,18 +943,12 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="max-h-[300px]">
-                  <SelectItem value="premier_contact">📞 Premier contact</SelectItem>
-                  <SelectItem value="qualification_besoin">🔍 Qualification du besoin</SelectItem>
-                  <SelectItem value="analyse_situation">📊 Analyse de la situation</SelectItem>
+                <SelectContent>
+                  <SelectItem value="qualification">🔍 Qualification</SelectItem>
                   <SelectItem value="presentation_expert">👤 Présentation expert</SelectItem>
                   <SelectItem value="proposition_commerciale">📄 Proposition commerciale</SelectItem>
-                  <SelectItem value="negociation">💼 Négociation</SelectItem>
-                  <SelectItem value="validation_signature">✅ Validation et signature</SelectItem>
-                  <SelectItem value="remise_rapport_expert">📋 Remise rapport expert</SelectItem>
-                  <SelectItem value="suivi_dossier">📂 Suivi de dossier</SelectItem>
-                  <SelectItem value="cloture_dossier">🏁 Clôture de dossier</SelectItem>
-                  <SelectItem value="relance">🔔 Relance / Follow-up</SelectItem>
+                  <SelectItem value="signature">✅ Signature</SelectItem>
+                  <SelectItem value="suivi">📋 Suivi</SelectItem>
                   <SelectItem value="autre">🔹 Autre</SelectItem>
                 </SelectContent>
               </Select>

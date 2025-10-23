@@ -3,45 +3,35 @@
 ## 🎯 Objectif
 Transformer les catégories RDV de "types d'utilisateurs" vers "étapes du processus commercial" pour un meilleur suivi du cycle de vente.
 
-## 📋 Catégories Proposées
+## 📋 Catégories Simplifiées (6 Étapes Essentielles)
 
-### Phase 1: Prospection & Découverte
-- `premier_contact` - Premier contact
-- `qualification_besoin` - Qualification du besoin
+1. **`qualification`** - 🔍 Qualification
+   - Premier contact, découverte du besoin, qualification du prospect
 
-### Phase 2: Analyse & Proposition
-- `analyse_situation` - Analyse de la situation
-- `presentation_expert` - Présentation expert
-- `proposition_commerciale` - Proposition commerciale
+2. **`presentation_expert`** - 👤 Présentation expert
+   - Présentation de l'expert au client, analyse de la situation
 
-### Phase 3: Négociation & Closing
-- `negociation` - Négociation
-- `validation_signature` - Validation et signature
+3. **`proposition_commerciale`** - 📄 Proposition commerciale
+   - Envoi et présentation de l'offre commerciale, négociation
 
-### Phase 4: Delivery & Suivi
-- `remise_rapport_expert` - Remise rapport expert
-- `suivi_dossier` - Suivi de dossier
-- `cloture_dossier` - Clôture de dossier
+4. **`signature`** - ✅ Signature
+   - Validation du contrat, signature des documents
 
-### Autres
-- `relance` - Relance / Follow-up
-- `autre` - Autre
+5. **`suivi`** - 📋 Suivi
+   - Suivi post-signature, remise des rapports, clôture
+
+6. **`autre`** - 🔹 Autre
+   - Autres types de rendez-vous (relance, administratif, etc.)
 
 ## 🎨 Couleurs par Étape
 
 ```javascript
 const CATEGORY_COLORS = {
-  premier_contact: '#3B82F6',         // Bleu
-  qualification_besoin: '#8B5CF6',    // Violet
-  analyse_situation: '#EC4899',       // Rose
+  qualification: '#3B82F6',           // Bleu
   presentation_expert: '#F59E0B',     // Orange
   proposition_commerciale: '#10B981', // Vert
-  negociation: '#F97316',             // Orange foncé
-  validation_signature: '#22C55E',    // Vert vif
-  remise_rapport_expert: '#06B6D4',   // Cyan
-  suivi_dossier: '#84CC16',           // Lime
-  cloture_dossier: '#6B7280',         // Gris
-  relance: '#EF4444',                 // Rouge
+  signature: '#22C55E',               // Vert vif
+  suivi: '#06B6D4',                   // Cyan
   autre: '#9CA3AF'                    // Gris clair
 };
 ```
@@ -73,20 +63,20 @@ const CATEGORY_COLORS = {
 ## 🔧 Modifications à Apporter
 
 ### Backend
-- [ ] Mettre à jour validation Joi dans `calendar.ts`
-- [ ] Mettre à jour transformation `transformCalendarEventToRDV()`
-- [ ] Mettre à jour valeur par défaut
-- [ ] Créer constantes CATEGORY_* dans types
+- [x] Mettre à jour validation Joi dans `calendar.ts` (6 catégories)
+- [x] Mettre à jour transformation `transformCalendarEventToRDV()`
+- [x] Mettre à jour valeur par défaut (`qualification`)
+- [ ] Créer constantes CATEGORY_* dans types (si besoin)
 
 ### Frontend
-- [ ] Mettre à jour options Select dans formulaire
+- [x] Mettre à jour options Select dans formulaire (6 options avec emojis)
 - [ ] Ajouter code couleur dans calendrier
 - [ ] Implémenter filtres par catégorie
 - [ ] Créer visualisations dashboards
 
 ### Base de Données
-- [ ] Migration données existantes (optionnel)
-- [ ] Documentation schéma
+- [ ] Migration données existantes vers nouvelles catégories (optionnel)
+- [x] Documentation schéma (REFONTE-CATEGORIES-RDV.md)
 
 ## 📈 Bénéfices Attendus
 
