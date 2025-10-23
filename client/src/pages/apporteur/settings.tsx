@@ -55,40 +55,75 @@ export default function SettingsPage() {
       }
       
       try {
-        // Créer les paramètres par défaut avec les données de l'utilisateur
-        const defaultSettings = {
-          profile: {
-            fullName: user?.name || user?.username || '',
-            email: user?.email || '',
-            phone: user?.phone_number || '',
-            company: user?.company_name || ''
-          },
-          notifications: {
+        console.log('🔍 Chargement profil apporteur depuis la base de données...');
+        
+        // Charger le profil complet depuis l'API
+        const response = await fetch(`${config.API_URL}/api/apporteur/profile`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Erreur lors du chargement du profil');
+        }
+
+        const result = await response.json();
+        
+        if (result.success && result.data) {
+          const apporteurData = result.data;
+          
+          console.log('✅ Profil chargé:', apporteurData);
+          
+          // Extraire les préférences de notifications ou utiliser les valeurs par défaut
+          const notifPrefs = apporteurData.notification_preferences || {
             newProspects: true,
             confirmedMeetings: true,
             paidCommissions: true,
             followUpReminders: false,
             availableTrainings: false,
             reminderFrequency: 'daily'
-          },
-          account: {
-            status: 'active',
-            registrationDate: user?.created_at ? new Date(user.created_at).toLocaleDateString('fr-FR') : '',
-            lastLogin: user?.updated_at ? new Date(user.updated_at).toLocaleString('fr-FR') : 'Maintenant',
-            accessLevel: 'Apporteur d\'Affaires'
-          }
-        };
-        
-        // Initialiser les états
-        setSettings(defaultSettings);
-        setProfileData({
-          fullName: defaultSettings.profile.fullName,
-          phone: defaultSettings.profile.phone,
-          company: defaultSettings.profile.company
-        });
-        setNotificationPrefs(defaultSettings.notifications);
+          };
+          
+          const loadedSettings = {
+            profile: {
+              fullName: `${apporteurData.first_name || ''} ${apporteurData.last_name || ''}`.trim(),
+              email: apporteurData.email || '',
+              phone: apporteurData.phone || '',
+              company: apporteurData.company_name || '',
+              companyType: apporteurData.company_type || '',
+              siren: apporteurData.siren || '',
+              address: apporteurData.address || '',
+              city: apporteurData.city || '',
+              postalCode: apporteurData.postal_code || '',
+              bio: apporteurData.bio || '',
+              website: apporteurData.website || '',
+              specializations: apporteurData.specializations || []
+            },
+            notifications: notifPrefs,
+            account: {
+              status: apporteurData.status || 'active',
+              isActive: apporteurData.is_active,
+              registrationDate: apporteurData.created_at ? new Date(apporteurData.created_at).toLocaleDateString('fr-FR') : '',
+              lastLogin: apporteurData.updated_at ? new Date(apporteurData.updated_at).toLocaleString('fr-FR') : 'Maintenant',
+              accessLevel: 'Apporteur d\'Affaires',
+              commissionRate: apporteurData.commission_rate || 0,
+              approvedAt: apporteurData.approved_at ? new Date(apporteurData.approved_at).toLocaleDateString('fr-FR') : null
+            }
+          };
+          
+          // Initialiser les états
+          setSettings(loadedSettings);
+          setProfileData({
+            fullName: loadedSettings.profile.fullName,
+            phone: loadedSettings.profile.phone,
+            company: loadedSettings.profile.company
+          });
+          setNotificationPrefs(loadedSettings.notifications);
+        }
       } catch (err) {
-        console.error('Erreur lors du chargement des paramètres:', err);
+        console.error('❌ Erreur lors du chargement des paramètres:', err);
+        toast.error('Erreur lors du chargement de vos paramètres');
       } finally {
         setLoading(false);
       }
@@ -103,8 +138,29 @@ export default function SettingsPage() {
   const handleSaveProfile = async () => {
     setSaving(true);
     try {
-      // TODO: Appel API pour mettre à jour le profil
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulation
+      // Séparer first_name et last_name du fullName
+      const [firstName, ...lastNameParts] = profileData.fullName.split(' ');
+      const lastName = lastNameParts.join(' ');
+      
+      const response = await fetch(`${config.API_URL}/api/apporteur/profile`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          first_name: firstName,
+          last_name: lastName,
+          phone: profileData.phone,
+          company_name: profileData.company
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Erreur lors de la mise à jour du profil');
+      }
+
+      await response.json();
       
       toast.success('✅ Profil mis à jour avec succès !');
       
@@ -180,8 +236,20 @@ export default function SettingsPage() {
   const handleSaveNotifications = async () => {
     setSaving(true);
     try {
-      // TODO: Appel API pour sauvegarder les préférences
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulation
+      const response = await fetch(`${config.API_URL}/api/apporteur/notifications`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(notificationPrefs)
+      });
+
+      if (!response.ok) {
+        throw new Error('Erreur lors de la sauvegarde des préférences');
+      }
+
+      await response.json();
       
       toast.success('✅ Préférences de notification sauvegardées !');
       
@@ -288,8 +356,22 @@ export default function SettingsPage() {
 
     setSaving(true);
     try {
-      // TODO: Appel API pour désactiver le compte
-      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulation
+      const response = await fetch(`${config.API_URL}/api/apporteur/deactivate`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          confirmation: 'DESACTIVER'
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Erreur lors de la désactivation du compte');
+      }
+
+      await response.json();
       
       toast.success('✅ Compte désactivé. Vous allez être déconnecté...');
       

@@ -99,6 +99,7 @@ import adminApporteurRoutes from './routes/admin-apporteur';
 import apporteurApiRoutes from './routes/apporteur-api';
 import apporteurRegisterRoutes from './routes/apporteur-register';
 import apporteurSimulationRoutes from './routes/apporteur-simulation';
+import apporteurSettingsRoutes from './routes/apporteur-settings';
 
 // Routes RDV unifiées (remplace ClientRDV)
 import rdvRoutes from './routes/rdv';
@@ -567,10 +568,14 @@ const skipAuthForApporteurPublic = (req: Request, res: Response, next: NextFunct
 app.use('/api/apporteur/prospects', enhancedAuthMiddleware, requireUserType('apporteur'), apporteurSimulationRoutes);
 console.log('✅ Routes simulation apporteur montées sur /api/apporteur/prospects');
 
-// 2. Routes apporteur d'affaires - PROTÉGÉES sauf /register et /verify-sponsor
+// 2. Routes paramètres apporteur (profile, notifications, deactivate) - PROTÉGÉES
+app.use('/api/apporteur', enhancedAuthMiddleware, requireUserType('apporteur'), apporteurSettingsRoutes);
+console.log('✅ Routes paramètres apporteur montées sur /api/apporteur/profile|notifications|deactivate');
+
+// 3. Routes apporteur d'affaires - PROTÉGÉES sauf /register et /verify-sponsor
 app.use('/api/apporteur', skipAuthForApporteurPublic, requireUserType('apporteur'), apporteurRoutes);
 
-// 3. Routes API apporteur d'affaires - PROTÉGÉES sauf /register et /verify-sponsor
+// 4. Routes API apporteur d'affaires - PROTÉGÉES sauf /register et /verify-sponsor
 app.use('/api/apporteur', skipAuthForApporteurPublic, requireUserType('apporteur'), apporteurApiRoutes);
 
 
