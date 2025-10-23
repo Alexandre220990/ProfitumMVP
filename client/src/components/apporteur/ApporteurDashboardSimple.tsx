@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { RefreshCw, AlertTriangle, Users, TrendingUp, DollarSign, BarChart3, Award, Activity, Eye, ArrowUpDown } from 'lucide-react';
-import { ProspectFormWizard } from './wizard';
+import { ProspectFormWizard } from './wizard/index';
 
 interface ApporteurDashboardSimpleProps {
   apporteurId: string;

@@ -35,8 +35,16 @@ DROP VIEW IF EXISTS v_today_events CASCADE;
 DROP VIEW IF EXISTS vue_apporteur_agenda CASCADE;
 DROP VIEW IF EXISTS vue_apporteur_rendez_vous CASCADE;
 
-DROP TRIGGER IF EXISTS update_calendar_event_updated_at ON "CalendarEvent" CASCADE;
-DROP TRIGGER IF EXISTS update_calendar_template_updated_at ON "CalendarEventTemplate" CASCADE;
+-- Drop triggers seulement si tables existent
+DO $$ 
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'CalendarEvent') THEN
+        EXECUTE 'DROP TRIGGER IF EXISTS update_calendar_event_updated_at ON "CalendarEvent" CASCADE';
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'CalendarEventTemplate') THEN
+        EXECUTE 'DROP TRIGGER IF EXISTS update_calendar_template_updated_at ON "CalendarEventTemplate" CASCADE';
+    END IF;
+END $$;
 
 DROP TABLE IF EXISTS "GoogleCalendarEventMapping" CASCADE;
 DROP TABLE IF EXISTS "CalendarEventReminder" CASCADE;
