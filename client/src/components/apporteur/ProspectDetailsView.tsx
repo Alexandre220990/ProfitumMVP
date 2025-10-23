@@ -486,7 +486,7 @@ export default function ProspectDetailsView({
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {prospect.selected_products.map((product, index) => (
+                    {prospect.selected_products.map((product) => (
                       <div 
                         key={product.id} 
                         className="p-4 bg-gray-50 rounded-lg border border-gray-200"
