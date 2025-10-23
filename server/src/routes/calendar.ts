@@ -388,16 +388,55 @@ router.post('/events', calendarLimiter, validateEvent, asyncHandler(async (req: 
       newEvent.client_id = authUser.database_id;
     } else if (authUser.type === 'expert') {
       newEvent.expert_id = authUser.database_id;
-      // Si un client_id est fourni, l'utiliser, sinon utiliser l'expert_id
-      newEvent.client_id = eventData.client_id || authUser.database_id;
+      // Si un client_id est fourni, l'utiliser
+      if (eventData.client_id) {
+        newEvent.client_id = eventData.client_id;
+      } else {
+        // Sinon, erreur : un expert doit spécifier un client
+        console.error('❌ Expert doit spécifier un client_id');
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Vous devez sélectionner un client pour ce rendez-vous',
+          field: 'client_id'
+        });
+      }
     } else if (authUser.type === 'apporteur') {
       newEvent.apporteur_id = authUser.database_id;
-      // Pour un apporteur, client_id est obligatoire
-      // Utiliser le client_id fourni, ou l'apporteur_id par défaut
-      newEvent.client_id = eventData.client_id || authUser.database_id;
+      // Pour un apporteur, client_id doit être fourni
+      if (eventData.client_id) {
+        newEvent.client_id = eventData.client_id;
+      } else {
+        console.error('❌ Apporteur doit spécifier un client_id');
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Vous devez sélectionner un client/prospect pour ce rendez-vous',
+          field: 'client_id'
+        });
+      }
+      // Si un expert_id est fourni, l'ajouter
+      if (eventData.expert_id) {
+        newEvent.expert_id = eventData.expert_id;
+      }
     } else if (authUser.type === 'admin') {
-      // Pour un admin, client_id est obligatoire
-      newEvent.client_id = eventData.client_id || authUser.database_id;
+      // Pour un admin, client_id doit être fourni
+      if (eventData.client_id) {
+        newEvent.client_id = eventData.client_id;
+      } else {
+        console.error('❌ Admin doit spécifier un client_id');
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Vous devez sélectionner un client pour ce rendez-vous',
+          field: 'client_id'
+        });
+      }
+      // Si un expert_id est fourni, l'ajouter
+      if (eventData.expert_id) {
+        newEvent.expert_id = eventData.expert_id;
+      }
+      // Si un apporteur_id est fourni, l'ajouter
+      if (eventData.apporteur_id) {
+        newEvent.apporteur_id = eventData.apporteur_id;
+      }
     }
 
     console.log('📝 Événement à insérer:', newEvent);

@@ -6,6 +6,9 @@ import { fr } from 'date-fns/locale';
 
 import { useCalendarEvents } from '@/hooks/use-calendar-events';
 import { CalendarEvent } from '@/services/calendar-service';
+import { useAuth } from '@/hooks/use-auth';
+import { config } from '@/config';
+import { toast } from 'sonner';
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -666,7 +669,10 @@ interface EventDialogProps {
 }
 
 const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, onSubmit, onCancel }) => {
-
+  const { user } = useAuth();
+  const [prospects, setProspects] = React.useState<any[]>([]);
+  const [experts, setExperts] = React.useState<any[]>([]);
+  const [loadingLists, setLoadingLists] = React.useState(false);
   
   // Fonction pour formater l'heure en format datetime-local
   const formatDateTimeLocal = (date: Date) => {
@@ -693,8 +699,44 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
     location: event?.location || '',
     is_online: event?.is_online || false,
     meeting_url: event?.meeting_url || '',
-    color: event?.color || '#3B82F6'
+    color: event?.color || '#3B82F6',
+    client_id: event?.client_id || '',
+    expert_id: event?.expert_id || ''
   });
+
+  // Charger les listes de prospects et experts au montage
+  React.useEffect(() => {
+    if (open && user?.type === 'apporteur') {
+      loadProspectsAndExperts();
+    }
+  }, [open, user]);
+
+  const loadProspectsAndExperts = async () => {
+    setLoadingLists(true);
+    try {
+      // Charger les prospects
+      const prospectsResponse = await fetch(`${config.API_URL}/api/apporteur/prospects`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (prospectsResponse.ok) {
+        const prospectsData = await prospectsResponse.json();
+        setProspects(prospectsData.data || []);
+      }
+
+      // Charger les experts
+      const expertsResponse = await fetch(`${config.API_URL}/api/experts`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      if (expertsResponse.ok) {
+        const expertsData = await expertsResponse.json();
+        setExperts(expertsData.data || []);
+      }
+    } catch (error) {
+      console.error('Erreur chargement listes:', error);
+    } finally {
+      setLoadingLists(false);
+    }
+  };
 
   // Effet pour mettre à jour automatiquement l'heure de fin quand l'heure de début change
   React.useEffect(() => {
@@ -714,6 +756,12 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
     console.log('🔍 EventDialog handleSubmit appelé');
     console.log('🔍 Données du formulaire avant traitement:', formData);
     
+    // Validation pour apporteur : client_id obligatoire
+    if (user?.type === 'apporteur' && !formData.client_id) {
+      toast.error('⚠️ Vous devez sélectionner un client/prospect pour ce rendez-vous');
+      return;
+    }
+    
     // Utiliser les dates directement
     const startDate = new Date(formData.start_date);
     const endDate = formData.end_date 
@@ -726,7 +774,9 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
       end_date: endDate.toISOString(),
       // Nettoyer les champs vides
       location: formData.location || null,
-      meeting_url: formData.meeting_url || null
+      meeting_url: formData.meeting_url || null,
+      client_id: formData.client_id || undefined,
+      expert_id: formData.expert_id || undefined
     };
     
     console.log('🔍 Données d\'événement envoyées:', eventData);
@@ -785,6 +835,55 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
               rows={3}
             />
           </div>
+
+          {/* Sélecteurs Client et Expert (pour apporteurs) */}
+          {user?.type === 'apporteur' && (
+            <div className="grid grid-cols-2 gap-4 bg-blue-50 p-4 rounded-lg border border-blue-200">
+              <div>
+                <Label htmlFor="client_id" className="text-blue-900">Client/Prospect * <span className="text-xs text-blue-600">(Obligatoire)</span></Label>
+                <Select 
+                  value={formData.client_id} 
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, client_id: value }))}
+                  disabled={loadingLists}
+                >
+                  <SelectTrigger className="bg-white">
+                    <SelectValue placeholder={loadingLists ? "Chargement..." : "Sélectionner un client/prospect"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {prospects.map((prospect) => (
+                      <SelectItem key={prospect.id} value={prospect.id}>
+                        {prospect.first_name} {prospect.last_name} {prospect.company_name ? `(${prospect.company_name})` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {!formData.client_id && (
+                  <p className="text-xs text-red-600 mt-1">⚠️ Vous devez sélectionner un client/prospect</p>
+                )}
+              </div>
+              
+              <div>
+                <Label htmlFor="expert_id" className="text-blue-900">Expert <span className="text-xs text-blue-600">(Optionnel)</span></Label>
+                <Select 
+                  value={formData.expert_id} 
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, expert_id: value }))}
+                  disabled={loadingLists}
+                >
+                  <SelectTrigger className="bg-white">
+                    <SelectValue placeholder={loadingLists ? "Chargement..." : "Sélectionner un expert (optionnel)"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Aucun expert</SelectItem>
+                    {experts.map((expert) => (
+                      <SelectItem key={expert.id} value={expert.id}>
+                        {expert.first_name} {expert.last_name} {expert.company_name ? `(${expert.company_name})` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <div>
