@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -7,14 +7,16 @@ import { config } from '@/config';
 import { toast } from 'sonner';
 
 interface Step1Props {
+  prospectId?: string; // Pour l'édition d'un prospect existant
   data: any;
   onUpdate: (data: any) => void;
   onNext: (prospectId: string) => void;
   onSaveAndClose: (prospectId: string) => void;
 }
 
-export function Step1_ProspectInfo({ data, onUpdate, onNext, onSaveAndClose }: Step1Props) {
+export function Step1_ProspectInfo({ prospectId, data, onUpdate, onNext, onSaveAndClose }: Step1Props) {
   const [loading, setLoading] = useState(false);
+  const [loadingProspect, setLoadingProspect] = useState(false);
   const [formData, setFormData] = useState({
     company_name: data.company_name || '',
     siren: data.siren || '',
@@ -27,6 +29,52 @@ export function Step1_ProspectInfo({ data, onUpdate, onNext, onSaveAndClose }: S
     interest_level: data.interest_level || 'medium',
     timeline: data.timeline || '1-3months'
   });
+
+  // Charger les données du prospect si on est en mode édition
+  useEffect(() => {
+    if (prospectId) {
+      loadProspectData();
+    }
+  }, [prospectId]);
+
+  const loadProspectData = async () => {
+    setLoadingProspect(true);
+    try {
+      const response = await fetch(`${config.API_URL}/api/apporteur/prospects/${prospectId}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Erreur lors du chargement du prospect');
+      }
+
+      const result = await response.json();
+      if (result.success && result.data) {
+        const prospect = result.data;
+        const loadedData = {
+          company_name: prospect.company_name || '',
+          siren: prospect.siren || '',
+          address: prospect.address || '',
+          website: prospect.website || '',
+          name: prospect.name || '',
+          email: prospect.email || '',
+          phone_number: prospect.phone_number || '',
+          decision_maker_position: prospect.decision_maker_position || '',
+          interest_level: prospect.interest_level || 'medium',
+          timeline: prospect.timeline || '1-3months'
+        };
+        setFormData(loadedData);
+        onUpdate(loadedData);
+      }
+    } catch (error) {
+      console.error('❌ Erreur chargement prospect:', error);
+      toast.error('Impossible de charger les données du prospect');
+    } finally {
+      setLoadingProspect(false);
+    }
+  };
 
   const handleChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -43,8 +91,13 @@ export function Step1_ProspectInfo({ data, onUpdate, onNext, onSaveAndClose }: S
     setLoading(true);
 
     try {
-      const response = await fetch(`${config.API_URL}/api/apporteur/prospects`, {
-        method: 'POST',
+      const isEdit = !!prospectId;
+      const url = isEdit 
+        ? `${config.API_URL}/api/apporteur/prospects/${prospectId}`
+        : `${config.API_URL}/api/apporteur/prospects`;
+      
+      const response = await fetch(url, {
+        method: isEdit ? 'PUT' : 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Content-Type': 'application/json'
@@ -58,38 +111,48 @@ export function Step1_ProspectInfo({ data, onUpdate, onNext, onSaveAndClose }: S
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Erreur lors de la création du prospect');
+        throw new Error(errorData.message || `Erreur lors de ${isEdit ? 'la modification' : 'la création'} du prospect`);
       }
 
       const result = await response.json();
-      const prospectId = result.data?.prospect?.id;
+      const savedProspectId = result.data?.prospect?.id || prospectId;
 
-      if (!prospectId) {
+      if (!savedProspectId) {
         throw new Error('Aucun ID de prospect retourné');
       }
 
-      toast.success('✅ Prospect créé avec succès !');
+      toast.success(isEdit ? '✅ Prospect modifié avec succès !' : '✅ Prospect créé avec succès !');
 
       if (andContinue) {
-        onNext(prospectId);
+        onNext(savedProspectId);
       } else {
-        onSaveAndClose(prospectId);
+        onSaveAndClose(savedProspectId);
       }
     } catch (error) {
-      console.error('❌ Erreur création prospect:', error);
-      toast.error(error instanceof Error ? error.message : 'Erreur lors de la création');
+      console.error('❌ Erreur sauvegarde prospect:', error);
+      toast.error(error instanceof Error ? error.message : 'Erreur lors de la sauvegarde');
     } finally {
       setLoading(false);
     }
   };
+
+  if (loadingProspect) {
+    return (
+      <div className="flex justify-center items-center py-12">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Chargement des données du prospect...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
       {/* Introduction compacte */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
         <p className="text-sm text-blue-800">
-          <strong>Étape 1 :</strong> Renseignez les informations minimales. 
-          Ensuite vous pourrez lancer une simulation, sélectionner des experts et planifier des RDV.
+          <strong>{prospectId ? 'Modification' : 'Étape 1'} :</strong> {prospectId ? 'Modifiez les informations du prospect' : 'Renseignez les informations minimales. Ensuite vous pourrez lancer une simulation, sélectionner des experts et planifier des RDV.'}.
         </p>
       </div>
 

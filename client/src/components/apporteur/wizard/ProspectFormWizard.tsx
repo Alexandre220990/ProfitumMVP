@@ -9,6 +9,7 @@ import { Step4_MeetingPlanning } from './Step4_MeetingPlanning';
 import { Step5_EmailOption } from './Step5_EmailOption';
 
 interface ProspectFormWizardProps {
+  prospectId?: string; // Pour l'édition d'un prospect existant
   onClose: () => void;
   onSuccess?: () => void;
 }
@@ -21,7 +22,7 @@ const WIZARD_STEPS = [
   { number: 5, title: 'Email', optional: true }
 ];
 
-export function ProspectFormWizard({ onClose, onSuccess }: ProspectFormWizardProps) {
+export function ProspectFormWizard({ prospectId, onClose, onSuccess }: ProspectFormWizardProps) {
   const {
     state,
     nextStep,
@@ -78,14 +79,15 @@ export function ProspectFormWizard({ onClose, onSuccess }: ProspectFormWizardPro
             {/* Étape 1 : Informations Prospect (OBLIGATOIRE) */}
             {state.currentStep === 1 && (
               <Step1_ProspectInfo
+                prospectId={prospectId} // Passer l'ID du prospect pour l'édition
                 data={state.prospectData}
                 onUpdate={updateProspectData}
-                onNext={(prospectId) => {
-                  setProspectId(prospectId);
+                onNext={(savedProspectId) => {
+                  setProspectId(savedProspectId);
                   nextStep();
                 }}
-                onSaveAndClose={(prospectId) => {
-                  setProspectId(prospectId);
+                onSaveAndClose={(savedProspectId) => {
+                  setProspectId(savedProspectId);
                   handleSuccess();
                 }}
               />

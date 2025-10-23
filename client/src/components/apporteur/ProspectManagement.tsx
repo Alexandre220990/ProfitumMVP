@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import ProspectForm from './ProspectForm';
+import { ProspectFormWizard } from './wizard/ProspectFormWizard';
 import ProspectDetailsView from './ProspectDetailsView';
 import { 
   Users, 
@@ -477,10 +477,10 @@ export default function ProspectManagement() {
           </CardContent>
         </Card>
         
-        {/* Formulaire de création de prospect */}
+        {/* Formulaire de création de prospect - Nouveau design avec étapes */}
         {showProspectForm && (
-          <ProspectForm 
-            onCancel={() => setShowProspectForm(false)}
+          <ProspectFormWizard 
+            onClose={() => setShowProspectForm(false)}
             onSuccess={() => {
               setShowProspectForm(false);
               fetchProspects(); // Rafraîchir la liste après création
@@ -503,11 +503,11 @@ export default function ProspectManagement() {
           />
         )}
 
-        {/* Modal d'édition du prospect */}
+        {/* Modal d'édition du prospect - Nouveau design avec étapes */}
         {showEditModal && selectedProspect && (
-          <ProspectForm 
+          <ProspectFormWizard 
             prospectId={selectedProspect.id}
-            onCancel={() => {
+            onClose={() => {
               setShowEditModal(false);
               setSelectedProspect(null);
             }}
