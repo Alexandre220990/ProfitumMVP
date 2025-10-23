@@ -13,7 +13,7 @@ const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SE
  * GET /api/apporteur/profile
  * Récupérer le profil complet de l'apporteur connecté
  */
-router.get('/profile', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.get('/profile', (async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const user = req.user;
     
@@ -67,13 +67,13 @@ router.get('/profile', async (req: AuthenticatedRequest, res: Response): Promise
       message: 'Erreur serveur'
     });
   }
-});
+}) as any);
 
 /**
  * PUT /api/apporteur/profile
  * Mettre à jour le profil de l'apporteur connecté
  */
-router.put('/profile', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.put('/profile', (async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const user = req.user;
     
@@ -141,13 +141,13 @@ router.put('/profile', async (req: AuthenticatedRequest, res: Response): Promise
       message: 'Erreur serveur'
     });
   }
-});
+}) as any);
 
 /**
  * PUT /api/apporteur/notifications
  * Mettre à jour les préférences de notification
  */
-router.put('/notifications', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.put('/notifications', (async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const user = req.user;
     
@@ -197,13 +197,13 @@ router.put('/notifications', async (req: AuthenticatedRequest, res: Response): P
       message: 'Erreur serveur'
     });
   }
-});
+}) as any);
 
 /**
  * POST /api/apporteur/deactivate
  * Désactiver le compte de l'apporteur
  */
-router.post('/deactivate', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.post('/deactivate', (async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const user = req.user;
     
@@ -261,7 +261,7 @@ router.post('/deactivate', async (req: AuthenticatedRequest, res: Response): Pro
       message: 'Erreur serveur'
     });
   }
-});
+}) as any);
 
 export default router;
 
