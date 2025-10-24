@@ -410,6 +410,19 @@ router.post('/conversations', async (req, res) => {
     if (req.body.tags) insertData.tags = req.body.tags;
     
     console.error('💾 Insert Data COMPLET:', JSON.stringify(insertData, null, 2));
+    
+    // 🧪 TEST: Vérifier que supabaseAdmin fonctionne avec un SELECT simple
+    console.error('🧪 Test SELECT sur conversations...');
+    const { data: testData, error: testError } = await supabaseAdmin
+      .from('conversations')
+      .select('id, title')
+      .limit(1);
+    console.error('📊 Test SELECT result:', { 
+      hasData: !!testData, 
+      count: testData?.length,
+      error: testError 
+    });
+    
     console.error('⏳ Appel Supabase INSERT...');
     
     // ✅ FIX: Retirer .single() qui peut retourner null sans erreur
