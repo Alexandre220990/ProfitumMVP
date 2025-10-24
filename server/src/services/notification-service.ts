@@ -138,34 +138,21 @@ export interface NotificationTemplate {
 
 export interface Notification {
   id: string;
-  recipient_id: string;
-  recipient_type: 'client' | 'expert' | 'admin' | 'profitum';
-  type: NotificationType;
+  user_id: string;                                      // ✅ Corrigé (était recipient_id)
+  user_type: 'client' | 'expert' | 'admin' | 'apporteur'; // ✅ Corrigé (était recipient_type)
+  notification_type: string;                            // ✅ Corrigé (était type)
   title: string;
   message: string;
-  data: any;
-  priority: NotificationPriority;
-  channels: NotificationChannel[];
-  sent_channels: NotificationChannel[];
-  status: NotificationStatus;
-  read: boolean;
+  action_data?: any;                                    // ✅ Corrigé (était data)
+  action_url?: string;                                  // ✅ Ajouté (existe en BDD)
+  priority: string;                                     // ✅ Simplifié (varchar en BDD)
+  is_read: boolean;                                     // ✅ Corrigé (était read)
   read_at?: string;
-  sent_at?: string;
-  delivered_at?: string;
-  failed_at?: string;
-  retry_count: number;
-  max_retries: number;
+  is_dismissed: boolean;                                // ✅ Ajouté (existe en BDD)
+  dismissed_at?: string;                                // ✅ Ajouté (existe en BDD)
   expires_at?: string;
   created_at: string;
   updated_at: string;
-  metadata?: {
-    user_agent?: string;
-    ip_address?: string;
-    device_id?: string;
-    session_id?: string;
-    campaign_id?: string;
-    a_b_test?: string;
-  };
 }
 
 export interface UserNotificationPreferences {
@@ -626,22 +613,19 @@ export class NotificationService {
       const message = this.replaceVariables(template.message, data);
 
       // Créer la notification en base
+      // ⚠️ CORRECTION : Utiliser user_id/user_type au lieu de recipient_id/recipient_type
       const { data: notification, error } = await supabase
         .from('notification')
         .insert({
-          recipient_id: recipientId,
-          recipient_type: recipientType,
-          type: type,
+          user_id: recipientId,                    // ✅ Corrigé
+          user_type: recipientType,                // ✅ Corrigé
+          notification_type: type,                 // ✅ Corrigé
           title: title,
           message: message,
-          data: data,
+          action_data: data,                       // ✅ Corrigé
           priority: priority || template.priority,
-          channels: template.channels,
-          sent_channels: [],
-          status: NotificationStatus.PENDING,
-          read: false,
-          retry_count: 0,
-          max_retries: 3,
+          is_read: false,                          // ✅ Corrigé
+          is_dismissed: false,                     // ✅ Ajouté
           created_at: new Date().toISOString()
         })
         .select()
@@ -723,7 +707,7 @@ export class NotificationService {
       const body = this.replaceVariables(template.emailBody || template.message, data);
 
       // Récupérer l'email de l'utilisateur
-      const email = await this.getUserEmail(notification.recipient_id);
+      const email = await this.getUserEmail(notification.user_id);
       if (!email) return false;
 
       // ⛔ BLOQUER les emails temporaires pour éviter les bounces
@@ -754,7 +738,7 @@ export class NotificationService {
   ): Promise<boolean> {
     try {
       // Récupérer le token push
-      const pushToken = await this.getUserPushToken(notification.recipient_id);
+      const pushToken = await this.getUserPushToken(notification.user_id);
       if (!pushToken) return false;
 
       const title = this.replaceVariables(template.pushTitle || template.title, data);
@@ -778,7 +762,7 @@ export class NotificationService {
   ): Promise<boolean> {
     try {
       // Récupérer le numéro de téléphone
-      const phoneNumber = await this.getUserPhoneNumber(notification.recipient_id);
+      const phoneNumber = await this.getUserPhoneNumber(notification.user_id);
       if (!phoneNumber) return false;
 
       const text = this.replaceVariables(template.smsText || template.message, data);
@@ -915,12 +899,11 @@ export class NotificationService {
     await supabase
       .from('notification')
       .update({
-        read: true,
-        read_at: new Date().toISOString(),
-        status: NotificationStatus.READ
+        is_read: true,                          // ✅ Corrigé (était read)
+        read_at: new Date().toISOString()
       })
       .eq('id', notificationId)
-      .eq('recipient_id', userId);
+      .eq('user_id', userId);                   // ✅ Corrigé (était recipient_id)
   }
 
   async getUserNotifications(
@@ -931,7 +914,7 @@ export class NotificationService {
     const { data, error } = await supabase
       .from('notification')
       .select('*')
-      .eq('recipient_id', userId)
+      .eq('user_id', userId)                    // ✅ Corrigé (était recipient_id)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -947,8 +930,8 @@ export class NotificationService {
     const { count, error } = await supabase
       .from('notification')
       .select('*', { count: 'exact', head: true })
-      .eq('recipient_id', userId)
-      .eq('read', false);
+      .eq('user_id', userId)                    // ✅ Corrigé (était recipient_id)
+      .eq('is_read', false);                    // ✅ Corrigé (était read)
 
     if (error) {
       console.error('Erreur comptage notifications:', error);
@@ -968,14 +951,14 @@ export class NotificationService {
     }
 
     // Vérifier les filtres de priorité
-    if (preferences?.priority_filter && 
-        !preferences.priority_filter.includes(notification.priority)) {
+    if (preferences?.priority_filter && notification.priority &&
+        !preferences.priority_filter.includes(notification.priority as any)) {
       return false;
     }
 
     // Vérifier les filtres de type
     if (preferences?.type_filter && 
-        !preferences.type_filter.includes(notification.type)) {
+        !preferences.type_filter.includes(notification.notification_type)) {
       return false;
     }
 
