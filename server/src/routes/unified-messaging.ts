@@ -412,15 +412,18 @@ router.post('/conversations', async (req, res) => {
     console.error('💾 Insert Data COMPLET:', JSON.stringify(insertData, null, 2));
     console.error('⏳ Appel Supabase INSERT...');
     
-    const { data: conversation, error } = await supabaseAdmin
+    // ✅ FIX: Retirer .single() qui peut retourner null sans erreur
+    const { data: conversations, error } = await supabaseAdmin
       .from('conversations')
       .insert(insertData)
-      .select()
-      .single();
+      .select();
+    
+    const conversation = conversations?.[0] || null;
 
     console.error('📦 Supabase Response:', JSON.stringify({
       hasData: !!conversation,
       dataIsNull: conversation === null,
+      conversationsArray: conversations,
       data: conversation,
       hasError: !!error,
       error: error
