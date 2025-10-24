@@ -346,38 +346,23 @@ class MessagingService {
 
   async getExpertConversations(clientId: string): Promise<Conversation[]> {
     try {
-      // Récupérer les assignations d'experts validées pour ce client
-      const { data: assignments, error: assignmentsError } = await supabase
-        .from('ExpertAssignment')
-        .select(`
-          *,
-          Expert:Expert(id, name, email, avatar),
-          ClientProduitEligible:ClientProduitEligible(id, product_name)
-        `)
-        .eq('client_id', clientId)
-        .eq('status', 'validated');
+      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
+      
+      const response = await fetch(`${apiUrl}/api/unified-messaging/expert-conversations/${clientId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
 
-      if (assignmentsError) throw assignmentsError;
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Erreur récupération conversations experts: ${errorText}`);
+      }
 
-      // Créer ou récupérer les conversations pour chaque expert
-      const conversations = await Promise.all(
-        assignments.map(async (assignment) => {
-          // Vérifier si une conversation existe déjà
-          const existingConversation = await this.getExistingConversation(
-            clientId,
-            assignment.expert_id
-          );
-
-          if (existingConversation) {
-            return existingConversation;
-          }
-
-          // Créer une nouvelle conversation automatique
-          return await this.createAutoConversation(assignment);
-        })
-      );
-
-      return conversations.filter(Boolean);
+      const result = await response.json();
+      return result.data?.conversations || [];
     } catch (error) {
       console.error('Erreur récupération conversations experts:', error);
       throw error;
@@ -385,15 +370,28 @@ class MessagingService {
   }
 
   private async getExistingConversation(clientId: string, expertId: string): Promise<Conversation | null> {
-    const { data, error } = await supabase
-      .from('conversations')
-      .select('*')
-      .contains('participant_ids', [clientId, expertId])
-      .eq('type', 'expert_client')
-      .single();
+    try {
+      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
+      
+      const response = await fetch(
+        `${apiUrl}/api/unified-messaging/conversations/check?participant1=${clientId}&participant2=${expertId}&type=expert_client`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
 
-    if (error || !data) return null;
-    return data;
+      if (!response.ok) return null;
+      
+      const result = await response.json();
+      return result.data;
+    } catch (error) {
+      console.error('Erreur vérification conversation existante:', error);
+      return null;
+    }
   }
 
   // Créer automatiquement une conversation admin pour les clients, experts et apporteurs
@@ -401,104 +399,73 @@ class MessagingService {
     if (!this.currentUserId || (this.currentUserType !== 'client' && this.currentUserType !== 'expert' && this.currentUserType !== 'apporteur')) return;
 
     try {
-      // Vérifier si une conversation admin existe déjà
-      const { data: existingConversation, error: checkError } = await supabase
-        .from('conversations')
-        .select('*')
-        .contains('participant_ids', [this.currentUserId])
-        .eq('type', 'admin_support')
-        .maybeSingle();
+      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
+      
+      // Créer ou récupérer conversation admin via API
+      const response = await fetch(`${apiUrl}/api/unified-messaging/conversations/admin-support`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
 
-      if (checkError && checkError.code !== 'PGRST116') {
-        console.error('Erreur vérification conversation admin:', checkError);
+      if (!response.ok) {
+        console.error('Erreur création/récupération conversation admin:', response.status);
         return;
       }
 
-      // Si la conversation n'existe pas, la créer
-      if (!existingConversation) {
-        // Récupérer un admin (premier admin trouvé)
-        const { data: adminData, error: adminError } = await supabase
-          .from('Admin')
-          .select('id, name, email')
-          .limit(1)
-          .single();
-
-        if (adminError || !adminData) {
-          console.error('Aucun admin trouvé pour créer la conversation support');
-          return;
-        }
-
-        // Créer la conversation admin
-        const conversationData: ConversationData = {
-          type: 'admin_support',
-          participant_ids: [this.currentUserId, adminData.id],
-          title: 'Support Administratif',
-          description: 'Conversation de support avec l\'équipe administrative',
-          status: 'active',
-          priority: 'medium',
-          category: 'support',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-
-        // Ajouter les colonnes spécifiques selon le type d'utilisateur
-        if (this.currentUserType === 'client') {
-          conversationData.client_id = this.currentUserId;
-        } else if (this.currentUserType === 'expert') {
-          conversationData.expert_id = this.currentUserId;
-        } else if (this.currentUserType === 'apporteur') {
-          conversationData.apporteur_id = this.currentUserId;
-        }
-
-        const { data: newConversation, error: createError } = await supabase
-          .from('conversations')
-          .insert(conversationData)
-          .select()
-          .single();
-
-        if (createError) {
-          console.error('Erreur création conversation admin:', createError);
-          return;
-        }
-
-        console.log(`✅ Conversation admin créée automatiquement pour le ${this.currentUserType}:`, this.currentUserId);
-
-        // Envoyer un message de bienvenue automatique
-        await this.sendMessage({
-          conversation_id: newConversation.id,
-          content: 'Bonjour ! Je suis l\'équipe de support administratif. Comment puis-je vous aider aujourd\'hui ?',
-          message_type: 'text'
-        });
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        console.log(`✅ Conversation admin support ${result.data.id} disponible pour le ${this.currentUserType}:`, this.currentUserId);
       }
     } catch (error) {
-      console.error('Erreur création conversation admin automatique:', error);
+      console.error('Erreur conversation admin automatique:', error);
     }
   }
 
   private async createAutoConversation(assignment: any): Promise<Conversation> {
-    const { data, error } = await supabase
-      .from('conversations')
-      .insert({
-        type: 'expert_client',
-        participant_ids: [assignment.client_id, assignment.expert_id],
-        title: `Dossier ${assignment.dossier_id} - ${getUserDisplayName(assignment.Expert)}`,
-        description: `Conversation automatique pour le dossier ${assignment.ClientProduitEligible.product_name}`,
-        dossier_id: assignment.dossier_id,
-        auto_created: true
-      })
-      .select()
-      .single();
+    try {
+      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
+      
+      const response = await fetch(`${apiUrl}/api/unified-messaging/conversations`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          type: 'expert_client',
+          participant_ids: [assignment.client_id, assignment.expert_id],
+          title: `Dossier ${assignment.dossier_id} - ${getUserDisplayName(assignment.Expert)}`,
+          description: `Conversation automatique pour le dossier ${assignment.ClientProduitEligible.product_name}`,
+          dossier_id: assignment.dossier_id
+        })
+      });
 
-    if (error) throw error;
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Erreur création conversation: ${errorText}`);
+      }
 
-    // Envoyer un message de bienvenue automatique
-    await this.sendMessage({
-      conversation_id: data.id,
-      content: `Bonjour ! Je suis ${getUserDisplayName(assignment.Expert)}, votre expert pour ce dossier. Je suis là pour vous accompagner tout au long du processus. N'hésitez pas à me contacter pour toute question !`,
-      message_type: 'text'
-    });
+      const result = await response.json();
+      const data = result.data;
 
-    return data;
+      // Envoyer un message de bienvenue automatique
+      await this.sendMessage({
+        conversation_id: data.id,
+        content: `Bonjour ! Je suis ${getUserDisplayName(assignment.Expert)}, votre expert pour ce dossier. Je suis là pour vous accompagner tout au long du processus. N'hésitez pas à me contacter pour toute question !`,
+        message_type: 'text'
+      });
+
+      return data;
+    } catch (error) {
+      console.error('Erreur création conversation automatique:', error);
+      throw error;
+    }
   }
 
   // ========================================
@@ -640,21 +607,7 @@ class MessagingService {
 
   async sendPushNotification(userId: string, title: string, body: string, data?: any): Promise<void> {
     try {
-      // Enregistrer la notification en base
-      const { error } = await supabase
-        .from('push_notifications')
-        .insert({
-          user_id: userId,
-          title,
-          body,
-          data: data || {},
-          sent: true,
-          sent_at: new Date().toISOString()
-        });
-
-      if (error) throw error;
-
-      // Envoyer via le service worker si disponible
+      // Envoyer via le service worker si disponible (notification browser locale)
       if ('serviceWorker' in navigator && 'PushManager' in window) {
         const registration = await navigator.serviceWorker.ready;
         await registration.showNotification(title, {
@@ -664,6 +617,9 @@ class MessagingService {
           badge: '/favicon.ico'
         });
       }
+      
+      // Note : L'enregistrement en BDD se fait via le système de notifications unifié
+      // (NotificationService backend) plutôt que push_notifications
     } catch (error) {
       console.error('Erreur envoi notification push:', error);
     }
@@ -675,16 +631,25 @@ class MessagingService {
 
   async reportConversation(reportData: ReportConversationRequest): Promise<void> {
     try {
-      const { error } = await supabase
-        .from('conversation_reports')
-        .insert({
-          ...reportData,
-          reporter_id: this.currentUserId,
-          reporter_type: this.currentUserType,
-          created_at: new Date().toISOString()
-        });
+      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
+      
+      const response = await fetch(`${apiUrl}/api/unified-messaging/conversations/${reportData.conversation_id}/report`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          reason: reportData.reason,
+          description: reportData.description
+        })
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Erreur signalement: ${errorText}`);
+      }
     } catch (error) {
       console.error('Erreur signalement conversation:', error);
       throw error;
@@ -787,35 +752,38 @@ class MessagingService {
 
   async createConversation(request: CreateConversationRequest): Promise<Conversation> {
     try {
-      // Préparer les données avec les nouvelles colonnes métier
-      const conversationData = {
-        type: request.type,
-        participant_ids: request.participant_ids,
-        title: request.title,
-        description: request.description,
-        status: 'active',
-        // Nouvelles colonnes métier
-        dossier_id: request.dossier_id,
-        client_id: request.client_id,
-        expert_id: request.expert_id,
-        produit_id: request.produit_id,
-        created_by: this.currentUserId,
-        access_level: request.access_level || 'private',
-        priority: request.priority || 'medium',
-        category: request.category || 'general',
-        tags: request.tags || [],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
+      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
+      
+      const response = await fetch(`${apiUrl}/api/unified-messaging/conversations`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          type: request.type,
+          participant_ids: request.participant_ids,
+          title: request.title,
+          description: request.description,
+          dossier_id: request.dossier_id,
+          client_id: request.client_id,
+          expert_id: request.expert_id,
+          produit_id: request.produit_id,
+          access_level: request.access_level || 'private',
+          priority: request.priority || 'medium',
+          category: request.category || 'general',
+          tags: request.tags || []
+        })
+      });
 
-      const { data, error } = await supabase
-        .from('conversations')
-        .insert(conversationData)
-        .select()
-        .single();
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Erreur création conversation: ${errorText}`);
+      }
 
-      if (error) throw error;
-      return data;
+      const result = await response.json();
+      return result.data;
     } catch (error) {
       console.error('Erreur création conversation:', error);
       throw error;
@@ -824,15 +792,21 @@ class MessagingService {
 
   async markMessageAsRead(messageId: string): Promise<void> {
     try {
-      const { error } = await supabase
-        .from('messages')
-        .update({
-          is_read: true,
-          read_at: new Date().toISOString()
-        })
-        .eq('id', messageId);
+      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
+      
+      const response = await fetch(`${apiUrl}/api/unified-messaging/messages/${messageId}/read`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Erreur marquage message lu: ${errorText}`);
+      }
     } catch (error) {
       console.error('Erreur marquage message lu:', error);
       throw error;
@@ -841,16 +815,21 @@ class MessagingService {
 
   async markConversationAsRead(conversationId: string): Promise<void> {
     try {
-      const { error } = await supabase
-        .from('messages')
-        .update({
-          is_read: true,
-          read_at: new Date().toISOString()
-        })
-        .eq('conversation_id', conversationId)
-        .neq('sender_id', this.currentUserId);
+      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
+      
+      const response = await fetch(`${apiUrl}/api/unified-messaging/conversations/${conversationId}/read`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Erreur marquage conversation lue: ${errorText}`);
+      }
     } catch (error) {
       console.error('Erreur marquage conversation lue:', error);
       throw error;
@@ -859,23 +838,20 @@ class MessagingService {
 
   async sendTypingIndicator(conversationId: string, isTyping: boolean): Promise<void> {
     try {
-      if (isTyping) {
-        await supabase
-          .from('typing_indicators')
-          .upsert({
-            conversation_id: conversationId,
-            user_id: this.currentUserId,
-            user_type: this.currentUserType,
-            is_typing: true,
-            created_at: new Date().toISOString()
-          });
-      } else {
-        await supabase
-          .from('typing_indicators')
-          .delete()
-          .eq('conversation_id', conversationId)
-          .eq('user_id', this.currentUserId);
-      }
+      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
+      
+      await fetch(`${apiUrl}/api/unified-messaging/typing`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          conversation_id: conversationId,
+          is_typing: isTyping
+        })
+      });
     } catch (error) {
       console.error('Erreur indicateur de frappe:', error);
     }
@@ -883,29 +859,29 @@ class MessagingService {
 
   async uploadFile(file: File, conversationId: string): Promise<FileAttachment> {
     try {
-      const fileName = `${Date.now()}-${file.name}`;
-      const filePath = `messaging/${conversationId}/${fileName}`;
+      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
+      
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('conversation_id', conversationId);
 
-      const { data, error } = await supabase.storage
-        .from('messaging-files')
-        .upload(filePath, file);
+      const response = await fetch(`${apiUrl}/api/unified-messaging/upload`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+          // Ne pas mettre Content-Type pour FormData
+        },
+        body: formData
+      });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Erreur upload fichier: ${errorText}`);
+      }
 
-      const { data: urlData } = supabase.storage
-        .from('messaging-files')
-        .getPublicUrl(filePath);
-
-      const attachment: FileAttachment = {
-        id: data.path,
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        url: urlData.publicUrl,
-        uploaded_at: new Date().toISOString()
-      };
-
-      return attachment;
+      const result = await response.json();
+      return result.data;
     } catch (error) {
       console.error('Erreur upload fichier:', error);
       throw error;
@@ -923,12 +899,25 @@ class MessagingService {
       return '';
     }
 
-    const { data } = await supabase
-      .from('conversations')
-      .select('id')
-      .contains('participant_ids', [this.currentUserId]);
+    try {
+      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
+      
+      const response = await fetch(`${apiUrl}/api/unified-messaging/conversations/ids`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
 
-    return data?.map(conv => conv.id).join(',') || '';
+      if (!response.ok) return '';
+      
+      const result = await response.json();
+      return result.data?.ids?.join(',') || '';
+    } catch (error) {
+      console.error('Erreur récupération IDs conversations:', error);
+      return '';
+    }
   }
 
   private async getUserInfo(userId: string): Promise<any> {
@@ -938,33 +927,37 @@ class MessagingService {
       return null;
     }
 
-    // Rechercher dans les tables Client et Expert
-    const { data: clientData } = await supabase
-      .from('Client')
-      .select('id, email, name, company_name')
-      .eq('id', userId)
-      .single();
+    try {
+      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
+      
+      const response = await fetch(`${apiUrl}/api/unified-messaging/user-info/${userId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
 
-    if (clientData) {
-      return clientData;
+      if (!response.ok) {
+        // Fallback : retourner les informations de base
+        return {
+          id: userId,
+          email: 'utilisateur@profitum.fr',
+          name: 'Utilisateur'
+        };
+      }
+
+      const result = await response.json();
+      return result.data;
+    } catch (error) {
+      console.error('Erreur récupération infos utilisateur:', error);
+      // Fallback
+      return {
+        id: userId,
+        email: 'utilisateur@profitum.fr',
+        name: 'Utilisateur'
+      };
     }
-
-    const { data: expertData } = await supabase
-      .from('Expert')
-      .select('id, email, name, company_name')
-      .eq('id', userId)
-      .single();
-
-    if (expertData) {
-      return expertData;
-    }
-
-    // Fallback : retourner les informations de base
-    return {
-      id: userId,
-      email: 'utilisateur@profitum.fr',
-      name: 'Utilisateur'
-    };
   }
 
   private async isUserOnline(userId: string): Promise<boolean> {
@@ -978,14 +971,25 @@ class MessagingService {
   }
 
   private async getUnreadCount(conversationId: string): Promise<number> {
-    const { count } = await supabase
-      .from('messages')
-      .select('*', { count: 'exact', head: true })
-      .eq('conversation_id', conversationId)
-      .neq('sender_id', this.currentUserId)
-      .eq('is_read', false);
+    try {
+      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
+      
+      const response = await fetch(`${apiUrl}/api/unified-messaging/conversations/${conversationId}/unread-count`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
 
-    return count || 0;
+      if (!response.ok) return 0;
+      
+      const result = await response.json();
+      return result.data?.unread_count || 0;
+    } catch (error) {
+      console.error('Erreur comptage messages non lus:', error);
+      return 0;
+    }
   }
 
   // ========================================

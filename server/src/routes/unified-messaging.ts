@@ -1667,4 +1667,729 @@ router.post('/admin/conversations', async (req, res) => {
   }
 });
 
+// ========================================
+// NOUVELLES ROUTES POUR REFACTOR SÉCURISÉ
+// ========================================
+// Ajoutées le 24/10/2025 pour éliminer accès directs Supabase frontend
+// Toutes les requêtes passent maintenant par l'API backend
+
+// GET /api/unified-messaging/conversations/check - Vérifier si conversation existe
+router.get('/conversations/check', async (req, res) => {
+  try {
+    const authUser = req.user as AuthUser;
+    const { participant1, participant2, type } = req.query;
+
+    if (!participant1 || !participant2) {
+      return res.status(400).json({
+        success: false,
+        message: 'participant1 et participant2 requis'
+      });
+    }
+
+    console.log(`🔍 Vérification conversation existante: ${participant1} ↔ ${participant2} (type: ${type})`);
+
+    // Chercher conversation existante
+    let query = supabaseAdmin
+      .from('conversations')
+      .select('*')
+      .contains('participant_ids', [participant1, participant2]);
+
+    if (type) {
+      query = query.eq('type', String(type));
+    }
+
+    const { data, error } = await query.maybeSingle();
+
+    if (error && error.code !== 'PGRST116') {
+      console.error('❌ Erreur vérification conversation:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la vérification'
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: data || null
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route check conversation:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+// POST /api/unified-messaging/conversations/admin-support - Créer/récupérer conversation admin support
+router.post('/conversations/admin-support', async (req, res) => {
+  try {
+    const authUser = req.user as AuthUser;
+    const userId = authUser.database_id || authUser.id;
+    const userType = authUser.type;
+
+    console.log(`🛠️ Conversation admin support pour ${userType}:`, userId);
+
+    // Vérifier si conversation admin existe déjà
+    const { data: existing } = await supabaseAdmin
+      .from('conversations')
+      .select('*')
+      .contains('participant_ids', [userId])
+      .eq('type', 'admin_support')
+      .maybeSingle();
+
+    if (existing) {
+      console.log('✅ Conversation admin support existante trouvée');
+      return res.json({
+        success: true,
+        data: existing
+      });
+    }
+
+    // Récupérer premier admin disponible
+    const { data: adminData, error: adminError } = await supabaseAdmin
+      .from('Admin')
+      .select('id, email')
+      .limit(1)
+      .single();
+
+    if (adminError || !adminData) {
+      console.error('❌ Aucun admin trouvé');
+      return res.status(404).json({
+        success: false,
+        message: 'Aucun administrateur disponible'
+      });
+    }
+
+    // Créer nouvelle conversation admin support
+    const conversationData: any = {
+      type: 'admin_support',
+      participant_ids: [userId, adminData.id],
+      title: `Support Administratif - ${authUser.email}`,
+      description: 'Conversation de support avec l\'équipe administrative',
+      status: 'active',
+      priority: 'medium',
+      category: 'support',
+      created_by: userId
+    };
+
+    // Ajouter colonnes métier selon type utilisateur
+    if (userType === 'client') conversationData.client_id = userId;
+    if (userType === 'expert') conversationData.expert_id = userId;
+    if (userType === 'apporteur') conversationData.apporteur_id = userId;
+
+    const { data: newConv, error: createError } = await supabaseAdmin
+      .from('conversations')
+      .insert(conversationData)
+      .select()
+      .single();
+
+    if (createError) {
+      console.error('❌ Erreur création conversation admin:', createError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la création de la conversation'
+      });
+    }
+
+    console.log('✅ Conversation admin support créée:', newConv.id);
+
+    // Envoyer message de bienvenue automatique
+    try {
+      await supabaseAdmin
+        .from('messages')
+        .insert({
+          conversation_id: newConv.id,
+          sender_id: adminData.id,
+          sender_type: 'admin',
+          sender_name: 'Support Profitum',
+          content: 'Bonjour ! Je suis l\'équipe de support administratif. Comment puis-je vous aider aujourd\'hui ?',
+          message_type: 'text',
+          is_read: false
+        });
+    } catch (msgError) {
+      console.warn('⚠️ Erreur envoi message bienvenue:', msgError);
+    }
+
+    return res.status(201).json({
+      success: true,
+      data: newConv
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route admin-support:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+// PUT /api/unified-messaging/messages/:id/read - Marquer message comme lu
+router.put('/messages/:id/read', async (req, res) => {
+  try {
+    const authUser = req.user as AuthUser;
+    const { id } = req.params;
+    const userId = authUser.database_id || authUser.id;
+
+    console.log(`📖 Marquage message ${id} comme lu par ${userId}`);
+
+    // Mettre à jour le message
+    const { data, error } = await supabaseAdmin
+      .from('messages')
+      .update({
+        is_read: true,
+        read_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('❌ Erreur marquage message lu:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors du marquage'
+      });
+    }
+
+    return res.json({
+      success: true,
+      data
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route mark message read:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+// PUT /api/unified-messaging/conversations/:id/read - Marquer tous messages conversation comme lus
+router.put('/conversations/:id/read', async (req, res) => {
+  try {
+    const authUser = req.user as AuthUser;
+    const { id } = req.params;
+    const userId = authUser.database_id || authUser.id;
+
+    console.log(`📖 Marquage conversation ${id} comme lue par ${userId}`);
+
+    // Vérifier que l'utilisateur est participant
+    const { data: conv } = await supabaseAdmin
+      .from('conversations')
+      .select('participant_ids')
+      .eq('id', id)
+      .single();
+
+    if (!conv || !conv.participant_ids.includes(userId)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Non autorisé'
+      });
+    }
+
+    // Marquer tous les messages de cette conversation comme lus (sauf ceux de l'utilisateur)
+    const { data, error } = await supabaseAdmin
+      .from('messages')
+      .update({
+        is_read: true,
+        read_at: new Date().toISOString()
+      })
+      .eq('conversation_id', id)
+      .neq('sender_id', userId)
+      .select();
+
+    if (error) {
+      console.error('❌ Erreur marquage conversation lue:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors du marquage'
+      });
+    }
+
+    console.log(`✅ ${data?.length || 0} messages marqués comme lus`);
+
+    return res.json({
+      success: true,
+      data: {
+        messages_marked: data?.length || 0
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route mark conversation read:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+// GET /api/unified-messaging/conversations/ids - Liste IDs conversations user (pour filtres Realtime)
+router.get('/conversations/ids', async (req, res) => {
+  try {
+    const authUser = req.user as AuthUser;
+    const userId = authUser.database_id || authUser.id;
+
+    console.log(`🔢 Récupération IDs conversations pour ${userId}`);
+
+    const { data, error } = await supabaseAdmin
+      .from('conversations')
+      .select('id')
+      .contains('participant_ids', [userId]);
+
+    if (error) {
+      console.error('❌ Erreur récupération IDs conversations:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la récupération'
+      });
+    }
+
+    const ids = (data || []).map(conv => conv.id);
+    console.log(`✅ ${ids.length} conversation IDs récupérés`);
+
+    return res.json({
+      success: true,
+      data: {
+        ids,
+        count: ids.length
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route conversation ids:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+// GET /api/unified-messaging/user-info/:id - Récupérer infos utilisateur
+router.get('/user-info/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { type } = req.query;
+
+    console.log(`👤 Récupération infos utilisateur ${id} (type: ${type})`);
+
+    let userData = null;
+
+    // Chercher dans la table appropriée selon le type
+    if (type === 'client' || !type) {
+      const { data } = await supabaseAdmin
+        .from('Client')
+        .select('id, first_name, last_name, email, company_name, is_active')
+        .eq('id', id)
+        .single();
+      
+      if (data) {
+        userData = {
+          id: data.id,
+          name: data.company_name || `${data.first_name || ''} ${data.last_name || ''}`.trim() || data.email,
+          full_name: `${data.first_name || ''} ${data.last_name || ''}`.trim(),
+          email: data.email,
+          company_name: data.company_name,
+          type: 'client',
+          is_active: data.is_active
+        };
+      }
+    }
+
+    if (!userData && (type === 'expert' || !type)) {
+      const { data } = await supabaseAdmin
+        .from('Expert')
+        .select('id, first_name, last_name, email, company_name, is_active')
+        .eq('id', id)
+        .single();
+      
+      if (data) {
+        userData = {
+          id: data.id,
+          name: `${data.first_name || ''} ${data.last_name || ''}`.trim() || data.company_name || data.email,
+          full_name: `${data.first_name || ''} ${data.last_name || ''}`.trim(),
+          email: data.email,
+          company_name: data.company_name,
+          type: 'expert',
+          is_active: data.is_active
+        };
+      }
+    }
+
+    if (!userData && (type === 'apporteur' || !type)) {
+      const { data } = await supabaseAdmin
+        .from('ApporteurAffaires')
+        .select('id, first_name, last_name, email, company_name, is_active')
+        .eq('id', id)
+        .single();
+      
+      if (data) {
+        userData = {
+          id: data.id,
+          name: `${data.first_name || ''} ${data.last_name || ''}`.trim() || data.company_name || data.email,
+          full_name: `${data.first_name || ''} ${data.last_name || ''}`.trim(),
+          email: data.email,
+          company_name: data.company_name,
+          type: 'apporteur',
+          is_active: data.is_active
+        };
+      }
+    }
+
+    if (!userData && (type === 'admin' || !type)) {
+      const { data } = await supabaseAdmin
+        .from('Admin')
+        .select('id, email')
+        .eq('id', id)
+        .single();
+      
+      if (data) {
+        userData = {
+          id: data.id,
+          name: data.email.split('@')[0],
+          full_name: data.email.split('@')[0],
+          email: data.email,
+          type: 'admin',
+          is_active: true
+        };
+      }
+    }
+
+    if (!userData) {
+      return res.status(404).json({
+        success: false,
+        message: 'Utilisateur non trouvé'
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: userData
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route user-info:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+// POST /api/unified-messaging/typing - Envoyer indicateur de frappe
+router.post('/typing', async (req, res) => {
+  try {
+    const authUser = req.user as AuthUser;
+    const userId = authUser.database_id || authUser.id;
+    const { conversation_id, is_typing } = req.body;
+
+    if (!conversation_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'conversation_id requis'
+      });
+    }
+
+    console.log(`⌨️ Indicateur frappe: ${userId} ${is_typing ? 'tape' : 'arrête'} dans ${conversation_id}`);
+
+    if (is_typing) {
+      // Créer/mettre à jour indicateur
+      const { error } = await supabaseAdmin
+        .from('typing_indicators')
+        .upsert({
+          conversation_id,
+          user_id: userId,
+          user_type: authUser.type,
+          is_typing: true,
+          created_at: new Date().toISOString()
+        });
+
+      if (error) {
+        console.error('❌ Erreur création indicateur:', error);
+        return res.status(500).json({
+          success: false,
+          message: 'Erreur lors de la mise à jour'
+        });
+      }
+    } else {
+      // Supprimer indicateur
+      const { error } = await supabaseAdmin
+        .from('typing_indicators')
+        .delete()
+        .eq('conversation_id', conversation_id)
+        .eq('user_id', userId);
+
+      if (error) {
+        console.error('❌ Erreur suppression indicateur:', error);
+      }
+    }
+
+    return res.json({
+      success: true
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route typing:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+// POST /api/unified-messaging/conversations/:id/report - Signaler conversation
+router.post('/conversations/:id/report', async (req, res) => {
+  try {
+    const authUser = req.user as AuthUser;
+    const userId = authUser.database_id || authUser.id;
+    const { id } = req.params;
+    const { reason, description } = req.body;
+
+    if (!reason) {
+      return res.status(400).json({
+        success: false,
+        message: 'reason requis'
+      });
+    }
+
+    console.log(`🚨 Signalement conversation ${id} par ${userId}: ${reason}`);
+
+    const { data, error } = await supabaseAdmin
+      .from('conversation_reports')
+      .insert({
+        conversation_id: id,
+        reporter_id: userId,
+        reporter_type: authUser.type,
+        reason,
+        description: description || '',
+        status: 'pending',
+        created_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('❌ Erreur signalement:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors du signalement'
+      });
+    }
+
+    return res.status(201).json({
+      success: true,
+      data
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route report:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+// GET /api/unified-messaging/conversations/:id/unread-count - Compteur messages non lus
+router.get('/conversations/:id/unread-count', async (req, res) => {
+  try {
+    const authUser = req.user as AuthUser;
+    const userId = authUser.database_id || authUser.id;
+    const { id } = req.params;
+
+    console.log(`🔢 Comptage messages non lus conversation ${id} pour ${userId}`);
+
+    const { count, error } = await supabaseAdmin
+      .from('messages')
+      .select('*', { count: 'exact', head: true })
+      .eq('conversation_id', id)
+      .neq('sender_id', userId)
+      .eq('is_read', false);
+
+    if (error) {
+      console.error('❌ Erreur comptage:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors du comptage'
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        unread_count: count || 0
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route unread-count:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+// GET /api/unified-messaging/expert-conversations/:clientId - Conversations experts validés
+router.get('/expert-conversations/:clientId', async (req, res) => {
+  try {
+    const authUser = req.user as AuthUser;
+    const { clientId } = req.params;
+
+    console.log(`👨‍💼 Récupération conversations experts pour client ${clientId}`);
+
+    // Récupérer assignations experts validées
+    const { data: assignments, error: assignError } = await supabaseAdmin
+      .from('expertassignment')
+      .select(`
+        *,
+        Expert:Expert!expertassignment_expert_id_fkey(id, first_name, last_name, email, company_name),
+        ClientProduitEligible:ClientProduitEligible!expertassignment_client_produit_id_fkey(id, produitId)
+      `)
+      .eq('client_id', clientId)
+      .eq('status', 'validated');
+
+    if (assignError) {
+      console.error('❌ Erreur récupération assignations:', assignError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la récupération'
+      });
+    }
+
+    // Pour chaque assignation, vérifier si conversation existe
+    const conversations = [];
+    for (const assignment of assignments || []) {
+      const { data: conv } = await supabaseAdmin
+        .from('conversations')
+        .select('*')
+        .contains('participant_ids', [clientId, assignment.expert_id])
+        .eq('type', 'expert_client')
+        .maybeSingle();
+
+      if (conv) {
+        conversations.push(conv);
+      }
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        conversations,
+        assignments_count: assignments?.length || 0
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route expert-conversations:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+// POST /api/unified-messaging/upload - Upload fichier messagerie
+router.post('/upload', upload.single('file'), async (req, res) => {
+  try {
+    const authUser = req.user as AuthUser;
+    const userId = authUser.database_id || authUser.id;
+    const { conversation_id } = req.body;
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({
+        success: false,
+        message: 'Aucun fichier fourni'
+      });
+    }
+
+    if (!conversation_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'conversation_id requis'
+      });
+    }
+
+    console.log(`📎 Upload fichier ${file.originalname} pour conversation ${conversation_id}`);
+
+    // Vérifier que l'utilisateur est participant de la conversation
+    const { data: conv } = await supabaseAdmin
+      .from('conversations')
+      .select('participant_ids')
+      .eq('id', conversation_id)
+      .single();
+
+    if (!conv || !conv.participant_ids.includes(userId)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Non autorisé'
+      });
+    }
+
+    // Upload vers Supabase Storage bucket 'messaging-files'
+    const fileName = `${Date.now()}-${file.originalname}`;
+    const filePath = `${conversation_id}/${fileName}`;
+
+    const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
+      .from('messaging-files')
+      .upload(filePath, file.buffer || fs.readFileSync(file.path), {
+        contentType: file.mimetype,
+        upsert: false
+      });
+
+    if (uploadError) {
+      console.error('❌ Erreur upload Supabase Storage:', uploadError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de l\'upload'
+      });
+    }
+
+    // Récupérer URL publique
+    const { data: urlData } = supabaseAdmin.storage
+      .from('messaging-files')
+      .getPublicUrl(filePath);
+
+    // Nettoyer fichier temporaire local
+    if (file.path && fs.existsSync(file.path)) {
+      fs.unlinkSync(file.path);
+    }
+
+    const attachment = {
+      id: uploadData.path,
+      name: file.originalname,
+      size: file.size,
+      type: file.mimetype,
+      url: urlData.publicUrl,
+      uploaded_at: new Date().toISOString()
+    };
+
+    console.log('✅ Fichier uploadé:', attachment.name);
+
+    return res.json({
+      success: true,
+      data: attachment
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route upload:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+// GET /api/unified-messaging/conversations/:id/unread - Alias pour unread-count
+router.get('/conversations/:id/unread', async (req, res) => {
+  // Rediriger vers unread-count
+  req.url = req.url.replace('/unread', '/unread-count');
+  return router.handle(req, res);
+});
+
 export default router; 
