@@ -291,8 +291,21 @@ router.get(['/conversations', '/expert/conversations'], async (req, res) => {
 
 // POST /api/messaging/conversations - Créer une conversation
 router.post('/conversations', async (req, res) => {
+  console.error('🚨🚨🚨 ========================================');
+  console.error('🚨 POST /conversations - DÉBUT');
+  console.error('🚨🚨🚨 ========================================');
+  console.error('📋 Request body:', JSON.stringify(req.body, null, 2));
+  
   try {
     const authUser = req.user as AuthUser;
+    
+    console.error('👤 Auth User:', JSON.stringify({
+      id: authUser.id,
+      database_id: authUser.database_id,
+      auth_user_id: authUser.auth_user_id,
+      type: authUser.type,
+      email: authUser.email
+    }, null, 2));
     
     // Support pour les deux formats : {participant_id, participant_type} OU {participant_ids, type}
     let finalParticipantIds: string[];
@@ -372,6 +385,10 @@ router.post('/conversations', async (req, res) => {
 
     const currentUserId = authUser.database_id || authUser.auth_user_id || authUser.id;
     
+    console.error('🆔 Current User ID:', currentUserId);
+    console.error('📝 Conversation Type:', conversationType);
+    console.error('👥 Final Participant IDs:', finalParticipantIds);
+    
     const insertData: any = {
       type: conversationType,
       participant_ids: finalParticipantIds,
@@ -392,27 +409,50 @@ router.post('/conversations', async (req, res) => {
     if (req.body.category) insertData.category = req.body.category;
     if (req.body.tags) insertData.tags = req.body.tags;
     
+    console.error('💾 Insert Data COMPLET:', JSON.stringify(insertData, null, 2));
+    console.error('⏳ Appel Supabase INSERT...');
+    
     const { data: conversation, error } = await supabaseAdmin
       .from('conversations')
       .insert(insertData)
       .select()
       .single();
 
+    console.error('📦 Supabase Response:', JSON.stringify({
+      hasData: !!conversation,
+      dataIsNull: conversation === null,
+      data: conversation,
+      hasError: !!error,
+      error: error
+    }, null, 2));
+
     if (error) {
-      console.error('❌ Erreur création conversation:', error);
+      console.error('❌❌❌ ERREUR SUPABASE:', JSON.stringify(error, null, 2));
       return res.status(500).json({
         success: false,
         message: 'Erreur lors de la création de la conversation'
       });
     }
+    
+    if (!conversation) {
+      console.error('⚠️⚠️⚠️ CONVERSATION NULL SANS ERREUR !');
+      console.error('🔍 Vérifier RLS, contraintes UNIQUE, ou triggers');
+      return res.status(500).json({
+        success: false,
+        message: 'Conversation créée mais données non retournées (RLS?)'
+      });
+    }
 
+    console.error('✅✅✅ CONVERSATION CRÉÉE AVEC SUCCÈS:', conversation.id);
     return res.status(201).json({
       success: true,
       data: conversation
     });
 
   } catch (error) {
-    console.error('❌ Erreur création conversation:', error);
+    console.error('💥💥💥 EXCEPTION CATCH:', error);
+    console.error('💥 Error stack:', error instanceof Error ? error.stack : 'No stack');
+    console.error('💥 Error message:', error instanceof Error ? error.message : JSON.stringify(error));
     return res.status(500).json({
       success: false,
       message: 'Erreur serveur'

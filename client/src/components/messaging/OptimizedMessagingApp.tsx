@@ -679,16 +679,47 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
         onClose={() => setShowContactsModal(false)}
         onStartConversation={async (contact) => {
           try {
-            console.log('🔄 Création de conversation avec:', contact);
+            console.error('🚨🚨🚨 ========================================');
+            console.error('🚨 FRONTEND: Début création conversation');
+            console.error('🚨🚨🚨 ========================================');
+            console.error('👤 User actuel:', {
+              id: user?.id,
+              type: user?.type,
+              email: user?.email,
+              database_id: user?.database_id
+            });
+            console.error('👥 Contact sélectionné:', {
+              id: contact.id,
+              type: contact.type,
+              full_name: contact.full_name,
+              email: contact.email
+            });
             
-            // Créer la conversation via l'API
-            const newConversation = await messaging.createConversation({
+            const conversationRequest = {
               type: contact.type === 'admin' ? 'admin_support' : 'expert_client',
               participant_ids: [user?.id || '', contact.id],
               title: contact.full_name
+            };
+            
+            console.error('📋 Requête à envoyer:', JSON.stringify(conversationRequest, null, 2));
+            console.error('⚠️ user?.id vide ?', user?.id === '' || user?.id === undefined);
+            
+            // Créer la conversation via l'API
+            const newConversation = await messaging.createConversation(conversationRequest);
+            
+            console.error('📦 Réponse reçue:', {
+              hasConversation: !!newConversation,
+              isNull: newConversation === null,
+              conversation: newConversation
             });
             
-            console.log('✅ Conversation créée:', newConversation);
+            if (!newConversation) {
+              console.error('❌ CONVERSATION NULL RETOURNÉE !');
+              toast.error('Erreur: conversation non créée');
+              return;
+            }
+            
+            console.error('✅✅✅ CONVERSATION CRÉÉE:', newConversation.id);
             
             // Sélectionner la conversation créée
             await handleConversationSelect(newConversation);
@@ -697,7 +728,8 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
             setShowContactsModal(false);
             toast.success(`Conversation avec ${contact.full_name} créée`);
           } catch (error) {
-            console.error('❌ Erreur création conversation:', error);
+            console.error('💥💥💥 EXCEPTION FRONTEND:', error);
+            console.error('💥 Error message:', error instanceof Error ? error.message : JSON.stringify(error));
             toast.error('Impossible de créer la conversation');
           }
         }}
