@@ -958,7 +958,7 @@ export class NotificationService {
 
     // Vérifier les filtres de type
     if (preferences?.type_filter && 
-        !preferences.type_filter.includes(notification.notification_type)) {
+        !preferences.type_filter.includes(notification.notification_type as any)) {
       return false;
     }
 
