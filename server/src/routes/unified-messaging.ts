@@ -425,13 +425,35 @@ router.post('/conversations', async (req, res) => {
     
     console.error('⏳ Appel Supabase INSERT...');
     
-    // ✅ FIX: Retirer .single() qui peut retourner null sans erreur
-    const { data: conversations, error } = await supabaseAdmin
+    // 🧪 TEST: INSERT simplifié sans colonnes optionnelles pour isoler le problème
+    const minimalData = {
+      type: insertData.type,
+      participant_ids: insertData.participant_ids,
+      title: insertData.title || 'Test',
+      status: 'active',
+      created_by: insertData.created_by
+    };
+    
+    console.error('🧪 Test INSERT minimal (sans tags/access_level/etc):', JSON.stringify(minimalData, null, 2));
+    
+    const { data: testInsert, error: testInsertError } = await supabaseAdmin
       .from('conversations')
-      .insert(insertData)
+      .insert(minimalData)
       .select();
     
-    const conversation = conversations?.[0] || null;
+    console.error('📊 Test INSERT minimal result:', {
+      hasData: !!testInsert,
+      count: testInsert?.length,
+      data: testInsert?.[0],
+      error: testInsertError
+    });
+    
+    // Si le test minimal marche, essayer avec toutes les données
+    const { data: conversations, error } = testInsert ? 
+      await supabaseAdmin.from('conversations').insert(insertData).select() :
+      { data: null, error: testInsertError };
+    
+    const conversation = conversations?.[0] || testInsert?.[0] || null;
 
     console.error('📦 Supabase Response:', JSON.stringify({
       hasData: !!conversation,
