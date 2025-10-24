@@ -2387,9 +2387,38 @@ router.post('/upload', upload.single('file'), async (req, res) => {
 
 // GET /api/unified-messaging/conversations/:id/unread - Alias pour unread-count
 router.get('/conversations/:id/unread', async (req, res) => {
-  // Rediriger vers unread-count
-  req.url = req.url.replace('/unread', '/unread-count');
-  return router.handle(req, res);
+  try {
+    const authUser = req.user as AuthUser;
+    const userId = authUser.database_id || authUser.id;
+    const { id } = req.params;
+
+    // Même logique que unread-count
+    const { count, error } = await supabaseAdmin
+      .from('messages')
+      .select('*', { count: 'exact', head: true })
+      .eq('conversation_id', id)
+      .neq('sender_id', userId)
+      .eq('is_read', false);
+
+    if (error) {
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors du comptage'
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        unread_count: count || 0
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
 });
 
 export default router; 
