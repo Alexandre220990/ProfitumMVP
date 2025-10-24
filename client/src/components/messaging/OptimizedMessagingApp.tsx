@@ -18,7 +18,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { useMessaging } from '@/hooks/use-messaging';
-import { Conversation } from '@/types/messaging';
+import { Conversation, CreateConversationRequest } from '@/types/messaging';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/hooks/use-auth';
@@ -695,7 +695,7 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
               email: contact.email
             });
             
-            const conversationRequest = {
+            const conversationRequest: CreateConversationRequest = {
               type: contact.type === 'admin' ? 'admin_support' : 'expert_client',
               participant_ids: [user?.id || '', contact.id],
               title: contact.full_name
