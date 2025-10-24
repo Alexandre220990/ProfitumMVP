@@ -425,35 +425,53 @@ router.post('/conversations', async (req, res) => {
     
     console.error('⏳ Appel Supabase INSERT...');
     
-    // 🧪 TEST: INSERT simplifié sans colonnes optionnelles pour isoler le problème
-    const minimalData = {
+    // 🧪 TEST DIRECT SQL: Contourner l'API REST Supabase
+    console.error('🧪 Test INSERT via SQL direct (RPC)...');
+    
+    try {
+      // Utiliser une fonction SQL pour insérer directement
+      const { data: sqlResult, error: sqlError } = await supabaseAdmin.rpc('create_conversation_direct', {
+        p_type: insertData.type,
+        p_participant_ids: insertData.participant_ids,
+        p_title: insertData.title,
+        p_status: 'active',
+        p_created_by: insertData.created_by
+      });
+      
+      console.error('📊 SQL RPC result:', {
+        hasData: !!sqlResult,
+        data: sqlResult,
+        error: sqlError
+      });
+    } catch (rpcError) {
+      console.error('⚠️ RPC non disponible (normal), on continue avec INSERT standard');
+    }
+    
+    // INSERT standard SANS tags[] (column ARRAY peut poser problème)
+    console.error('🧪 Test INSERT SANS tags[]...');
+    
+    const cleanInsertData: any = {
       type: insertData.type,
       participant_ids: insertData.participant_ids,
-      title: insertData.title || 'Test',
-      status: 'active',
+      title: insertData.title,
+      status: insertData.status || 'active',
       created_by: insertData.created_by
     };
     
-    console.error('🧪 Test INSERT minimal (sans tags/access_level/etc):', JSON.stringify(minimalData, null, 2));
+    // Ajouter colonnes optionnelles SAUF tags
+    if (insertData.access_level) cleanInsertData.access_level = insertData.access_level;
+    if (insertData.priority) cleanInsertData.priority = insertData.priority;
+    if (insertData.category) cleanInsertData.category = insertData.category;
+    // ⚠️ NE PAS inclure tags[] qui est un ARRAY vide
     
-    const { data: testInsert, error: testInsertError } = await supabaseAdmin
+    console.error('📋 Clean Insert Data (sans tags):', JSON.stringify(cleanInsertData, null, 2));
+    
+    const { data: conversations, error } = await supabaseAdmin
       .from('conversations')
-      .insert(minimalData)
+      .insert(cleanInsertData)
       .select();
     
-    console.error('📊 Test INSERT minimal result:', {
-      hasData: !!testInsert,
-      count: testInsert?.length,
-      data: testInsert?.[0],
-      error: testInsertError
-    });
-    
-    // Si le test minimal marche, essayer avec toutes les données
-    const { data: conversations, error } = testInsert ? 
-      await supabaseAdmin.from('conversations').insert(insertData).select() :
-      { data: null, error: testInsertError };
-    
-    const conversation = conversations?.[0] || testInsert?.[0] || null;
+    const conversation = conversations?.[0] || null;
 
     console.error('📦 Supabase Response:', JSON.stringify({
       hasData: !!conversation,
