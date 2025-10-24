@@ -534,6 +534,18 @@ export const useMessaging = (options: UseMessagingOptions = {}): UseMessagingRet
   // RENDU FINAL
   // ========================================
 
+  // ========================================
+  // WRAPPER POUR CRÉER CONVERSATION + REFRESH
+  // ========================================
+  const createConversationWithRefresh = useCallback(async (request: CreateConversationRequest) => {
+    const newConversation = await messagingService.createConversation(request);
+    
+    // ✅ CRUCIAL: Invalider le cache pour recharger la liste des conversations
+    await refetchConversations();
+    
+    return newConversation;
+  }, [refetchConversations]);
+
   return {
     // État principal
     conversations,
@@ -549,7 +561,7 @@ export const useMessaging = (options: UseMessagingOptions = {}): UseMessagingRet
     // Actions principales
     selectConversation,
     sendMessage,
-    createConversation: messagingService.createConversation.bind(messagingService),
+    createConversation: createConversationWithRefresh,
     markAsRead,
     markConversationAsRead,
     sendTypingIndicator,
