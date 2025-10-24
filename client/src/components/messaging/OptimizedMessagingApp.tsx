@@ -1,5 +1,6 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useSearchParams } from 'react-router-dom';
 import { getUserDisplayName } from '../../../../shared/utils/user-display';
 import { 
   MessageSquare, 
@@ -62,6 +63,7 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
     return title.replace(/\s*-\s*[^\s@]+@[^\s@]+\.[^\s@]+/g, '').trim();
   };
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   
   // État local optimisé
   const [searchQuery, setSearchQuery] = useState('');
@@ -72,6 +74,7 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
   const [showContactsModal, setShowContactsModal] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [participantStatus, setParticipantStatus] = useState<{ is_active: boolean; name: string } | null>(null);
+  const [isAutoOpening, setIsAutoOpening] = useState(false);
 
   // Hook de messagerie optimisé
   const messaging = useMessaging({
@@ -134,6 +137,88 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
       console.error('Erreur vérification statut:', error);
     }
   };
+
+  // ========================================
+  // GESTION DES PARAMÈTRES URL (ouverture automatique depuis autres pages)
+  // ========================================
+  useEffect(() => {
+    const handleUrlParams = async () => {
+      // Vérifier si on a déjà traité les paramètres URL ou si on est en train de le faire
+      if (isAutoOpening) return;
+
+      // Récupérer les paramètres URL
+      const expertId = searchParams.get('expertId');
+      const clientId = searchParams.get('clientId');
+      const apporteurId = searchParams.get('apporteurId');
+      const adminId = searchParams.get('adminId');
+      
+      // Identifier le contact à ouvrir
+      const contactId = expertId || clientId || apporteurId || adminId;
+      const contactType = expertId ? 'expert' : clientId ? 'client' : apporteurId ? 'apporteur' : adminId ? 'admin' : null;
+      
+      if (!contactId || !contactType) return;
+
+      console.log('🔗 Paramètres URL détectés:', { contactId, contactType });
+      setIsAutoOpening(true);
+
+      try {
+        // Attendre que les conversations soient chargées
+        if (messaging.loading || !messaging.conversations || messaging.conversations.length === 0) {
+          console.log('⏳ En attente du chargement des conversations...');
+          return;
+        }
+
+        // Chercher si une conversation existe déjà avec ce contact
+        const existingConversation = messaging.conversations.find(conv => 
+          conv.participant_ids?.includes(contactId)
+        );
+
+        if (existingConversation) {
+          console.log('✅ Conversation existante trouvée, ouverture...');
+          await handleConversationSelect(existingConversation);
+          setSearchParams({}); // Nettoyer les paramètres URL
+        } else {
+          console.log('🆕 Aucune conversation existante, création...');
+          
+          // Récupérer les infos du contact via l'API
+          const token = localStorage.getItem('token');
+          let contactInfo = null;
+          
+          try {
+            const response = await fetch(`/api/messaging/user-info/${contactId}?type=${contactType}`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            
+            if (response.ok) {
+              contactInfo = await response.json();
+            }
+          } catch (err) {
+            console.warn('⚠️ Impossible de récupérer les infos du contact, création avec infos minimales');
+          }
+
+          // Créer la nouvelle conversation
+          const newConversation = await messaging.createConversation({
+            type: contactType === 'admin' ? 'admin_support' : 'expert_client',
+            participant_ids: [user?.id || '', contactId],
+            title: contactInfo?.name || contactInfo?.full_name || `${contactType.charAt(0).toUpperCase() + contactType.slice(1)}`
+          });
+
+          console.log('✅ Conversation créée:', newConversation);
+          await handleConversationSelect(newConversation);
+          toast.success(`Conversation ouverte`);
+          setSearchParams({}); // Nettoyer les paramètres URL
+        }
+      } catch (error) {
+        console.error('❌ Erreur lors de l\'ouverture automatique:', error);
+        toast.error('Impossible d\'ouvrir la conversation');
+        setSearchParams({}); // Nettoyer les paramètres même en cas d'erreur
+      } finally {
+        setIsAutoOpening(false);
+      }
+    };
+
+    handleUrlParams();
+  }, [searchParams, messaging.conversations, messaging.loading, isAutoOpening, messaging, handleConversationSelect, setSearchParams]);
 
   // ========================================
   // GESTION DES MESSAGES
@@ -592,11 +677,29 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
       <ContactsModal 
         isOpen={showContactsModal}
         onClose={() => setShowContactsModal(false)}
-        onStartConversation={(contact) => {
-          // Créer ou ouvrir conversation avec ce contact
-          setShowContactsModal(false);
-          toast.success(`Conversation avec ${contact.full_name} ouverte`);
-          // TODO: Implémenter la création de conversation via l'API
+        onStartConversation={async (contact) => {
+          try {
+            console.log('🔄 Création de conversation avec:', contact);
+            
+            // Créer la conversation via l'API
+            const newConversation = await messaging.createConversation({
+              type: contact.type === 'admin' ? 'admin_support' : 'expert_client',
+              participant_ids: [user?.id || '', contact.id],
+              title: contact.full_name
+            });
+            
+            console.log('✅ Conversation créée:', newConversation);
+            
+            // Sélectionner la conversation créée
+            await handleConversationSelect(newConversation);
+            
+            // Fermer le modal et afficher le succès
+            setShowContactsModal(false);
+            toast.success(`Conversation avec ${contact.full_name} créée`);
+          } catch (error) {
+            console.error('❌ Erreur création conversation:', error);
+            toast.error('Impossible de créer la conversation');
+          }
         }}
         onViewProfile={(contact) => {
           toast.info(`Profil de ${contact.full_name}`);
