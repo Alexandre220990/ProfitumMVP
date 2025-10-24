@@ -65,6 +65,11 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   
+  // ✅ FIX CRITIQUE: Calculer userId une seule fois
+  // Pour les apporteurs avec JWT custom, database_id = ID dans ApporteurAffaires
+  // user.id peut être l'ID auth.users, donc on privilégie database_id
+  const userId = user?.database_id || user?.id || '';
+  
   // État local optimisé
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -116,7 +121,7 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
   // Vérifier si le participant est actif
   const checkParticipantStatus = async (conversation: Conversation) => {
     try {
-      const otherParticipantId = conversation.participant_ids?.find(id => id !== user?.id);
+      const otherParticipantId = conversation.participant_ids?.find(id => id !== userId);
       if (!otherParticipantId) return;
 
       const token = localStorage.getItem('token');
@@ -199,7 +204,7 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
           // Créer la nouvelle conversation
           const newConversation = await messaging.createConversation({
             type: contactType === 'admin' ? 'admin_support' : 'expert_client',
-            participant_ids: [user?.id || '', contactId],
+            participant_ids: [userId, contactId],
             title: contactInfo?.name || contactInfo?.full_name || `${contactType.charAt(0).toUpperCase() + contactType.slice(1)}`
           });
 
@@ -577,16 +582,16 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.1 }}
-                      className={`flex ${message.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}
+                      className={`flex ${message.sender_id === userId ? 'justify-end' : 'justify-start'}`}
                     >
                       <div className={`max-w-md lg:max-w-lg p-4 rounded-2xl shadow-sm ${
-                        message.sender_id === user?.id 
+                        message.sender_id === userId 
                           ? 'bg-blue-500 text-white' 
                           : 'bg-white border border-slate-200'
                       }`}>
                         <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
                         <p className={`text-xs mt-2 ${
-                          message.sender_id === user?.id ? 'text-blue-100' : 'text-slate-500'
+                          message.sender_id === userId ? 'text-blue-100' : 'text-slate-500'
                         }`}>
                           {new Date(message.created_at).toLocaleTimeString('fr-FR', {
                             hour: '2-digit',
@@ -697,12 +702,13 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
             
             const conversationRequest: CreateConversationRequest = {
               type: contact.type === 'admin' ? 'admin_support' : 'expert_client',
-              participant_ids: [user?.id || '', contact.id],
+              participant_ids: [userId, contact.id],
               title: contact.full_name
             };
             
             console.error('📋 Requête à envoyer:', JSON.stringify(conversationRequest, null, 2));
-            console.error('⚠️ user?.id vide ?', user?.id === '' || user?.id === undefined);
+            console.error('⚠️ userId vide ?', userId === '' || userId === undefined);
+            console.error('🆔 userId utilisé:', userId);
             
             // Créer la conversation via l'API
             const newConversation = await messaging.createConversation(conversationRequest);
