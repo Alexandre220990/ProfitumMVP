@@ -70,7 +70,7 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [messageInput, setMessageInput] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
+  // ✅ FIX: Utilise messaging.currentConversation au lieu d'un état local dupliqué
   const [showContactsModal, setShowContactsModal] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [participantStatus, setParticipantStatus] = useState<{ is_active: boolean; name: string } | null>(null);
@@ -98,7 +98,7 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
       participant_ids: conversation.participant_ids
     });
     
-    setSelectedConversation(conversation);
+    // ✅ FIX: Utilise directement messaging.selectConversation() qui met à jour currentConversation
     messaging.selectConversation(conversation);
     
     console.log('✅ Conversation sélectionnée dans l\'état local et le hook');
@@ -247,14 +247,14 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
 
   // Supprimer une conversation
   const handleDeleteConversation = async () => {
-    if (!selectedConversation) return;
+    if (!messaging.currentConversation) return;
 
     try {
       const token = localStorage.getItem('token');
       const isAdmin = user?.type === 'admin';
       const endpoint = isAdmin 
-        ? `/api/messaging/conversations/${selectedConversation.id}/hard`
-        : `/api/messaging/conversations/${selectedConversation.id}`;
+        ? `/api/messaging/conversations/${messaging.currentConversation.id}/hard`
+        : `/api/messaging/conversations/${messaging.currentConversation.id}`;
 
       const response = await fetch(endpoint, {
         method: 'DELETE',
@@ -267,7 +267,7 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
         toast.success(
           isAdmin ? "Conversation supprimée définitivement" : "Conversation masquée"
         );
-        setSelectedConversation(null);
+        messaging.selectConversation(null);
         setShowDeleteDialog(false);
         // Forcer un rechargement de la page pour actualiser la liste
         window.location.reload();
@@ -300,7 +300,7 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
         transition={{ delay: index * 0.1 }}
         whileHover={{ backgroundColor: 'rgb(241 245 249)' }}
         className={`p-4 cursor-pointer transition-colors border-b border-slate-100 ${
-          selectedConversation?.id === conversation.id ? 'bg-blue-50 border-blue-200' : ''
+          messaging.currentConversation?.id === conversation.id ? 'bg-blue-50 border-blue-200' : ''
         }`}
         onClick={() => handleConversationSelect(conversation)}
       >
@@ -404,7 +404,7 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
         )}
       </>
     );
-  }, [selectedConversation, isSidebarOpen, handleConversationSelect, cleanConversationTitle]);
+  }, [messaging.currentConversation, isSidebarOpen, handleConversationSelect, cleanConversationTitle]);
 
   // ========================================
   // RENDU PRINCIPAL - DESIGN MESSAGERIE MODERNE
@@ -484,21 +484,21 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
 
       {/* Zone principale de messagerie */}
       <div className="flex-1 flex flex-col bg-white">
-        {selectedConversation ? (
+        {messaging.currentConversation ? (
           <>
             {/* Header de conversation */}
             <div className="p-4 border-b border-slate-200 bg-white">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Avatar className="w-10 h-10">
-                    <AvatarImage src={selectedConversation.avatar} />
+                    <AvatarImage src={messaging.currentConversation.avatar} />
                     <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-semibold">
-                      {selectedConversation.title?.charAt(0).toUpperCase()}
+                      {messaging.currentConversation.title?.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <div>
                     <h3 className="font-semibold text-slate-900 flex items-center gap-2">
-                      {cleanConversationTitle(selectedConversation.title)}
+                      {cleanConversationTitle(messaging.currentConversation.title)}
                       {participantStatus && !participantStatus.is_active && (
                         <Badge variant="destructive" className="text-xs">
                           Désactivé
