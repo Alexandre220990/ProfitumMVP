@@ -512,15 +512,15 @@ router.post('/conversations', async (req, res) => {
       
       if (selectError || !foundConv) {
         console.error('❌ SELECT fallback échoué:', selectError);
-        return res.status(500).json({
-          success: false,
+      return res.status(500).json({
+        success: false,
           message: 'Conversation créée mais impossible à récupérer (RLS ou erreur DB)'
-        });
-      }
-      
+      });
+    }
+
       console.error('✅ Conversation récupérée via SELECT fallback:', foundConv.id);
-      return res.status(201).json({
-        success: true,
+    return res.status(201).json({
+      success: true,
         data: foundConv
       });
     }
@@ -584,16 +584,6 @@ router.get('/conversations/:id/messages', async (req, res) => {
     // Vérifier l'accès à la conversation
     const userId = authUser.database_id || authUser.auth_user_id || authUser.id;
     
-    console.error('🔍 GET Messages - Début vérification:', { 
-      conversationId,
-      userId,
-      authUser: {
-        database_id: authUser.database_id,
-        id: authUser.id,
-        type: authUser.type
-      }
-    });
-    
     // ✅ FIX : .single() retourne un ARRAY, pas un objet !
     const { data: conversationArray, error: convError } = await supabaseAdmin
       .from('conversations')
@@ -601,14 +591,7 @@ router.get('/conversations/:id/messages', async (req, res) => {
       .eq('id', conversationId)
       .single();
 
-    console.error('📦 Supabase SELECT result:', {
-      hasData: !!conversationArray,
-      isArray: Array.isArray(conversationArray),
-      error: convError
-    });
-
     if (convError || !conversationArray) {
-      console.error('❌ Conversation non trouvée:', { conversationId, error: convError });
       return res.status(404).json({
         success: false,
         message: 'Conversation non trouvée'
@@ -617,15 +600,8 @@ router.get('/conversations/:id/messages', async (req, res) => {
 
     // ✅ FIX CRITIQUE : Accéder à l'index [0] car .single() retourne un array
     const conversation = Array.isArray(conversationArray) ? conversationArray[0] : conversationArray;
-    
-    console.error('🔍 Conversation (après extraction):', {
-      id: conversation?.id,
-      participant_ids: conversation?.participant_ids,
-      is_array: Array.isArray(conversation?.participant_ids)
-    });
 
     if (!conversation) {
-      console.error('❌ Conversation vide après extraction');
       return res.status(404).json({
         success: false,
         message: 'Conversation non trouvée'
@@ -637,40 +613,20 @@ router.get('/conversations/:id/messages', async (req, res) => {
       ? conversation.participant_ids 
       : [];
     
-    console.error('✅ participantIds final:', participantIds);
-    
-    if (participantIds.length === 0) {
-      console.error('🚨 Conversation sans participants !');
-      return res.status(500).json({
-        success: false,
-        message: 'Conversation corrompue (aucun participant)'
-      });
-    }
-    
-    if (!participantIds.includes(userId)) {
-      console.error('❌ Utilisateur non autorisé:', { userId, participantIds });
+    if (participantIds.length === 0 || !participantIds.includes(userId)) {
       return res.status(403).json({
         success: false,
         message: 'Accès non autorisé'
       });
     }
-    
-    console.error('✅ Autorisé, chargement messages...');
 
     // Récupérer les messages
-    // ✅ FIX : Retirer la jointure message_files qui cause une erreur de relation
     const { data: messages, error, count } = await supabaseAdmin
       .from('messages')
       .select('*')
       .eq('conversation_id', conversationId)
       .order('created_at', { ascending: false })
       .range(offset, offset + Number(limit) - 1);
-    
-    console.error('📨 Messages récupérés:', {
-      count: messages?.length || 0,
-      hasError: !!error,
-      error
-    });
 
     if (error) {
       console.error('❌ Erreur récupération messages:', error);
@@ -738,22 +694,13 @@ router.post('/conversations/:id/messages', async (req, res) => {
     // Vérifier l'accès à la conversation
     const userId = authUser.database_id || authUser.auth_user_id || authUser.id;
     
-    console.error('🔍 POST Message - Début:', { conversationId, userId });
-    
     const { data: conversationArray, error: convError } = await supabaseAdmin
       .from('conversations')
       .select('*')
       .eq('id', conversationId)
       .single();
 
-    console.error('📦 Conversation SELECT (POST):', {
-      hasData: !!conversationArray,
-      isArray: Array.isArray(conversationArray),
-      error: convError
-    });
-
     if (convError || !conversationArray) {
-      console.error('❌ Conversation non trouvée (POST):', { conversationId, error: convError });
       return res.status(404).json({
         success: false,
         message: 'Conversation non trouvée'
@@ -762,14 +709,8 @@ router.post('/conversations/:id/messages', async (req, res) => {
 
     // ✅ FIX CRITIQUE : .single() retourne un array, accéder à [0]
     const conversation = Array.isArray(conversationArray) ? conversationArray[0] : conversationArray;
-    
-    console.error('🔍 Conversation (POST après extraction):', {
-      id: conversation?.id,
-      participant_ids: conversation?.participant_ids
-    });
 
     if (!conversation) {
-      console.error('❌ Conversation vide après extraction (POST)');
       return res.status(404).json({
         success: false,
         message: 'Conversation non trouvée'
@@ -780,25 +721,12 @@ router.post('/conversations/:id/messages', async (req, res) => {
       ? conversation.participant_ids 
       : [];
     
-    console.error('✅ participantIds final (POST):', participantIds);
-    
-    if (participantIds.length === 0) {
-      console.error('🚨 Conversation sans participants (POST)');
-      return res.status(500).json({
-        success: false,
-        message: 'Conversation corrompue'
-      });
-    }
-    
-    if (!participantIds.includes(userId)) {
-      console.error('❌ Non autorisé (POST):', { userId, participantIds });
+    if (participantIds.length === 0 || !participantIds.includes(userId)) {
       return res.status(403).json({
         success: false,
         message: 'Accès non autorisé'
       });
     }
-    
-    console.error('✅ Autorisé pour POST message');
 
     // Créer le message
     const senderId = userId;
@@ -1590,15 +1518,21 @@ router.get('/contacts', async (req, res) => {
       }));
 
       // Admin
-      const { data: adminList } = await supabaseAdmin
+      const { data: adminList, error: adminError } = await supabaseAdmin
         .from('Admin')
         .select('id, first_name, last_name, email')
         .limit(1);
 
+      console.log(`📋 Admin récupérés pour apporteur:`, {
+        count: adminList?.length || 0,
+        error: adminError,
+        data: adminList
+      });
+
       admins = (adminList || []).map(a => ({ 
         ...a, 
         type: 'admin', 
-        full_name: `${a.first_name || ''} ${a.last_name || ''}`.trim() || a.email 
+        full_name: `${a.first_name || ''} ${a.last_name || ''}`.trim() || a.email || 'Support Admin'
       }));
     }
 
@@ -1609,6 +1543,13 @@ router.get('/contacts', async (req, res) => {
     clients.sort(sortByActivity);
     experts.sort(sortByActivity);
     apporteurs.sort(sortByActivity);
+
+    console.log(`📊 Contacts pour ${userType}:`, {
+      clients: clients.length,
+      experts: experts.length,
+      apporteurs: apporteurs.length,
+      admins: admins.length
+    });
 
     return res.json({
       success: true,
@@ -2092,8 +2033,6 @@ router.put('/conversations/:id/read', async (req, res) => {
     const { id } = req.params;
     const userId = authUser.database_id || authUser.id;
 
-    console.error(`📖 Marquage conversation ${id} comme lue par ${userId}`);
-
     // Vérifier que l'utilisateur est participant
     const { data: convArray } = await supabaseAdmin
       .from('conversations')
@@ -2105,10 +2044,7 @@ router.put('/conversations/:id/read', async (req, res) => {
     const conv = Array.isArray(convArray) ? convArray[0] : convArray;
     const participantIds = Array.isArray(conv?.participant_ids) ? conv.participant_ids : [];
 
-    console.error('🔍 PUT /read - participantIds:', participantIds);
-
     if (!conv || participantIds.length === 0 || !participantIds.includes(userId)) {
-      console.error('❌ Non autorisé PUT /read:', { userId, participantIds });
       return res.status(403).json({
         success: false,
         message: 'Non autorisé'

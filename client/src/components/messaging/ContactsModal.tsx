@@ -99,6 +99,13 @@ export const ContactsModal: React.FC<ContactsModalProps> = ({
 
       if (response.ok) {
         const result = await response.json();
+        console.error('📋 Contacts chargés:', {
+          clients: result.data?.clients?.length || 0,
+          experts: result.data?.experts?.length || 0,
+          apporteurs: result.data?.apporteurs?.length || 0,
+          admins: result.data?.admins?.length || 0
+        });
+        console.error('👤 Admins:', result.data?.admins);
         setContacts(result.data);
       }
     } catch (error) {
