@@ -156,18 +156,21 @@ class MessagingService {
   }
 
   private async setupOptimizedRealtimeSubscriptions(): Promise<void> {
-    // Channel optimisé pour les messages (Addy Osmani - Performance)
+    console.error('🔄 Setup Realtime subscriptions...');
+    
+    // ✅ SIMPLIFICATION : Écouter TOUS les messages, filtrer côté client
+    // Plus simple et plus robuste que de filtrer avec getUserConversationIds()
     const messagesChannel = supabase
-      .channel('messaging-messages')
+      .channel('messaging-simple')
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'messages',
-          filter: `conversation_id=in.(${await this.getUserConversationIds()})`
+          table: 'messages'
         },
         (payload: RealtimePostgresChangesPayload<Message>) => {
+          console.error('📨 Message Realtime:', payload.eventType, payload.new);
           this.handleMessageChange(payload);
         }
       )
@@ -176,10 +179,10 @@ class MessagingService {
         {
           event: '*',
           schema: 'public',
-          table: 'conversations',
-          filter: `participant_ids=cs.{${this.currentUserId}}`
+          table: 'conversations'
         },
         (payload: RealtimePostgresChangesPayload<Conversation>) => {
+          console.error('💬 Conversation Realtime:', payload.eventType, payload.new);
           this.handleConversationChange(payload);
         }
       )
@@ -188,16 +191,17 @@ class MessagingService {
         {
           event: '*',
           schema: 'public',
-          table: 'typing_indicators',
-          filter: `conversation_id=in.(${await this.getUserConversationIds()})`
+          table: 'typing_indicators'
         },
         (payload: RealtimePostgresChangesPayload<TypingIndicator>) => {
+          console.error('⌨️ Typing Realtime:', payload.eventType, payload.new);
           this.handleTypingChange(payload);
         }
       );
 
     await messagesChannel.subscribe();
     this.channels.set('messages', messagesChannel);
+    console.error('✅ Realtime subscriptions activées');
 
     // ========================================
     // CHANNEL CALENDRIER REAL-TIME
@@ -290,18 +294,27 @@ class MessagingService {
       }
 
       const result = await response.json();
-      console.log('✅ Conversations chargées:', result.data?.length || 0);
       
       if (!result.success) {
         throw new Error(result.message || 'Erreur chargement conversations');
       }
       
-      const conversations = Array.isArray(result.data) ? result.data : [];
-      console.log('📦 Conversations reçues:', conversations.length, 'conversations');
-      console.log('📊 Type de données:', typeof result.data, Array.isArray(result.data) ? 'ARRAY ✅' : 'NOT ARRAY ⚠️');
+      // ✅ FIX CRITIQUE : result.data contient {conversations: [], pagination: {}}
+      // Extraire uniquement le tableau conversations
+      const conversations = Array.isArray(result.data?.conversations) 
+        ? result.data.conversations 
+        : (Array.isArray(result.data) ? result.data : []);
       
-      if (!Array.isArray(result.data) && result.data) {
-        console.warn('⚠️ result.data n\'est pas un array:', result.data);
+      console.log('✅ Conversations chargées:', conversations.length);
+      console.log('📦 Conversations reçues:', conversations.map((c: any) => ({ 
+        id: c.id, 
+        title: c.title, 
+        type: c.type,
+        participant_ids: c.participant_ids 
+      })));
+      
+      if (conversations.length === 0) {
+        console.warn('⚠️ Aucune conversation trouvée. Vérifier filtres ou permissions.');
       }
       
       return conversations;
@@ -662,7 +675,7 @@ class MessagingService {
 
   async getMessages(conversationId: string, limit = 50, offset = 0): Promise<Message[]> {
     try {
-      console.log('📨 Chargement messages via API HTTP pour conversation:', conversationId);
+      console.error('📨 Chargement messages via API HTTP pour conversation:', conversationId);
       
       const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
       const apiUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
@@ -675,6 +688,8 @@ class MessagingService {
         credentials: 'include'
       });
 
+      console.error('📡 Response status:', response.status, response.statusText);
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ Erreur API messages:', response.status, errorText);
@@ -682,14 +697,28 @@ class MessagingService {
       }
 
       const result = await response.json();
-      console.log('✅ Messages chargés:', result.data?.length || 0);
+      console.error('📦 Response JSON:', JSON.stringify(result, null, 2));
       
       if (!result.success) {
         throw new Error(result.message || 'Erreur chargement messages');
       }
 
-      const messages = result.data || [];
-      console.log('📦 Messages reçus:', messages.map((m: any) => ({ id: m.id, content: m.content.substring(0, 30) })));
+      // ✅ FIX : result.data contient {messages: [], conversation: {}, pagination: {}}
+      const messages = Array.isArray(result.data?.messages) 
+        ? result.data.messages 
+        : (Array.isArray(result.data) ? result.data : []);
+
+      console.error('✅ Messages chargés:', messages.length);
+      console.error('📦 Messages reçus:', messages.map((m: any) => ({ 
+        id: m.id, 
+        content: m.content?.substring(0, 50),
+        sender_id: m.sender_id,
+        created_at: m.created_at
+      })));
+
+      if (messages.length === 0) {
+        console.warn('⚠️ Aucun message dans cette conversation');
+      }
 
       // Déchiffrer les messages si nécessaire
       const decryptedMessages = await Promise.all(
@@ -703,19 +732,22 @@ class MessagingService {
 
       return decryptedMessages;
     } catch (error) {
-      console.error('❌ Erreur récupération messages:', error);
+      console.error('💥 EXCEPTION récupération messages:', error);
+      console.error('💥 Error message:', error instanceof Error ? error.message : JSON.stringify(error));
       throw error;
     }
   }
 
   async sendMessage(request: SendMessageRequest): Promise<Message> {
     try {
-      console.log('📤 Envoi message via API HTTP...');
+      console.error('📤 Envoi message via API HTTP...');
+      console.error('📋 Request:', JSON.stringify(request, null, 2));
       
       const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
       const apiUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
       
-      const response = await fetch(`${apiUrl}/api/unified-messaging/messages`, {
+      // ✅ FIX CRITIQUE : Utiliser la bonne route avec conversation_id dans l'URL
+      const response = await fetch(`${apiUrl}/api/unified-messaging/conversations/${request.conversation_id}/messages`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -723,21 +755,23 @@ class MessagingService {
         },
         credentials: 'include',
         body: JSON.stringify({
-          conversation_id: request.conversation_id,
           content: request.content,
           message_type: request.message_type || 'text',
           metadata: request.metadata || {}
         })
       });
 
+      console.error('📡 Response status:', response.status, response.statusText);
+
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ Erreur envoi message:', response.status, errorText);
+        console.error('❌ Erreur HTTP envoi message:', response.status, errorText);
         throw new Error(`Erreur ${response.status}: ${errorText}`);
       }
 
       const result = await response.json();
-      console.log('✅ Message envoyé:', result.data?.id);
+      console.error('📦 Response JSON:', JSON.stringify(result, null, 2));
+      console.error('✅ Message envoyé:', result.data?.id);
       
       if (!result.success) {
         throw new Error(result.message || 'Erreur envoi message');
@@ -745,15 +779,22 @@ class MessagingService {
 
       return result.data;
     } catch (error) {
-      console.error('Erreur envoi message:', error);
+      console.error('💥 EXCEPTION envoi message:', error);
+      console.error('💥 Error message:', error instanceof Error ? error.message : JSON.stringify(error));
       throw error;
     }
   }
 
   async createConversation(request: CreateConversationRequest): Promise<Conversation> {
     try {
+      console.error('🚀 SERVICE: Début création conversation');
+      console.error('📋 REQUEST:', JSON.stringify(request, null, 2));
+      
       const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
       const apiUrl = import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app';
+      
+      console.error('🔑 Token présent:', !!token);
+      console.error('🌐 API URL:', apiUrl);
       
       const response = await fetch(`${apiUrl}/api/unified-messaging/conversations`, {
         method: 'POST',
@@ -777,15 +818,29 @@ class MessagingService {
         })
       });
 
+      console.error('📡 Response status:', response.status, response.statusText);
+
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`Erreur création conversation: ${errorText}`);
+        console.error('❌ Erreur HTTP:', errorText);
+        throw new Error(`Erreur création conversation (${response.status}): ${errorText}`);
       }
 
       const result = await response.json();
+      console.error('📦 Response JSON:', JSON.stringify(result, null, 2));
+      
+      // ✅ VÉRIFICATION CRITIQUE : data ne doit pas être null
+      if (!result.data) {
+        console.error('❌❌❌ result.data est NULL alors que success = true !');
+        console.error('🔍 Response complète:', result);
+        throw new Error('Conversation non créée : données manquantes dans la réponse serveur');
+      }
+      
+      console.error('✅ Conversation créée avec succès:', result.data.id);
       return result.data;
     } catch (error) {
-      console.error('Erreur création conversation:', error);
+      console.error('💥 EXCEPTION dans createConversation:', error);
+      console.error('💥 Error message:', error instanceof Error ? error.message : JSON.stringify(error));
       throw error;
     }
   }

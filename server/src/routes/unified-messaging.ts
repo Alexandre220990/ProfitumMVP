@@ -447,8 +447,10 @@ router.post('/conversations', async (req, res) => {
       console.error('⚠️ RPC non disponible (normal), on continue avec INSERT standard');
     }
     
-    // INSERT standard SANS tags[] (column ARRAY peut poser problème)
-    console.error('🧪 Test INSERT SANS tags[]...');
+    // ========================================
+    // STRATÉGIE ROBUSTE : INSERT + SELECT SÉPARÉ
+    // ========================================
+    console.error('🧪 Test INSERT avec SELECT séparé pour contourner RLS...');
     
     const cleanInsertData: any = {
       type: insertData.type,
@@ -462,47 +464,98 @@ router.post('/conversations', async (req, res) => {
     if (insertData.access_level) cleanInsertData.access_level = insertData.access_level;
     if (insertData.priority) cleanInsertData.priority = insertData.priority;
     if (insertData.category) cleanInsertData.category = insertData.category;
-    // ⚠️ NE PAS inclure tags[] qui est un ARRAY vide
+    if (insertData.dossier_id) cleanInsertData.dossier_id = insertData.dossier_id;
+    if (insertData.client_id) cleanInsertData.client_id = insertData.client_id;
+    if (insertData.expert_id) cleanInsertData.expert_id = insertData.expert_id;
+    if (insertData.apporteur_id) cleanInsertData.apporteur_id = insertData.apporteur_id;
     
-    console.error('📋 Clean Insert Data (sans tags):', JSON.stringify(cleanInsertData, null, 2));
+    console.error('📋 Clean Insert Data:', JSON.stringify(cleanInsertData, null, 2));
     
-    const { data: conversations, error } = await supabaseAdmin
+    // ÉTAPE 1 : INSERT SANS .select() pour éviter le problème RLS
+    const { data: insertedData, error: insertError } = await supabaseAdmin
       .from('conversations')
       .insert(cleanInsertData)
-      .select();
-    
-    const conversation = conversations?.[0] || null;
+      .select('id')  // Retourner uniquement l'ID pour minimiser risques RLS
+      .single();
 
-    console.error('📦 Supabase Response:', JSON.stringify({
-      hasData: !!conversation,
-      dataIsNull: conversation === null,
-      conversationsArray: conversations,
-      data: conversation,
-      hasError: !!error,
-      error: error
+    console.error('📦 INSERT Response:', JSON.stringify({
+      hasData: !!insertedData,
+      data: insertedData,
+      hasError: !!insertError,
+      error: insertError
     }, null, 2));
 
-    if (error) {
-      console.error('❌❌❌ ERREUR SUPABASE:', JSON.stringify(error, null, 2));
+    if (insertError) {
+      console.error('❌❌❌ ERREUR INSERT SUPABASE:', JSON.stringify(insertError, null, 2));
       return res.status(500).json({
         success: false,
-        message: 'Erreur lors de la création de la conversation'
+        message: 'Erreur lors de la création de la conversation',
+        error: insertError.message
       });
     }
     
-    if (!conversation) {
-      console.error('⚠️⚠️⚠️ CONVERSATION NULL SANS ERREUR !');
-      console.error('🔍 Vérifier RLS, contraintes UNIQUE, ou triggers');
-      return res.status(500).json({
-        success: false,
-        message: 'Conversation créée mais données non retournées (RLS?)'
+    if (!insertedData || !insertedData.id) {
+      console.error('⚠️⚠️⚠️ INSERT RETOURNÉ NULL !');
+      console.error('🔍 Possible : RLS bloque .select(), contrainte UNIQUE, ou trigger');
+      
+      // FALLBACK : Chercher la conversation dans la DB directement
+      console.error('🔄 Tentative de récupération via SELECT direct...');
+      const { data: foundConv, error: selectError } = await supabaseAdmin
+        .from('conversations')
+        .select('*')
+        .eq('created_by', cleanInsertData.created_by)
+        .eq('type', cleanInsertData.type)
+        .contains('participant_ids', cleanInsertData.participant_ids)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (selectError || !foundConv) {
+        console.error('❌ SELECT fallback échoué:', selectError);
+        return res.status(500).json({
+          success: false,
+          message: 'Conversation créée mais impossible à récupérer (RLS ou erreur DB)'
+        });
+      }
+      
+      console.error('✅ Conversation récupérée via SELECT fallback:', foundConv.id);
+      return res.status(201).json({
+        success: true,
+        data: foundConv
       });
     }
 
-    console.error('✅✅✅ CONVERSATION CRÉÉE AVEC SUCCÈS:', conversation.id);
+    // ÉTAPE 2 : SELECT complet séparé avec l'ID
+    console.error('📥 Récupération conversation complète avec ID:', insertedData.id);
+    const { data: fullConversation, error: selectError } = await supabaseAdmin
+      .from('conversations')
+      .select('*')
+      .eq('id', insertedData.id)
+      .single();
+    
+    console.error('📦 SELECT complet Response:', JSON.stringify({
+      hasData: !!fullConversation,
+      data: fullConversation,
+      hasError: !!selectError,
+      error: selectError
+    }, null, 2));
+
+    if (selectError || !fullConversation) {
+      console.error('❌ SELECT complet échoué:', selectError);
+      // Retourner au moins l'ID si on l'a
+      return res.status(201).json({
+        success: true,
+        data: {
+          id: insertedData.id,
+          ...cleanInsertData
+        }
+      });
+    }
+
+    console.error('✅✅✅ CONVERSATION CRÉÉE AVEC SUCCÈS:', fullConversation.id);
     return res.status(201).json({
       success: true,
-      data: conversation
+      data: fullConversation
     });
 
   } catch (error) {
