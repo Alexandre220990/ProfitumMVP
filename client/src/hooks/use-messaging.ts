@@ -399,10 +399,12 @@ export const useMessaging = (options: UseMessagingOptions = {}): UseMessagingRet
     setSending(true);
     try {
       await sendMessageMutation.mutateAsync({ content, files, metadata });
+      // ✅ FIX : Forcer le rechargement des messages après envoi
+      await refetchMessages();
     } finally {
       setSending(false);
     }
-  }, [currentConversation, sendMessageMutation]);
+  }, [currentConversation, sendMessageMutation, refetchMessages]);
 
   const sendTypingIndicator = useCallback((isTyping: boolean) => {
     if (!currentConversation || !options.enableTyping) return;

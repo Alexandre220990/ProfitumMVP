@@ -298,7 +298,7 @@ export const InstantMessaging: React.FC<InstantMessagingProps> = ({
                       className={cn("max-w-xs lg:max-w-md p-3 rounded-lg", 
                         message.senderType === 'client'
                           ? "bg-blue-500 text-white"
-                          : "bg-gray-100 dark:bg-gray-800"
+                          : "bg-gray-100 text-gray-900 border border-gray-200 dark:bg-gray-800"
                       )}
                     >
                       { /* Reply indicator */ }

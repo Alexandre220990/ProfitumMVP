@@ -589,11 +589,11 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
                       <div className={`max-w-md lg:max-w-lg p-4 rounded-2xl shadow-sm ${
                         message.sender_id === userId 
                           ? 'bg-blue-500 text-white' 
-                          : 'bg-white border border-slate-200'
+                          : 'bg-gray-100 text-gray-900 border border-gray-200'
                       }`}>
                         <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
                         <p className={`text-xs mt-2 ${
-                          message.sender_id === userId ? 'text-blue-100' : 'text-slate-500'
+                          message.sender_id === userId ? 'text-blue-100' : 'text-gray-500'
                         }`}>
                           {new Date(message.created_at).toLocaleTimeString('fr-FR', {
                             hour: '2-digit',

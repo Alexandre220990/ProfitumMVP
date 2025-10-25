@@ -274,7 +274,7 @@ export const ImprovedAdminMessaging: React.FC<ImprovedAdminMessagingProps> = ({
     if (!messageInput.trim() || !selectedConversation) return;
 
     try {
-      const response = await fetch(`${config.API_URL}/api/messaging/conversations/${selectedConversation.id}/messages`, {
+      const response = await fetch(`${config.API_URL}/api/unified-messaging/conversations/${selectedConversation.id}/messages`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -288,8 +288,14 @@ export const ImprovedAdminMessaging: React.FC<ImprovedAdminMessagingProps> = ({
 
       if (response.ok) {
         const result = await response.json();
+        // ✅ FIX : Ajouter le nouveau message et recharger pour avoir le dernier état
         setMessages(prev => [...prev, result.data]);
         setMessageInput('');
+        
+        // ✅ FORCER le rechargement pour assurer la cohérence
+        setTimeout(() => {
+          loadMessages(selectedConversation);
+        }, 100);
       } else {
         const error = await response.json();
         toast.error(error.message || 'Erreur lors de l\'envoi du message');
@@ -608,13 +614,13 @@ export const ImprovedAdminMessaging: React.FC<ImprovedAdminMessagingProps> = ({
                     <div
                       className={`max-w-[70%] rounded-lg p-3 ${
                         message.sender_id === user?.id
-                          ? 'bg-purple-600 text-white'
-                          : 'bg-white text-gray-900 border border-gray-200'
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-gray-100 text-gray-900 border border-gray-200'
                       }`}
                     >
                       <p className="text-sm">{message.content}</p>
                       <p className={`text-xs mt-1 ${
-                        message.sender_id === user?.id ? 'text-purple-200' : 'text-gray-400'
+                        message.sender_id === user?.id ? 'text-blue-100' : 'text-gray-500'
                       }`}>
                         {new Date(message.created_at).toLocaleTimeString('fr-FR', {
                           hour: '2-digit',
