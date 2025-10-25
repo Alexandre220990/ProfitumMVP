@@ -125,7 +125,7 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
       if (!otherParticipantId) return;
 
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/messaging/user-status/${otherParticipantId}`, {
+      const response = await fetch(`/api/unified-messaging/user-status/${otherParticipantId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -258,8 +258,8 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
       const token = localStorage.getItem('token');
       const isAdmin = user?.type === 'admin';
       const endpoint = isAdmin 
-        ? `/api/messaging/conversations/${messaging.currentConversation.id}/hard`
-        : `/api/messaging/conversations/${messaging.currentConversation.id}`;
+        ? `/api/unified-messaging/conversations/${messaging.currentConversation.id}/hard`
+        : `/api/unified-messaging/conversations/${messaging.currentConversation.id}`;
 
       const response = await fetch(endpoint, {
         method: 'DELETE',
