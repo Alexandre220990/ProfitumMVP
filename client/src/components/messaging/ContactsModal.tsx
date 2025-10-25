@@ -99,7 +99,7 @@ export const ContactsModal: React.FC<ContactsModalProps> = ({
 
       if (response.ok) {
         const result = await response.json();
-        console.error('📋 Contacts chargés:', {
+         console.error('📋 Contacts chargés:', {
           clients: result.data?.clients?.length || 0,
           experts: result.data?.experts?.length || 0,
           apporteurs: result.data?.apporteurs?.length || 0,
@@ -141,16 +141,6 @@ export const ContactsModal: React.FC<ContactsModalProps> = ({
       admin: 'bg-gray-600'
     };
     return colors[type] || 'bg-gray-500';
-  };
-
-  const getUserTypeLabel = (type: string) => {
-    const labels: Record<string, string> = {
-      client: 'Client',
-      expert: 'Expert',
-      apporteur: 'Apporteur',
-      admin: 'Admin'
-    };
-    return labels[type] || type;
   };
 
   // Ordre des groupes selon le type d'utilisateur
