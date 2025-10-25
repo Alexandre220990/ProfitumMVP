@@ -76,9 +76,9 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
     },
     {
       name: 'Simulation',
-      href: '/simulateur',
+      href: '/simulateur-client',
       icon: Calculator,
-      current: location.pathname === '/simulateur'
+      current: location.pathname === '/simulateur-client'
     },
     {
       name: 'Mes Audits',
