@@ -1362,7 +1362,7 @@ router.get('/contacts', async (req, res) => {
         supabaseAdmin.from('Client').select('id, first_name, last_name, email, company_name, is_active, created_at').eq('is_active', true).order('company_name'),
         supabaseAdmin.from('Expert').select('id, first_name, last_name, email, company_name, is_active, created_at').eq('is_active', true).order('last_name'),
         supabaseAdmin.from('ApporteurAffaires').select('id, first_name, last_name, email, company_name, is_active, created_at').eq('is_active', true).order('last_name'),
-        supabaseAdmin.from('Admin').select('id, first_name, last_name, email, created_at').order('last_name')
+        supabaseAdmin.from('Admin').select('id, name, email, created_at').order('name')
       ]);
 
       clients = (clientsRes.data || []).map(c => ({ 
@@ -1383,7 +1383,7 @@ router.get('/contacts', async (req, res) => {
       admins = (adminsRes.data || []).map(a => ({ 
         ...a, 
         type: 'admin', 
-        full_name: `${a.first_name || ''} ${a.last_name || ''}`.trim() || a.email 
+        full_name: a.name || a.email || 'Support Admin'
       }));
 
     } else if (userType === 'client') {
@@ -1436,13 +1436,13 @@ router.get('/contacts', async (req, res) => {
       // Admin support
       const { data: adminList } = await supabaseAdmin
         .from('Admin')
-        .select('id, first_name, last_name, email')
+        .select('id, name, email')
         .limit(1);
 
       admins = (adminList || []).map(a => ({ 
         ...a, 
         type: 'admin', 
-        full_name: `${a.first_name || ''} ${a.last_name || ''}`.trim() || a.email 
+        full_name: a.name || a.email || 'Support Admin'
       }));
 
     } else if (userType === 'expert') {
@@ -1492,13 +1492,13 @@ router.get('/contacts', async (req, res) => {
       // Admin
       const { data: adminList } = await supabaseAdmin
         .from('Admin')
-        .select('id, first_name, last_name, email')
+        .select('id, name, email')
         .limit(1);
 
       admins = (adminList || []).map(a => ({ 
         ...a, 
         type: 'admin', 
-        full_name: `${a.first_name || ''} ${a.last_name || ''}`.trim() || a.email 
+        full_name: a.name || a.email || 'Support Admin'
       }));
 
     } else if (userType === 'apporteur') {
@@ -1520,7 +1520,7 @@ router.get('/contacts', async (req, res) => {
       // Admin
       const { data: adminList, error: adminError } = await supabaseAdmin
         .from('Admin')
-        .select('id, first_name, last_name, email')
+        .select('id, name, email')
         .limit(1);
 
       console.log(`📋 Admin récupérés pour apporteur:`, {
@@ -1532,7 +1532,7 @@ router.get('/contacts', async (req, res) => {
       admins = (adminList || []).map(a => ({ 
         ...a, 
         type: 'admin', 
-        full_name: `${a.first_name || ''} ${a.last_name || ''}`.trim() || a.email || 'Support Admin'
+        full_name: a.name || a.email || 'Support Admin'
       }));
     }
 
