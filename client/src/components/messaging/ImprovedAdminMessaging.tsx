@@ -304,7 +304,7 @@ export const ImprovedAdminMessaging: React.FC<ImprovedAdminMessagingProps> = ({
       console.error('Erreur envoi message:', error);
       toast.error('Erreur lors de l\'envoi du message');
     }
-  }, [messageInput, selectedConversation]);
+  }, [messageInput, selectedConversation, loadMessages]);
 
   // ========================================
   // NOUVELLE CONVERSATION
