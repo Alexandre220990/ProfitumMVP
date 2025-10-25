@@ -284,7 +284,9 @@ export const InstantMessaging: React.FC<InstantMessagingProps> = ({
             { /* Messages */ }
             <ScrollArea className="flex-1 p-4">
               <div className="space-y-4">
-                { conversationMessages.map((message) => (
+                { conversationMessages
+                  .filter(message => message && message.id)
+                  .map((message) => (
                   <div
                     key={message.id}
                     className={cn(
