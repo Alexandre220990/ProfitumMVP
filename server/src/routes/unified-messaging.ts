@@ -594,21 +594,20 @@ router.get('/conversations/:id/messages', async (req, res) => {
       }
     });
     
-    // ✅ FIX ALTERNATIF : SELECT * et logger TOUT
-    const { data: conversation, error: convError } = await supabaseAdmin
+    // ✅ FIX : .single() retourne un ARRAY, pas un objet !
+    const { data: conversationArray, error: convError } = await supabaseAdmin
       .from('conversations')
       .select('*')
       .eq('id', conversationId)
       .single();
 
     console.error('📦 Supabase SELECT result:', {
-      hasData: !!conversation,
-      hasError: !!convError,
-      error: convError,
-      conversation_complete: conversation
+      hasData: !!conversationArray,
+      isArray: Array.isArray(conversationArray),
+      error: convError
     });
 
-    if (convError || !conversation) {
+    if (convError || !conversationArray) {
       console.error('❌ Conversation non trouvée:', { conversationId, error: convError });
       return res.status(404).json({
         success: false,
@@ -616,69 +615,62 @@ router.get('/conversations/:id/messages', async (req, res) => {
       });
     }
 
-    console.error('🔍 Conversation object keys:', Object.keys(conversation));
-    console.error('🔍 participant_ids value:', conversation.participant_ids);
-    console.error('🔍 participant_ids type:', typeof conversation.participant_ids);
-    console.error('🔍 participant_ids is array:', Array.isArray(conversation.participant_ids));
+    // ✅ FIX CRITIQUE : Accéder à l'index [0] car .single() retourne un array
+    const conversation = Array.isArray(conversationArray) ? conversationArray[0] : conversationArray;
     
-    // ✅ CORRECTION ROBUSTE : Gérer tous les cas de figure
-    let participantIds: string[] = [];
-    
-    if (Array.isArray(conversation.participant_ids)) {
-      participantIds = conversation.participant_ids;
-    } else if (typeof conversation.participant_ids === 'string') {
-      // Possible que Supabase retourne une string au lieu d'un array
-      try {
-        participantIds = JSON.parse(conversation.participant_ids);
-      } catch {
-        console.error('❌ Impossible de parser participant_ids');
-      }
-    } else if (conversation.participant_ids) {
-      console.error('⚠️ participant_ids format inattendu:', conversation.participant_ids);
+    console.error('🔍 Conversation (après extraction):', {
+      id: conversation?.id,
+      participant_ids: conversation?.participant_ids,
+      is_array: Array.isArray(conversation?.participant_ids)
+    });
+
+    if (!conversation) {
+      console.error('❌ Conversation vide après extraction');
+      return res.status(404).json({
+        success: false,
+        message: 'Conversation non trouvée'
+      });
     }
+    
+    // ✅ EXTRACTION participant_ids
+    const participantIds = Array.isArray(conversation.participant_ids) 
+      ? conversation.participant_ids 
+      : [];
     
     console.error('✅ participantIds final:', participantIds);
     
     if (participantIds.length === 0) {
-      console.error('🚨🚨🚨 AUCUN PARTICIPANT DANS LA CONVERSATION !');
-      console.error('🔍 Raw conversation:', JSON.stringify(conversation, null, 2));
-      
-      // FALLBACK ULTIME : Autoriser l'accès quand même (temporaire pour debug)
-      console.error('⚠️ FALLBACK: Autorisation temporaire pour debugging');
-      // return res.status(403).json({
-      //   success: false,
-      //   message: 'Conversation sans participants'
-      // });
-    } else if (!participantIds.includes(userId)) {
-      console.error('❌ Utilisateur non autorisé:', { 
-        userId, 
-        participantIds
+      console.error('🚨 Conversation sans participants !');
+      return res.status(500).json({
+        success: false,
+        message: 'Conversation corrompue (aucun participant)'
       });
+    }
+    
+    if (!participantIds.includes(userId)) {
+      console.error('❌ Utilisateur non autorisé:', { userId, participantIds });
       return res.status(403).json({
         success: false,
         message: 'Accès non autorisé'
       });
     }
     
-    console.error('✅ Vérification permissions OK, chargement messages...');
+    console.error('✅ Autorisé, chargement messages...');
 
     // Récupérer les messages
+    // ✅ FIX : Retirer la jointure message_files qui cause une erreur de relation
     const { data: messages, error, count } = await supabaseAdmin
       .from('messages')
-      .select(`
-        *,
-        message_files (
-          id,
-          filename,
-          original_name,
-          file_size,
-          mime_type,
-          description
-        )
-      `)
+      .select('*')
       .eq('conversation_id', conversationId)
       .order('created_at', { ascending: false })
       .range(offset, offset + Number(limit) - 1);
+    
+    console.error('📨 Messages récupérés:', {
+      count: messages?.length || 0,
+      hasError: !!error,
+      error
+    });
 
     if (error) {
       console.error('❌ Erreur récupération messages:', error);
@@ -748,19 +740,19 @@ router.post('/conversations/:id/messages', async (req, res) => {
     
     console.error('🔍 POST Message - Début:', { conversationId, userId });
     
-    const { data: conversation, error: convError } = await supabaseAdmin
+    const { data: conversationArray, error: convError } = await supabaseAdmin
       .from('conversations')
       .select('*')
       .eq('id', conversationId)
       .single();
 
     console.error('📦 Conversation SELECT (POST):', {
-      hasData: !!conversation,
-      error: convError,
-      conversation_complete: conversation
+      hasData: !!conversationArray,
+      isArray: Array.isArray(conversationArray),
+      error: convError
     });
 
-    if (convError || !conversation) {
+    if (convError || !conversationArray) {
       console.error('❌ Conversation non trouvée (POST):', { conversationId, error: convError });
       return res.status(404).json({
         success: false,
@@ -768,28 +760,37 @@ router.post('/conversations/:id/messages', async (req, res) => {
       });
     }
 
-    console.error('🔍 Conversation keys:', Object.keys(conversation));
-    console.error('🔍 participant_ids:', conversation.participant_ids);
+    // ✅ FIX CRITIQUE : .single() retourne un array, accéder à [0]
+    const conversation = Array.isArray(conversationArray) ? conversationArray[0] : conversationArray;
     
-    // ✅ CORRECTION ROBUSTE
-    let participantIds: string[] = [];
-    
-    if (Array.isArray(conversation.participant_ids)) {
-      participantIds = conversation.participant_ids;
-    } else if (typeof conversation.participant_ids === 'string') {
-      try {
-        participantIds = JSON.parse(conversation.participant_ids);
-      } catch {
-        console.error('❌ Parse participant_ids failed');
-      }
+    console.error('🔍 Conversation (POST après extraction):', {
+      id: conversation?.id,
+      participant_ids: conversation?.participant_ids
+    });
+
+    if (!conversation) {
+      console.error('❌ Conversation vide après extraction (POST)');
+      return res.status(404).json({
+        success: false,
+        message: 'Conversation non trouvée'
+      });
     }
+    
+    const participantIds = Array.isArray(conversation.participant_ids) 
+      ? conversation.participant_ids 
+      : [];
     
     console.error('✅ participantIds final (POST):', participantIds);
     
     if (participantIds.length === 0) {
-      console.error('🚨 AUCUN PARTICIPANT - FALLBACK temporaire');
-      // FALLBACK temporaire pour debug
-    } else if (!participantIds.includes(userId)) {
+      console.error('🚨 Conversation sans participants (POST)');
+      return res.status(500).json({
+        success: false,
+        message: 'Conversation corrompue'
+      });
+    }
+    
+    if (!participantIds.includes(userId)) {
       console.error('❌ Non autorisé (POST):', { userId, participantIds });
       return res.status(403).json({
         success: false,
