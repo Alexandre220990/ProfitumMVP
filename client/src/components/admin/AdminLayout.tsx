@@ -1,23 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
+import { useMessagingBadge } from '@/hooks/use-messaging-badge';
 import { Badge } from '@/components/ui/badge';
 import { 
   LayoutDashboard,
   Calendar,
   MessageSquare,
   Database,
-  Users,
-  UserCheck,
-  FolderOpen,
   Package,
   CheckCircle,
-  Monitor,
-  BookOpen,
   UserPlus,
-  FileUp,
-  Terminal,
-  Zap,
   Bell,
   LogOut,
   Menu,
@@ -46,12 +39,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { badgeCount } = useMessagingBadge();
 
   // États pour les badges dynamiques
-  const [unreadMessages, setUnreadMessages] = useState(0);
   const [pendingValidations, setPendingValidations] = useState(0);
-  const [pendingExperts, setPendingExperts] = useState(0);
-  const [blockedDossiers, setBlockedDossiers] = useState(0);
   const [notificationsCount, setNotificationsCount] = useState(0);
 
   // Charger les compteurs de badges
@@ -62,12 +53,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const loadBadgeCounts = async () => {
     try {
       // TODO: Implémenter les appels API réels
-      // Pour l'instant, simulation
-      setUnreadMessages(12);
-      setPendingValidations(7);
-      setPendingExperts(4);
-      setBlockedDossiers(2);
-      setNotificationsCount(10);
+      setPendingValidations(0);
+      setNotificationsCount(0);
     } catch (error) {
       console.error('Erreur chargement badges:', error);
     }
@@ -97,7 +84,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       href: '/admin/messagerie-admin',
       icon: MessageSquare,
       current: location.pathname.includes('/admin/messagerie'),
-      badge: unreadMessages
+      badge: badgeCount > 0 ? badgeCount : undefined
     },
     {
       name: 'Documents & GED',

@@ -93,6 +93,7 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
   const [view, setView] = useState<CalendarView>({ type: defaultView, date: new Date() });
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showEventDialog, setShowEventDialog] = useState(false);
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentFilter, setCurrentFilter] = useState('all');
@@ -183,8 +184,14 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
     }
   }, [selectedEvent, createEvent, updateEvent]);
 
+  const handleViewEvent = useCallback((event: CalendarEvent) => {
+    setSelectedEvent(event);
+    setShowDetailsDialog(true);
+  }, []);
+
   const handleEditEvent = useCallback((event: CalendarEvent) => {
     setSelectedEvent(event);
+    setShowDetailsDialog(false);
     setShowEventDialog(true);
   }, []);
 
@@ -222,7 +229,7 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
       return (
         <div 
           className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
-          onClick={() => handleEditEvent(event)}
+          onClick={() => handleViewEvent(event)}
         >
           <div className="flex items-center gap-3">
             <div className={cn("p-2 rounded-full", EVENT_TYPES[event.type as keyof typeof EVENT_TYPES]?.color || 'bg-blue-500')}>
@@ -248,69 +255,53 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
     }
 
     return (
-      <Card className="hover:shadow-md transition-shadow">
+      <Card 
+        className="hover:shadow-md transition-shadow cursor-pointer"
+        onClick={() => handleViewEvent(event)}
+      >
         <CardContent className="p-4">
-          <div className="flex items-start justify-between">
-            <div className="flex items-start gap-3 flex-1">
-              <div className={cn("p-2 rounded-full mt-1", EVENT_TYPES[event.type as keyof typeof EVENT_TYPES]?.color || 'bg-blue-500')}>
-                {getEventIcon()}
-              </div>
-              
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-2">
-                  <h3 className="font-semibold text-gray-900 truncate">{event.title}</h3>
-                  <Badge className={getPriorityColor()}>
-                    {event.priority}
-                  </Badge>
-                  <Badge className={getStatusColor()}>
-                    {event.status}
-                  </Badge>
-                </div>
-                
-                {event.description && (
-                  <p className="text-sm text-gray-600 mb-2 line-clamp-2">
-                    {event.description}
-                  </p>
-                )}
-                
-                <div className="flex items-center gap-4 text-sm text-gray-500">
-                  <div className="flex items-center gap-1">
-                    <Clock className="h-4 w-4" />
-                    <span>{formatDate(new Date(event.start_date))} à {formatTime(new Date(event.start_date))}</span>
-                  </div>
-                  
-                  {event.location && (
-                    <div className="flex items-center gap-1">
-                      <MapPin className="h-4 w-4" />
-                      <span>{event.location}</span>
-                    </div>
-                  )}
-                  
-                  {event.is_online && (
-                    <div className="flex items-center gap-1">
-                      <Video className="h-4 w-4" />
-                      <span>En ligne</span>
-                    </div>
-                  )}
-                </div>
-              </div>
+          <div className="flex items-start gap-3">
+            <div className={cn("p-2 rounded-full mt-1", EVENT_TYPES[event.type as keyof typeof EVENT_TYPES]?.color || 'bg-blue-500')}>
+              {getEventIcon()}
             </div>
             
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleEditEvent(event)}
-              >
-                <Edit className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleDeleteEvent(event.id)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-2">
+                <h3 className="font-semibold text-gray-900 truncate">{event.title}</h3>
+                <Badge className={getPriorityColor()}>
+                  {event.priority}
+                </Badge>
+                <Badge className={getStatusColor()}>
+                  {event.status}
+                </Badge>
+              </div>
+              
+              {event.description && (
+                <p className="text-sm text-gray-600 mb-2 line-clamp-2">
+                  {event.description}
+                </p>
+              )}
+              
+              <div className="flex items-center gap-4 text-sm text-gray-500">
+                <div className="flex items-center gap-1">
+                  <Clock className="h-4 w-4" />
+                  <span>{formatDate(new Date(event.start_date))} à {formatTime(new Date(event.start_date))}</span>
+                </div>
+                
+                {event.location && (
+                  <div className="flex items-center gap-1">
+                    <MapPin className="h-4 w-4" />
+                    <span>{event.location}</span>
+                  </div>
+                )}
+                
+                {event.is_online && (
+                  <div className="flex items-center gap-1">
+                    <Video className="h-4 w-4" />
+                    <span>En ligne</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </CardContent>
@@ -416,7 +407,7 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
                       <div
                         key={event.id}
                         className="p-3 bg-gray-50 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors"
-                        onClick={() => handleEditEvent(event)}
+                        onClick={() => handleViewEvent(event)}
                       >
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-2">
@@ -640,6 +631,19 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
         </div>
       </div>
 
+      {/* Dialog de détails d'événement */}
+      <EventDetailsDialog
+        open={showDetailsDialog}
+        onOpenChange={setShowDetailsDialog}
+        event={selectedEvent}
+        onEdit={handleEditEvent}
+        onDelete={handleDeleteEvent}
+        onClose={() => {
+          setShowDetailsDialog(false);
+          setSelectedEvent(null);
+        }}
+      />
+
       {/* Dialog de création/édition d'événement */}
       <EventDialog
         open={showEventDialog}
@@ -657,7 +661,227 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
 };
 
 // ============================================================================
-// DIALOG D'ÉVÉNEMENT
+// DIALOG DE DÉTAILS D'ÉVÉNEMENT (Lecture seule)
+// ============================================================================
+
+interface EventDetailsDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  event: CalendarEvent | null;
+  onEdit: (event: CalendarEvent) => void;
+  onDelete: (eventId: string) => void;
+  onClose: () => void;
+}
+
+const EventDetailsDialog: React.FC<EventDetailsDialogProps> = ({ 
+  open, 
+  onOpenChange, 
+  event, 
+  onEdit, 
+  onDelete,
+  onClose 
+}) => {
+  if (!event) return null;
+
+  const formatFullDateTime = (date: Date) => format(date, 'dd/MM/yyyy à HH:mm', { locale: fr });
+
+  const getEventIcon = () => {
+    const eventType = EVENT_TYPES[event.type as keyof typeof EVENT_TYPES] || EVENT_TYPES.appointment;
+    const Icon = eventType.icon;
+    return <Icon className="h-5 w-5" />;
+  };
+
+  const getPriorityLabel = () => {
+    const labels: Record<string, string> = {
+      low: 'Faible',
+      medium: 'Moyenne',
+      high: 'Élevée',
+      critical: 'Critique',
+      urgent: 'Urgente'
+    };
+    return labels[event.priority] || event.priority;
+  };
+
+  const getStatusLabel = () => {
+    const labels: Record<string, string> = {
+      pending: 'En attente',
+      confirmed: 'Confirmé',
+      completed: 'Terminé',
+      cancelled: 'Annulé'
+    };
+    return labels[event.status] || event.status;
+  };
+
+  const getCategoryLabel = () => {
+    const labels: Record<string, string> = {
+      qualification: '🔍 Qualification',
+      presentation_expert: '👤 Présentation expert',
+      proposition_commerciale: '📄 Proposition commerciale',
+      signature: '✅ Signature',
+      suivi: '📋 Suivi',
+      autre: '🔹 Autre'
+    };
+    return labels[event.category || ''] || event.category || 'Non spécifié';
+  };
+
+  const handleDeleteClick = () => {
+    if (window.confirm('Êtes-vous sûr de vouloir supprimer cet événement ?')) {
+      onDelete(event.id);
+      onClose();
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <div className="flex items-start justify-between">
+            <div className="flex items-start gap-3 flex-1">
+              <div className={cn("p-3 rounded-full", EVENT_TYPES[event.type as keyof typeof EVENT_TYPES]?.color || 'bg-blue-500')}>
+                {getEventIcon()}
+              </div>
+              <div className="flex-1">
+                <DialogTitle className="text-2xl mb-2">{event.title}</DialogTitle>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Badge className={PRIORITY_COLORS[event.priority] || PRIORITY_COLORS.medium}>
+                    {getPriorityLabel()}
+                  </Badge>
+                  <Badge className={STATUS_COLORS[event.status] || STATUS_COLORS.pending}>
+                    {getStatusLabel()}
+                  </Badge>
+                  <Badge variant="outline">
+                    {EVENT_TYPES[event.type as keyof typeof EVENT_TYPES]?.label || event.type}
+                  </Badge>
+                </div>
+              </div>
+            </div>
+          </div>
+        </DialogHeader>
+
+        <div className="space-y-6 mt-6">
+          {/* Description */}
+          {event.description && (
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Description
+              </h4>
+              <p className="text-gray-700 whitespace-pre-wrap">{event.description}</p>
+            </div>
+          )}
+
+          {/* Date et heure */}
+          <div>
+            <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              Date et heure
+            </h4>
+            <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+              <div className="flex items-center gap-2 text-gray-700">
+                <CalendarIcon className="h-4 w-4 text-gray-500" />
+                <span className="font-medium">Début :</span>
+                <span>{formatFullDateTime(new Date(event.start_date))}</span>
+              </div>
+              <div className="flex items-center gap-2 text-gray-700">
+                <CalendarIcon className="h-4 w-4 text-gray-500" />
+                <span className="font-medium">Fin :</span>
+                <span>{formatFullDateTime(new Date(event.end_date))}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Lieu et format */}
+          {(event.location || event.is_online) && (
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-3">Lieu et format</h4>
+              <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                {event.is_online && (
+                  <div className="flex items-center gap-2 text-gray-700">
+                    <Video className="h-4 w-4 text-green-600" />
+                    <span className="font-medium">Événement en ligne</span>
+                  </div>
+                )}
+                {event.meeting_url && (
+                  <div className="flex items-center gap-2">
+                    <Video className="h-4 w-4 text-gray-500" />
+                    <a 
+                      href={event.meeting_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline"
+                    >
+                      {event.meeting_url}
+                    </a>
+                  </div>
+                )}
+                {event.location && (
+                  <div className="flex items-center gap-2 text-gray-700">
+                    <MapPin className="h-4 w-4 text-gray-500" />
+                    <span>{event.location}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Étape commerciale */}
+          {event.category && (
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-2">Étape commerciale</h4>
+              <div className="bg-gray-50 rounded-lg p-3">
+                <span className="text-gray-700">{getCategoryLabel()}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Participants */}
+          {(event.client_id || event.expert_id) && (
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Participants
+              </h4>
+              <div className="bg-gray-50 rounded-lg p-3 space-y-1 text-sm text-gray-700">
+                {event.client_id && <div>• Client ID: {event.client_id}</div>}
+                {event.expert_id && <div>• Expert ID: {event.expert_id}</div>}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="flex justify-between gap-2 mt-6 pt-4 border-t">
+          <Button
+            variant="destructive"
+            onClick={handleDeleteClick}
+            className="gap-2"
+          >
+            <Trash2 className="h-4 w-4" />
+            Supprimer
+          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={onClose}
+            >
+              Fermer
+            </Button>
+            <Button
+              onClick={() => onEdit(event)}
+              className="gap-2"
+            >
+              <Edit className="h-4 w-4" />
+              Modifier
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// ============================================================================
+// DIALOG D'ÉVÉNEMENT (Création/Édition)
 // ============================================================================
 
 interface EventDialogProps {

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
+import { useMessagingBadge } from '@/hooks/use-messaging-badge';
 import { useNotifications } from '@/hooks/use-notifications';
 import ApporteurAuthGuard from './ApporteurAuthGuard';
 import { NotificationSlider } from './NotificationSlider';
@@ -37,6 +38,7 @@ export default function ApporteurLayout({ children }: ApporteurLayoutProps) {
   // Utiliser le contexte d'authentification au lieu de localStorage
   const { user } = useAuth();
   const userData = user || {} as any;
+  const { badgeCount } = useMessagingBadge();
   
   // Hook pour les notifications avec compteur en temps réel
   const { unreadCount } = useNotifications();
@@ -71,7 +73,8 @@ export default function ApporteurLayout({ children }: ApporteurLayoutProps) {
       name: 'Messagerie',
       href: '/apporteur/messaging',
       icon: MessageSquare,
-      current: location.pathname.startsWith('/apporteur/messaging')
+      current: location.pathname.startsWith('/apporteur/messaging'),
+      badge: badgeCount > 0 ? badgeCount : undefined
     },
     {
       name: 'Produits',

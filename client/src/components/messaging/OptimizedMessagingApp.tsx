@@ -324,16 +324,24 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
           {isSidebarOpen && (
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between mb-1">
-                <h3 className="font-semibold text-slate-900 text-sm truncate">
+                <h3 className={`text-sm truncate ${
+                  conversation.unread_count > 0 
+                    ? 'font-bold text-slate-900' 
+                    : 'font-semibold text-slate-900'
+                }`}>
                   {cleanConversationTitle(conversation.title)}
                 </h3>
                 {conversation.unread_count > 0 && (
-                  <Badge className="bg-red-500 text-white text-xs px-2 py-0.5">
+                  <Badge className="bg-red-500 text-white text-xs px-2 py-0.5 font-bold">
                     {conversation.unread_count}
                   </Badge>
                 )}
               </div>
-              <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed">
+              <p className={`text-sm line-clamp-2 leading-relaxed ${
+                conversation.unread_count > 0 
+                  ? 'text-slate-900 font-semibold' 
+                  : 'text-slate-600'
+              }`}>
                 {typeof conversation.last_message === 'string' 
                   ? conversation.last_message 
                   : 'Aucun message récent'

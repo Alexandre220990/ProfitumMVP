@@ -3,6 +3,7 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
 import { Badge } from '@/components/ui/badge';
 import { TypeSwitcher } from '@/components/TypeSwitcher';
+import { useMessagingBadge } from '@/hooks/use-messaging-badge';
 import { 
   Home,
   BarChart3,
@@ -40,24 +41,22 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { badgeCount } = useMessagingBadge();
 
-  // États pour les badges dynamiques
-  const [unreadMessages, setUnreadMessages] = useState(0);
+  // États pour les badges dynamiques (conservés pour futurs badges)
   const [newDocuments, setNewDocuments] = useState(0);
   const [notificationsCount, setNotificationsCount] = useState(0);
 
-  // Charger les compteurs de badges
+  // Charger les compteurs de badges (conservé pour futurs badges)
   useEffect(() => {
     loadBadgeCounts();
   }, []);
 
   const loadBadgeCounts = async () => {
     try {
-      // TODO: Implémenter les appels API réels
-      // Pour l'instant, simulation
-      setUnreadMessages(5);
-      setNewDocuments(2);
-      setNotificationsCount(3);
+      // TODO: Implémenter les appels API réels pour documents et notifications
+      setNewDocuments(0);
+      setNotificationsCount(0);
     } catch (error) {
       console.error('Erreur chargement badges:', error);
     }
@@ -98,7 +97,7 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
       href: '/messagerie-client',
       icon: MessageSquare,
       current: location.pathname === '/messagerie-client',
-      badge: unreadMessages
+      badge: badgeCount > 0 ? badgeCount : undefined
     },
     {
       name: 'Documents',

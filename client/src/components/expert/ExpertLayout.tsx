@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
+import { useMessagingBadge } from '@/hooks/use-messaging-badge';
 import { Badge } from '@/components/ui/badge';
 import { TypeSwitcher } from '@/components/TypeSwitcher';
 import { 
@@ -37,9 +38,9 @@ export default function ExpertLayout({ children }: ExpertLayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { badgeCount } = useMessagingBadge();
 
   // États pour les badges dynamiques
-  const [unreadMessages, setUnreadMessages] = useState(0);
   const [pendingAffaires, setPendingAffaires] = useState(0);
   const [todayMeetings, setTodayMeetings] = useState(0);
   const [notificationsCount, setNotificationsCount] = useState(0);
@@ -52,11 +53,9 @@ export default function ExpertLayout({ children }: ExpertLayoutProps) {
   const loadBadgeCounts = async () => {
     try {
       // TODO: Implémenter les appels API réels
-      // Pour l'instant, simulation
-      setUnreadMessages(8);
-      setPendingAffaires(3);
-      setTodayMeetings(2);
-      setNotificationsCount(5);
+      setPendingAffaires(0);
+      setTodayMeetings(0);
+      setNotificationsCount(0);
     } catch (error) {
       console.error('Erreur chargement badges:', error);
     }
@@ -96,7 +95,7 @@ export default function ExpertLayout({ children }: ExpertLayoutProps) {
       href: '/expert/messagerie',
       icon: MessageSquare,
       current: location.pathname.includes('/expert/messagerie'),
-      badge: unreadMessages
+      badge: badgeCount > 0 ? badgeCount : undefined
     },
     {
       name: 'Analytics',

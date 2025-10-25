@@ -6,6 +6,7 @@ import Button from "@/components/ui/design-system/Button";
 import Badge from "@/components/ui/design-system/Badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useNotificationBadge } from "@/hooks/useNotificationBadge";
+import { useMessagingBadge } from "@/hooks/use-messaging-badge";
 
 interface HeaderClientProps {
   onLogout?: () => void;
@@ -15,6 +16,7 @@ export default function HeaderClient({ onLogout }: HeaderClientProps) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { unreadCount, hasNotifications } = useNotificationBadge();
+  const { badgeText, shouldShowBadge } = useMessagingBadge();
   const [notifOpen, setNotifOpen] = useState(false);
 
   const handleLogout = async () => { 
@@ -74,9 +76,11 @@ export default function HeaderClient({ onLogout }: HeaderClientProps) {
           >
             <MessageSquare className="h-4 w-4" />
             <span>Messages</span>
-            <Badge variant="primary" className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs">
-              3
-            </Badge>
+            {shouldShowBadge && (
+              <Badge variant="primary" className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs">
+                {badgeText}
+              </Badge>
+            )}
           </Button>
           <Button
             variant="ghost"
