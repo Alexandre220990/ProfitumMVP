@@ -598,7 +598,9 @@ export const ImprovedAdminMessaging: React.FC<ImprovedAdminMessagingProps> = ({
             {/* Messages - Zone scrollable */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 min-h-0">
               {messages.length > 0 ? (
-                messages.map((message) => (
+                messages
+                  .filter(message => message && message.id)
+                  .map((message) => (
                   <div
                     key={message.id}
                     className={`flex ${message.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}
