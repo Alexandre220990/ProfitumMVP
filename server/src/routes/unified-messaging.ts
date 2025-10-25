@@ -582,13 +582,15 @@ router.get('/conversations/:id/messages', async (req, res) => {
     const offset = (Number(page) - 1) * Number(limit);
 
     // Vérifier l'accès à la conversation
+    // ✅ FIX CRITIQUE : Sélectionner explicitement participant_ids (colonne ARRAY PostgreSQL)
     const { data: conversation, error: convError } = await supabaseAdmin
       .from('conversations')
-      .select('*')
+      .select('id, type, participant_ids, title, status, created_at, updated_at')
       .eq('id', conversationId)
       .single();
 
     if (convError || !conversation) {
+      console.error('❌ Conversation non trouvée:', { conversationId, error: convError });
       return res.status(404).json({
         success: false,
         message: 'Conversation non trouvée'
@@ -597,13 +599,20 @@ router.get('/conversations/:id/messages', async (req, res) => {
 
     // Vérifier les permissions
     const userId = authUser.database_id || authUser.auth_user_id || authUser.id;
-    console.log('🔍 GET Messages - Auth User:', { 
+    
+    console.error('🔍 GET Messages - Auth User:', { 
       database_id: authUser.database_id, 
       auth_user_id: authUser.auth_user_id,
       id: authUser.id,
       type: authUser.type,
-      userId,
-      participant_ids: conversation.participant_ids
+      userId
+    });
+    
+    console.error('🔍 Conversation récupérée:', {
+      id: conversation.id,
+      participant_ids: conversation.participant_ids,
+      participant_ids_type: typeof conversation.participant_ids,
+      is_array: Array.isArray(conversation.participant_ids)
     });
     
     // ✅ CORRECTION: Vérifier que participant_ids est un tableau avant d'utiliser includes()
@@ -611,13 +620,26 @@ router.get('/conversations/:id/messages', async (req, res) => {
       ? conversation.participant_ids 
       : [];
     
+    if (participantIds.length === 0) {
+      console.error('⚠️⚠️⚠️ participant_ids est VIDE ou UNDEFINED !', {
+        conversation_id: conversationId,
+        raw_participant_ids: conversation.participant_ids
+      });
+    }
+    
     if (!participantIds.includes(userId)) {
-      console.warn('❌ Utilisateur non autorisé:', { userId, participantIds });
+      console.error('❌ Utilisateur non autorisé:', { 
+        userId, 
+        participantIds,
+        conversation_participant_ids: conversation.participant_ids
+      });
       return res.status(403).json({
         success: false,
         message: 'Accès non autorisé'
       });
     }
+    
+    console.error('✅ Utilisateur autorisé pour conversation:', conversationId);
 
     // Récupérer les messages
     const { data: messages, error, count } = await supabaseAdmin
@@ -701,13 +723,15 @@ router.post('/conversations/:id/messages', async (req, res) => {
     }
 
     // Vérifier l'accès à la conversation
+    // ✅ FIX CRITIQUE : Sélectionner explicitement participant_ids (colonne ARRAY PostgreSQL)
     const { data: conversation, error: convError } = await supabaseAdmin
       .from('conversations')
-      .select('*')
+      .select('id, type, participant_ids, title, status, created_at, updated_at')
       .eq('id', conversationId)
       .single();
 
     if (convError || !conversation) {
+      console.error('❌ Conversation non trouvée:', { conversationId, error: convError });
       return res.status(404).json({
         success: false,
         message: 'Conversation non trouvée'
@@ -716,21 +740,39 @@ router.post('/conversations/:id/messages', async (req, res) => {
 
     // Vérifier les permissions
     const userId = authUser.database_id || authUser.auth_user_id || authUser.id;
-    console.log('🔍 POST Message - Auth User:', { 
+    
+    console.error('🔍 POST Message - Auth User:', { 
       database_id: authUser.database_id, 
       auth_user_id: authUser.auth_user_id,
       id: authUser.id,
       type: authUser.type,
-      userId,
-      participant_ids: conversation.participant_ids
+      userId
     });
     
-    if (!conversation.participant_ids.includes(userId)) {
+    console.error('🔍 Conversation pour envoi message:', {
+      id: conversation.id,
+      participant_ids: conversation.participant_ids,
+      is_array: Array.isArray(conversation.participant_ids)
+    });
+    
+    // ✅ CORRECTION: Vérifier que participant_ids est un tableau
+    const participantIds = Array.isArray(conversation.participant_ids) 
+      ? conversation.participant_ids 
+      : [];
+    
+    if (participantIds.length === 0) {
+      console.error('⚠️⚠️⚠️ participant_ids est VIDE pour POST message !');
+    }
+    
+    if (!participantIds.includes(userId)) {
+      console.error('❌ Utilisateur non autorisé (POST):', { userId, participantIds });
       return res.status(403).json({
         success: false,
         message: 'Accès non autorisé'
       });
     }
+    
+    console.error('✅ Utilisateur autorisé pour envoyer message');
 
     // Créer le message
     const senderId = userId;
