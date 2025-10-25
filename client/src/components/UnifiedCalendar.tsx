@@ -835,15 +835,35 @@ const EventDetailsDialog: React.FC<EventDetailsDialogProps> = ({
           )}
 
           {/* Participants */}
-          {(event.client_id || event.expert_id) && (
+          {(event.client_info || event.expert_info) && (
             <div>
               <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
                 <Users className="h-4 w-4" />
                 Participants
               </h4>
-              <div className="bg-gray-50 rounded-lg p-3 space-y-1 text-sm text-gray-700">
-                {event.client_id && <div>• Client ID: {event.client_id}</div>}
-                {event.expert_id && <div>• Expert ID: {event.expert_id}</div>}
+              <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+                {event.client_info && (
+                  <div className="text-sm">
+                    <div className="font-medium text-gray-900">👤 Client</div>
+                    <div className="text-gray-700 ml-5">
+                      {event.client_info.full_name}
+                      {event.client_info.company_name && (
+                        <span className="text-gray-500"> • {event.client_info.company_name}</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {event.expert_info && (
+                  <div className="text-sm">
+                    <div className="font-medium text-gray-900">🎯 Expert</div>
+                    <div className="text-gray-700 ml-5">
+                      {event.expert_info.full_name}
+                      {event.expert_info.company_name && (
+                        <span className="text-gray-500"> • {event.expert_info.company_name}</span>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}

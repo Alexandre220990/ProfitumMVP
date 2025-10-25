@@ -26,11 +26,30 @@ function transformRDVToCalendarEvent(rdv: any): any {
     new Date(start_date).getTime() + (rdv.duration_minutes || 60) * 60000
   ).toISOString();
   
+  // Extraire les informations des participants si disponibles
+  const clientInfo = rdv.client ? {
+    id: rdv.client.id,
+    first_name: rdv.client.first_name,
+    last_name: rdv.client.last_name,
+    company_name: rdv.client.company_name,
+    full_name: `${rdv.client.first_name || ''} ${rdv.client.last_name || ''}`.trim()
+  } : null;
+
+  const expertInfo = rdv.expert ? {
+    id: rdv.expert.id,
+    first_name: rdv.expert.first_name,
+    last_name: rdv.expert.last_name,
+    company_name: rdv.expert.company_name,
+    full_name: `${rdv.expert.first_name || ''} ${rdv.expert.last_name || ''}`.trim()
+  } : null;
+  
   return {
     ...rdv,
     start_date,
     end_date,
     is_online: rdv.meeting_type === 'video',
+    client_info: clientInfo,
+    expert_info: expertInfo,
     // Garder les champs RDV aussi pour compatibilité
   };
 }
@@ -265,7 +284,11 @@ router.get('/events', calendarLimiter, asyncHandler(async (req: Request, res: Re
   try {
     let query = supabase
       .from('RDV')
-      .select('*')
+      .select(`
+        *,
+        client:Client!client_id(id, first_name, last_name, company_name),
+        expert:Expert!expert_id(id, first_name, last_name, company_name)
+      `)
       .order('scheduled_date', { ascending: true })
       .order('scheduled_time', { ascending: true })
       .range(parseInt(offset as string), parseInt(offset as string) + parseInt(limit as string) - 1);

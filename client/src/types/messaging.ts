@@ -204,6 +204,20 @@ export interface CalendarEvent {
   dossier_name?: string;
   client_id?: string;
   expert_id?: string;
+  client_info?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    company_name: string;
+    full_name: string;
+  };
+  expert_info?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    company_name: string;
+    full_name: string;
+  };
   location?: string;
   is_online?: boolean;
   meeting_url?: string;
