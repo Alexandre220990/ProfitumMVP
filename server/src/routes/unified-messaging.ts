@@ -2092,16 +2092,23 @@ router.put('/conversations/:id/read', async (req, res) => {
     const { id } = req.params;
     const userId = authUser.database_id || authUser.id;
 
-    console.log(`📖 Marquage conversation ${id} comme lue par ${userId}`);
+    console.error(`📖 Marquage conversation ${id} comme lue par ${userId}`);
 
     // Vérifier que l'utilisateur est participant
-    const { data: conv } = await supabaseAdmin
+    const { data: convArray } = await supabaseAdmin
       .from('conversations')
       .select('participant_ids')
       .eq('id', id)
       .single();
 
-    if (!conv || !conv.participant_ids.includes(userId)) {
+    // ✅ FIX : .single() retourne array
+    const conv = Array.isArray(convArray) ? convArray[0] : convArray;
+    const participantIds = Array.isArray(conv?.participant_ids) ? conv.participant_ids : [];
+
+    console.error('🔍 PUT /read - participantIds:', participantIds);
+
+    if (!conv || participantIds.length === 0 || !participantIds.includes(userId)) {
+      console.error('❌ Non autorisé PUT /read:', { userId, participantIds });
       return res.status(403).json({
         success: false,
         message: 'Non autorisé'
