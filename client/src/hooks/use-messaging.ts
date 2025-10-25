@@ -278,10 +278,20 @@ export const useMessaging = (options: UseMessagingOptions = {}): UseMessagingRet
       });
     },
     onSuccess: (newMessage: Message) => {
+      console.error('✅ Message envoyé - onSuccess:', newMessage);
+      
+      // ✅ VÉRIFICATION : Ne pas ajouter de message null au cache
+      if (!newMessage || !newMessage.id) {
+        console.error('⚠️ newMessage est null ou invalide, skip cache update');
+        return;
+      }
+
       // Mise à jour optimiste du cache
       queryClient.setQueryData(['messages', currentConversation?.id], (old: Message[] | undefined) => {
         if (!old) return [newMessage];
-        return [...old, newMessage];
+        // ✅ FIX : Filtrer les null avant d'ajouter le nouveau message
+        const validMessages = old.filter(msg => msg && msg.id);
+        return [...validMessages, newMessage];
       });
 
       // Mettre à jour la conversation avec le dernier message

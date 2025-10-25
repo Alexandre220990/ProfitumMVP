@@ -576,7 +576,9 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
               {/* Messages */}
               {!messaging.loading && messaging.messages && messaging.messages.length > 0 ? (
                 <AnimatePresence>
-                  {messaging.messages.map((message, index) => (
+                  {messaging.messages
+                    .filter(message => message && message.id)
+                    .map((message, index) => (
                     <motion.div
                       key={message.id}
                       initial={{ opacity: 0, y: 20 }}
