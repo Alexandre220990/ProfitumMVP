@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
 import { getUserDisplayName } from '../../../../shared/utils/user-display';
@@ -80,6 +80,9 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [participantStatus, setParticipantStatus] = useState<{ is_active: boolean; name: string } | null>(null);
   const [isAutoOpening, setIsAutoOpening] = useState(false);
+  
+  // Ref pour le conteneur de messages pour le scroll automatique
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   // Hook de messagerie optimisé
   const messaging = useMessaging({
@@ -91,6 +94,24 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
     allowedFileTypes: ['image/*', 'application/pdf', 'text/*'],
     enableAutoConversations: true
   });
+
+  // ========================================
+  // SCROLL AUTOMATIQUE VERS LE DERNIER MESSAGE
+  // ========================================
+  useEffect(() => {
+    // Attendre que les messages soient chargés et la conversation sélectionnée
+    if (messaging.currentConversation && !messaging.loading && messaging.messages && messaging.messages.length > 0) {
+      // Utiliser setTimeout pour s'assurer que le DOM est bien rendu
+      setTimeout(() => {
+        if (messagesContainerRef.current) {
+          messagesContainerRef.current.scrollTo({
+            top: messagesContainerRef.current.scrollHeight,
+            behavior: 'smooth'
+          });
+        }
+      }, 100);
+    }
+  }, [messaging.currentConversation?.id, messaging.messages, messaging.loading]);
 
   // ========================================
   // GESTION DES CONVERSATIONS
@@ -572,7 +593,7 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
             )}
 
             {/* Zone des messages - Pleine hauteur */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-50">
+            <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-50">
               {/* Debug et indicateur de chargement */}
               {messaging.loading && (
                 <div className="flex items-center justify-center py-8">
