@@ -294,7 +294,7 @@ export const ImprovedAdminMessaging: React.FC<ImprovedAdminMessagingProps> = ({
         
         // ✅ FORCER le rechargement pour assurer la cohérence
         setTimeout(() => {
-          loadMessages(selectedConversation);
+          handleConversationSelect(selectedConversation);
         }, 100);
       } else {
         const error = await response.json();
@@ -304,7 +304,7 @@ export const ImprovedAdminMessaging: React.FC<ImprovedAdminMessagingProps> = ({
       console.error('Erreur envoi message:', error);
       toast.error('Erreur lors de l\'envoi du message');
     }
-  }, [messageInput, selectedConversation, loadMessages]);
+  }, [messageInput, selectedConversation, handleConversationSelect]);
 
   // ========================================
   // NOUVELLE CONVERSATION
