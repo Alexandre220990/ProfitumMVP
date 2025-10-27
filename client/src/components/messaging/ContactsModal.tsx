@@ -52,6 +52,7 @@ export const ContactsModal: React.FC<ContactsModalProps> = ({
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [creatingConversation, setCreatingConversation] = useState(false);
   const [contacts, setContacts] = useState<{
     clients: Contact[];
     experts: Contact[];
@@ -265,20 +266,40 @@ export const ContactsModal: React.FC<ContactsModalProps> = ({
                                         variant="outline"
                                         onClick={() => onViewProfile(contact)}
                                         className="h-8 px-2"
+                                        disabled={creatingConversation}
                                       >
                                         <Eye className="h-4 w-4" />
                                       </Button>
                                     )}
                                     <Button
                                       size="sm"
-                                      onClick={() => {
-                                        onStartConversation(contact);
-                                        onClose();
+                                      onClick={async () => {
+                                        if (creatingConversation) return;
+                                        
+                                        setCreatingConversation(true);
+                                        try {
+                                          await onStartConversation(contact);
+                                          onClose();
+                                        } catch (error) {
+                                          console.error('Erreur création conversation:', error);
+                                        } finally {
+                                          setCreatingConversation(false);
+                                        }
                                       }}
-                                      className="h-8 px-3 bg-blue-600 hover:bg-blue-700"
+                                      disabled={creatingConversation}
+                                      className="h-8 px-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
                                     >
-                                      <MessageSquare className="h-4 w-4 mr-1" />
-                                      Message
+                                      {creatingConversation ? (
+                                        <>
+                                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1"></div>
+                                          Ouverture...
+                                        </>
+                                      ) : (
+                                        <>
+                                          <MessageSquare className="h-4 w-4 mr-1" />
+                                          Message
+                                        </>
+                                      )}
                                     </Button>
                                   </div>
                                 </div>
