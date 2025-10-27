@@ -162,19 +162,143 @@ async function cleanupExpiredSessions() {
 setInterval(cleanupExpiredSessions, 60 * 60 * 1000);
 
 // =====================================================
+// FONCTION DE FUSION INTELLIGENTE DES PRODUITS
+// =====================================================
+
+/**
+ * Fusion intelligente des ClientProduitEligible
+ * - Protège les produits en cours (experts/documents préservés)
+ * - Met à jour les produits 'eligible' si amélioration
+ * - Crée les nouveaux produits
+ */
+async function mergeClientProductsIntelligent(
+  clientId: string, 
+  simulationId: string, 
+  produitsCalcules: any[]
+): Promise<{
+  products_created: number;
+  products_updated: number;
+  products_protected: number;
+  total_savings: number;
+}> {
+  try {
+    console.log('🔄 Fusion intelligente pour client:', clientId);
+    
+    let products_created = 0;
+    let products_updated = 0;
+    let products_protected = 0;
+    let total_savings = 0;
+
+    // Récupérer tous les produits existants du client
+    const { data: existingProducts } = await supabaseClient
+      .from('ClientProduitEligible')
+      .select('id, produitId, statut, montantFinal, metadata, created_at')
+      .eq('clientId', clientId);
+
+    const existingMap = new Map(existingProducts?.map(p => [p.produitId, p]) || []);
+
+    // Pour chaque produit éligible calculé
+    for (const produit of produitsCalcules) {
+      if (!produit.is_eligible) continue; // Ignorer les non éligibles
+
+      const existing = existingMap.get(produit.produit_id);
+      total_savings += produit.montant_estime || 0;
+
+      if (existing) {
+        // Produit existe déjà
+        
+        // Cas 1 : Produit en cours de traitement → PROTÉGER
+        if (['en_cours', 'documents_collecte', 'expert_assigne', 'en_attente_expert', 'dossier_constitue'].includes(existing.statut)) {
+          console.log(`🔒 Produit protégé (en cours): ${produit.produit_nom}`);
+          products_protected++;
+          continue;
+        }
+
+        // Cas 2 : Produit 'eligible' → METTRE À JOUR si amélioration
+        if (existing.statut === 'eligible') {
+          const nouveauMontant = produit.montant_estime || 0;
+          const ancienMontant = existing.montantFinal || 0;
+
+          if (nouveauMontant > ancienMontant) {
+            await supabaseClient
+              .from('ClientProduitEligible')
+              .update({
+                montantFinal: nouveauMontant,
+                simulationId: simulationId,
+                calcul_details: produit.calcul_details,
+                notes: produit.notes,
+                metadata: {
+                  ...(existing.metadata || {}),
+                  updated_from_simulation: simulationId,
+                  previous_amount: ancienMontant,
+                  updated_at: new Date().toISOString()
+                },
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', existing.id);
+
+            console.log(`✅ Produit mis à jour: ${produit.produit_nom} (${ancienMontant}€ → ${nouveauMontant}€)`);
+            products_updated++;
+          } else {
+            console.log(`→ Produit inchangé: ${produit.produit_nom} (${ancienMontant}€ >= ${nouveauMontant}€)`);
+            products_protected++;
+          }
+        }
+      } else {
+        // Nouveau produit → CRÉER
+        const { error: insertError } = await supabaseClient
+          .from('ClientProduitEligible')
+          .insert({
+            clientId: clientId,
+            produitId: produit.produit_id,
+            simulationId: simulationId,
+            statut: 'eligible',
+            montantFinal: produit.montant_estime,
+            notes: produit.notes,
+            calcul_details: produit.calcul_details,
+            metadata: {
+              source: 'simulation_client_authenticated',
+              type_produit: produit.type_produit,
+              calculated_at: new Date().toISOString()
+            }
+          });
+
+        if (!insertError) {
+          console.log(`✅ Nouveau produit créé: ${produit.produit_nom} - ${produit.montant_estime}€`);
+          products_created++;
+        } else {
+          console.error(`❌ Erreur création produit ${produit.produit_nom}:`, insertError);
+        }
+      }
+    }
+
+    return {
+      products_created,
+      products_updated,
+      products_protected,
+      total_savings
+    };
+  } catch (error) {
+    console.error('❌ Erreur fusion produits:', error);
+    throw error;
+  }
+}
+
+// =====================================================
 // ROUTES DU SIMULATEUR
 // =====================================================
 
 /**
  * POST /api/simulator/session
- * Crée une nouvelle session de simulation
+ * Crée une nouvelle session de simulation OU reprend une session en cours
  * MODE HYBRIDE : Détecte automatiquement si l'utilisateur est connecté
- * - Si authentifié : crée une session liée au client réel
+ * - Si authentifié : 
+ *   1. Vérifie s'il y a une simulation EN COURS → reprend où on était
+ *   2. Sinon crée une nouvelle session liée au client réel
  * - Si anonyme : crée une session avec client temporaire
  */
 router.post('/session', async (req, res) => {
   try {
-    const sessionToken = uuidv4();
     const ipAddress = req.ip || req.connection.remoteAddress || 'unknown';
     const userAgent = req.get('User-Agent') || 'unknown';
     const clientData: ClientData = req.body.client_data || {};
@@ -187,12 +311,56 @@ router.post('/session', async (req, res) => {
       // ========================================
       // MODE AUTHENTIFIÉ : Client connecté
       // ========================================
-      console.log('🔐 Création session simulateur AUTHENTIFIÉ pour client:', authenticatedUser.email);
+      console.log('🔐 Gestion session simulateur AUTHENTIFIÉ pour client:', authenticatedUser.email);
       
       const clientId = authenticatedUser.database_id;
       
-      console.log(`📝 Données de session authentifiée:`, {
-        sessionToken: sessionToken.substring(0, 8) + '...',
+      // 1️⃣ VÉRIFIER S'IL Y A UNE SIMULATION EN COURS (status='pending')
+      const { data: pendingSimulations, error: pendingError } = await supabaseClient
+        .from('simulations')
+        .select('*')
+        .eq('client_id', clientId)
+        .eq('status', 'pending')
+        .gt('expires_at', new Date().toISOString()) // Non expirée
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (pendingError) {
+        console.error('❌ Erreur lors de la vérification des simulations en cours:', pendingError);
+      }
+
+      const pendingSimulation = pendingSimulations && pendingSimulations.length > 0 ? pendingSimulations[0] : null;
+
+      if (pendingSimulation) {
+        // ✅ SIMULATION EN COURS TROUVÉE → On reprend où on était
+        console.log('🔄 Simulation en cours trouvée:', {
+          simulationId: pendingSimulation.id,
+          sessionToken: pendingSimulation.session_token?.substring(0, 8) + '...',
+          answersCount: Object.keys(pendingSimulation.answers || {}).length,
+          createdAt: pendingSimulation.created_at
+        });
+
+        const answersCount = pendingSimulation.answers ? Object.keys(pendingSimulation.answers).length : 0;
+
+        return res.json({
+          success: true,
+          session_token: pendingSimulation.session_token,
+          client_id: clientId,
+          simulation_id: pendingSimulation.id,
+          expires_at: pendingSimulation.expires_at,
+          authenticated: true,
+          in_progress: true,
+          current_step: answersCount + 1, // Prochaine question à répondre
+          answers: pendingSimulation.answers || {},
+          message: 'Reprise de la simulation en cours'
+        });
+      }
+
+      // 2️⃣ PAS DE SIMULATION EN COURS → Créer une nouvelle session
+      const sessionTokenAuth = uuidv4();
+      
+      console.log(`📝 Création nouvelle session authentifiée:`, {
+        sessionToken: sessionTokenAuth.substring(0, 8) + '...',
         clientId,
         email: authenticatedUser.email,
         ipAddress,
@@ -203,7 +371,7 @@ router.post('/session', async (req, res) => {
       const { data: newSimulation, error: simError } = await supabaseClient
         .from('simulations')
         .insert({
-          session_token: sessionToken,
+          session_token: sessionTokenAuth,
           client_id: clientId,
           status: 'pending',
           answers: {},
@@ -228,8 +396,8 @@ router.post('/session', async (req, res) => {
         });
       }
       
-      console.log('✅ Session authentifiée créée:', {
-        sessionToken: sessionToken.substring(0, 8) + '...',
+      console.log('✅ Nouvelle session authentifiée créée:', {
+        sessionToken: sessionTokenAuth.substring(0, 8) + '...',
         clientId,
         simulationId: newSimulation.id,
         authenticated: true
@@ -237,12 +405,15 @@ router.post('/session', async (req, res) => {
       
       return res.json({
         success: true,
-        session_token: sessionToken,
+        session_token: sessionTokenAuth,
         client_id: clientId,
         simulation_id: newSimulation.id,
         expires_at: newSimulation.expires_at,
         authenticated: true,
-        message: 'Session créée pour client authentifié'
+        in_progress: false,
+        current_step: 1,
+        answers: {},
+        message: 'Nouvelle session créée pour client authentifié'
       });
       
     } else {
@@ -251,8 +422,10 @@ router.post('/session', async (req, res) => {
       // ========================================
       console.log('🔄 Création session simulateur PUBLIC (mode anonyme)...');
       
+      const sessionTokenAnon = uuidv4();
+      
       console.log(`📝 Données de session:`, {
-        sessionToken: sessionToken.substring(0, 8) + '...',
+        sessionToken: sessionTokenAnon.substring(0, 8) + '...',
         ipAddress,
         userAgent: userAgent.substring(0, 50) + '...',
         hasClientData: Object.keys(clientData).length > 0,
@@ -268,7 +441,7 @@ router.post('/session', async (req, res) => {
 
       // Créer la simulation avec client temporaire
       const { data, error } = await supabaseClient.rpc('create_simulation_with_temporary_client', {
-        p_session_token: sessionToken,
+        p_session_token: sessionTokenAnon,
         p_client_data: enrichedClientData
       });
 
@@ -282,7 +455,7 @@ router.post('/session', async (req, res) => {
       }
 
       console.log('✅ Session anonyme créée avec client temporaire:', {
-        sessionToken: sessionToken.substring(0, 8) + '...',
+        sessionToken: sessionTokenAnon.substring(0, 8) + '...',
         clientId: data.client_id,
         simulationId: data.simulation_id,
         expiresAt: data.expires_at,
@@ -291,7 +464,7 @@ router.post('/session', async (req, res) => {
 
       return res.json({
         success: true,
-        session_token: sessionToken,
+        session_token: sessionTokenAnon,
         client_id: data.client_id,
         simulation_id: data.simulation_id,
         expires_at: data.expires_at,
@@ -547,80 +720,67 @@ router.post('/calculate-eligibility', async (req, res) => {
     console.log(`✅ Calcul SQL réussi: ${resultatsSQL.total_eligible} produits éligibles`);
     console.log(`📊 Produits retournés par SQL:`, JSON.stringify(resultatsSQL.produits, null, 2));
 
-    // 5. Créer les ClientProduitEligible pour les produits éligibles
-    let clientProduits: any[] = [];
+    // 5. FUSION INTELLIGENTE des ClientProduitEligible
+    let mergeResult = {
+      products_created: 0,
+      products_updated: 0,
+      products_protected: 0,
+      total_savings: 0
+    };
     
     if (sim.client_id && resultatsSQL.produits) {
       console.log(`🔍 Client ID: ${sim.client_id}`);
       console.log(`🔍 Simulation ID: ${sim.id}`);
       
-      for (const produit of resultatsSQL.produits) {
-        console.log(`🔍 Traitement produit:`, {
-          nom: produit.produit_nom,
-          id: produit.produit_id,
-          eligible: produit.is_eligible,
-          montant: produit.montant_estime
-        });
+      // Vérifier si l'utilisateur est authentifié (mode client connecté)
+      const authenticatedUser = (req as any).user;
+      const isAuthenticated = !!authenticatedUser;
+      
+      if (isAuthenticated) {
+        // ✅ MODE AUTHENTIFIÉ : Fusion intelligente
+        console.log('🔄 Client authentifié → Fusion intelligente des produits');
+        mergeResult = await mergeClientProductsIntelligent(sim.client_id, sim.id, resultatsSQL.produits);
         
-        if (produit.is_eligible) {
-          const insertData = {
-            clientId: sim.client_id,
-            produitId: produit.produit_id,
-            simulationId: sim.id,
-            statut: 'eligible',
-            montantFinal: produit.montant_estime || 0,
-            // NE PAS envoyer tauxFinal et dureeFinale s'ils sont null (contraintes CHECK)
-            // tauxFinal: null,
-            // dureeFinale: null,
-            notes: produit.notes,
-            calcul_details: produit.calcul_details,
-            metadata: {
-              source: 'simulation_sql',
-              calculated_at: new Date().toISOString(),
-              type_produit: produit.type_produit
+        console.log('📊 Résultat fusion intelligente:', {
+          créés: mergeResult.products_created,
+          mis_à_jour: mergeResult.products_updated,
+          protégés: mergeResult.products_protected,
+          économies_totales: mergeResult.total_savings
+        });
+      } else {
+        // MODE ANONYME : Création simple (comportement original)
+        console.log('👤 Mode anonyme → Création simple des produits');
+        for (const produit of resultatsSQL.produits) {
+          if (produit.is_eligible) {
+            const { error: insertError } = await supabaseClient
+              .from('ClientProduitEligible')
+              .insert({
+                clientId: sim.client_id,
+                produitId: produit.produit_id,
+                simulationId: sim.id,
+                statut: 'eligible',
+                montantFinal: produit.montant_estime || 0,
+                notes: produit.notes,
+                calcul_details: produit.calcul_details,
+                metadata: {
+                  source: 'simulation_sql',
+                  calculated_at: new Date().toISOString(),
+                  type_produit: produit.type_produit
+                }
+              });
+            
+            if (!insertError) {
+              mergeResult.products_created++;
+              console.log(`✅ Produit créé: ${produit.produit_nom} - ${produit.montant_estime}€`);
+            } else {
+              console.error(`❌ Erreur création: ${produit.produit_nom}:`, insertError.message);
             }
-          };
-          
-          console.log(`📝 Données à insérer:`, JSON.stringify(insertData, null, 2));
-          
-          // INSERTION SANS SELECT (RLS bloque le SELECT même avec service_role)
-          const { error: insertError } = await supabaseClient
-            .from('ClientProduitEligible')
-            .insert(insertData);
-          
-          if (insertError) {
-            console.error(`❌ Erreur création CPE pour ${produit.produit_nom}:`, {
-              message: insertError.message,
-              details: insertError.details,
-              hint: insertError.hint,
-              code: insertError.code
-            });
-          } else {
-            // Insertion réussie - créer l'objet pour le frontend manuellement
-            const enrichedCPE = {
-              clientId: sim.client_id,
-              produitId: produit.produit_id,
-              simulationId: sim.id,
-              statut: 'eligible',
-              montantFinal: produit.montant_estime || 0,
-              notes: produit.notes,
-              calcul_details: produit.calcul_details,
-              metadata: insertData.metadata,
-              ProduitEligible: {
-                id: produit.produit_id,
-                nom: produit.produit_nom,
-                type_produit: produit.type_produit,
-                notes_affichage: produit.notes
-              }
-            };
-            clientProduits.push(enrichedCPE);
-            console.log(`✅ ClientProduitEligible créé: ${produit.produit_nom} - ${produit.montant_estime}€`);
           }
         }
       }
     }
 
-    console.log(`📦 ${clientProduits.length} ClientProduitEligible créés`);
+    console.log(`📦 Résumé: ${mergeResult.products_created} créés, ${mergeResult.products_updated} mis à jour, ${mergeResult.products_protected} protégés`);
 
     // 6. Mettre à jour la simulation avec les résultats
     await supabaseClient
@@ -632,12 +792,28 @@ router.post('/calculate-eligibility', async (req, res) => {
       })
       .eq('id', sim.id);
 
+    // 7. Récupérer les produits créés pour le retour
+    const { data: finalProducts } = await supabaseClient
+      .from('ClientProduitEligible')
+      .select(`
+        *,
+        ProduitEligible:produitId (
+          id,
+          nom,
+          type_produit,
+          notes_affichage
+        )
+      `)
+      .eq('clientId', sim.client_id)
+      .eq('simulationId', sim.id);
+
     return res.json({
       success: true,
-      eligibility_results: clientProduits,
-      client_produits: clientProduits,
+      eligibility_results: finalProducts || [],
+      client_produits: finalProducts || [],
       total_eligible: resultatsSQL.total_eligible,
-      message: `${clientProduits.length} produits éligibles identifiés`
+      merge_stats: mergeResult,
+      message: `${mergeResult.products_created} produits créés, ${mergeResult.products_updated} mis à jour, ${mergeResult.products_protected} protégés`
     });
   } catch (error) {
     console.error('❌ Erreur inattendue lors du calcul d\'éligibilité:', error);

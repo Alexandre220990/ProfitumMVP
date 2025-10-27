@@ -212,6 +212,7 @@ const SimulateurClient = () => {
       setSessionStartTime(Date.now());
       
       // Créer une session AVEC token (utilisateur authentifié)
+      // Le serveur vérifiera automatiquement s'il y a une simulation en cours
       const sessionResponse = await fetch(`${config.API_URL}/api/simulator/session`, { 
         method: 'POST', 
         headers: getHeadersWithAuth(),
@@ -226,10 +227,13 @@ const SimulateurClient = () => {
       if (sessionResponse.ok) { 
         const sessionData = await sessionResponse.json();
         setSessionToken(sessionData.session_token);
-        console.log('✅ Session client créée:', {
+        
+        console.log('✅ Session client:', {
           session_token: sessionData.session_token,
           authenticated: sessionData.authenticated,
-          client_id: sessionData.client_id
+          client_id: sessionData.client_id,
+          in_progress: sessionData.in_progress,
+          current_step: sessionData.current_step
         });
         
         if (!sessionData.authenticated) {
@@ -239,21 +243,44 @@ const SimulateurClient = () => {
           return;
         }
         
+        // Charger les questions d'abord
+        console.log('📋 Chargement des questions...');
+        await loadQuestions();
+        
+        // Si simulation en cours, reprendre où on était
+        if (sessionData.in_progress && sessionData.answers) {
+          console.log('🔄 Reprise de la simulation en cours...');
+          const answersObj = sessionData.answers || {};
+          const answersCount = Object.keys(answersObj).length;
+          
+          // Restaurer les réponses
+          setResponses(answersObj);
+          
+          // Aller à la prochaine question non répondue
+          if (answersCount > 0) {
+            setCurrentStep(answersCount + 1);
+            toast.info(`Reprise de votre simulation à l'étape ${answersCount + 1}`);
+          }
+        } else {
+          // Nouvelle simulation
+          console.log('✨ Nouvelle simulation créée');
+          toast.success("Simulation démarrée !");
+        }
+        
         // Tracking début de session client
         setTimeout(() => {
           trackEvent('simulator_client_session_start', {
             timestamp: new Date().toISOString(),
             client_id: sessionData.client_id,
-            authenticated: true
+            authenticated: true,
+            in_progress: sessionData.in_progress || false
           });
         }, 100);
         
-        // Charger les questions
-        console.log('📋 Chargement des questions...');
-        await loadQuestions();
       } else {
-        console.error('❌ Erreur création session:', sessionResponse.status);
-        toast.error("Impossible de créer la session");
+        const errorData = await sessionResponse.json().catch(() => ({}));
+        console.error('❌ Erreur création session:', sessionResponse.status, errorData);
+        toast.error(errorData.error || "Impossible de créer la session");
       }
     } catch (error) { 
       console.error('Erreur lors de l\'initialisation: ', error);
