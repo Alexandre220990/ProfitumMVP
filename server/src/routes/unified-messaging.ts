@@ -517,6 +517,39 @@ router.post('/conversations', async (req, res) => {
 
     if (insertError) {
       console.error('❌❌❌ ERREUR INSERT SUPABASE:', JSON.stringify(insertError, null, 2));
+      
+      // ========================================
+      // GESTION SPÉCIALE : ERREUR DE CONTRAINTE UNIQUE (23505)
+      // Si la conversation existe déjà (race condition), on la retourne
+      // ========================================
+      if (insertError.code === '23505') {
+        console.error('🔄 Contrainte unique violée - conversation existe déjà, récupération...');
+        
+        const { data: duplicateConv, error: duplicateError } = await supabaseAdmin
+          .from('conversations')
+          .select('*')
+          .contains('participant_ids', cleanInsertData.participant_ids)
+          .eq('type', cleanInsertData.type)
+          .eq('status', 'active')
+          .maybeSingle();
+        
+        if (duplicateError || !duplicateConv) {
+          console.error('❌ Impossible de récupérer la conversation dupliquée:', duplicateError);
+          return res.status(500).json({
+            success: false,
+            message: 'Conversation existe mais impossible à récupérer'
+          });
+        }
+        
+        console.error('✅ Conversation dupliquée récupérée:', duplicateConv.id);
+        return res.status(200).json({
+          success: true,
+          data: duplicateConv,
+          message: 'Conversation existante récupérée'
+        });
+      }
+      
+      // Autre erreur
       return res.status(500).json({
         success: false,
         message: 'Erreur lors de la création de la conversation',
