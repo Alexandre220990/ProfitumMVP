@@ -275,8 +275,7 @@ router.get('/events', calendarLimiter, asyncHandler(async (req: Request, res: Re
     start_date, 
     end_date, 
     type, 
-    category, 
-    dossier_id,
+    category,
     limit = 100,
     offset = 0
   } = req.query;
@@ -306,19 +305,14 @@ router.get('/events', calendarLimiter, asyncHandler(async (req: Request, res: Re
         return res.status(500).json({ success: false, message: 'Erreur serveur' });
       }
 
-      // Récupérer les IDs des experts assignés et des dossiers
+      // Récupérer les IDs des experts assignés
       const expertIds = clientDossiers?.map(d => d.expert_id).filter(Boolean) || [];
-      const dossierIds = clientDossiers?.map(d => d.id) || [];
 
       // Construire la condition OR pour les clients
       const orConditions = [`client_id.eq.${authUser.database_id}`];
       
       if (expertIds.length > 0) {
         orConditions.push(...expertIds.map(expertId => `expert_id.eq.${expertId}`));
-      }
-      
-      if (dossierIds.length > 0) {
-        orConditions.push(...dossierIds.map(dossierId => `dossier_id.eq.${dossierId}`));
       }
 
       query = query.or(orConditions.join(','));
@@ -344,9 +338,7 @@ router.get('/events', calendarLimiter, asyncHandler(async (req: Request, res: Re
     if (category) {
       query = query.eq('category', category as string);
     }
-    if (dossier_id) {
-      query = query.eq('dossier_id', dossier_id as string);
-    }
+    // Note: dossier_id filter removed - column doesn't exist in RDV table
 
     const { data: events, error, count } = await query;
 
