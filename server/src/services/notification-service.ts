@@ -737,20 +737,37 @@ export class NotificationService {
     template: NotificationTemplate
   ): Promise<boolean> {
     try {
-      // Récupérer le token push
-      const pushToken = await this.getUserPushToken(notification.user_id);
-      if (!pushToken) return false;
-
       const title = this.replaceVariables(template.pushTitle || template.title, data);
       const body = this.replaceVariables(template.pushBody || template.message, data);
 
-      // Ici, vous intégreriez votre service de push notification
-      // Par exemple, Firebase Cloud Messaging, OneSignal, etc.
-      console.log('Push notification:', { token: pushToken, title, body });
+      // Utiliser FCMPushService pour envoyer via Firebase Cloud Messaging
+      const { FCMPushService } = await import('./fcm-push-service');
+      
+      const result = await FCMPushService.sendToUser(notification.user_id, {
+        title,
+        body,
+        icon: '/Logo-Profitum.png',
+        badge: '/favicon.ico',
+        tag: notification.id,
+        clickAction: notification.action_url || '/',
+        requireInteraction: notification.priority === 'urgent' || notification.priority === 'critical',
+        data: {
+          notification_id: notification.id,
+          notification_type: notification.notification_type,
+          priority: notification.priority || 'normal',
+          ...notification.action_data
+        }
+      });
 
-      return true;
+      if (result.success && result.successCount > 0) {
+        console.log(`✅ Push FCM envoyé à ${result.successCount} device(s)`);
+        return true;
+      } else {
+        console.log(`⚠️ Push FCM échoué: ${result.failureCount} échec(s)`);
+        return false;
+      }
     } catch (error) {
-      console.error('Erreur envoi push:', error);
+      console.error('❌ Erreur envoi push FCM:', error);
       return false;
     }
   }
