@@ -452,6 +452,38 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
     const weekStart = startOfWeek(view.date, { weekStartsOn: 1 });
     const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
     
+    // Grille horaire de 7h à 20h
+    const hours = Array.from({ length: 14 }, (_, i) => i + 7); // 7h à 20h
+    const hourHeight = 60; // pixels par heure
+    
+    // Fonction pour obtenir la position et hauteur d'un événement
+    const getEventStyle = (event: CalendarEvent) => {
+      const startDate = new Date(event.start_date);
+      const endDate = new Date(event.end_date);
+      const startHour = startDate.getHours() + startDate.getMinutes() / 60;
+      const endHour = endDate.getHours() + endDate.getMinutes() / 60;
+      
+      const top = (startHour - 7) * hourHeight;
+      const height = (endHour - startHour) * hourHeight;
+      
+      return {
+        top: `${Math.max(0, top)}px`,
+        height: `${Math.max(30, height)}px`
+      };
+    };
+    
+    // Couleurs vives selon le type d'événement
+    const getEventColor = (event: CalendarEvent) => {
+      const colors: Record<string, string> = {
+        'appointment': 'bg-blue-500 border-blue-600',
+        'meeting': 'bg-green-500 border-green-600',
+        'deadline': 'bg-red-500 border-red-600',
+        'task': 'bg-purple-500 border-purple-600',
+        'reminder': 'bg-orange-500 border-orange-600'
+      };
+      return colors[event.type] || 'bg-blue-500 border-blue-600';
+    };
+    
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between mb-6">
@@ -464,31 +496,98 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
           </Button>
         </div>
         
-        <div className="grid grid-cols-8 gap-1">
-          <div className="p-2"></div>
-          {weekDays.map(day => (
-            <div key={day.toISOString()} className="p-2 text-center">
-              <div className="text-sm font-medium text-gray-900">
-                {format(day, 'EEE', { locale: fr })}
+        <div className="flex border border-gray-300 rounded-lg overflow-hidden bg-white">
+          {/* Colonne des heures */}
+          <div className="w-16 flex-shrink-0 border-r border-gray-300">
+            <div className="h-12 border-b border-gray-300"></div>
+            {hours.map((hour) => (
+              <div 
+                key={hour} 
+                className="relative border-b border-gray-200"
+                style={{ height: `${hourHeight}px` }}
+              >
+                <span className="absolute -top-2 right-2 text-xs text-gray-500 bg-white px-1">
+                  {hour}:00
+                </span>
               </div>
-              <div className="text-lg font-bold text-gray-700">
-                {format(day, 'd')}
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
           
-          <div className="p-2 text-sm font-medium text-gray-500">Heure</div>
-          {weekDays.map(day => (
-            <div key={day.toISOString()} className="min-h-[400px] border border-gray-200 p-2 space-y-2">
-              {getEventsForDate(day).map(event => (
-                <EventCard
-                  key={event.id}
-                  event={event}
-                  compact
-                />
-              ))}
-            </div>
-          ))}
+          {/* Colonnes des jours */}
+          {weekDays.map((day) => {
+            const dayEvents = getEventsForDate(day);
+            const isToday = isSameDay(day, new Date());
+            
+            return (
+              <div 
+                key={day.toISOString()} 
+                className={cn(
+                  "flex-1 border-r border-gray-300 last:border-r-0",
+                  isToday && "bg-blue-50/30"
+                )}
+              >
+                {/* En-tête du jour */}
+                <div className={cn(
+                  "h-12 border-b border-gray-300 flex flex-col items-center justify-center",
+                  isToday && "bg-blue-100 border-blue-300"
+                )}>
+                  <div className="text-xs font-medium text-gray-600">
+                    {format(day, 'EEE', { locale: fr })}
+                  </div>
+                  <div className={cn(
+                    "text-lg font-bold",
+                    isToday ? "text-blue-600" : "text-gray-900"
+                  )}>
+                    {format(day, 'd')}
+                  </div>
+                </div>
+                
+                {/* Grille horaire avec événements */}
+                <div className="relative">
+                  {/* Lignes des heures */}
+                  {hours.map((hour) => (
+                    <div 
+                      key={hour} 
+                      className="border-b border-gray-200"
+                      style={{ height: `${hourHeight}px` }}
+                    />
+                  ))}
+                  
+                  {/* Événements positionnés absolument */}
+                  {dayEvents.map((event) => {
+                    const style = getEventStyle(event);
+                    const colorClass = getEventColor(event);
+                    const startTime = format(new Date(event.start_date), 'HH:mm', { locale: fr });
+                    const endTime = format(new Date(event.end_date), 'HH:mm', { locale: fr });
+                    
+                    return (
+                      <div
+                        key={event.id}
+                        className={cn(
+                          "absolute left-1 right-1 rounded-lg border-2 text-white p-2 cursor-pointer shadow-md hover:shadow-lg transition-shadow overflow-hidden",
+                          colorClass
+                        )}
+                        style={style}
+                        onClick={() => handleViewEvent(event)}
+                      >
+                        <div className="font-semibold text-xs truncate mb-0.5">
+                          {event.title}
+                        </div>
+                        <div className="text-xs opacity-90">
+                          {startTime} - {endTime}
+                        </div>
+                        {parseInt(style.height) > 40 && (
+                          <div className="text-xs opacity-80 mt-0.5">
+                            {event.location || ''}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     );

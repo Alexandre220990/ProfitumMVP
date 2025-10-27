@@ -1,21 +1,19 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, Users, FileText, AlertTriangle, Edit, Trash2, Bell, MapPin, Video, List, CalendarDays, RefreshCw, Eye, Grid } from 'lucide-react';
-import { format, isSameDay, startOfWeek, endOfWeek, addDays, subDays, startOfMonth, endOfMonth, addMinutes, addMonths, subMonths, getDay, getDate, isSameMonth, isToday } from 'date-fns';
+import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, Users, FileText, Edit, Trash2, Bell, MapPin, Video, List, CalendarDays, RefreshCw, Eye, Grid } from 'lucide-react';
+import { format, isSameDay, startOfWeek, endOfWeek, addDays, subDays, startOfMonth, endOfMonth, addMinutes, addMonths, subMonths, getDay, getDate, isToday } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 import { useCalendarEvents } from '@/hooks/use-calendar-events';
-import { CalendarEvent } from '@/services/calendar-service';
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { motion } from 'framer-motion';
 import { DayPicker } from 'react-day-picker';
@@ -36,8 +34,8 @@ interface CalendarEvent {
   description?: string;
   start_date: string;
   end_date: string;
-  type: 'appointment' | 'meeting' | 'reminder' | 'task';
-  category: 'personal' | 'work' | 'health' | 'social' | 'collaborative';
+  type: 'appointment' | 'meeting' | 'reminder' | 'task' | 'deadline';
+  category?: string;
   is_online?: boolean;
   meeting_url?: string;
   phone_number?: string;
@@ -45,8 +43,8 @@ interface CalendarEvent {
   participants?: string[];
   reminders?: Array<{ type: 'email' | 'push'; time: number }>;
   color?: string;
-  priority?: 'low' | 'medium' | 'high';
-  status?: 'pending' | 'confirmed' | 'cancelled';
+  priority?: 'low' | 'medium' | 'high' | 'critical';
+  status?: 'pending' | 'confirmed' | 'cancelled' | 'completed';
 }
 
 interface EventDialogProps {
@@ -140,19 +138,15 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date(2024, 7, 8, 13, 2));
   const [showEventDialog, setShowEventDialog] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [currentFilter, setCurrentFilter] = useState('all');
 
   // Hook calendrier unifié
   const {
     loading,
-    isConnected,
     filteredEvents,
     createEvent,
     updateEvent,
     deleteEvent,
     getEventsForDate,
-    getUpcomingEvents,
     syncWithGoogleCalendar
   } = useCalendarEvents({
     autoLoad: true,
@@ -180,9 +174,9 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
   const handleEventSubmit = useCallback(async (eventData: Partial<CalendarEvent>) => {
     try {
       if (selectedEvent) {
-        await updateEvent(selectedEvent.id, eventData);
+        await updateEvent({ id: selectedEvent.id, ...eventData } as any);
       } else {
-        await createEvent(eventData);
+        await createEvent(eventData as any);
       }
       setShowEventDialog(false);
       setSelectedEvent(null);
@@ -334,8 +328,40 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
   };
 
   const renderWeekView = () => {
-    const weekStart = startOfWeek(view.date, { locale: fr });
+    const weekStart = startOfWeek(view.date, { weekStartsOn: 1, locale: fr });
     const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+    
+    // Grille horaire de 7h à 20h
+    const hours = Array.from({ length: 14 }, (_, i) => i + 7);
+    const hourHeight = 60;
+    
+    // Position et hauteur d'un événement
+    const getEventStyle = (event: CalendarEvent) => {
+      const startDate = new Date(event.start_date);
+      const endDate = new Date(event.end_date);
+      const startHour = startDate.getHours() + startDate.getMinutes() / 60;
+      const endHour = endDate.getHours() + endDate.getMinutes() / 60;
+      
+      const top = (startHour - 7) * hourHeight;
+      const height = (endHour - startHour) * hourHeight;
+      
+      return {
+        top: `${Math.max(0, top)}px`,
+        height: `${Math.max(30, height)}px`
+      };
+    };
+    
+    // Couleurs vives selon le type
+    const getEventColor = (event: CalendarEvent) => {
+      const colors: Record<string, string> = {
+        'appointment': 'bg-blue-500 border-blue-600',
+        'meeting': 'bg-green-500 border-green-600',
+        'deadline': 'bg-red-500 border-red-600',
+        'task': 'bg-purple-500 border-purple-600',
+        'reminder': 'bg-orange-500 border-orange-600'
+      };
+      return colors[event.type] || 'bg-blue-500 border-blue-600';
+    };
     
     return (
       <div className="space-y-4">
@@ -349,33 +375,98 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
           </Button>
         </div>
         
-        <div className="grid grid-cols-8 gap-1">
-          <div className="p-2"></div>
-          {weekDays.map(day => (
-            <div key={day.toISOString()} className="p-2 text-center">
-              <div className="text-sm font-medium text-gray-900">
-                {format(day, 'EEE', { locale: fr })}
+        <div className="flex border border-gray-300 rounded-lg overflow-hidden bg-white">
+          {/* Colonne des heures */}
+          <div className="w-16 flex-shrink-0 border-r border-gray-300">
+            <div className="h-12 border-b border-gray-300"></div>
+            {hours.map((hour) => (
+              <div 
+                key={hour} 
+                className="relative border-b border-gray-200"
+                style={{ height: `${hourHeight}px` }}
+              >
+                <span className="absolute -top-2 right-2 text-xs text-gray-500 bg-white px-1">
+                  {hour}:00
+                </span>
               </div>
-              <div className="text-lg font-bold text-gray-700">
-                {format(day, 'd')}
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
           
-          <div className="p-2 text-sm font-medium text-gray-500">Heure</div>
-          {weekDays.map(day => (
-            <div key={day.toISOString()} className="min-h-[400px] border border-gray-200 p-2">
-              {getEventsForDate(day).map(event => (
-                <EventCard
-                  key={event.id}
-                  event={event}
-                  onEdit={handleEditEvent}
-                  onDelete={handleDeleteEvent}
-                  compact
-                />
-              ))}
-            </div>
-          ))}
+          {/* Colonnes des jours */}
+          {weekDays.map((day) => {
+            const dayEvents = getEventsForDate(day);
+            const isToday = isSameDay(day, new Date());
+            
+            return (
+              <div 
+                key={day.toISOString()} 
+                className={cn(
+                  "flex-1 border-r border-gray-300 last:border-r-0",
+                  isToday && "bg-blue-50/30"
+                )}
+              >
+                {/* En-tête du jour */}
+                <div className={cn(
+                  "h-12 border-b border-gray-300 flex flex-col items-center justify-center",
+                  isToday && "bg-blue-100 border-blue-300"
+                )}>
+                  <div className="text-xs font-medium text-gray-600">
+                    {format(day, 'EEE', { locale: fr })}
+                  </div>
+                  <div className={cn(
+                    "text-lg font-bold",
+                    isToday ? "text-blue-600" : "text-gray-900"
+                  )}>
+                    {format(day, 'd')}
+                  </div>
+                </div>
+                
+                {/* Grille horaire avec événements */}
+                <div className="relative">
+                  {/* Lignes des heures */}
+                  {hours.map((hour) => (
+                    <div 
+                      key={hour} 
+                      className="border-b border-gray-200"
+                      style={{ height: `${hourHeight}px` }}
+                    />
+                  ))}
+                  
+                  {/* Événements positionnés absolument */}
+                  {dayEvents.map((event) => {
+                    const style = getEventStyle(event);
+                    const colorClass = getEventColor(event);
+                    const startTime = format(new Date(event.start_date), 'HH:mm', { locale: fr });
+                    const endTime = format(new Date(event.end_date), 'HH:mm', { locale: fr });
+                    
+                    return (
+                      <div
+                        key={event.id}
+                        className={cn(
+                          "absolute left-1 right-1 rounded-lg border-2 text-white p-2 cursor-pointer shadow-md hover:shadow-lg transition-shadow overflow-hidden",
+                          colorClass
+                        )}
+                        style={style}
+                        onClick={() => handleEditEvent(event)}
+                      >
+                        <div className="font-semibold text-xs truncate mb-0.5">
+                          {event.title}
+                        </div>
+                        <div className="text-xs opacity-90">
+                          {startTime} - {endTime}
+                        </div>
+                        {parseInt(style.height) > 40 && event.location && (
+                          <div className="text-xs opacity-80 mt-0.5 truncate">
+                            {event.location}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     );
@@ -407,43 +498,6 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
             </div>
           ) : (
             dayEvents.map(event => (
-              <EventCard
-                key={event.id}
-                event={event}
-                onEdit={handleEditEvent}
-                onDelete={handleDeleteEvent}
-              />
-            ))
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  const renderAgendaView = () => {
-    const upcomingEvents = getUpcomingEvents(30);
-    
-    return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">Agenda</h2>
-          <Button onClick={() => setShowEventDialog(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nouvel événement
-          </Button>
-        </div>
-
-        <div className="space-y-4">
-          {upcomingEvents.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              <CalendarIcon className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">Aucun événement à venir</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                Créez votre premier événement pour commencer.
-              </p>
-            </div>
-          ) : (
-            upcomingEvents.map(event => (
               <EventCard
                 key={event.id}
                 event={event}
