@@ -889,10 +889,6 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
               <Eye className="h-4 w-4" />
               Jour
             </TabsTrigger>
-            <TabsTrigger value="agenda" className="flex items-center gap-2">
-              <List className="h-4 w-4" />
-              Agenda
-            </TabsTrigger>
             <TabsTrigger value="list" className="flex items-center gap-2">
               <List className="h-4 w-4" />
               Liste
@@ -919,7 +915,6 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
           {view.type === 'month' && renderMonthView()}
           {view.type === 'week' && renderWeekView()}
           {view.type === 'day' && renderDayView()}
-          {view.type === 'agenda' && renderAgendaView()}
           {view.type === 'list' && renderListView()}
         </div>
       </div>

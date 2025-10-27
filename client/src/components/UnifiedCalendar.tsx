@@ -108,7 +108,6 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
     updateEvent,
     deleteEvent,
     getEventsForDate,
-    getUpcomingEvents,
     syncWithGoogleCalendar
   } = useCalendarEvents({
     autoLoad: true,
@@ -449,30 +448,78 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
     );
   };
 
-  const renderAgendaView = () => {
-    const upcomingEvents = getUpcomingEvents(30);
+  const renderWeekView = () => {
+    const weekStart = startOfWeek(view.date, { weekStartsOn: 1 });
+    const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
     
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">Agenda</h2>
+          <h2 className="text-xl font-semibold text-gray-900">
+            Semaine du {format(weekStart, 'dd/MM/yyyy', { locale: fr })}
+          </h2>
           <Button onClick={() => setShowEventDialog(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Nouvel événement
           </Button>
         </div>
+        
+        <div className="grid grid-cols-8 gap-1">
+          <div className="p-2"></div>
+          {weekDays.map(day => (
+            <div key={day.toISOString()} className="p-2 text-center">
+              <div className="text-sm font-medium text-gray-900">
+                {format(day, 'EEE', { locale: fr })}
+              </div>
+              <div className="text-lg font-bold text-gray-700">
+                {format(day, 'd')}
+              </div>
+            </div>
+          ))}
+          
+          <div className="p-2 text-sm font-medium text-gray-500">Heure</div>
+          {weekDays.map(day => (
+            <div key={day.toISOString()} className="min-h-[400px] border border-gray-200 p-2 space-y-2">
+              {getEventsForDate(day).map(event => (
+                <EventCard
+                  key={event.id}
+                  event={event}
+                  compact
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
 
+  const renderDayView = () => {
+    const dayEvents = getEventsForDate(view.date);
+    
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-semibold text-gray-900">
+            {format(view.date, 'EEEE dd MMMM yyyy', { locale: fr })}
+          </h2>
+          <Button onClick={() => setShowEventDialog(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nouvel événement
+          </Button>
+        </div>
+        
         <div className="space-y-4">
-          {upcomingEvents.length === 0 ? (
+          {dayEvents.length === 0 ? (
             <div className="text-center py-12 text-gray-500">
               <CalendarIcon className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">Aucun événement à venir</h3>
+              <h3 className="mt-2 text-sm font-medium text-gray-900">Aucun événement ce jour</h3>
               <p className="mt-1 text-sm text-gray-500">
                 Créez votre premier événement pour commencer.
               </p>
             </div>
           ) : (
-            upcomingEvents.map(event => (
+            dayEvents.map(event => (
               <EventCard
                 key={event.id}
                 event={event}
@@ -599,9 +646,13 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
               <CalendarDays className="h-4 w-4" />
               Mois
             </TabsTrigger>
-            <TabsTrigger value="agenda" className="flex items-center gap-2">
-              <List className="h-4 w-4" />
-              Agenda
+            <TabsTrigger value="week" className="flex items-center gap-2">
+              <CalendarDays className="h-4 w-4" />
+              Semaine
+            </TabsTrigger>
+            <TabsTrigger value="day" className="flex items-center gap-2">
+              <CalendarDays className="h-4 w-4" />
+              Jour
             </TabsTrigger>
             <TabsTrigger value="list" className="flex items-center gap-2">
               <List className="h-4 w-4" />
@@ -627,7 +678,8 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
       <div className="bg-white rounded-lg border">
         <div className="p-6">
           {view.type === 'month' && renderMonthView()}
-          {view.type === 'agenda' && renderAgendaView()}
+          {view.type === 'week' && renderWeekView()}
+          {view.type === 'day' && renderDayView()}
           {view.type === 'list' && renderListView()}
         </div>
       </div>
@@ -947,7 +999,7 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
     color: event?.color || '#3B82F6',
     client_id: event?.client_id || '',
     expert_id: event?.expert_id || '',
-    participants: event?.participants || [] // Participants additionnels
+    participants: event?.participants || []
   });
 
   // État pour gérer le modal de sélection de participants

@@ -21,6 +21,7 @@ export interface CalendarEvent {
   dossier_id?: string;
   client_id?: string;
   expert_id?: string;
+  participants?: any[];
   client_info?: {
     id: string;
     first_name: string;
@@ -84,6 +85,7 @@ class CalendarService {
     start_date?: string;
     end_date?: string;
     type?: string;
+    status?: string;
     category?: string;
     dossier_id?: string;
     limit?: number;
