@@ -737,36 +737,16 @@ router.post('/calculate-eligibility', async (req, res) => {
       const isAuthenticated = !!authenticatedUser;
       
       if (isAuthenticated) {
-        // ✅ MODE AUTHENTIFIÉ : Fusion intelligente (temporairement désactivée pour debug)
-        console.log('🔄 Client authentifié → Mode création simple (debug)');
-        // mergeResult = await mergeClientProductsIntelligent(sim.client_id, sim.id, resultatsSQL.produits);
+        // ✅ MODE AUTHENTIFIÉ : Fusion intelligente
+        console.log('🔄 Client authentifié → Fusion intelligente des produits');
+        mergeResult = await mergeClientProductsIntelligent(sim.client_id, sim.id, resultatsSQL.produits);
         
-        // Création simple pour debug
-        for (const produit of resultatsSQL.produits) {
-          if (produit.is_eligible) {
-            const { error: insertError } = await supabaseClient
-              .from('ClientProduitEligible')
-              .insert({
-                clientId: sim.client_id,
-                produitId: produit.produit_id,
-                simulationId: sim.id,
-                statut: 'eligible',
-                montantFinal: produit.montant_estime || 0,
-                notes: produit.notes,
-                calcul_details: produit.calcul_details,
-                metadata: {
-                  source: 'simulation_sql_debug',
-                  calculated_at: new Date().toISOString(),
-                  type_produit: produit.type_produit
-                }
-              });
-            
-            if (!insertError) {
-              mergeResult.products_created++;
-              console.log(`✅ Produit créé: ${produit.produit_nom}`);
-            }
-          }
-        }
+        console.log('📊 Résultat fusion intelligente:', {
+          créés: mergeResult.products_created,
+          mis_à_jour: mergeResult.products_updated,
+          protégés: mergeResult.products_protected,
+          économies_totales: mergeResult.total_savings
+        });
       } else {
         // MODE ANONYME : Création simple (comportement original)
         console.log('👤 Mode anonyme → Création simple des produits');
