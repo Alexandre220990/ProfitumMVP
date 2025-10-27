@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, Users, FileText, AlertTriangle, Edit, Trash2, Bell, MapPin, Video, List, CalendarDays, RefreshCw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, Users, User, FileText, AlertTriangle, Edit, Trash2, Bell, MapPin, Video, List, CalendarDays, RefreshCw } from 'lucide-react';
 import { format, isSameDay, startOfWeek, endOfWeek, addDays, subDays, startOfMonth, endOfMonth, addMinutes } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -945,8 +946,14 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
     meeting_url: event?.meeting_url || '',
     color: event?.color || '#3B82F6',
     client_id: event?.client_id || '',
-    expert_id: event?.expert_id || ''
+    expert_id: event?.expert_id || '',
+    participants: event?.participants || [] // Participants additionnels
   });
+
+  // État pour gérer le modal de sélection de participants
+  const [showParticipantsModal, setShowParticipantsModal] = useState(false);
+  const [availableParticipants, setAvailableParticipants] = useState<any[]>([]);
+  const [loadingParticipants, setLoadingParticipants] = useState(false);
 
   // Charger les listes de prospects et experts au montage
   React.useEffect(() => {
@@ -980,6 +987,96 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
     } finally {
       setLoadingLists(false);
     }
+  };
+
+  // Charger tous les participants disponibles
+  const loadAvailableParticipants = async () => {
+    setLoadingParticipants(true);
+    try {
+      const endpoints = [];
+      
+      // Charger selon le type d'utilisateur
+      if (user?.type === 'admin') {
+        endpoints.push(
+          fetch(`${config.API_URL}/api/admin/clients`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          }),
+          fetch(`${config.API_URL}/api/admin/experts`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          }),
+          fetch(`${config.API_URL}/api/admin/apporteurs`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          })
+        );
+      } else if (user?.type === 'expert') {
+        // Expert peut ajouter des clients
+        endpoints.push(
+          fetch(`${config.API_URL}/api/clients`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          })
+        );
+      } else if (user?.type === 'apporteur') {
+        // Apporteur peut ajouter prospects et experts
+        endpoints.push(
+          fetch(`${config.API_URL}/api/apporteur/prospects`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          }),
+          fetch(`${config.API_URL}/api/experts`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          })
+        );
+      } else if (user?.type === 'client') {
+        // Client peut ajouter des experts
+        endpoints.push(
+          fetch(`${config.API_URL}/api/experts`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          })
+        );
+      }
+
+      const responses = await Promise.all(endpoints);
+      const participants: any[] = [];
+
+      for (const response of responses) {
+        if (response.ok) {
+          const data = await response.json();
+          const items = data.data?.clients || data.data?.experts || data.data?.apporteurs || data.data || [];
+          participants.push(...items.map((item: any) => ({
+            id: item.id,
+            name: item.first_name && item.last_name 
+              ? `${item.first_name} ${item.last_name}` 
+              : item.company_name || item.email,
+            email: item.email,
+            type: item.type || 'user'
+          })));
+        }
+      }
+
+      setAvailableParticipants(participants);
+    } catch (error) {
+      console.error('Erreur chargement participants:', error);
+    } finally {
+      setLoadingParticipants(false);
+    }
+  };
+
+  // Ajouter un participant
+  const handleAddParticipant = (participant: any) => {
+    if (!formData.participants.find((p: any) => p.id === participant.id)) {
+      setFormData(prev => ({
+        ...prev,
+        participants: [...prev.participants, participant]
+      }));
+    }
+    setShowParticipantsModal(false);
+  };
+
+  // Retirer un participant
+  const handleRemoveParticipant = (participantId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      participants: prev.participants.filter((p: any) => p.id !== participantId)
+    }));
   };
 
   // Effet pour mettre à jour automatiquement l'heure de fin quand l'heure de début change
@@ -1078,6 +1175,47 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
               onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
               rows={3}
             />
+          </div>
+
+          {/* Participants additionnels (optionnel) */}
+          <div className="space-y-2">
+            <Label>Participants <span className="text-xs text-gray-500">(optionnel)</span></Label>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {formData.participants.length > 0 ? (
+                formData.participants.map((participant: any) => (
+                  <Badge 
+                    key={participant.id} 
+                    variant="secondary" 
+                    className="flex items-center gap-1 px-3 py-1"
+                  >
+                    <User className="w-3 h-3" />
+                    {participant.name}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveParticipant(participant.id)}
+                      className="ml-1 hover:text-red-600 transition-colors"
+                    >
+                      ×
+                    </button>
+                  </Badge>
+                ))
+              ) : (
+                <p className="text-xs text-gray-500">Aucun participant ajouté</p>
+              )}
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                loadAvailableParticipants();
+                setShowParticipantsModal(true);
+              }}
+              className="w-full"
+            >
+              <Users className="w-4 h-4 mr-2" />
+              Ajouter un participant
+            </Button>
           </div>
 
           {/* Sélecteurs Client et Expert (pour apporteurs) */}
@@ -1238,6 +1376,73 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
             </Button>
           </div>
         </form>
+
+        {/* Modal de sélection de participants */}
+        <Dialog open={showParticipantsModal} onOpenChange={setShowParticipantsModal}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Ajouter un participant</DialogTitle>
+              <DialogDescription>
+                Sélectionnez une personne à inviter à cet événement
+              </DialogDescription>
+            </DialogHeader>
+            
+            {loadingParticipants ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              </div>
+            ) : availableParticipants.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <Users className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                <p>Aucun participant disponible</p>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {availableParticipants.map((participant) => {
+                  const isAlreadyAdded = formData.participants.find((p: any) => p.id === participant.id);
+                  return (
+                    <button
+                      key={participant.id}
+                      type="button"
+                      onClick={() => !isAlreadyAdded && handleAddParticipant(participant)}
+                      disabled={isAlreadyAdded}
+                      className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                        isAlreadyAdded 
+                          ? 'bg-gray-50 border-gray-200 opacity-50 cursor-not-allowed' 
+                          : 'hover:bg-blue-50 hover:border-blue-300 border-gray-200 cursor-pointer'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-8 w-8">
+                          <AvatarFallback className="bg-blue-100 text-blue-600 text-xs">
+                            {participant.name?.charAt(0).toUpperCase() || '?'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm truncate">{participant.name}</p>
+                          <p className="text-xs text-gray-500 truncate">{participant.email}</p>
+                        </div>
+                        {isAlreadyAdded && (
+                          <Badge variant="secondary" className="text-xs">Ajouté</Badge>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            
+            <div className="flex justify-end">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setShowParticipantsModal(false)}
+              >
+                Fermer
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </DialogContent>
     </Dialog>
   );
