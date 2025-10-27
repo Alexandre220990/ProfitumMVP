@@ -86,10 +86,14 @@ export default function ProductDocumentUpload({
   const getEligibilityStatus = useCallback(() => {
     if (!clientProduit) return 'pending';
     
+    // Statuts finaux
     if (clientProduit.statut === 'eligibility_validated') return 'validated';
     if (clientProduit.statut === 'eligibility_rejected') return 'rejected';
+    
+    // En attente de validation admin
     if (clientProduit.statut === 'documents_uploaded' || clientProduit.statut === 'eligible_confirmed') return 'waiting';
     
+    // État initial : 'eligible', 'opportunité', ou autre = permettre l'upload
     return 'pending';
   }, [clientProduit]);
 

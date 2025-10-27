@@ -155,6 +155,10 @@ export default function TICPEWorkflow({
           if (produitData.statut === 'eligibility_validated') {
             setEligibilityValidated(true);
             setCurrentStep(2); // Déverrouiller étape 2
+          } else if (produitData.statut === 'eligible' || produitData.statut === 'opportunité') {
+            // État initial : permettre l'upload des documents
+            setEligibilityValidated(false);
+            setCurrentStep(1);
           }
         }
       } catch (error) {

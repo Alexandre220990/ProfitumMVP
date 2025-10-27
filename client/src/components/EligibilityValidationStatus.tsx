@@ -79,6 +79,36 @@ export default function EligibilityValidationStatus({
   }
 
   // ============================================================================
+  // ÉTAT 0 : STATUT INITIAL - Prêt pour upload de documents (BLEU CLAIR)
+  // ============================================================================
+  if (clientProduit.statut === 'eligible' || clientProduit.statut === 'opportunité') {
+    return (
+      <div className={`bg-gradient-to-r from-blue-50 to-sky-50 border-2 border-blue-300 rounded-xl p-5 shadow-sm ${className}`}>
+        <div className="flex items-start gap-4">
+          <div className="flex-shrink-0">
+            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+              <Upload className="w-7 h-7 text-blue-600" />
+            </div>
+          </div>
+          <div className="flex-1">
+            <h3 className="text-blue-900 font-bold text-xl mb-1">
+              📋 Produit éligible
+            </h3>
+            <p className="text-blue-800 text-sm leading-relaxed">
+              Votre produit est éligible ! Pour confirmer votre pré-éligibilité, veuillez uploader les documents requis ci-dessous, puis cliquez sur "Valider l'étape".
+            </p>
+            <div className="bg-blue-100 border border-blue-200 rounded-lg p-3 mt-3">
+              <p className="text-blue-900 text-xs font-semibold">
+                ℹ️ Documents nécessaires : KBIS, Certificat d'immatriculation, Facture de carburant
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ============================================================================
   // ÉTAT 2 : EN ATTENTE DE VALIDATION ADMIN ⏳ (GRIS/ARDOISE)
   // ============================================================================
   if (clientProduit.statut === 'documents_uploaded' || clientProduit.statut === 'eligible_confirmed') {

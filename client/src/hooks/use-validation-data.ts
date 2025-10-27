@@ -133,30 +133,30 @@ export const useValidationData = (options: UseValidationDataOptions = {}): UseVa
 
   const fetchPreEligibilites = async (): Promise<ValidationItem[]> => {
     try {
-      const response = await api.get('/admin/client-produits-eligibles');
-      const preEligibilites = response.data.clientProduitsEligibles || [];
+      // Utiliser la route dédiée aux dossiers en attente de validation
+      const response = await api.get('/admin/dossiers/pending-validation');
+      const preEligibilites = response.data.data || [];
       
       return preEligibilites
-        .filter((item: any) => item.validation_state === 'pending' || item.statut === 'en_attente')
+        .filter((item: any) => item.statut === 'documents_uploaded')
         .map((item: any): ValidationItem => ({
           id: item.id,
           type: 'pre_eligibilite',
-          title: `Pré-éligibilité ${item.produitId || 'Général'}`,
-          subtitle: `Client: ${item.Client?.company_name || item.Client?.name || 'Non spécifié'}`,
-          status: item.validation_state === 'pending' || item.statut === 'en_attente' ? 'pending' :
-                 item.validation_state === 'validated' || item.statut === 'validé' ? 'approved' : 'rejected',
-          priority: item.priorite || 'medium',
+          title: item.ProduitEligible?.nom || 'Produit non spécifié',
+          subtitle: item.Client?.company_name || item.Client?.name || 'Client inconnu',
+          status: 'pending',
+          priority: item.priority || 'medium',
           createdAt: item.created_at,
           updatedAt: item.updated_at || item.created_at,
           metadata: {
-            client: item.Client?.company_name || item.Client?.name,
-            produit: item.produitId,
+            client: item.Client,
+            produit: item.ProduitEligible,
             montant_estime: item.montantFinal || 0,
-            expert: item.expert_id,
-            criteres: item.criteres || [],
-            documents: item.documents || []
+            taux: item.tauxFinal || 0,
+            documents: item.documents_sent || [],
+            notes: item.notes
           },
-          actions: ['validate', 'reject', 'request_info', 'view']
+          actions: ['validate', 'reject', 'view']
         }));
     } catch (error) {
       console.error('Erreur récupération pré-éligibilités:', error);

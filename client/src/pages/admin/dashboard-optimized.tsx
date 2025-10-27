@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import { get } from "@/lib/api";
@@ -145,6 +147,12 @@ const AdminDashboardOptimized: React.FC = () => {
   const [loadingHistoire, setLoadingHistoire] = useState(false);
   const [newComment, setNewComment] = useState('');
   const [isPrivateComment, setIsPrivateComment] = useState(false);
+  
+  // Modal Documents Pré-éligibilité
+  const [documentsModalOpen, setDocumentsModalOpen] = useState(false);
+  const [selectedDossierForDocuments, setSelectedDossierForDocuments] = useState<ClientProduitEligible | null>(null);
+  const [previewDocument, setPreviewDocument] = useState<string | null>(null);
+  const [validationNotes, setValidationNotes] = useState('');
   const [sectionData, setSectionData] = useState<SectionData>({
     experts: [],
     clients: [],
@@ -3052,12 +3060,12 @@ const AdminDashboardOptimized: React.FC = () => {
                       </CardContent>
                     </Card>
 
-                    {/* Documents à valider */}
+                    {/* Pré-éligibilités à valider */}
                     <Card>
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                           <FileText className="w-5 h-5" />
-                          Documents en attente ({kpiData.validationsDocuments})
+                          Pré-éligibilités à valider ({kpiData.validationsDocuments})
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
@@ -3065,71 +3073,207 @@ const AdminDashboardOptimized: React.FC = () => {
                           {sectionData.dossiers?.filter(d => 
                             d.statut === 'documents_uploaded' || d.statut === 'eligible_confirmed'
                           ).length > 0 ? (
-                            sectionData.dossiers
-                              .filter(d => d.statut === 'documents_uploaded' || d.statut === 'eligible_confirmed')
-                              .slice(0, 3)
-                              .map((dossier: ClientProduitEligible) => (
-                                <div key={dossier.id} className="bg-red-50 border border-red-300 rounded-lg p-4">
-                                  <div className="flex items-start justify-between gap-4">
-                                    <div className="flex-1">
-                                      <div className="flex items-center gap-2 mb-1">
-                                        <Badge variant="destructive">À VALIDER</Badge>
-                                        <h4 className="font-semibold text-gray-900">
-                                          {dossier.Client?.company_name || 
-                                           `${dossier.Client?.first_name || ''} ${dossier.Client?.last_name || ''}`.trim() || 
-                                           'Client inconnu'}
-                                        </h4>
-                                      </div>
-                                      <p className="text-sm text-gray-700 mb-2">
-                                        📦 {dossier.ProduitEligible?.nom || 'Produit inconnu'}
-                                      </p>
-                                      <div className="flex flex-wrap gap-2 text-xs text-gray-600">
-                                        {dossier.montantFinal && (
+                            <>
+                              {sectionData.dossiers
+                                .filter(d => d.statut === 'documents_uploaded' || d.statut === 'eligible_confirmed')
+                                .slice(0, 3)
+                                .map((dossier: ClientProduitEligible) => (
+                                  <div key={dossier.id} className="bg-red-50 border border-red-300 rounded-lg p-4">
+                                    <div className="flex items-start justify-between gap-4">
+                                      <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                          <Badge variant="destructive">À VALIDER</Badge>
+                                          <h4 className="font-semibold text-gray-900">
+                                            {dossier.Client?.company_name || 
+                                             `${dossier.Client?.first_name || ''} ${dossier.Client?.last_name || ''}`.trim() || 
+                                             'Client inconnu'}
+                                          </h4>
+                                        </div>
+                                        <p className="text-sm text-gray-700 mb-2">
+                                          📦 {dossier.ProduitEligible?.nom || 'Produit inconnu'}
+                                        </p>
+                                        <div className="flex flex-wrap gap-2 text-xs text-gray-600 mb-2">
+                                          {dossier.montantFinal && (
+                                            <span className="flex items-center gap-1">
+                                              <DollarSign className="w-3 h-3" />
+                                              {formatCurrency(dossier.montantFinal)}
+                                            </span>
+                                          )}
                                           <span className="flex items-center gap-1">
-                                            <DollarSign className="w-3 h-3" />
-                                            {formatCurrency(dossier.montantFinal)}
+                                            <Calendar className="w-3 h-3" />
+                                            Soumis le {new Date(dossier.updated_at || dossier.created_at).toLocaleDateString('fr-FR')}
                                           </span>
-                                        )}
-                                        <span className="flex items-center gap-1">
-                                          <Calendar className="w-3 h-3" />
-                                          Soumis le {new Date(dossier.updated_at || dossier.created_at).toLocaleDateString('fr-FR')}
-                                        </span>
+                                        </div>
+                                        <p className="text-xs text-gray-500">
+                                          📎 {dossier.documents_sent?.length || 0} document(s) uploadé(s)
+                                        </p>
                                       </div>
-                                    </div>
-                                    <div className="flex flex-col gap-2">
-                                      <Button 
-                                        size="sm" 
-                                        variant="default"
-                                        className="bg-green-600 hover:bg-green-700"
-                                        onClick={() => {
-                                          // TODO: Implémenter validation directe
-                                          toast.success('Validation en cours...');
-                                          navigate('/admin/gestion-dossiers');
-                                        }}
-                                      >
-                                        <CheckCircle className="w-4 h-4 mr-1" />
-                                        Valider
-                                      </Button>
-                                      <Button 
-                                        size="sm" 
-                                        variant="destructive"
-                                        onClick={() => {
-                                          // TODO: Implémenter rejet direct
-                                          toast.error('Rejet en cours...');
-                                          navigate('/admin/gestion-dossiers');
-                                        }}
-                                      >
-                                        <XCircle className="w-4 h-4 mr-1" />
-                                        Rejeter
-                                      </Button>
+                                      <div className="flex flex-col gap-2">
+                                        <Button 
+                                          size="sm" 
+                                          variant="outline"
+                                          onClick={() => {
+                                            setSelectedDossierForDocuments(dossier);
+                                            setDocumentsModalOpen(true);
+                                          }}
+                                        >
+                                          <Eye className="w-4 h-4 mr-1" />
+                                          Voir documents
+                                        </Button>
+                                        <Button 
+                                          size="sm" 
+                                          variant="default"
+                                          className="bg-green-600 hover:bg-green-700"
+                                          onClick={() => handleValidateEligibility(dossier.id, dossier.ProduitEligible?.nom || 'Dossier')}
+                                        >
+                                          <CheckCircle className="w-4 h-4 mr-1" />
+                                          Valider
+                                        </Button>
+                                        <Button 
+                                          size="sm" 
+                                          variant="destructive"
+                                          onClick={() => handleRejectEligibility(dossier.id, dossier.ProduitEligible?.nom || 'Dossier')}
+                                        >
+                                          <XCircle className="w-4 h-4 mr-1" />
+                                          Rejeter
+                                        </Button>
+                                      </div>
                                     </div>
                                   </div>
+                                ))}
+                              {sectionData.dossiers.filter(d => d.statut === 'documents_uploaded' || d.statut === 'eligible_confirmed').length > 3 && (
+                                <div className="text-center pt-2">
+                                  <Button 
+                                    variant="link" 
+                                    onClick={() => setActiveSection('dossiers')}
+                                  >
+                                    Voir tous les {sectionData.dossiers.filter(d => d.statut === 'documents_uploaded' || d.statut === 'eligible_confirmed').length} dossiers →
+                                  </Button>
                                 </div>
-                              ))
+                              )}
+                            </>
                           ) : (
                             <div className="text-center py-8 text-gray-500">
                               <FileText className="w-12 h-12 mx-auto mb-2 text-gray-400" />
-                              <p>Aucun document à valider</p>
+                              <p>Aucune pré-éligibilité à valider</p>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Utilisateurs à valider */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Users className="w-5 h-5" />
+                          Utilisateurs à valider ({
+                            (sectionData.clients?.filter(c => c.statut === 'pending' || c.statut === 'en_attente').length || 0)
+                          })
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          {sectionData.clients?.filter(c => c.statut === 'pending' || c.statut === 'en_attente').length > 0 ? (
+                            <>
+                              {sectionData.clients
+                                .filter(c => c.statut === 'pending' || c.statut === 'en_attente')
+                                .slice(0, 3)
+                                .map((client: any) => (
+                                  <div key={client.id} className="bg-blue-50 border border-blue-300 rounded-lg p-4">
+                                    <div className="flex items-start justify-between gap-4">
+                                      <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                          <Badge variant="secondary">EN ATTENTE</Badge>
+                                          <h4 className="font-semibold text-gray-900">
+                                            {client.company_name || 
+                                             `${client.first_name || ''} ${client.last_name || ''}`.trim() || 
+                                             'Utilisateur inconnu'}
+                                          </h4>
+                                        </div>
+                                        <p className="text-sm text-gray-700 mb-2">
+                                          👤 {client.type || 'Client'} - {client.email}
+                                        </p>
+                                        <p className="text-xs text-gray-500">
+                                          📅 Inscrit le {new Date(client.created_at).toLocaleDateString('fr-FR')}
+                                        </p>
+                                      </div>
+                                      <div className="flex flex-col gap-2">
+                                        <Button 
+                                          size="sm" 
+                                          variant="outline"
+                                          onClick={() => navigate(`/admin/client-details/${client.id}`)}
+                                        >
+                                          <Eye className="w-4 h-4 mr-1" />
+                                          Voir profil
+                                        </Button>
+                                        <Button 
+                                          size="sm" 
+                                          variant="default"
+                                          className="bg-green-600 hover:bg-green-700"
+                                          onClick={async () => {
+                                            try {
+                                              await fetch(`${config.API_URL}/api/admin/clients/${client.id}/approve`, {
+                                                method: 'PUT',
+                                                headers: {
+                                                  'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                                                  'Content-Type': 'application/json'
+                                                }
+                                              });
+                                              toast.success('Utilisateur validé');
+                                              loadSectionData('clients');
+                                            } catch (error) {
+                                              toast.error('Erreur lors de la validation');
+                                            }
+                                          }}
+                                        >
+                                          <CheckCircle className="w-4 h-4 mr-1" />
+                                          Valider
+                                        </Button>
+                                        <Button 
+                                          size="sm" 
+                                          variant="destructive"
+                                          onClick={async () => {
+                                            const reason = window.prompt('Raison du refus :');
+                                            if (!reason) return;
+                                            try {
+                                              await fetch(`${config.API_URL}/api/admin/clients/${client.id}/reject`, {
+                                                method: 'PUT',
+                                                headers: {
+                                                  'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                                                  'Content-Type': 'application/json'
+                                                },
+                                                body: JSON.stringify({ reason })
+                                              });
+                                              toast.success('Utilisateur rejeté');
+                                              loadSectionData('clients');
+                                            } catch (error) {
+                                              toast.error('Erreur lors du rejet');
+                                            }
+                                          }}
+                                        >
+                                          <XCircle className="w-4 h-4 mr-1" />
+                                          Rejeter
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              {sectionData.clients.filter(c => c.statut === 'pending' || c.statut === 'en_attente').length > 3 && (
+                                <div className="text-center pt-2">
+                                  <Button 
+                                    variant="link" 
+                                    onClick={() => setActiveSection('clients')}
+                                  >
+                                    Voir tous les {sectionData.clients.filter(c => c.statut === 'pending' || c.statut === 'en_attente').length} utilisateurs →
+                                  </Button>
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <div className="text-center py-8 text-gray-500">
+                              <UserCheck className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+                              <p>Aucun utilisateur en attente</p>
                             </div>
                           )}
                         </div>
@@ -3407,6 +3551,181 @@ const AdminDashboardOptimized: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Modal Prévisualisation Documents Pré-éligibilité */}
+      <Dialog open={documentsModalOpen} onOpenChange={setDocumentsModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl">
+              Documents Pré-éligibilité - {selectedDossierForDocuments?.ProduitEligible?.nom || 'Produit'}
+            </DialogTitle>
+            <div className="space-y-1 text-sm text-gray-600 mt-2">
+              <p><strong>Client:</strong> {selectedDossierForDocuments?.Client?.company_name || 
+                `${selectedDossierForDocuments?.Client?.first_name || ''} ${selectedDossierForDocuments?.Client?.last_name || ''}`.trim() || 
+                'Client inconnu'}</p>
+              <p><strong>Produit:</strong> {selectedDossierForDocuments?.ProduitEligible?.nom || 'N/A'}</p>
+              <p><strong>Montant estimé:</strong> {selectedDossierForDocuments?.montantFinal ? formatCurrency(selectedDossierForDocuments.montantFinal) : 'N/A'}</p>
+              <p><strong>Date de soumission:</strong> {selectedDossierForDocuments?.updated_at ? new Date(selectedDossierForDocuments.updated_at).toLocaleDateString('fr-FR') : 'N/A'}</p>
+            </div>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {/* Liste des documents */}
+            <div>
+              <h3 className="font-semibold text-lg mb-4">Documents uploadés ({selectedDossierForDocuments?.documents_sent?.length || 0})</h3>
+              
+              {selectedDossierForDocuments?.documents_sent && selectedDossierForDocuments.documents_sent.length > 0 ? (
+                <div className="space-y-3">
+                  {selectedDossierForDocuments.documents_sent.map((doc: string, index: number) => {
+                    const fileName = doc.split('/').pop() || doc;
+                    const fileExtension = fileName.split('.').pop()?.toLowerCase();
+                    const isPdf = fileExtension === 'pdf';
+                    const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExtension || '');
+                    
+                    return (
+                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-blue-100 rounded flex items-center justify-center">
+                            <FileText className="w-5 h-5 text-blue-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">{fileName}</p>
+                            <p className="text-xs text-gray-500">Document {index + 1}</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          {(isPdf || isImage) && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setPreviewDocument(doc)}
+                            >
+                              <Eye className="w-4 h-4 mr-1" />
+                              Prévisualiser
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              window.open(doc, '_blank');
+                            }}
+                          >
+                            <Download className="w-4 h-4 mr-1" />
+                            Télécharger
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <FileText className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+                  <p>Aucun document uploadé</p>
+                </div>
+              )}
+            </div>
+
+            {/* Prévisualisation du document */}
+            {previewDocument && (
+              <div className="border rounded-lg p-4 bg-gray-50">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-semibold">Prévisualisation</h4>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setPreviewDocument(null)}
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+                <div className="bg-white rounded border">
+                  {previewDocument.toLowerCase().endsWith('.pdf') ? (
+                    <iframe
+                      src={previewDocument}
+                      className="w-full h-96 rounded"
+                      title="Prévisualisation PDF"
+                    />
+                  ) : (
+                    <img
+                      src={previewDocument}
+                      alt="Prévisualisation"
+                      className="w-full h-auto rounded"
+                    />
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Notes admin (optionnel) */}
+            <div>
+              <Label htmlFor="validation-notes" className="text-sm font-semibold mb-2 block">
+                Notes administrateur (optionnel)
+              </Label>
+              <Textarea
+                id="validation-notes"
+                placeholder="Ajoutez des notes concernant cette validation..."
+                value={validationNotes}
+                onChange={(e) => setValidationNotes(e.target.value)}
+                rows={3}
+                className="w-full"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDocumentsModalOpen(false);
+                setSelectedDossierForDocuments(null);
+                setPreviewDocument(null);
+                setValidationNotes('');
+              }}
+            >
+              Fermer
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (selectedDossierForDocuments) {
+                  handleRejectEligibility(
+                    selectedDossierForDocuments.id,
+                    selectedDossierForDocuments.ProduitEligible?.nom || 'Dossier'
+                  );
+                  setDocumentsModalOpen(false);
+                  setSelectedDossierForDocuments(null);
+                  setPreviewDocument(null);
+                  setValidationNotes('');
+                }
+              }}
+            >
+              <XCircle className="w-4 h-4 mr-2" />
+              Rejeter le dossier
+            </Button>
+            <Button
+              variant="default"
+              className="bg-green-600 hover:bg-green-700"
+              onClick={() => {
+                if (selectedDossierForDocuments) {
+                  handleValidateEligibility(
+                    selectedDossierForDocuments.id,
+                    selectedDossierForDocuments.ProduitEligible?.nom || 'Dossier'
+                  );
+                  setDocumentsModalOpen(false);
+                  setSelectedDossierForDocuments(null);
+                  setPreviewDocument(null);
+                  setValidationNotes('');
+                }
+              }}
+            >
+              <CheckCircle className="w-4 h-4 mr-2" />
+              Valider l'éligibilité
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Modal Assignation Expert */}
       {expertModalOpen && selectedDossierForExpert && (
