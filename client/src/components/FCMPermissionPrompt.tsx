@@ -32,8 +32,8 @@ export function FCMPermissionPrompt({
     isInitialized,
     permission,
     isLoading,
-    requestPermission,
-    unregisterToken
+    requestPermission
+    // unregisterToken - Non utilisé dans cette version
   } = useFCMNotifications();
 
   const [isDismissed, setIsDismissed] = useState(false);
@@ -54,12 +54,13 @@ export function FCMPermissionPrompt({
     }
   };
 
-  const handleDisableNotifications = async () => {
-    const success = await unregisterToken();
-    if (success) {
-      toast.success('Notifications désactivées');
-    }
-  };
+  // Fonction pour désactiver les notifications (non utilisée dans cette version)
+  // const handleDisableNotifications = async () => {
+  //   const success = await unregisterToken();
+  //   if (success) {
+  //     toast.success('Notifications désactivées');
+  //   }
+  // };
 
   const handleDismiss = () => {
     setIsDismissed(true);

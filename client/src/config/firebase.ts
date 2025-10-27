@@ -127,7 +127,7 @@ export async function onForegroundMessage(
       return null;
     }
 
-    const unsubscribe = onMessage(messagingInstance, (payload) => {
+    const unsubscribe = onMessage(messagingInstance, (payload: unknown) => {
       console.log('📬 Message FCM reçu (foreground):', payload);
       callback(payload);
     });
