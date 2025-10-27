@@ -44,13 +44,6 @@ export default function ClientNavigation() {
       category: 'main'
     },
     {
-      label: 'Mes Audits',
-      path: '/dashboard/client-assignments',
-      icon: BarChart3,
-      description: 'Suivi de vos audits en cours',
-      category: 'main'
-    },
-    {
       label: 'Agenda',
       path: '/agenda-client',
       icon: Calendar,

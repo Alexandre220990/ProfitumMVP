@@ -81,12 +81,6 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
       current: location.pathname === '/simulateur-client'
     },
     {
-      name: 'Mes Audits',
-      href: '/dashboard/client-assignments',
-      icon: BarChart3,
-      current: location.pathname === '/dashboard/client-assignments'
-    },
-    {
       name: 'Agenda',
       href: '/agenda-client',
       icon: Calendar,

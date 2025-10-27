@@ -2,7 +2,7 @@ import React from 'react';
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
-import { User, Briefcase, MessageSquare, Settings, BarChart3, Users, ArrowRight } from "lucide-react";
+import { User, Briefcase, MessageSquare, Settings, BarChart3, ArrowRight } from "lucide-react";
 
 export default function ClientHome() {
   const { user } = useAuth();
@@ -20,19 +20,11 @@ export default function ClientHome() {
   const dashboardCards = [
     {
       title: 'Dashboard Principal',
-      description: 'Vue d\'ensemble de vos dossiers, audits et simulations',
+      description: 'Vue d\'ensemble de vos dossiers et simulations',
       icon: BarChart3,
       path: `/dashboard/client/${user?.id}`,
       color: 'bg-blue-500',
-      features: ['Dossiers clients', 'Audits énergétiques', 'Simulations', 'KPIs']
-    },
-    {
-      title: 'Mes Assignations',
-      description: 'Gérez vos demandes et suivez vos missions avec nos experts',
-      icon: Users,
-      path: '/dashboard/client-assignments',
-      color: 'bg-green-500',
-      features: ['Assignations en cours', 'Historique des missions', 'Notation des experts', 'Messagerie']
+      features: ['Dossiers clients', 'Suivi des produits', 'Simulations', 'KPIs']
     }
   ];
 
@@ -80,12 +72,12 @@ export default function ClientHome() {
           </p>
         </div>
 
-        {/* Dashboards principaux */}
+        {/* Dashboard principal */}
         <div className="mb-12">
           <h2 className="text-2xl font-semibold text-gray-900 mb-6">
-            Tableaux de bord
+            Tableau de bord
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-6">
             {dashboardCards.map((card) => {
               const IconComponent = card.icon;
               return (
@@ -149,7 +141,7 @@ export default function ClientHome() {
           <h2 className="text-2xl font-semibold text-gray-900 mb-6">
             Aperçu rapide
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center">
@@ -158,20 +150,6 @@ export default function ClientHome() {
                   </div>
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-600">Dossiers actifs</p>
-                    <p className="text-2xl font-bold text-gray-900">-</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center">
-                  <div className="p-2 bg-green-100 rounded-lg">
-                    <Users className="h-6 w-6 text-green-600" />
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Assignations</p>
                     <p className="text-2xl font-bold text-gray-900">-</p>
                   </div>
                 </div>

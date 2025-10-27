@@ -12,7 +12,6 @@ import { Toaster } from "./components/ui/sonner";
 // Pages principales
 const DashboardClient = React.lazy(() => import('./pages/dashboard/client'));
 const ClientHome = React.lazy(() => import('./pages/dashboard/client-home'));
-const ClientAssignments = React.lazy(() => import('./pages/dashboard/client-assignments'));
 const AgendaClient = React.lazy(() => import('./pages/agenda-client'));
 const AgendaExpert = React.lazy(() => import('./pages/agenda-expert'));
 const AgendaAdmin = React.lazy(() => import('./pages/agenda-admin'));
@@ -188,7 +187,6 @@ function App() {
                         <Route path="/dashboard/client/:id" element={<DashboardClient />} />
                         <Route path="/dashboard/client/demo" element={<DashboardClient />} />
                         <Route path="/dashboard/client-home/:id" element={<ClientHome />} />
-                        <Route path="/dashboard/client-assignments" element={<ClientAssignments />} />
                         
                         {/* Agenda & Calendar */}
                         <Route path="/agenda-client" element={<AgendaClient />} />
