@@ -58,10 +58,10 @@ export default function PublicHeader() {
               <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-blue-600 to-purple-600 transition-all duration-300 group-hover:w-full"></span>
             </Link>
             <Link 
-              to="/contact" 
+              to="/a-propos" 
               className="text-slate-700 hover:text-blue-600 transition-colors duration-200 font-medium relative group whitespace-nowrap"
             >
-              Contact
+              À Propos
               <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-blue-600 to-purple-600 transition-all duration-300 group-hover:w-full"></span>
             </Link>
           </nav>
@@ -136,11 +136,11 @@ export default function PublicHeader() {
                 Devenir apporteur
               </Link>
               <Link 
-                to="/contact" 
+                to="/a-propos" 
                 onClick={() => setMobileMenuOpen(false)}
                 className="block py-3 px-4 text-slate-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200 font-medium"
               >
-                Contact
+                À Propos
               </Link>
               
               {/* Boutons de connexion en mobile */}

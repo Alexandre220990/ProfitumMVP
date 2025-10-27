@@ -14,7 +14,7 @@ export default function GestionCarburantCartesPro() { return (
             <a href="#services" className="hover: text-blue-200 transition-colors">Nos Services</a>
             <Link to="/experts">Nos Experts</Link>
             <Link to="/tarifs">Tarifs</Link>
-            <Link to="/contact">Contact</Link>
+            <Link to="/a-propos">Contact</Link>
           </div>
         </div>
       </header>
@@ -101,8 +101,8 @@ export default function GestionCarburantCartesPro() { return (
       </section>
       { /* CTA Contact */ }
       <section className="py-12 text-center bg-yellow-50">
-        <Link to="/contact">
-          <Button className="bg-yellow-600 text-white text-lg px-8 py-4 rounded-lg font-bold hover: bg-yellow-700 transition">
+        <Link to="/a-propos">
+          <Button className="bg-yellow-600 text-white text-lg px-8 py-4 rounded-lg font-bold hover:bg-yellow-700 transition">
             Contactez-nous
           </Button>
         </Link>

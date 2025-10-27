@@ -89,8 +89,8 @@ export default function ApprovalPendingModal({ isOpen, onClose, approvalStatus }
           <Button variant="outline" onClick={onClose}>
             Fermer
           </Button>
-          <Button onClick={() => window.location.href = '/contact'}>
-            Nous contacter
+          <Button onClick={() => window.location.href = '/a-propos'}>
+            En savoir plus
           </Button>
         </div>
       </DialogContent>

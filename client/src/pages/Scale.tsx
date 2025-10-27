@@ -16,7 +16,7 @@ const Scale = () => { const navigate = useNavigate();
           <Link to="/Nos-Services">Nos Services</Link>
           <Link to="/experts">Nos Experts</Link>
           <Link to="/tarifs">Tarifs</Link>
-          <Link to="/contact">Contact</Link>
+          <Link to="/a-propos">Contact</Link>
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

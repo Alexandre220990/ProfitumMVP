@@ -129,10 +129,10 @@ export function EmptyEligibleProductsState() {
             Découvrir nos experts
           </Button>
           <Button 
-            onClick={() => navigate("/contact")}
+            onClick={() => navigate("/a-propos")}
             className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
           >
-            Nous contacter
+            En savoir plus
           </Button>
         </div>
       </div>

@@ -30,7 +30,7 @@ export default function NosServices() { return (
             <Link to="/Nos-Services">Nos Services</Link>
             <Link to="/experts">Nos Experts</Link>
             <Link to="/tarifs">Tarifs</Link>
-            <Link to="/contact">Contact</Link>
+            <Link to="/a-propos">À Propos</Link>
           </div>
         </div>
         <DropdownMenu>

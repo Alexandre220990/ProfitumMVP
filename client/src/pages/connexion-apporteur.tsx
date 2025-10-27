@@ -265,10 +265,10 @@ export default function ConnexionApporteur() {
               <p className="text-sm text-gray-600">
                 Problème de connexion ? 
                 <Link 
-                  to="/contact" 
+                  to="/a-propos" 
                   className="text-blue-600 hover:text-blue-700 font-medium ml-1"
                 >
-                  Contactez le support
+                  En savoir plus
                 </Link>
               </p>
               

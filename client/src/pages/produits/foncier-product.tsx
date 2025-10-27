@@ -20,6 +20,8 @@ import {
   UserCheck
 } from "lucide-react";
 import { get } from "@/lib/api";
+import UniversalProductWorkflow from "@/components/UniversalProductWorkflow";
+import { TrendingUp } from "lucide-react";
 
 interface ClientProduitEligible {
   id: string;
@@ -201,6 +203,27 @@ const FoncierProductPage = () => {
                   <div className="text-sm text-gray-600">Durée estimée</div>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Processus de suivi */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5" />
+                Suivi de votre dossier
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <UniversalProductWorkflow
+                clientProduitId={clientProduit.id}
+                productKey="foncier"
+                companyName={clientProduit.Client?.company_name || 'Votre bien immobilier'}
+                estimatedAmount={clientProduit.montantFinal || 0}
+                onWorkflowComplete={() => {
+                  loadClientProduit();
+                }}
+              />
             </CardContent>
           </Card>
 

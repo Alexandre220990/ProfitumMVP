@@ -82,6 +82,7 @@ const UnauthorizedPage = React.lazy(() => import('./pages/unauthorized'));
 // Pages légales
 const PrivacyPage = React.lazy(() => import('./pages/privacy'));
 const TermsPage = React.lazy(() => import('./pages/terms'));
+const AboutPage = React.lazy(() => import('./pages/about'));
 
 // Admin pages
 const AdminDashboard = React.lazy(() => import('./pages/admin/dashboard'));
@@ -138,6 +139,7 @@ function App() {
                     <Route path="/homepage-test" element={<HomepageTest />} />
                     <Route path="/privacy" element={<PrivacyPage />} />
                     <Route path="/terms" element={<TermsPage />} />
+                    <Route path="/a-propos" element={<AboutPage />} />
                     <Route path="/home" element={<HomePage />} />
                     <Route path="/simulateur" element={<SimulateurEligibilite />} />
                     <Route path="/simulateur-eligibilite" element={<SimulateurEligibilite />} />

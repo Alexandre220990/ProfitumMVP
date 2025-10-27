@@ -15,7 +15,7 @@ export default function ControleTechniquePoidsLourds() {
             <a href="#services" className="hover: text-blue-200 transition-colors">Nos Services</a>
             <Link to="/experts">Nos Experts</Link>
             <Link to="/tarifs">Tarifs</Link>
-            <Link to="/contact">Contact</Link>
+            <Link to="/a-propos">Contact</Link>
           </div>
         </div>
       </header>
@@ -104,8 +104,8 @@ export default function ControleTechniquePoidsLourds() {
       </section>
       {/* CTA Contact */}
       <section className="py-12 text-center bg-blue-50">
-        <Link to="/contact">
-          <Button className="bg-blue-600 text-white text-lg px-8 py-4 rounded-lg font-bold hover: bg-blue-700 transition">
+        <Link to="/a-propos">
+          <Button className="bg-blue-600 text-white text-lg px-8 py-4 rounded-lg font-bold hover:bg-blue-700 transition">
             Contactez-nous
           </Button>
         </Link>

@@ -16,9 +16,11 @@ import {
   Award,
   Target,
   Zap,
-  UserCheck
+  UserCheck,
+  TrendingUp
 } from "lucide-react";
 import { get } from "@/lib/api";
+import UniversalProductWorkflow from "@/components/UniversalProductWorkflow";
 
 interface ClientProduitEligible {
   id: string;
@@ -200,6 +202,27 @@ const DFSProductPage = () => {
                   <div className="text-sm text-gray-600">Durée estimée</div>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Processus de suivi */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5" />
+                Suivi de votre dossier
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <UniversalProductWorkflow
+                clientProduitId={clientProduit.id}
+                productKey="dfs"
+                companyName={clientProduit.Client?.company_name || 'Votre entreprise'}
+                estimatedAmount={clientProduit.montantFinal || 0}
+                onWorkflowComplete={() => {
+                  loadClientProduit();
+                }}
+              />
             </CardContent>
           </Card>
 

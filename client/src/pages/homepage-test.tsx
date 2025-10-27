@@ -506,7 +506,7 @@ const FooterSection = () => (
             <li><a href="/simulateur" className="text-blue-200 hover:text-white transition-colors">Simulateur gratuit</a></li>
             <li><a href="/experts" className="text-blue-200 hover:text-white transition-colors">Nos experts</a></li>
             <li><a href="/blog" className="text-blue-200 hover:text-white transition-colors">Blog conseils</a></li>
-            <li><a href="/contact" className="text-blue-200 hover:text-white transition-colors">Contact</a></li>
+            <li><a href="/a-propos" className="text-blue-200 hover:text-white transition-colors">À Propos</a></li>
             <li><a href="/mentions-legales" className="text-blue-200 hover:text-white transition-colors">Mentions légales</a></li>
           </ul>
         </div>

@@ -14,7 +14,7 @@ export default function DashcamSecurite() { return (
             <a href="#services" className="hover: text-blue-200 transition-colors">Nos Services</a>
             <Link to="/experts">Nos Experts</Link>
             <Link to="/tarifs">Tarifs</Link>
-            <Link to="/contact">Contact</Link>
+            <Link to="/a-propos">Contact</Link>
           </div>
         </div>
       </header>
@@ -104,7 +104,7 @@ export default function DashcamSecurite() { return (
       </section>
       { /* CTA Contact */ }
       <section className="py-12 text-center bg-gray-50">
-        <Link to="/contact">
+        <Link to="/a-propos">
           <Button className="bg-gray-900 text-white text-lg px-8 py-4 rounded-lg font-bold hover:bg-gray-700 transition">
             Contactez-nous
           </Button>

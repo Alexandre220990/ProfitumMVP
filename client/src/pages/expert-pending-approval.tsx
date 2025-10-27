@@ -131,14 +131,8 @@ const ExpertPendingApproval = () => {
   };
 
   const handleContactSupport = () => {
-    // Ouvrir le formulaire de contact ou rediriger
-    navigate("/contact", { 
-      state: { 
-        subject: "Demande d'information - Approbation expert",
-        userEmail: userInfo?.email,
-        userType: "expert"
-      }
-    });
+    // Rediriger vers la page À Propos
+    navigate("/a-propos");
   };
 
   const handleViewProfile = () => {

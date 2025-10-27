@@ -81,9 +81,9 @@ const Confirmation = () => { const navigate = useNavigate();
               <Button 
                 variant="outline" 
                 className="w-full"
-                onClick={ () => navigate("/contact") }
+                onClick={ () => navigate("/a-propos") }
               >
-                Contacter le support
+                En savoir plus
               </Button>
             </div>
           </CardContent>
