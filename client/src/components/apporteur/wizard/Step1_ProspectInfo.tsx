@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -40,7 +40,7 @@ export function Step1_ProspectInfo({ prospectId, data, onUpdate, onNext, onSaveA
   const loadProspectData = async () => {
     setLoadingProspect(true);
     try {
-      const response = await fetch(`${config.API_URL}/api/apporteur/prospects/${prospectId}`, {
+      const response = await fetch(`${config.API_URL}/api/apporteur/clients/${prospectId}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }

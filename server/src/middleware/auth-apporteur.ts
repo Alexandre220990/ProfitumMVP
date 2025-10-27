@@ -101,7 +101,10 @@ export const checkProspectOwnership = async (req: ApporteurRequest, res: Respons
             return;
         }
 
-        console.log(`🔐 Vérification ownership prospect ${prospectId} pour apporteur ${req.user?.apporteur_id}`);
+        // Support pour les deux formats d'authentification (apporteur_id ou database_id)
+        const userApporteurId = (req.user as any)?.apporteur_id || (req.user as any)?.database_id;
+        
+        console.log(`🔐 Vérification ownership prospect ${prospectId} pour apporteur ${userApporteurId}`);
 
         // Les prospects sont stockés dans la table Client avec status='prospect'
         const { data: prospect, error } = await supabase
@@ -124,8 +127,8 @@ export const checkProspectOwnership = async (req: ApporteurRequest, res: Respons
 
         console.log(`📋 Prospect trouvé: apporteur_id=${prospect.apporteur_id}, status=${prospect.status}`);
 
-        if (prospect.apporteur_id !== req.user?.apporteur_id) {
-            console.log(`❌ Accès refusé: ${prospect.apporteur_id} !== ${req.user?.apporteur_id}`);
+        if (prospect.apporteur_id !== userApporteurId) {
+            console.log(`❌ Accès refusé: ${prospect.apporteur_id} !== ${userApporteurId}`);
             res.status(403).json({ error: 'Accès refusé - Prospect non autorisé' });
             return;
         }
