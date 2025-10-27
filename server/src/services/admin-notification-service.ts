@@ -16,19 +16,18 @@ export class AdminNotificationService {
    */
   static async getAdminIds(): Promise<string[]> {
     try {
-      const { data: admins, error } = await supabase.auth.admin.listUsers();
+      // Récupérer depuis la table Admin (plus fiable que auth.admin.listUsers)
+      const { data: admins, error } = await supabase
+        .from('Admin')
+        .select('id')
+        .eq('status', 'active');
       
       if (error) {
         console.error('❌ Erreur récupération admins:', error);
         return [];
       }
 
-      // Filtrer les utilisateurs de type admin
-      const adminUsers = admins.users.filter(user => 
-        user.user_metadata?.type === 'admin'
-      );
-
-      return adminUsers.map(admin => admin.id);
+      return admins?.map(admin => admin.id) || [];
     } catch (error) {
       console.error('❌ Erreur getAdminIds:', error);
       return [];

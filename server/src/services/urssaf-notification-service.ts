@@ -137,7 +137,24 @@ export class URSSAFNotificationService {
   }
 
   private async getAdminUserIds(): Promise<string[]> {
-    // TODO: Implémenter la récupération des IDs admin
-    return [];
+    try {
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+      
+      const { data: admins, error } = await supabase
+        .from('Admin')
+        .select('id')
+        .eq('status', 'active');
+      
+      if (error) {
+        console.error('❌ Erreur récupération admins:', error);
+        return [];
+      }
+      
+      return admins?.map(admin => admin.id) || [];
+    } catch (error) {
+      console.error('❌ Erreur getAdminUserIds:', error);
+      return [];
+    }
   }
 }

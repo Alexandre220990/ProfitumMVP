@@ -144,8 +144,27 @@ export class ExpertNotificationService {
   }
 
   private async getAdminId(): Promise<string | null> {
-    // TODO: Implémenter la récupération de l'ID admin
-    return null;
+    try {
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+      
+      const { data: admins, error } = await supabase
+        .from('Admin')
+        .select('id')
+        .eq('status', 'active')
+        .limit(1)
+        .single();
+      
+      if (error || !admins) {
+        console.error('❌ Erreur récupération admin:', error);
+        return null;
+      }
+      
+      return admins.id;
+    } catch (error) {
+      console.error('❌ Erreur getAdminId:', error);
+      return null;
+    }
   }
 
   // Méthodes utilitaires statiques
