@@ -389,6 +389,36 @@ router.post('/conversations', async (req, res) => {
     console.error('📝 Conversation Type:', conversationType);
     console.error('👥 Final Participant IDs:', finalParticipantIds);
     
+    // ========================================
+    // VÉRIFIER SI UNE CONVERSATION EXISTE DÉJÀ
+    // ========================================
+    console.error('🔍 Vérification si conversation existe déjà...');
+    
+    // Chercher une conversation existante avec les mêmes participants
+    const { data: existingConversation, error: checkError } = await supabaseAdmin
+      .from('conversations')
+      .select('*')
+      .contains('participant_ids', finalParticipantIds)
+      .eq('type', conversationType)
+      .eq('status', 'active')
+      .maybeSingle();
+    
+    if (checkError && checkError.code !== 'PGRST116') {
+      console.error('⚠️ Erreur lors de la vérification:', checkError);
+    }
+    
+    if (existingConversation) {
+      console.error('✅ Conversation existante trouvée:', existingConversation.id);
+      console.error('📋 Retour de la conversation existante au lieu d\'en créer une nouvelle');
+      return res.status(200).json({
+        success: true,
+        data: existingConversation,
+        message: 'Conversation existante récupérée'
+      });
+    }
+    
+    console.error('🆕 Aucune conversation existante, création d\'une nouvelle...');
+    
     const insertData: any = {
       type: conversationType,
       participant_ids: finalParticipantIds,
