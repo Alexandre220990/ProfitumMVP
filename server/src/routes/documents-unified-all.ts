@@ -536,18 +536,20 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
       try {
         const { data: clientProduit } = await supabase
           .from('ClientProduitEligible')
-          .select('expertId, clientId, Client(nom, prenom)')
+          .select('expertId, clientId, Client!inner(nom, prenom)')
           .eq('id', dossier_id)
           .single();
         
         if (clientProduit?.expertId) {
+          const clientInfo = Array.isArray(clientProduit.Client) ? clientProduit.Client[0] : clientProduit.Client;
+          
           const { NotificationTriggers } = await import('../services/NotificationTriggers');
           await NotificationTriggers.onDocumentUploaded(
             clientProduit.expertId,
             {
               id: clientProduit.clientId,
-              nom: clientProduit.Client?.nom || 'Client',
-              prenom: clientProduit.Client?.prenom || ''
+              nom: clientInfo?.nom || 'Client',
+              prenom: clientInfo?.prenom || ''
             },
             {
               id: doc.id,
