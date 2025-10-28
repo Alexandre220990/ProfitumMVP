@@ -308,8 +308,8 @@ router.post('/push/send', requireUserType('admin'), asyncHandler(async (req, res
       });
     }
 
-    const results = [];
-    const errors = [];
+    const results: string[] = [];
+    const errors: Array<{ deviceId: string; error: string }> = [];
 
     // Envoyer la notification à tous les appareils
     for (const device of devices) {
