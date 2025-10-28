@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
 import { useMessagingBadge } from '@/hooks/use-messaging-badge';
@@ -42,9 +42,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const { user, logout } = useAuth();
   const { badgeCount } = useMessagingBadge();
   const { unreadCount: notificationsCount } = useNotificationBadge();
-
-  // États pour les badges dynamiques
-  const [pendingValidations, setPendingValidations] = useState(0);
 
   const handleLogout = async () => {
     await logout();
@@ -99,8 +96,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       name: 'Validation',
       href: '/admin/dashboard-optimized?section=validations',
       icon: CheckCircle,
-      current: location.pathname === '/admin/dashboard-optimized' && location.search === '?section=validations',
-      badge: pendingValidations
+      current: location.pathname === '/admin/dashboard-optimized' && location.search === '?section=validations'
     },
     {
       name: 'Formulaire Expert',
