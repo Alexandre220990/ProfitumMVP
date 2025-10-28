@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
 import { useMessagingBadge } from '@/hooks/use-messaging-badge';
+import { useNotificationBadge } from '@/hooks/use-notification-badge';
 import { Badge } from '@/components/ui/badge';
 import { 
   LayoutDashboard,
@@ -40,25 +41,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const location = useLocation();
   const { user, logout } = useAuth();
   const { badgeCount } = useMessagingBadge();
+  const { unreadCount: notificationsCount } = useNotificationBadge();
 
   // États pour les badges dynamiques
   const [pendingValidations, setPendingValidations] = useState(0);
-  const [notificationsCount, setNotificationsCount] = useState(0);
-
-  // Charger les compteurs de badges
-  useEffect(() => {
-    loadBadgeCounts();
-  }, []);
-
-  const loadBadgeCounts = async () => {
-    try {
-      // TODO: Implémenter les appels API réels
-      setPendingValidations(0);
-      setNotificationsCount(0);
-    } catch (error) {
-      console.error('Erreur chargement badges:', error);
-    }
-  };
 
   const handleLogout = async () => {
     await logout();
@@ -85,6 +71,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       icon: MessageSquare,
       current: location.pathname.includes('/admin/messagerie'),
       badge: badgeCount > 0 ? badgeCount : undefined
+    },
+    {
+      name: 'Notifications',
+      href: '/notification-center',
+      icon: Bell,
+      current: location.pathname === '/notification-center',
+      badge: notificationsCount > 0 ? notificationsCount : undefined
     },
     {
       name: 'Documents & GED',

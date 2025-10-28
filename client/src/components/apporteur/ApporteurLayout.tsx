@@ -77,6 +77,13 @@ export default function ApporteurLayout({ children }: ApporteurLayoutProps) {
       badge: badgeCount > 0 ? badgeCount : undefined
     },
     {
+      name: 'Notifications',
+      href: '/apporteur/notifications',
+      icon: Bell,
+      current: location.pathname === '/apporteur/notifications',
+      badge: unreadCount > 0 ? unreadCount : undefined
+    },
+    {
       name: 'Produits',
       href: '/apporteur/products',
       icon: DollarSign,

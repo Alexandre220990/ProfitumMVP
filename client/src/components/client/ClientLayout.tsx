@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { Badge } from '@/components/ui/badge';
 import { TypeSwitcher } from '@/components/TypeSwitcher';
 import { useMessagingBadge } from '@/hooks/use-messaging-badge';
+import { useNotificationBadge } from '@/hooks/use-notification-badge';
 import { 
   Home,
   BarChart3,
@@ -42,25 +43,10 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
   const location = useLocation();
   const { user, logout } = useAuth();
   const { badgeCount } = useMessagingBadge();
+  const { unreadCount: notificationsCount } = useNotificationBadge();
 
-  // États pour les badges dynamiques (conservés pour futurs badges)
+  // États pour les badges dynamiques
   const [newDocuments, setNewDocuments] = useState(0);
-  const [notificationsCount, setNotificationsCount] = useState(0);
-
-  // Charger les compteurs de badges (conservé pour futurs badges)
-  useEffect(() => {
-    loadBadgeCounts();
-  }, []);
-
-  const loadBadgeCounts = async () => {
-    try {
-      // TODO: Implémenter les appels API réels pour documents et notifications
-      setNewDocuments(0);
-      setNotificationsCount(0);
-    } catch (error) {
-      console.error('Erreur chargement badges:', error);
-    }
-  };
 
   const handleLogout = async () => {
     await logout();
@@ -94,11 +80,18 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
       badge: badgeCount > 0 ? badgeCount : undefined
     },
     {
+      name: 'Notifications',
+      href: '/notification-center',
+      icon: Bell,
+      current: location.pathname === '/notification-center',
+      badge: notificationsCount > 0 ? notificationsCount : undefined
+    },
+    {
       name: 'Documents',
       href: '/documents-client',
       icon: FileText,
       current: location.pathname === '/documents-client',
-      badge: newDocuments
+      badge: newDocuments > 0 ? newDocuments : undefined
     },
     {
       name: 'Marketplace',
