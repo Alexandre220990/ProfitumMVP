@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Bell, BellOff, Settings, Check, X, AlertCircle, Info, FileText, Users, Zap, Shield, Search, Trash2 } from 'lucide-react';
+import { Bell, BellOff, Settings, Check, X, AlertCircle, Info, FileText, Users, Zap, Shield, Search, Trash2, Archive, ArchiveRestore } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
@@ -29,14 +29,25 @@ const UnifiedNotificationCenter: React.FC = () => {
   const { notifications, loading } = useSupabaseNotifications();
   
   // État local
-  const [filter, setFilter] = useState<'all' | 'unread'>('all');
+  const [filter, setFilter] = useState<'all' | 'unread' | 'archived'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showPreferences, setShowPreferences] = useState(false);
 
   // Filtrage dynamique selon le rôle
   const filteredNotifications = notifications.filter(notification => {
     const matchesSearch = notification.title.toLowerCase().includes(searchQuery.toLowerCase()) || notification.message.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter = filter === 'all' || (filter === 'unread' && !notification.is_read);
+    
+    // Filtre par statut
+    let matchesFilter = true;
+    if (filter === 'unread') {
+      matchesFilter = notification.status === 'unread' || !notification.is_read;
+    } else if (filter === 'archived') {
+      matchesFilter = notification.status === 'archived';
+    } else if (filter === 'all') {
+      // "All" exclut les archivées
+      matchesFilter = notification.status !== 'archived';
+    }
+    
     if (userRole === 'client' && notification.user_type === 'admin') return false;
     if (userRole === 'expert' && notification.user_type === 'admin') return false;
     return matchesSearch && matchesFilter;
@@ -51,6 +62,48 @@ const UnifiedNotificationCenter: React.FC = () => {
       await fetch(endpoint, { method: 'PUT', headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } });
       // Le hook realtime mettra à jour automatiquement l'état
     } catch (error) { console.error('Erreur marquage lu:', error); }
+  };
+
+  const archiveNotification = async (notificationId: string) => {
+    try {
+      let endpoint = `/api/notifications/${notificationId}/archive`;
+      if (userRole === 'expert') endpoint = `/api/expert/notifications/${notificationId}/archive`;
+      if (userRole === 'admin') endpoint = `/api/admin/notifications/${notificationId}/archive`;
+      
+      const response = await fetch(endpoint, { 
+        method: 'PUT', 
+        headers: { 
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        } 
+      });
+      
+      if (response.ok) {
+        console.log('✅ Notification archivée');
+      }
+      // Le hook realtime mettra à jour automatiquement l'état
+    } catch (error) { console.error('Erreur archivage:', error); }
+  };
+
+  const unarchiveNotification = async (notificationId: string) => {
+    try {
+      let endpoint = `/api/notifications/${notificationId}/unarchive`;
+      if (userRole === 'expert') endpoint = `/api/expert/notifications/${notificationId}/unarchive`;
+      if (userRole === 'admin') endpoint = `/api/admin/notifications/${notificationId}/unarchive`;
+      
+      const response = await fetch(endpoint, { 
+        method: 'PUT', 
+        headers: { 
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        } 
+      });
+      
+      if (response.ok) {
+        console.log('✅ Notification restaurée');
+      }
+      // Le hook realtime mettra à jour automatiquement l'état
+    } catch (error) { console.error('Erreur restauration:', error); }
   };
 
   const deleteNotification = async (notificationId: string) => {
@@ -171,20 +224,41 @@ const UnifiedNotificationCenter: React.FC = () => {
                   <button
                     onClick={() => setFilter('all')}
                     className={cn(
-                      "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors",
+                      "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between",
                       filter === 'all' ? "bg-blue-100 text-blue-700" : "text-gray-600 hover:bg-gray-100"
                     )}
                   >
-                    Toutes ({notifications.length})
+                    <span>Toutes</span>
+                    <Badge variant="secondary" className="ml-2">
+                      {notifications.filter(n => n.status !== 'archived').length}
+                    </Badge>
                   </button>
                   <button
                     onClick={() => setFilter('unread')}
                     className={cn(
-                      "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors",
+                      "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between",
                       filter === 'unread' ? "bg-blue-100 text-blue-700" : "text-gray-600 hover:bg-gray-100"
                     )}
                   >
-                    Non lues ({notifications.filter(n => !n.is_read).length})
+                    <span>Non lues</span>
+                    <Badge variant="secondary" className="ml-2 bg-blue-500 text-white">
+                      {notifications.filter(n => n.status === 'unread' || !n.is_read).length}
+                    </Badge>
+                  </button>
+                  <button
+                    onClick={() => setFilter('archived')}
+                    className={cn(
+                      "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between",
+                      filter === 'archived' ? "bg-blue-100 text-blue-700" : "text-gray-600 hover:bg-gray-100"
+                    )}
+                  >
+                    <div className="flex items-center">
+                      <Archive className="h-4 w-4 mr-2" />
+                      <span>Archivées</span>
+                    </div>
+                    <Badge variant="secondary" className="ml-2">
+                      {notifications.filter(n => n.status === 'archived').length}
+                    </Badge>
                   </button>
                 </div>
               </div>
@@ -317,26 +391,62 @@ const UnifiedNotificationCenter: React.FC = () => {
                             </div>
                           </div>
                           <div className="flex items-center space-x-1 ml-4">
-                            {!notification.is_read && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => markAsRead(notification.id)}
-                                className="h-8 w-8 p-0"
-                                title="Marquer comme lu"
-                              >
-                                <Check className="h-4 w-4" />
-                              </Button>
+                            {notification.status === 'archived' ? (
+                              // Boutons pour notifications archivées
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => unarchiveNotification(notification.id)}
+                                  className="h-8 w-8 p-0 text-green-600 hover:text-green-700"
+                                  title="Restaurer"
+                                >
+                                  <ArchiveRestore className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => deleteNotification(notification.id)}
+                                  className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                                  title="Supprimer définitivement"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </>
+                            ) : (
+                              // Boutons pour notifications actives
+                              <>
+                                {notification.status === 'unread' && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => markAsRead(notification.id)}
+                                    className="h-8 w-8 p-0"
+                                    title="Marquer comme lu"
+                                  >
+                                    <Check className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => archiveNotification(notification.id)}
+                                  className="h-8 w-8 p-0 text-orange-600 hover:text-orange-700"
+                                  title="Archiver"
+                                >
+                                  <Archive className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => deleteNotification(notification.id)}
+                                  className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                                  title="Supprimer"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </>
                             )}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => deleteNotification(notification.id)}
-                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
-                              title="Supprimer"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
                           </div>
                         </div>
                       </CardContent>

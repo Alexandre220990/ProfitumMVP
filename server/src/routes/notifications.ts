@@ -126,7 +126,7 @@ router.get('/', asyncHandler(async (req, res) => {
     const userType = (req as any).user.type;
     console.log(`🔍 Récupération notifications pour utilisateur: ${userId} (${userType})`);
 
-    const { page = 1, limit = 20, type, priority, read } = req.query;
+    const { page = 1, limit = 20, type, priority, read, status } = req.query;
     const offset = (Number(page) - 1) * Number(limit);
 
     // Construire la requête de base
@@ -145,6 +145,10 @@ router.get('/', asyncHandler(async (req, res) => {
     }
     if (read !== undefined) {
       query = query.eq('is_read', read === 'true');
+    }
+    // Filtre status (unread, read, archived)
+    if (status && status !== 'all') {
+      query = query.eq('status', String(status));
     }
 
     // Pagination
@@ -378,6 +382,7 @@ router.put('/:id/read', asyncHandler(async (req, res) => {
     const { error } = await supabaseClient
       .from('notification')
       .update({
+        status: 'read',
         is_read: true,
         read_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
@@ -429,6 +434,139 @@ router.put('/:id/star', asyncHandler(async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'Erreur lors de la modification'
+    });
+  }
+}));
+
+// PUT /api/notifications/:id/archive - Archiver une notification
+router.put('/:id/archive', asyncHandler(async (req, res) => {
+  try {
+    const userId = (req as any).user.id;
+    const { id } = req.params;
+
+    const { error } = await supabaseClient
+      .from('notification')
+      .update({
+        status: 'archived',
+        archived_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .eq('user_id', userId);
+
+    if (error) throw error;
+
+    console.log(`✅ Notification ${id} archivée pour user ${userId}`);
+
+    return res.json({
+      success: true,
+      message: 'Notification archivée'
+    });
+
+  } catch (error) {
+    console.error('Erreur archivage notification:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de l\'archivage'
+    });
+  }
+}));
+
+// PUT /api/notifications/:id/unarchive - Restaurer une notification archivée
+router.put('/:id/unarchive', asyncHandler(async (req, res) => {
+  try {
+    const userId = (req as any).user.id;
+    const { id } = req.params;
+
+    const { error } = await supabaseClient
+      .from('notification')
+      .update({
+        status: 'read', // On restaure en status "read"
+        archived_at: null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .eq('user_id', userId);
+
+    if (error) throw error;
+
+    console.log(`✅ Notification ${id} restaurée pour user ${userId}`);
+
+    return res.json({
+      success: true,
+      message: 'Notification restaurée'
+    });
+
+  } catch (error) {
+    console.error('Erreur restauration notification:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la restauration'
+    });
+  }
+}));
+
+// PUT /api/notifications/mark-all-read - Marquer toutes comme lues
+router.put('/mark-all-read', asyncHandler(async (req, res) => {
+  try {
+    const userId = (req as any).user.id;
+
+    const { error, count } = await supabaseClient
+      .from('notification')
+      .update({
+        status: 'read',
+        is_read: true,
+        read_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('user_id', userId)
+      .eq('status', 'unread');
+
+    if (error) throw error;
+
+    console.log(`✅ ${count || 0} notifications marquées comme lues pour user ${userId}`);
+
+    return res.json({
+      success: true,
+      count: count || 0,
+      message: `${count || 0} notification(s) marquée(s) comme lue(s)`
+    });
+
+  } catch (error) {
+    console.error('Erreur marquage toutes lues:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors du marquage'
+    });
+  }
+}));
+
+// DELETE /api/notifications/delete-all-read - Supprimer toutes les lues
+router.delete('/delete-all-read', asyncHandler(async (req, res) => {
+  try {
+    const userId = (req as any).user.id;
+
+    const { error, count } = await supabaseClient
+      .from('notification')
+      .delete()
+      .eq('user_id', userId)
+      .eq('status', 'read');
+
+    if (error) throw error;
+
+    console.log(`✅ ${count || 0} notifications lues supprimées pour user ${userId}`);
+
+    return res.json({
+      success: true,
+      count: count || 0,
+      message: `${count || 0} notification(s) supprimée(s)`
+    });
+
+  } catch (error) {
+    console.error('Erreur suppression toutes lues:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la suppression'
     });
   }
 }));

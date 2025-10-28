@@ -43,13 +43,34 @@ export function useSupabaseNotifications() {
         // Charger les notifications initiales
         await loadNotifications();
         
-        // Configurer la subscription realtime
-        await supabaseNotificationService.subscribe(user.id, {
-          onInsert: (notif) => setNotifications(prev => [notif, ...prev]),
-          onUpdate: (notif) => setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, ...notif } : n)),
-          onDelete: (id) => setNotifications(prev => prev.filter(n => n.id !== id)),
-          onError: (err) => setError(err.message)
-        });
+        // Configurer la subscription realtime selon le type d'utilisateur
+        if (user.type === 'admin') {
+          // ✅ ADMIN : Écouter AdminNotification
+          console.log('🔔 Activation realtime admin sur AdminNotification');
+          await supabaseNotificationService.subscribeAdmin({
+            onInsert: (notif) => {
+              console.log('✅ Nouvelle notification admin reçue:', notif);
+              setNotifications(prev => [notif, ...prev]);
+            },
+            onUpdate: (notif) => {
+              console.log('✅ Notification admin mise à jour:', notif);
+              setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, ...notif } : n));
+            },
+            onDelete: (id) => {
+              console.log('✅ Notification admin supprimée:', id);
+              setNotifications(prev => prev.filter(n => n.id !== id));
+            },
+            onError: (err) => setError(err.message)
+          });
+        } else {
+          // Client/Expert/Apporteur : table notification standard
+          await supabaseNotificationService.subscribe(user.id, {
+            onInsert: (notif) => setNotifications(prev => [notif, ...prev]),
+            onUpdate: (notif) => setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, ...notif } : n)),
+            onDelete: (id) => setNotifications(prev => prev.filter(n => n.id !== id)),
+            onError: (err) => setError(err.message)
+          });
+        }
         
         isSubscribedRef.current = true;
       } catch (error) {
@@ -64,7 +85,7 @@ export function useSupabaseNotifications() {
       isSubscribedRef.current = false;
       supabaseNotificationService.unsubscribe();
     };
-  }, [user?.id, loadNotifications]);
+  }, [user?.id, user?.type, loadNotifications]);
 
   return { notifications, loading, error, reload: loadNotifications };
 } 
