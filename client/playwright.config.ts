@@ -32,18 +32,21 @@ export default defineConfig({
     navigationTimeout: 30000,
   },
   projects: [
-    {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
-    },
+    // Chromium désactivé - incompatible avec macOS 10.16 (Big Sur)
+    // Nécessite macOS 12.0+ (Monterey)
+    // {
+    //   name: 'chromium',
+    //   use: { ...devices['Desktop Chrome'] },
+    // },
     {
       name: 'firefox',
       use: { ...devices['Desktop Firefox'] },
     },
-    {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
-    },
+    // WebKit désactivé - version obsolète sur macOS 10.16
+    // {
+    //   name: 'webkit',
+    //   use: { ...devices['Desktop Safari'] },
+    // },
   ],
   // Supprimer la configuration webServer car on utilise les serveurs de production
   // webServer: {

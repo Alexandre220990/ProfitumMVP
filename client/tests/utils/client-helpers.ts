@@ -16,7 +16,7 @@ export class ClientHelpers extends TestHelpers {
     console.log('[CLIENT TEST] Début de la connexion client');
     
     // Navigation vers la page de connexion client
-    await this.page.goto('/auth?type=client');
+    await this.page.goto('/connexion-client');
     await this.waitForNavigation();
     await this.takeScreenshot('client-login-page');
 
