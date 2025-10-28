@@ -3922,7 +3922,7 @@ router.patch('/dossiers/:id/statut', async (req, res) => {
       });
     }
 
-    // Mettre à jour le statut
+    // Mettre à jour le statut et récupérer les données complètes
     const { data: dossier, error } = await supabaseClient
       .from('ClientProduitEligible')
       .update({ 
@@ -3930,7 +3930,7 @@ router.patch('/dossiers/:id/statut', async (req, res) => {
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
-      .select()
+      .select('*, ProduitEligible(nom)')
       .single();
 
     if (error) {
@@ -3942,6 +3942,20 @@ router.patch('/dossiers/:id/statut', async (req, res) => {
     }
 
     console.log(`✅ Statut mis à jour: ${statut}`);
+    
+    // 🔔 NOTIFICATION CLIENT : Changement de statut
+    try {
+      const { NotificationTriggers } = await import('../services/NotificationTriggers');
+      await NotificationTriggers.onDossierStatusChange(dossier.clientId, {
+        id: dossier.id,
+        nom: dossier.ProduitEligible?.nom || 'Dossier',
+        statut: statut,
+        produit: dossier.ProduitEligible?.nom
+      });
+      console.log('✅ Notification changement statut envoyée');
+    } catch (notifError) {
+      console.error('❌ Erreur notification (non bloquant):', notifError);
+    }
     
     return res.json({
       success: true,

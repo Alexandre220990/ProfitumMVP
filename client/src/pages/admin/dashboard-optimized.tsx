@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { get } from "@/lib/api";
 import { config } from "@/config/env";
 import ApporteurManagement from "@/components/admin/ApporteurManagement";
-import { NotificationCenter } from "@/components/admin/NotificationCenter";
+import { UniversalNotificationCenter } from "@/components/notifications/UniversalNotificationCenter";
 import { 
   RefreshCw, Users, FileText, 
   Eye, ClipboardList, Edit, Check, X,
@@ -2946,18 +2946,7 @@ const AdminDashboardOptimized: React.FC = () => {
                     </div>
 
                     {/* Centre de notifications intégré */}
-                    <NotificationCenter 
-                      onNotificationAction={async (dossierId: string, action: 'validate' | 'reject') => {
-                        const dossier = sectionData.dossiers.find(d => d.id === dossierId);
-                        const dossierName = dossier?.ProduitEligible?.nom || 'Dossier';
-                        
-                        if (action === 'validate') {
-                          await handleValidateEligibility(dossierId, dossierName);
-                        } else {
-                          await handleRejectEligibility(dossierId, dossierName);
-                        }
-                      }}
-                    />
+                    <UniversalNotificationCenter mode="compact" />
 
                     {/* Filtres avancés */}
                     <Card>

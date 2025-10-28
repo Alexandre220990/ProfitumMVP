@@ -531,6 +531,41 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
     
     console.log('✅ Document enregistré en BDD:', doc.id);
     
+    // 🔔 NOTIFICATION EXPERT : Document uploadé par client
+    if (user.type === 'client' && dossier_id) {
+      try {
+        const { data: clientProduit } = await supabase
+          .from('ClientProduitEligible')
+          .select('expertId, clientId, Client(nom, prenom)')
+          .eq('id', dossier_id)
+          .single();
+        
+        if (clientProduit?.expertId) {
+          const { NotificationTriggers } = await import('../services/NotificationTriggers');
+          await NotificationTriggers.onDocumentUploaded(
+            clientProduit.expertId,
+            {
+              id: clientProduit.clientId,
+              nom: clientProduit.Client?.nom || 'Client',
+              prenom: clientProduit.Client?.prenom || ''
+            },
+            {
+              id: doc.id,
+              nom: doc.filename,
+              type: doc.document_type
+            },
+            {
+              id: dossier_id,
+              nom: docMetadata.produit_nom || 'Dossier'
+            }
+          );
+          console.log('✅ Notification expert envoyée');
+        }
+      } catch (notifError) {
+        console.error('❌ Erreur notification expert (non bloquant):', notifError);
+      }
+    }
+    
     return res.json({
       success: true,
       message: 'Document uploadé avec succès',

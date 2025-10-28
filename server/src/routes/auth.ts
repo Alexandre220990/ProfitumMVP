@@ -889,6 +889,21 @@ router.post("/register", registerRateLimiter, async (req: Request, res: Response
         email: insertedClient.email
       });
 
+      // 🔔 NOTIFICATION ADMIN : Nouveau client inscrit
+      try {
+        const { NotificationTriggers } = await import('../services/NotificationTriggers');
+        await NotificationTriggers.onNewClientRegistration({
+          id: insertedClient.id,
+          nom: insertedClient.name || '',
+          prenom: insertedClient.name || '',
+          email: insertedClient.email,
+          company: insertedClient.company_name
+        });
+        console.log('✅ Notification admin nouveau client envoyée');
+      } catch (notifError) {
+        console.error('❌ Erreur notification admin (non bloquant):', notifError);
+      }
+
       // Générer le token JWT avec auth multi-profils
       const token = jwt.sign(
         { 
@@ -973,6 +988,21 @@ router.post("/register", registerRateLimiter, async (req: Request, res: Response
         email: insertedExpert.email,
         approval_status: insertedExpert.approval_status
       });
+
+      // 🔔 NOTIFICATION ADMIN : Nouvel expert en attente de validation
+      try {
+        const { NotificationTriggers } = await import('../services/NotificationTriggers');
+        await NotificationTriggers.onNewExpertRegistration({
+          id: insertedExpert.id,
+          nom: insertedExpert.name || '',
+          prenom: insertedExpert.name || '',
+          email: insertedExpert.email,
+          specialite: Array.isArray(insertedExpert.specializations) ? insertedExpert.specializations.join(', ') : undefined
+        });
+        console.log('✅ Notification admin nouvel expert envoyée');
+      } catch (notifError) {
+        console.error('❌ Erreur notification admin (non bloquant):', notifError);
+      }
 
       // Générer le token JWT avec auth multi-profils
       const token = jwt.sign(

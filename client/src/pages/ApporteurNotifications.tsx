@@ -1,5 +1,5 @@
-import { NotificationCenter } from '../components/apporteur/NotificationCenter';
+import { UniversalNotificationCenter } from '../components/notifications/UniversalNotificationCenter';
 
 export default function ApporteurNotifications() {
-  return <NotificationCenter />;
+  return <UniversalNotificationCenter mode="page" title="Mes Notifications" />;
 }

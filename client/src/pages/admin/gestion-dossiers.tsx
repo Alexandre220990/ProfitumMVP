@@ -14,7 +14,7 @@ import { supabase } from "@/lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { config } from "@/config/env";
 import { toast } from "sonner";
-import { NotificationCenter } from "@/components/admin/NotificationCenter";
+import { UniversalNotificationCenter } from "@/components/notifications/UniversalNotificationCenter";
 import { Eye, Edit, Plus, ChevronsUpDown, Trash2, ChevronUp, ChevronDown, FolderOpen, Package, FileText, Users, TrendingUp, CheckCircle, XCircle, AlertCircle, Clock, Euro } from "lucide-react";
 import { KPISection } from "@/components/admin/KPISection";
 
@@ -678,19 +678,7 @@ export default function GestionDossiers() { const { user } = useAuth();
             />
 
             { /* 🔔 NOTIFICATIONS & ACTIONS RAPIDES */ }
-            <NotificationCenter
-              compact
-              onNotificationAction={async (dossierId: string, action: 'validate' | 'reject') => {
-                const dossier = dossiers.find(d => d.id === dossierId);
-                const dossierName = dossier?.Client?.company_name || dossier?.ProduitEligible?.nom || 'Dossier';
-                
-                if (action === 'validate') {
-                  await handleValidateEligibility(dossierId, dossierName);
-                } else {
-                  await handleRejectEligibility(dossierId, dossierName);
-                }
-              }}
-            />
+            <UniversalNotificationCenter mode="compact" />
 
             { /* ⚠️ DOSSIERS PRÉ-ÉLIGIBILITÉ À VALIDER */ }
             {dossiers.filter(d => d.validation_state === 'documents_uploaded' || d.validation_state === 'eligible_confirmed').length > 0 && (
