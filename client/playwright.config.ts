@@ -1,4 +1,14 @@
 import { defineConfig, devices } from '@playwright/test';
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+import { fileURLToPath } from 'url';
+
+// Résolution de __dirname pour les modules ES
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Charger les variables d'environnement de test
+dotenv.config({ path: path.resolve(__dirname, '.env.test') });
 
 export default defineConfig({
   testDir: './tests',
