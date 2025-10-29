@@ -35,10 +35,22 @@ import {
 interface ClientProduitEligible {
   id: string;
   clientId: string;
-  produitEligibleId: string;
-  expertId: string;
+  produitId: string;
+  expert_id: string;
   statut: 'eligible' | 'en_cours' | 'termine' | 'annule';
-  validation_state: string;
+  metadata?: {
+    validation_state?: string;
+    workflow_stage?: string;
+    closing_probability?: number;
+    documents_uploaded?: boolean;
+    expert_validation_needed?: boolean;
+    eligible_validated_at?: string;
+    finalized_at?: string;
+    recommendation?: string;
+    last_contact?: string;
+    blocked?: boolean;
+    blocking_reason?: string;
+  };
   montantFinal: number;
   created_at: string;
   updated_at: string;
@@ -62,7 +74,6 @@ interface ClientProduitEligible {
   };
   documents?: Document[];
   notes?: string;
-  expert_notes?: string;
 }
 
 interface Document {
@@ -100,7 +111,7 @@ export default function ExpertDossierSynthese() {
 
         if (response.success && response.data) {
           setCPE(response.data);
-          setExpertNotes(response.data.expert_notes || '');
+          setExpertNotes(response.data.notes || '');
         } else {
           toast.error('Erreur lors du chargement du dossier');
           navigate('/dashboard/expert');
@@ -332,7 +343,7 @@ export default function ExpertDossierSynthese() {
         </Card>
 
         {/* ÉTAPE 1 : Validation Éligibilité */}
-        {cpe.validation_state === 'pending_expert_validation' && (
+        {cpe.metadata?.validation_state === 'pending_expert_validation' && (
           <Card className="mb-8 border-orange-200 bg-orange-50">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-orange-900">
@@ -608,10 +619,10 @@ export default function ExpertDossierSynthese() {
               </div>
 
               {/* Notes finales */}
-              {cpe.expert_notes && (
+              {cpe.notes && (
                 <div className="bg-white p-6 rounded-lg">
                   <h3 className="font-semibold mb-2">Notes Expert</h3>
-                  <p className="text-gray-700 whitespace-pre-wrap">{cpe.expert_notes}</p>
+                  <p className="text-gray-700 whitespace-pre-wrap">{cpe.notes}</p>
                 </div>
               )}
 
