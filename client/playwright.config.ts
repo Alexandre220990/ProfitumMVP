@@ -23,7 +23,7 @@ export default defineConfig({
   ],
   use: {
     // Utiliser l'URL de production au lieu du serveur local
-    baseURL: process.env.TEST_URL || 'https://profitum.app',
+    baseURL: process.env.TEST_URL || 'https://www.profitum.app',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',

@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, Users, User, FileText, AlertTriangle, Edit, Trash2, Bell, MapPin, Video, List, CalendarDays, RefreshCw } from 'lucide-react';
-import { format, isSameDay, startOfWeek, endOfWeek, addDays, subDays, startOfMonth, endOfMonth, addMinutes } from 'date-fns';
+import { format, isSameDay, startOfWeek, endOfWeek, addDays, subDays, startOfMonth, endOfMonth, addMinutes, addMonths, subMonths, addWeeks, subWeeks } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 
@@ -156,6 +156,65 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
         return currentView.date;
     }
   }
+
+  // Fonctions de navigation adaptées à la vue
+  const navigatePrevious = useCallback(() => {
+    setView(prev => {
+      let newDate: Date;
+      switch (prev.type) {
+        case 'month':
+          newDate = subMonths(prev.date, 1);
+          break;
+        case 'week':
+          newDate = subWeeks(prev.date, 1);
+          break;
+        case 'day':
+          newDate = subDays(prev.date, 1);
+          break;
+        default:
+          newDate = subDays(prev.date, 1);
+      }
+      return { ...prev, date: newDate };
+    });
+  }, []);
+
+  const navigateNext = useCallback(() => {
+    setView(prev => {
+      let newDate: Date;
+      switch (prev.type) {
+        case 'month':
+          newDate = addMonths(prev.date, 1);
+          break;
+        case 'week':
+          newDate = addWeeks(prev.date, 1);
+          break;
+        case 'day':
+          newDate = addDays(prev.date, 1);
+          break;
+        default:
+          newDate = addDays(prev.date, 1);
+      }
+      return { ...prev, date: newDate };
+    });
+  }, []);
+
+  const navigateToday = useCallback(() => {
+    setView(prev => ({ ...prev, date: new Date() }));
+  }, []);
+
+  // Labels pour les boutons de navigation selon la vue
+  const getNavigationLabels = () => {
+    switch (view.type) {
+      case 'month':
+        return { prev: 'Mois précédent', next: 'Mois suivant' };
+      case 'week':
+        return { prev: 'Semaine précédente', next: 'Semaine suivante' };
+      case 'day':
+        return { prev: 'Jour précédent', next: 'Jour suivant' };
+      default:
+        return { prev: 'Précédent', next: 'Suivant' };
+    }
+  };
 
   // ========================================
   // GESTION DES ÉVÉNEMENTS
@@ -325,10 +384,30 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Calendrier principal */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="text-center mb-6">
+          <div className="flex items-center justify-between mb-6">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={navigatePrevious}
+              className="flex items-center gap-2"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              {getNavigationLabels().prev}
+            </Button>
+            
             <h2 className="text-2xl font-bold text-gray-900">
               {format(view.date, 'MMMM yyyy', { locale: fr })}
             </h2>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={navigateNext}
+              className="flex items-center gap-2"
+            >
+              {getNavigationLabels().next}
+              <ChevronRight className="h-4 w-4" />
+            </Button>
           </div>
           
           {/* Grille du mois avec lundi en premier */}
@@ -450,6 +529,7 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
 
   const renderWeekView = () => {
     const weekStart = startOfWeek(view.date, { weekStartsOn: 1 });
+    const weekEnd = endOfWeek(view.date, { weekStartsOn: 1 });
     const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
     
     // Grille horaire de 7h à 20h
@@ -487,13 +567,35 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-gray-900">
-            Semaine du {format(weekStart, 'dd/MM/yyyy', { locale: fr })}
-          </h2>
-          <Button onClick={() => setShowEventDialog(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nouvel événement
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={navigatePrevious}
+            className="flex items-center gap-2"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            {getNavigationLabels().prev}
           </Button>
+          
+          <h2 className="text-xl font-semibold text-gray-900">
+            Semaine du {format(weekStart, 'dd/MM', { locale: fr })} au {format(weekEnd, 'dd/MM/yyyy', { locale: fr })}
+          </h2>
+          
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={navigateNext}
+              className="flex items-center gap-2"
+            >
+              {getNavigationLabels().next}
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            <Button onClick={() => setShowEventDialog(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Nouvel événement
+            </Button>
+          </div>
         </div>
         
         <div className="flex border border-gray-300 rounded-lg overflow-hidden bg-white">
@@ -599,13 +701,35 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between mb-6">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={navigatePrevious}
+            className="flex items-center gap-2"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            {getNavigationLabels().prev}
+          </Button>
+          
           <h2 className="text-xl font-semibold text-gray-900">
             {format(view.date, 'EEEE dd MMMM yyyy', { locale: fr })}
           </h2>
-          <Button onClick={() => setShowEventDialog(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nouvel événement
-          </Button>
+          
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={navigateNext}
+              className="flex items-center gap-2"
+            >
+              {getNavigationLabels().next}
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            <Button onClick={() => setShowEventDialog(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Nouvel événement
+            </Button>
+          </div>
         </div>
         
         <div className="space-y-4">
@@ -706,7 +830,7 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setView(prev => ({ ...prev, date: new Date() }))}
+              onClick={navigateToday}
             >
               Aujourd'hui
             </Button>
@@ -715,20 +839,16 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setView(prev => ({ 
-                  ...prev, 
-                  date: subDays(prev.date, 1) 
-                }))}
+                onClick={navigatePrevious}
+                title={getNavigationLabels().prev}
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setView(prev => ({ 
-                  ...prev, 
-                  date: addDays(prev.date, 1) 
-                }))}
+                onClick={navigateNext}
+                title={getNavigationLabels().next}
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>
