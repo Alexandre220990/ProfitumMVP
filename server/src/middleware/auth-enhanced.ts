@@ -158,13 +158,16 @@ const logAccess = async (log: AccessLog) => {
   }
 };
 
+// Mode debug pour logs verbeux
+const DEBUG_AUTH = process.env.DEBUG_AUTH === 'true';
+
 // Middleware d'authentification renforcé
 export const enhancedAuthMiddleware = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
-  console.log('🚀 MIDDLEWARE AUTH ENHANCED DÉMARRÉ - Route:', req.path, 'Method:', req.method);
+  if (DEBUG_AUTH) console.log('🚀 MIDDLEWARE AUTH - Route:', req.path, 'Method:', req.method);
   const startTime = Date.now();
   const ipAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
   const userAgent = req.headers['user-agent'] || 'unknown';
@@ -172,7 +175,7 @@ export const enhancedAuthMiddleware = async (
   try {
     // 1. Vérification du token d'authentification (header Authorization OU cookies Supabase)
     let token = req.headers.authorization?.replace('Bearer ', '');
-    console.log('🔍 Middleware auth - Token reçu:', token ? 'PRÉSENT' : 'MANQUANT');
+    // Logs supprimés pour limiter usage Railway
     
     // Si pas de token dans le header, vérifier les cookies Supabase
     if (!token) {
@@ -182,10 +185,8 @@ export const enhancedAuthMiddleware = async (
       
       if (supabaseAccessToken) {
         token = supabaseAccessToken;
-        console.log('🔐 Token trouvé dans les cookies Supabase');
       } else if (supabaseRefreshToken) {
         // Si on a un refresh token mais pas d'access token, essayer de le rafraîchir
-        console.log('🔄 Refresh token trouvé, tentative de rafraîchissement...');
         try {
           const { data: { session }, error } = await supabase.auth.refreshSession({
             refresh_token: supabaseRefreshToken
@@ -193,16 +194,14 @@ export const enhancedAuthMiddleware = async (
           
           if (session?.access_token && !error) {
             token = session.access_token;
-            console.log('✅ Token rafraîchi avec succès');
           }
         } catch (refreshError) {
-          console.log('❌ Erreur lors du rafraîchissement du token:', refreshError);
+          if (DEBUG_AUTH) console.log('❌ Erreur rafraîchissement token:', refreshError);
         }
       }
     }
     
     if (!token) {
-      console.log('❌ Middleware auth - Aucun token trouvé');
       await logAccess({
         timestamp: new Date(),
         userId: 'anonymous',
@@ -246,17 +245,13 @@ export const enhancedAuthMiddleware = async (
         created_at: new Date().toISOString()
       };
       jwtUserData = decoded; // Stocker les données décodées pour plus tard
-      console.log('✅ Utilisateur authentifié via JWT personnalisé:', decoded.email);
-      console.log('🔍 JWT décodé:', JSON.stringify(decoded, null, 2));
-      console.log('🔍 User object créé:', JSON.stringify(user, null, 2));
+      if (DEBUG_AUTH) console.log('✅ Auth JWT:', decoded.email, decoded.type);
       
       // ASSIGNER L'UTILISATEUR À LA REQUÊTE
       (req as any).user = user;
-      console.log('✅ User assigné à req.user');
     } catch (jwtError) {
       authError = jwtError;
-      console.log('❌ Erreur décodage JWT:', jwtError instanceof Error ? jwtError.message : 'Erreur JWT inconnue');
-      console.log('🔍 Secret JWT utilisé:', process.env.JWT_SECRET ? 'DÉFINI' : 'DÉFAUT');
+      console.error('❌ Erreur JWT:', jwtError instanceof Error ? jwtError.message : 'Erreur JWT');
     }
     
     if (authError || !user) {
@@ -285,38 +280,20 @@ export const enhancedAuthMiddleware = async (
     let userData: any;
     let userType: 'client' | 'expert' | 'admin' | 'apporteur';
 
-    console.log('🔍 Middleware auth - Données JWT disponibles:', jwtUserData ? 'OUI' : 'NON');
-    if (jwtUserData) {
-      console.log('🔍 JWT User Data:', JSON.stringify(jwtUserData, null, 2));
-    }
-
     // Si on a des données JWT avec database_id, utiliser directement cet ID
     if (jwtUserData && jwtUserData.database_id && jwtUserData.type) {
-      console.log('🔍 Utilisation directe des données JWT:', {
-        database_id: jwtUserData.database_id,
-        type: jwtUserData.type,
-        email: jwtUserData.email
-      });
-      
       // Utiliser directement le type du JWT
       userType = jwtUserData.type as 'client' | 'expert' | 'admin' | 'apporteur';
       userData = {
         id: jwtUserData.database_id,
         email: jwtUserData.email
       };
-      
-      console.log('✅ Utilisateur construit à partir du JWT:', {
-        id: userData.id,
-        type: userType,
-        email: userData.email
-      });
     } else {
       // Fallback: recherche par email dans les tables
-      console.log('🔍 Fallback: recherche par email dans les tables...');
+      if (DEBUG_AUTH) console.log('🔍 Fallback recherche email...');
 
       // Pour les routes admin, chercher d'abord dans la table Admin
     if (req.path.startsWith('/api/admin')) {
-      console.log('🔍 Recherche admin prioritaire...');
       
       // Chercher d'abord dans Admin
       const { data: adminData, error: adminError } = await supabase
@@ -329,9 +306,9 @@ export const enhancedAuthMiddleware = async (
         const admin = Array.isArray(adminData) ? adminData[0] : adminData;
         userData = admin;
         userType = 'admin';
-        console.log('✅ Admin trouvé:', { adminId: admin.id, email: admin.email });
+        if (DEBUG_AUTH) console.log('✅ Admin trouvé:', { adminId: admin.id, email: admin.email });
       } else {
-        console.log('❌ Admin non trouvé, recherche dans les autres tables...');
+        if (DEBUG_AUTH) console.log('❌ Admin non trouvé, recherche dans les autres tables...');
         
         // Chercher dans Client
         const { data: clientData, error: clientError } = await supabase
@@ -344,7 +321,7 @@ export const enhancedAuthMiddleware = async (
           const client = Array.isArray(clientData) ? clientData[0] : clientData;
           userData = client;
           userType = 'client';
-          console.log('✅ Client trouvé:', { clientId: client.id, email: client.email });
+          if (DEBUG_AUTH) console.log('✅ Client trouvé:', { clientId: client.id, email: client.email });
         } else {
           // Chercher dans Expert
           const { data: expertData, error: expertError } = await supabase
@@ -357,9 +334,9 @@ export const enhancedAuthMiddleware = async (
             const expert = Array.isArray(expertData) ? expertData[0] : expertData;
             userData = expert;
             userType = 'expert';
-            console.log('✅ Expert trouvé:', { expertId: expert.id, email: expert.email });
+            if (DEBUG_AUTH) console.log('✅ Expert trouvé:', { expertId: expert.id, email: expert.email });
           } else {
-            console.log('❌ Utilisateur non trouvé dans aucune table');
+            if (DEBUG_AUTH) console.log('❌ Utilisateur non trouvé dans aucune table');
             // Utilisateur non trouvé dans aucune table
             await logAccess({
               timestamp: new Date(),
@@ -385,7 +362,7 @@ export const enhancedAuthMiddleware = async (
       }
     } else {
       // Pour les autres routes, garder l'ordre original
-      console.log('🔍 Recherche standard...');
+      if (DEBUG_AUTH) console.log('🔍 Recherche standard...');
       
       // Chercher d'abord dans Client
       const { data: clientData, error: clientError } = await supabase
@@ -398,9 +375,9 @@ export const enhancedAuthMiddleware = async (
         const client = Array.isArray(clientData) ? clientData[0] : clientData;
         userData = client;
         userType = 'client';
-        console.log('✅ Client trouvé:', { clientId: client.id, email: client.email });
+        if (DEBUG_AUTH) console.log('✅ Client trouvé:', { clientId: client.id, email: client.email });
       } else {
-        console.log('❌ Client non trouvé, recherche expert...');
+        if (DEBUG_AUTH) console.log('❌ Client non trouvé, recherche expert...');
         // Chercher dans Expert
         const { data: expertData, error: expertError } = await supabase
           .from('Expert')
@@ -412,9 +389,9 @@ export const enhancedAuthMiddleware = async (
           const expert = Array.isArray(expertData) ? expertData[0] : expertData;
           userData = expert;
           userType = 'expert';
-          console.log('✅ Expert trouvé:', { expertId: expert.id, email: expert.email });
+          if (DEBUG_AUTH) console.log('✅ Expert trouvé:', { expertId: expert.id, email: expert.email });
         } else {
-          console.log('❌ Expert non trouvé, recherche apporteur...');
+          if (DEBUG_AUTH) console.log('❌ Expert non trouvé, recherche apporteur...');
           // Chercher dans ApporteurAffaires
           const { data: apporteurData, error: apporteurError } = await supabase
             .from('ApporteurAffaires')
@@ -426,9 +403,9 @@ export const enhancedAuthMiddleware = async (
             const apporteur = Array.isArray(apporteurData) ? apporteurData[0] : apporteurData;
             userData = apporteur;
             userType = 'apporteur';
-            console.log('✅ Apporteur trouvé:', { apporteurId: apporteur.id, email: apporteur.email, status: apporteur.status });
+            if (DEBUG_AUTH) console.log('✅ Apporteur trouvé:', { apporteurId: apporteur.id, email: apporteur.email, status: apporteur.status });
           } else {
-            console.log('❌ Apporteur non trouvé, recherche admin...');
+            if (DEBUG_AUTH) console.log('❌ Apporteur non trouvé, recherche admin...');
             // Vérifier si c'est un admin par email
             const { data: adminData, error: adminError } = await supabase
               .from('Admin')
@@ -436,7 +413,7 @@ export const enhancedAuthMiddleware = async (
               .eq('email', user.email);
             
             if (adminError) {
-              console.log('⚠️ Erreur recherche admin:', adminError.message);
+              if (DEBUG_AUTH) console.log('⚠️ Erreur recherche admin:', adminError.message);
             }
             
             if (adminData && adminData.length > 0) {
@@ -444,9 +421,9 @@ export const enhancedAuthMiddleware = async (
               const admin = Array.isArray(adminData) ? adminData[0] : adminData;
               userData = admin;
               userType = 'admin';
-              console.log('✅ Admin trouvé:', { adminId: admin.id, email: admin.email });
+              if (DEBUG_AUTH) console.log('✅ Admin trouvé:', { adminId: admin.id, email: admin.email });
             } else {
-              console.log('❌ Utilisateur non trouvé dans aucune table');
+              if (DEBUG_AUTH) console.log('❌ Utilisateur non trouvé dans aucune table');
               // Utilisateur non trouvé dans aucune table
               await logAccess({
                 timestamp: new Date(),
@@ -511,15 +488,15 @@ export const enhancedAuthMiddleware = async (
         value: userData.id
       });
       
-      console.log('🔐 Paramètres RLS définis:', { userType, userId: userData.id });
+      if (DEBUG_AUTH) console.log('🔐 Paramètres RLS définis:', { userType, userId: userData.id });
     } catch (error) {
-      console.log('⚠️ Erreur définition paramètres RLS:', error);
+      if (DEBUG_AUTH) console.log('⚠️ Erreur définition paramètres RLS:', error);
     }
 
     (req as unknown as AuthenticatedRequest).user = authenticatedUser;
 
     // Log pour debug
-    console.log('🔐 Utilisateur authentifié:', {
+    if (DEBUG_AUTH) console.log('🔐 Utilisateur authentifié:', {
       id: authenticatedUser.id,
       type: authenticatedUser.type,
       email: authenticatedUser.email,
