@@ -343,6 +343,9 @@ router.get('/alerts', enhancedAuthMiddleware, async (req: Request, res: Response
 
       if (!rdvExists || rdvExists.length === 0) {
         if ((prospect.montantFinal || 0) >= 20000) {
+          // Gérer le cas où Client peut être un array ou un objet
+          const client = Array.isArray(prospect.Client) ? prospect.Client[0] : prospect.Client;
+          
           alerts.push({
             id: `prospect-${prospect.id}`,
             type: 'important',
@@ -350,7 +353,7 @@ router.get('/alerts', enhancedAuthMiddleware, async (req: Request, res: Response
             title: 'PROSPECT CHAUD SANS RDV',
             description: `Prospect éligible • ${(prospect.montantFinal || 0).toLocaleString()}€ potentiel`,
             dossierId: prospect.id,
-            clientName: prospect.Client?.company_name || prospect.Client?.name || 'Client',
+            clientName: client?.company_name || client?.name || 'Client',
             urgency: 80,
             actionLabel: 'Planifier RDV',
             actionUrl: `/expert/dossier/${prospect.id}`,
