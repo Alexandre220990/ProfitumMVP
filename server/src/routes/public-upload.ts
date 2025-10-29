@@ -53,12 +53,13 @@ function sanitizeFilename(filename: string): string {
 
 /**
  * POST /api/upload - Upload public de fichiers
- * Utilisé pour les uploads avant authentification
+ * Utilisé pour les uploads avant authentification (ex: demandes experts)
+ * Stocke dans le bucket expert-documents/public/pending-registration/
  */
 router.post('/', upload.single('file'), async (req: Request, res: Response) => {
   try {
     const file = req.file;
-    const { folder = 'public-uploads' } = req.body;
+    const { folder = 'expert-documents' } = req.body;
 
     if (!file) {
       return res.status(400).json({
@@ -72,13 +73,14 @@ router.post('/', upload.single('file'), async (req: Request, res: Response) => {
     // Sanitize filename
     const sanitizedFilename = sanitizeFilename(file.originalname);
     const timestamp = Date.now();
-    const storagePath = `${folder}/${timestamp}-${sanitizedFilename}`;
+    // Stocker dans un sous-dossier public/pending-registration du bucket expert
+    const storagePath = `public/pending-registration/${timestamp}-${sanitizedFilename}`;
 
-    console.log('📁 Upload vers bucket public-files:', storagePath);
+    console.log('📁 Upload vers bucket expert-documents:', storagePath);
 
-    // Upload vers Supabase Storage
+    // Upload vers Supabase Storage bucket expert-documents
     const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('public-files')
+      .from('expert-documents')
       .upload(storagePath, file.buffer, {
         contentType: file.mimetype,
         cacheControl: '3600',
@@ -98,7 +100,7 @@ router.post('/', upload.single('file'), async (req: Request, res: Response) => {
 
     // Obtenir l'URL publique
     const { data: publicUrlData } = supabase.storage
-      .from('public-files')
+      .from('expert-documents')
       .getPublicUrl(storagePath);
 
     return res.json({
