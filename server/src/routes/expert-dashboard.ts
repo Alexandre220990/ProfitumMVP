@@ -87,11 +87,11 @@ router.get('/prioritized', enhancedAuthMiddleware, async (req: Request, res: Res
       .from('ClientProduitEligible')
       .select(`
         id,
-        "clientId",
-        "produitId",
+        clientId,
+        produitId,
         statut,
         metadata,
-        "montantFinal",
+        montantFinal,
         created_at,
         updated_at,
         Client:clientId (
@@ -114,11 +114,15 @@ router.get('/prioritized', enhancedAuthMiddleware, async (req: Request, res: Res
 
     if (error) {
       console.error('❌ Erreur récupération dossiers:', error);
+      console.error('❌ Détails erreur:', JSON.stringify(error, null, 2));
       return res.status(500).json({ 
         success: false, 
-        message: 'Erreur lors de la récupération des dossiers' 
+        message: 'Erreur lors de la récupération des dossiers',
+        error: error.message || error
       });
     }
+
+    console.log(`✅ ${dossiers?.length || 0} dossiers récupérés pour expert ${expertId}`);
 
     // Calculer le score de priorité pour chaque dossier
     const prioritizedDossiers: PrioritizedDossier[] = (dossiers || []).map((dossier: any) => {
