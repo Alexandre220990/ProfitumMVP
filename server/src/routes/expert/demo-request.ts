@@ -1,6 +1,7 @@
 import express, { Router, Request, Response } from 'express';
 import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
+import bcrypt from 'bcrypt';
 import { ExpertNotificationService } from '../../services/expert-notification-service';
 
 const router = express.Router();
@@ -21,6 +22,12 @@ const demoRequestSchema = z.object({
   first_name: z.string().min(2, 'Le prénom doit contenir au moins 2 caractères'),
   last_name: z.string().min(2, 'Le nom doit contenir au moins 2 caractères'),
   email: z.string().email('Format d\'email invalide'),
+  password: z.string()
+    .min(8, 'Le mot de passe doit contenir au moins 8 caractères')
+    .regex(/[A-Z]/, 'Le mot de passe doit contenir au moins une majuscule')
+    .regex(/[a-z]/, 'Le mot de passe doit contenir au moins une minuscule')
+    .regex(/[0-9]/, 'Le mot de passe doit contenir au moins un chiffre'),
+  confirm_password: z.string().optional(), // Not needed in backend validation
   company_name: z.string().min(2, 'Le nom de l\'entreprise est requis'),
   siren: z.string().length(9, 'Le SIREN doit contenir exactement 9 chiffres').regex(/^\d{9}$/, 'Le SIREN ne doit contenir que des chiffres'),
   specializations: z.array(z.string()).min(1, 'Au moins une spécialisation est requise'),
@@ -182,6 +189,10 @@ router.post('/', async (req: Request, res: Response) => {
       });
     }
 
+    // Hasher le mot de passe
+    console.log('🔐 Hashage du mot de passe...');
+    const hashedPassword = await bcrypt.hash(data.password, 10);
+
     // Préparer les données pour l'insertion
     const expertData = {
       ...data,
@@ -201,8 +212,8 @@ router.post('/', async (req: Request, res: Response) => {
       max_clients: data.max_clients || 100,
       certifications: data.certifications || [],
       documents: data.documents || null,
-      // Pas de mot de passe ni d'auth_user_id pour l'instant
-      password: null,
+      // Mot de passe hashé
+      password: hashedPassword,
       auth_user_id: null,
       // Timestamps
       created_at: new Date().toISOString(),

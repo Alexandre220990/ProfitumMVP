@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/hooks/use-auth";
 import { useNavigate, useParams, Navigate } from "react-router-dom";
-import { Save, ArrowLeft, UserPlus, User, Building2, MapPin, Phone, Mail, Star, Percent, Calendar, Shield, AlertCircle, CheckCircle, XCircle, Globe } from "lucide-react";
+import { Save, ArrowLeft, UserPlus, User, Building2, MapPin, Phone, Mail, Star, Percent, Calendar, Shield, AlertCircle, CheckCircle, XCircle, Globe, Lock, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +21,8 @@ interface ExpertForm {
   first_name: string;
   last_name: string;
   email: string;
+  password?: string;
+  temp_password?: string;
   company_name: string;
   specializations: string[];
   rating: number;
@@ -107,6 +109,8 @@ const FormulaireExpert = () => {
     first_name: '',
     last_name: '',
     email: '',
+    password: '',
+    temp_password: '',
     company_name: '',
     specializations: [],
     rating: 0,
@@ -132,6 +136,7 @@ const FormulaireExpert = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [showPassword, setShowPassword] = useState(false);
 
   // Vérification d'authentification
   if (authLoading) {
@@ -365,6 +370,34 @@ const FormulaireExpert = () => {
     }
   };
 
+  const generateRandomPassword = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%';
+    let password = '';
+    
+    // Assurer au moins une majuscule, une minuscule, un chiffre
+    password += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)];
+    password += 'abcdefghijklmnopqrstuvwxyz'[Math.floor(Math.random() * 26)];
+    password += '0123456789'[Math.floor(Math.random() * 10)];
+    
+    // Compléter avec 9 caractères aléatoires pour avoir 12 caractères au total
+    for (let i = 0; i < 9; i++) {
+      password += chars[Math.floor(Math.random() * chars.length)];
+    }
+    
+    // Mélanger les caractères
+    return password.split('').sort(() => Math.random() - 0.5).join('');
+  };
+
+  const handleGenerateTempPassword = () => {
+    const newPassword = generateRandomPassword();
+    setForm(prev => ({
+      ...prev,
+      temp_password: newPassword,
+      password: newPassword
+    }));
+    setShowPassword(true);
+  };
+
   if (loading && isEditing) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-red-50 flex items-center justify-center">
@@ -537,6 +570,71 @@ const FormulaireExpert = () => {
                         placeholder="Paris"
                       />
                     </div>
+                  </div>
+
+                  {/* Mot de passe */}
+                  <div className="space-y-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-semibold text-gray-900 flex items-center">
+                        <Lock className="w-5 h-5 mr-2 text-blue-600" />
+                        Mot de passe de connexion
+                      </h4>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={handleGenerateTempPassword}
+                        className="bg-blue-100 hover:bg-blue-200 text-blue-700 border-blue-300"
+                      >
+                        <Shield className="w-4 h-4 mr-2" />
+                        Générer un mot de passe
+                      </Button>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="password" className="flex items-center">
+                        Mot de passe {!isEditing && '*'}
+                        <Badge variant="secondary" className="ml-2 text-xs">
+                          {isEditing ? 'Optionnel' : 'Requis'}
+                        </Badge>
+                      </Label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-3 text-gray-400 w-5 h-5" />
+                        <Input
+                          id="password"
+                          type={showPassword ? "text" : "password"}
+                          value={form.password || ''}
+                          onChange={(e) => handleInputChange('password', e.target.value)}
+                          placeholder={isEditing ? "Laisser vide pour ne pas modifier" : "Mot de passe"}
+                          className="pl-10 pr-10"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 transition-colors"
+                        >
+                          {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                        </button>
+                      </div>
+                      <p className="text-sm text-gray-600">
+                        {isEditing 
+                          ? "Laisser vide pour conserver le mot de passe actuel"
+                          : "Ce mot de passe sera envoyé à l'expert par email. Min. 8 caractères."
+                        }
+                      </p>
+                      {form.temp_password && (
+                        <Alert className="bg-green-50 border-green-200">
+                          <CheckCircle className="w-4 h-4 text-green-600" />
+                          <AlertDescription className="text-green-800">
+                            <strong>Mot de passe généré :</strong> Copiez-le maintenant, il ne sera plus visible ensuite. 
+                            L'expert recevra ce mot de passe par email.
+                          </AlertDescription>
+                        </Alert>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   </div>
                 </div>
 

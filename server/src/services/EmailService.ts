@@ -465,6 +465,98 @@ export class EmailService {
         return this.sendEmail(candidateEmail, subject, html, text);
     }
 
+    /**
+     * Envoyer un email de confirmation d'approbation à un expert
+     */
+    static async sendExpertApprovalNotification(
+        expertEmail: string,
+        firstName: string,
+        lastName: string,
+        loginUrl: string = 'https://www.profitum.app/connexion-expert'
+    ): Promise<boolean> {
+        const subject = '✅ Votre compte expert Profitum est approuvé !';
+        
+        const html = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                    .header { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+                    .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
+                    .button { display: inline-block; padding: 12px 30px; background: #3b82f6; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+                    .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>🎉 Félicitations !</h1>
+                    </div>
+                    <div class="content">
+                        <p>Bonjour ${firstName} ${lastName},</p>
+                        
+                        <p><strong>Excellente nouvelle !</strong> Votre compte expert Profitum a été approuvé par notre équipe.</p>
+                        
+                        <p>Vous pouvez désormais accéder à votre espace expert et commencer à collaborer avec nos clients.</p>
+                        
+                        <p><strong>Pour vous connecter :</strong></p>
+                        <ul>
+                            <li>Utilisez votre adresse email : <strong>${expertEmail}</strong></li>
+                            <li>Utilisez le mot de passe que vous avez défini lors de votre inscription</li>
+                        </ul>
+                        
+                        <div style="text-align: center;">
+                            <a href="${loginUrl}" class="button">Accéder à mon espace expert</a>
+                        </div>
+                        
+                        <p><strong>Ce que vous pouvez faire maintenant :</strong></p>
+                        <ul>
+                            <li>✅ Compléter votre profil expert</li>
+                            <li>✅ Consulter les dossiers qui vous sont attribués</li>
+                            <li>✅ Gérer votre agenda et vos rendez-vous</li>
+                            <li>✅ Communiquer avec vos clients via la messagerie</li>
+                        </ul>
+                        
+                        <p>Si vous rencontrez le moindre problème ou avez des questions, notre équipe support est là pour vous aider.</p>
+                        
+                        <p>Bienvenue dans l'équipe Profitum ! 🚀</p>
+                        
+                        <p>Cordialement,<br>L'équipe Profitum</p>
+                    </div>
+                    <div class="footer">
+                        <p>Profitum - Plateforme de gestion des aides financières</p>
+                        <p>Cet email a été envoyé automatiquement, merci de ne pas y répondre</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+        `;
+        
+        const text = `
+            Félicitations !
+            
+            Bonjour ${firstName} ${lastName},
+            
+            Excellente nouvelle ! Votre compte expert Profitum a été approuvé par notre équipe.
+            
+            Vous pouvez désormais accéder à votre espace expert et commencer à collaborer avec nos clients.
+            
+            Pour vous connecter :
+            - Utilisez votre adresse email : ${expertEmail}
+            - Utilisez le mot de passe que vous avez défini lors de votre inscription
+            
+            Accédez à votre espace : ${loginUrl}
+            
+            Bienvenue dans l'équipe Profitum !
+            
+            L'équipe Profitum
+        `;
+
+        return this.sendEmail(expertEmail, subject, html, text);
+    }
+
     static async sendApporteurRejectionNotification(candidateEmail: string, firstName: string, lastName: string, adminNotes?: string): Promise<boolean> {
         const subject = 'Candidature Apporteur d\'Affaires - Décision';
         const html = `

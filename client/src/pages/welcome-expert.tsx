@@ -27,7 +27,10 @@ import {
   Upload,
   X as XIcon,
   File,
-  Paperclip
+  Paperclip,
+  Eye,
+  EyeOff,
+  Lock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -49,6 +52,12 @@ const formSchema = z.object({
   first_name: z.string().min(2, 'Le prénom doit contenir au moins 2 caractères'),
   last_name: z.string().min(2, 'Le nom doit contenir au moins 2 caractères'),
   email: z.string().email('Format d\'email invalide'),
+  password: z.string()
+    .min(8, 'Le mot de passe doit contenir au moins 8 caractères')
+    .regex(/[A-Z]/, 'Le mot de passe doit contenir au moins une majuscule')
+    .regex(/[a-z]/, 'Le mot de passe doit contenir au moins une minuscule')
+    .regex(/[0-9]/, 'Le mot de passe doit contenir au moins un chiffre'),
+  confirm_password: z.string().min(8, 'Veuillez confirmer votre mot de passe'),
   company_name: z.string().min(2, 'Le nom de l\'entreprise est requis'),
   siren: z.string()
     .transform((val) => val.replace(/\s/g, '')) // Supprimer les espaces
@@ -67,6 +76,9 @@ const formSchema = z.object({
   max_clients: z.number().min(1).max(1000).optional(),
   certifications: z.array(z.string()).optional(),
   documents: z.any().optional() // Documents optionnels
+}).refine((data) => data.password === data.confirm_password, {
+  message: 'Les mots de passe ne correspondent pas',
+  path: ['confirm_password'],
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -195,6 +207,8 @@ const WelcomeExpert = () => {
   const [selectedCertifications, setSelectedCertifications] = useState<string[]>([]);
   const [uploadedDocuments, setUploadedDocuments] = useState<{name: string, url: string, type: string}[]>([]);
   const [isUploadingDoc, setIsUploadingDoc] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -202,6 +216,8 @@ const WelcomeExpert = () => {
       first_name: '',
       last_name: '',
       email: '',
+      password: '',
+      confirm_password: '',
       company_name: '',
       siren: '',
       specializations: [],
@@ -643,6 +659,67 @@ const WelcomeExpert = () => {
                                   placeholder="expert@entreprise.com"
                                   className="pl-10 bg-white/10 border-white/20 text-white placeholder-gray-400"
                                 />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="password"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-white">Mot de passe *</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <Lock className="absolute left-3 top-3 text-gray-400 w-5 h-5" />
+                                <Input 
+                                  {...field} 
+                                  type={showPassword ? "text" : "password"}
+                                  placeholder="••••••••"
+                                  className="pl-10 pr-10 bg-white/10 border-white/20 text-white placeholder-gray-400"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setShowPassword(!showPassword)}
+                                  className="absolute right-3 top-3 text-gray-400 hover:text-white transition-colors"
+                                >
+                                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                </button>
+                              </div>
+                            </FormControl>
+                            <p className="text-xs text-gray-400 mt-1">
+                              Min. 8 caractères, 1 majuscule, 1 minuscule, 1 chiffre
+                            </p>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="confirm_password"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-white">Confirmer le mot de passe *</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <Lock className="absolute left-3 top-3 text-gray-400 w-5 h-5" />
+                                <Input 
+                                  {...field} 
+                                  type={showConfirmPassword ? "text" : "password"}
+                                  placeholder="••••••••"
+                                  className="pl-10 pr-10 bg-white/10 border-white/20 text-white placeholder-gray-400"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                  className="absolute right-3 top-3 text-gray-400 hover:text-white transition-colors"
+                                >
+                                  {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                </button>
                               </div>
                             </FormControl>
                             <FormMessage />

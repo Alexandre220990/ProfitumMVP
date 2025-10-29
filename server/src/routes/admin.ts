@@ -1,5 +1,6 @@
 import express, { Router, Request, Response } from 'express';
 import { createClient } from '@supabase/supabase-js';
+import bcrypt from 'bcrypt';
 import { asyncHandler } from '../utils/asyncHandler';
 import { AuthUser } from '../types/auth';
 import messagesRouter from './admin/messages';
@@ -703,10 +704,51 @@ router.put('/experts/:id/approve', asyncHandler(async (req, res) => {
         user_agent: req.get('User-Agent')
       });
 
+    // 🔔 ENVOYER EMAIL DE CONFIRMATION À L'EXPERT
+    try {
+      const { EmailService } = await import('../services/EmailService');
+      await EmailService.sendExpertApprovalNotification(
+        expert.email,
+        expert.first_name || expert.name?.split(' ')[0] || 'Expert',
+        expert.last_name || expert.name?.split(' ').slice(1).join(' ') || '',
+        `${process.env.FRONTEND_URL || 'https://www.profitum.app'}/connexion-expert`
+      );
+      console.log('✅ Email d\'approbation envoyé à l\'expert');
+    } catch (emailError) {
+      console.error('❌ Erreur envoi email expert (non bloquant):', emailError);
+    }
+
+    // 🔔 CRÉER NOTIFICATION DANS LE DASHBOARD EXPERT
+    try {
+      if (expert.auth_user_id) {
+        await supabaseClient
+          .from('notification')
+          .insert({
+            user_id: expert.auth_user_id,
+            user_type: 'expert',
+            title: '🎉 Compte approuvé !',
+            message: 'Votre compte expert a été approuvé. Vous pouvez maintenant accéder à tous les services de la plateforme Profitum.',
+            notification_type: 'expert_approved',
+            priority: 'high',
+            is_read: false,
+            action_url: '/expert/dashboard',
+            action_data: {
+              expert_id: expert.id,
+              approved_at: new Date().toISOString()
+            },
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+        console.log('✅ Notification dashboard créée pour l\'expert');
+      }
+    } catch (notifError) {
+      console.error('❌ Erreur création notification expert (non bloquant):', notifError);
+    }
+
     return res.json({
       success: true,
       data,
-      message: 'Expert approuvé avec succès'
+      message: 'Expert approuvé avec succès. Un email de confirmation a été envoyé.'
     });
 
   } catch (error) {
@@ -795,6 +837,26 @@ router.put('/experts/:id', asyncHandler(async (req, res) => {
       .eq('id', id)
       .single();
 
+    // Hasher le mot de passe si fourni
+    let hashedPassword = null;
+    if (updateData.password && updateData.password.trim() !== '') {
+      console.log('🔐 Hashage du nouveau mot de passe...');
+      hashedPassword = await bcrypt.hash(updateData.password, 10);
+
+      // Mettre à jour aussi dans Supabase Auth si l'expert a un auth_user_id
+      if (oldExpert?.auth_user_id) {
+        try {
+          await supabaseClient.auth.admin.updateUserById(
+            oldExpert.auth_user_id,
+            { password: updateData.password }
+          );
+          console.log('✅ Mot de passe Supabase Auth mis à jour');
+        } catch (authError) {
+          console.error('⚠️ Erreur mise à jour mot de passe Auth (non bloquant):', authError);
+        }
+      }
+    }
+
     // Préparer les données de mise à jour avec mapping correct
     const updateExpertData = {
       ...updateData,
@@ -808,11 +870,14 @@ router.put('/experts/:id', asyncHandler(async (req, res) => {
       max_clients: updateData.max_clients || 10,
       hourly_rate: updateData.hourly_rate || 0,
       phone: updateData.phone || null,
+      // Ajouter le mot de passe hashé si fourni
+      ...(hashedPassword && { password: hashedPassword }),
       updated_at: new Date().toISOString()
     };
 
-    // Supprimer le champ city car il n'existe pas en base
+    // Supprimer les champs qui ne doivent pas être mis à jour
     delete updateExpertData.city;
+    delete updateExpertData.temp_password;
 
     const { data, error } = await supabaseClient
       .from('Expert')
@@ -868,6 +933,14 @@ router.post('/experts', asyncHandler(async (req, res) => {
       });
     }
 
+    // Validation du mot de passe
+    if (!expertData.password || expertData.password.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: 'Un mot de passe d\'au moins 8 caractères est requis'
+      });
+    }
+
     // Vérifier si l'email existe déjà
     const { data: existingExpert } = await supabaseClient
       .from('Expert')
@@ -882,10 +955,14 @@ router.post('/experts', asyncHandler(async (req, res) => {
       });
     }
 
-    // Créer l'utilisateur Supabase Auth
+    // Hasher le mot de passe
+    console.log('🔐 Hashage du mot de passe admin...');
+    const hashedPassword = await bcrypt.hash(expertData.password, 10);
+
+    // Créer l'utilisateur Supabase Auth avec le mot de passe fourni
     const { data: authData, error: authError } = await supabaseClient.auth.admin.createUser({
       email: expertData.email,
-      password: 'Expert2024!', // Mot de passe temporaire
+      password: expertData.password, // Utiliser le mot de passe fourni par l'admin
       email_confirm: true,
       user_metadata: {
         type: 'expert',
@@ -915,6 +992,7 @@ router.post('/experts', asyncHandler(async (req, res) => {
       first_name: firstName || expertData.company_name || '',
       last_name: lastName || '',
       email: expertData.email,
+      password: hashedPassword, // Stocker le mot de passe hashé
       company_name: expertData.company_name,
       specializations: expertData.specializations || [],
       rating: expertData.rating || 0,
