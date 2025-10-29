@@ -1173,7 +1173,7 @@ router.get('/dossier/:id', async (req: Request, res: Response) => {
           name,
           company_name,
           email,
-          phone,
+          phone_number,
           apporteur_id,
           ApporteurAffaires:apporteur_id (
             id,

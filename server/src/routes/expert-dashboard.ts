@@ -108,7 +108,7 @@ router.get('/prioritized', enhancedAuthMiddleware, async (req: Request, res: Res
             name,
             company_name,
             email,
-            phone,
+            phone_number,
             apporteur_id,
             ApporteurAffaires:apporteur_id (
               company_name
@@ -203,7 +203,7 @@ router.get('/prioritized', enhancedAuthMiddleware, async (req: Request, res: Res
         clientId: dossier.clientId,
         clientName: client?.company_name || client?.name || 'Client',
         clientEmail: client?.email || '',
-        clientPhone: client?.phone || '',
+        clientPhone: client?.phone_number || '',
         productName: produit?.nom || 'Produit',
         apporteurName: apporteur?.company_name || 'Direct',
         statut: dossier.statut,

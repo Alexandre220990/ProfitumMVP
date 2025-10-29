@@ -59,7 +59,7 @@ interface ClientProduitEligible {
     name: string;
     company_name: string;
     email: string;
-    phone: string;
+    phone_number: string;
     apporteur_id?: string;
   };
   ProduitEligible: {
@@ -323,8 +323,8 @@ export default function ExpertDossierSynthese() {
                 <p className="text-sm text-gray-500 mb-1">Téléphone</p>
                 <div className="flex items-center gap-2">
                   <Phone className="h-4 w-4 text-gray-400" />
-                  <a href={`tel:${cpe.Client.phone}`} className="text-blue-600 hover:underline">
-                    {cpe.Client.phone || 'Non renseigné'}
+                  <a href={`tel:${cpe.Client.phone_number}`} className="text-blue-600 hover:underline">
+                    {cpe.Client.phone_number || 'Non renseigné'}
                   </a>
                 </div>
               </div>
