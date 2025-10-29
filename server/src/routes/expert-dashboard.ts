@@ -70,10 +70,13 @@ interface RevenuePipeline {
 // ============================================================================
 
 router.get('/prioritized', enhancedAuthMiddleware, async (req: Request, res: Response) => {
+  console.log('🎯 Route /prioritized appelée');
   try {
     const authUser = req.user as AuthUser;
+    console.log('🎯 AuthUser:', authUser?.email, authUser?.type);
     
     if (!authUser || authUser.type !== 'expert') {
+      console.log('❌ Accès refusé - Type:', authUser?.type);
       return res.status(403).json({ 
         success: false, 
         message: 'Accès non autorisé' 
@@ -81,36 +84,51 @@ router.get('/prioritized', enhancedAuthMiddleware, async (req: Request, res: Res
     }
 
     const expertId = authUser.database_id || authUser.id;
+    console.log('🎯 Expert ID:', expertId);
+    console.log('🎯 Début requête Supabase ClientProduitEligible...');
 
     // Récupérer tous les dossiers de l'expert avec jointures
-    const { data: dossiers, error } = await supabase
-      .from('ClientProduitEligible')
-      .select(`
-        id,
-        clientId,
-        produitId,
-        statut,
-        metadata,
-        montantFinal,
-        created_at,
-        updated_at,
-        Client:clientId (
+    let dossiers: any[] = [];
+    let error: any = null;
+    
+    try {
+      const result = await supabase
+        .from('ClientProduitEligible')
+        .select(`
           id,
-          name,
-          company_name,
-          email,
-          phone,
-          apporteur_id,
-          ApporteurAffaires:apporteur_id (
-            company_name
+          clientId,
+          produitId,
+          statut,
+          metadata,
+          montantFinal,
+          created_at,
+          updated_at,
+          Client:clientId (
+            id,
+            name,
+            company_name,
+            email,
+            phone,
+            apporteur_id,
+            ApporteurAffaires:apporteur_id (
+              company_name
+            )
+          ),
+          ProduitEligible:produitId (
+            nom
           )
-        ),
-        ProduitEligible:produitId (
-          nom
-        )
-      `)
-      .eq('expert_id', expertId)
-      .in('statut', ['eligible', 'en_cours']);
+        `)
+        .eq('expert_id', expertId)
+        .in('statut', ['eligible', 'en_cours']);
+      
+      dossiers = result.data || [];
+      error = result.error;
+      
+      console.log('🎯 Requête Supabase terminée - Erreur:', !!error, 'Résultats:', dossiers?.length);
+    } catch (catchError: any) {
+      console.error('❌ Exception lors de la requête Supabase:', catchError);
+      error = catchError;
+    }
 
     if (error) {
       console.error('❌ Erreur récupération dossiers:', error);
@@ -125,7 +143,9 @@ router.get('/prioritized', enhancedAuthMiddleware, async (req: Request, res: Res
     console.log(`✅ ${dossiers?.length || 0} dossiers récupérés pour expert ${expertId}`);
 
     // Calculer le score de priorité pour chaque dossier
+    console.log('🎯 Début calcul des scores de priorité...');
     const prioritizedDossiers: PrioritizedDossier[] = (dossiers || []).map((dossier: any) => {
+      console.log('🎯 Traitement dossier:', dossier.id);
       const now = new Date();
       const updatedAt = new Date(dossier.updated_at);
       const daysSinceLastContact = Math.floor((now.getTime() - updatedAt.getTime()) / (1000 * 60 * 60 * 24));
@@ -174,14 +194,18 @@ router.get('/prioritized', enhancedAuthMiddleware, async (req: Request, res: Res
         }
       }
 
+      const client = Array.isArray(dossier.Client) ? dossier.Client[0] : dossier.Client;
+      const produit = Array.isArray(dossier.ProduitEligible) ? dossier.ProduitEligible[0] : dossier.ProduitEligible;
+      const apporteur = Array.isArray(client?.ApporteurAffaires) ? client.ApporteurAffaires[0] : client?.ApporteurAffaires;
+
       return {
         id: dossier.id,
         clientId: dossier.clientId,
-        clientName: dossier.Client?.company_name || dossier.Client?.name || 'Client',
-        clientEmail: dossier.Client?.email || '',
-        clientPhone: dossier.Client?.phone || '',
-        productName: dossier.ProduitEligible?.nom || 'Produit',
-        apporteurName: dossier.Client?.ApporteurAffaires?.company_name || 'Direct',
+        clientName: client?.company_name || client?.name || 'Client',
+        clientEmail: client?.email || '',
+        clientPhone: client?.phone || '',
+        productName: produit?.nom || 'Produit',
+        apporteurName: apporteur?.company_name || 'Direct',
         statut: dossier.statut,
         validationState: validationState,
         montantFinal: montant,
@@ -197,7 +221,9 @@ router.get('/prioritized', enhancedAuthMiddleware, async (req: Request, res: Res
     });
 
     // Trier par score décroissant
+    console.log('🎯 Tri des dossiers par score...');
     prioritizedDossiers.sort((a, b) => b.priorityScore - a.priorityScore);
+    console.log('✅ Dossiers triés - Envoi réponse');
 
     return res.json({
       success: true,
@@ -206,10 +232,12 @@ router.get('/prioritized', enhancedAuthMiddleware, async (req: Request, res: Res
     });
 
   } catch (error) {
-    console.error('❌ Erreur dashboard prioritized:', error);
+    console.error('❌ EXCEPTION ROUTE /prioritized:', error);
+    console.error('❌ Stack:', error instanceof Error ? error.stack : 'N/A');
     return res.status(500).json({ 
       success: false, 
-      message: 'Erreur serveur' 
+      message: 'Erreur serveur',
+      error: error instanceof Error ? error.message : String(error)
     });
   }
 });
