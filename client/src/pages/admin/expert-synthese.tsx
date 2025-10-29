@@ -33,6 +33,7 @@ import {
 import { useAuth } from '@/hooks/use-auth';
 import { get } from '@/lib/api';
 import { toast } from 'sonner';
+import { supabase } from '@/lib/supabase';
 
 interface ExpertData {
   id: string;
@@ -196,10 +197,17 @@ const ExpertSynthese: React.FC = () => {
     if (!expert?.id) return;
     setIsProcessing(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Session expirée, veuillez vous reconnecter');
+        return;
+      }
+
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/experts/${expert.id}/approve`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
         },
         credentials: 'include'
       });
@@ -227,10 +235,17 @@ const ExpertSynthese: React.FC = () => {
     
     setIsProcessing(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Session expirée, veuillez vous reconnecter');
+        return;
+      }
+
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/experts/${expert.id}/reject`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
         },
         credentials: 'include',
         body: JSON.stringify({ reason: rejectionReason })

@@ -36,6 +36,7 @@ import {
 import { useAuth } from '@/hooks/use-auth';
 import { get } from '@/lib/api';
 import { toast } from 'sonner';
+import { supabase } from '@/lib/supabase';
 
 interface DossierData {
   id: string;
@@ -129,10 +130,17 @@ const DossierSynthese: React.FC = () => {
     if (!dossier?.id) return;
     setIsProcessing(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Session expirée, veuillez vous reconnecter');
+        return;
+      }
+
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/dossiers/${dossier.id}/validate-eligibility`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
         },
         credentials: 'include'
       });
@@ -159,10 +167,17 @@ const DossierSynthese: React.FC = () => {
     
     setIsProcessing(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Session expirée, veuillez vous reconnecter');
+        return;
+      }
+
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/dossiers/${dossier.id}/reject-eligibility`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
         },
         credentials: 'include',
         body: JSON.stringify({ reason: rejectionReason })
@@ -192,10 +207,17 @@ const DossierSynthese: React.FC = () => {
     
     setIsProcessing(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Session expirée, veuillez vous reconnecter');
+        return;
+      }
+
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/dossiers/${dossier?.id}/assign-expert`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
         },
         credentials: 'include',
         body: JSON.stringify({ expert_id: selectedExpert })
