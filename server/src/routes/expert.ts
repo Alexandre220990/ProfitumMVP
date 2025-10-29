@@ -1027,4 +1027,262 @@ router.get('/client-produits-eligibles', async (req: Request, res: Response) => 
   }
 });
 
+// ============================================================================
+// ROUTES GESTION DOSSIERS CPE (Page Synthèse)
+// ============================================================================
+
+// GET /api/expert/dossier/:id - Détails complets d'un dossier CPE
+router.get('/dossier/:id', async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Non authentifié' });
+    }
+
+    const authUser = req.user as AuthUser;
+    const { id } = req.params;
+    
+    if (authUser.type !== 'expert') {
+      return res.status(403).json({ success: false, message: 'Accès non autorisé' });
+    }
+
+    // Récupérer le CPE avec toutes les relations
+    const { data: cpe, error } = await supabase
+      .from('ClientProduitEligible')
+      .select(`
+        *,
+        Client:clientId (
+          id,
+          name,
+          company_name,
+          email,
+          phone,
+          apporteur_id,
+          ApporteurAffaires:apporteur_id (
+            id,
+            company_name,
+            email
+          )
+        ),
+        ProduitEligible:produitEligibleId (
+          id,
+          nom,
+          description
+        )
+      `)
+      .eq('id', id)
+      .eq('expertId', authUser.id)
+      .single();
+
+    if (error || !cpe) {
+      console.error('Erreur récupération CPE:', error);
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Dossier non trouvé ou accès non autorisé' 
+      });
+    }
+
+    // TODO: Récupérer les documents liés au dossier
+    // const { data: documents } = await supabase
+    //   .from('GEDDocument')
+    //   .select('*')
+    //   .eq('dossier_id', id);
+
+    return res.json({
+      success: true,
+      data: {
+        ...cpe,
+        documents: [] // À implémenter avec GED
+      }
+    });
+  } catch (error) {
+    console.error('Erreur récupération dossier CPE:', error);
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// PUT /api/expert/dossier/:id/notes - Sauvegarder les notes expert
+router.put('/dossier/:id/notes', async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Non authentifié' });
+    }
+
+    const authUser = req.user as AuthUser;
+    const { id } = req.params;
+    const { expert_notes } = req.body;
+    
+    if (authUser.type !== 'expert') {
+      return res.status(403).json({ success: false, message: 'Accès non autorisé' });
+    }
+
+    // Mettre à jour les notes
+    const { data, error } = await supabase
+      .from('ClientProduitEligible')
+      .update({ 
+        expert_notes,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .eq('expertId', authUser.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Erreur sauvegarde notes:', error);
+      return res.status(500).json({ success: false, message: 'Erreur serveur' });
+    }
+
+    return res.json({
+      success: true,
+      data
+    });
+  } catch (error) {
+    console.error('Erreur sauvegarde notes:', error);
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// POST /api/expert/dossier/:id/validate-eligibility - Valider ou refuser l'éligibilité
+router.post('/dossier/:id/validate-eligibility', async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Non authentifié' });
+    }
+
+    const authUser = req.user as AuthUser;
+    const { id } = req.params;
+    const { validated, notes } = req.body;
+    
+    if (authUser.type !== 'expert') {
+      return res.status(403).json({ success: false, message: 'Accès non autorisé' });
+    }
+
+    // Mettre à jour le statut du CPE
+    const { data, error } = await supabase
+      .from('ClientProduitEligible')
+      .update({ 
+        validation_state: validated ? 'eligibility_validated' : 'rejected',
+        statut: validated ? 'en_cours' : 'annule',
+        expert_notes: notes,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .eq('expertId', authUser.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Erreur validation éligibilité:', error);
+      return res.status(500).json({ success: false, message: 'Erreur serveur' });
+    }
+
+    // TODO: Créer notification pour le client
+
+    return res.json({
+      success: true,
+      data,
+      message: validated ? 'Éligibilité validée' : 'Éligibilité refusée'
+    });
+  } catch (error) {
+    console.error('Erreur validation éligibilité:', error);
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// POST /api/expert/dossier/:id/request-documents - Demander des documents au client
+router.post('/dossier/:id/request-documents', async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Non authentifié' });
+    }
+
+    const authUser = req.user as AuthUser;
+    const { id } = req.params;
+    const { notes } = req.body;
+    
+    if (authUser.type !== 'expert') {
+      return res.status(403).json({ success: false, message: 'Accès non autorisé' });
+    }
+
+    // Récupérer le CPE pour avoir l'ID client
+    const { data: cpe, error: cpeError } = await supabase
+      .from('ClientProduitEligible')
+      .select('clientId, Client:clientId(email, name)')
+      .eq('id', id)
+      .eq('expertId', authUser.id)
+      .single();
+
+    if (cpeError || !cpe) {
+      return res.status(404).json({ success: false, message: 'Dossier non trouvé' });
+    }
+
+    // TODO: Envoyer email/notification au client avec la demande de documents
+
+    // Sauvegarder les notes
+    await supabase
+      .from('ClientProduitEligible')
+      .update({ 
+        expert_notes: notes,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id);
+
+    return res.json({
+      success: true,
+      message: 'Demande de documents envoyée au client'
+    });
+  } catch (error) {
+    console.error('Erreur demande documents:', error);
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// POST /api/expert/dossier/:id/send-report - Envoyer le rapport final au client
+router.post('/dossier/:id/send-report', async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Non authentifié' });
+    }
+
+    const authUser = req.user as AuthUser;
+    const { id } = req.params;
+    const { recommendation, notes } = req.body;
+    
+    if (authUser.type !== 'expert') {
+      return res.status(403).json({ success: false, message: 'Accès non autorisé' });
+    }
+
+    // Mettre à jour le CPE
+    const { data, error } = await supabase
+      .from('ClientProduitEligible')
+      .update({ 
+        statut: 'termine',
+        expert_notes: notes,
+        // Stocker la recommandation dans les métadonnées
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .eq('expertId', authUser.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Erreur envoi rapport:', error);
+      return res.status(500).json({ success: false, message: 'Erreur serveur' });
+    }
+
+    // TODO: Envoyer email au client avec le rapport
+    // TODO: Générer PDF du rapport
+
+    return res.json({
+      success: true,
+      data,
+      message: 'Rapport envoyé au client'
+    });
+  } catch (error) {
+    console.error('Erreur envoi rapport:', error);
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
 export default router; 
