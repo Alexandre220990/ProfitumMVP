@@ -221,13 +221,6 @@ export const ExpertDashboardOptimized = () => {
     );
   }
 
-  const filteredDossiers = prioritizedDossiers.filter(d => {
-    if (activeView === 'all') return true;
-    if (activeView === 'prospects') return d.statut === 'eligible';
-    if (activeView === 'clients') return d.statut === 'en_cours';
-    return true;
-  });
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24">
