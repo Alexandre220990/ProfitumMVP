@@ -778,29 +778,62 @@ router.get('/revenue-history', async (req: Request, res: Response) => {
       return res.status(403).json({ success: false, message: 'Accès non autorisé' });
     }
 
-    // Récupérer l'historique des revenus
-    const { data: revenueData, error } = await supabase
+    // Récupérer les CPE terminés et calculer les revenus par mois
+    const { data: cpeData, error } = await supabase
       .from('ClientProduitEligible')
       .select(`
-        id,
-        montantFinal,
-        tauxFinal,
-        statut,
-        created_at,
-        Client (name, company_name)
+        "montantFinal",
+        created_at
       `)
-      .eq('expert_id', authUser.id)
+      .eq('expertId', authUser.id)
       .eq('statut', 'termine')
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Erreur lors de la récupération de l\'historique des revenus:', error);
+      console.error('Erreur récupération revenus:', error);
       return res.status(500).json({ success: false, message: 'Erreur serveur' });
     }
 
+    // Grouper par mois
+    const revenueByMonth: { [key: string]: { revenue: number; assignments: number } } = {};
+    
+    (cpeData || []).forEach((cpe: any) => {
+      const date = new Date(cpe.created_at);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const monthName = date.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+      
+      if (!revenueByMonth[monthKey]) {
+        revenueByMonth[monthKey] = { revenue: 0, assignments: 0 };
+      }
+      
+      const commission = (cpe.montantFinal || 0) * 0.10; // 10% commission
+      revenueByMonth[monthKey].revenue += commission;
+      revenueByMonth[monthKey].assignments += 1;
+    });
+
+    // Convertir en array et formater
+    const revenueData = Object.entries(revenueByMonth).map(([monthKey, data]) => {
+      const [year, month] = monthKey.split('-');
+      const monthName = new Date(parseInt(year), parseInt(month) - 1).toLocaleDateString('fr-FR', { 
+        month: 'long', 
+        year: 'numeric' 
+      });
+      
+      return {
+        month: monthName,
+        revenue: data.revenue,
+        assignments: data.assignments
+      };
+    }).sort((a, b) => {
+      // Tri par date décroissante
+      const dateA = new Date(a.month);
+      const dateB = new Date(b.month);
+      return dateB.getTime() - dateA.getTime();
+    });
+
     return res.json({
       success: true,
-      data: revenueData || []
+      data: revenueData
     });
   } catch (error) {
     console.error('Erreur lors de la récupération de l\'historique des revenus:', error);
@@ -821,26 +854,62 @@ router.get('/product-performance', async (req: Request, res: Response) => {
       return res.status(403).json({ success: false, message: 'Accès non autorisé' });
     }
 
-    // Récupérer les performances par produit
-    const { data: productData, error } = await supabase
+    // Récupérer les CPE et grouper par produit
+    const { data: cpeData, error } = await supabase
       .from('ClientProduitEligible')
       .select(`
-        id,
-        montantFinal,
+        "montantFinal",
         statut,
-        ProduitEligible (nom, category)
+        ProduitEligible:produitEligibleId (
+          nom
+        )
       `)
-      .eq('expert_id', authUser.id)
-      .order('created_at', { ascending: false });
+      .eq('expertId', authUser.id);
 
     if (error) {
-      console.error('Erreur lors de la récupération des performances par produit:', error);
+      console.error('Erreur récupération performance produits:', error);
       return res.status(500).json({ success: false, message: 'Erreur serveur' });
     }
 
+    // Grouper par produit
+    const productStats: { [key: string]: { 
+      assignments: number; 
+      revenue: number; 
+      completed: number;
+    } } = {};
+
+    (cpeData || []).forEach((cpe: any) => {
+      const productName = cpe.ProduitEligible?.nom || 'Produit inconnu';
+      
+      if (!productStats[productName]) {
+        productStats[productName] = {
+          assignments: 0,
+          revenue: 0,
+          completed: 0
+        };
+      }
+      
+      productStats[productName].assignments++;
+      
+      if (cpe.statut === 'termine') {
+        productStats[productName].completed++;
+        const commission = (cpe.montantFinal || 0) * 0.10;
+        productStats[productName].revenue += commission;
+      }
+    });
+
+    // Formater en array
+    const productPerformance = Object.entries(productStats).map(([productName, stats]) => ({
+      product: productName,
+      assignments: stats.assignments,
+      revenue: stats.revenue,
+      successRate: stats.assignments > 0 ? (stats.completed / stats.assignments) * 100 : 0,
+      averageRating: 0 // TODO: Implémenter avec système de notation
+    }));
+
     return res.json({
       success: true,
-      data: productData || []
+      data: productPerformance
     });
   } catch (error) {
     console.error('Erreur lors de la récupération des performances par produit:', error);
@@ -861,26 +930,75 @@ router.get('/client-performance', async (req: Request, res: Response) => {
       return res.status(403).json({ success: false, message: 'Accès non autorisé' });
     }
 
-    // Récupérer les performances par client
-    const { data: clientData, error } = await supabase
+    // Récupérer les CPE et grouper par client
+    const { data: cpeData, error } = await supabase
       .from('ClientProduitEligible')
       .select(`
-        id,
-        montantFinal,
+        "montantFinal",
         statut,
-        Client (id, name, company_name, email)
+        updated_at,
+        Client:clientId (
+          id,
+          name,
+          company_name,
+          email
+        )
       `)
-      .eq('expert_id', authUser.id)
-      .order('created_at', { ascending: false });
+      .eq('expertId', authUser.id);
 
     if (error) {
-      console.error('Erreur lors de la récupération des performances par client:', error);
+      console.error('Erreur récupération performance clients:', error);
       return res.status(500).json({ success: false, message: 'Erreur serveur' });
     }
 
+    // Grouper par client
+    const clientStats: { [key: string]: {
+      clientId: string;
+      clientName: string;
+      totalAssignments: number;
+      totalRevenue: number;
+      lastAssignment: string;
+    } } = {};
+
+    (cpeData || []).forEach((cpe: any) => {
+      const client = Array.isArray(cpe.Client) ? cpe.Client[0] : cpe.Client;
+      const clientId = client?.id;
+      const clientName = client?.company_name || client?.name || 'Client';
+      
+      if (clientId) {
+        if (!clientStats[clientId]) {
+          clientStats[clientId] = {
+            clientId,
+            clientName,
+            totalAssignments: 0,
+            totalRevenue: 0,
+            lastAssignment: cpe.updated_at
+          };
+        }
+        
+        clientStats[clientId].totalAssignments++;
+        
+        if (cpe.statut === 'termine') {
+          const commission = (cpe.montantFinal || 0) * 0.10;
+          clientStats[clientId].totalRevenue += commission;
+        }
+        
+        // Garder la date la plus récente
+        if (new Date(cpe.updated_at) > new Date(clientStats[clientId].lastAssignment)) {
+          clientStats[clientId].lastAssignment = cpe.updated_at;
+        }
+      }
+    });
+
+    // Formater en array
+    const clientPerformance = Object.values(clientStats).map(stats => ({
+      ...stats,
+      averageRating: 0 // TODO: Implémenter avec système de notation
+    }));
+
     return res.json({
       success: true,
-      data: clientData || []
+      data: clientPerformance
     });
   } catch (error) {
     console.error('Erreur lors de la récupération des performances par client:', error);

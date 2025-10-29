@@ -21,12 +21,12 @@ export default function HeaderExpert() {
   return (
     <header className="bg-white shadow-md py-4 px-8 flex justify-between items-center fixed top-0 left-0 right-0 w-full z-50">
       {/* LOGO PROFITUM */}
-      <div onClick={() => navigate(`/dashboard/expert/${user?.id || ""}`)} className="cursor-pointer">
+      <div onClick={() => navigate("/dashboard/expert")} className="cursor-pointer">
         <img src="/profitum_logo_texte.png" alt="Logo Profitum" className="h-14 cursor-pointer transition-transform hover:scale-105" />
       </div>
       {/* NAVIGATION EXPERT */}
       <nav className="flex space-x-8 text-gray-700 font-semibold text-lg">
-        <div onClick={() => navigate(`/dashboard/expert/${user?.id || ""}`)} className="flex items-center space-x-2 hover:text-blue-600 transition-colors cursor-pointer">
+        <div onClick={() => navigate("/dashboard/expert")} className="flex items-center space-x-2 hover:text-blue-600 transition-colors cursor-pointer">
           <Briefcase className="h-5 w-5" /> <span>Tableau de bord</span>
         </div>
         <div onClick={() => navigate("/expert/agenda")} className="flex items-center space-x-2 hover:text-blue-600 transition-colors cursor-pointer">
