@@ -372,6 +372,30 @@ export const ExpertDashboardOptimized = () => {
           </Card>
         )}
 
+        {/* 🤝 SECTION MES APPORTEURS */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-indigo-600" />
+              <span>Mes Apporteurs Partenaires</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {kpis && kpis.apporteursActifs > 0 ? (
+              <div className="text-center py-8">
+                <Users className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                <p className="text-gray-600 mb-2">{kpis.apporteursActifs} apporteur(s) actif(s)</p>
+                <p className="text-sm text-gray-500">Vos partenaires qui vous envoient des prospects</p>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <Users className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                <p className="text-gray-600">Aucun apporteur actif</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* 🎯 FEATURE 1 : DOSSIERS PRIORISÉS (SCORE DE CLOSING) */}
         <Card>
           <CardHeader>
@@ -475,10 +499,34 @@ export const ExpertDashboardOptimized = () => {
                       </div>
                       <Badge variant="outline">{dossier.apporteurName}</Badge>
                     </div>
-                    <Button size="sm">
-                      <ArrowUpRight className="h-4 w-4 mr-2" />
-                      {dossier.nextAction}
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.location.href = `tel:${dossier.clientPhone}`;
+                        }}
+                        title="Appeler le client"
+                      >
+                        <Phone className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        size="sm"
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.location.href = `mailto:${dossier.clientEmail}`;
+                        }}
+                        title="Envoyer un email"
+                      >
+                        <Mail className="h-4 w-4" />
+                      </Button>
+                      <Button size="sm">
+                        <ArrowUpRight className="h-4 w-4 mr-2" />
+                        {dossier.nextAction}
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))
