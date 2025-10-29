@@ -109,7 +109,7 @@ router.get('/prioritized', enhancedAuthMiddleware, async (req: Request, res: Res
           nom
         )
       `)
-      .eq('expertId', expertId)
+      .eq('expert_id', expertId)
       .in('statut', ['eligible', 'en_cours']);
 
     if (error) {
@@ -509,7 +509,7 @@ router.get('/overview', enhancedAuthMiddleware, async (req: Request, res: Respon
     const { count: clientsActifs } = await supabase
       .from('ClientProduitEligible')
       .select('clientId', { count: 'exact', head: true })
-      .eq('expertId', expertId)
+      .eq('expert_id', expertId)
       .in('statut', ['eligible', 'en_cours']);
 
     // RDV cette semaine
@@ -544,7 +544,7 @@ router.get('/overview', enhancedAuthMiddleware, async (req: Request, res: Respon
           )
         )
       `)
-      .eq('expertId', expertId);
+      .eq('expert_id', expertId);
 
     // Calculer les stats par apporteur
     const apporteursMap = new Map();

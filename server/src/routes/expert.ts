@@ -785,7 +785,7 @@ router.get('/revenue-history', async (req: Request, res: Response) => {
         "montantFinal",
         created_at
       `)
-      .eq('expertId', authUser.id)
+      .eq('expert_id', authUser.id)
       .eq('statut', 'termine')
       .order('created_at', { ascending: false });
 
@@ -864,7 +864,7 @@ router.get('/product-performance', async (req: Request, res: Response) => {
           nom
         )
       `)
-      .eq('expertId', authUser.id);
+      .eq('expert_id', authUser.id);
 
     if (error) {
       console.error('Erreur récupération performance produits:', error);
@@ -944,7 +944,7 @@ router.get('/client-performance', async (req: Request, res: Response) => {
           email
         )
       `)
-      .eq('expertId', authUser.id);
+      .eq('expert_id', authUser.id);
 
     if (error) {
       console.error('Erreur récupération performance clients:', error);
@@ -1188,7 +1188,7 @@ router.get('/dossier/:id', async (req: Request, res: Response) => {
         )
       `)
       .eq('id', id)
-      .eq('expertId', authUser.id)
+      .eq('expert_id', authUser.id)
       .single();
 
     if (error || !cpe) {
@@ -1241,7 +1241,7 @@ router.put('/dossier/:id/notes', async (req: Request, res: Response) => {
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
-      .eq('expertId', authUser.id)
+      .eq('expert_id', authUser.id)
       .select()
       .single();
 
@@ -1285,7 +1285,7 @@ router.post('/dossier/:id/validate-eligibility', async (req: Request, res: Respo
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
-      .eq('expertId', authUser.id)
+      .eq('expert_id', authUser.id)
       .select()
       .single();
 
@@ -1327,7 +1327,7 @@ router.post('/dossier/:id/request-documents', async (req: Request, res: Response
       .from('ClientProduitEligible')
       .select('clientId, Client:clientId(email, name)')
       .eq('id', id)
-      .eq('expertId', authUser.id)
+      .eq('expert_id', authUser.id)
       .single();
 
     if (cpeError || !cpe) {
@@ -1380,7 +1380,7 @@ router.post('/dossier/:id/send-report', async (req: Request, res: Response) => {
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
-      .eq('expertId', authUser.id)
+      .eq('expert_id', authUser.id)
       .select()
       .single();
 
