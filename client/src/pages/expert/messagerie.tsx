@@ -3,22 +3,24 @@ import { OptimizedMessagingApp } from "@/components/messaging/OptimizedMessaging
 
 export default function MessagerieExpert() {
   return (
-    <div className="max-w-7xl mx-auto px-4 py-10">
+    <div className="max-w-7xl mx-auto px-4 py-4">
         
-        {/* Header amélioré */}
-        <div className="flex items-center justify-between mb-8">
+        {/* Header compact */}
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-4">
             <div className="relative">
-              <div className="bg-gradient-to-br from-green-500 to-emerald-600 p-4 rounded-2xl shadow-lg">
-                <MessageSquare className="w-8 h-8 text-white" />
+              <div className="bg-gradient-to-br from-green-500 to-emerald-600 p-3 rounded-xl shadow-lg">
+                <MessageSquare className="w-6 h-6 text-white" />
               </div>
-              <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white animate-pulse"></div>
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white animate-pulse"></div>
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-slate-900 mb-2">Messagerie Expert</h1>
-              <p className="text-slate-600">
-                Communiquez avec vos clients et le support en temps réel
-              </p>
+              <div className="flex items-baseline gap-3">
+                <h1 className="text-2xl font-bold text-slate-900">Messagerie Expert</h1>
+                <p className="text-sm text-slate-600">
+                  Communiquez avec vos clients et le support en temps réel
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -26,11 +28,9 @@ export default function MessagerieExpert() {
         {/* Système de messagerie unifié optimisé */}
         <div className="h-[600px] bg-white rounded-xl shadow-lg overflow-hidden border border-slate-200">
           <OptimizedMessagingApp 
-            theme="green"
             showHeader={false}
           />
         </div>
-      </div>
     </div>
   );
 } 
