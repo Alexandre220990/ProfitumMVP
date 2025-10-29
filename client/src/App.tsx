@@ -100,6 +100,7 @@ const AdminFormulaireExpert = React.lazy(() => import('./pages/admin/formulaire-
 const AdminDocumentsGEDUnifie = React.lazy(() => import('./pages/admin/documents-ged-unifie')); // ✅ PAGE UNIFIÉE (GED + Documentation + Upload)
 const AdminClientSynthese = React.lazy(() => import('./pages/admin/client-synthese')); // ✅ PAGE SYNTHÈSE CLIENT
 const AdminExpertSynthese = React.lazy(() => import('./pages/admin/expert-synthese')); // ✅ PAGE SYNTHÈSE EXPERT
+const AdminDossierSynthese = React.lazy(() => import('./pages/admin/dossier-synthese')); // ✅ PAGE SYNTHÈSE DOSSIER
 
 // Expert pages
 const ExpertDashboard = React.lazy(() => import('./pages/expert/dashboard'));
@@ -296,6 +297,7 @@ function App() {
                         <Route path="clients/:id" element={<AdminClientSynthese />} />
                         <Route path="expert-details/:id" element={<AdminExpertDetails />} />
                         <Route path="experts/:id" element={<AdminExpertSynthese />} />
+                        <Route path="dossiers/:id" element={<AdminDossierSynthese />} />
                         <Route path="gestion-dossiers" element={<AdminGestionDossiers />} />
                         <Route path="gestion-produits" element={<AdminGestionProduits />} />
                         

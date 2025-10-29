@@ -4177,6 +4177,67 @@ router.delete('/notifications/:id', async (req, res) => {
   }
 });
 
+// GET /api/admin/dossiers/:id - Détails complets d'un dossier
+router.get('/dossiers/:id', asyncHandler(async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    console.log(`🔍 Récupération dossier ${id}`);
+
+    const { data: dossier, error } = await supabaseClient
+      .from('ClientProduitEligible')
+      .select(`
+        *,
+        Client!inner (
+          id,
+          company_name,
+          first_name,
+          last_name,
+          email,
+          phone
+        ),
+        ProduitEligible!inner (
+          id,
+          nom,
+          description,
+          categorie
+        ),
+        Expert (
+          id,
+          first_name,
+          last_name,
+          name,
+          company_name,
+          email
+        )
+      `)
+      .eq('id', id)
+      .single();
+
+    if (error || !dossier) {
+      console.error('❌ Erreur récupération dossier:', error);
+      return res.status(404).json({
+        success: false,
+        message: 'Dossier non trouvé'
+      });
+    }
+
+    console.log('✅ Dossier récupéré:', dossier.id);
+
+    return res.json({
+      success: true,
+      data: dossier
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route dossiers/:id:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+}));
+
 // GET /api/admin/dossiers/:id/historique - Historique d'un dossier
 router.get('/dossiers/:id/historique', async (req, res) => {
   try {
