@@ -1,13 +1,12 @@
-// React import removed 'react';
-import { ExpertDashboard } from "@/components/ui/expert-dashboard";
+import { ExpertDashboardOptimized } from "@/components/ui/expert-dashboard-optimized";
 import { ExpertProvider } from "@/contexts/ExpertContext";
 
-const ExpertDashboardPage: React.FC = () => { return (
+const ExpertDashboardPage: React.FC = () => { 
+  return (
     <ExpertProvider>
-      <div className="container mx-auto px-4 py-8">
-        <ExpertDashboard />
-      </div>
+      <ExpertDashboardOptimized />
     </ExpertProvider>
-  ) };
+  ) 
+};
 
 export default ExpertDashboardPage; 
