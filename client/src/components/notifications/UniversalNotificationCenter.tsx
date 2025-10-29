@@ -41,7 +41,9 @@ import {
   MessageSquare,
   Calendar,
   DollarSign,
-  UserCheck
+  UserCheck,
+  ChevronUp,
+  ChevronDown
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
@@ -83,6 +85,8 @@ export function UniversalNotificationCenter({
   const [filter, setFilter] = useState<'all' | 'unread' | 'archived'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showPreferences, setShowPreferences] = useState(false);
+  const [showAll, setShowAll] = useState(false);
+  const [expandLimit, setExpandLimit] = useState(5); // Afficher 5 par défaut
 
   // Statistiques
   const totalCount = notifications.filter(n => n.status !== 'archived').length;
@@ -127,8 +131,34 @@ export function UniversalNotificationCenter({
         method: 'PUT', 
         headers: { 'Authorization': `Bearer ${token}` } 
       });
+      reload(); // Recharger les notifications
     } catch (error) { 
       console.error('Erreur marquage lu:', error); 
+    }
+  };
+
+  const markAsUnread = async (notificationId: string) => {
+    try {
+      let endpoint = `/api/notifications/${notificationId}/unread`;
+      if (userRole === 'expert') endpoint = `/api/expert/notifications/${notificationId}/unread`;
+      if (userRole === 'admin') endpoint = `/api/admin/notifications/${notificationId}/unread`;
+      
+      const token = localStorage.getItem('token');
+      await fetch(endpoint, { 
+        method: 'PUT', 
+        headers: { 'Authorization': `Bearer ${token}` } 
+      });
+      reload(); // Recharger les notifications
+    } catch (error) { 
+      console.error('Erreur marquage non lu:', error); 
+    }
+  };
+
+  const toggleReadStatus = async (notification: any) => {
+    if (notification.is_read) {
+      await markAsUnread(notification.id);
+    } else {
+      await markAsRead(notification.id);
     }
   };
 
@@ -146,6 +176,7 @@ export function UniversalNotificationCenter({
           'Content-Type': 'application/json'
         } 
       });
+      reload(); // Recharger les notifications
     } catch (error) { 
       console.error('Erreur archivage:', error); 
     }
@@ -295,28 +326,77 @@ export function UniversalNotificationCenter({
                   <p className="text-sm">Aucune notification</p>
                 </div>
               ) : (
-                filteredNotifications.slice(0, 10).map((notification) => (
-                  <Card key={notification.id} className={cn(
-                    "transition-all",
-                    !notification.is_read && "border-l-4 border-l-blue-500 bg-blue-50"
-                  )}>
-                    <CardContent className="p-3">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-start space-x-2 flex-1">
-                          {getTypeIcon(notification.notification_type)}
-                          <div className="flex-1 min-w-0">
-                            <h4 className="text-sm font-medium truncate">{notification.title}</h4>
-                            <p className="text-xs text-gray-600 line-clamp-2">{notification.message}</p>
-                            <span className="text-xs text-gray-400">{formatDate(notification.created_at)}</span>
+                <>
+                  {filteredNotifications.slice(0, showAll ? filteredNotifications.length : expandLimit).map((notification) => (
+                    <Card key={notification.id} className={cn(
+                      "transition-all hover:shadow-md",
+                      !notification.is_read && "border-l-4 border-l-blue-500 bg-blue-50"
+                    )}>
+                      <CardContent className="p-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start space-x-2 flex-1 min-w-0">
+                            {getTypeIcon(notification.notification_type)}
+                            <div className="flex-1 min-w-0">
+                              <h4 className="text-sm font-medium truncate">{notification.title}</h4>
+                              <p className="text-xs text-gray-600 line-clamp-2">{notification.message}</p>
+                              <span className="text-xs text-gray-400">{formatDate(notification.created_at)}</span>
+                            </div>
+                          </div>
+                          
+                          {/* Actions pour chaque notification */}
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            {/* Toggle lu/non lu */}
+                            <div className="flex items-center gap-1">
+                              <Switch
+                                checked={notification.is_read}
+                                onCheckedChange={() => toggleReadStatus(notification)}
+                                className="data-[state=checked]:bg-green-600"
+                              />
+                              <span className="text-xs text-gray-600 whitespace-nowrap">
+                                {notification.is_read ? 'Lu' : 'Non lu'}
+                              </span>
+                            </div>
+                            
+                            {/* Bouton archiver */}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => archiveNotification(notification.id)}
+                              className="h-8 px-2 text-gray-500 hover:text-red-600 hover:bg-red-50"
+                              title="Archiver"
+                            >
+                              <Archive className="w-4 h-4" />
+                            </Button>
                           </div>
                         </div>
-                        {!notification.is_read && (
-                          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                  
+                  {/* Bouton Voir plus/moins */}
+                  {filteredNotifications.length > expandLimit && (
+                    <div className="flex justify-center pt-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowAll(!showAll)}
+                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                      >
+                        {showAll ? (
+                          <>
+                            Voir moins
+                            <ChevronUp className="w-4 h-4 ml-2" />
+                          </>
+                        ) : (
+                          <>
+                            Voir plus ({filteredNotifications.length - expandLimit} autres)
+                            <ChevronDown className="w-4 h-4 ml-2" />
+                          </>
                         )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
+                      </Button>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </ScrollArea>
