@@ -78,11 +78,26 @@ async function findUserProfiles(authUserId: string, email: string): Promise<User
   }
   
   // Rechercher dans Expert
-  const { data: expert } = await supabaseAdmin
+  const { data: expert, error: expertError } = await supabaseAdmin
     .from('Expert')
-    .select('id, email, name, company_name, specialization, is_active, created_at, auth_user_id, approval_status')
+    .select('*')
     .or(`auth_user_id.eq.${authUserId},email.eq.${email}`)
     .maybeSingle();
+  
+  console.log('🔍 DEBUG Expert search:', { 
+    authUserId, 
+    email, 
+    found: !!expert,
+    expertError: expertError?.message,
+    expertData: expert ? {
+      id: expert.id,
+      email: expert.email,
+      auth_user_id: expert.auth_user_id,
+      is_active: expert.is_active,
+      status: expert.status,
+      approval_status: expert.approval_status
+    } : null
+  });
   
   if (expert && expert.is_active !== false && expert.approval_status === 'approved') {
     profiles.push({
