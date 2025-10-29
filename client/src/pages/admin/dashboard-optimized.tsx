@@ -173,6 +173,7 @@ const AdminDashboardOptimized: React.FC = () => {
     activeExperts: 0,
     pendingExperts: 0,
     expertsPendingValidation: 0, // &gt; 48h
+    expertsPendingRecents: 0, // &lt;= 48h (nouveaux)
     expertsNPS: 0, // NPS moyen
     
     // Dossiers
@@ -416,16 +417,25 @@ const AdminDashboardOptimized: React.FC = () => {
       });
       
       // Calculer les KPIs à partir des DONNÉES RÉELLES uniquement
-      const expertsPendingValidation = experts.filter((e: any) => {
+      
+      // Séparer les experts en attente par ancienneté
+      const now = new Date();
+      const expertsPendingRecents = experts.filter((e: any) => {
+        if (e.approval_status !== 'pending') return false;
         const createdAt = new Date(e.created_at);
-        const now = new Date();
         const diffHours = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
-        return e.approval_status === 'pending' && diffHours > 48;
+        return diffHours <= 48;
+      }).length;
+      
+      const expertsPendingValidation = experts.filter((e: any) => {
+        if (e.approval_status !== 'pending') return false;
+        const createdAt = new Date(e.created_at);
+        const diffHours = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+        return diffHours > 48;
       }).length;
 
       const dossiersEnRetard = dossiers.filter((d: any) => {
         const createdAt = new Date(d.created_at);
-        const now = new Date();
         const diffDays = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24);
         return (d.statut === 'pending' || d.statut === 'in_progress') && diffDays > 21;
       }).length;
@@ -450,11 +460,12 @@ const AdminDashboardOptimized: React.FC = () => {
         }, {})
       });
       
+      // Alertes urgentes : Validations documents + Experts en attente >48h
       const alertesUrgentes = validationsDocuments + expertsPendingValidation;
-      const alertesNormales = dossiersEnRetard;
+      // Alertes normales : Dossiers en retard + Nouveaux experts en attente <48h
+      const alertesNormales = dossiersEnRetard + expertsPendingRecents;
 
       // Calculer les données du mois précédent pour la croissance
-      const now = new Date();
       const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
       const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
       
@@ -504,6 +515,7 @@ const AdminDashboardOptimized: React.FC = () => {
         activeExperts,
         pendingExperts,
         expertsPendingValidation,
+        expertsPendingRecents,
         expertsNPS: 0, // À calculer depuis notes réelles si disponible
         totalDossiers,
         dossiersThisMonth,
@@ -2619,6 +2631,18 @@ const AdminDashboardOptimized: React.FC = () => {
                               <CheckCircle className="w-5 h-5 text-red-600" />
                             </div>
                           )}
+                          {kpiData.validationsExperts > 0 && (kpiData.expertsPendingValidation === 0 || (kpiData.validationsExperts - kpiData.expertsPendingValidation) > 0) && (
+                            <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded">
+                              <UserCheck className="w-4 h-4 text-blue-600" />
+                              <div className="flex-1">
+                                <p className="font-medium text-blue-800">Nouveaux experts en attente</p>
+                                <p className="text-sm text-blue-600">
+                                  {kpiData.validationsExperts - kpiData.expertsPendingValidation} expert{(kpiData.validationsExperts - kpiData.expertsPendingValidation) > 1 ? 's' : ''} à valider
+                                </p>
+                              </div>
+                              <Eye className="w-5 h-5 text-blue-600" />
+                            </div>
+                          )}
                           {kpiData.dossiersEnRetard > 0 && (
                             <div className="flex items-center gap-3 p-3 bg-yellow-50 border border-yellow-200 rounded">
                               <Clock className="w-4 h-4 text-yellow-600" />
@@ -2629,7 +2653,7 @@ const AdminDashboardOptimized: React.FC = () => {
                               <Eye className="w-5 h-5 text-yellow-600" />
                             </div>
                           )}
-                          {kpiData.alertesUrgentes === 0 && kpiData.dossiersEnRetard === 0 && (
+                          {kpiData.alertesUrgentes === 0 && kpiData.alertesNormales === 0 && (
                             <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded">
                               <CheckCircle className="w-4 h-4 text-green-600" />
                               <div>
