@@ -18,11 +18,13 @@ const expertNotificationService = new ExpertNotificationService();
 // ============================================================================
 
 const demoRequestSchema = z.object({
-  name: z.string().min(2, 'Le nom doit contenir au moins 2 caractères'),
+  first_name: z.string().min(2, 'Le prénom doit contenir au moins 2 caractères'),
+  last_name: z.string().min(2, 'Le nom doit contenir au moins 2 caractères'),
   email: z.string().email('Format d\'email invalide'),
   company_name: z.string().min(2, 'Le nom de l\'entreprise est requis'),
   siren: z.string().length(9, 'Le SIREN doit contenir exactement 9 chiffres').regex(/^\d{9}$/, 'Le SIREN ne doit contenir que des chiffres'),
   specializations: z.array(z.string()).min(1, 'Au moins une spécialisation est requise'),
+  secteur_activite: z.array(z.string()).min(1, 'Au moins un secteur d\'activité est requis'),
   experience: z.string().min(1, 'L\'expérience est requise'),
   location: z.string().min(2, 'La localisation est requise'),
   description: z.string().min(10, 'La description doit contenir au moins 10 caractères'),
@@ -32,7 +34,12 @@ const demoRequestSchema = z.object({
   languages: z.array(z.string()).min(1, 'Au moins une langue est requise'),
   compensation: z.number().min(0).max(100).optional(),
   max_clients: z.number().min(1).max(1000).optional(),
-  certifications: z.array(z.string()).optional()
+  certifications: z.array(z.string()).optional(),
+  documents: z.array(z.object({
+    name: z.string(),
+    url: z.string(),
+    type: z.string()
+  })).optional().nullable()
 });
 
 type DemoRequestData = z.infer<typeof demoRequestSchema>;
@@ -49,6 +56,8 @@ const sendAdminNotification = async (expertData: any) => {
     await expertNotificationService.notifyAdminOfDemoRequest({
       expert_id: expertData.id,
       expert_name: expertData.name,
+      first_name: expertData.first_name,
+      last_name: expertData.last_name,
       expert_email: expertData.email,
       company_name: expertData.company_name,
       siren: expertData.siren,
@@ -56,6 +65,7 @@ const sendAdminNotification = async (expertData: any) => {
       location: expertData.location,
       experience: expertData.experience,
       specializations: expertData.specializations,
+      secteur_activite: expertData.secteur_activite,
       languages: expertData.languages,
       website: expertData.website,
       linkedin: expertData.linkedin,
@@ -85,6 +95,14 @@ const createAdminNotification = async (expertData: any) => {
       return;
     }
 
+    // Préparer le message avec les secteurs d'activité
+    const secteurs = expertData.secteur_activite?.length > 0 
+      ? ` - Secteurs: ${expertData.secteur_activite.join(', ')}` 
+      : '';
+    const specialisations = expertData.specializations?.length > 0 
+      ? ` - Spécialisations: ${expertData.specializations.join(', ')}` 
+      : '';
+
     // Créer une notification pour chaque admin
     for (const admin of admins) {
       await supabase
@@ -93,7 +111,7 @@ const createAdminNotification = async (expertData: any) => {
           user_id: admin.auth_user_id,
           user_type: 'admin',
           title: 'Nouvelle demande de démo expert',
-          message: `${expertData.name} (${expertData.company_name}) souhaite rejoindre la plateforme`,
+          message: `${expertData.first_name} ${expertData.last_name} (${expertData.company_name}) souhaite rejoindre la plateforme${secteurs}${specialisations}`,
           notification_type: 'expert_demo_request',
           priority: 'high',
           action_url: `/admin/gestion-experts`,
@@ -167,6 +185,8 @@ router.post('/', async (req: Request, res: Response) => {
     // Préparer les données pour l'insertion
     const expertData = {
       ...data,
+      // Concaténer first_name et last_name pour créer name (requis par la BDD)
+      name: `${data.first_name} ${data.last_name}`.trim(),
       // Valeurs par défaut
       approval_status: 'pending',
       status: 'inactive',
@@ -180,6 +200,7 @@ router.post('/', async (req: Request, res: Response) => {
       compensation: data.compensation || 20,
       max_clients: data.max_clients || 100,
       certifications: data.certifications || [],
+      documents: data.documents || null,
       // Pas de mot de passe ni d'auth_user_id pour l'instant
       password: null,
       auth_user_id: null,

@@ -23,7 +23,11 @@ import {
   TrendingUp,
   Users as UsersIcon,
   Clock,
-  Zap
+  Zap,
+  Upload,
+  X as XIcon,
+  File,
+  Paperclip
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -51,6 +55,7 @@ const formSchema = z.object({
     .refine((val) => val.length === 9, 'Le SIREN doit contenir exactement 9 chiffres')
     .refine((val) => /^\d{9}$/.test(val), 'Le SIREN ne doit contenir que des chiffres'),
   specializations: z.array(z.string()).min(1, 'Au moins une spécialisation est requise'),
+  secteur_activite: z.array(z.string()).min(1, 'Au moins un secteur d\'activité est requis'),
   experience: z.string().min(1, 'L\'expérience est requise'),
   location: z.string().min(2, 'La localisation est requise'),
   description: z.string().min(10, 'La description doit contenir au moins 10 caractères'),
@@ -60,7 +65,8 @@ const formSchema = z.object({
   languages: z.array(z.string()).min(1, 'Au moins une langue est requise'),
   compensation: z.number().min(0).max(100).optional(),
   max_clients: z.number().min(1).max(1000).optional(),
-  certifications: z.array(z.string()).optional()
+  certifications: z.array(z.string()).optional(),
+  documents: z.any().optional() // Documents optionnels
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -69,17 +75,29 @@ type FormData = z.infer<typeof formSchema>;
 // DONNÉES STATIQUES
 // ============================================================================
 
+// Spécialisations alignées sur les produits éligibles de la BDD
 const specializationsOptions = [
-  { value: 'TICPE', label: 'TICPE', description: 'Taxe Intérieure de Consommation sur les Produits Énergétiques' },
-  { value: 'DFS', label: 'DFS', description: 'Déclaration Fiscale Simplifiée' },
-  { value: 'URSSAF', label: 'URSSAF', description: 'Union de Recouvrement des Cotisations de Sécurité Sociale' },
-  { value: 'CEE', label: 'CEE', description: 'Certificats d\'Économies d\'Énergie' },
-  { value: 'Audit énergétique', label: 'Audit énergétique', description: 'Audit de performance énergétique' },
-  { value: 'Certification ISO', label: 'Certification ISO', description: 'Certifications ISO 9001, 14001, etc.' },
-  { value: 'Formation', label: 'Formation', description: 'Formation professionnelle' },
-  { value: 'Conseil', label: 'Conseil', description: 'Conseil en entreprise' },
-  { value: 'Comptabilité', label: 'Comptabilité', description: 'Services comptables' },
-  { value: 'Fiscalité', label: 'Fiscalité', description: 'Conseil fiscal' }
+  { value: 'TICPE', label: 'TICPE', description: 'Remboursement de la Taxe Intérieure de Consommation sur les Produits Énergétiques' },
+  { value: 'DFS', label: 'DFS', description: 'Déduction Forfaitaire Spécifique' },
+  { value: 'URSSAF', label: 'URSSAF', description: 'Optimisation de Charges Sociales' },
+  { value: 'MSA', label: 'MSA', description: 'Optimisation Charges MSA' },
+  { value: 'FONCIER', label: 'Fiscalité Foncière', description: 'Optimisation Fiscalité Foncière' },
+  { value: 'Optimisation Énergie', label: 'Optimisation Énergie', description: 'Optimisation des contrats d\'électricité et de gaz' },
+  { value: 'Recouvrement', label: 'Recouvrement', description: 'Avocat spécialisé en recouvrement d\'impayés' }
+];
+
+// Secteurs d'activité alignés sur le simulateur (GENERAL_001)
+const secteursActiviteOptions = [
+  'Transport et Logistique',
+  'Commerce et Distribution',
+  'Industrie et Fabrication',
+  'Services aux Entreprises',
+  'BTP et Construction',
+  'Restauration et Hôtellerie',
+  'Santé et Services Sociaux',
+  'Agriculture et Agroalimentaire',
+  'Services à la Personne',
+  'Autre secteur'
 ];
 
 const experienceOptions = [
@@ -172,17 +190,22 @@ const WelcomeExpert = () => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedSpecializations, setSelectedSpecializations] = useState<string[]>([]);
+  const [selectedSecteurs, setSelectedSecteurs] = useState<string[]>([]);
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>(['Français']);
   const [selectedCertifications, setSelectedCertifications] = useState<string[]>([]);
+  const [uploadedDocuments, setUploadedDocuments] = useState<{name: string, url: string, type: string}[]>([]);
+  const [isUploadingDoc, setIsUploadingDoc] = useState(false);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: '',
+      first_name: '',
+      last_name: '',
       email: '',
       company_name: '',
       siren: '',
       specializations: [],
+      secteur_activite: [],
       experience: '',
       location: '',
       description: '',
@@ -192,7 +215,8 @@ const WelcomeExpert = () => {
       languages: ['Français'],
       compensation: 20,
       max_clients: 100,
-      certifications: []
+      certifications: [],
+      documents: undefined
     }
   });
 
@@ -250,6 +274,18 @@ const WelcomeExpert = () => {
     }
   };
 
+  const handleSecteurChange = (secteur: string, checked: boolean) => {
+    if (checked) {
+      const newSecteurs = [...selectedSecteurs, secteur];
+      setSelectedSecteurs(newSecteurs);
+      form.setValue('secteur_activite', newSecteurs);
+    } else {
+      const newSecteurs = selectedSecteurs.filter(s => s !== secteur);
+      setSelectedSecteurs(newSecteurs);
+      form.setValue('secteur_activite', newSecteurs);
+    }
+  };
+
   const handleLanguageChange = (language: string, checked: boolean) => {
     if (checked) {
       const newLanguages = [...selectedLanguages, language];
@@ -274,6 +310,71 @@ const WelcomeExpert = () => {
     }
   };
 
+  const handleDocumentUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsUploadingDoc(true);
+    const newDocuments: {name: string, url: string, type: string}[] = [];
+
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        
+        // Validation taille (max 10MB)
+        if (file.size > 10 * 1024 * 1024) {
+          toast.error(`Le fichier ${file.name} est trop volumineux (max 10MB)`);
+          continue;
+        }
+
+        // Validation type
+        const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+        if (!allowedTypes.includes(file.type)) {
+          toast.error(`Le fichier ${file.name} n'est pas au format autorisé (PDF, JPG, PNG, DOC, DOCX)`);
+          continue;
+        }
+
+        // Créer FormData pour upload
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('folder', 'expert-documents');
+
+        // Upload vers le backend
+        const response = await fetch(`${config.API_URL}/api/upload`, {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!response.ok) {
+          throw new Error(`Échec de l'upload de ${file.name}`);
+        }
+
+        const result = await response.json();
+        newDocuments.push({
+          name: file.name,
+          url: result.url,
+          type: file.type
+        });
+      }
+
+      setUploadedDocuments([...uploadedDocuments, ...newDocuments]);
+      toast.success(`${newDocuments.length} document(s) uploadé(s) avec succès`);
+    } catch (error) {
+      console.error('Erreur upload documents:', error);
+      toast.error('Erreur lors de l\'upload des documents');
+    } finally {
+      setIsUploadingDoc(false);
+      // Reset input
+      event.target.value = '';
+    }
+  };
+
+  const handleRemoveDocument = (index: number) => {
+    const newDocuments = uploadedDocuments.filter((_, i) => i !== index);
+    setUploadedDocuments(newDocuments);
+    toast.success('Document supprimé');
+  };
+
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true);
     
@@ -286,12 +387,10 @@ const WelcomeExpert = () => {
         body: JSON.stringify({
           ...data,
           specializations: selectedSpecializations,
+          secteur_activite: selectedSecteurs,
           languages: selectedLanguages,
           certifications: selectedCertifications,
-          approval_status: 'pending',
-          status: 'inactive',
-          rating: 0,
-          availability: 'disponible'
+          documents: uploadedDocuments.length > 0 ? uploadedDocuments : null
         })
       });
 
@@ -703,26 +802,58 @@ const WelcomeExpert = () => {
                   <div className="space-y-4">
                     <h3 className="text-2xl font-semibold text-white flex items-center">
                       <Shield className="w-6 h-6 mr-3 text-purple-400" />
-                      Spécialisations *
+                      Spécialisations produits *
                     </h3>
+                    <p className="text-sm text-gray-300">Sélectionnez les produits fiscaux sur lesquels vous êtes expert</p>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {specializationsOptions.map((spec) => (
-                        <div key={spec.value} className="flex items-center space-x-3 p-3 border border-white/20 rounded-lg hover:bg-white/5 transition-colors">
+                        <div key={spec.value} className="flex items-start space-x-3 p-3 border border-white/20 rounded-lg hover:bg-white/5 transition-colors">
                           <Checkbox
                             id={spec.value}
                             checked={selectedSpecializations.includes(spec.value)}
                             onCheckedChange={(checked: boolean) => handleSpecializationChange(spec.value, checked)}
-                            className="border-white/20"
+                            className="border-white/20 mt-1"
                           />
-                          <label htmlFor={spec.value} className="text-sm font-medium cursor-pointer flex-1 text-white">
-                            {spec.label}
-                          </label>
+                          <div className="flex-1">
+                            <label htmlFor={spec.value} className="text-sm font-medium cursor-pointer text-white block">
+                              {spec.label}
+                            </label>
+                            <p className="text-xs text-gray-400 mt-1">{spec.description}</p>
+                          </div>
                         </div>
                       ))}
                     </div>
                     {form.formState.errors.specializations && (
                       <p className="text-red-400 text-sm">{form.formState.errors.specializations.message}</p>
+                    )}
+                  </div>
+
+                  {/* Secteurs d'activité */}
+                  <div className="space-y-4">
+                    <h3 className="text-2xl font-semibold text-white flex items-center">
+                      <Building className="w-6 h-6 mr-3 text-green-400" />
+                      Secteurs d'activité *
+                    </h3>
+                    <p className="text-sm text-gray-300">Dans quels secteurs d'activité intervenez-vous ?</p>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {secteursActiviteOptions.map((secteur) => (
+                        <div key={secteur} className="flex items-center space-x-3 p-3 border border-white/20 rounded-lg hover:bg-white/5 transition-colors">
+                          <Checkbox
+                            id={`secteur-${secteur}`}
+                            checked={selectedSecteurs.includes(secteur)}
+                            onCheckedChange={(checked: boolean) => handleSecteurChange(secteur, checked)}
+                            className="border-white/20"
+                          />
+                          <label htmlFor={`secteur-${secteur}`} className="text-sm font-medium cursor-pointer flex-1 text-white">
+                            {secteur}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                    {form.formState.errors.secteur_activite && (
+                      <p className="text-red-400 text-sm">{form.formState.errors.secteur_activite.message}</p>
                     )}
                   </div>
 
@@ -880,6 +1011,89 @@ const WelcomeExpert = () => {
                         ))}
                       </div>
                       <p className="text-sm text-gray-400">Ce champ est optionnel</p>
+                    </div>
+
+                    {/* Documents justificatifs (optionnel) */}
+                    <div className="space-y-4">
+                      <h4 className="text-lg font-semibold text-white flex items-center">
+                        <Paperclip className="w-5 h-5 mr-2" />
+                        Documents justificatifs
+                        <Badge variant="outline" className="ml-2 text-xs">Optionnel</Badge>
+                      </h4>
+                      <p className="text-sm text-gray-300 mb-3">
+                        Vous pouvez joindre des documents pour accélérer votre validation (CV, certifications, KBIS, etc.)
+                      </p>
+                      
+                      {/* Zone d'upload */}
+                      <div className="border-2 border-dashed border-white/30 rounded-lg p-6 bg-white/5 hover:bg-white/10 transition-colors">
+                        <label htmlFor="document-upload" className="cursor-pointer">
+                          <div className="flex flex-col items-center justify-center text-center">
+                            <Upload className="w-12 h-12 text-blue-400 mb-3" />
+                            <p className="text-white font-medium mb-1">
+                              Cliquez pour uploader des documents
+                            </p>
+                            <p className="text-sm text-gray-400">
+                              PDF, JPG, PNG, DOC, DOCX (max 10MB par fichier)
+                            </p>
+                          </div>
+                          <input
+                            id="document-upload"
+                            type="file"
+                            multiple
+                            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                            onChange={handleDocumentUpload}
+                            className="hidden"
+                            disabled={isUploadingDoc}
+                          />
+                        </label>
+                      </div>
+
+                      {/* Liste des documents uploadés */}
+                      {uploadedDocuments.length > 0 && (
+                        <div className="space-y-2 mt-4">
+                          <p className="text-sm text-gray-300 font-medium">
+                            Documents ajoutés ({uploadedDocuments.length}) :
+                          </p>
+                          {uploadedDocuments.map((doc, index) => (
+                            <div 
+                              key={index} 
+                              className="flex items-center justify-between bg-white/10 border border-white/20 rounded-lg p-3"
+                            >
+                              <div className="flex items-center gap-3 flex-1">
+                                <File className="w-5 h-5 text-blue-400" />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-white text-sm font-medium truncate">
+                                    {doc.name}
+                                  </p>
+                                  <p className="text-gray-400 text-xs">
+                                    {doc.type.includes('pdf') ? 'PDF' : doc.type.includes('image') ? 'Image' : 'Document'}
+                                  </p>
+                                </div>
+                              </div>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleRemoveDocument(index)}
+                                className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                              >
+                                <XIcon className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {isUploadingDoc && (
+                        <div className="flex items-center justify-center gap-2 text-blue-400 mt-4">
+                          <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+                          <span className="text-sm">Upload en cours...</span>
+                        </div>
+                      )}
+
+                      <p className="text-xs text-gray-400 mt-2">
+                        💡 Les documents sont optionnels mais peuvent accélérer la validation de votre profil
+                      </p>
                     </div>
                   </div>
 

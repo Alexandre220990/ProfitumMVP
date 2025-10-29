@@ -3,6 +3,8 @@ import { NotificationService } from './NotificationService';
 export interface ExpertNotificationData {
   expert_id: string;
   expert_name: string;
+  first_name?: string;
+  last_name?: string;
   expert_email: string;
   company_name?: string;
   siren?: string;
@@ -10,6 +12,7 @@ export interface ExpertNotificationData {
   location?: string;
   experience?: string;
   specializations?: string[];
+  secteur_activite?: string[];
   languages?: string[];
   website?: string;
   linkedin?: string;

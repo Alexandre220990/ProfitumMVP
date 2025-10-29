@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { UserPlus, MoreHorizontal, Eye, Edit, CheckCircle, XCircle, AlertCircle, Mail, MapPin, Phone, Star, Users, FolderOpen, Clock } from 'lucide-react';
+import { UserPlus, MoreHorizontal, Eye, Edit, CheckCircle, XCircle, AlertCircle, Mail, MapPin, Phone, Star, Users, FolderOpen, Clock, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { KPISection } from '@/components/admin/KPISection';
 
@@ -18,9 +18,12 @@ import { KPISection } from '@/components/admin/KPISection';
 interface Expert {
   id: string;
   name: string;
+  first_name?: string;
+  last_name?: string;
   email: string;
   company_name: string;
   specializations: string[];
+  secteur_activite?: string[];
   rating: number;
   compensation: number;
   status: string;
@@ -31,6 +34,7 @@ interface Expert {
   experience?: string;
   city?: string;
   phone?: string;
+  documents?: {name: string, url: string, type: string}[] | null;
 }
 
 interface Pagination {
@@ -346,12 +350,37 @@ const GestionExperts = () => {
                           )}
                         </div>
                         {expert.specializations && expert.specializations.length > 0 && (
-                          <div className="flex flex-wrap gap-2 mt-3">
-                            {expert.specializations.map((spec, idx) => (
-                              <Badge key={idx} variant="secondary" className="text-xs">
-                                {spec}
+                          <div className="mt-3">
+                            <p className="text-xs font-semibold text-gray-700 mb-1">Spécialisations :</p>
+                            <div className="flex flex-wrap gap-2">
+                              {expert.specializations.map((spec, idx) => (
+                                <Badge key={idx} variant="secondary" className="text-xs bg-purple-100 text-purple-800">
+                                  {spec}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {expert.secteur_activite && expert.secteur_activite.length > 0 && (
+                          <div className="mt-3">
+                            <p className="text-xs font-semibold text-gray-700 mb-1">Secteurs d'activité :</p>
+                            <div className="flex flex-wrap gap-2">
+                              {expert.secteur_activite.map((secteur, idx) => (
+                                <Badge key={idx} variant="outline" className="text-xs bg-green-100 text-green-800 border-green-300">
+                                  {secteur}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {expert.documents && expert.documents.length > 0 && (
+                          <div className="mt-3">
+                            <p className="text-xs font-semibold text-gray-700 mb-1">Documents justificatifs :</p>
+                            <div className="flex flex-wrap gap-2">
+                              <Badge variant="outline" className="text-xs bg-blue-100 text-blue-800 border-blue-300">
+                                📎 {expert.documents.length} document(s)
                               </Badge>
-                            ))}
+                            </div>
                           </div>
                         )}
                         <p className="text-xs text-gray-500 mt-2">
@@ -394,6 +423,24 @@ const GestionExperts = () => {
                           <Eye className="w-3 h-3 mr-1" />
                           Détails
                         </Button>
+                        {expert.documents && expert.documents.length > 0 && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="bg-blue-50 border-blue-300 hover:bg-blue-100"
+                            onClick={() => {
+                              const docList = expert.documents!.map((doc, idx) => 
+                                `${idx + 1}. ${doc.name}`
+                              ).join('\n');
+                              if (window.confirm(`Documents uploadés (${expert.documents!.length}) :\n\n${docList}\n\nVoulez-vous ouvrir les documents ?`)) {
+                                expert.documents!.forEach(doc => window.open(doc.url, '_blank'));
+                              }
+                            }}
+                          >
+                            <FileText className="w-3 h-3 mr-1" />
+                            Documents ({expert.documents.length})
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </div>
