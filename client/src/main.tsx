@@ -44,6 +44,57 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }> { sta
   }
 }
 
+// Gestionnaire global pour les erreurs de chargement de modules (chunk loading errors)
+const handleChunkLoadError = () => {
+  console.warn('🔄 Erreur de chargement de module détectée, rechargement automatique...');
+  
+  // Vérifier si on a déjà tenté un rechargement récemment pour éviter les boucles infinies
+  const lastReload = sessionStorage.getItem('lastChunkReload');
+  const now = Date.now();
+  
+  if (!lastReload || (now - parseInt(lastReload)) > 10000) {
+    sessionStorage.setItem('lastChunkReload', now.toString());
+    
+    // Vider le cache et recharger
+    if ('caches' in window) {
+      caches.keys().then(names => {
+        names.forEach(name => caches.delete(name));
+      });
+    }
+    
+    // Hard reload pour forcer le rechargement sans cache
+    window.location.reload();
+  } else {
+    console.error('❌ Trop de rechargements détectés, veuillez vider votre cache manuellement');
+  }
+};
+
+window.addEventListener('error', (event) => {
+  const isChunkLoadError = 
+    event.message.includes('Failed to fetch dynamically imported module') ||
+    event.message.includes('Importing a module script failed') ||
+    event.message.includes('error loading dynamically imported module');
+  
+  if (isChunkLoadError) {
+    event.preventDefault();
+    handleChunkLoadError();
+  }
+});
+
+// Gestionnaire pour les promesses rejetées (erreurs de chargement asynchrone)
+window.addEventListener('unhandledrejection', (event) => {
+  const error = event.reason?.message || event.reason?.toString() || '';
+  const isChunkLoadError = 
+    error.includes('Failed to fetch dynamically imported module') ||
+    error.includes('Importing a module script failed') ||
+    error.includes('error loading dynamically imported module');
+  
+  if (isChunkLoadError) {
+    event.preventDefault();
+    handleChunkLoadError();
+  }
+});
+
 // Initialisation de l'app avec plus de logs pour déboguer
 console.log("Initialisation de l'application...");
 
