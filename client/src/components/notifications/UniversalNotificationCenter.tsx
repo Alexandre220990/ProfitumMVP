@@ -16,7 +16,7 @@
  * Date: 27 Octobre 2025
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -86,7 +86,7 @@ export function UniversalNotificationCenter({
   const [searchQuery, setSearchQuery] = useState('');
   const [showPreferences, setShowPreferences] = useState(false);
   const [showAll, setShowAll] = useState(false);
-  const [expandLimit, setExpandLimit] = useState(5); // Afficher 5 par défaut
+  const expandLimit = 5; // Afficher 5 par défaut
 
   // Statistiques
   const totalCount = notifications.filter(n => n.status !== 'archived').length;
