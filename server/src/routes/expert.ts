@@ -860,7 +860,7 @@ router.get('/product-performance', async (req: Request, res: Response) => {
       .select(`
         "montantFinal",
         statut,
-        ProduitEligible:produitEligibleId (
+        ProduitEligible:produitId (
           nom
         )
       `)
@@ -1069,7 +1069,7 @@ router.get('/audits', async (req: Request, res: Response) => {
         *,
         Client (id, nom, prenom, email)
       `)
-      .eq('expertId', authUser.id)
+      .eq('expert_id', authUser.id)
       .order('createdAt', { ascending: false });
 
     if (error) {
@@ -1181,7 +1181,7 @@ router.get('/dossier/:id', async (req: Request, res: Response) => {
             email
           )
         ),
-        ProduitEligible:produitEligibleId (
+        ProduitEligible:produitId (
           id,
           nom,
           description
@@ -1233,11 +1233,11 @@ router.put('/dossier/:id/notes', async (req: Request, res: Response) => {
       return res.status(403).json({ success: false, message: 'Accès non autorisé' });
     }
 
-    // Mettre à jour les notes
+    // Mettre à jour les notes (utiliser la colonne notes existante)
     const { data, error } = await supabase
       .from('ClientProduitEligible')
       .update({ 
-        expert_notes,
+        notes: expert_notes,
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
@@ -1275,13 +1275,28 @@ router.post('/dossier/:id/validate-eligibility', async (req: Request, res: Respo
       return res.status(403).json({ success: false, message: 'Accès non autorisé' });
     }
 
+    // Récupérer le CPE actuel pour fusionner metadata
+    const { data: currentCPE } = await supabase
+      .from('ClientProduitEligible')
+      .select('metadata')
+      .eq('id', id)
+      .eq('expert_id', authUser.id)
+      .single();
+
+    // Fusionner metadata avec validation_state
+    const updatedMetadata = {
+      ...(currentCPE?.metadata || {}),
+      validation_state: validated ? 'eligibility_validated' : 'rejected',
+      eligible_validated_at: validated ? new Date().toISOString() : null
+    };
+
     // Mettre à jour le statut du CPE
     const { data, error } = await supabase
       .from('ClientProduitEligible')
       .update({ 
-        validation_state: validated ? 'eligibility_validated' : 'rejected',
+        metadata: updatedMetadata,
         statut: validated ? 'en_cours' : 'annule',
-        expert_notes: notes,
+        notes: notes,
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
@@ -1340,7 +1355,7 @@ router.post('/dossier/:id/request-documents', async (req: Request, res: Response
     await supabase
       .from('ClientProduitEligible')
       .update({ 
-        expert_notes: notes,
+        notes: notes,
         updated_at: new Date().toISOString()
       })
       .eq('id', id);
@@ -1370,13 +1385,28 @@ router.post('/dossier/:id/send-report', async (req: Request, res: Response) => {
       return res.status(403).json({ success: false, message: 'Accès non autorisé' });
     }
 
+    // Récupérer metadata actuel
+    const { data: currentCPE } = await supabase
+      .from('ClientProduitEligible')
+      .select('metadata')
+      .eq('id', id)
+      .eq('expert_id', authUser.id)
+      .single();
+
+    // Fusionner metadata avec recommendation
+    const updatedMetadata = {
+      ...(currentCPE?.metadata || {}),
+      recommendation: recommendation,
+      finalized_at: new Date().toISOString()
+    };
+
     // Mettre à jour le CPE
     const { data, error } = await supabase
       .from('ClientProduitEligible')
       .update({ 
         statut: 'termine',
-        expert_notes: notes,
-        // Stocker la recommandation dans les métadonnées
+        notes: notes,
+        metadata: updatedMetadata,
         updated_at: new Date().toISOString()
       })
       .eq('id', id)

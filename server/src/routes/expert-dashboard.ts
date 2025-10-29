@@ -88,9 +88,9 @@ router.get('/prioritized', enhancedAuthMiddleware, async (req: Request, res: Res
       .select(`
         id,
         "clientId",
-        "produitEligibleId",
+        "produitId",
         statut,
-        validation_state,
+        metadata,
         "montantFinal",
         created_at,
         updated_at,
@@ -105,7 +105,7 @@ router.get('/prioritized', enhancedAuthMiddleware, async (req: Request, res: Res
             company_name
           )
         ),
-        ProduitEligible:produitEligibleId (
+        ProduitEligible:produitId (
           nom
         )
       `)
@@ -144,14 +144,15 @@ router.get('/prioritized', enhancedAuthMiddleware, async (req: Request, res: Res
 
       // 3. PROBABILITÉ (20 points) - Statut du dossier
       let probabiliteScore = 0;
+      const validationState = dossier.metadata?.validation_state || '';
       if (dossier.statut === 'en_cours') probabiliteScore = 20;
-      else if (dossier.validation_state === 'eligibility_validated') probabiliteScore = 15;
+      else if (validationState === 'eligibility_validated') probabiliteScore = 15;
       else probabiliteScore = 10;
 
       // 4. FACILITÉ (10 points) - Statut de validation
       let faciliteScore = 0;
-      if (dossier.validation_state === 'eligibility_validated') faciliteScore = 10;
-      else if (dossier.validation_state === 'pending_expert_validation') faciliteScore = 5;
+      if (validationState === 'eligibility_validated') faciliteScore = 10;
+      else if (validationState === 'pending_expert_validation') faciliteScore = 5;
       else faciliteScore = 3;
 
       // SCORE TOTAL
@@ -178,7 +179,7 @@ router.get('/prioritized', enhancedAuthMiddleware, async (req: Request, res: Res
         productName: dossier.ProduitEligible?.nom || 'Produit',
         apporteurName: dossier.Client?.ApporteurAffaires?.company_name || 'Direct',
         statut: dossier.statut,
-        validationState: dossier.validation_state || '',
+        validationState: validationState,
         montantFinal: montant,
         priorityScore,
         urgenceScore,
@@ -279,7 +280,7 @@ router.get('/alerts', enhancedAuthMiddleware, async (req: Request, res: Response
           name
         )
       `)
-      .eq('expertId', expertId)
+      .eq('expert_id', expertId)
       .eq('statut', 'en_cours');
 
     const now = new Date();
@@ -329,7 +330,7 @@ router.get('/alerts', enhancedAuthMiddleware, async (req: Request, res: Response
           name
         )
       `)
-      .eq('expertId', expertId)
+      .eq('expert_id', expertId)
       .eq('statut', 'eligible');
 
     // Vérifier si un RDV existe pour chaque prospect
@@ -407,7 +408,7 @@ router.get('/revenue-pipeline', enhancedAuthMiddleware, async (req: Request, res
     const { data: prospects } = await supabase
       .from('ClientProduitEligible')
       .select('"montantFinal"')
-      .eq('expertId', expertId)
+      .eq('expert_id', expertId)
       .eq('statut', 'eligible');
 
     const prospectsTotal = (prospects || []).reduce((sum, p) => sum + (p.montantFinal || 0), 0);
@@ -418,7 +419,7 @@ router.get('/revenue-pipeline', enhancedAuthMiddleware, async (req: Request, res
     const { data: enSignature } = await supabase
       .from('ClientProduitEligible')
       .select('"montantFinal", updated_at')
-      .eq('expertId', expertId)
+      .eq('expert_id', expertId)
       .eq('statut', 'en_cours');
 
     // Filtrer ceux récemment mis à jour (< 30 jours)
@@ -437,7 +438,7 @@ router.get('/revenue-pipeline', enhancedAuthMiddleware, async (req: Request, res
     const { data: signes } = await supabase
       .from('ClientProduitEligible')
       .select('"montantFinal"')
-      .eq('expertId', expertId)
+      .eq('expert_id', expertId)
       .eq('statut', 'termine');
 
     const signesTotal = (signes || []).reduce((sum, s) => sum + (s.montantFinal || 0), 0);
@@ -525,7 +526,7 @@ router.get('/overview', enhancedAuthMiddleware, async (req: Request, res: Respon
     const { count: dossiersEnCours } = await supabase
       .from('ClientProduitEligible')
       .select('*', { count: 'exact', head: true })
-      .eq('expertId', expertId)
+      .eq('expert_id', expertId)
       .eq('statut', 'en_cours');
 
     // Apporteurs avec statistiques détaillées
