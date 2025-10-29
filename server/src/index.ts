@@ -106,6 +106,8 @@ import apporteurSettingsRoutes from './routes/apporteur-settings';
 import rdvRoutes from './routes/rdv';
 // Routes test email - uniquement en dev
 import testEmailRoutes from './routes/test-email';
+import publicUploadRoutes from './routes/public-upload';
+import expertDemoRequestRoutes from './routes/expert/demo-request';
 
 // Créer l'application Express
 const app = express();
@@ -209,6 +211,14 @@ app.use('/api/session-migration', publicRouteLogger, sessionMigrationRoutes);
 // pour que /register soit accessible sans authentification
 app.use('/api/apporteur', publicRouteLogger, apporteurRegisterRoutes);
 console.log('📝 Route inscription apporteur montée sur /api/apporteur/register (PUBLIQUE)');
+
+// 📤 ROUTE D'UPLOAD PUBLIQUE - Pour uploads avant authentification
+app.use('/api/upload', publicRouteLogger, publicUploadRoutes);
+console.log('📤 Route upload publique montée sur /api/upload (PUBLIQUE)');
+
+// 📋 ROUTE DEMANDE EXPERT - PUBLIQUE (pas d'authentification requise)
+app.use('/api/expert/demo-request', publicRouteLogger, expertDemoRequestRoutes);
+console.log('📋 Route demande expert montée sur /api/expert/demo-request (PUBLIQUE)');
 
 // Route de santé (publique mais loggée) - PLACÉE AVANT LES ROUTES PROTÉGÉES
 app.get('/api/health', publicRouteLogger, (req, res) => {
