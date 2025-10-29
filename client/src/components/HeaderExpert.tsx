@@ -11,6 +11,7 @@ export default function HeaderExpert() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { unreadCount, hasNotifications } = useNotificationBadge();
+  const [notifOpen, setNotifOpen] = useState(false);
 
   const handleLogout = async () => {
     logout();
