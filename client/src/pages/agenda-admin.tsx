@@ -7,12 +7,14 @@ import { UnifiedCalendar } from '../components/UnifiedCalendar';
 export default function AgendaAdmin() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-100 p-6">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Mon Agenda</h1>
-        <p className="text-gray-600">
-          Vue calendrier - Tous les rendez-vous (clients, experts, apporteurs)
-        </p>
+      {/* Header compact */}
+      <div className="mb-4">
+        <div className="flex items-baseline gap-3">
+          <h1 className="text-2xl font-bold text-gray-900">Mon Agenda</h1>
+          <p className="text-sm text-gray-600">
+            Vue calendrier - Tous les rendez-vous (clients, experts, apporteurs)
+          </p>
+        </div>
       </div>
 
       {/* Calendrier unifié */}

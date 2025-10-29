@@ -381,10 +381,10 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
     const daysToShow = 42;
     
     return (
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Calendrier principal */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="flex items-center justify-between mb-6">
+        <div className="lg:col-span-2 space-y-4">
+          <div className="flex items-center justify-between mb-4">
             <Button
               variant="outline"
               size="sm"
@@ -565,8 +565,8 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
     };
     
     return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between mb-6">
+      <div className="space-y-3">
+        <div className="flex items-center justify-between mb-4">
           <Button
             variant="outline"
             size="sm"
@@ -699,8 +699,8 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
     const dayEvents = getEventsForDate(view.date);
     
     return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between mb-6">
+      <div className="space-y-3">
+        <div className="flex items-center justify-between mb-4">
           <Button
             variant="outline"
             size="sm"
@@ -755,9 +755,9 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
   };
 
   const renderListView = () => (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">Liste des événements</h2>
+    <div className="space-y-3">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-bold text-gray-900">Liste des événements</h2>
         <Button onClick={() => setShowEventDialog(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Nouvel événement
@@ -765,7 +765,7 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
       </div>
 
       {/* Filtres et recherche */}
-      <div className="flex gap-4 mb-6">
+      <div className="flex gap-4 mb-4">
         <Input
           placeholder="Rechercher un événement..."
           value={searchQuery}
@@ -858,7 +858,7 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
       )}
 
       {/* Sélecteur de vue */}
-      <div className="flex items-center gap-2 mb-6">
+      <div className="flex items-center gap-2 mb-3">
         <Tabs value={view.type} onValueChange={(value) => setView(prev => ({ ...prev, type: value as any }))}>
           <TabsList>
             <TabsTrigger value="month" className="flex items-center gap-2">
@@ -895,7 +895,7 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
 
       {/* Contenu de la vue */}
       <div className="bg-white rounded-lg border">
-        <div className="p-6">
+        <div className="p-4">
           {view.type === 'month' && renderMonthView()}
           {view.type === 'week' && renderWeekView()}
           {view.type === 'day' && renderDayView()}
