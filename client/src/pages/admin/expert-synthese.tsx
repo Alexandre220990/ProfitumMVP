@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  ArrowLeft,
   User,
   Mail,
   Phone,
@@ -27,7 +26,6 @@ import {
 import { useAuth } from '@/hooks/use-auth';
 import { get } from '@/lib/api';
 import { toast } from 'sonner';
-import AdminLayout from '@/components/admin/AdminLayout';
 
 interface ExpertData {
   id: string;
@@ -182,19 +180,9 @@ const ExpertSynthese: React.FC = () => {
   };
 
   return (
-    <AdminLayout>
       <div className="min-h-screen bg-gray-50 p-6">
         {/* Header */}
         <div className="mb-6">
-          <Button
-            variant="ghost"
-            onClick={() => navigate('/admin/dashboard')}
-            className="mb-4"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Retour au Dashboard
-          </Button>
-
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
@@ -680,7 +668,6 @@ const ExpertSynthese: React.FC = () => {
           </div>
         )}
       </div>
-    </AdminLayout>
   );
 };
 

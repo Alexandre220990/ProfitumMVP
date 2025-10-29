@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
+import { Navigate, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -94,6 +94,7 @@ type ActiveSection = 'overview' | 'experts' | 'clients' | 'dossiers' | 'apporteu
 const AdminDashboardOptimized: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   
   // ===== ÉTATS LOCAUX =====
   const [searchParams, setSearchParams] = useSearchParams();
@@ -256,6 +257,17 @@ const AdminDashboardOptimized: React.FC = () => {
     loadKPIData();
     loadSectionData('overview');
   }, []);
+
+  // Recharger le dashboard quand on revient à la page (navigation depuis autre page)
+  useEffect(() => {
+    // Si on arrive sur le dashboard ET qu'on vient d'une autre page admin
+    if (location.pathname === '/admin/dashboard-optimized' && !searchParams.get('section')) {
+      console.log('🔄 Retour au dashboard - Rechargement des données');
+      loadKPIData();
+      setActiveSection('overview');
+      setSelectedEcosystemTile(null);
+    }
+  }, [location.pathname]);
 
   // Charger les données quand la section change
   useEffect(() => {
