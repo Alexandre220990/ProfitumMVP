@@ -528,10 +528,13 @@ router.get('/overview', enhancedAuthMiddleware, async (req: Request, res: Respon
       .eq('expertId', expertId)
       .eq('statut', 'en_cours');
 
-    // Apporteurs
-    const { data: apporteurs } = await supabase
+    // Apporteurs avec statistiques détaillées
+    const { data: apporteursData } = await supabase
       .from('ClientProduitEligible')
       .select(`
+        id,
+        statut,
+        created_at,
         Client:clientId (
           apporteur_id,
           ApporteurAffaires:apporteur_id (
@@ -543,14 +546,41 @@ router.get('/overview', enhancedAuthMiddleware, async (req: Request, res: Respon
       `)
       .eq('expertId', expertId);
 
-    // Dédupliquer les apporteurs
-    const uniqueApporteurs = new Map();
-    (apporteurs || []).forEach((item: any) => {
-      const apporteur = item.Client?.ApporteurAffaires;
+    // Calculer les stats par apporteur
+    const apporteursMap = new Map();
+    (apporteursData || []).forEach((item: any) => {
+      const apporteurData = Array.isArray(item.Client) ? item.Client[0] : item.Client;
+      const apporteur = Array.isArray(apporteurData?.ApporteurAffaires) 
+        ? apporteurData.ApporteurAffaires[0] 
+        : apporteurData?.ApporteurAffaires;
+      
       if (apporteur && apporteur.id) {
-        uniqueApporteurs.set(apporteur.id, apporteur);
+        if (!apporteursMap.has(apporteur.id)) {
+          apporteursMap.set(apporteur.id, {
+            id: apporteur.id,
+            company_name: apporteur.company_name,
+            email: apporteur.email,
+            prospectsActifs: 0,
+            clientsEnCours: 0,
+            dernierProspect: null
+          });
+        }
+        
+        const stats = apporteursMap.get(apporteur.id);
+        
+        if (item.statut === 'eligible') {
+          stats.prospectsActifs++;
+        } else if (item.statut === 'en_cours') {
+          stats.clientsEnCours++;
+        }
+        
+        if (!stats.dernierProspect || new Date(item.created_at) > new Date(stats.dernierProspect)) {
+          stats.dernierProspect = item.created_at;
+        }
       }
     });
+
+    const apporteursList = Array.from(apporteursMap.values());
 
     return res.json({
       success: true,
@@ -559,9 +589,9 @@ router.get('/overview', enhancedAuthMiddleware, async (req: Request, res: Respon
           clientsActifs: clientsActifs || 0,
           rdvCetteSemaine: rdvCetteSemaine || 0,
           dossiersEnCours: dossiersEnCours || 0,
-          apporteursActifs: uniqueApporteurs.size
+          apporteursActifs: apporteursList.length
         },
-        apporteurs: Array.from(uniqueApporteurs.values())
+        apporteurs: apporteursList
       }
     });
 

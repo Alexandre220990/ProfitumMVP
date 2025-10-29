@@ -84,6 +84,15 @@ interface KPIs {
   apporteursActifs: number;
 }
 
+interface Apporteur {
+  id: string;
+  company_name: string;
+  email: string;
+  prospectsActifs: number;
+  clientsEnCours: number;
+  dernierProspect: string;
+}
+
 // ============================================================================
 // COMPOSANT PRINCIPAL
 // ============================================================================
@@ -94,6 +103,7 @@ export const ExpertDashboardOptimized = () => {
   
   const [loading, setLoading] = useState(true);
   const [kpis, setKpis] = useState<KPIs | null>(null);
+  const [apporteurs, setApporteurs] = useState<Apporteur[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [prioritizedDossiers, setPrioritizedDossiers] = useState<PrioritizedDossier[]>([]);
   const [revenuePipeline, setRevenuePipeline] = useState<RevenuePipeline | null>(null);
@@ -108,7 +118,7 @@ export const ExpertDashboardOptimized = () => {
 
       // Charger toutes les données en parallèle
       const [overviewRes, alertsRes, prioritizedRes, pipelineRes] = await Promise.all([
-        get<{ kpis: KPIs }>('/api/expert/dashboard/overview'),
+        get<{ kpis: KPIs; apporteurs: Apporteur[] }>('/api/expert/dashboard/overview'),
         get<Alert[]>('/api/expert/dashboard/alerts'),
         get<PrioritizedDossier[]>('/api/expert/dashboard/prioritized'),
         get<RevenuePipeline>('/api/expert/dashboard/revenue-pipeline')
@@ -116,6 +126,7 @@ export const ExpertDashboardOptimized = () => {
 
       if (overviewRes.success && overviewRes.data) {
         setKpis(overviewRes.data.kpis);
+        setApporteurs(overviewRes.data.apporteurs || []);
       }
 
       if (alertsRes.success && alertsRes.data) {
@@ -377,20 +388,57 @@ export const ExpertDashboardOptimized = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Users className="h-5 w-5 text-indigo-600" />
-              <span>Mes Apporteurs Partenaires</span>
+              <span>Mes Apporteurs Partenaires ({apporteurs.length})</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {kpis && kpis.apporteursActifs > 0 ? (
-              <div className="text-center py-8">
-                <Users className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                <p className="text-gray-600 mb-2">{kpis.apporteursActifs} apporteur(s) actif(s)</p>
-                <p className="text-sm text-gray-500">Vos partenaires qui vous envoient des prospects</p>
+            {apporteurs.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {apporteurs.map((apporteur) => (
+                  <div 
+                    key={apporteur.id}
+                    className="p-4 bg-gradient-to-br from-white to-indigo-50 border-2 border-indigo-100 rounded-lg hover:shadow-lg transition-all cursor-pointer"
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <h4 className="font-bold text-gray-900 mb-1">{apporteur.company_name}</h4>
+                        <p className="text-xs text-gray-500">{apporteur.email}</p>
+                      </div>
+                      <Button 
+                        size="sm" 
+                        variant="ghost"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.location.href = `mailto:${apporteur.email}`;
+                        }}
+                      >
+                        <Mail className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div className="bg-white p-2 rounded">
+                        <p className="text-gray-500 text-xs">Prospects</p>
+                        <p className="font-bold text-blue-600">{apporteur.prospectsActifs}</p>
+                      </div>
+                      <div className="bg-white p-2 rounded">
+                        <p className="text-gray-500 text-xs">Clients</p>
+                        <p className="font-bold text-green-600">{apporteur.clientsEnCours}</p>
+                      </div>
+                    </div>
+                    {apporteur.dernierProspect && (
+                      <div className="mt-3 pt-3 border-t text-xs text-gray-500">
+                        <Clock className="h-3 w-3 inline mr-1" />
+                        Dernier prospect : {new Date(apporteur.dernierProspect).toLocaleDateString('fr-FR')}
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             ) : (
               <div className="text-center py-8">
                 <Users className="h-12 w-12 text-gray-400 mx-auto mb-3" />
                 <p className="text-gray-600">Aucun apporteur actif</p>
+                <p className="text-sm text-gray-500">Les apporteurs apparaîtront ici quand ils vous assigneront des prospects</p>
               </div>
             )}
           </CardContent>
