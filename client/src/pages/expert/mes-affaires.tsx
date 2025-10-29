@@ -391,14 +391,14 @@ const ExpertMesAffaires = () => {
                               {formatCurrency(product.revenue)}
                             </TableCell>
                             <TableCell>
-                              <Badge className={product.successRate >= 80 ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}>
-                                {product.successRate.toFixed(1)}%
+                              <Badge className={(product.successRate ?? 0) >= 80 ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}>
+                                {product.successRate ? product.successRate.toFixed(1) : '0.0'}%
                               </Badge>
                             </TableCell>
                             <TableCell>
                               <div className="flex items-center">
                                 <Star className="h-4 w-4 text-yellow-500 mr-1" />
-                                <span>{product.averageRating.toFixed(1)}/5</span>
+                                <span>{product.averageRating ? product.averageRating.toFixed(1) : '0.0'}/5</span>
                               </div>
                             </TableCell>
                           </TableRow>
@@ -437,7 +437,7 @@ const ExpertMesAffaires = () => {
                             <TableCell>
                               <div className="flex items-center">
                                 <Star className="h-4 w-4 text-yellow-500 mr-1" />
-                                <span>{client.averageRating.toFixed(1)}/5</span>
+                                <span>{client.averageRating ? client.averageRating.toFixed(1) : '0.0'}/5</span>
                               </div>
                             </TableCell>
                             <TableCell>{formatDate(client.lastAssignment)}</TableCell>
