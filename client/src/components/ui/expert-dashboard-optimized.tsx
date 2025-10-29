@@ -20,10 +20,13 @@ import {
   MessageSquare,
   FileText,
   ArrowUpRight,
-  Star
+  Star,
+  Eye,
+  Archive,
+  Bell
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-import { get } from "@/lib/api";
+import { get, put, post } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -158,6 +161,55 @@ export const ExpertDashboardOptimized = () => {
     toast.success('Dashboard actualisé');
   };
 
+  // Gérer les actions sur les alertes
+  const handleMarkAlertRead = async (alertId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const response = await put(`/api/expert/alerts/${alertId}/read`, {});
+      if (response.success) {
+        setAlerts(alerts.filter(a => a.id !== alertId));
+        toast.success('Alerte marquée comme lue');
+      }
+    } catch (error) {
+      toast.error('Erreur lors du marquage de l\'alerte');
+    }
+  };
+
+  const handleArchiveAlert = async (alertId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const response = await put(`/api/expert/alerts/${alertId}/archive`, {});
+      if (response.success) {
+        setAlerts(alerts.filter(a => a.id !== alertId));
+        toast.success('Alerte archivée');
+      }
+    } catch (error) {
+      toast.error('Erreur lors de l\'archivage de l\'alerte');
+    }
+  };
+
+  const handleSnoozeAlert = async (alertId: string, duration: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const response = await put(`/api/expert/alerts/${alertId}/snooze`, { duration });
+      if (response.success) {
+        setAlerts(alerts.filter(a => a.id !== alertId));
+        const hours = duration === 1 ? '1h' : duration === 3 ? '3h' : duration === 24 ? '24h' : '3 jours';
+        toast.success(`Alerte reportée de ${hours}`);
+      }
+    } catch (error) {
+      toast.error('Erreur lors du report de l\'alerte');
+    }
+  };
+
+  // Filtrer les dossiers selon la vue active
+  const filteredDossiers = prioritizedDossiers.filter(d => {
+    if (activeView === 'all') return true;
+    if (activeView === 'prospects') return d.statut === 'eligible';
+    if (activeView === 'clients') return d.statut === 'en_cours';
+    return true;
+  });
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center">
@@ -265,7 +317,7 @@ export const ExpertDashboardOptimized = () => {
                     'bg-yellow-100 border-yellow-500'
                   }`}
                 >
-                  <div className="flex items-start justify-between">
+                  <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <Badge className={
@@ -277,7 +329,7 @@ export const ExpertDashboardOptimized = () => {
                         </Badge>
                         <span className="font-bold text-gray-900">{alert.title}</span>
                       </div>
-                      <p className="text-sm text-gray-700 mb-2">
+                      <p className="text-sm text-gray-700">
                         <strong>{alert.clientName}</strong> • {alert.description}
                       </p>
                     </div>
@@ -285,8 +337,57 @@ export const ExpertDashboardOptimized = () => {
                       {alert.actionLabel}
                     </Button>
                   </div>
+                  
+                  {/* Boutons de gestion de l'alerte */}
+                  <div className="flex items-center gap-2 pt-2 border-t">
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      onClick={(e) => handleMarkAlertRead(alert.id, e)}
+                      className="text-xs"
+                    >
+                      <Eye className="h-3 w-3 mr-1" />
+                      Marquer lue
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      onClick={(e) => handleArchiveAlert(alert.id, e)}
+                      className="text-xs"
+                    >
+                      <Archive className="h-3 w-3 mr-1" />
+                      Archiver
+                    </Button>
+                    <div className="ml-auto flex gap-1">
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={(e) => handleSnoozeAlert(alert.id, 1, e)}
+                        className="text-xs"
+                      >
+                        <Bell className="h-3 w-3 mr-1" />
+                        1h
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={(e) => handleSnoozeAlert(alert.id, 24, e)}
+                        className="text-xs"
+                      >
+                        24h
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               ))}
+              
+              {alerts.length > 5 && (
+                <div className="text-center pt-2">
+                  <p className="text-sm text-gray-600">
+                    + {alerts.length - 5} autre(s) alerte(s)
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

@@ -226,6 +226,44 @@ router.get('/alerts', enhancedAuthMiddleware, async (req: Request, res: Response
     }
 
     const expertId = authUser.database_id || authUser.id;
+
+    // Récupérer les alertes actives depuis la BDD
+    const { data: dbAlerts, error: alertError } = await supabase
+      .from('ExpertAlert')
+      .select('*')
+      .eq('expert_id', expertId)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false });
+
+    if (alertError) {
+      console.error('❌ Erreur récupération alertes:', alertError);
+      // Fallback sur génération dynamique en cas d'erreur
+    }
+
+    // Si alertes trouvées en BDD, les retourner
+    if (dbAlerts && dbAlerts.length > 0) {
+      // Transformer le format BDD vers le format API
+      const formattedAlerts: Alert[] = dbAlerts.map(alert => ({
+        id: alert.id,
+        type: alert.type as 'critique' | 'important' | 'attention',
+        category: alert.category,
+        title: alert.title,
+        description: alert.description,
+        dossierId: alert.dossier_id,
+        clientName: alert.metadata?.clientName || 'Client',
+        urgency: alert.type === 'critique' ? 100 : alert.type === 'important' ? 80 : 60,
+        actionLabel: alert.category === 'rdv' ? 'Confirmer' : alert.category === 'dossier' ? 'Voir dossier' : 'Planifier RDV',
+        actionUrl: alert.dossier_id ? `/expert/dossier/${alert.dossier_id}` : `/expert/agenda?rdv=${alert.rdv_id}`,
+        createdAt: alert.created_at
+      }));
+
+      return res.json({
+        success: true,
+        data: formattedAlerts
+      });
+    }
+
+    // Sinon, générer les alertes dynamiquement (fallback)
     const alerts: Alert[] = [];
 
     // 1. ALERTES RDV

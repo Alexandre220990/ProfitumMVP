@@ -8,6 +8,7 @@ import specializationsRoutes from "./specializations";
 import expertsRoutes from "./experts";
 import expertRoutes from "./expert";
 import expertDashboardRoutes from "./expert-dashboard";
+import expertAlertsRoutes from "./expert-alerts";
 import expertDemoRequestRoutes from "./expert/demo-request";
 import adminRoutes from "./admin";
 import monitoringRoutes from "./monitoring";
@@ -61,6 +62,9 @@ router.use('/expert', enhancedAuthMiddleware, expertRoutes);
 
 // Routes dashboard expert (priorisation, alertes, revenue pipeline)
 router.use('/expert/dashboard', enhancedAuthMiddleware, expertDashboardRoutes);
+
+// Routes gestion alertes expert
+router.use('/expert/alerts', enhancedAuthMiddleware, expertAlertsRoutes);
 
 // Routes des demandes de démo expert
 router.use('/expert/demo-request', expertDemoRequestRoutes);
