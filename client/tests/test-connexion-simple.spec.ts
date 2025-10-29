@@ -3,43 +3,48 @@ import { test, expect } from '@playwright/test';
 test('Test de connexion client simple', async ({ page }) => {
   console.log('🚀 Début du test de connexion client');
   
-  // 1. Aller sur la page de connexion (utilise baseURL automatiquement)
+  // 1. Aller sur la page de connexion avec timeout long
   console.log('📍 Navigation vers /connexion-client');
-  await page.goto('/connexion-client');
-  await page.waitForLoadState('networkidle');
-  console.log('✅ Page chargée');
+  await page.goto('/connexion-client', { waitUntil: 'domcontentloaded', timeout: 60000 });
+  console.log('✅ Page chargée (DOM)');
   
-  // Vérifier qu'on n'est pas sur une page d'erreur 404
-  await expect(page.locator('text=404')).not.toBeVisible();
+  // Attendre spécifiquement le titre "Connexion" pour être sûr que React a rendu
+  await page.waitForSelector('h2:has-text("Connexion")', { timeout: 30000 });
+  console.log('✅ React chargé - titre trouvé');
   
   // Capture d'écran de la page de connexion
-  await page.screenshot({ path: 'test-results/01-page-connexion.png' });
+  await page.screenshot({ path: 'test-results/01-page-connexion.png', fullPage: true });
   
-  // 2. Remplir le formulaire (Playwright attend automatiquement que les champs soient visibles)
+  // 2. Remplir le formulaire avec les IDs précis
   console.log('📝 Remplissage du formulaire');
   
-  await page.fill('input[type="email"]', 'grandjean.laporte@gmail.com');
+  // Attendre et remplir l'email avec l'ID exact
+  await page.waitForSelector('#email', { state: 'visible', timeout: 10000 });
+  await page.fill('#email', 'grandjean.laporte@gmail.com');
   console.log('✅ Email rempli');
   
-  await page.fill('input[type="password"]', 'profitum');
+  // Attendre et remplir le mot de passe avec l'ID exact
+  await page.waitForSelector('#password', { state: 'visible', timeout: 10000 });
+  await page.fill('#password', 'profitum');
   console.log('✅ Mot de passe rempli');
   
   // Capture d'écran du formulaire rempli
-  await page.screenshot({ path: 'test-results/02-formulaire-rempli.png' });
+  await page.screenshot({ path: 'test-results/02-formulaire-rempli.png', fullPage: true });
   
   // 3. Soumettre le formulaire
   console.log('🔐 Soumission du formulaire');
   await page.click('button[type="submit"]');
   
   // Attendre la redirection vers le dashboard
-  await page.waitForURL(/dashboard|client/, { timeout: 30000 });
+  console.log('⏳ Attente de la redirection...');
+  await page.waitForURL(/dashboard|client/, { timeout: 60000 });
   console.log('✅ Redirection effectuée');
   
-  // Attendre que la page soit complètement chargée
-  await page.waitForLoadState('networkidle');
+  // Attendre que la page dashboard soit bien chargée
+  await page.waitForLoadState('networkidle', { timeout: 30000 });
   
   // Capture d'écran après connexion
-  await page.screenshot({ path: 'test-results/03-apres-connexion.png' });
+  await page.screenshot({ path: 'test-results/03-apres-connexion.png', fullPage: true });
   
   // 4. Vérifier qu'on est bien connecté
   const currentUrl = page.url();

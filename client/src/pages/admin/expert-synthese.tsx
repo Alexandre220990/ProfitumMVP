@@ -14,7 +14,6 @@ import {
   Phone,
   Calendar,
   FileText,
-  UserCheck,
   Users,
   TrendingUp,
   DollarSign,
@@ -208,7 +207,7 @@ const ExpertSynthese: React.FC = () => {
       if (response.ok) {
         toast.success('✅ Expert approuvé avec succès !');
         loadExpertData(); // Recharger les données
-        navigate('/admin/gestion-experts');
+        navigate('/admin/dashboard-optimized');
       } else {
         toast.error('Erreur lors de l\'approbation');
       }
@@ -241,7 +240,7 @@ const ExpertSynthese: React.FC = () => {
         toast.success('❌ Expert rejeté');
         setShowValidationDialog(false);
         loadExpertData();
-        navigate('/admin/gestion-experts');
+        navigate('/admin/dashboard-optimized');
       } else {
         toast.error('Erreur lors du rejet');
       }

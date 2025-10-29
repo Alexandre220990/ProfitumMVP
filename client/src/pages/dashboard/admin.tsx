@@ -79,7 +79,7 @@ const quickActions = [
     title: "Gestion Experts",
     description: "Gérer les experts",
     icon: UserCheck,
-    path: "/admin/gestion-experts",
+    path: "/admin/dashboard-optimized",
     color: "bg-green-500 hover:bg-green-600"
   },
   {

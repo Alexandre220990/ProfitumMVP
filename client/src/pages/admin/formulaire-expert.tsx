@@ -280,7 +280,7 @@ const FormulaireExpert = () => {
       
       // Redirection après 2 secondes
       setTimeout(() => {
-        navigate('/admin/gestion-experts');
+        navigate('/admin/dashboard-optimized');
       }, 2000);
 
     } catch (err: any) {
@@ -395,10 +395,10 @@ const FormulaireExpert = () => {
               </div>
               <Button 
                 variant="outline" 
-                onClick={() => navigate('/admin/gestion-experts')}
+                onClick={() => navigate('/admin/dashboard-optimized')}
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                Retour à la liste
+                Retour au dashboard
               </Button>
             </div>
           </div>
@@ -923,7 +923,7 @@ const FormulaireExpert = () => {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => navigate('/admin/gestion-experts')}
+                    onClick={() => navigate('/admin/dashboard-optimized')}
                     disabled={loading}
                   >
                     Annuler

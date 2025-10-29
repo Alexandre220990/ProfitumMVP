@@ -86,8 +86,8 @@ export default function HeaderAdmin() {
           {/* MENU DÉROULANT */}
           <DropdownMenuContent align="end" className="w-56 shadow-lg border rounded-lg">
             <div className="px-4 py-2 text-gray-900 font-semibold">👋 Bonjour, {user?.username || "Admin"} !</div>
-            <DropdownMenuItem onClick={() => navigate("/admin/gestion-experts")} className="flex items-center px-4 py-2 hover:bg-gray-100 transition cursor-pointer">
-              <User className="mr-2 h-5 w-5" /> <span>Gestion Experts</span>
+            <DropdownMenuItem onClick={() => navigate("/admin/dashboard-optimized")} className="flex items-center px-4 py-2 hover:bg-gray-100 transition cursor-pointer">
+              <User className="mr-2 h-5 w-5" /> <span>Dashboard</span>
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => navigate("/admin/validation-dashboard")} className="flex items-center px-4 py-2 hover:bg-gray-100 transition cursor-pointer">
               <Settings className="mr-2 h-5 w-5" /> <span>Validation</span>

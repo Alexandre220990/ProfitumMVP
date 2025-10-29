@@ -91,7 +91,6 @@ const AdminDashboardOptimized = React.lazy(() => import('./pages/admin/dashboard
 const AdminClientDetails = React.lazy(() => import('./pages/admin/client-details'));
 const AdminExpertDetails = React.lazy(() => import('./pages/admin/expert-details'));
 const AdminGestionDossiers = React.lazy(() => import('./pages/admin/gestion-dossiers'));
-const AdminGestionExperts = React.lazy(() => import('./pages/admin/gestion-experts'));
 const AdminGestionClients = React.lazy(() => import('./pages/admin/gestion-clients'));
 const AdminGestionProduits = React.lazy(() => import('./pages/admin/gestion-produits'));
 const AdminMonitoring = React.lazy(() => import('./pages/admin/monitoring'));
@@ -295,7 +294,6 @@ function App() {
                         <Route path="gestion-clients" element={<AdminGestionClients />} />
                         <Route path="client-details/:id" element={<AdminClientDetails />} />
                         <Route path="clients/:id" element={<AdminClientSynthese />} />
-                        <Route path="gestion-experts" element={<AdminGestionExperts />} />
                         <Route path="expert-details/:id" element={<AdminExpertDetails />} />
                         <Route path="experts/:id" element={<AdminExpertSynthese />} />
                         <Route path="gestion-dossiers" element={<AdminGestionDossiers />} />

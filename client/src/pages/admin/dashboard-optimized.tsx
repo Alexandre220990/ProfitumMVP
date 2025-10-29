@@ -3067,9 +3067,9 @@ const AdminDashboardOptimized: React.FC = () => {
                                       </div>
                                     </div>
                                     <div className="flex gap-2">
-                                      <Button size="sm" variant="default" onClick={() => navigate('/admin/gestion-experts')}>
+                                      <Button size="sm" variant="default" onClick={() => navigate(`/admin/experts/${expert.id}`)}>
                                         <Eye className="w-4 h-4 mr-1" />
-                                        Gérer
+                                        Voir synthèse
                                       </Button>
                                     </div>
                                   </div>

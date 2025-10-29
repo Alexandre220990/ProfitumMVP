@@ -162,6 +162,20 @@ export function UniversalNotificationCenter({
     }
   };
 
+  const handleNotificationClick = async (notification: any) => {
+    // Marquer comme lu si non lu
+    if (!notification.is_read) {
+      await markAsRead(notification.id);
+    }
+
+    // Rediriger si action_url existe
+    if (notification.action_url) {
+      if (typeof window !== 'undefined') {
+        window.location.href = notification.action_url;
+      }
+    }
+  };
+
   const archiveNotification = async (notificationId: string) => {
     try {
       let endpoint = `/api/notifications/${notificationId}/archive`;
@@ -330,11 +344,15 @@ export function UniversalNotificationCenter({
                   {filteredNotifications.slice(0, showAll ? filteredNotifications.length : expandLimit).map((notification) => (
                     <Card key={notification.id} className={cn(
                       "transition-all hover:shadow-md",
-                      !notification.is_read && "border-l-4 border-l-blue-500 bg-blue-50"
+                      !notification.is_read && "border-l-4 border-l-blue-500 bg-blue-50",
+                      notification.action_url && "cursor-pointer hover:border-blue-300"
                     )}>
                       <CardContent className="p-3">
                         <div className="flex items-start justify-between gap-3">
-                          <div className="flex items-start space-x-2 flex-1 min-w-0">
+                          <div 
+                            className="flex items-start space-x-2 flex-1 min-w-0 cursor-pointer"
+                            onClick={() => handleNotificationClick(notification)}
+                          >
                             {getTypeIcon(notification.notification_type)}
                             <div className="flex-1 min-w-0">
                               <h4 className="text-sm font-medium truncate">{notification.title}</h4>

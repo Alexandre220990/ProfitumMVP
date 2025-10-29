@@ -114,7 +114,7 @@ const createAdminNotification = async (expertData: any) => {
           message: `${expertData.first_name} ${expertData.last_name} (${expertData.company_name}) souhaite rejoindre la plateforme${secteurs}${specialisations}`,
           notification_type: 'expert_demo_request',
           priority: 'high',
-          action_url: `/admin/gestion-experts`,
+          action_url: `/admin/experts/${expertData.id}`,
           action_data: {
             expert_id: expertData.id,
             action: 'review_demo_request'
