@@ -73,7 +73,7 @@ export class AdminNotificationService {
             notification_type: 'admin_action_required',
             priority: 'high',
             is_read: false,
-            action_url: `/admin/dossiers/${data.client_produit_id}/validate-eligibility`,
+            action_url: `/admin/dashboard-optimized?section=validations&dossier=${data.client_produit_id}`,
             action_data: {
               client_produit_id: data.client_produit_id,
               client_id: data.client_id,
