@@ -36,6 +36,7 @@ interface UnifiedCalendarProps {
   className?: string;
   theme?: 'blue' | 'green' | 'purple';
   showHeader?: boolean;
+  showViewSelector?: boolean;
   enableGoogleSync?: boolean;
   enableRealTime?: boolean;
   defaultView?: 'month' | 'week' | 'day' | 'agenda' | 'list';
@@ -84,6 +85,7 @@ const STATUS_COLORS = {
 export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
   className = '',
   showHeader = true,
+  showViewSelector = true,
   enableGoogleSync = false,
   enableRealTime = true,
   defaultView = 'month',
@@ -858,40 +860,42 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
       )}
 
       {/* Sélecteur de vue */}
-      <div className="flex items-center gap-2 mb-3">
-        <Tabs value={view.type} onValueChange={(value) => setView(prev => ({ ...prev, type: value as any }))}>
-          <TabsList>
-            <TabsTrigger value="month" className="flex items-center gap-2">
-              <CalendarDays className="h-4 w-4" />
-              Mois
-            </TabsTrigger>
-            <TabsTrigger value="week" className="flex items-center gap-2">
-              <CalendarDays className="h-4 w-4" />
-              Semaine
-            </TabsTrigger>
-            <TabsTrigger value="day" className="flex items-center gap-2">
-              <CalendarDays className="h-4 w-4" />
-              Jour
-            </TabsTrigger>
-            <TabsTrigger value="list" className="flex items-center gap-2">
-              <List className="h-4 w-4" />
-              Liste
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+      {showViewSelector && (
+        <div className="flex items-center gap-2 mb-3">
+          <Tabs value={view.type} onValueChange={(value) => setView(prev => ({ ...prev, type: value as any }))}>
+            <TabsList>
+              <TabsTrigger value="month" className="flex items-center gap-2">
+                <CalendarDays className="h-4 w-4" />
+                Mois
+              </TabsTrigger>
+              <TabsTrigger value="week" className="flex items-center gap-2">
+                <CalendarDays className="h-4 w-4" />
+                Semaine
+              </TabsTrigger>
+              <TabsTrigger value="day" className="flex items-center gap-2">
+                <CalendarDays className="h-4 w-4" />
+                Jour
+              </TabsTrigger>
+              <TabsTrigger value="list" className="flex items-center gap-2">
+                <List className="h-4 w-4" />
+                Liste
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
 
-        {enableGoogleSync && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={syncWithGoogleCalendar}
-            disabled={loading}
-          >
-            <RefreshCw className={cn("h-4 w-4 mr-2", loading && "animate-spin")} />
-            Sync Google
-          </Button>
-        )}
-      </div>
+          {enableGoogleSync && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={syncWithGoogleCalendar}
+              disabled={loading}
+            >
+              <RefreshCw className={cn("h-4 w-4 mr-2", loading && "animate-spin")} />
+              Sync Google
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* Contenu de la vue */}
       <div className="bg-white rounded-lg border">

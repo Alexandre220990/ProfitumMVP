@@ -1,10 +1,14 @@
+import { useState } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { useNavigate } from 'react-router-dom';
 import { UnifiedCalendar } from '@/components/UnifiedCalendar';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { CalendarDays, List } from 'lucide-react';
 
 export default function AgendaExpertPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [currentView, setCurrentView] = useState<'month' | 'week' | 'day' | 'list'>('month');
 
   // Redirection si non connecté
   if (!user) {
@@ -15,7 +19,7 @@ export default function AgendaExpertPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-10">
         
-        {/* Header compact */}
+        {/* Header avec titre et onglets sur la même ligne */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-4">
             <div className="relative">
@@ -27,23 +31,45 @@ export default function AgendaExpertPage() {
               <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white animate-pulse"></div>
             </div>
             <div>
-              <div className="flex items-baseline gap-3">
-                <h1 className="text-2xl font-bold text-slate-900">Calendrier Expert</h1>
-                <p className="text-sm text-slate-600">
-                  Gérez vos consultations et rendez-vous clients
-                </p>
-              </div>
+              <h1 className="text-2xl font-bold text-slate-900">Calendrier Expert</h1>
+              <p className="text-sm text-slate-600 mt-1">
+                Gérez vos consultations et rendez-vous clients
+              </p>
             </div>
           </div>
+          
+          {/* Onglets de vue alignés à droite */}
+          <Tabs value={currentView} onValueChange={(value) => setCurrentView(value as any)}>
+            <TabsList>
+              <TabsTrigger value="month" className="flex items-center gap-2">
+                <CalendarDays className="h-4 w-4" />
+                Mois
+              </TabsTrigger>
+              <TabsTrigger value="week" className="flex items-center gap-2">
+                <CalendarDays className="h-4 w-4" />
+                Semaine
+              </TabsTrigger>
+              <TabsTrigger value="day" className="flex items-center gap-2">
+                <CalendarDays className="h-4 w-4" />
+                Jour
+              </TabsTrigger>
+              <TabsTrigger value="list" className="flex items-center gap-2">
+                <List className="h-4 w-4" />
+                Liste
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
 
         {/* Calendrier unifié */}
         <UnifiedCalendar 
           theme="green"
           showHeader={false}
+          showViewSelector={false}
           enableGoogleSync={true}
           enableRealTime={true}
-          defaultView="agenda"
+          defaultView={currentView}
+          key={currentView}
         />
     </div>
   );
