@@ -4,6 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   User,
   Mail,
@@ -21,7 +25,11 @@ import {
   RefreshCw,
   Eye,
   Award,
-  Briefcase
+  Briefcase,
+  MessageSquare,
+  CalendarPlus,
+  XCircle,
+  Send
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { get } from '@/lib/api';
@@ -83,6 +91,17 @@ const ExpertSynthese: React.FC = () => {
   const [expert, setExpert] = useState<ExpertData | null>(null);
   const [dossiers, setDossiers] = useState<DossierData[]>([]);
   const [clients, setClients] = useState<ClientData[]>([]);
+
+  // Actions rapides
+  const [showMessageDialog, setShowMessageDialog] = useState(false);
+  const [showRDVDialog, setShowRDVDialog] = useState(false);
+  const [showValidationDialog, setShowValidationDialog] = useState(false);
+  const [messageContent, setMessageContent] = useState('');
+  const [rdvDate, setRdvDate] = useState('');
+  const [rdvTime, setRdvTime] = useState('');
+  const [rdvDescription, setRdvDescription] = useState('');
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Statistiques calculées
   const [stats, setStats] = useState({
@@ -170,6 +189,113 @@ const ExpertSynthese: React.FC = () => {
     }
   };
 
+  // ========================================
+  // ACTIONS RAPIDES
+  // ========================================
+
+  const handleApproveExpert = async () => {
+    if (!expert?.id) return;
+    setIsProcessing(true);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/experts/${expert.id}/approve`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        toast.success('✅ Expert approuvé avec succès !');
+        loadExpertData(); // Recharger les données
+        navigate('/admin/gestion-experts');
+      } else {
+        toast.error('Erreur lors de l\'approbation');
+      }
+    } catch (error) {
+      console.error('Erreur approbation:', error);
+      toast.error('Erreur lors de l\'approbation');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleRejectExpert = async () => {
+    if (!expert?.id || !rejectionReason.trim()) {
+      toast.error('Veuillez indiquer une raison de refus');
+      return;
+    }
+    
+    setIsProcessing(true);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/experts/${expert.id}/reject`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({ reason: rejectionReason })
+      });
+
+      if (response.ok) {
+        toast.success('❌ Expert rejeté');
+        setShowValidationDialog(false);
+        loadExpertData();
+        navigate('/admin/gestion-experts');
+      } else {
+        toast.error('Erreur lors du rejet');
+      }
+    } catch (error) {
+      console.error('Erreur rejet:', error);
+      toast.error('Erreur lors du rejet');
+    } finally {
+      setIsProcessing(false);
+      setRejectionReason('');
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!messageContent.trim()) {
+      toast.error('Veuillez saisir un message');
+      return;
+    }
+    
+    setIsProcessing(true);
+    try {
+      // TODO: Implémenter l'envoi de message via API unified-messaging
+      toast.success('Message envoyé (à implémenter avec unified-messaging)');
+      setShowMessageDialog(false);
+      setMessageContent('');
+    } catch (error) {
+      console.error('Erreur envoi message:', error);
+      toast.error('Erreur lors de l\'envoi');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleCreateRDV = async () => {
+    if (!rdvDate || !rdvTime) {
+      toast.error('Veuillez sélectionner une date et une heure');
+      return;
+    }
+    
+    setIsProcessing(true);
+    try {
+      // TODO: Implémenter la création de RDV via API
+      toast.success('RDV créé (à implémenter avec API RDV)');
+      setShowRDVDialog(false);
+      setRdvDate('');
+      setRdvTime('');
+      setRdvDescription('');
+    } catch (error) {
+      console.error('Erreur création RDV:', error);
+      toast.error('Erreur lors de la création du RDV');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   if (!user || user.type !== 'admin') {
     return <Navigate to="/login" />;
   }
@@ -210,6 +336,48 @@ const ExpertSynthese: React.FC = () => {
               </Button>
             </div>
           </div>
+
+          {/* Actions rapides */}
+          {expert && (
+            <div className="mt-4 flex flex-wrap gap-3">
+              {expert.approval_status === 'pending' && (
+                <>
+                  <Button 
+                    onClick={handleApproveExpert}
+                    disabled={isProcessing}
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Approuver l'expert
+                  </Button>
+                  <Button 
+                    onClick={() => setShowValidationDialog(true)}
+                    disabled={isProcessing}
+                    variant="destructive"
+                  >
+                    <XCircle className="w-4 h-4 mr-2" />
+                    Rejeter la demande
+                  </Button>
+                </>
+              )}
+              <Button 
+                onClick={() => setShowMessageDialog(true)}
+                variant="outline"
+                className="border-blue-300 text-blue-700 hover:bg-blue-50"
+              >
+                <MessageSquare className="w-4 h-4 mr-2" />
+                Envoyer un message
+              </Button>
+              <Button 
+                onClick={() => setShowRDVDialog(true)}
+                variant="outline"
+                className="border-purple-300 text-purple-700 hover:bg-purple-50"
+              >
+                <CalendarPlus className="w-4 h-4 mr-2" />
+                Proposer un RDV
+              </Button>
+            </div>
+          )}
         </div>
 
         {loading ? (
@@ -667,6 +835,164 @@ const ExpertSynthese: React.FC = () => {
             </Tabs>
           </div>
         )}
+
+        {/* Dialog de rejet */}
+        <Dialog open={showValidationDialog} onOpenChange={setShowValidationDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Rejeter la demande expert</DialogTitle>
+              <DialogDescription>
+                Veuillez indiquer la raison du refus. L'expert sera notifié.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div>
+                <Label htmlFor="rejection-reason">Raison du refus *</Label>
+                <Textarea
+                  id="rejection-reason"
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                  placeholder="Expliquez pourquoi vous rejetez cette demande..."
+                  className="mt-2"
+                  rows={4}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setShowValidationDialog(false);
+                  setRejectionReason('');
+                }}
+                disabled={isProcessing}
+              >
+                Annuler
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={handleRejectExpert}
+                disabled={isProcessing || !rejectionReason.trim()}
+              >
+                <XCircle className="w-4 h-4 mr-2" />
+                {isProcessing ? 'Traitement...' : 'Confirmer le refus'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog d'envoi de message */}
+        <Dialog open={showMessageDialog} onOpenChange={setShowMessageDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Envoyer un message à {getExpertDisplayName()}</DialogTitle>
+              <DialogDescription>
+                Composez votre message. L'expert le recevra dans sa messagerie.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div>
+                <Label htmlFor="message-content">Message *</Label>
+                <Textarea
+                  id="message-content"
+                  value={messageContent}
+                  onChange={(e) => setMessageContent(e.target.value)}
+                  placeholder="Écrivez votre message..."
+                  className="mt-2"
+                  rows={6}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setShowMessageDialog(false);
+                  setMessageContent('');
+                }}
+                disabled={isProcessing}
+              >
+                Annuler
+              </Button>
+              <Button 
+                onClick={handleSendMessage}
+                disabled={isProcessing || !messageContent.trim()}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                <Send className="w-4 h-4 mr-2" />
+                {isProcessing ? 'Envoi...' : 'Envoyer'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog de création de RDV */}
+        <Dialog open={showRDVDialog} onOpenChange={setShowRDVDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Proposer un RDV à {getExpertDisplayName()}</DialogTitle>
+              <DialogDescription>
+                Planifiez un rendez-vous avec cet expert.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div>
+                <Label htmlFor="rdv-date">Date du RDV *</Label>
+                <Input
+                  id="rdv-date"
+                  type="date"
+                  value={rdvDate}
+                  onChange={(e) => setRdvDate(e.target.value)}
+                  className="mt-2"
+                  min={new Date().toISOString().split('T')[0]}
+                />
+              </div>
+              <div>
+                <Label htmlFor="rdv-time">Heure *</Label>
+                <Input
+                  id="rdv-time"
+                  type="time"
+                  value={rdvTime}
+                  onChange={(e) => setRdvTime(e.target.value)}
+                  className="mt-2"
+                />
+              </div>
+              <div>
+                <Label htmlFor="rdv-description">Description (optionnel)</Label>
+                <Textarea
+                  id="rdv-description"
+                  value={rdvDescription}
+                  onChange={(e) => setRdvDescription(e.target.value)}
+                  placeholder="Objet du rendez-vous..."
+                  className="mt-2"
+                  rows={3}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setShowRDVDialog(false);
+                  setRdvDate('');
+                  setRdvTime('');
+                  setRdvDescription('');
+                }}
+                disabled={isProcessing}
+              >
+                Annuler
+              </Button>
+              <Button 
+                onClick={handleCreateRDV}
+                disabled={isProcessing || !rdvDate || !rdvTime}
+                className="bg-purple-600 hover:bg-purple-700"
+              >
+                <CalendarPlus className="w-4 h-4 mr-2" />
+                {isProcessing ? 'Création...' : 'Créer le RDV'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
   );
 };
