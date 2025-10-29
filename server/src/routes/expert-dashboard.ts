@@ -70,13 +70,10 @@ interface RevenuePipeline {
 // ============================================================================
 
 router.get('/prioritized', enhancedAuthMiddleware, async (req: Request, res: Response) => {
-  console.log('🎯 Route /prioritized appelée');
   try {
     const authUser = req.user as AuthUser;
-    console.log('🎯 AuthUser:', authUser?.email, authUser?.type);
     
     if (!authUser || authUser.type !== 'expert') {
-      console.log('❌ Accès refusé - Type:', authUser?.type);
       return res.status(403).json({ 
         success: false, 
         message: 'Accès non autorisé' 
@@ -84,8 +81,6 @@ router.get('/prioritized', enhancedAuthMiddleware, async (req: Request, res: Res
     }
 
     const expertId = authUser.database_id || authUser.id;
-    console.log('🎯 Expert ID:', expertId);
-    console.log('🎯 Début requête Supabase ClientProduitEligible...');
 
     // Récupérer tous les dossiers de l'expert avec jointures
     let dossiers: any[] = [];
@@ -123,16 +118,13 @@ router.get('/prioritized', enhancedAuthMiddleware, async (req: Request, res: Res
       
       dossiers = result.data || [];
       error = result.error;
-      
-      console.log('🎯 Requête Supabase terminée - Erreur:', !!error, 'Résultats:', dossiers?.length);
     } catch (catchError: any) {
-      console.error('❌ Exception lors de la requête Supabase:', catchError);
+      console.error('❌ Exception requête Supabase:', catchError);
       error = catchError;
     }
 
     if (error) {
       console.error('❌ Erreur récupération dossiers:', error);
-      console.error('❌ Détails erreur:', JSON.stringify(error, null, 2));
       return res.status(500).json({ 
         success: false, 
         message: 'Erreur lors de la récupération des dossiers',
@@ -140,12 +132,8 @@ router.get('/prioritized', enhancedAuthMiddleware, async (req: Request, res: Res
       });
     }
 
-    console.log(`✅ ${dossiers?.length || 0} dossiers récupérés pour expert ${expertId}`);
-
     // Calculer le score de priorité pour chaque dossier
-    console.log('🎯 Début calcul des scores de priorité...');
     const prioritizedDossiers: PrioritizedDossier[] = (dossiers || []).map((dossier: any) => {
-      console.log('🎯 Traitement dossier:', dossier.id);
       const now = new Date();
       const updatedAt = new Date(dossier.updated_at);
       const daysSinceLastContact = Math.floor((now.getTime() - updatedAt.getTime()) / (1000 * 60 * 60 * 24));
@@ -221,9 +209,7 @@ router.get('/prioritized', enhancedAuthMiddleware, async (req: Request, res: Res
     });
 
     // Trier par score décroissant
-    console.log('🎯 Tri des dossiers par score...');
     prioritizedDossiers.sort((a, b) => b.priorityScore - a.priorityScore);
-    console.log('✅ Dossiers triés - Envoi réponse');
 
     return res.json({
       success: true,
