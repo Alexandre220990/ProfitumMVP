@@ -420,6 +420,7 @@ router.post('/sync', enhancedAuthMiddleware, async (req: Request, res: Response)
       .gte('scheduled_date', new Date().toISOString().split('T')[0]);
 
     for (const rdv of (rdvs || [])) {
+      const client = Array.isArray(rdv.Client) ? rdv.Client[0] : rdv.Client;
       await upsertAlert({
         expert_id: expertId,
         type: 'critique',
@@ -428,7 +429,7 @@ router.post('/sync', enhancedAuthMiddleware, async (req: Request, res: Response)
         description: `RDV ${rdv.scheduled_date} à ${rdv.scheduled_time} - Pas de confirmation client`,
         rdv_id: rdv.id,
         status: 'active',
-        metadata: { clientName: rdv.Client?.company_name || rdv.Client?.name || 'Client' }
+        metadata: { clientName: client?.company_name || client?.name || 'Client' }
       });
     }
 
@@ -438,7 +439,7 @@ router.post('/sync', enhancedAuthMiddleware, async (req: Request, res: Response)
       .select(`
         id,
         updated_at,
-        "montantFinal",
+        montantFinal,
         Client:clientId (
           company_name,
           name
@@ -452,6 +453,7 @@ router.post('/sync', enhancedAuthMiddleware, async (req: Request, res: Response)
       const daysSinceUpdate = Math.floor((now.getTime() - new Date(dossier.updated_at).getTime()) / (1000 * 60 * 60 * 24));
       
       if (daysSinceUpdate >= 8) {
+        const client = Array.isArray(dossier.Client) ? dossier.Client[0] : dossier.Client;
         await upsertAlert({
           expert_id: expertId,
           type: 'critique',
@@ -461,7 +463,7 @@ router.post('/sync', enhancedAuthMiddleware, async (req: Request, res: Response)
           dossier_id: dossier.id,
           status: 'active',
           metadata: { 
-            clientName: dossier.Client?.company_name || dossier.Client?.name || 'Client',
+            clientName: client?.company_name || client?.name || 'Client',
             daysSinceUpdate 
           }
         });
@@ -473,7 +475,7 @@ router.post('/sync', enhancedAuthMiddleware, async (req: Request, res: Response)
       .from('ClientProduitEligible')
       .select(`
         id,
-        "montantFinal",
+        montantFinal,
         Client:clientId (
           id,
           company_name,
@@ -485,12 +487,14 @@ router.post('/sync', enhancedAuthMiddleware, async (req: Request, res: Response)
       .gte('montantFinal', 20000);
 
     for (const prospect of (prospects || [])) {
+      const client = Array.isArray(prospect.Client) ? prospect.Client[0] : prospect.Client;
+      
       // Vérifier s'il y a un RDV
       const { data: rdvExists } = await supabase
         .from('RDV')
         .select('id')
         .eq('expert_id', expertId)
-        .eq('client_id', prospect.Client?.id)
+        .eq('client_id', client?.id)
         .limit(1);
 
       if (!rdvExists || rdvExists.length === 0) {
@@ -503,7 +507,7 @@ router.post('/sync', enhancedAuthMiddleware, async (req: Request, res: Response)
           dossier_id: prospect.id,
           status: 'active',
           metadata: { 
-            clientName: prospect.Client?.company_name || prospect.Client?.name || 'Client',
+            clientName: client?.company_name || client?.name || 'Client',
             montant: prospect.montantFinal
           }
         });
