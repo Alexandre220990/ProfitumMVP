@@ -1057,17 +1057,18 @@ router.get('/revenue-history', async (req: Request, res: Response) => {
 });
 
 // ============================================================================
-// ROUTES GESTION DOSSIERS CPE (Page Synthèse)
+// ROUTE : PERFORMANCE PAR PRODUIT
 // ============================================================================
 
-// GET /api/expert/dossier/:id - Détails complets d'un dossier CPE
-router.get('/dossier/:id', async (req: Request, res: Response) => {
+// GET /api/expert/product-performance - Statistiques par produit
+router.get('/product-performance', async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
     }
 
     const authUser = req.user as AuthUser;
+    const expertId = authUser.database_id || authUser.id;
     
     if (authUser.type !== 'expert') {
       return res.status(403).json({ success: false, message: 'Accès non autorisé' });
@@ -1083,7 +1084,7 @@ router.get('/dossier/:id', async (req: Request, res: Response) => {
           nom
         )
       `)
-      .eq('expert_id', authUser.id);
+      .eq('expert_id', expertId);
 
     if (error) {
       console.error('Erreur récupération performance produits:', error);
@@ -1144,6 +1145,7 @@ router.get('/client-performance', async (req: Request, res: Response) => {
     }
 
     const authUser = req.user as AuthUser;
+    const expertId = authUser.database_id || authUser.id;
     
     if (authUser.type !== 'expert') {
       return res.status(403).json({ success: false, message: 'Accès non autorisé' });
@@ -1163,7 +1165,7 @@ router.get('/client-performance', async (req: Request, res: Response) => {
           email
         )
       `)
-      .eq('expert_id', authUser.id);
+      .eq('expert_id', expertId);
 
     if (error) {
       console.error('Erreur récupération performance clients:', error);
@@ -1462,13 +1464,17 @@ router.get('/dossier/:id', async (req: Request, res: Response) => {
 
     const expertCommissionRate = expertData?.compensation || 10; // Par défaut 10% si non défini
 
+    // Normaliser les relations Supabase (peuvent être des tableaux)
+    const normalizedClient = Array.isArray(cpe.Client) ? cpe.Client[0] : cpe.Client;
+    const normalizedProduit = Array.isArray(cpe.ProduitEligible) ? cpe.ProduitEligible[0] : cpe.ProduitEligible;
+
     // Enrichir avec informations de l'apporteur si présent
     let apporteurData = null;
-    if (cpe.Client?.apporteur_id) {
+    if (normalizedClient?.apporteur_id) {
       const { data: apporteur } = await supabase
         .from('ApporteurAffaires')
         .select('id, company_name, name, email, phone_number, commission_rate')
-        .eq('id', cpe.Client.apporteur_id)
+        .eq('id', normalizedClient.apporteur_id)
         .single();
       
       apporteurData = apporteur;
@@ -1476,7 +1482,7 @@ router.get('/dossier/:id', async (req: Request, res: Response) => {
 
     // Récupérer les autres produits de la même simulation
     let autresProduitsSimulation: any[] = [];
-    if (cpe.Client?.simulationId) {
+    if (normalizedClient?.simulationId) {
       const { data: autresProduits } = await supabase
         .from('ClientProduitEligible')
         .select(`
@@ -1489,7 +1495,7 @@ router.get('/dossier/:id', async (req: Request, res: Response) => {
             categorie
           )
         `)
-        .eq('simulationId', cpe.Client.simulationId)
+        .eq('simulationId', normalizedClient.simulationId)
         .neq('id', id);
       
       autresProduitsSimulation = autresProduits || [];
@@ -1511,6 +1517,8 @@ router.get('/dossier/:id', async (req: Request, res: Response) => {
       success: true,
       data: {
         ...cpe,
+        Client: normalizedClient,
+        ProduitEligible: normalizedProduit,
         apporteur: apporteurData,
         autresProduitsSimulation,
         potentielTotal: {
