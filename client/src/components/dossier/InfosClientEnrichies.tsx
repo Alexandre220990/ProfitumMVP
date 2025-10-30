@@ -8,15 +8,11 @@ import {
   Mail,
   MapPin,
   Users,
-  TrendingUp,
-  Calendar,
   Globe,
-  Briefcase,
   Target,
   DollarSign,
   Clock,
   CheckCircle,
-  AlertCircle,
   Star,
   FileText,
   User,
@@ -427,7 +423,7 @@ export default function InfosClientEnrichies({
                   <h4 className="font-semibold text-sm text-gray-700 mb-2">
                     Autres produits éligibles ({autresProduitsSimulation.length})
                   </h4>
-                  {autresProduitsSimulation.map((produit, index) => (
+                  {autresProduitsSimulation.map((produit) => (
                     <div key={produit.id} className="bg-white p-3 rounded-lg border">
                       <div className="flex items-center justify-between mb-1">
                         <p className="font-medium text-gray-900 text-sm">
