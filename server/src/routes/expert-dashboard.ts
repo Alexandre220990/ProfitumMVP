@@ -661,5 +661,274 @@ router.get('/overview', enhancedAuthMiddleware, async (req: Request, res: Respon
   }
 });
 
+// ============================================================================
+// ROUTE 5 : LISTE DES CLIENTS (Tableau filtrable)
+// ============================================================================
+
+router.get('/clients-list', enhancedAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const authUser = req.user as AuthUser;
+    
+    if (!authUser || authUser.type !== 'expert') {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Accès non autorisé' 
+      });
+    }
+
+    const expertId = authUser.database_id || authUser.id;
+
+    // Récupérer tous les clients uniques avec dossiers en cours
+    const { data: cpes, error } = await supabase
+      .from('ClientProduitEligible')
+      .select(`
+        clientId,
+        Client:clientId (
+          id,
+          company_name,
+          name,
+          email,
+          phone_number,
+          status,
+          apporteur_id,
+          ApporteurAffaires:apporteur_id (
+            company_name
+          )
+        )
+      `)
+      .eq('expert_id', expertId)
+      .in('statut', ['eligible', 'en_cours']);
+
+    if (error) {
+      console.error('❌ Erreur récupération clients:', error);
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Erreur serveur' 
+      });
+    }
+
+    // Dédupliquer les clients et compter leurs dossiers
+    const clientsMap = new Map();
+    
+    (cpes || []).forEach((cpe: any) => {
+      const client = Array.isArray(cpe.Client) ? cpe.Client[0] : cpe.Client;
+      if (!client) return;
+      
+      const clientId = cpe.clientId;
+      if (!clientsMap.has(clientId)) {
+        const apporteur = Array.isArray(client.ApporteurAffaires) ? client.ApporteurAffaires[0] : client.ApporteurAffaires;
+        clientsMap.set(clientId, {
+          id: client.id,
+          company_name: client.company_name,
+          name: client.name,
+          email: client.email,
+          phone_number: client.phone_number,
+          status: client.status,
+          apporteur_name: apporteur?.company_name || 'Direct',
+          dossiers_count: 0
+        });
+      }
+      
+      const clientData = clientsMap.get(clientId);
+      clientData.dossiers_count += 1;
+    });
+
+    const clientsList = Array.from(clientsMap.values());
+
+    return res.json({
+      success: true,
+      data: clientsList
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur liste clients:', error);
+    return res.status(500).json({ 
+      success: false, 
+      message: 'Erreur serveur' 
+    });
+  }
+});
+
+// ============================================================================
+// ROUTE 6 : LISTE DES DOSSIERS (Tableau filtrable)
+// ============================================================================
+
+router.get('/dossiers-list', enhancedAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const authUser = req.user as AuthUser;
+    
+    if (!authUser || authUser.type !== 'expert') {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Accès non autorisé' 
+      });
+    }
+
+    const expertId = authUser.database_id || authUser.id;
+
+    // Récupérer tous les dossiers
+    const { data: dossiers, error } = await supabase
+      .from('ClientProduitEligible')
+      .select(`
+        id,
+        clientId,
+        produitId,
+        statut,
+        metadata,
+        montantFinal,
+        priorite,
+        current_step,
+        progress,
+        created_at,
+        updated_at,
+        Client:clientId (
+          company_name,
+          name,
+          email
+        ),
+        ProduitEligible:produitId (
+          nom
+        )
+      `)
+      .eq('expert_id', expertId)
+      .in('statut', ['eligible', 'en_cours', 'termine'])
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('❌ Erreur récupération dossiers:', error);
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Erreur serveur' 
+      });
+    }
+
+    const dossiersList = (dossiers || []).map((d: any) => {
+      const client = Array.isArray(d.Client) ? d.Client[0] : d.Client;
+      const produit = Array.isArray(d.ProduitEligible) ? d.ProduitEligible[0] : d.ProduitEligible;
+      
+      return {
+        id: d.id,
+        client_name: client?.company_name || client?.name || 'Client',
+        client_email: client?.email,
+        produit_nom: produit?.nom || 'Produit',
+        statut: d.statut,
+        montant: d.montantFinal,
+        priorite: d.priorite,
+        current_step: d.current_step,
+        progress: d.progress,
+        created_at: d.created_at,
+        updated_at: d.updated_at,
+        validation_state: d.metadata?.validation_state
+      };
+    });
+
+    return res.json({
+      success: true,
+      data: dossiersList
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur liste dossiers:', error);
+    return res.status(500).json({ 
+      success: false, 
+      message: 'Erreur serveur' 
+    });
+  }
+});
+
+// ============================================================================
+// ROUTE 7 : LISTE DES APPORTEURS (Tableau filtrable)
+// ============================================================================
+
+router.get('/apporteurs-list', enhancedAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const authUser = req.user as AuthUser;
+    
+    if (!authUser || authUser.type !== 'expert') {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Accès non autorisé' 
+      });
+    }
+
+    const expertId = authUser.database_id || authUser.id;
+
+    // Récupérer les apporteurs via les clients
+    const { data: cpes, error } = await supabase
+      .from('ClientProduitEligible')
+      .select(`
+        Client:clientId (
+          apporteur_id,
+          status,
+          ApporteurAffaires:apporteur_id (
+            id,
+            company_name,
+            email,
+            phone,
+            status
+          )
+        )
+      `)
+      .eq('expert_id', expertId)
+      .in('statut', ['eligible', 'en_cours']);
+
+    if (error) {
+      console.error('❌ Erreur récupération apporteurs:', error);
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Erreur serveur' 
+      });
+    }
+
+    // Grouper par apporteur
+    const apporteursMap = new Map();
+    
+    (cpes || []).forEach((cpe: any) => {
+      const client = Array.isArray(cpe.Client) ? cpe.Client[0] : cpe.Client;
+      if (!client || !client.apporteur_id) return;
+      
+      const apporteur = Array.isArray(client.ApporteurAffaires) ? client.ApporteurAffaires[0] : client.ApporteurAffaires;
+      if (!apporteur) return;
+      
+      const apporteurId = client.apporteur_id;
+      if (!apporteursMap.has(apporteurId)) {
+        apporteursMap.set(apporteurId, {
+          id: apporteur.id,
+          company_name: apporteur.company_name,
+          email: apporteur.email,
+          phone: apporteur.phone,
+          status: apporteur.status,
+          prospects_count: 0,
+          clients_count: 0,
+          total_dossiers: 0
+        });
+      }
+      
+      const apporteurData = apporteursMap.get(apporteurId);
+      apporteurData.total_dossiers += 1;
+      
+      if (client.status === 'prospect') {
+        apporteurData.prospects_count += 1;
+      } else {
+        apporteurData.clients_count += 1;
+      }
+    });
+
+    const apporteursList = Array.from(apporteursMap.values());
+
+    return res.json({
+      success: true,
+      data: apporteursList
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur liste apporteurs:', error);
+    return res.status(500).json({ 
+      success: false, 
+      message: 'Erreur serveur' 
+    });
+  }
+});
+
 export default router;
 

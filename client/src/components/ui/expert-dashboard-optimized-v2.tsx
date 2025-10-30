@@ -94,9 +94,6 @@ export const ExpertDashboardOptimized = () => {
   const [prioritizedDossiers, setPrioritizedDossiers] = useState<PrioritizedDossier[]>([]);
   const [activeView, setActiveView] = useState<'all' | 'prospects' | 'clients'>('all');
   const [activeTable, setActiveTable] = useState<'clients' | 'dossiers' | 'apporteurs' | null>(null);
-  const [clientsList, setClientsList] = useState<any[]>([]);
-  const [dossiersList, setDossiersList] = useState<any[]>([]);
-  const [apporteursList, setApporteursList] = useState<any[]>([]);
 
   // Charger toutes les données du dashboard
   const loadDashboardData = useCallback(async () => {
@@ -136,37 +133,6 @@ export const ExpertDashboardOptimized = () => {
   useEffect(() => {
     loadDashboardData();
   }, [loadDashboardData]);
-
-  // Charger les données du tableau filtrable
-  useEffect(() => {
-    const loadTableData = async () => {
-      if (!activeTable || !user?.id) return;
-
-      try {
-        if (activeTable === 'clients') {
-          const res = await get<any[]>('/api/expert/dashboard/clients-list');
-          if (res.success && res.data) {
-            setClientsList(res.data);
-          }
-        } else if (activeTable === 'dossiers') {
-          const res = await get<any[]>('/api/expert/dashboard/dossiers-list');
-          if (res.success && res.data) {
-            setDossiersList(res.data);
-          }
-        } else if (activeTable === 'apporteurs') {
-          const res = await get<any[]>('/api/expert/dashboard/apporteurs-list');
-          if (res.success && res.data) {
-            setApporteursList(res.data);
-          }
-        }
-      } catch (error) {
-        console.error('Erreur chargement tableau:', error);
-        toast.error('Erreur lors du chargement des données');
-      }
-    };
-
-    loadTableData();
-  }, [activeTable, user?.id]);
 
   const handleRefresh = () => {
     loadDashboardData();
@@ -222,6 +188,27 @@ export const ExpertDashboardOptimized = () => {
     return true;
   });
 
+  // Obtenir les clients uniques depuis les dossiers
+  const getUniqueClients = () => {
+    const clientsMap = new Map();
+    prioritizedDossiers.forEach(d => {
+      if (!clientsMap.has(d.clientId)) {
+        clientsMap.set(d.clientId, {
+          id: d.clientId,
+          name: d.clientName,
+          email: d.clientEmail,
+          phone: d.clientPhone,
+          dossiers: 1,
+          montantTotal: d.montantFinal
+        });
+      } else {
+        const client = clientsMap.get(d.clientId);
+        client.dossiers += 1;
+        client.montantTotal += d.montantFinal;
+      }
+    });
+    return Array.from(clientsMap.values());
+  };
 
   if (loading) {
     return (
@@ -555,48 +542,41 @@ export const ExpertDashboardOptimized = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5 text-blue-600" />
-                <span>Mes Clients Actifs ({clientsList.length})</span>
+                <span>Mes Clients Actifs ({getUniqueClients().length})</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {clientsList.length > 0 ? (
-                <div className="space-y-3">
-                  {clientsList.map((client: any) => (
-                    <div key={client.id} className="p-4 bg-white border rounded-lg hover:shadow-md transition-all">
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <h4 className="font-bold text-gray-900 mb-1">{client.company_name || client.name}</h4>
-                          <div className="flex items-center gap-4 text-sm text-gray-600">
-                            <span className="flex items-center gap-1">
-                              <Mail className="h-3 w-3" />
-                              {client.email}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Phone className="h-3 w-3" />
-                              {client.phone_number || 'N/A'}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Briefcase className="h-3 w-3" />
-                              {client.dossiers_count} dossier(s)
-                            </span>
-                            <Badge variant="outline">{client.apporteur_name}</Badge>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <Badge variant={client.status === 'prospect' ? 'secondary' : 'default'}>
-                            {client.status}
-                          </Badge>
+              <div className="space-y-3">
+                {getUniqueClients().map((client: any) => (
+                  <div key={client.id} className="p-4 bg-white border rounded-lg hover:shadow-md transition-all">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <h4 className="font-bold text-gray-900 mb-1">{client.name}</h4>
+                        <div className="flex items-center gap-4 text-sm text-gray-600">
+                          <span className="flex items-center gap-1">
+                            <Mail className="h-3 w-3" />
+                            {client.email}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Phone className="h-3 w-3" />
+                            {client.phone || 'N/A'}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Briefcase className="h-3 w-3" />
+                            {client.dossiers} dossier(s)
+                          </span>
                         </div>
                       </div>
+                      <div className="text-right">
+                        <p className="text-xl font-bold text-green-600">
+                          {client.montantTotal.toLocaleString()}€
+                        </p>
+                        <p className="text-xs text-gray-500">Total pipeline</p>
+                      </div>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <Users className="h-12 w-12 mx-auto mb-3 text-gray-400" />
-                  <p>Chargement des clients...</p>
-                </div>
-              )}
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
         )}
@@ -606,52 +586,40 @@ export const ExpertDashboardOptimized = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Briefcase className="h-5 w-5 text-orange-600" />
-                <span>Mes Dossiers ({dossiersList.length})</span>
+                <span>Mes Dossiers en Cours ({prioritizedDossiers.filter(d => d.statut === 'en_cours').length})</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {dossiersList.length > 0 ? (
-                <div className="space-y-3">
-                  {dossiersList.map((dossier) => (
-                    <div 
-                      key={dossier.id} 
-                      className="p-4 bg-white border rounded-lg hover:shadow-md transition-all cursor-pointer"
-                      onClick={() => navigate(`/expert/dossier/${dossier.id}`)}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <h4 className="font-bold text-gray-900 mb-1">{dossier.client_name}</h4>
-                          <p className="text-sm text-gray-600 mb-2">
-                            {dossier.produit_nom}
-                          </p>
-                          <div className="flex items-center gap-3 text-xs text-gray-500">
-                            <Badge variant={dossier.statut === 'eligible' ? 'secondary' : dossier.statut === 'en_cours' ? 'default' : 'outline'}>
-                              {dossier.statut}
-                            </Badge>
-                            <span className="flex items-center gap-1">
-                              <Mail className="h-3 w-3" />
-                              {dossier.client_email}
-                            </span>
-                            <Progress value={dossier.progress || 0} className="w-20 h-1" />
-                            <span>{dossier.progress || 0}%</span>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-xl font-bold text-green-600">
-                            {dossier.montant.toLocaleString()}€
-                          </p>
-                          <p className="text-xs text-gray-500 mt-1">Priorité: {dossier.priorite}</p>
+              <div className="space-y-3">
+                {prioritizedDossiers.filter(d => d.statut === 'en_cours').map((dossier) => (
+                  <div 
+                    key={dossier.id} 
+                    className="p-4 bg-white border rounded-lg hover:shadow-md transition-all cursor-pointer"
+                    onClick={() => navigate(`/expert/dossier/${dossier.id}`)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <h4 className="font-bold text-gray-900 mb-1">{dossier.clientName}</h4>
+                        <p className="text-sm text-gray-600 mb-2">
+                          {dossier.productName} • {dossier.apporteurName}
+                        </p>
+                        <div className="flex items-center gap-3 text-xs text-gray-500">
+                          <span>Dernier contact: {dossier.daysSinceLastContact}j</span>
+                          <Badge variant="outline" className="text-xs">Score: {dossier.priorityScore}/100</Badge>
                         </div>
                       </div>
+                      <div className="text-right">
+                        <p className="text-xl font-bold text-green-600">
+                          {dossier.montantFinal.toLocaleString()}€
+                        </p>
+                        <Button size="sm" className="mt-2">
+                          {dossier.nextAction}
+                        </Button>
+                      </div>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <Briefcase className="h-12 w-12 mx-auto mb-3 text-gray-400" />
-                  <p>Chargement des dossiers...</p>
-                </div>
-              )}
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
         )}
@@ -661,13 +629,13 @@ export const ExpertDashboardOptimized = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Target className="h-5 w-5 text-green-600" />
-                <span>Mes Apporteurs Partenaires ({apporteursList.length})</span>
+                <span>Mes Apporteurs Partenaires ({apporteurs.length})</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {apporteursList.length > 0 ? (
+              {apporteurs.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {apporteursList.map((apporteur) => (
+                  {apporteurs.map((apporteur) => (
                     <div 
                       key={apporteur.id}
                       className="p-4 bg-gradient-to-br from-white to-green-50 border-2 border-green-100 rounded-lg hover:shadow-lg transition-all"
@@ -688,20 +656,22 @@ export const ExpertDashboardOptimized = () => {
                           <Mail className="h-4 w-4" />
                         </Button>
                       </div>
-                      <div className="grid grid-cols-3 gap-3 text-sm">
+                      <div className="grid grid-cols-2 gap-3 text-sm">
                         <div className="bg-white p-2 rounded">
                           <p className="text-gray-500 text-xs">Prospects</p>
-                          <p className="font-bold text-blue-600">{apporteur.prospects_count || 0}</p>
+                          <p className="font-bold text-blue-600">{apporteur.prospectsActifs}</p>
                         </div>
                         <div className="bg-white p-2 rounded">
                           <p className="text-gray-500 text-xs">Clients</p>
-                          <p className="font-bold text-green-600">{apporteur.clients_count || 0}</p>
-                        </div>
-                        <div className="bg-white p-2 rounded">
-                          <p className="text-gray-500 text-xs">Total</p>
-                          <p className="font-bold text-purple-600">{apporteur.total_dossiers || 0}</p>
+                          <p className="font-bold text-green-600">{apporteur.clientsEnCours}</p>
                         </div>
                       </div>
+                      {apporteur.dernierProspect && (
+                        <div className="mt-3 pt-3 border-t text-xs text-gray-500">
+                          <Clock className="h-3 w-3 inline mr-1" />
+                          Dernier prospect : {new Date(apporteur.dernierProspect).toLocaleDateString('fr-FR')}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

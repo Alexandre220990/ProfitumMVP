@@ -49,6 +49,27 @@ interface RevenueData {
   assignments: number;
 }
 
+interface RevenuePipeline {
+  prospects: {
+    count: number;
+    montantTotal: number;
+    montantPotentiel: number;
+    probability: number;
+  };
+  enSignature: {
+    count: number;
+    montantTotal: number;
+    montantPotentiel: number;
+    probability: number;
+  };
+  signes: {
+    count: number;
+    montantTotal: number;
+    commissionExpert: number;
+  };
+  totalPrevisionnel: number;
+}
+
 // ============================================================================
 // COMPOSANT - MES AFFAIRES (Analytics Business Pure)
 // ============================================================================
@@ -60,6 +81,7 @@ const ExpertMesAffaires = () => {
   const [revenueData, setRevenueData] = useState<RevenueData[]>([]);
   const [productPerformance, setProductPerformance] = useState<ProductPerformance[]>([]);
   const [clientPerformance, setClientPerformance] = useState<ClientPerformance[]>([]);
+  const [revenuePipeline, setRevenuePipeline] = useState<RevenuePipeline | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("revenue");
   const [loading, setLoading] = useState(true);
@@ -73,10 +95,11 @@ const ExpertMesAffaires = () => {
         setError(null);
         
         // Charger les données en parallèle
-        const [revenueRes, productRes, clientRes] = await Promise.all([
+        const [revenueRes, productRes, clientRes, pipelineRes] = await Promise.all([
           get<RevenueData[]>(`/api/expert/revenue-history`),
           get<ProductPerformance[]>(`/api/expert/product-performance`),
-          get<ClientPerformance[]>(`/api/expert/client-performance`)
+          get<ClientPerformance[]>(`/api/expert/client-performance`),
+          get<RevenuePipeline>(`/api/expert/dashboard/revenue-pipeline`)
         ]);
 
         if (revenueRes.success && revenueRes.data) {
@@ -89,6 +112,10 @@ const ExpertMesAffaires = () => {
 
         if (clientRes.success && clientRes.data) {
           setClientPerformance(clientRes.data);
+        }
+
+        if (pipelineRes.success && pipelineRes.data) {
+          setRevenuePipeline(pipelineRes.data);
         }
 
       } catch (error) {
@@ -211,6 +238,74 @@ const ExpertMesAffaires = () => {
             Exporter
           </Button>
         </div>
+
+        {/* 💰 REVENUE PIPELINE - Montant Récupérable Potentiel */}
+        {revenuePipeline && (
+          <Card className="mb-8 bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-200">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Euro className="h-5 w-5 text-emerald-600" />
+                <span className="text-emerald-900">Pipeline de Revenus Prévisionnel</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                {/* Prospects */}
+                <div className="bg-white p-6 rounded-xl border-2 border-blue-100">
+                  <p className="text-sm font-medium text-gray-600 mb-3">Prospects qualifiés</p>
+                  <p className="text-sm text-gray-500 mb-2">
+                    {revenuePipeline.prospects.count} dossiers • {revenuePipeline.prospects.montantTotal.toLocaleString()}€
+                  </p>
+                  <div className="flex items-baseline gap-2 mb-1">
+                    <p className="text-3xl font-bold text-blue-600">
+                      {revenuePipeline.prospects.montantPotentiel.toLocaleString()}€
+                    </p>
+                    <p className="text-xs text-gray-500">Potentiel {revenuePipeline.prospects.probability * 100}%</p>
+                  </div>
+                  <Progress value={revenuePipeline.prospects.probability * 100} className="h-2 mt-2" />
+                </div>
+
+                {/* En signature */}
+                <div className="bg-white p-6 rounded-xl border-2 border-orange-100">
+                  <p className="text-sm font-medium text-gray-600 mb-3">En signature</p>
+                  <p className="text-sm text-gray-500 mb-2">
+                    {revenuePipeline.enSignature.count} dossiers • {revenuePipeline.enSignature.montantTotal.toLocaleString()}€
+                  </p>
+                  <div className="flex items-baseline gap-2 mb-1">
+                    <p className="text-3xl font-bold text-orange-600">
+                      {revenuePipeline.enSignature.montantPotentiel.toLocaleString()}€
+                    </p>
+                    <p className="text-xs text-gray-500">Potentiel {revenuePipeline.enSignature.probability * 100}%</p>
+                  </div>
+                  <Progress value={revenuePipeline.enSignature.probability * 100} className="h-2 mt-2" />
+                </div>
+
+                {/* Signés */}
+                <div className="bg-white p-6 rounded-xl border-2 border-green-100">
+                  <p className="text-sm font-medium text-gray-600 mb-3">Signés (sécurisés)</p>
+                  <p className="text-sm text-gray-500 mb-2">
+                    {revenuePipeline.signes.count} dossiers • {revenuePipeline.signes.montantTotal.toLocaleString()}€
+                  </p>
+                  <div className="flex items-baseline gap-2 mb-1">
+                    <p className="text-3xl font-bold text-green-600">
+                      {revenuePipeline.signes.commissionExpert.toLocaleString()}€
+                    </p>
+                    <p className="text-xs text-gray-500">Commission 10%</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Total prévisionnel */}
+              <div className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white p-6 rounded-xl text-center">
+                <p className="text-sm font-medium text-emerald-100 mb-2">Revenus Prévisionnels Totaux</p>
+                <p className="text-4xl font-bold">
+                  {revenuePipeline.totalPrevisionnel.toLocaleString()}€
+                </p>
+                <p className="text-xs text-emerald-200 mt-2">Basé sur probabilités de conversion</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Section principale avec onglets */}
         <Card className="mb-8">
