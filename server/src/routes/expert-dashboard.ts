@@ -561,7 +561,7 @@ router.get('/dossiers-by-status/:status', enhancedAuthMiddleware, async (req: Re
 
     if (status === 'prospects') {
       // PROSPECTS (statut = 'eligible')
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('ClientProduitEligible')
         .select(`
           id,
@@ -569,37 +569,46 @@ router.get('/dossiers-by-status/:status', enhancedAuthMiddleware, async (req: Re
           "tauxFinal",
           created_at,
           updated_at,
-          Client:clientId (
-            id,
-            nom,
-            prenom,
-            company_name
-          ),
-          ProduitEligible:produit_eligible_id (
-            nom
-          )
+          "clientId",
+          "produitId"
         `)
         .eq('expert_id', expertId)
         .eq('statut', 'eligible')
         .order('created_at', { ascending: false });
 
-      dossiers = (data || []).map((d: any) => ({
-        id: d.id,
-        clientName: d.Client?.company_name || `${d.Client?.prenom || ''} ${d.Client?.nom || ''}`.trim() || 'Client inconnu',
-        produit: d.ProduitEligible?.nom || 'Produit inconnu',
-        montant: d.montantFinal || 0,
-        taux: d.tauxFinal || 0,
-        dateCreation: d.created_at,
-        dateUpdate: d.updated_at,
-        statut: 'Prospect'
-      }));
+      if (error) {
+        console.error('❌ Erreur récupération prospects:', error);
+      }
+
+      // Enrichir avec les données Client et ProduitEligible
+      const enrichedDossiers = await Promise.all(
+        (data || []).map(async (d: any) => {
+          const [clientRes, produitRes] = await Promise.all([
+            supabase.from('Client').select('id, nom, prenom, company_name').eq('id', d.clientId).single(),
+            supabase.from('ProduitEligible').select('nom').eq('id', d.produitId).single()
+          ]);
+          
+          return {
+            id: d.id,
+            clientName: clientRes.data?.company_name || `${clientRes.data?.prenom || ''} ${clientRes.data?.nom || ''}`.trim() || 'Client inconnu',
+            produit: produitRes.data?.nom || 'Produit inconnu',
+            montant: d.montantFinal || 0,
+            taux: d.tauxFinal || 0,
+            dateCreation: d.created_at,
+            dateUpdate: d.updated_at,
+            statut: 'Prospect'
+          };
+        })
+      );
+
+      dossiers = enrichedDossiers;
 
     } else if (status === 'en_signature') {
       // EN SIGNATURE (statut = 'en_cours' récent)
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('ClientProduitEligible')
         .select(`
           id,
@@ -607,35 +616,44 @@ router.get('/dossiers-by-status/:status', enhancedAuthMiddleware, async (req: Re
           "tauxFinal",
           created_at,
           updated_at,
-          Client:clientId (
-            id,
-            nom,
-            prenom,
-            company_name
-          ),
-          ProduitEligible:produit_eligible_id (
-            nom
-          )
+          "clientId",
+          "produitId"
         `)
         .eq('expert_id', expertId)
         .eq('statut', 'en_cours')
         .gte('updated_at', thirtyDaysAgo.toISOString())
         .order('updated_at', { ascending: false });
 
-      dossiers = (data || []).map((d: any) => ({
-        id: d.id,
-        clientName: d.Client?.company_name || `${d.Client?.prenom || ''} ${d.Client?.nom || ''}`.trim() || 'Client inconnu',
-        produit: d.ProduitEligible?.nom || 'Produit inconnu',
-        montant: d.montantFinal || 0,
-        taux: d.tauxFinal || 0,
-        dateCreation: d.created_at,
-        dateUpdate: d.updated_at,
-        statut: 'En signature'
-      }));
+      if (error) {
+        console.error('❌ Erreur récupération en_signature:', error);
+      }
+
+      // Enrichir avec les données Client et ProduitEligible
+      const enrichedDossiers = await Promise.all(
+        (data || []).map(async (d: any) => {
+          const [clientRes, produitRes] = await Promise.all([
+            supabase.from('Client').select('id, nom, prenom, company_name').eq('id', d.clientId).single(),
+            supabase.from('ProduitEligible').select('nom').eq('id', d.produitId).single()
+          ]);
+          
+          return {
+            id: d.id,
+            clientName: clientRes.data?.company_name || `${clientRes.data?.prenom || ''} ${clientRes.data?.nom || ''}`.trim() || 'Client inconnu',
+            produit: produitRes.data?.nom || 'Produit inconnu',
+            montant: d.montantFinal || 0,
+            taux: d.tauxFinal || 0,
+            dateCreation: d.created_at,
+            dateUpdate: d.updated_at,
+            statut: 'En signature'
+          };
+        })
+      );
+
+      dossiers = enrichedDossiers;
 
     } else if (status === 'signes') {
       // SIGNÉS (statut = 'termine')
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('ClientProduitEligible')
         .select(`
           id,
@@ -643,31 +661,40 @@ router.get('/dossiers-by-status/:status', enhancedAuthMiddleware, async (req: Re
           "tauxFinal",
           created_at,
           updated_at,
-          Client:clientId (
-            id,
-            nom,
-            prenom,
-            company_name
-          ),
-          ProduitEligible:produit_eligible_id (
-            nom
-          )
+          "clientId",
+          "produitId"
         `)
         .eq('expert_id', expertId)
         .eq('statut', 'termine')
         .order('updated_at', { ascending: false })
         .limit(50);
 
-      dossiers = (data || []).map((d: any) => ({
-        id: d.id,
-        clientName: d.Client?.company_name || `${d.Client?.prenom || ''} ${d.Client?.nom || ''}`.trim() || 'Client inconnu',
-        produit: d.ProduitEligible?.nom || 'Produit inconnu',
-        montant: d.montantFinal || 0,
-        taux: d.tauxFinal || 0,
-        dateCreation: d.created_at,
-        dateUpdate: d.updated_at,
-        statut: 'Signé'
-      }));
+      if (error) {
+        console.error('❌ Erreur récupération signés:', error);
+      }
+
+      // Enrichir avec les données Client et ProduitEligible
+      const enrichedDossiers = await Promise.all(
+        (data || []).map(async (d: any) => {
+          const [clientRes, produitRes] = await Promise.all([
+            supabase.from('Client').select('id, nom, prenom, company_name').eq('id', d.clientId).single(),
+            supabase.from('ProduitEligible').select('nom').eq('id', d.produitId).single()
+          ]);
+          
+          return {
+            id: d.id,
+            clientName: clientRes.data?.company_name || `${clientRes.data?.prenom || ''} ${clientRes.data?.nom || ''}`.trim() || 'Client inconnu',
+            produit: produitRes.data?.nom || 'Produit inconnu',
+            montant: d.montantFinal || 0,
+            taux: d.tauxFinal || 0,
+            dateCreation: d.created_at,
+            dateUpdate: d.updated_at,
+            statut: 'Signé'
+          };
+        })
+      );
+
+      dossiers = enrichedDossiers;
     } else {
       return res.status(400).json({
         success: false,
