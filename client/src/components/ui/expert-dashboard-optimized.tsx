@@ -90,7 +90,7 @@ export const ExpertDashboardOptimized = () => {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [prioritizedDossiers, setPrioritizedDossiers] = useState<PrioritizedDossier[]>([]);
   const [activeView, setActiveView] = useState<'all' | 'prospects' | 'clients'>('all');
-  const [activeTable, setActiveTable] = useState<'clients' | 'dossiers' | 'apporteurs' | null>(null);
+  const [activeTable, setActiveTable] = useState<'urgences' | 'clients' | 'dossiers' | 'apporteurs' | null>(null);
   const [clientsList, setClientsList] = useState<any[]>([]);
   const [dossiersList, setDossiersList] = useState<any[]>([]);
   const [apporteursList, setApporteursList] = useState<any[]>([]);
@@ -246,8 +246,25 @@ export const ExpertDashboardOptimized = () => {
           </Button>
         </div>
 
-        {/* KPIs Cliquables (EN PREMIÈRE POSITION) */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        {/* KPIs Cliquables - 5 KPIs */}
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
+          {/* KPI 1 : URGENCES */}
+          <Card 
+            className={`bg-gradient-to-br from-red-500 to-red-600 text-white cursor-pointer hover:shadow-lg transition-all ${activeTable === 'urgences' ? 'ring-4 ring-red-300' : ''}`} 
+            onClick={() => setActiveTable(activeTable === 'urgences' ? null : 'urgences')}
+          >
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-red-100 text-sm font-medium mb-1">Urgences</p>
+                  <p className="text-3xl font-bold">{prioritizedDossiers.length}</p>
+                </div>
+                <Zap className="h-10 w-10 text-red-200" />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* KPI 2 : CLIENTS ACTIFS */}
           <Card 
             className={`bg-gradient-to-br from-blue-500 to-blue-600 text-white cursor-pointer hover:shadow-lg transition-all ${activeTable === 'clients' ? 'ring-4 ring-blue-300' : ''}`} 
             onClick={() => setActiveTable(activeTable === 'clients' ? null : 'clients')}
@@ -263,6 +280,7 @@ export const ExpertDashboardOptimized = () => {
             </CardContent>
           </Card>
 
+          {/* KPI 3 : RDV CETTE SEMAINE */}
           <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white cursor-pointer hover:shadow-lg transition-all" onClick={() => navigate('/expert/agenda')}>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -275,6 +293,7 @@ export const ExpertDashboardOptimized = () => {
             </CardContent>
           </Card>
 
+          {/* KPI 4 : DOSSIERS EN COURS */}
           <Card 
             className={`bg-gradient-to-br from-orange-500 to-orange-600 text-white cursor-pointer hover:shadow-lg transition-all ${activeTable === 'dossiers' ? 'ring-4 ring-orange-300' : ''}`} 
             onClick={() => setActiveTable(activeTable === 'dossiers' ? null : 'dossiers')}
@@ -290,6 +309,7 @@ export const ExpertDashboardOptimized = () => {
             </CardContent>
           </Card>
 
+          {/* KPI 5 : APPORTEURS ACTIFS */}
           <Card 
             className={`bg-gradient-to-br from-green-500 to-green-600 text-white cursor-pointer hover:shadow-lg transition-all ${activeTable === 'apporteurs' ? 'ring-4 ring-green-300' : ''}`} 
             onClick={() => setActiveTable(activeTable === 'apporteurs' ? null : 'apporteurs')}
@@ -305,148 +325,6 @@ export const ExpertDashboardOptimized = () => {
             </CardContent>
           </Card>
         </div>
-
-        {/* 🎯 SECTION : DOSSIERS PRIORISÉS (Actions prioritaires) */}
-        <Card className="mb-8">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <Zap className="h-5 w-5 text-yellow-600" />
-                <span>Dossiers à Traiter (Priorisés par Score)</span>
-              </CardTitle>
-              <div className="flex gap-2">
-                <Button
-                  variant={activeView === 'all' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setActiveView('all')}
-                >
-                  Tous ({prioritizedDossiers.length})
-                </Button>
-                <Button
-                  variant={activeView === 'prospects' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setActiveView('prospects')}
-                >
-                  Prospects ({prioritizedDossiers.filter(d => d.statut === 'eligible').length})
-                </Button>
-                <Button
-                  variant={activeView === 'clients' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setActiveView('clients')}
-                >
-                  Clients ({prioritizedDossiers.filter(d => d.statut === 'en_cours').length})
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {filteredDossiers.length === 0 ? (
-              <div className="text-center py-12">
-                <CheckCircle className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                <p className="text-gray-600">Aucun dossier à traiter</p>
-              </div>
-            ) : (
-              filteredDossiers.slice(0, 5).map((dossier, index) => (
-                <div 
-                  key={dossier.id}
-                  className="p-6 bg-white border-2 rounded-lg hover:shadow-lg transition-all cursor-pointer"
-                  onClick={() => navigate(`/expert/dossier/${dossier.id}`)}
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-start gap-4">
-                      {/* Numéro de priorité */}
-                      <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-xl ${
-                        index === 0 ? 'bg-red-100 text-red-700' :
-                        index === 1 ? 'bg-orange-100 text-orange-700' :
-                        index === 2 ? 'bg-yellow-100 text-yellow-700' :
-                        'bg-gray-100 text-gray-700'
-                      }`}>
-                        {index + 1}
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h3 className="text-lg font-bold text-gray-900">{dossier.clientName}</h3>
-                          <Badge variant="outline">{dossier.productName}</Badge>
-                        </div>
-                        <p className="text-sm text-gray-600 mb-3">
-                          <strong>{dossier.apporteurName}</strong> • Dernier contact il y a {dossier.daysSinceLastContact} jour(s)
-                        </p>
-                        <div className="flex items-center gap-4 text-sm">
-                          <span className="flex items-center gap-1">
-                            <TrendingUp className="h-4 w-4 text-orange-600" />
-                            Urgence: {dossier.urgenceScore}/40
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Euro className="h-4 w-4 text-green-600" />
-                            Valeur: {dossier.valeurScore}/30
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Target className="h-4 w-4 text-purple-600" />
-                            Probabilité: {dossier.probabiliteScore}/20
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Zap className="h-4 w-4 text-blue-600" />
-                            Facilité: {dossier.faciliteScore}/10
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Badge className="bg-purple-100 text-purple-800">
-                          <Star className="h-3 w-3 mr-1" />
-                          Score: {dossier.priorityScore}/100
-                        </Badge>
-                      </div>
-                      <p className="text-2xl font-bold text-green-600">
-                        {dossier.montantFinal.toLocaleString()}€
-                      </p>
-                    </div>
-                  </div>
-                  
-                  {/* Actions rapides */}
-                  <div className="flex items-center justify-between pt-4 border-t">
-                    <div className="flex items-center gap-2">
-                      <Badge variant={dossier.statut === 'eligible' ? 'secondary' : 'default'}>
-                        {dossier.statut === 'eligible' ? 'Prospect' : 'En cours'}
-                      </Badge>
-                      <span className="text-sm text-gray-600">
-                        {dossier.clientEmail}
-                      </span>
-                      <Badge variant="outline">{dossier.apporteurName}</Badge>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          window.location.href = `tel:${dossier.clientPhone}`;
-                        }}
-                      >
-                        <Phone className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        size="sm"
-                        variant="outline"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          window.location.href = `mailto:${dossier.clientEmail}`;
-                        }}
-                      >
-                        <Mail className="h-4 w-4" />
-                      </Button>
-                      <Button size="sm">
-                        <ArrowUpRight className="h-4 w-4 mr-2" />
-                        {dossier.nextAction}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
 
         {/* 🚨 ALERTES URGENTES */}
         {alerts.length > 0 && (
@@ -545,7 +423,153 @@ export const ExpertDashboardOptimized = () => {
           </Card>
         )}
 
-        {/* 📊 TABLEAU FILTRABLE (selon KPI cliqué) */}
+        {/* 📊 TABLEAUX FILTRABLES (selon KPI cliqué) */}
+
+        {/* TABLEAU URGENCES : Dossiers à Traiter (Priorisés par Score) */}
+        {activeTable === 'urgences' && (
+          <Card className="mb-8">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Zap className="h-5 w-5 text-red-600" />
+                  <span>Dossiers à Traiter (Priorisés par Score)</span>
+                </CardTitle>
+                <div className="flex gap-2">
+                  <Button
+                    variant={activeView === 'all' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setActiveView('all')}
+                  >
+                    Tous ({prioritizedDossiers.length})
+                  </Button>
+                  <Button
+                    variant={activeView === 'prospects' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setActiveView('prospects')}
+                  >
+                    Prospects ({prioritizedDossiers.filter(d => d.statut === 'eligible').length})
+                  </Button>
+                  <Button
+                    variant={activeView === 'clients' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setActiveView('clients')}
+                  >
+                    Clients ({prioritizedDossiers.filter(d => d.statut === 'en_cours').length})
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {filteredDossiers.length === 0 ? (
+                <div className="text-center py-12">
+                  <CheckCircle className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                  <p className="text-gray-600">Aucun dossier à traiter</p>
+                </div>
+              ) : (
+                filteredDossiers.slice(0, 5).map((dossier, index) => (
+                  <div 
+                    key={dossier.id}
+                    className="p-6 bg-white border-2 rounded-lg hover:shadow-lg transition-all cursor-pointer"
+                    onClick={() => navigate(`/expert/dossier/${dossier.id}`)}
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-start gap-4">
+                        {/* Numéro de priorité */}
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-xl ${
+                          index === 0 ? 'bg-red-100 text-red-700' :
+                          index === 1 ? 'bg-orange-100 text-orange-700' :
+                          index === 2 ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-gray-100 text-gray-700'
+                        }`}>
+                          {index + 1}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <h3 className="text-lg font-bold text-gray-900">{dossier.clientName}</h3>
+                            <Badge variant="outline">{dossier.productName}</Badge>
+                          </div>
+                          <p className="text-sm text-gray-600 mb-3">
+                            <strong>{dossier.apporteurName}</strong> • Dernier contact il y a {dossier.daysSinceLastContact} jour(s)
+                          </p>
+                          <div className="flex items-center gap-4 text-sm">
+                            <span className="flex items-center gap-1">
+                              <TrendingUp className="h-4 w-4 text-orange-600" />
+                              Urgence: {dossier.urgenceScore}/40
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Euro className="h-4 w-4 text-green-600" />
+                              Valeur: {dossier.valeurScore}/30
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Target className="h-4 w-4 text-purple-600" />
+                              Probabilité: {dossier.probabiliteScore}/20
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Zap className="h-4 w-4 text-blue-600" />
+                              Facilité: {dossier.faciliteScore}/10
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge className="bg-purple-100 text-purple-800">
+                            <Star className="h-3 w-3 mr-1" />
+                            Score: {dossier.priorityScore}/100
+                          </Badge>
+                        </div>
+                        <p className="text-2xl font-bold text-green-600">
+                          {dossier.montantFinal.toLocaleString()}€
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {/* Actions rapides */}
+                    <div className="flex items-center justify-between pt-4 border-t">
+                      <div className="flex items-center gap-2">
+                        <Badge variant={dossier.statut === 'eligible' ? 'secondary' : 'default'}>
+                          {dossier.statut === 'eligible' ? 'Prospect' : 'En cours'}
+                        </Badge>
+                        <span className="text-sm text-gray-600">
+                          {dossier.clientEmail}
+                        </span>
+                        <Badge variant="outline">{dossier.apporteurName}</Badge>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.location.href = `tel:${dossier.clientPhone}`;
+                          }}
+                        >
+                          <Phone className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.location.href = `mailto:${dossier.clientEmail}`;
+                          }}
+                        >
+                          <Mail className="h-4 w-4" />
+                        </Button>
+                        <Button size="sm">
+                          <ArrowUpRight className="h-4 w-4 mr-2" />
+                          {dossier.nextAction}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* TABLEAU CLIENTS : Mes Clients Actifs */}
         {activeTable === 'clients' && (
           <Card className="mb-8">
             <CardHeader>
