@@ -108,6 +108,7 @@ const ExpertDetails = React.lazy(() => import('./pages/expert/[id]'));
 const ExpertMesAffaires = React.lazy(() => import('./pages/expert/mes-affaires'));
 const ExpertAgenda = React.lazy(() => import('./pages/expert/agenda'));
 const ExpertDossier = React.lazy(() => import('./pages/expert/dossier/[id]'));
+const ExpertClient = React.lazy(() => import('./pages/expert/client/[id]'));
 
 // Analytics page
 const AnalyticsPage = React.lazy(() => import('./pages/analytics-simple'));
@@ -268,6 +269,7 @@ function App() {
                         {/* Mes Affaires */}
                         <Route path="mes-affaires" element={<ExpertMesAffaires />} />
                         <Route path="dossier/:id" element={<ExpertDossier />} />
+                        <Route path="client/:id" element={<ExpertClient />} />
                         
                         {/* Documents */}
                         <Route path="documents" element={<ExpertDocumentsPage />} />

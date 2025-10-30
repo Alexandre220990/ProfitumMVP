@@ -582,7 +582,11 @@ export const ExpertDashboardOptimized = () => {
               {clientsList.length > 0 ? (
                 <div className="space-y-3">
                   {clientsList.filter(client => client && client.id).map((client: any) => (
-                    <div key={client.id} className="p-4 bg-white border rounded-lg hover:shadow-md transition-all">
+                    <div 
+                      key={client.id} 
+                      className="p-4 bg-white border rounded-lg hover:shadow-md transition-all cursor-pointer"
+                      onClick={() => navigate(`/expert/client/${client.id}`)}
+                    >
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
                           <h4 className="font-bold text-gray-900 mb-1">{client?.company_name || client?.name || 'Client inconnu'}</h4>

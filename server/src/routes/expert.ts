@@ -1750,4 +1750,154 @@ router.post('/dossier/:id/send-report', async (req: Request, res: Response) => {
   }
 });
 
+// ============================================================================
+// ROUTE : SYNTHÈSE CLIENT
+// ============================================================================
+
+// GET /api/expert/client/:id - Détails complets d'un client
+router.get('/client/:id', async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Non authentifié' });
+    }
+
+    const authUser = req.user as AuthUser;
+    const { id } = req.params;
+    const expertId = authUser.database_id || authUser.id;
+    
+    if (authUser.type !== 'expert') {
+      return res.status(403).json({ success: false, message: 'Accès non autorisé' });
+    }
+
+    // Récupérer le client avec toutes ses informations
+    const { data: client, error: clientError } = await supabase
+      .from('Client')
+      .select(`
+        id,
+        name,
+        first_name,
+        last_name,
+        company_name,
+        email,
+        phone_number,
+        siren,
+        chiffreAffaires,
+        revenuAnnuel,
+        secteurActivite,
+        nombreEmployes,
+        ancienneteEntreprise,
+        typeProjet,
+        address,
+        city,
+        postal_code,
+        website,
+        decision_maker_position,
+        qualification_score,
+        interest_level,
+        budget_range,
+        timeline,
+        source,
+        statut,
+        is_active,
+        dateCreation,
+        derniereConnexion,
+        first_simulation_at,
+        first_login,
+        expert_contacted_at,
+        converted_at,
+        last_activity_at,
+        notes,
+        admin_notes,
+        last_admin_contact,
+        simulationId,
+        apporteur_id
+      `)
+      .eq('id', id)
+      .single();
+
+    if (clientError || !client) {
+      console.error('Erreur récupération client:', clientError);
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Client non trouvé' 
+      });
+    }
+
+    // Récupérer tous les dossiers du client pour cet expert
+    const { data: dossiers, error: dossiersError } = await supabase
+      .from('ClientProduitEligible')
+      .select(`
+        id,
+        produitId,
+        statut,
+        metadata,
+        montantFinal,
+        tauxFinal,
+        priorite,
+        current_step,
+        progress,
+        created_at,
+        updated_at,
+        ProduitEligible:produitId (
+          id,
+          nom,
+          description,
+          categorie
+        )
+      `)
+      .eq('clientId', id)
+      .eq('expert_id', expertId)
+      .order('created_at', { ascending: false });
+
+    if (dossiersError) {
+      console.error('Erreur récupération dossiers:', dossiersError);
+    }
+
+    // Normaliser les dossiers
+    const normalizedDossiers = (dossiers || []).map((d: any) => ({
+      ...d,
+      ProduitEligible: Array.isArray(d.ProduitEligible) ? d.ProduitEligible[0] : d.ProduitEligible
+    }));
+
+    // Récupérer l'apporteur si présent
+    let apporteurData = null;
+    if (client.apporteur_id) {
+      const { data: apporteur } = await supabase
+        .from('ApporteurAffaires')
+        .select('id, company_name, name, email, phone_number, commission_rate')
+        .eq('id', client.apporteur_id)
+        .single();
+      
+      apporteurData = apporteur;
+    }
+
+    // Calculer les statistiques du client
+    const stats = {
+      totalDossiers: normalizedDossiers.length,
+      dossiersEligibles: normalizedDossiers.filter(d => d.statut === 'eligible').length,
+      dossiersEnCours: normalizedDossiers.filter(d => d.statut === 'en_cours').length,
+      dossiersTermines: normalizedDossiers.filter(d => d.statut === 'termine').length,
+      montantTotal: normalizedDossiers.reduce((sum, d) => sum + (d.montantFinal || 0), 0),
+      montantTermine: normalizedDossiers
+        .filter(d => d.statut === 'termine')
+        .reduce((sum, d) => sum + (d.montantFinal || 0), 0),
+      commissionPotentielle: normalizedDossiers.reduce((sum, d) => sum + (d.montantFinal || 0), 0) * 0.1
+    };
+
+    return res.json({
+      success: true,
+      data: {
+        client,
+        apporteur: apporteurData,
+        dossiers: normalizedDossiers,
+        stats
+      }
+    });
+
+  } catch (error) {
+    console.error('Erreur récupération client:', error);
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
 export default router; 
