@@ -246,7 +246,67 @@ export const ExpertDashboardOptimized = () => {
           </Button>
         </div>
 
-        {/* 🎯 SECTION 1 : DOSSIERS PRIORISÉS (EN PREMIÈRE POSITION) */}
+        {/* KPIs Cliquables (EN PREMIÈRE POSITION) */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <Card 
+            className={`bg-gradient-to-br from-blue-500 to-blue-600 text-white cursor-pointer hover:shadow-lg transition-all ${activeTable === 'clients' ? 'ring-4 ring-blue-300' : ''}`} 
+            onClick={() => setActiveTable(activeTable === 'clients' ? null : 'clients')}
+          >
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-blue-100 text-sm font-medium mb-1">Clients actifs</p>
+                  <p className="text-3xl font-bold">{kpis?.clientsActifs || 0}</p>
+                </div>
+                <Users className="h-10 w-10 text-blue-200" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white cursor-pointer hover:shadow-lg transition-all" onClick={() => navigate('/expert/agenda')}>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-purple-100 text-sm font-medium mb-1">RDV cette semaine</p>
+                  <p className="text-3xl font-bold">{kpis?.rdvCetteSemaine || 0}</p>
+                </div>
+                <Calendar className="h-10 w-10 text-purple-200" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card 
+            className={`bg-gradient-to-br from-orange-500 to-orange-600 text-white cursor-pointer hover:shadow-lg transition-all ${activeTable === 'dossiers' ? 'ring-4 ring-orange-300' : ''}`} 
+            onClick={() => setActiveTable(activeTable === 'dossiers' ? null : 'dossiers')}
+          >
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-orange-100 text-sm font-medium mb-1">Dossiers en cours</p>
+                  <p className="text-3xl font-bold">{kpis?.dossiersEnCours || 0}</p>
+                </div>
+                <Briefcase className="h-10 w-10 text-orange-200" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card 
+            className={`bg-gradient-to-br from-green-500 to-green-600 text-white cursor-pointer hover:shadow-lg transition-all ${activeTable === 'apporteurs' ? 'ring-4 ring-green-300' : ''}`} 
+            onClick={() => setActiveTable(activeTable === 'apporteurs' ? null : 'apporteurs')}
+          >
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-green-100 text-sm font-medium mb-1">Apporteurs actifs</p>
+                  <p className="text-3xl font-bold">{kpis?.apporteursActifs || 0}</p>
+                </div>
+                <Target className="h-10 w-10 text-green-200" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* 🎯 SECTION : DOSSIERS PRIORISÉS (Actions prioritaires) */}
         <Card className="mb-8">
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -387,66 +447,6 @@ export const ExpertDashboardOptimized = () => {
             )}
           </CardContent>
         </Card>
-
-        {/* KPIs Cliquables */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card 
-            className={`bg-gradient-to-br from-blue-500 to-blue-600 text-white cursor-pointer hover:shadow-lg transition-all ${activeTable === 'clients' ? 'ring-4 ring-blue-300' : ''}`} 
-            onClick={() => setActiveTable(activeTable === 'clients' ? null : 'clients')}
-          >
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-blue-100 text-sm font-medium mb-1">Clients actifs</p>
-                  <p className="text-3xl font-bold">{kpis?.clientsActifs || 0}</p>
-                </div>
-                <Users className="h-10 w-10 text-blue-200" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white cursor-pointer hover:shadow-lg transition-all" onClick={() => navigate('/expert/agenda')}>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-purple-100 text-sm font-medium mb-1">RDV cette semaine</p>
-                  <p className="text-3xl font-bold">{kpis?.rdvCetteSemaine || 0}</p>
-                </div>
-                <Calendar className="h-10 w-10 text-purple-200" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card 
-            className={`bg-gradient-to-br from-orange-500 to-orange-600 text-white cursor-pointer hover:shadow-lg transition-all ${activeTable === 'dossiers' ? 'ring-4 ring-orange-300' : ''}`} 
-            onClick={() => setActiveTable(activeTable === 'dossiers' ? null : 'dossiers')}
-          >
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-orange-100 text-sm font-medium mb-1">Dossiers en cours</p>
-                  <p className="text-3xl font-bold">{kpis?.dossiersEnCours || 0}</p>
-                </div>
-                <Briefcase className="h-10 w-10 text-orange-200" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card 
-            className={`bg-gradient-to-br from-green-500 to-green-600 text-white cursor-pointer hover:shadow-lg transition-all ${activeTable === 'apporteurs' ? 'ring-4 ring-green-300' : ''}`} 
-            onClick={() => setActiveTable(activeTable === 'apporteurs' ? null : 'apporteurs')}
-          >
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-green-100 text-sm font-medium mb-1">Apporteurs actifs</p>
-                  <p className="text-3xl font-bold">{kpis?.apporteursActifs || 0}</p>
-                </div>
-                <Target className="h-10 w-10 text-green-200" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
 
         {/* 🚨 ALERTES URGENTES */}
         {alerts.length > 0 && (
