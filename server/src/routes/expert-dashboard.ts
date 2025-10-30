@@ -583,7 +583,7 @@ router.get('/dossiers-by-status/:status', enhancedAuthMiddleware, async (req: Re
         .eq('statut', 'eligible')
         .order('created_at', { ascending: false });
 
-      dossiers = (data || []).map(d => ({
+      dossiers = (data || []).map((d: any) => ({
         id: d.id,
         clientName: d.Client?.company_name || `${d.Client?.prenom || ''} ${d.Client?.nom || ''}`.trim() || 'Client inconnu',
         produit: d.ProduitEligible?.nom || 'Produit inconnu',
@@ -622,7 +622,7 @@ router.get('/dossiers-by-status/:status', enhancedAuthMiddleware, async (req: Re
         .gte('updated_at', thirtyDaysAgo.toISOString())
         .order('updated_at', { ascending: false });
 
-      dossiers = (data || []).map(d => ({
+      dossiers = (data || []).map((d: any) => ({
         id: d.id,
         clientName: d.Client?.company_name || `${d.Client?.prenom || ''} ${d.Client?.nom || ''}`.trim() || 'Client inconnu',
         produit: d.ProduitEligible?.nom || 'Produit inconnu',
@@ -658,7 +658,7 @@ router.get('/dossiers-by-status/:status', enhancedAuthMiddleware, async (req: Re
         .order('updated_at', { ascending: false })
         .limit(50);
 
-      dossiers = (data || []).map(d => ({
+      dossiers = (data || []).map((d: any) => ({
         id: d.id,
         clientName: d.Client?.company_name || `${d.Client?.prenom || ''} ${d.Client?.nom || ''}`.trim() || 'Client inconnu',
         produit: d.ProduitEligible?.nom || 'Produit inconnu',
