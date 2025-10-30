@@ -71,6 +71,17 @@ interface RevenuePipeline {
   totalPrevisionnel: number;
 }
 
+interface Dossier {
+  id: string;
+  clientName: string;
+  produit: string;
+  montant: number;
+  taux: number;
+  dateCreation: string;
+  dateUpdate: string;
+  statut: string;
+}
+
 // ============================================================================
 // COMPOSANT - MES AFFAIRES (Analytics Business Pure)
 // ============================================================================
@@ -86,6 +97,11 @@ const ExpertMesAffaires = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("revenue");
   const [loading, setLoading] = useState(true);
+  
+  // États pour les dossiers détaillés
+  const [selectedPipelineStatus, setSelectedPipelineStatus] = useState<'prospects' | 'en_signature' | 'signes' | null>(null);
+  const [dossiers, setDossiers] = useState<Dossier[]>([]);
+  const [loadingDossiers, setLoadingDossiers] = useState(false);
 
   useEffect(() => {
     const fetchBusinessData = async () => {
@@ -130,6 +146,36 @@ const ExpertMesAffaires = () => {
 
     fetchBusinessData();
   }, [user?.id]);
+
+  // Fonction pour charger les dossiers par statut
+  const handlePipelineClick = async (status: 'prospects' | 'en_signature' | 'signes') => {
+    if (selectedPipelineStatus === status) {
+      // Si on clique sur la même tuile, on ferme
+      setSelectedPipelineStatus(null);
+      setDossiers([]);
+      return;
+    }
+
+    try {
+      setLoadingDossiers(true);
+      setSelectedPipelineStatus(status);
+      
+      const response = await get<Dossier[]>(`/api/expert/dashboard/dossiers-by-status/${status}`);
+      
+      if (response.success && response.data) {
+        setDossiers(response.data);
+      } else {
+        setDossiers([]);
+        toast.error('Erreur lors du chargement des dossiers');
+      }
+    } catch (error) {
+      console.error('Erreur chargement dossiers:', error);
+      setDossiers([]);
+      toast.error('Erreur lors du chargement des dossiers');
+    } finally {
+      setLoadingDossiers(false);
+    }
+  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('fr-FR', {
@@ -252,7 +298,14 @@ const ExpertMesAffaires = () => {
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                 {/* Prospects */}
-                <div className="bg-white p-6 rounded-xl border-2 border-blue-100">
+                <div 
+                  onClick={() => handlePipelineClick('prospects')}
+                  className={`bg-white p-6 rounded-xl border-2 transition-all cursor-pointer hover:shadow-lg ${
+                    selectedPipelineStatus === 'prospects' 
+                      ? 'border-blue-500 ring-2 ring-blue-200' 
+                      : 'border-blue-100 hover:border-blue-300'
+                  }`}
+                >
                   <p className="text-sm font-medium text-gray-600 mb-3">Prospects qualifiés</p>
                   <p className="text-sm text-gray-500 mb-2">
                     {revenuePipeline.prospects.count} dossiers • {revenuePipeline.prospects.montantTotal.toLocaleString()}€
@@ -264,10 +317,20 @@ const ExpertMesAffaires = () => {
                     <p className="text-xs text-gray-500">Potentiel {revenuePipeline.prospects.probability * 100}%</p>
                   </div>
                   <Progress value={revenuePipeline.prospects.probability * 100} className="h-2 mt-2" />
+                  {selectedPipelineStatus === 'prospects' && (
+                    <p className="text-xs text-blue-600 mt-2 font-medium">📋 Cliquez pour masquer</p>
+                  )}
                 </div>
 
                 {/* En signature */}
-                <div className="bg-white p-6 rounded-xl border-2 border-orange-100">
+                <div 
+                  onClick={() => handlePipelineClick('en_signature')}
+                  className={`bg-white p-6 rounded-xl border-2 transition-all cursor-pointer hover:shadow-lg ${
+                    selectedPipelineStatus === 'en_signature' 
+                      ? 'border-orange-500 ring-2 ring-orange-200' 
+                      : 'border-orange-100 hover:border-orange-300'
+                  }`}
+                >
                   <p className="text-sm font-medium text-gray-600 mb-3">En signature</p>
                   <p className="text-sm text-gray-500 mb-2">
                     {revenuePipeline.enSignature.count} dossiers • {revenuePipeline.enSignature.montantTotal.toLocaleString()}€
@@ -279,10 +342,20 @@ const ExpertMesAffaires = () => {
                     <p className="text-xs text-gray-500">Potentiel {revenuePipeline.enSignature.probability * 100}%</p>
                   </div>
                   <Progress value={revenuePipeline.enSignature.probability * 100} className="h-2 mt-2" />
+                  {selectedPipelineStatus === 'en_signature' && (
+                    <p className="text-xs text-orange-600 mt-2 font-medium">📋 Cliquez pour masquer</p>
+                  )}
                 </div>
 
                 {/* Signés */}
-                <div className="bg-white p-6 rounded-xl border-2 border-green-100">
+                <div 
+                  onClick={() => handlePipelineClick('signes')}
+                  className={`bg-white p-6 rounded-xl border-2 transition-all cursor-pointer hover:shadow-lg ${
+                    selectedPipelineStatus === 'signes' 
+                      ? 'border-green-500 ring-2 ring-green-200' 
+                      : 'border-green-100 hover:border-green-300'
+                  }`}
+                >
                   <p className="text-sm font-medium text-gray-600 mb-3">Signés (sécurisés)</p>
                   <p className="text-sm text-gray-500 mb-2">
                     {revenuePipeline.signes.count} dossiers • {revenuePipeline.signes.montantTotal.toLocaleString()}€
@@ -293,6 +366,9 @@ const ExpertMesAffaires = () => {
                     </p>
                     <p className="text-xs text-gray-500">Commission 10%</p>
                   </div>
+                  {selectedPipelineStatus === 'signes' && (
+                    <p className="text-xs text-green-600 mt-2 font-medium">📋 Cliquez pour masquer</p>
+                  )}
                 </div>
               </div>
 
@@ -304,6 +380,90 @@ const ExpertMesAffaires = () => {
                 </p>
                 <p className="text-xs text-emerald-200 mt-2">Basé sur probabilités de conversion</p>
               </div>
+
+              {/* Tableau des dossiers détaillés */}
+              {selectedPipelineStatus && (
+                <div className="mt-6">
+                  <div className="bg-white rounded-xl border-2 border-gray-200 overflow-hidden">
+                    <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        Détails des dossiers - {
+                          selectedPipelineStatus === 'prospects' ? 'Prospects qualifiés' :
+                          selectedPipelineStatus === 'en_signature' ? 'En signature' :
+                          'Signés (sécurisés)'
+                        }
+                      </h3>
+                      <p className="text-sm text-gray-600 mt-1">
+                        {dossiers.length} dossier{dossiers.length > 1 ? 's' : ''}
+                      </p>
+                    </div>
+
+                    {loadingDossiers ? (
+                      <div className="flex items-center justify-center py-12">
+                        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                        <span className="ml-3 text-gray-600">Chargement des dossiers...</span>
+                      </div>
+                    ) : dossiers.length > 0 ? (
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Client</TableHead>
+                              <TableHead>Produit</TableHead>
+                              <TableHead>Montant</TableHead>
+                              <TableHead>Taux</TableHead>
+                              <TableHead>Statut</TableHead>
+                              <TableHead>Date création</TableHead>
+                              <TableHead>Dernière màj</TableHead>
+                              <TableHead>Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {dossiers.map((dossier) => (
+                              <TableRow key={dossier.id}>
+                                <TableCell className="font-medium">{dossier.clientName}</TableCell>
+                                <TableCell>{dossier.produit}</TableCell>
+                                <TableCell className="font-semibold text-blue-600">
+                                  {formatCurrency(dossier.montant)}
+                                </TableCell>
+                                <TableCell>{dossier.taux.toFixed(2)}%</TableCell>
+                                <TableCell>
+                                  <Badge className={
+                                    dossier.statut === 'Prospect' ? 'bg-blue-100 text-blue-800' :
+                                    dossier.statut === 'En signature' ? 'bg-orange-100 text-orange-800' :
+                                    'bg-green-100 text-green-800'
+                                  }>
+                                    {dossier.statut}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>{formatDate(dossier.dateCreation)}</TableCell>
+                                <TableCell>{formatDate(dossier.dateUpdate)}</TableCell>
+                                <TableCell>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigate(`/expert/dossier/${dossier.id}`);
+                                    }}
+                                  >
+                                    Voir
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    ) : (
+                      <div className="text-center py-12">
+                        <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                        <p className="text-gray-600">Aucun dossier trouvé</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

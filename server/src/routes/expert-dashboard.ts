@@ -540,6 +540,156 @@ router.get('/revenue-pipeline', enhancedAuthMiddleware, async (req: Request, res
 });
 
 // ============================================================================
+// ROUTE : DOSSIERS PAR STATUT (Pour mes-affaires)
+// ============================================================================
+
+router.get('/dossiers-by-status/:status', enhancedAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const authUser = req.user as AuthUser;
+    
+    if (!authUser || authUser.type !== 'expert') {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Accès non autorisé' 
+      });
+    }
+
+    const expertId = authUser.database_id || authUser.id;
+    const status = req.params.status; // 'prospects', 'en_signature', 'signes'
+
+    let dossiers: any[] = [];
+
+    if (status === 'prospects') {
+      // PROSPECTS (statut = 'eligible')
+      const { data } = await supabase
+        .from('ClientProduitEligible')
+        .select(`
+          id,
+          "montantFinal",
+          "tauxFinal",
+          created_at,
+          updated_at,
+          Client:clientId (
+            id,
+            nom,
+            prenom,
+            company_name
+          ),
+          ProduitEligible:produit_eligible_id (
+            nom
+          )
+        `)
+        .eq('expert_id', expertId)
+        .eq('statut', 'eligible')
+        .order('created_at', { ascending: false });
+
+      dossiers = (data || []).map(d => ({
+        id: d.id,
+        clientName: d.Client?.company_name || `${d.Client?.prenom || ''} ${d.Client?.nom || ''}`.trim() || 'Client inconnu',
+        produit: d.ProduitEligible?.nom || 'Produit inconnu',
+        montant: d.montantFinal || 0,
+        taux: d.tauxFinal || 0,
+        dateCreation: d.created_at,
+        dateUpdate: d.updated_at,
+        statut: 'Prospect'
+      }));
+
+    } else if (status === 'en_signature') {
+      // EN SIGNATURE (statut = 'en_cours' récent)
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const { data } = await supabase
+        .from('ClientProduitEligible')
+        .select(`
+          id,
+          "montantFinal",
+          "tauxFinal",
+          created_at,
+          updated_at,
+          Client:clientId (
+            id,
+            nom,
+            prenom,
+            company_name
+          ),
+          ProduitEligible:produit_eligible_id (
+            nom
+          )
+        `)
+        .eq('expert_id', expertId)
+        .eq('statut', 'en_cours')
+        .gte('updated_at', thirtyDaysAgo.toISOString())
+        .order('updated_at', { ascending: false });
+
+      dossiers = (data || []).map(d => ({
+        id: d.id,
+        clientName: d.Client?.company_name || `${d.Client?.prenom || ''} ${d.Client?.nom || ''}`.trim() || 'Client inconnu',
+        produit: d.ProduitEligible?.nom || 'Produit inconnu',
+        montant: d.montantFinal || 0,
+        taux: d.tauxFinal || 0,
+        dateCreation: d.created_at,
+        dateUpdate: d.updated_at,
+        statut: 'En signature'
+      }));
+
+    } else if (status === 'signes') {
+      // SIGNÉS (statut = 'termine')
+      const { data } = await supabase
+        .from('ClientProduitEligible')
+        .select(`
+          id,
+          "montantFinal",
+          "tauxFinal",
+          created_at,
+          updated_at,
+          Client:clientId (
+            id,
+            nom,
+            prenom,
+            company_name
+          ),
+          ProduitEligible:produit_eligible_id (
+            nom
+          )
+        `)
+        .eq('expert_id', expertId)
+        .eq('statut', 'termine')
+        .order('updated_at', { ascending: false })
+        .limit(50);
+
+      dossiers = (data || []).map(d => ({
+        id: d.id,
+        clientName: d.Client?.company_name || `${d.Client?.prenom || ''} ${d.Client?.nom || ''}`.trim() || 'Client inconnu',
+        produit: d.ProduitEligible?.nom || 'Produit inconnu',
+        montant: d.montantFinal || 0,
+        taux: d.tauxFinal || 0,
+        dateCreation: d.created_at,
+        dateUpdate: d.updated_at,
+        statut: 'Signé'
+      }));
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: 'Statut invalide'
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: dossiers
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur dossiers by status:', error);
+    return res.status(500).json({ 
+      success: false, 
+      message: 'Erreur serveur' 
+    });
+  }
+});
+
+// ============================================================================
 // ROUTE 4 : OVERVIEW COMPLET (KPIs + Données)
 // ============================================================================
 
