@@ -222,9 +222,13 @@ CREATE TRIGGER trg_rdv_comment
   EXECUTE FUNCTION trigger_rdv_comment();
 
 -- ============================================================================
--- TRIGGERS: Commentaires automatiques sur documents
+-- TRIGGERS: Commentaires automatiques sur documents (OPTIONNEL)
+-- Note: Ce trigger nécessite une table de documents. Décommentez et adaptez
+-- selon votre schéma (DocumentFile, GEDDocument, ou autre)
 -- ============================================================================
 
+-- DÉSACTIVÉ PAR DÉFAUT - À activer manuellement selon votre schéma
+/*
 CREATE OR REPLACE FUNCTION trigger_document_comment()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -290,11 +294,21 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS trg_document_comment ON "DocumentFile";
-CREATE TRIGGER trg_document_comment
-  AFTER INSERT OR UPDATE ON "DocumentFile"
-  FOR EACH ROW
-  EXECUTE FUNCTION trigger_document_comment();
+-- Adaptez le nom de la table selon votre schéma:
+-- Option 1: DocumentFile
+-- DROP TRIGGER IF EXISTS trg_document_comment ON "DocumentFile";
+-- CREATE TRIGGER trg_document_comment
+--   AFTER INSERT OR UPDATE ON "DocumentFile"
+--   FOR EACH ROW
+--   EXECUTE FUNCTION trigger_document_comment();
+
+-- Option 2: GEDDocument
+-- DROP TRIGGER IF EXISTS trg_document_comment ON "GEDDocument";
+-- CREATE TRIGGER trg_document_comment
+--   AFTER INSERT OR UPDATE ON "GEDDocument"
+--   FOR EACH ROW
+--   EXECUTE FUNCTION trigger_document_comment();
+*/
 
 -- ============================================================================
 -- FONCTION: Détecter et créer des alertes d'inactivité
