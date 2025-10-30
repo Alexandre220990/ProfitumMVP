@@ -65,7 +65,7 @@ interface ClientProduitEligible {
     is_active?: boolean;
     qualification_score?: number;
   };
-  ProduitEligible: {
+  ProduitEligible?: {
     id: string;
     nom: string;
     description: string;
@@ -407,7 +407,7 @@ export default function ExpertDossierSynthese() {
             autresProduitsSimulation={cpe.autresProduitsSimulation}
             potentielTotal={cpe.potentielTotal}
             produitActuel={{
-              nom: cpe.ProduitEligible.nom,
+              nom: cpe.ProduitEligible?.nom || 'Produit',
               montant: cpe.montantFinal,
               taux: cpe.tauxFinal ?? 0
             }}
@@ -445,7 +445,7 @@ export default function ExpertDossierSynthese() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Produit</p>
-                    <p className="font-semibold">{cpe.ProduitEligible.nom}</p>
+                    <p className="font-semibold">{cpe.ProduitEligible?.nom || 'Produit inconnu'}</p>
                   </div>
                 </div>
               </div>
