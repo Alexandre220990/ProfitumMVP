@@ -460,6 +460,15 @@ router.get('/revenue-pipeline', enhancedAuthMiddleware, async (req: Request, res
 
     const expertId = authUser.database_id || authUser.id;
 
+    // Récupérer le taux de commission de l'expert
+    const { data: expertData } = await supabase
+      .from('Expert')
+      .select('compensation')
+      .eq('id', expertId)
+      .single();
+
+    const expertCommissionRate = (expertData?.compensation || 10) / 100; // Convertir en décimal
+
     // 1. PROSPECTS (statut = 'eligible')
     const { data: prospects } = await supabase
       .from('ClientProduitEligible')
@@ -498,8 +507,7 @@ router.get('/revenue-pipeline', enhancedAuthMiddleware, async (req: Request, res
       .eq('statut', 'termine');
 
     const signesTotal = (signes || []).reduce((sum, s) => sum + (s.montantFinal || 0), 0);
-    const commissionRate = 0.10; // 10% de commission expert
-    const commissionExpert = signesTotal * commissionRate;
+    const commissionExpert = signesTotal * expertCommissionRate; // Commission personnalisée expert
 
     // TOTAL PRÉVISIONNEL
     const totalPrevisionnel = prospectsPotentiel + enSignaturePotentiel + commissionExpert;

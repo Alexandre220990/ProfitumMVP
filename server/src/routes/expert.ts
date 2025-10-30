@@ -566,14 +566,15 @@ router.get('/revenue-history', async (req: Request, res: Response) => {
 
     const expertId = authUser.database_id || authUser.id;
 
-    // Récupérer la date de création du compte expert
+    // Récupérer la date de création et le taux de commission de l'expert
     const { data: expertData } = await supabase
       .from('Expert')
-      .select('created_at')
+      .select('created_at, compensation')
       .eq('id', expertId)
       .single();
 
     const expertCreatedAt = expertData?.created_at ? new Date(expertData.created_at) : new Date();
+    const expertCommissionRate = expertData?.compensation || 10; // Par défaut 10% si non défini
 
     // Récupérer tous les CPE terminés de l'expert
     const { data: cpeData, error } = await supabase
@@ -617,7 +618,7 @@ router.get('/revenue-history', async (req: Request, res: Response) => {
       
       const monthIndex = months.findIndex(m => m.key === monthKey);
       if (monthIndex !== -1) {
-        const commission = (cpe.montantFinal || 0) * 0.10; // 10% commission expert
+        const commission = (cpe.montantFinal || 0) * (expertCommissionRate / 100); // Commission personnalisée expert
         months[monthIndex].revenue += commission;
         months[monthIndex].assignments += 1;
       }
@@ -654,6 +655,15 @@ router.get('/product-performance', async (req: Request, res: Response) => {
     }
 
     const expertId = authUser.database_id || authUser.id;
+
+    // Récupérer le taux de commission de l'expert
+    const { data: expertData } = await supabase
+      .from('Expert')
+      .select('compensation')
+      .eq('id', expertId)
+      .single();
+
+    const expertCommissionRate = expertData?.compensation || 10; // Par défaut 10% si non défini
 
     // Récupérer tous les CPE de l'expert (tous statuts)
     const { data: cpeData, error } = await supabase
@@ -701,7 +711,7 @@ router.get('/product-performance', async (req: Request, res: Response) => {
 
       if (cpe.statut === 'termine') {
         productStats[productName].completed += 1;
-        const commission = (cpe.montantFinal || 0) * 0.10;
+        const commission = (cpe.montantFinal || 0) * (expertCommissionRate / 100);
         productStats[productName].revenue += commission;
       }
 
@@ -752,6 +762,15 @@ router.get('/client-performance', async (req: Request, res: Response) => {
     }
 
     const expertId = authUser.database_id || authUser.id;
+
+    // Récupérer le taux de commission de l'expert
+    const { data: expertData } = await supabase
+      .from('Expert')
+      .select('compensation')
+      .eq('id', expertId)
+      .single();
+
+    const expertCommissionRate = expertData?.compensation || 10; // Par défaut 10% si non défini
 
     // Récupérer tous les CPE de l'expert avec infos client
     const { data: cpeData, error } = await supabase
@@ -811,7 +830,7 @@ router.get('/client-performance', async (req: Request, res: Response) => {
       clientStats[clientId].totalAssignments += 1;
 
       if (cpe.statut === 'termine') {
-        const commission = (cpe.montantFinal || 0) * 0.10;
+        const commission = (cpe.montantFinal || 0) * (expertCommissionRate / 100);
         clientStats[clientId].totalRevenue += commission;
       }
 
@@ -961,20 +980,18 @@ router.get('/business', async (req: Request, res: Response) => {
   }
 });
 
-// Route pour obtenir l'agenda de l'expert
-router.get('/agenda', async (req: Request, res: Response) => {
+// ============================================================================
+// ROUTES GESTION DOSSIERS CPE (Page Synthèse)
+// ============================================================================
+
+// GET /api/expert/dossier/:id - Détails complets d'un dossier CPE
+router.get('/dossier/:id', async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
     }
 
     const authUser = req.user as AuthUser;
-    
-    if (authUser.type !== 'expert') {
-      return res.status(403).json({ success: false, message: 'Accès non autorisé' });
-    }
-
-    // Récupérer les CPE terminés et calculer les revenus par mois
     const { data: cpeData, error } = await supabase
       .from('ClientProduitEligible')
       .select(`
@@ -1029,10 +1046,10 @@ router.get('/agenda', async (req: Request, res: Response) => {
 
     return res.json({
       success: true,
-      data: agenda
+      data: revenueData
     });
   } catch (error) {
-    console.error('Erreur lors de la récupération de l\'agenda:', error);
+    console.error('Erreur lors de la récupération de l\'historique des revenus:', error);
     return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });
@@ -1433,6 +1450,15 @@ router.get('/dossier/:id', async (req: Request, res: Response) => {
       });
     }
 
+    // Récupérer le taux de commission de l'expert
+    const { data: expertData } = await supabase
+      .from('Expert')
+      .select('compensation')
+      .eq('id', authUser.id)
+      .single();
+
+    const expertCommissionRate = expertData?.compensation || 10; // Par défaut 10% si non défini
+
     // Enrichir avec informations de l'apporteur si présent
     let apporteurData = null;
     if (cpe.Client?.apporteur_id) {
@@ -1470,7 +1496,7 @@ router.get('/dossier/:id', async (req: Request, res: Response) => {
     const montantTotalSimulation = [cpe, ...autresProduitsSimulation]
       .reduce((sum, p) => sum + (p.montantFinal || 0), 0);
     
-    const commissionExpert = montantTotalSimulation * 0.10; // 10% commission
+    const commissionExpert = montantTotalSimulation * (expertCommissionRate / 100); // Commission personnalisée expert
 
     // TODO: Récupérer les documents liés au dossier
     // const { data: documents } = await supabase
