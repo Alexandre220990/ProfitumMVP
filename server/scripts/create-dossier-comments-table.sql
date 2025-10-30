@@ -328,7 +328,6 @@ BEGIN
     SELECT id, "clientId", statut, updated_at
     FROM "ClientProduitEligible"
     WHERE statut NOT IN ('archived', 'cancelled', 'rejected', 'refund_completed')
-    AND deleted_at IS NULL
   LOOP
     -- Récupérer la dernière activité (commentaire ou update)
     SELECT GREATEST(
@@ -427,7 +426,7 @@ BEGIN
   FOR v_dossier IN
     SELECT id, created_at, statut
     FROM "ClientProduitEligible"
-    WHERE deleted_at IS NULL
+    ORDER BY created_at DESC
     LIMIT 100 -- Limiter pour éviter surcharge
   LOOP
     -- Créer commentaire initial si aucun commentaire n'existe
