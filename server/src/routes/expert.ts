@@ -1163,7 +1163,7 @@ router.get('/dossier/:id', async (req: Request, res: Response) => {
       return res.status(403).json({ success: false, message: 'Accès non autorisé' });
     }
 
-    // Récupérer le CPE avec toutes les relations
+    // Récupérer le CPE avec toutes les relations enrichies
     const { data: cpe, error } = await supabase
       .from('ClientProduitEligible')
       .select(`
@@ -1171,20 +1171,54 @@ router.get('/dossier/:id', async (req: Request, res: Response) => {
         Client:clientId (
           id,
           name,
+          first_name,
+          last_name,
           company_name,
           email,
           phone_number,
-          apporteur_id,
-          ApporteurAffaires:apporteur_id (
-            id,
-            company_name,
-            email
-          )
+          siren,
+          chiffreAffaires,
+          revenuAnnuel,
+          secteurActivite,
+          nombreEmployes,
+          ancienneteEntreprise,
+          typeProjet,
+          address,
+          city,
+          postal_code,
+          website,
+          decision_maker_position,
+          qualification_score,
+          interest_level,
+          budget_range,
+          timeline,
+          source,
+          statut,
+          is_active,
+          dateCreation,
+          derniereConnexion,
+          first_simulation_at,
+          first_login,
+          expert_contacted_at,
+          converted_at,
+          last_activity_at,
+          notes,
+          admin_notes,
+          last_admin_contact,
+          simulationId,
+          apporteur_id
         ),
         ProduitEligible:produitId (
           id,
           nom,
-          description
+          description,
+          categorie,
+          montant_min,
+          montant_max,
+          taux_min,
+          taux_max,
+          duree_min,
+          duree_max
         )
       `)
       .eq('id', id)
@@ -1199,6 +1233,45 @@ router.get('/dossier/:id', async (req: Request, res: Response) => {
       });
     }
 
+    // Enrichir avec informations de l'apporteur si présent
+    let apporteurData = null;
+    if (cpe.Client?.apporteur_id) {
+      const { data: apporteur } = await supabase
+        .from('ApporteurAffaires')
+        .select('id, company_name, name, email, phone_number, commission_rate')
+        .eq('id', cpe.Client.apporteur_id)
+        .single();
+      
+      apporteurData = apporteur;
+    }
+
+    // Récupérer les autres produits de la même simulation
+    let autresProduitsSimulation: any[] = [];
+    if (cpe.Client?.simulationId) {
+      const { data: autresProduits } = await supabase
+        .from('ClientProduitEligible')
+        .select(`
+          id,
+          "montantFinal",
+          "tauxFinal",
+          statut,
+          ProduitEligible:produitId (
+            nom,
+            categorie
+          )
+        `)
+        .eq('simulationId', cpe.Client.simulationId)
+        .neq('id', id);
+      
+      autresProduitsSimulation = autresProduits || [];
+    }
+
+    // Calculer le potentiel total de la simulation
+    const montantTotalSimulation = [cpe, ...autresProduitsSimulation]
+      .reduce((sum, p) => sum + (p.montantFinal || 0), 0);
+    
+    const commissionExpert = montantTotalSimulation * 0.10; // 10% commission
+
     // TODO: Récupérer les documents liés au dossier
     // const { data: documents } = await supabase
     //   .from('GEDDocument')
@@ -1209,6 +1282,13 @@ router.get('/dossier/:id', async (req: Request, res: Response) => {
       success: true,
       data: {
         ...cpe,
+        apporteur: apporteurData,
+        autresProduitsSimulation,
+        potentielTotal: {
+          montantTotal: montantTotalSimulation,
+          commissionExpert,
+          nombreProduits: 1 + autresProduitsSimulation.length
+        },
         documents: [] // À implémenter avec GED
       }
     });

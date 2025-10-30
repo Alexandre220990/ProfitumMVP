@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import DossierTimeline from '@/components/dossier/DossierTimeline';
+import InfosClientEnrichies from '@/components/dossier/InfosClientEnrichies';
 import {
   Loader2,
   ArrowLeft,
@@ -267,6 +268,10 @@ export default function ExpertDossierSynthese() {
   const progress = getProgress();
   const documentsComplets = missingDocsCount === 0 && cpe.documents && cpe.documents.length > 0;
 
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(amount || 0);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24">
@@ -280,9 +285,9 @@ export default function ExpertDossierSynthese() {
             </Button>
             <div>
               <h1 className="text-3xl font-bold text-gray-900">
-                Dossier #{cpe.id.slice(0, 8)}
+                {cpe.Client.company_name || cpe.Client.name}
               </h1>
-              <p className="text-gray-600">{cpe.Client.company_name || cpe.Client.name}</p>
+              <p className="text-gray-600">Dossier #{cpe.id.slice(0, 8)} | Client: {cpe.Client.first_name || cpe.Client.name}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -294,54 +299,124 @@ export default function ExpertDossierSynthese() {
             }>
               {cpe.statut}
             </Badge>
+            <Button onClick={() => navigate(`/expert/messagerie?client=${cpe.Client.id}`)}>
+              <MessageSquare className="h-4 w-4 mr-2" />
+              Contacter
+            </Button>
           </div>
         </div>
 
-        {/* Informations Client */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Building2 className="h-5 w-5" />
-              Informations Client
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div>
-                <p className="text-sm text-gray-500 mb-1">Entreprise</p>
-                <p className="font-semibold">{cpe.Client.company_name || cpe.Client.name}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500 mb-1">Email</p>
-                <div className="flex items-center gap-2">
-                  <Mail className="h-4 w-4 text-gray-400" />
-                  <a href={`mailto:${cpe.Client.email}`} className="text-blue-600 hover:underline">
-                    {cpe.Client.email}
-                  </a>
-                </div>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500 mb-1">Téléphone</p>
-                <div className="flex items-center gap-2">
-                  <Phone className="h-4 w-4 text-gray-400" />
-                  <a href={`tel:${cpe.Client.phone_number}`} className="text-blue-600 hover:underline">
-                    {cpe.Client.phone_number || 'Non renseigné'}
-                  </a>
-                </div>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500 mb-1">Produit</p>
-                <Badge variant="outline">{cpe.ProduitEligible.nom}</Badge>
-              </div>
-            </div>
-            {cpe.ApporteurAffaires && (
-              <div className="mt-4 pt-4 border-t">
-                <p className="text-sm text-gray-500 mb-1">Apporteur d'affaires</p>
-                <p className="font-semibold">{cpe.ApporteurAffaires.company_name}</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {/* KPIs Rapides */}
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-1">
+                <Euro className="h-4 w-4" />
+                Montant
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-bold text-green-600">
+                {formatCurrency(cpe.montantFinal)}
+              </p>
+              <p className="text-xs text-gray-500">Éligible</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-gray-600">
+                📊 Taux
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-bold text-blue-600">
+                {cpe.tauxFinal?.toFixed(2) || 0}%
+              </p>
+              <p className="text-xs text-gray-500">
+                {cpe.tauxFinal >= 3 ? 'Favorable' : 'Standard'}
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-gray-600">
+                🎯 Progrès
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-bold text-purple-600">{progress}%</p>
+              <Progress value={progress} className="h-2 mt-2" />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-gray-600">
+                ⏱️ Statut
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Badge className={
+                cpe.statut === 'termine' ? 'bg-green-100 text-green-800' :
+                cpe.statut === 'en_cours' ? 'bg-blue-100 text-blue-800' :
+                'bg-yellow-100 text-yellow-800'
+              }>
+                {cpe.statut}
+              </Badge>
+              <p className="text-xs text-gray-500 mt-2">
+                {cpe.Client.is_active ? '🟢 Client actif' : '⚪ Inactif'}
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-gray-600">
+                🏆 Score
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-bold text-orange-600">
+                {cpe.Client.qualification_score || 0}/100
+              </p>
+              <p className={`text-xs font-medium ${
+                (cpe.Client.qualification_score || 0) >= 80 ? 'text-green-600' :
+                (cpe.Client.qualification_score || 0) >= 60 ? 'text-blue-600' :
+                'text-yellow-600'
+              }`}>
+                {(cpe.Client.qualification_score || 0) >= 80 ? 'Excellent' :
+                 (cpe.Client.qualification_score || 0) >= 60 ? 'Bon' : 'Moyen'}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Informations Client Enrichies */}
+        <div className="mb-8">
+          <InfosClientEnrichies
+            client={cpe.Client}
+            apporteur={cpe.apporteur}
+            autresProduitsSimulation={cpe.autresProduitsSimulation}
+            potentielTotal={cpe.potentielTotal}
+            produitActuel={{
+              nom: cpe.ProduitEligible.nom,
+              montant: cpe.montantFinal,
+              taux: cpe.tauxFinal
+            }}
+          />
+        </div>
+
+        {/* Timeline & Commentaires (déplacée ici, juste après infos client) */}
+        {id && user && (
+          <div className="mb-8">
+            <DossierTimeline 
+              dossierId={id} 
+              userType={user.type as 'expert' | 'admin' | 'apporteur'} 
+            />
+          </div>
+        )}
 
         {/* ÉTAPE 1 : Validation Éligibilité */}
         {cpe.metadata?.validation_state === 'pending_expert_validation' && (
@@ -643,14 +718,6 @@ export default function ExpertDossierSynthese() {
               </div>
             </CardContent>
           </Card>
-        )}
-
-        {/* Timeline & Commentaires */}
-        {id && user && (
-          <DossierTimeline 
-            dossierId={id} 
-            userType={user.type as 'expert' | 'admin' | 'apporteur'} 
-          />
         )}
       </div>
     </div>
