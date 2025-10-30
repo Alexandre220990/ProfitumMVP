@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { createClient } from '@supabase/supabase-js';
-import { enhancedAuthMiddleware } from '../middleware/enhanced-auth-middleware';
+import { enhancedAuthMiddleware } from '../middleware/auth-enhanced';
 import { AuthUser } from '../types/auth';
 
 const router = Router();
