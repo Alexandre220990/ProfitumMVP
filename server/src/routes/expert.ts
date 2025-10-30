@@ -981,24 +981,26 @@ router.get('/business', async (req: Request, res: Response) => {
 });
 
 // ============================================================================
-// ROUTES GESTION DOSSIERS CPE (Page Synthèse)
+// ROUTE : HISTORIQUE DES REVENUS
 // ============================================================================
 
-// GET /api/expert/dossier/:id - Détails complets d'un dossier CPE
-router.get('/dossier/:id', async (req: Request, res: Response) => {
+// GET /api/expert/revenue-history - Historique des revenus par mois
+router.get('/revenue-history', async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
     }
 
     const authUser = req.user as AuthUser;
+    const expertId = authUser.database_id || authUser.id;
+    
     const { data: cpeData, error } = await supabase
       .from('ClientProduitEligible')
       .select(`
         "montantFinal",
         created_at
       `)
-      .eq('expert_id', authUser.id)
+      .eq('expert_id', expertId)
       .eq('statut', 'termine')
       .order('created_at', { ascending: false });
 
@@ -1375,6 +1377,7 @@ router.get('/dossier/:id', async (req: Request, res: Response) => {
 
     const authUser = req.user as AuthUser;
     const { id } = req.params;
+    const expertId = authUser.database_id || authUser.id;
     
     if (authUser.type !== 'expert') {
       return res.status(403).json({ success: false, message: 'Accès non autorisé' });
@@ -1439,7 +1442,7 @@ router.get('/dossier/:id', async (req: Request, res: Response) => {
         )
       `)
       .eq('id', id)
-      .eq('expert_id', authUser.id)
+      .eq('expert_id', expertId)
       .single();
 
     if (error || !cpe) {
@@ -1454,7 +1457,7 @@ router.get('/dossier/:id', async (req: Request, res: Response) => {
     const { data: expertData } = await supabase
       .from('Expert')
       .select('compensation')
-      .eq('id', authUser.id)
+      .eq('id', expertId)
       .single();
 
     const expertCommissionRate = expertData?.compensation || 10; // Par défaut 10% si non défini

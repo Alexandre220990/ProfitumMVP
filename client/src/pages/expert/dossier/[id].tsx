@@ -19,10 +19,6 @@ import {
   Download,
   Upload,
   AlertTriangle,
-  Phone,
-  Mail,
-  Building2,
-  Calendar,
   Euro,
   Clock,
   MessageSquare,
@@ -54,15 +50,20 @@ interface ClientProduitEligible {
     blocking_reason?: string;
   };
   montantFinal: number;
+  tauxFinal?: number;
   created_at: string;
   updated_at: string;
   Client: {
     id: string;
     name: string;
+    first_name?: string;
+    last_name?: string;
     company_name: string;
     email: string;
     phone_number: string;
     apporteur_id?: string;
+    is_active?: boolean;
+    qualification_score?: number;
   };
   ProduitEligible: {
     id: string;
@@ -74,6 +75,9 @@ interface ClientProduitEligible {
     company_name: string;
     email: string;
   };
+  apporteur?: any;
+  autresProduitsSimulation?: any[];
+  potentielTotal?: any;
   documents?: Document[];
   notes?: string;
 }
@@ -287,7 +291,7 @@ export default function ExpertDossierSynthese() {
               <h1 className="text-3xl font-bold text-gray-900">
                 {cpe.Client?.company_name || cpe.Client?.name || 'Client inconnu'}
               </h1>
-              <p className="text-gray-600">Dossier #{cpe.id.slice(0, 8)} | Client: {cpe.Client?.first_name || cpe.Client?.name || 'N/A'}</p>
+              <p className="text-gray-600">Dossier #{cpe.id?.slice(0, 8) || 'N/A'} | Client: {cpe.Client?.first_name || cpe.Client?.name || 'N/A'}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -336,7 +340,7 @@ export default function ExpertDossierSynthese() {
                 {cpe.tauxFinal?.toFixed(2) || 0}%
               </p>
               <p className="text-xs text-gray-500">
-                {cpe.tauxFinal >= 3 ? 'Favorable' : 'Standard'}
+                {(cpe.tauxFinal || 0) >= 3 ? 'Favorable' : 'Standard'}
               </p>
             </CardContent>
           </Card>
@@ -405,7 +409,7 @@ export default function ExpertDossierSynthese() {
             produitActuel={{
               nom: cpe.ProduitEligible.nom,
               montant: cpe.montantFinal,
-              taux: cpe.tauxFinal
+              taux: cpe.tauxFinal ?? 0
             }}
           />
         </div>
