@@ -140,6 +140,11 @@ export const put = async <T>(url: string, data?: any): Promise<ApiResponse<T>> =
     return handleResponse<T>(response); } catch (error) { return handleError<T>(error); }
 };
 
+export const patch = async <T>(url: string, data?: any): Promise<ApiResponse<T>> => { try {
+    const response = await api.patch(addApiPrefix(url), data);
+    return handleResponse<T>(response); } catch (error) { return handleError<T>(error); }
+};
+
 export const del = async <T>(url: string): Promise<ApiResponse<T>> => { try {
     const response = await api.delete(addApiPrefix(url));
     return handleResponse<T>(response); } catch (error) { return handleError<T>(error); }
