@@ -581,30 +581,30 @@ export const ExpertDashboardOptimized = () => {
             <CardContent>
               {clientsList.length > 0 ? (
                 <div className="space-y-3">
-                  {clientsList.map((client: any) => (
+                  {clientsList.filter(client => client && client.id).map((client: any) => (
                     <div key={client.id} className="p-4 bg-white border rounded-lg hover:shadow-md transition-all">
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
-                          <h4 className="font-bold text-gray-900 mb-1">{client.company_name || client.name}</h4>
+                          <h4 className="font-bold text-gray-900 mb-1">{client?.company_name || client?.name || 'Client inconnu'}</h4>
                           <div className="flex items-center gap-4 text-sm text-gray-600">
                             <span className="flex items-center gap-1">
                               <Mail className="h-3 w-3" />
-                              {client.email}
+                              {client?.email || 'N/A'}
                             </span>
                             <span className="flex items-center gap-1">
                               <Phone className="h-3 w-3" />
-                              {client.phone_number || 'N/A'}
+                              {client?.phone_number || 'N/A'}
                             </span>
                             <span className="flex items-center gap-1">
                               <Briefcase className="h-3 w-3" />
-                              {client.dossiers_count} dossier(s)
+                              {client?.dossiers_count || 0} dossier(s)
                             </span>
-                            <Badge variant="outline">{client.apporteur_name}</Badge>
+                            <Badge variant="outline">{client?.apporteur_name || 'Direct'}</Badge>
                           </div>
                         </div>
                         <div className="text-right">
-                          <Badge variant={client.status === 'prospect' ? 'secondary' : 'default'}>
-                            {client.status}
+                          <Badge variant={client?.status === 'prospect' ? 'secondary' : 'default'}>
+                            {client?.status || 'inconnu'}
                           </Badge>
                         </div>
                       </div>
@@ -632,7 +632,7 @@ export const ExpertDashboardOptimized = () => {
             <CardContent>
               {dossiersList.length > 0 ? (
                 <div className="space-y-3">
-                  {dossiersList.map((dossier) => (
+                  {dossiersList.filter(dossier => dossier && dossier.id).map((dossier) => (
                     <div 
                       key={dossier.id} 
                       className="p-4 bg-white border rounded-lg hover:shadow-md transition-all cursor-pointer"
@@ -640,27 +640,27 @@ export const ExpertDashboardOptimized = () => {
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
-                          <h4 className="font-bold text-gray-900 mb-1">{dossier.client_name}</h4>
+                          <h4 className="font-bold text-gray-900 mb-1">{dossier?.client_name || 'Client inconnu'}</h4>
                           <p className="text-sm text-gray-600 mb-2">
-                            {dossier.produit_nom}
+                            {dossier?.produit_nom || 'Produit'}
                           </p>
                           <div className="flex items-center gap-3 text-xs text-gray-500">
-                            <Badge variant={dossier.statut === 'eligible' ? 'secondary' : dossier.statut === 'en_cours' ? 'default' : 'outline'}>
-                              {dossier.statut}
+                            <Badge variant={dossier?.statut === 'eligible' ? 'secondary' : dossier?.statut === 'en_cours' ? 'default' : 'outline'}>
+                              {dossier?.statut || 'inconnu'}
                             </Badge>
                             <span className="flex items-center gap-1">
                               <Mail className="h-3 w-3" />
-                              {dossier.client_email}
+                              {dossier?.client_email || 'N/A'}
                             </span>
-                            <Progress value={dossier.progress || 0} className="w-20 h-1" />
-                            <span>{dossier.progress || 0}%</span>
+                            <Progress value={dossier?.progress || 0} className="w-20 h-1" />
+                            <span>{dossier?.progress || 0}%</span>
                           </div>
                         </div>
                         <div className="text-right">
                           <p className="text-xl font-bold text-green-600">
-                            {dossier.montant.toLocaleString()}€
+                            {(dossier?.montant || 0).toLocaleString()}€
                           </p>
-                          <p className="text-xs text-gray-500 mt-1">Priorité: {dossier.priorite}</p>
+                          <p className="text-xs text-gray-500 mt-1">Priorité: {dossier?.priorite || 'N/A'}</p>
                         </div>
                       </div>
                     </div>
@@ -687,22 +687,24 @@ export const ExpertDashboardOptimized = () => {
             <CardContent>
               {apporteursList.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {apporteursList.map((apporteur) => (
+                  {apporteursList.filter(apporteur => apporteur && apporteur.id).map((apporteur) => (
                     <div 
                       key={apporteur.id}
                       className="p-4 bg-gradient-to-br from-white to-green-50 border-2 border-green-100 rounded-lg hover:shadow-lg transition-all"
                     >
                       <div className="flex items-start justify-between mb-3">
                         <div>
-                          <h4 className="font-bold text-gray-900 mb-1">{apporteur.company_name}</h4>
-                          <p className="text-xs text-gray-500">{apporteur.email}</p>
+                          <h4 className="font-bold text-gray-900 mb-1">{apporteur?.company_name || 'Apporteur'}</h4>
+                          <p className="text-xs text-gray-500">{apporteur?.email || 'N/A'}</p>
                         </div>
                         <Button 
                           size="sm" 
                           variant="ghost"
                           onClick={(e) => {
                             e.stopPropagation();
-                            window.location.href = `mailto:${apporteur.email}`;
+                            if (apporteur?.email) {
+                              window.location.href = `mailto:${apporteur.email}`;
+                            }
                           }}
                         >
                           <Mail className="h-4 w-4" />
@@ -711,15 +713,15 @@ export const ExpertDashboardOptimized = () => {
                       <div className="grid grid-cols-3 gap-3 text-sm">
                         <div className="bg-white p-2 rounded">
                           <p className="text-gray-500 text-xs">Prospects</p>
-                          <p className="font-bold text-blue-600">{apporteur.prospects_count || 0}</p>
+                          <p className="font-bold text-blue-600">{apporteur?.prospects_count || 0}</p>
                         </div>
                         <div className="bg-white p-2 rounded">
                           <p className="text-gray-500 text-xs">Clients</p>
-                          <p className="font-bold text-green-600">{apporteur.clients_count || 0}</p>
+                          <p className="font-bold text-green-600">{apporteur?.clients_count || 0}</p>
                         </div>
                         <div className="bg-white p-2 rounded">
                           <p className="text-gray-500 text-xs">Total</p>
-                          <p className="font-bold text-purple-600">{apporteur.total_dossiers || 0}</p>
+                          <p className="font-bold text-purple-600">{apporteur?.total_dossiers || 0}</p>
                         </div>
                       </div>
                     </div>
