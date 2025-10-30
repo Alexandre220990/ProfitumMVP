@@ -127,6 +127,32 @@ function App() {
     };
   }, []);
 
+  // Gérer les erreurs de chargement de chunks dynamiques (après déploiement)
+  useEffect(() => {
+    const handleChunkError = (event: ErrorEvent) => {
+      const chunkFailedMessage = /Failed to fetch dynamically imported module|Loading chunk/i;
+      
+      if (chunkFailedMessage.test(event.message)) {
+        console.warn('🔄 Erreur de chargement de module détectée, rechargement de la page...');
+        
+        // Éviter les boucles infinies
+        if (!sessionStorage.getItem('chunk_reload_attempted')) {
+          sessionStorage.setItem('chunk_reload_attempted', 'true');
+          window.location.reload();
+        } else {
+          sessionStorage.removeItem('chunk_reload_attempted');
+          console.error('❌ Erreur persistante après rechargement');
+        }
+      }
+    };
+
+    window.addEventListener('error', handleChunkError);
+    
+    return () => {
+      window.removeEventListener('error', handleChunkError);
+    };
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
