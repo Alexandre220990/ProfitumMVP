@@ -9,7 +9,6 @@ import {
   Calendar,
   TrendingUp,
   AlertTriangle,
-  Clock,
   Phone,
   Mail,
   Euro,
@@ -21,8 +20,7 @@ import {
   Star,
   Eye,
   Archive,
-  Bell,
-  Building2
+  Bell
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { get, put } from "@/lib/api";
@@ -89,7 +87,6 @@ export const ExpertDashboardOptimized = () => {
   
   const [loading, setLoading] = useState(true);
   const [kpis, setKpis] = useState<KPIs | null>(null);
-  const [apporteurs, setApporteurs] = useState<Apporteur[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [prioritizedDossiers, setPrioritizedDossiers] = useState<PrioritizedDossier[]>([]);
   const [activeView, setActiveView] = useState<'all' | 'prospects' | 'clients'>('all');
@@ -114,7 +111,6 @@ export const ExpertDashboardOptimized = () => {
 
       if (overviewRes.success && overviewRes.data) {
         setKpis(overviewRes.data.kpis);
-        setApporteurs(overviewRes.data.apporteurs || []);
       }
 
       if (alertsRes.success && alertsRes.data) {
