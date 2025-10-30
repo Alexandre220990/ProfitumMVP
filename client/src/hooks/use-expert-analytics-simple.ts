@@ -84,17 +84,19 @@ export const useExpertAnalyticsSimple = ({ timeRange = '30d' }: UseExpertAnalyti
         get<TimeAnalysis>('/api/expert/analytics/time')
       ]);
 
+      const defaultTimeAnalysis: TimeAnalysis = {
+        averageResponseTime: 0,
+        averageProcessingTime: 0,
+        peakHours: [],
+        preferredDays: []
+      };
+
       setData({
-        metrics: metricsRes.success ? metricsRes.data || [] : [],
-        performance: performanceRes.success ? performanceRes.data || [] : [],
-        topProducts: productsRes.success ? productsRes.data || [] : [],
-        clientDistribution: clientsRes.success ? clientsRes.data || [] : [],
-        timeAnalysis: timeRes.success ? timeRes.data || {
-          averageResponseTime: 0,
-          averageProcessingTime: 0,
-          peakHours: [],
-          preferredDays: []
-        }
+        metrics: metricsRes.success && metricsRes.data ? metricsRes.data : [],
+        performance: performanceRes.success && performanceRes.data ? performanceRes.data : [],
+        topProducts: productsRes.success && productsRes.data ? productsRes.data : [],
+        clientDistribution: clientsRes.success && clientsRes.data ? clientsRes.data : [],
+        timeAnalysis: timeRes.success && timeRes.data ? timeRes.data : defaultTimeAnalysis
       });
 
       setLastUpdated(new Date());
