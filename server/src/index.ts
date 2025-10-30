@@ -84,6 +84,7 @@ import googleCalendarRoutes from './routes/google-calendar';
 import debugRoutes from './routes/debug';
 import diagnosticRoutes from './routes/diagnostic';
 import dossierStepsRoutes from './routes/dossier-steps';
+import dossierCommentsRoutes from './routes/dossier-comments';
 // SUPPRIMÉ: import documentsRoutes (obsolète, remplacé par documents-unified-all)
 import adminDocumentsUnifiedRoutes from './routes/admin-documents-unified';
 import documentsUnifiedAllRoutes from './routes/documents-unified-all';
@@ -563,6 +564,7 @@ app.use('/api/diagnostic', diagnosticRoutes);
 
 // Route de gestion des étapes de dossier
 app.use('/api/dossier-steps', dossierStepsRoutes);
+app.use('/api/dossier', dossierCommentsRoutes);
 console.log('🔧 Routes dossier-steps montées sur /api/dossier-steps');
 
 // ===== ROUTES APPORTEURS D'AFFAIRES PROTÉGÉES =====
