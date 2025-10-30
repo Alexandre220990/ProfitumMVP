@@ -456,7 +456,7 @@ export default function InfosClientEnrichies({
                       <p className="text-2xl font-bold">{formatCurrency(potentielTotal.montantTotal)}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-emerald-200 mb-1">Commission expert (10%)</p>
+                      <p className="text-xs text-emerald-200 mb-1">Commission expert</p>
                       <p className="text-2xl font-bold">{formatCurrency(potentielTotal.commissionExpert)}</p>
                     </div>
                     <div>

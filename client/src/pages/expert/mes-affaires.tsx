@@ -364,7 +364,7 @@ const ExpertMesAffaires = () => {
                     <p className="text-3xl font-bold text-green-600">
                       {revenuePipeline.signes.commissionExpert.toLocaleString()}€
                     </p>
-                    <p className="text-xs text-gray-500">Commission 10%</p>
+                    <p className="text-xs text-gray-500">Votre commission</p>
                   </div>
                   {selectedPipelineStatus === 'signes' && (
                     <p className="text-xs text-green-600 mt-2 font-medium">📋 Cliquez pour masquer</p>
