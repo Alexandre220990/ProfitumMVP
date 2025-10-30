@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
+import DossierTimeline from '@/components/dossier/DossierTimeline';
 import {
   Loader2,
   ArrowLeft,
@@ -644,48 +645,13 @@ export default function ExpertDossierSynthese() {
           </Card>
         )}
 
-        {/* Timeline */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              Historique
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-start gap-4">
-                <div className="w-2 h-2 bg-blue-600 rounded-full mt-2"></div>
-                <div>
-                  <p className="font-medium">Dossier créé</p>
-                  <p className="text-sm text-gray-500">
-                    {new Date(cpe.created_at).toLocaleString('fr-FR')}
-                  </p>
-                </div>
-              </div>
-              {cpe.statut !== 'eligible' && (
-                <div className="flex items-start gap-4">
-                  <div className="w-2 h-2 bg-green-600 rounded-full mt-2"></div>
-                  <div>
-                    <p className="font-medium">Éligibilité validée</p>
-                    <p className="text-sm text-gray-500">Par {user?.username || 'Expert'}</p>
-                  </div>
-                </div>
-              )}
-              {cpe.statut === 'termine' && (
-                <div className="flex items-start gap-4">
-                  <div className="w-2 h-2 bg-purple-600 rounded-full mt-2"></div>
-                  <div>
-                    <p className="font-medium">Dossier finalisé</p>
-                    <p className="text-sm text-gray-500">
-                      {new Date(cpe.updated_at).toLocaleString('fr-FR')}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        {/* Timeline & Commentaires */}
+        {id && user && (
+          <DossierTimeline 
+            dossierId={id} 
+            userType={user.type as 'expert' | 'admin' | 'apporteur'} 
+          />
+        )}
       </div>
     </div>
   );

@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import DossierTimeline from '@/components/dossier/DossierTimeline';
 import {
   User,
   Mail,
@@ -676,6 +677,14 @@ const DossierSynthese: React.FC = () => {
                 </Card>
               </TabsContent>
             </Tabs>
+
+            {/* Timeline & Commentaires */}
+            {id && user && (
+              <DossierTimeline 
+                dossierId={id} 
+                userType={user.type as 'expert' | 'admin' | 'apporteur'} 
+              />
+            )}
           </div>
         )}
 
