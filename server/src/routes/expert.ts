@@ -1399,12 +1399,12 @@ router.get('/dossier/:id', async (req: Request, res: Response) => {
           email,
           phone_number,
           siren,
-          chiffreAffaires,
-          revenuAnnuel,
-          secteurActivite,
-          nombreEmployes,
-          ancienneteEntreprise,
-          typeProjet,
+          "chiffreAffaires",
+          "revenuAnnuel",
+          "secteurActivite",
+          "nombreEmployes",
+          "ancienneteEntreprise",
+          "typeProjet",
           address,
           city,
           postal_code,
@@ -1417,8 +1417,8 @@ router.get('/dossier/:id', async (req: Request, res: Response) => {
           source,
           statut,
           is_active,
-          dateCreation,
-          derniereConnexion,
+          "dateCreation",
+          "derniereConnexion",
           first_simulation_at,
           first_login,
           expert_contacted_at,
@@ -1427,7 +1427,7 @@ router.get('/dossier/:id', async (req: Request, res: Response) => {
           notes,
           admin_notes,
           last_admin_contact,
-          simulationId,
+          "simulationId",
           apporteur_id
         ),
         ProduitEligible:produitId (
@@ -1495,7 +1495,7 @@ router.get('/dossier/:id', async (req: Request, res: Response) => {
             categorie
           )
         `)
-        .eq('simulationId', normalizedClient.simulationId)
+        .eq('"simulationId"', normalizedClient.simulationId)
         .neq('id', id);
       
       autresProduitsSimulation = autresProduits || [];
@@ -1781,12 +1781,12 @@ router.get('/client/:id', async (req: Request, res: Response) => {
         email,
         phone_number,
         siren,
-        chiffreAffaires,
-        revenuAnnuel,
-        secteurActivite,
-        nombreEmployes,
-        ancienneteEntreprise,
-        typeProjet,
+        "chiffreAffaires",
+        "revenuAnnuel",
+        "secteurActivite",
+        "nombreEmployes",
+        "ancienneteEntreprise",
+        "typeProjet",
         address,
         city,
         postal_code,
@@ -1799,8 +1799,8 @@ router.get('/client/:id', async (req: Request, res: Response) => {
         source,
         statut,
         is_active,
-        dateCreation,
-        derniereConnexion,
+        "dateCreation",
+        "derniereConnexion",
         first_simulation_at,
         first_login,
         expert_contacted_at,
@@ -1809,7 +1809,7 @@ router.get('/client/:id', async (req: Request, res: Response) => {
         notes,
         admin_notes,
         last_admin_contact,
-        simulationId,
+        "simulationId",
         apporteur_id
       `)
       .eq('id', id)
@@ -1828,11 +1828,11 @@ router.get('/client/:id', async (req: Request, res: Response) => {
       .from('ClientProduitEligible')
       .select(`
         id,
-        produitId,
+        "produitId",
         statut,
         metadata,
-        montantFinal,
-        tauxFinal,
+        "montantFinal",
+        "tauxFinal",
         priorite,
         current_step,
         progress,
@@ -1845,7 +1845,7 @@ router.get('/client/:id', async (req: Request, res: Response) => {
           categorie
         )
       `)
-      .eq('clientId', id)
+      .eq('"clientId"', id)
       .eq('expert_id', expertId)
       .order('created_at', { ascending: false });
 
