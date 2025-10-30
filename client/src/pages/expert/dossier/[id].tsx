@@ -285,9 +285,9 @@ export default function ExpertDossierSynthese() {
             </Button>
             <div>
               <h1 className="text-3xl font-bold text-gray-900">
-                {cpe.Client.company_name || cpe.Client.name}
+                {cpe.Client?.company_name || cpe.Client?.name || 'Client inconnu'}
               </h1>
-              <p className="text-gray-600">Dossier #{cpe.id.slice(0, 8)} | Client: {cpe.Client.first_name || cpe.Client.name}</p>
+              <p className="text-gray-600">Dossier #{cpe.id.slice(0, 8)} | Client: {cpe.Client?.first_name || cpe.Client?.name || 'N/A'}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -299,10 +299,12 @@ export default function ExpertDossierSynthese() {
             }>
               {cpe.statut}
             </Badge>
-            <Button onClick={() => navigate(`/expert/messagerie?client=${cpe.Client.id}`)}>
-              <MessageSquare className="h-4 w-4 mr-2" />
-              Contacter
-            </Button>
+            {cpe.Client?.id && (
+              <Button onClick={() => navigate(`/expert/messagerie?client=${cpe.Client.id}`)}>
+                <MessageSquare className="h-4 w-4 mr-2" />
+                Contacter
+              </Button>
+            )}
           </div>
         </div>
 
@@ -366,7 +368,7 @@ export default function ExpertDossierSynthese() {
                 {cpe.statut}
               </Badge>
               <p className="text-xs text-gray-500 mt-2">
-                {cpe.Client.is_active ? '🟢 Client actif' : '⚪ Inactif'}
+                {cpe.Client?.is_active ? '🟢 Client actif' : '⚪ Inactif'}
               </p>
             </CardContent>
           </Card>
@@ -379,15 +381,15 @@ export default function ExpertDossierSynthese() {
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-bold text-orange-600">
-                {cpe.Client.qualification_score || 0}/100
+                {cpe.Client?.qualification_score || 0}/100
               </p>
               <p className={`text-xs font-medium ${
-                (cpe.Client.qualification_score || 0) >= 80 ? 'text-green-600' :
-                (cpe.Client.qualification_score || 0) >= 60 ? 'text-blue-600' :
+                (cpe.Client?.qualification_score || 0) >= 80 ? 'text-green-600' :
+                (cpe.Client?.qualification_score || 0) >= 60 ? 'text-blue-600' :
                 'text-yellow-600'
               }`}>
-                {(cpe.Client.qualification_score || 0) >= 80 ? 'Excellent' :
-                 (cpe.Client.qualification_score || 0) >= 60 ? 'Bon' : 'Moyen'}
+                {(cpe.Client?.qualification_score || 0) >= 80 ? 'Excellent' :
+                 (cpe.Client?.qualification_score || 0) >= 60 ? 'Bon' : 'Moyen'}
               </p>
             </CardContent>
           </Card>
