@@ -110,7 +110,7 @@ const ExpertAgenda = React.lazy(() => import('./pages/expert/agenda'));
 const ExpertDossier = React.lazy(() => import('./pages/expert/dossier/[id]'));
 
 // Analytics page
-const AnalyticsPage = React.lazy(() => import('./pages/analytics'));
+const AnalyticsPage = React.lazy(() => import('./pages/analytics-simple'));
 
 // Components
 import ProtectedRoute from './components/ProtectedRoute';

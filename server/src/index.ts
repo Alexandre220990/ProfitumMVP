@@ -72,6 +72,7 @@ import {
 } from './middleware/performance';
 
 import expertNotificationsRoutes from './routes/expert/notifications';
+import expertAnalyticsRoutes from './routes/expert-analytics';
 import sessionMigrationRoutes from './routes/session-migration';
 // SUPPRIMÉ: import clientDocumentsRoutes (obsolète, remplacé par documents-unified-all)
 // SUPPRIMÉ: import enhancedClientDocumentsRoutes (obsolète, remplacé par documents-unified-all)
@@ -275,6 +276,7 @@ app.use('/api/documents', simpleAuthMiddleware, documentsUnifiedAllRoutes);
 
 // Routes expert - PROTÉGÉES avec permissions spécifiques  
 app.use('/api/expert', enhancedAuthMiddleware, requireUserType('expert'), expertRoutes);
+app.use('/api/expert/analytics', enhancedAuthMiddleware, requireUserType('expert'), expertAnalyticsRoutes);
 
 // Routes admin - PROTÉGÉES avec permissions spécifiques
 // Routes admin avec authentification
