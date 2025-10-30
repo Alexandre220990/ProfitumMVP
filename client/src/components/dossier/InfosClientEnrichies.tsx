@@ -539,27 +539,27 @@ export default function InfosClientEnrichies({
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-gray-500 mb-1">Société</p>
-                    <p className="font-semibold text-gray-900">{apporteur.company_name}</p>
+                    <p className="font-semibold text-gray-900">{apporteur?.company_name || 'Non renseigné'}</p>
                   </div>
 
                   <div>
                     <p className="text-sm text-gray-500 mb-1">Contact</p>
-                    <p className="font-semibold text-gray-900">{apporteur.name || 'Non renseigné'}</p>
+                    <p className="font-semibold text-gray-900">{apporteur?.name || 'Non renseigné'}</p>
                   </div>
 
                   <div>
                     <p className="text-sm text-gray-500 mb-1">Email</p>
                     <a 
-                      href={`mailto:${apporteur.email}`}
+                      href={`mailto:${apporteur?.email || ''}`}
                       className="font-semibold text-blue-600 hover:underline"
                     >
-                      {apporteur.email}
+                      {apporteur?.email || 'Non renseigné'}
                     </a>
                   </div>
 
                   <div>
                     <p className="text-sm text-gray-500 mb-1">Téléphone</p>
-                    {apporteur.phone_number ? (
+                    {apporteur?.phone_number ? (
                       <a 
                         href={`tel:${apporteur.phone_number}`}
                         className="font-semibold text-blue-600 hover:underline"
@@ -573,16 +573,16 @@ export default function InfosClientEnrichies({
                 </div>
 
                 {/* Commission */}
-                {potentielTotal && apporteur.commission_rate && (
+                {potentielTotal && apporteur?.commission_rate && (
                   <div className="mt-6 pt-6 border-t border-teal-200">
                     <div className="bg-white p-4 rounded-lg">
                       <p className="text-sm text-gray-600 mb-2">💰 Commission prévue</p>
                       <div className="flex items-baseline gap-2">
                         <p className="text-3xl font-bold text-teal-600">
-                          {formatCurrency(potentielTotal.montantTotal * (apporteur.commission_rate / 100))}
+                          {formatCurrency(potentielTotal.montantTotal * ((apporteur?.commission_rate || 0) / 100))}
                         </p>
                         <p className="text-sm text-gray-600">
-                          ({apporteur.commission_rate}% du total)
+                          ({apporteur?.commission_rate || 0}% du total)
                         </p>
                       </div>
                     </div>
