@@ -551,7 +551,7 @@ router.get('/business', async (req: Request, res: Response) => {
   }
 });
 
-// Route pour obtenir l'historique des revenus
+// Route pour obtenir l'historique des revenus RÉELS
 router.get('/revenue-history', async (req: Request, res: Response) => {
   try {
     if (!req.user) {
@@ -564,19 +564,75 @@ router.get('/revenue-history', async (req: Request, res: Response) => {
       return res.status(403).json({ success: false, message: 'Accès non autorisé' });
     }
 
-    // Simuler l'historique des revenus (à remplacer par de vraies données)
-    const revenueHistory = [
-      { month: 'Janvier', revenue: 12000 },
-      { month: 'Février', revenue: 15000 },
-      { month: 'Mars', revenue: 18000 },
-      { month: 'Avril', revenue: 14000 },
-      { month: 'Mai', revenue: 16000 },
-      { month: 'Juin', revenue: 19000 }
-    ];
+    const expertId = authUser.database_id || authUser.id;
+
+    // Récupérer la date de création du compte expert
+    const { data: expertData } = await supabase
+      .from('Expert')
+      .select('created_at')
+      .eq('id', expertId)
+      .single();
+
+    const expertCreatedAt = expertData?.created_at ? new Date(expertData.created_at) : new Date();
+
+    // Récupérer tous les CPE terminés de l'expert
+    const { data: cpeData, error } = await supabase
+      .from('ClientProduitEligible')
+      .select('"montantFinal", updated_at, statut')
+      .eq('expert_id', expertId)
+      .eq('statut', 'termine')
+      .order('updated_at', { ascending: true });
+
+    if (error) {
+      console.error('❌ Erreur récupération revenus:', error);
+      return res.status(500).json({ success: false, message: 'Erreur serveur' });
+    }
+
+    // Générer tous les mois depuis la création du compte jusqu'à maintenant
+    const months: { key: string; name: string; revenue: number; assignments: number }[] = [];
+    const now = new Date();
+    let currentDate = new Date(expertCreatedAt.getFullYear(), expertCreatedAt.getMonth(), 1);
+
+    while (currentDate <= now) {
+      const monthKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+      const monthName = currentDate.toLocaleDateString('fr-FR', { 
+        month: 'long', 
+        year: 'numeric' 
+      });
+      
+      months.push({
+        key: monthKey,
+        name: monthName.charAt(0).toUpperCase() + monthName.slice(1), // Capitaliser
+        revenue: 0,
+        assignments: 0
+      });
+
+      currentDate.setMonth(currentDate.getMonth() + 1);
+    }
+
+    // Remplir avec les données réelles
+    (cpeData || []).forEach((cpe: any) => {
+      const date = new Date(cpe.updated_at);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      
+      const monthIndex = months.findIndex(m => m.key === monthKey);
+      if (monthIndex !== -1) {
+        const commission = (cpe.montantFinal || 0) * 0.10; // 10% commission expert
+        months[monthIndex].revenue += commission;
+        months[monthIndex].assignments += 1;
+      }
+    });
+
+    // Retourner les données formatées (du plus ancien au plus récent)
+    const revenueData = months.map(m => ({
+      month: m.name,
+      revenue: Math.round(m.revenue * 100) / 100,
+      assignments: m.assignments
+    }));
 
     return res.json({
       success: true,
-      data: revenueHistory
+      data: revenueData
     });
   } catch (error) {
     console.error('Erreur lors de la récupération de l\'historique des revenus:', error);
@@ -584,7 +640,7 @@ router.get('/revenue-history', async (req: Request, res: Response) => {
   }
 });
 
-// Route pour obtenir la performance des produits
+// Route pour obtenir la performance des produits RÉELLE
 router.get('/product-performance', async (req: Request, res: Response) => {
   try {
     if (!req.user) {
@@ -597,18 +653,80 @@ router.get('/product-performance', async (req: Request, res: Response) => {
       return res.status(403).json({ success: false, message: 'Accès non autorisé' });
     }
 
-    // Récupérer la performance par produit
-    const { data: assignments } = await supabase
-      .from('ExpertAssignment')
-      .select('*, ProduitEligible(*)')
-      .eq('expert_id', authUser.id);
+    const expertId = authUser.database_id || authUser.id;
 
-    const productPerformance = [
-      { product: 'CEE', count: 15, revenue: 75000, conversionRate: 85 },
-      { product: 'CIR', count: 8, revenue: 40000, conversionRate: 75 },
-      { product: 'TICPE', count: 12, revenue: 60000, conversionRate: 80 },
-      { product: 'DFS', count: 5, revenue: 25000, conversionRate: 70 }
-    ];
+    // Récupérer tous les CPE de l'expert (tous statuts)
+    const { data: cpeData, error } = await supabase
+      .from('ClientProduitEligible')
+      .select(`
+        id,
+        "montantFinal",
+        statut,
+        metadata,
+        ProduitEligible:produitId (
+          nom,
+          categorie
+        )
+      `)
+      .eq('expert_id', expertId);
+
+    if (error) {
+      console.error('❌ Erreur récupération produits:', error);
+      return res.status(500).json({ success: false, message: 'Erreur serveur' });
+    }
+
+    // Grouper par produit
+    const productStats: Record<string, {
+      assignments: number;
+      revenue: number;
+      completed: number;
+      totalRating: number;
+      ratingCount: number;
+    }> = {};
+
+    (cpeData || []).forEach((cpe: any) => {
+      const productName = cpe.ProduitEligible?.nom || 'Produit inconnu';
+      
+      if (!productStats[productName]) {
+        productStats[productName] = {
+          assignments: 0,
+          revenue: 0,
+          completed: 0,
+          totalRating: 0,
+          ratingCount: 0
+        };
+      }
+
+      productStats[productName].assignments += 1;
+
+      if (cpe.statut === 'termine') {
+        productStats[productName].completed += 1;
+        const commission = (cpe.montantFinal || 0) * 0.10;
+        productStats[productName].revenue += commission;
+      }
+
+      // Rating depuis metadata si disponible
+      if (cpe.metadata?.rating) {
+        productStats[productName].totalRating += cpe.metadata.rating;
+        productStats[productName].ratingCount += 1;
+      }
+    });
+
+    // Formater les données
+    const productPerformance = Object.entries(productStats).map(([product, stats]) => ({
+      product,
+      assignments: stats.assignments,
+      revenue: Math.round(stats.revenue * 100) / 100,
+      successRate: stats.assignments > 0 
+        ? Math.round((stats.completed / stats.assignments) * 100 * 10) / 10
+        : 0,
+      averageRating: stats.ratingCount > 0
+        ? Math.round((stats.totalRating / stats.ratingCount) * 10) / 10
+        : 0
+    }));
+
+    // Trier par revenus décroissants
+    productPerformance.sort((a, b) => b.revenue - a.revenue);
 
     return res.json({
       success: true,
@@ -620,7 +738,7 @@ router.get('/product-performance', async (req: Request, res: Response) => {
   }
 });
 
-// Route pour obtenir la performance des clients
+// Route pour obtenir la performance des clients RÉELLE
 router.get('/client-performance', async (req: Request, res: Response) => {
   try {
     if (!req.user) {
@@ -633,18 +751,96 @@ router.get('/client-performance', async (req: Request, res: Response) => {
       return res.status(403).json({ success: false, message: 'Accès non autorisé' });
     }
 
-    // Récupérer la performance par client
-    const { data: assignments } = await supabase
-      .from('ExpertAssignment')
-      .select('*, Client(*)')
-      .eq('expert_id', authUser.id);
+    const expertId = authUser.database_id || authUser.id;
 
-    const clientPerformance = [
-      { client: 'Transport Express SARL', projects: 3, revenue: 45000, satisfaction: 4.9 },
-      { client: 'TechInnov SARL', projects: 2, revenue: 30000, satisfaction: 4.7 },
-      { client: 'Construction Plus', projects: 4, revenue: 60000, satisfaction: 4.8 },
-      { client: 'Green Energy Corp', projects: 1, revenue: 15000, satisfaction: 4.6 }
-    ];
+    // Récupérer tous les CPE de l'expert avec infos client
+    const { data: cpeData, error } = await supabase
+      .from('ClientProduitEligible')
+      .select(`
+        id,
+        "clientId",
+        "montantFinal",
+        statut,
+        updated_at,
+        metadata,
+        Client:clientId (
+          id,
+          company_name,
+          name,
+          first_name,
+          last_name
+        )
+      `)
+      .eq('expert_id', expertId);
+
+    if (error) {
+      console.error('❌ Erreur récupération clients:', error);
+      return res.status(500).json({ success: false, message: 'Erreur serveur' });
+    }
+
+    // Grouper par client
+    const clientStats: Record<string, {
+      clientId: string;
+      clientName: string;
+      totalAssignments: number;
+      totalRevenue: number;
+      lastAssignment: string;
+      totalRating: number;
+      ratingCount: number;
+    }> = {};
+
+    (cpeData || []).forEach((cpe: any) => {
+      const clientId = cpe.clientId;
+      const clientName = cpe.Client?.company_name || 
+                        `${cpe.Client?.first_name || ''} ${cpe.Client?.last_name || ''}`.trim() ||
+                        cpe.Client?.name ||
+                        'Client inconnu';
+      
+      if (!clientStats[clientId]) {
+        clientStats[clientId] = {
+          clientId,
+          clientName,
+          totalAssignments: 0,
+          totalRevenue: 0,
+          lastAssignment: cpe.updated_at,
+          totalRating: 0,
+          ratingCount: 0
+        };
+      }
+
+      clientStats[clientId].totalAssignments += 1;
+
+      if (cpe.statut === 'termine') {
+        const commission = (cpe.montantFinal || 0) * 0.10;
+        clientStats[clientId].totalRevenue += commission;
+      }
+
+      // Mettre à jour la dernière mission
+      if (new Date(cpe.updated_at) > new Date(clientStats[clientId].lastAssignment)) {
+        clientStats[clientId].lastAssignment = cpe.updated_at;
+      }
+
+      // Rating depuis metadata si disponible
+      if (cpe.metadata?.rating) {
+        clientStats[clientId].totalRating += cpe.metadata.rating;
+        clientStats[clientId].ratingCount += 1;
+      }
+    });
+
+    // Formater les données
+    const clientPerformance = Object.values(clientStats).map(stats => ({
+      clientId: stats.clientId,
+      clientName: stats.clientName,
+      totalAssignments: stats.totalAssignments,
+      totalRevenue: Math.round(stats.totalRevenue * 100) / 100,
+      averageRating: stats.ratingCount > 0
+        ? Math.round((stats.totalRating / stats.ratingCount) * 10) / 10
+        : 0,
+      lastAssignment: stats.lastAssignment
+    }));
+
+    // Trier par revenus décroissants
+    clientPerformance.sort((a, b) => b.totalRevenue - a.totalRevenue);
 
     return res.json({
       success: true,
@@ -765,8 +961,8 @@ router.get('/business', async (req: Request, res: Response) => {
   }
 });
 
-// Route pour obtenir l'historique des revenus
-router.get('/revenue-history', async (req: Request, res: Response) => {
+// Route pour obtenir l'agenda de l'expert
+router.get('/agenda', async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
@@ -833,16 +1029,20 @@ router.get('/revenue-history', async (req: Request, res: Response) => {
 
     return res.json({
       success: true,
-      data: revenueData
+      data: agenda
     });
   } catch (error) {
-    console.error('Erreur lors de la récupération de l\'historique des revenus:', error);
+    console.error('Erreur lors de la récupération de l\'agenda:', error);
     return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });
 
-// Route pour obtenir les performances par produit
-router.get('/product-performance', async (req: Request, res: Response) => {
+// ============================================================================
+// ROUTES GESTION DOSSIERS CPE (Page Synthèse)
+// ============================================================================
+
+// GET /api/expert/dossier/:id - Détails complets d'un dossier CPE
+router.get('/dossier/:id', async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
