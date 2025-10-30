@@ -172,10 +172,10 @@ export default function InfosClientEnrichies({
   produitActuel
 }: InfosClientEnrichiesProps) {
   
-  const qualificationScore = getQualificationScore(client.qualification_score);
-  const nomComplet = client.first_name && client.last_name 
+  const qualificationScore = getQualificationScore(client?.qualification_score);
+  const nomComplet = client?.first_name && client?.last_name 
     ? `${client.first_name} ${client.last_name}` 
-    : client.name || 'Non renseigné';
+    : client?.name || 'Non renseigné';
 
   return (
     <Card className="shadow-lg">

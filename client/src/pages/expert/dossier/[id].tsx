@@ -49,7 +49,7 @@ interface ClientProduitEligible {
     blocked?: boolean;
     blocking_reason?: string;
   };
-  montantFinal: number;
+  montantFinal?: number;
   tauxFinal?: number;
   created_at: string;
   updated_at: string;
@@ -323,7 +323,7 @@ export default function ExpertDossierSynthese() {
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-bold text-green-600">
-                {formatCurrency(cpe.montantFinal)}
+                {formatCurrency(cpe.montantFinal || 0)}
               </p>
               <p className="text-xs text-gray-500">Éligible</p>
             </CardContent>
@@ -400,19 +400,21 @@ export default function ExpertDossierSynthese() {
         </div>
 
         {/* Informations Client Enrichies */}
-        <div className="mb-8">
-          <InfosClientEnrichies
-            client={cpe.Client}
-            apporteur={cpe.apporteur}
-            autresProduitsSimulation={cpe.autresProduitsSimulation}
-            potentielTotal={cpe.potentielTotal}
-            produitActuel={{
-              nom: cpe.ProduitEligible?.nom || 'Produit',
-              montant: cpe.montantFinal,
-              taux: cpe.tauxFinal ?? 0
-            }}
-          />
-        </div>
+        {cpe.Client && (
+          <div className="mb-8">
+            <InfosClientEnrichies
+              client={cpe.Client}
+              apporteur={cpe.apporteur}
+              autresProduitsSimulation={cpe.autresProduitsSimulation}
+              potentielTotal={cpe.potentielTotal}
+              produitActuel={{
+                nom: cpe.ProduitEligible?.nom || 'Produit',
+                montant: cpe.montantFinal || 0,
+                taux: cpe.tauxFinal ?? 0
+              }}
+            />
+          </div>
+        )}
 
         {/* Timeline & Commentaires (déplacée ici, juste après infos client) */}
         {id && user && (
@@ -440,7 +442,7 @@ export default function ExpertDossierSynthese() {
                   <div>
                     <p className="text-sm text-gray-500">Montant estimé</p>
                     <p className="text-2xl font-bold text-green-600">
-                      {cpe.montantFinal.toLocaleString()}€
+                      {(cpe.montantFinal || 0).toLocaleString()}€
                     </p>
                   </div>
                   <div>
@@ -590,13 +592,13 @@ export default function ExpertDossierSynthese() {
                   <div>
                     <p className="text-sm text-gray-500">Montant estimé</p>
                     <p className="text-xl font-bold text-green-600 mt-1">
-                      {cpe.montantFinal.toLocaleString()}€
+                      {(cpe.montantFinal || 0).toLocaleString()}€
                     </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Commission expert (10%)</p>
                     <p className="text-xl font-bold text-blue-600 mt-1">
-                      {(cpe.montantFinal * 0.1).toLocaleString()}€
+                      {((cpe.montantFinal || 0) * 0.1).toLocaleString()}€
                     </p>
                   </div>
                 </div>
@@ -676,13 +678,13 @@ export default function ExpertDossierSynthese() {
                   <div>
                     <p className="text-sm text-gray-500">Montant récupéré</p>
                     <p className="text-2xl font-bold text-green-600">
-                      {cpe.montantFinal.toLocaleString()}€
+                      {(cpe.montantFinal || 0).toLocaleString()}€
                     </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Commission expert</p>
                     <p className="text-2xl font-bold text-blue-600">
-                      {(cpe.montantFinal * 0.1).toLocaleString()}€
+                      {((cpe.montantFinal || 0) * 0.1).toLocaleString()}€
                     </p>
                   </div>
                   <div>
