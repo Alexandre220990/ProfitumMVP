@@ -67,28 +67,7 @@ WHERE client_id IN (
 -- Vérifier
 SELECT '✅ Simulations supprimées' as statut;
 
--- 2.3 Supprimer les notifications (si existantes)
-DELETE FROM "Notification"
-WHERE user_id IN (
-    SELECT auth_user_id FROM "Client" WHERE email = 'alainbonin@gmail.com'
-);
-
--- Vérifier
-SELECT '✅ Notifications supprimées' as statut;
-
--- 2.4 Supprimer les messages (si existants)
-DELETE FROM "Message"
-WHERE sender_id IN (
-    SELECT auth_user_id FROM "Client" WHERE email = 'alainbonin@gmail.com'
-)
-OR recipient_id IN (
-    SELECT auth_user_id FROM "Client" WHERE email = 'alainbonin@gmail.com'
-);
-
--- Vérifier
-SELECT '✅ Messages supprimés' as statut;
-
--- 2.5 Supprimer les sessions utilisateur
+-- 2.3 Supprimer les sessions utilisateur
 DELETE FROM "user_sessions"
 WHERE user_id IN (
     SELECT auth_user_id FROM "Client" WHERE email = 'alainbonin@gmail.com'
