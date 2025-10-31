@@ -762,6 +762,8 @@ router.post("/check-siren", async (req: Request, res: Response) => {
 router.post("/register", registerRateLimiter, async (req: Request, res: Response) => {
   try {
     const {
+      first_name,
+      last_name,
       username,
       email,
       password,
@@ -814,6 +816,9 @@ router.post("/register", registerRateLimiter, async (req: Request, res: Response
 
     // 1. Préparation des métadonnées utilisateur
     const userMetadata: UserMetadata = {
+      first_name: first_name || username,
+      last_name: last_name || '',
+      name: `${first_name || ''} ${last_name || ''}`.trim() || username,
       username,
       type,
       company_name,
@@ -859,6 +864,9 @@ router.post("/register", registerRateLimiter, async (req: Request, res: Response
         auth_user_id: authData.user.id, // 🔥 Lien vers Supabase Auth
         email,
         // ⚠️ PAS de champ password - l'authentification est gérée par Supabase Auth
+        first_name: first_name || null,
+        last_name: last_name || null,
+        name: `${first_name || ''} ${last_name || ''}`.trim() || username,
         username,
         company_name,
         phone_number,

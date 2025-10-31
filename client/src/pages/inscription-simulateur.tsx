@@ -16,6 +16,8 @@ import { config } from "@/config/env";
 
 // Schéma de validation du formulaire
 const formSchema = z.object({ 
+  first_name: z.string().min(2, "Le prénom doit contenir au moins 2 caractères"),
+  last_name: z.string().min(2, "Le nom doit contenir au moins 2 caractères"),
   username: z.string().min(2, "Le nom d'utilisateur doit contenir au moins 2 caractères"), 
   email: z.string().email("Email invalide"), 
   password: z.string().min(8, "Le mot de passe doit contenir au moins 8 caractères"), 
@@ -58,6 +60,8 @@ const InscriptionSimulateur = () => {
   const form = useForm<FormData>({ 
     resolver: zodResolver(formSchema), 
     defaultValues: {
+      first_name: "",
+      last_name: "",
       username: "", 
       email: "", 
       password: "", 
@@ -332,6 +336,42 @@ const InscriptionSimulateur = () => {
                 <Form {...form}>
                   <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                     <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="first_name"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Prénom</FormLabel>
+                              <FormControl>
+                                <div className="relative">
+                                  <User className="absolute left-3 top-3 text-gray-400 w-5 h-5" />
+                                  <Input {...field} placeholder="Prénom" className="pl-10" />
+                                </div>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="last_name"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Nom</FormLabel>
+                              <FormControl>
+                                <div className="relative">
+                                  <User className="absolute left-3 top-3 text-gray-400 w-5 h-5" />
+                                  <Input {...field} placeholder="Nom" className="pl-10" />
+                                </div>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
                       <FormField
                         control={form.control}
                         name="username"
