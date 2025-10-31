@@ -27,9 +27,9 @@ WHERE email = 'alainbonin@gmail.com';
 -- Produits associés
 SELECT 
     COUNT(*) as nb_produits,
-    COALESCE(SUM(cpe.montantFinal), 0) as total_montant
+    COALESCE(SUM(cpe."montantFinal"), 0) as total_montant
 FROM "ClientProduitEligible" cpe
-WHERE cpe.clientId IN (
+WHERE cpe."clientId" IN (
     SELECT id FROM "Client" WHERE email = 'alainbonin@gmail.com'
 );
 
@@ -51,7 +51,7 @@ SELECT '🗑️ SUPPRESSION DES DONNÉES ASSOCIÉES' as titre;
 
 -- 2.1 Supprimer les produits éligibles
 DELETE FROM "ClientProduitEligible"
-WHERE clientId IN (
+WHERE "clientId" IN (
     SELECT id FROM "Client" WHERE email = 'alainbonin@gmail.com'
 );
 
