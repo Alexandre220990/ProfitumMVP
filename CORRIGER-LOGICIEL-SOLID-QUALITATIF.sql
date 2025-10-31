@@ -67,7 +67,7 @@ SET
         ),
         'formula_display', 'Prix sur demande'
     ),
-    parametres_requis = ARRAY['secteur']
+    parametres_requis = '["secteur"]'::jsonb
 WHERE nom = 'Logiciel Solid';
 
 -- ============================================================================
