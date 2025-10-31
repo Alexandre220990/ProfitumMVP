@@ -81,12 +81,12 @@ SELECT
     formule_calcul->>'type' as type_formule,
     formule_calcul->>'rate' as taux,
     formule_calcul->>'base_var' as variable,
-    jsonb_object_keys(formule_calcul->'mapping_tranches') as tranches_definies,
+    formule_calcul->'mapping_tranches' as tranches_definies,
     CASE 
         WHEN formule_calcul->>'type' = 'percentage'
          AND formule_calcul->>'base_var' = 'ca_tranche'
          AND formule_calcul->'mapping_tranches' IS NOT NULL
-         AND jsonb_object_keys(formule_calcul->'mapping_tranches') IS NOT NULL
+         AND jsonb_typeof(formule_calcul->'mapping_tranches') = 'object'
         THEN '✅ Mapping OK'
         ELSE '❌ Mapping manquant'
     END as statut
