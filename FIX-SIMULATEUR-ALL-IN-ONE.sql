@@ -63,16 +63,16 @@ SET conditions = jsonb_build_object(
 WHERE question_id = 'ENERGIE_001';
 
 -- ============================================================================
--- ÉTAPE 3: AJOUTER RÈGLE D'ÉLIGIBILITÉ POUR LOGICIEL SOLID
+-- ÉTAPE 3: CONFIGURER LOGICIEL SOLID - PRODUIT QUALITATIF TRANSPORT
 -- ============================================================================
 
-SELECT '📋 ÉTAPE 3: Ajout règle éligibilité Logiciel Solid...' as etape;
+SELECT '📋 ÉTAPE 3: Configuration Logiciel Solid (qualitatif Transport)...' as etape;
 
 -- Supprimer l'ancienne règle si elle existe
 DELETE FROM "EligibilityRules"
 WHERE produit_nom = 'Logiciel Solid';
 
--- Logiciel Solid : Éligible si au moins 1 employé
+-- Logiciel Solid : Éligible uniquement pour secteur Transport et Logistique
 INSERT INTO "EligibilityRules" (
     id,
     produit_id,
@@ -90,9 +90,9 @@ SELECT
     'Logiciel Solid',
     'simple',
     jsonb_build_object(
-        'question_id', 'GENERAL_003',
-        'value', 'Aucun',
-        'operator', 'not_equals'
+        'question_id', 'GENERAL_001',
+        'value', 'Transport et Logistique',
+        'operator', 'equals'
     ),
     1,
     true,
@@ -101,21 +101,24 @@ SELECT
 FROM "ProduitEligible" pe
 WHERE pe.nom = 'Logiciel Solid';
 
--- ============================================================================
--- ÉTAPE 4: AJOUTER FORMULE DE CALCUL POUR LOGICIEL SOLID
--- ============================================================================
-
-SELECT '🧮 ÉTAPE 4: Ajout formule calcul Logiciel Solid...' as etape;
-
+-- Transformer en produit qualitatif avec avantages
 UPDATE "ProduitEligible"
 SET 
+    type_produit = 'qualitatif',
+    notes_affichage = 'Prix sur demande - Logiciel utilisé par l''inspection du travail',
     formule_calcul = jsonb_build_object(
-        'type', 'fixed',
-        'value', 1500,
-        'formula_display', '1500€ par an'
+        'type', 'qualitatif',
+        'benefits', jsonb_build_array(
+            '⚖️ Logiciel utilisé et validé par l''inspection du travail',
+            '⏱️ Gain de temps considérable dans la gestion administrative',
+            '✅ Conformité réglementaire garantie',
+            '📊 Suivi en temps réel de vos obligations légales',
+            '🔒 Sécurité juridique renforcée',
+            '📑 Génération automatique des documents obligatoires'
+        ),
+        'formula_display', 'Prix sur demande'
     ),
-    parametres_requis = ARRAY['nb_employes_tranche'],
-    notes_affichage = '1500€ par an pour un abonnement au logiciel de gestion'
+    parametres_requis = ARRAY['secteur']
 WHERE nom = 'Logiciel Solid';
 
 -- ============================================================================
@@ -165,20 +168,36 @@ ORDER BY pe.nom;
 
 SELECT '' as separator, '═══════════════════════════════════════════════════════════════' as titre
 UNION ALL
-SELECT 'VÉRIFICATION 3: LOGICIEL SOLID COMPLET', '';
+SELECT 'VÉRIFICATION 3: LOGICIEL SOLID (QUALITATIF TRANSPORT)', '';
 
 SELECT 
     nom,
+    type_produit,
     formule_calcul->>'formula_display' as formule,
-    parametres_requis,
+    formule_calcul->'benefits' as avantages,
     notes_affichage,
     CASE 
-        WHEN formule_calcul IS NULL THEN '❌ Pas de formule'
-        WHEN parametres_requis IS NULL THEN '⚠️ Pas de paramètres'
-        ELSE '✅ Complet'
+        WHEN type_produit = 'qualitatif' 
+         AND formule_calcul->>'type' = 'qualitatif'
+         AND formule_calcul->'benefits' IS NOT NULL 
+        THEN '✅ Produit qualitatif OK'
+        ELSE '❌ Configuration incorrecte'
     END as statut
 FROM "ProduitEligible"
 WHERE nom = 'Logiciel Solid';
+
+-- Vérifier la règle Transport
+SELECT 
+    er.produit_nom,
+    er.conditions->>'question_id' as question,
+    er.conditions->>'value' as secteur_requis,
+    CASE 
+        WHEN er.conditions->>'value' = 'Transport et Logistique'
+        THEN '✅ Règle Transport OK'
+        ELSE '❌ Règle incorrecte'
+    END as statut_regle
+FROM "EligibilityRules" er
+WHERE er.produit_nom = 'Logiciel Solid';
 
 SELECT '' as separator, '═══════════════════════════════════════════════════════════════' as titre
 UNION ALL

@@ -82,7 +82,7 @@ SELECT 'PARTIE 3: QUELLES QUESTIONS INFLUENCENT QUELS PRODUITS ?', '';
 WITH question_produits AS (
     -- Questions dans les règles simples
     SELECT DISTINCT
-        er.conditions->>'question_id' as question_id,
+        er.conditions->>'question_id' as qid,
         er.produit_nom
     FROM "EligibilityRules" er
     WHERE er.rule_type = 'simple' 
@@ -93,7 +93,7 @@ WITH question_produits AS (
     
     -- Questions dans les règles combinées
     SELECT DISTINCT
-        r->>'question_id' as question_id,
+        r->>'question_id' as qid,
         er.produit_nom
     FROM "EligibilityRules" er,
          jsonb_array_elements(er.conditions->'rules') AS r
@@ -106,7 +106,7 @@ SELECT
     qq.question_text as "Texte",
     STRING_AGG(qp.produit_nom, ', ' ORDER BY qp.produit_nom) as "Produits influencés"
 FROM "QuestionnaireQuestion" qq
-LEFT JOIN question_produits qp ON qq.question_id = qp.question_id
+LEFT JOIN question_produits qp ON qq.question_id = qp.qid
 GROUP BY qq.question_id, qq.question_text, qq.question_order
 ORDER BY qq.question_order;
 
@@ -205,7 +205,7 @@ WITH rule_values AS (
     -- Valeurs dans règles simples
     SELECT DISTINCT
         er.produit_nom,
-        er.conditions->>'question_id' as question_id,
+        er.conditions->>'question_id' as qid,
         er.conditions->>'value' as valeur_attendue,
         er.conditions->>'operator' as operateur
     FROM "EligibilityRules" er
@@ -218,7 +218,7 @@ WITH rule_values AS (
     -- Valeurs dans règles combinées
     SELECT DISTINCT
         er.produit_nom,
-        r->>'question_id' as question_id,
+        r->>'question_id' as qid,
         r->>'value' as valeur_attendue,
         r->>'operator' as operateur
     FROM "EligibilityRules" er,
@@ -229,7 +229,7 @@ WITH rule_values AS (
 )
 SELECT 
     rv.produit_nom as "Produit",
-    rv.question_id as "Question",
+    rv.qid as "Question",
     rv.valeur_attendue as "Valeur attendue",
     rv.operateur as "Opérateur",
     qq.options->'choix' as "Choix disponibles",
@@ -242,9 +242,9 @@ SELECT
         ELSE '⚠️ Cas non géré'
     END as "Statut"
 FROM rule_values rv
-INNER JOIN "QuestionnaireQuestion" qq ON qq.question_id = rv.question_id
+INNER JOIN "QuestionnaireQuestion" qq ON qq.question_id = rv.qid
 WHERE qq.question_type IN ('choix_unique', 'choix_multiple')
-ORDER BY rv.produit_nom, rv.question_id;
+ORDER BY rv.produit_nom, rv.qid;
 
 -- ============================================================================
 -- PARTIE 7: RÉSUMÉ FINAL
