@@ -27,9 +27,9 @@ WHERE email = 'alainbonin@gmail.com';
 -- Produits associés
 SELECT 
     COUNT(*) as nb_produits,
-    COALESCE(SUM(montantFinal), 0) as total_montant
-FROM "ClientProduitEligible"
-WHERE clientId IN (
+    COALESCE(SUM(cpe.montantFinal), 0) as total_montant
+FROM "ClientProduitEligible" cpe
+WHERE cpe.clientId IN (
     SELECT id FROM "Client" WHERE email = 'alainbonin@gmail.com'
 );
 
