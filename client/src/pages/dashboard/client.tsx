@@ -237,7 +237,7 @@ const ProductCard = ({ produit, onClick, onExpertSelection }: ProductCardProps) 
     <Card className={`h-full flex flex-col hover:shadow-xl transition-all duration-300 cursor-pointer group border-2 ${
       isFromApporteur ? 'border-blue-300 bg-gradient-to-br from-blue-50/30 to-indigo-50/30' : 'hover:border-blue-300'
     }`}>
-      <CardContent className="p-6 flex flex-col h-full">
+      <CardContent className="p-4 flex flex-col h-full">
         {/* Badge "Via Apporteur" si applicable */}
         {isFromApporteur && (
           <div className="mb-3 p-2 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-lg border border-blue-200">
@@ -256,21 +256,21 @@ const ProductCard = ({ produit, onClick, onExpertSelection }: ProductCardProps) 
         )}
 
         {/* En-tête avec titre centré et icône */}
-        <div className="text-center mb-4">
-          <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-50 rounded-xl mb-3 text-blue-600">
+        <div className="text-center mb-3">
+          <div className="inline-flex items-center justify-center w-10 h-10 bg-blue-50 rounded-xl mb-2 text-blue-600">
             {getProductIcon(produit.ProduitEligible?.nom)}
           </div>
-          <h3 className="font-bold text-xl text-gray-900 group-hover:text-blue-600 transition-colors mb-2">
+          <h3 className="font-bold text-lg text-gray-900 group-hover:text-blue-600 transition-colors mb-1">
             {produit.ProduitEligible?.nom || 'Produit non défini'}
           </h3>
-          <p className="text-sm text-gray-600 leading-relaxed line-clamp-2 min-h-[2.5rem]">
+          <p className="text-xs text-gray-600 leading-relaxed line-clamp-2 min-h-[2rem]">
             {getProductDescription(produit.ProduitEligible?.nom)}
           </p>
         </div>
 
         {/* Badge de statut */}
-        <div className="flex justify-center mb-4">
-          <Badge className={`${statusConfig.color} flex items-center gap-1 px-3 py-1`}>
+        <div className="flex justify-center mb-3">
+          <Badge className={`${statusConfig.color} flex items-center gap-1 px-2 py-0.5 text-xs`}>
             {statusConfig.icon}
             {produit.statut === 'en_cours' ? 'En cours' : 
              produit.statut === 'en_attente' ? 'En attente' : 
@@ -279,10 +279,10 @@ const ProductCard = ({ produit, onClick, onExpertSelection }: ProductCardProps) 
         </div>
 
         {/* Montant estimé */}
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg mb-4 text-center">
+        <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-3 rounded-lg mb-4 text-center border border-green-100">
           <p className="text-xs text-gray-600 mb-1 font-medium">Montant estimé</p>
-          <p className="font-bold text-2xl text-gray-900">
-            {produit.montantFinal ? produit.montantFinal.toLocaleString('fr-FR') + ' €' : 'Non défini'}
+          <p className="font-bold text-2xl text-green-600">
+            {produit.montantFinal ? produit.montantFinal.toLocaleString('fr-FR') + ' €' : 'Prix sur demande'}
           </p>
         </div>
 
@@ -713,15 +713,29 @@ export default function DashboardClient() {
               </Badge>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {produits.map((produit) => (
-                <ProductCard
-                  key={produit.id}
-                  produit={produit}
-                  onClick={() => handleProductClick(produit)}
-                  onExpertSelection={handleExpertSelection}
-                />
-              ))}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {produits
+                .sort((a, b) => {
+                  // Tri: Produits financiers (avec montant) d'abord, puis qualitatifs (sans montant)
+                  const aHasMontant = (a.montantFinal || 0) > 0;
+                  const bHasMontant = (b.montantFinal || 0) > 0;
+                  
+                  if (aHasMontant === bHasMontant) {
+                    // Si même type, trier par montant décroissant
+                    return (b.montantFinal || 0) - (a.montantFinal || 0);
+                  }
+                  
+                  // Produits avec montant avant ceux sans montant
+                  return bHasMontant ? 1 : -1;
+                })
+                .map((produit) => (
+                  <ProductCard
+                    key={produit.id}
+                    produit={produit}
+                    onClick={() => handleProductClick(produit)}
+                    onExpertSelection={handleExpertSelection}
+                  />
+                ))}
             </div>
           </div>
                 )}
