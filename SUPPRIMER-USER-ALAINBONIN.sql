@@ -20,7 +20,7 @@ SELECT
     company_name,
     auth_user_id,
     created_at,
-    is_temporary
+    type
 FROM "Client"
 WHERE email = 'alainbonin@gmail.com';
 
