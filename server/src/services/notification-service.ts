@@ -754,7 +754,7 @@ export class NotificationService {
         data: {
           notification_id: notification.id,
           notification_type: notification.notification_type,
-          priority: notification.priority || 'normal',
+          priority: notification.priority || 'medium',
           ...notification.action_data
         }
       });

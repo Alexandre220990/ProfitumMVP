@@ -182,44 +182,10 @@ const InscriptionSimulateur = () => {
       const { token, user } = registerResult.data;
       console.log('✅ Compte utilisateur créé:', user.id);
 
-      // 2. Ensuite migrer les données de session
-      console.log('📝 Migration des données de session...');
-      
-
-      try {
-        const migrationResponse = await fetch(`${config.API_URL}/api/session-migration/migrate`, { 
-          method: 'POST', 
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}` // Ajouter le token pour l'authentification
-          },
-          body: JSON.stringify({
-            sessionToken: state.sessionToken,
-            clientData: {
-              email: data.email,
-              username: data.username,
-              password: data.password,
-              company_name: data.company_name,
-              phone_number: data.phone_number,
-              address: data.address,
-              city: data.city,
-              postal_code: data.postal_code,
-              siren: cleanSiren
-            }
-          })
-        });
-
-        const migrationResult = await migrationResponse.json();
-
-        if (migrationResult.success) {
-          console.log('✅ Migration réussie:', migrationResult.data);
-        } else {
-          console.warn('⚠️ Migration échouée, mais compte créé:', migrationResult.error);
-        }
-      } catch (migrationError) {
-        console.warn('⚠️ Erreur lors de la migration, mais compte créé:', migrationError);
-        // Ne pas faire échouer l'inscription à cause de la migration
-      }
+      // 2. Migration automatique des données
+      // ⚠️ La migration est maintenant gérée automatiquement lors de l'inscription
+      // L'ancienne API /session-migration/migrate est obsolète
+      console.log('✅ Données de simulation déjà associées au compte lors de l\'inscription');
 
       setMigrationStep('completed');
 

@@ -196,7 +196,7 @@ export class AssignmentService {
                 title: `Assignation ${status}`,
                 message: `Votre assignation a été ${this.getStatusLabel(status)}.`,
                 notification_type: 'assignment',
-                priority: 'normal',
+                priority: 'medium',
                 action_url: `/assignments/${assignmentId}`,
                 action_data: { assignment_id: assignmentId, status }
             };

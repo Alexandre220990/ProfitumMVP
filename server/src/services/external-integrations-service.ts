@@ -87,7 +87,7 @@ export interface PushNotification {
   data?: any;
   image_url?: string;
   action_url?: string;
-  priority: 'normal' | 'high';
+  priority: 'medium' | 'high';
   ttl?: number;
 }
 
@@ -530,7 +530,7 @@ export class ExternalIntegrationsService {
         },
         data: notification.data,
         android: {
-          priority: notification.priority === 'high' ? 'high' : 'normal',
+          priority: notification.priority === 'high' ? 'high' : 'medium',
           ttl: notification.ttl ? `${notification.ttl}s` : '86400s'
         },
         apns: {

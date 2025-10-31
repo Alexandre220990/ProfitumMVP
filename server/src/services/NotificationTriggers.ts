@@ -28,7 +28,7 @@ interface NotificationData {
   title: string;
   message: string;
   notification_type: string;
-  priority: 'low' | 'normal' | 'high' | 'urgent';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
   event_id?: string;
   event_title?: string;
   metadata?: any;
@@ -38,7 +38,7 @@ interface AdminNotificationData {
   type: string;
   title: string;
   message: string;
-  priority: 'low' | 'normal' | 'high' | 'urgent';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
   metadata?: any;
   action_url?: string;
   action_label?: string;
@@ -138,7 +138,7 @@ export class NotificationTriggers {
     };
 
     const statusLabel = statusLabels[dossier.statut] || dossier.statut;
-    const priority = dossier.statut === 'valide' || dossier.statut === 'termine' ? 'high' : 'normal';
+    const priority = dossier.statut === 'valide' || dossier.statut === 'termine' ? 'high' : 'medium';
 
     return this.createNotification({
       user_id: clientId,
@@ -219,7 +219,7 @@ export class NotificationTriggers {
       title: `💬 Commentaire de ${expert.prenom} ${expert.nom}`,
       message: commentaire.length > 100 ? commentaire.substring(0, 100) + '...' : commentaire,
       notification_type: 'expert_comment',
-      priority: 'normal',
+      priority: 'medium',
       event_id: dossier.id,
       event_title: dossier.nom,
       metadata: {
@@ -277,7 +277,7 @@ export class NotificationTriggers {
       title: `📄 Nouveau document de ${client.prenom} ${client.nom}`,
       message: `Document "${document.nom}" uploadé pour le dossier ${dossier.nom}`,
       notification_type: 'document_uploaded',
-      priority: 'normal',
+      priority: 'medium',
       event_id: dossier.id,
       event_title: dossier.nom,
       metadata: {
@@ -378,7 +378,7 @@ export class NotificationTriggers {
       title: `📩 Demande de ${client.prenom} ${client.nom}`,
       message: `${request.sujet}: ${request.message.substring(0, 80)}...`,
       notification_type: 'client_request',
-      priority: 'normal',
+      priority: 'medium',
       event_id: request.conversation_id,
       metadata: {
         client_id: client.id,
@@ -403,7 +403,7 @@ export class NotificationTriggers {
       type: 'client_registration',
       title: '👤 Nouveau client inscrit',
       message: `${client.prenom} ${client.nom} (${client.email}) ${client.company ? `de ${client.company}` : ''} vient de s'inscrire`,
-      priority: 'normal',
+      priority: 'medium',
       metadata: {
         client_id: client.id,
         email: client.email,
@@ -511,7 +511,7 @@ export class NotificationTriggers {
       type: 'high_activity',
       title: '📈 Activité élevée détectée',
       message: `${activity.count} ${activity.type} en ${activity.periode} (normal: ${activity.seuil_normal})`,
-      priority: 'normal',
+      priority: 'medium',
       metadata: {
         activity_type: activity.type,
         count: activity.count,
@@ -554,7 +554,7 @@ export class NotificationTriggers {
       type: 'document_validation',
       title: '📋 Document à valider',
       message: `${document.type} de ${document.client_nom} pour ${document.dossier_nom} attend validation`,
-      priority: 'normal',
+      priority: 'medium',
       metadata: {
         document_id: document.id,
         client_id: document.client_id,
@@ -606,7 +606,7 @@ export class NotificationTriggers {
       title: '🎯 Expert trouvé',
       message: `${match.expert_nom} (${match.specialite}) a été trouvé pour ${match.prospect_nom}`,
       notification_type: 'expert_matched',
-      priority: 'normal',
+      priority: 'medium',
       event_id: match.prospect_id,
       metadata: {
         prospect_id: match.prospect_id,
@@ -631,7 +631,7 @@ export class NotificationTriggers {
       title: '✨ Prospect qualifié',
       message: `${prospect.nom} a été qualifié avec un score de ${prospect.score}/100 (Potentiel: ${prospect.potentiel})`,
       notification_type: 'prospect_qualified',
-      priority: 'normal',
+      priority: 'medium',
       event_id: prospect.id,
       metadata: {
         prospect_id: prospect.id,
@@ -654,7 +654,7 @@ export class NotificationTriggers {
       title: '✅ RDV terminé',
       message: `Le RDV entre ${meeting.expert_nom} et ${meeting.prospect_nom} est terminé. N'oubliez pas de demander un feedback.`,
       notification_type: 'meeting_completed',
-      priority: 'normal',
+      priority: 'medium',
       event_id: meeting.id,
       metadata: {
         meeting_id: meeting.id,
@@ -703,7 +703,7 @@ export class NotificationTriggers {
       title: '⏳ Commission en traitement',
       message: `Votre commission de ${payment.montant}€ (${payment.deal_nom}) est en cours de traitement. Paiement prévu: ${payment.date_traitement}`,
       notification_type: 'commission_pending',
-      priority: 'normal',
+      priority: 'medium',
       metadata: {
         montant: payment.montant,
         deal_nom: payment.deal_nom,
@@ -725,7 +725,7 @@ export class NotificationTriggers {
         type: 'test',
         title: 'Test Notification Admin',
         message: `Notification de test envoyée le ${new Date().toLocaleString('fr-FR')}`,
-        priority: 'normal'
+        priority: 'medium'
       });
     }
 
@@ -735,7 +735,7 @@ export class NotificationTriggers {
       title: `Test Notification ${userType}`,
       message: `Notification de test envoyée le ${new Date().toLocaleString('fr-FR')}`,
       notification_type: 'test',
-      priority: 'normal'
+      priority: 'medium'
     });
   }
 }
