@@ -169,7 +169,8 @@ const InscriptionSimulateur = () => {
         body: JSON.stringify({ 
           ...data, 
           siren: cleanSiren, 
-          type: "client" 
+          type: "client",
+          session_token: state.sessionToken // 🔥 IMPORTANT : Transférer le session_token pour migrer les produits
         }),
       });
 

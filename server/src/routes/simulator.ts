@@ -319,12 +319,12 @@ router.post('/session', async (req, res) => {
       
       const clientId = authenticatedUser.database_id;
       
-      // 1️⃣ VÉRIFIER S'IL Y A UNE SIMULATION EN COURS (status='pending')
+      // 1️⃣ VÉRIFIER S'IL Y A UNE SIMULATION EN COURS (status='en_cours')
       const { data: pendingSimulations, error: pendingError } = await supabaseClient
         .from('simulations')
         .select('*')
         .eq('client_id', clientId)
-        .eq('status', 'pending')
+        .eq('status', 'en_cours')
         .gt('expires_at', new Date().toISOString()) // Non expirée
         .order('created_at', { ascending: false })
         .limit(1);
@@ -377,7 +377,7 @@ router.post('/session', async (req, res) => {
         .insert({
           session_token: sessionTokenAuth,
           client_id: clientId,
-          status: 'pending',
+          status: 'en_cours',
           answers: {},
           metadata: {
             ip_address: ipAddress,

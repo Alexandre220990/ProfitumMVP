@@ -912,6 +912,71 @@ router.post("/register", registerRateLimiter, async (req: Request, res: Response
         email: insertedClient.email
       });
 
+      // 📦 TRANSFERT DES PRODUITS DE LA SIMULATION ANONYME (si existante)
+      // Si l'utilisateur vient d'une simulation anonyme, transférer ses produits
+      const sessionToken = req.body.session_token || req.body.sessionToken;
+      if (sessionToken) {
+        try {
+          console.log(`🔄 Transfert des produits de la session: ${sessionToken.substring(0, 8)}...`);
+          
+          // 1. Trouver la simulation anonyme
+          const { data: anonymousSimulation, error: simError } = await supabaseAdmin
+            .from('simulations')
+            .select('id, client_id, answers, status')
+            .eq('session_token', sessionToken)
+            .single();
+
+          if (!simError && anonymousSimulation) {
+            const tempClientId = anonymousSimulation.client_id;
+            
+            console.log(`📋 Simulation trouvée - Client temporaire: ${tempClientId}`);
+
+            // 2. Transférer les produits du client temporaire → nouveau client
+            const { data: transferredProducts, error: transferError } = await supabaseAdmin
+              .from('ClientProduitEligible')
+              .update({ clientId: insertedClient.id })
+              .eq('clientId', tempClientId)
+              .select();
+
+            if (transferError) {
+              console.error('⚠️ Erreur transfert produits (non bloquant):', transferError);
+            } else {
+              console.log(`✅ ${transferredProducts?.length || 0} produits transférés vers le nouveau client`);
+            }
+
+            // 3. Lier la simulation au nouveau client
+            const { error: updateSimError } = await supabaseAdmin
+              .from('simulations')
+              .update({ 
+                client_id: insertedClient.id,
+                status: 'terminee'
+              })
+              .eq('id', anonymousSimulation.id);
+
+            if (updateSimError) {
+              console.error('⚠️ Erreur mise à jour simulation (non bloquant):', updateSimError);
+            } else {
+              console.log('✅ Simulation liée au nouveau client');
+            }
+
+            // 4. Marquer le client temporaire comme migré (optionnel - ne pas supprimer pour audit)
+            await supabaseAdmin
+              .from('Client')
+              .update({ 
+                is_temporary: false,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', tempClientId);
+
+          } else {
+            console.log('ℹ️  Aucune simulation anonyme à transférer');
+          }
+        } catch (migrationError) {
+          console.error('⚠️ Erreur lors du transfert des produits (non bloquant):', migrationError);
+          // Ne pas faire échouer l'inscription à cause de la migration
+        }
+      }
+
       // 🔔 NOTIFICATION ADMIN : Nouveau client inscrit
       try {
         const { NotificationTriggers } = await import('../services/NotificationTriggers');
@@ -924,7 +989,7 @@ router.post("/register", registerRateLimiter, async (req: Request, res: Response
         });
         console.log('✅ Notification admin nouveau client envoyée');
       } catch (notifError) {
-        console.error('❌ Erreur notification admin (non bloquant):', notifError);
+        console.error('❌ Erreur création notification admin:', notifError);
       }
 
       // Générer le token JWT avec auth multi-profils
