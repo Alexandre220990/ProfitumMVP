@@ -13,11 +13,11 @@ import { checkRecentSimulation } from "@/api/simulations";
 
 // Types
 interface Question { 
-  id: number;
-  texte: string;
-  type: 'choix_unique' | 'choix_multiple' | 'nombre' | 'texte';
-  ordre: number;
-  categorie: string;
+  id: string;
+  question_text: string;
+  question_type: 'choix_unique' | 'choix_multiple' | 'nombre' | 'texte';
+  question_order: number;
+  section: string;
   options: {
     choix?: string[];
     min?: number;
@@ -25,7 +25,10 @@ interface Question {
     unite?: string; 
   };
   description?: string;
-  importance: number
+  validation_rules?: Record<string, any>;
+  conditions?: Record<string, any>;
+  importance?: number;
+  produits_cibles?: string[];
 }
 
 interface Simulation { 
@@ -68,7 +71,7 @@ export const UnifiedSimulator: React.FC = () => {
   const [simulationId, setSimulationId] = useState<string | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentStep, setCurrentStep] = useState(0);
-  const [answers, setAnswers] = useState<Record<number, string[]>>({});
+  const [answers, setAnswers] = useState<Record<string, string[]>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showResults, setShowResults] = useState(false);
@@ -131,16 +134,16 @@ export const UnifiedSimulator: React.FC = () => {
 
         const validQuestions = data.filter(q => 
           q && 
-          typeof q.id === 'number' && 
-          typeof q.texte === 'string' && 
-          typeof q.type === 'string'
+          typeof q.id === 'string' && 
+          typeof q.question_text === 'string' && 
+          typeof q.question_type === 'string'
         );
 
         if (validQuestions.length === 0) { 
           throw new Error("Format des questions invalide"); 
         }
 
-        const sortedQuestions = [...validQuestions].sort((a, b) => a.ordre - b.ordre);
+        const sortedQuestions = [...validQuestions].sort((a, b) => a.question_order - b.question_order);
         setQuestions(sortedQuestions);
       } catch (error) { 
         console.error("Erreur chargement questions: ", error);
@@ -165,7 +168,7 @@ export const UnifiedSimulator: React.FC = () => {
     if (!questions[currentStep]) return;
 
     const question = questions[currentStep];
-    const isMultiple = question.type === "choix_multiple";
+    const isMultiple = question.question_type === "choix_multiple";
 
     const updatedAnswers = isMultiple
       ? (answers[question.id] || []).includes(value)
@@ -173,7 +176,7 @@ export const UnifiedSimulator: React.FC = () => {
         : [...(answers[question.id] || []), value]
       : [value];
 
-    setAnswers((prev: Record<number, string[]>) => ({
+    setAnswers((prev: Record<string, string[]>) => ({
       ...prev, 
       [question.id]: updatedAnswers 
     }));
@@ -446,7 +449,7 @@ export const UnifiedSimulator: React.FC = () => {
             {currentQuestion && (
               <>
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                  {currentQuestion.texte}
+                  {currentQuestion.question_text}
                 </h2>
                 
                 {currentQuestion.description && (
@@ -454,7 +457,7 @@ export const UnifiedSimulator: React.FC = () => {
                 )}
 
                 {/* Réponses selon le type */}
-                {currentQuestion.type === 'choix_unique' && currentQuestion.options.choix && (
+                {currentQuestion.question_type === 'choix_unique' && currentQuestion.options.choix && (
                   <div className="space-y-3">
                     {currentQuestion.options.choix.map((choice: string) => (
                       <Button
@@ -469,7 +472,7 @@ export const UnifiedSimulator: React.FC = () => {
                   </div>
                 )}
 
-                {currentQuestion.type === 'choix_multiple' && currentQuestion.options.choix && (
+                {currentQuestion.question_type === 'choix_multiple' && currentQuestion.options.choix && (
                   <div className="space-y-3">
                     {currentQuestion.options.choix.map((choice: string) => (
                       <Button
@@ -484,7 +487,7 @@ export const UnifiedSimulator: React.FC = () => {
                   </div>
                 )}
 
-                {currentQuestion.type === 'nombre' && (
+                {currentQuestion.question_type === 'nombre' && (
                   <div className="space-y-4">
                     <Input
                       type="number"
@@ -505,7 +508,7 @@ export const UnifiedSimulator: React.FC = () => {
                   </div>
                 )}
 
-                {currentQuestion.type === 'texte' && (
+                {currentQuestion.question_type === 'texte' && (
                   <div className="space-y-4">
                     <Input
                       type="text"

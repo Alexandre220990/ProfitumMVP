@@ -18,10 +18,10 @@ import { toast } from 'sonner';
 
 interface Question {
   id: string; // UUID de QuestionnaireQuestion
-  texte: string;
-  type: 'choix_unique' | 'choix_multiple' | 'nombre' | 'texte';
-  ordre: number;
-  categorie: string;
+  question_text: string;
+  question_type: 'choix_unique' | 'choix_multiple' | 'nombre' | 'texte';
+  question_order: number;
+  section: string;
   options: {
     choix?: string[];
     min?: number;
@@ -29,6 +29,10 @@ interface Question {
     unite?: string;
   };
   description?: string;
+  validation_rules?: Record<string, any>;
+  conditions?: Record<string, any>;
+  importance?: number;
+  produits_cibles?: string[];
 }
 
 interface EmbeddedSimulatorProps {
@@ -99,7 +103,7 @@ export function EmbeddedSimulator({
       }
       
       console.log(`✅ ${questionsData.length} questions chargées depuis /api/simulator/questions`);
-      setQuestions(questionsData.sort((a: Question, b: Question) => a.ordre - b.ordre));
+      setQuestions(questionsData.sort((a: Question, b: Question) => a.question_order - b.question_order));
       
     } catch (error) {
       console.error('❌ Erreur chargement questions:', error);
@@ -115,8 +119,8 @@ export function EmbeddedSimulator({
   const handleAnswer = (value: string) => {
     if (!currentQuestion) return;
     
-    const isMultiple = currentQuestion.type === 'choix_multiple';
-    const isChoixUnique = currentQuestion.type === 'choix_unique';
+    const isMultiple = currentQuestion.question_type === 'choix_multiple';
+    const isChoixUnique = currentQuestion.question_type === 'choix_unique';
     
     if (isMultiple) {
       // Choix multiple : juste enregistrer (pas d'avancement auto)
@@ -373,9 +377,9 @@ export function EmbeddedSimulator({
             <h4 className="text-lg font-bold text-gray-900">
               Question {currentStep + 1}/{questions.length}
             </h4>
-            {currentQuestion.categorie && (
+            {currentQuestion.section && (
               <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
-                {currentQuestion.categorie}
+                {currentQuestion.section}
               </span>
             )}
           </div>
@@ -392,7 +396,7 @@ export function EmbeddedSimulator({
           <div className="text-2xl">💼</div>
           <div className="flex-1">
             <h5 className="text-lg font-bold text-gray-900 mb-2">
-              {currentQuestion.texte}
+              {currentQuestion.question_text}
             </h5>
             {currentQuestion.description && (
               <div className="flex items-start gap-2 text-sm text-gray-600 bg-blue-50 p-3 rounded-lg">
@@ -406,13 +410,13 @@ export function EmbeddedSimulator({
         {/* Réponses */}
         <div className="space-y-3">
           {/* Indicateur pour choix unique */}
-          {currentQuestion.type === 'choix_unique' && (
+          {currentQuestion.question_type === 'choix_unique' && (
             <p className="text-xs text-blue-600 font-medium mb-2">
               ⚡ Cliquez sur votre choix pour avancer automatiquement
             </p>
           )}
           
-          {currentQuestion.type === 'choix_unique' || currentQuestion.type === 'choix_multiple' ? (
+          {currentQuestion.question_type === 'choix_unique' || currentQuestion.question_type === 'choix_multiple' ? (
             currentQuestion.options.choix?.map((choix, index) => {
               const isSelected = Array.isArray(answers[currentQuestion.id])
                 ? (answers[currentQuestion.id] as string[]).includes(choix)
@@ -443,7 +447,7 @@ export function EmbeddedSimulator({
                 </button>
               );
             })
-          ) : currentQuestion.type === 'nombre' ? (
+          ) : currentQuestion.question_type === 'nombre' ? (
             <div className="space-y-2">
               <Input
                 type="number"

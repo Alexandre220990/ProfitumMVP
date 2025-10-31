@@ -86,12 +86,16 @@ async function getQuestionsWithCache() {
   // Mapper les colonnes de la BDD vers les noms attendus par le frontend
   const mappedQuestions = data?.map(q => ({
     id: q.id,
-    texte: q.question_text,
-    type: q.question_type,
-    ordre: q.question_order,
-    categorie: q.section || 'Général',
+    question_text: q.question_text,
+    question_type: q.question_type,
+    question_order: q.question_order,
+    section: q.section || 'Général',
     options: q.options || {},
-    description: null // Pas de colonne description dans QuestionnaireQuestion
+    description: q.description || null,
+    validation_rules: q.validation_rules || {},
+    importance: q.importance || 1,
+    conditions: q.conditions || {},
+    produits_cibles: q.produits_cibles || []
   })) || [];
   
   // Mettre à jour le cache

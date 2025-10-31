@@ -116,9 +116,9 @@ export const useSimulation = () => {
         // Vérifier que chaque question a les propriétés requises
         const validQuestions = data.filter(q => 
           q && 
-          typeof q.id === 'number' && 
-          typeof q.texte === 'string' && 
-          typeof q.type === 'string' &&
+          typeof q.id === 'string' && 
+          typeof q.question_text === 'string' && 
+          typeof q.question_type === 'string' &&
           q.options?.choix && Array.isArray(q.options.choix)
         );
 
@@ -126,7 +126,7 @@ export const useSimulation = () => {
           throw new Error("Format des questions invalide");
         }
 
-        const sortedQuestions = [...validQuestions].sort((a: Question, b: Question) => a.ordre - b.ordre);
+        const sortedQuestions = [...validQuestions].sort((a: Question, b: Question) => a.question_order - b.question_order);
         setQuestions(sortedQuestions);
       } catch (error) {
         console.error("Erreur chargement questions: ", error);
@@ -172,7 +172,7 @@ export const useSimulation = () => {
     
     // Gestion des réponses multiples
     let newAnswers: string[];
-    if (question.type === "choix_multiple") {
+    if (question.question_type === "choix_multiple") {
       if (currentAnswers.includes(value)) {
         newAnswers = currentAnswers.filter(answer => answer !== value);
       } else {
