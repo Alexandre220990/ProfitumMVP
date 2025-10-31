@@ -148,7 +148,7 @@ SELECT
 FROM "ClientProduitEligible" cpe
 WHERE EXISTS (
     SELECT 1 FROM "Client" c 
-    WHERE c.id = cpe.clientId 
+    WHERE c.id = cpe."clientId"
     AND c.email = 'alainbonin@gmail.com'
 );
 
