@@ -86,6 +86,9 @@ const InscriptionSimulateur = () => {
       setTotalSavings(state.eligibilityResults.reduce((sum: number, r: any) => sum + r.estimated_savings, 0));
       setHighEligibilityCount(state.eligibilityResults.filter((r: any) => r.eligibility_score >= 70).length);
       
+      // ✅ Pas besoin de vérifier la migration - on a déjà toutes les données
+      setMigrationStep('completed');
+      
       // Pré-remplir le formulaire avec les données extraites si disponibles
       if (state.extractedData) {
         form.reset({
@@ -106,18 +109,22 @@ const InscriptionSimulateur = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state]);
 
-  // Vérifier si la session peut être migrée
+  // ⚠️ DÉSACTIVÉ: Vérification de migration inutile quand on a déjà les résultats
+  // La vérification de migration était conçue pour récupérer les résultats depuis l'API,
+  // mais quand on vient du simulateur, on a déjà tout dans location.state
+  /*
   useEffect(() => { 
     const checkMigrationEligibility = async () => {
       const state = location.state as any;
       if (!state?.sessionToken) return;
+      // Si on a déjà les résultats, pas besoin de vérifier la migration
+      if (state?.eligibilityResults) return;
 
       try {
         const response = await fetch(`${config.API_URL}/api/simulator/results/${state.sessionToken}`);
         const data = await response.json();
 
         if (data.success && data.can_migrate) { 
-          // Récupérer les données de session
           const sessionResponse = await fetch(`${config.API_URL}/api/simulator/results/${state.sessionToken}`);
           const sessionData = await sessionResponse.json();
 
@@ -135,8 +142,8 @@ const InscriptionSimulateur = () => {
     };
 
     checkMigrationEligibility();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state]);
+  */
 
   const onSubmit = async (data: FormData) => { 
     setIsLoading(true);
