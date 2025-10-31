@@ -6,7 +6,7 @@
 -- 1. TICPE_002 (litres carburant) - Afficher SI véhicules professionnels
 UPDATE "QuestionnaireQuestion"
 SET conditions = jsonb_build_object(
-    'depends_on', (SELECT id FROM "QuestionnaireQuestion" WHERE question_id = 'TICPE_001'),
+    'depends_on', (SELECT id::text FROM "QuestionnaireQuestion" WHERE question_id = 'TICPE_001'),
     'value', 'Oui',
     'operator', 'equals'
 )
@@ -15,7 +15,7 @@ WHERE question_id = 'TICPE_002';
 -- 2. DFS_001 (nb chauffeurs) - Afficher SI secteur Transport
 UPDATE "QuestionnaireQuestion"
 SET conditions = jsonb_build_object(
-    'depends_on', (SELECT id FROM "QuestionnaireQuestion" WHERE question_id = 'GENERAL_001'),
+    'depends_on', (SELECT id::text FROM "QuestionnaireQuestion" WHERE question_id = 'GENERAL_001'),
     'value', 'Transport et Logistique',
     'operator', 'equals'
 )
@@ -24,7 +24,7 @@ WHERE question_id = 'DFS_001';
 -- 3. FONCIER_001 (taxe foncière) - Afficher SI propriétaire locaux
 UPDATE "QuestionnaireQuestion"
 SET conditions = jsonb_build_object(
-    'depends_on', (SELECT id FROM "QuestionnaireQuestion" WHERE question_id = 'GENERAL_004'),
+    'depends_on', (SELECT id::text FROM "QuestionnaireQuestion" WHERE question_id = 'GENERAL_004'),
     'value', 'Oui',
     'operator', 'equals'
 )
@@ -33,7 +33,7 @@ WHERE question_id = 'FONCIER_001';
 -- 4. ENERGIE_001 (factures énergie) - Afficher SI contrats énergie
 UPDATE "QuestionnaireQuestion"
 SET conditions = jsonb_build_object(
-    'depends_on', (SELECT id FROM "QuestionnaireQuestion" WHERE question_id = 'GENERAL_005'),
+    'depends_on', (SELECT id::text FROM "QuestionnaireQuestion" WHERE question_id = 'GENERAL_005'),
     'value', 'Oui',
     'operator', 'equals'
 )
