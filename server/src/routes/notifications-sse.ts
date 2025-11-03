@@ -25,27 +25,30 @@ router.get('/stream', async (req: Request, res: Response) => {
       return;
     }
 
-    // Vérifier le token JWT
-    const jwt = require('jsonwebtoken');
-    let decoded: any;
+    // Vérifier le token avec Supabase SDK (compatible avec tokens Supabase)
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabaseClient = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
     
-    try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET!);
-    } catch (jwtError) {
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
+
+    if (authError || !user) {
       res.status(401).json({
         success: false,
-        message: 'Token invalide'
+        message: 'Token invalide ou expiré'
       });
       return;
     }
 
-    const userId = decoded.sub || decoded.id;
-    const userType = decoded.type;
+    const userId = user.id;
+    const userType = user.user_metadata?.type || 'client';
 
     if (!userId) {
       res.status(401).json({
         success: false,
-        message: 'User ID manquant dans le token'
+        message: 'User ID manquant'
       });
       return;
     }

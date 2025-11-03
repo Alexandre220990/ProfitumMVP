@@ -255,7 +255,7 @@ const AdminDashboardOptimized: React.FC = () => {
   // ========================================
 
   // 📡 Connexion SSE pour notifications temps réel
-  const { connected: sseConnected, unreadCount: sseUnreadCount } = useNotificationSSE({
+  useNotificationSSE({
     onNotification: (notification) => {
       console.log('🔔 Nouvelle notification reçue via SSE:', notification);
       // La notification toast est déjà gérée par le hook
