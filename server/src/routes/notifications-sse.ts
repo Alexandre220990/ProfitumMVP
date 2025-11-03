@@ -14,10 +14,13 @@ const router = express.Router();
  */
 router.get('/stream', async (req: Request, res: Response) => {
   try {
+    console.log('📡 SSE: Nouvelle tentative de connexion');
+    
     // Récupérer le token depuis query param (EventSource ne peut pas passer de headers)
     const token = req.query.token as string;
 
     if (!token) {
+      console.log('❌ SSE: Token manquant');
       res.status(401).json({
         success: false,
         message: 'Token manquant'
@@ -25,18 +28,36 @@ router.get('/stream', async (req: Request, res: Response) => {
       return;
     }
 
-    // Vérifier le token JWT avec Supabase - utiliser service_role pour validation
+    console.log('🔍 SSE: Token reçu, longueur:', token.length);
+
+    // Vérifier le token JWT avec Supabase
     const { createClient } = await import('@supabase/supabase-js');
-    const supabaseAdmin = createClient(
+    
+    // Créer un client avec le token de l'utilisateur pour validation
+    const supabaseWithToken = createClient(
       process.env.SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
+      process.env.SUPABASE_KEY!, // Clé publique
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      }
     );
     
-    // Valider le token JWT en utilisant la méthode getUser avec le token
-    const { data, error: authError } = await supabaseAdmin.auth.getUser(token);
+    console.log('🔍 SSE: Client Supabase créé, tentative getUser()');
+    
+    // Valider le token en récupérant l'utilisateur
+    const { data, error: authError } = await supabaseWithToken.auth.getUser();
 
     if (authError || !data?.user) {
-      console.error('❌ Erreur auth SSE:', authError?.message);
+      console.error('❌ SSE Auth Error:', {
+        message: authError?.message,
+        status: authError?.status,
+        hasData: !!data,
+        hasUser: !!data?.user
+      });
       res.status(401).json({
         success: false,
         message: 'Token invalide ou expiré'
@@ -45,6 +66,7 @@ router.get('/stream', async (req: Request, res: Response) => {
     }
 
     const user = data.user;
+    console.log('✅ SSE: Utilisateur validé:', user.id);
 
     const userId = user.id;
     const userType = user.user_metadata?.type || 'client';
