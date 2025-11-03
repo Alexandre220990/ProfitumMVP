@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import DossierTimeline from '@/components/dossier/DossierTimeline';
 import InfosClientEnrichies from '@/components/dossier/InfosClientEnrichies';
+import ExpertDocumentRequestForm from '@/components/expert/ExpertDocumentRequestForm';
 import {
   Loader2,
   ArrowLeft,
@@ -23,7 +24,8 @@ import {
   Clock,
   MessageSquare,
   Save,
-  Send
+  Send,
+  FileSearch
 } from 'lucide-react';
 
 // ============================================================================
@@ -105,6 +107,7 @@ export default function ExpertDossierSynthese() {
   const [expertNotes, setExpertNotes] = useState('');
   const [recommendation, setRecommendation] = useState<'favorable' | 'defavorable' | null>(null);
   const [saving, setSaving] = useState(false);
+  const [showDocRequestForm, setShowDocRequestForm] = useState(false);
 
   // Charger les données du CPE
   useEffect(() => {
@@ -422,6 +425,58 @@ export default function ExpertDossierSynthese() {
             <DossierTimeline 
               dossierId={id} 
               userType={user.type as 'expert' | 'admin' | 'apporteur'} 
+            />
+          </div>
+        )}
+
+        {/* Bouton Demander documents complémentaires (si dossier accepté) */}
+        {id && cpe.statut === 'en_cours' && !showDocRequestForm && (
+          <div className="mb-8">
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-1">
+                      Documents complémentaires
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      Demandez au client les documents nécessaires pour l'audit
+                    </p>
+                  </div>
+                  <Button
+                    onClick={() => setShowDocRequestForm(true)}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    <FileSearch className="h-4 w-4 mr-2" />
+                    Demander des documents
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Formulaire demande documents complémentaires */}
+        {id && showDocRequestForm && (
+          <div className="mb-8">
+            <ExpertDocumentRequestForm
+              dossierId={id}
+              onSuccess={() => {
+                setShowDocRequestForm(false);
+                // Recharger le dossier
+                const loadCPE = async () => {
+                  try {
+                    const response = await get<ClientProduitEligible>(`/api/expert/dossier/${id}`);
+                    if (response.success && response.data) {
+                      setCPE(response.data);
+                    }
+                  } catch (error) {
+                    console.error('Erreur rechargement:', error);
+                  }
+                };
+                loadCPE();
+              }}
+              onCancel={() => setShowDocRequestForm(false)}
             />
           </div>
         )}

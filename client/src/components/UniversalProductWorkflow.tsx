@@ -14,9 +14,10 @@ import {
 import ProductUploadInline from './ProductUploadInline';
 import ExpertSelectionModal from './ExpertSelectionModal';
 import EligibilityValidationStatus from './EligibilityValidationStatus';
+import ClientDocumentUploadComplementary from './client/ClientDocumentUploadComplementary';
 import { useDossierSteps } from '@/hooks/use-dossier-steps';
 import { get } from '@/lib/api';
-import { getProductConfig } from '@/config/productWorkflowConfigs';
+import { getProductConfig} from '@/config/productWorkflowConfigs';
 
 interface UniversalProductWorkflowProps {
   clientProduitId: string;
@@ -332,6 +333,47 @@ export default function UniversalProductWorkflow({
         );
 
       default:
+        // Étape 3 : Documents complémentaires (si demandés par expert)
+        if (currentStep === 3 && clientProduit?.statut === 'documents_complementaires_requis') {
+          const requiredDocs = clientProduit?.metadata?.required_documents_expert || [];
+          const expertMessage = clientProduit?.metadata?.expert_request?.message || '';
+          
+          return (
+            <div className="space-y-4">
+              <div className="text-center mb-6">
+                <h3 className="text-xl font-semibold text-gray-800 mb-2">
+                  📋 Documents complémentaires requis
+                </h3>
+                <p className="text-gray-600">
+                  Votre expert a besoin de documents supplémentaires pour finaliser l'analyse
+                </p>
+              </div>
+
+              <ClientDocumentUploadComplementary
+                dossierId={clientProduitId}
+                requiredDocuments={requiredDocs}
+                expertMessage={expertMessage}
+                onComplete={() => {
+                  // Recharger le clientProduit après validation
+                  const loadClientProduit = async () => {
+                    try {
+                      const response = await get(`/api/client/produits-eligibles/${clientProduitId}`);
+                      if (response.success && response.data) {
+                        setClientProduit(response.data as ClientProduit);
+                      }
+                    } catch (error) {
+                      console.error('❌ Erreur rechargement:', error);
+                    }
+                  };
+                  loadClientProduit();
+                  toast.success('Documents validés ! Votre expert va maintenant procéder à l\'audit.');
+                }}
+              />
+            </div>
+          );
+        }
+
+        // Par défaut : étape gérée par l'expert
         return (
           <div className="text-center py-12">
             <h3 className="text-xl font-semibold text-gray-800 mb-2">
