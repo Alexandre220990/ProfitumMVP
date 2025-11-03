@@ -3478,6 +3478,7 @@ router.get('/dossiers/all', async (req, res) => {
         montantFinal,
         tauxFinal,
         expert_id,
+        eligibility_validated_at,
         pre_eligibility_validated_at,
         expert_report_status,
         validation_admin_notes,
