@@ -138,7 +138,7 @@ const DossierSynthese: React.FC = () => {
       }
 
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/dossiers/${dossier.id}/validate-eligibility`, {
-        method: 'PUT',
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`
