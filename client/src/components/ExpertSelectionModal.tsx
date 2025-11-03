@@ -189,7 +189,7 @@ export default function ExpertSelectionModal({
       if (filters.rating && filters.rating !== 'all') params.append('rating', filters.rating);
       if (filters.availability && filters.availability !== 'all') params.append('availability', filters.availability);
       
-      const response = await fetch(`${config.API_URL}/api/experts?${params.toString()}`, {
+      const response = await fetch(`${config.API_URL}/api/client/experts?${params.toString()}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }

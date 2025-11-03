@@ -1029,6 +1029,80 @@ router.get('/:clientId/assignments', async (req: Request, res: Response) => {
 // ============================================================================
 
 /**
+ * GET /api/client/experts
+ * Récupérer tous les experts actifs et approuvés (pour sélection générale)
+ */
+router.get('/experts', async (req: Request, res: Response) => {
+  try {
+    const user = (req as AuthenticatedRequest).user;
+    
+    if (!user || user.type !== 'client') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux clients'
+      });
+    }
+    
+    console.log('🔍 Récupération de tous les experts pour client:', user.email);
+    
+    // Récupérer tous les experts actifs et approuvés
+    const { data: experts, error } = await supabase
+      .from('Expert')
+      .select(`
+        id,
+        name,
+        first_name,
+        last_name,
+        email,
+        company_name,
+        specializations,
+        secteur_activite,
+        experience,
+        location,
+        rating,
+        compensation,
+        description,
+        certifications,
+        completed_projects,
+        disponibilites
+      `)
+      .eq('status', 'active')
+      .eq('approval_status', 'approved')
+      .order('rating', { ascending: false });
+
+    if (error) {
+      console.error('❌ Erreur récupération experts:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la récupération des experts'
+      });
+    }
+
+    // Transformer les données pour le frontend
+    const transformedExperts = (experts || []).map(expert => ({
+      ...expert,
+      name: expert.first_name && expert.last_name
+        ? `${expert.first_name} ${expert.last_name}`.trim()
+        : expert.name || expert.company_name || 'Expert'
+    }));
+
+    console.log(`✅ ${transformedExperts.length} expert(s) actif(s) trouvé(s)`);
+
+    return res.json({
+      success: true,
+      data: transformedExperts
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route client/experts:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+/**
  * GET /api/client/products/:cpeId/available-experts
  * Récupérer les experts disponibles pour un ClientProduitEligible
  */
