@@ -604,18 +604,31 @@ const DossierSynthese: React.FC = () => {
                   <CardContent>
                     {dossier.documents_sent && dossier.documents_sent.length > 0 ? (
                       <div className="space-y-2">
-                        {dossier.documents_sent.map((doc: string, idx: number) => (
-                          <div key={idx} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50">
+                        {dossier.documents_sent.map((doc: any, idx: number) => {
+                          const storageUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/${doc.bucket_name}/${doc.url}`;
+                          const isImage = doc.mime_type?.startsWith('image/');
+                          const isPdf = doc.mime_type === 'application/pdf';
+                          
+                          return (
+                          <div key={doc.id || idx} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50">
                             <div className="flex items-center gap-2">
                               <FileText className="w-4 h-4 text-blue-600" />
-                              <span className="text-sm font-medium">Document {idx + 1}</span>
+                              <div className="flex flex-col">
+                                <span className="text-sm font-medium">{doc.filename || `Document ${idx + 1}`}</span>
+                                <span className="text-xs text-gray-500">{doc.document_type} • {(doc.file_size / 1024 / 1024).toFixed(2)} MB</span>
+                              </div>
                             </div>
-                            <Button size="sm" variant="outline">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => window.open(storageUrl, '_blank')}
+                            >
                               <Eye className="w-3 h-3 mr-1" />
                               Voir
                             </Button>
                           </div>
-                        ))}
+                        );
+                        })}
                       </div>
                     ) : (
                       <p className="text-center text-gray-500 py-8">Aucun document uploadé</p>
