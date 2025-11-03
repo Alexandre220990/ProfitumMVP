@@ -4302,7 +4302,7 @@ router.get('/dossiers/:id', asyncHandler(async (req, res) => {
           first_name,
           last_name,
           email,
-          phone
+          phone_number
         ),
         ProduitEligible!inner (
           id,
