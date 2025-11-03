@@ -143,14 +143,20 @@ const DossierSynthese: React.FC = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`
         },
-        credentials: 'include'
+        credentials: 'include',
+        body: JSON.stringify({
+          action: 'approve',
+          notes: ''
+        })
       });
 
       if (response.ok) {
         toast.success('✅ Éligibilité validée avec succès !');
         loadDossierData();
       } else {
-        toast.error('Erreur lors de la validation');
+        const errorData = await response.json();
+        toast.error(errorData.message || 'Erreur lors de la validation');
+        console.error('Erreur validation:', errorData);
       }
     } catch (error) {
       console.error('Erreur validation:', error);
@@ -174,22 +180,28 @@ const DossierSynthese: React.FC = () => {
         return;
       }
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/dossiers/${dossier.id}/reject-eligibility`, {
-        method: 'PUT',
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/dossiers/${dossier.id}/validate-eligibility`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`
         },
         credentials: 'include',
-        body: JSON.stringify({ reason: rejectionReason })
+        body: JSON.stringify({
+          action: 'reject',
+          notes: rejectionReason
+        })
       });
 
       if (response.ok) {
         toast.success('❌ Éligibilité rejetée');
         setShowRejectDialog(false);
+        setRejectionReason('');
         loadDossierData();
       } else {
-        toast.error('Erreur lors du rejet');
+        const errorData = await response.json();
+        toast.error(errorData.message || 'Erreur lors du rejet');
+        console.error('Erreur rejet:', errorData);
       }
     } catch (error) {
       console.error('Erreur rejet:', error);
