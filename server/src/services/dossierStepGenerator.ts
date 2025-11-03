@@ -5,7 +5,7 @@ interface ProduitEligible {
   id: string;
   nom: string;
   description: string;
-  category: string;
+  categorie: string;
 }
 
 interface Client {
@@ -85,7 +85,7 @@ export class DossierStepGenerator {
       // 3. Récupérer les détails du produit
       const { data: produitEligible, error: produitError } = await supabase
         .from('ProduitEligible')
-        .select('id, nom, description, category')
+        .select('id, nom, description, categorie')
         .eq('id', clientProduit.produitId)
         .single();
 
