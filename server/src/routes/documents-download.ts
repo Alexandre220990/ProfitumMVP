@@ -34,15 +34,7 @@ router.get('/download/:documentId', enhancedAuthMiddleware, async (req: Request,
     // 1. Récupérer les infos du document
     const { data: document, error: docError } = await supabase
       .from('ClientProcessDocument')
-      .select(`
-        *,
-        ClientProduitEligible!inner(
-          id,
-          clientId,
-          expert_id,
-          statut
-        )
-      `)
+      .select('*')
       .eq('id', documentId)
       .single();
 
@@ -54,7 +46,23 @@ router.get('/download/:documentId', enhancedAuthMiddleware, async (req: Request,
       });
     }
 
-    // 2. Vérifier les permissions
+    // 2. Récupérer le dossier associé (via client_id + produit_id)
+    let dossier = null;
+    if (document.client_id && document.produit_id) {
+      const { data: dossierData } = await supabase
+        .from('ClientProduitEligible')
+        .select('id, clientId, expert_id, statut')
+        .eq('clientId', document.client_id)
+        .eq('produitId', document.produit_id)
+        .single();
+      
+      dossier = dossierData;
+    }
+
+    // Ajouter le dossier au document pour vérification permissions
+    document.ClientProduitEligible = dossier;
+
+    // 3. Vérifier les permissions
     const hasPermission = checkDocumentPermission(user, document);
 
     if (!hasPermission) {
