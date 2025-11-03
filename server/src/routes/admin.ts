@@ -4310,7 +4310,7 @@ router.get('/dossiers/:id', asyncHandler(async (req, res) => {
           description,
           categorie
         ),
-        Expert (
+        Expert!fk_clientproduiteligible_expert (
           id,
           first_name,
           last_name,
