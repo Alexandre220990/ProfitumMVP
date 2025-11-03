@@ -3948,6 +3948,38 @@ router.post('/dossiers/:id/validate-eligibility', asyncHandler(async (req, res) 
 
     console.log(`✅ Éligibilité ${action === 'approve' ? 'validée' : 'rejetée'} pour le dossier ${id}`);
 
+    // 📅 TIMELINE : Ajouter événement validation/refus éligibilité
+    try {
+      const { DossierTimelineService } = await import('../services/dossier-timeline-service');
+      
+      // Récupérer le nom de l'admin
+      const { data: adminData } = await supabaseClient
+        .from('Admin')
+        .select('name')
+        .eq('id', admin.database_id)
+        .single();
+
+      const adminName = adminData?.name || admin.email || 'Admin';
+      
+      if (action === 'approve') {
+        await DossierTimelineService.eligibiliteValidee({
+          dossier_id: id,
+          admin_name: adminName,
+          notes: notes
+        });
+      } else {
+        await DossierTimelineService.eligibiliteRefusee({
+          dossier_id: id,
+          admin_name: adminName,
+          reason: notes || 'Documents non conformes'
+        });
+      }
+
+      console.log('✅ Événement timeline ajouté (validation éligibilité)');
+    } catch (timelineError) {
+      console.error('⚠️ Erreur timeline (non bloquant):', timelineError);
+    }
+
     // ✅ ENVOYER NOTIFICATION AU CLIENT
     try {
       const { ClientNotificationService } = await import('../services/client-notification-service');

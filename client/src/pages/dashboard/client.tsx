@@ -86,12 +86,28 @@ const ProgressBar = ({ progress, status, expert_id, current_step }: ProgressBarP
 
   // Texte contextuel selon la progression et le statut
   const getProgressText = () => {
+    // Étape 6 : Remboursement obtenu (100%)
     if (progress === 100 || status === 'termine') return 'Remboursement obtenu';
-    if (progress >= 75 || current_step >= 4) return 'Validation finale en cours';
-    if (progress >= 50 || current_step >= 3) return 'Audit technique en cours';
-    if (progress >= 25 || current_step >= 2) return 'Documents collectés';
-    if (expert_id) return 'Expert sélectionné';
-    return 'En attente d\'expert';
+    
+    // Étape 5 : Validation finale
+    if (current_step >= 5) return 'Validation finale en cours';
+    
+    // Étape 4 : Audit technique (verrouillé)
+    if (current_step >= 4) return 'Audit technique en cours';
+    
+    // Étape 3 : Collecte documents complémentaires
+    if (current_step >= 3) return 'Collecte des documents complémentaires';
+    
+    // Étape 2 : Expert sélectionné
+    if (current_step >= 2 && expert_id) return 'Expert sélectionné';
+    
+    // Étape 1 : En attente de validation d'éligibilité par l'admin
+    if (current_step === 1 || status === 'documents_uploaded') {
+      return 'En attente de validation d\'éligibilité';
+    }
+    
+    // État initial : pas encore de documents
+    return 'Documents d\'éligibilité requis';
   };
 
   // Icône selon l'étape et le statut
@@ -146,41 +162,42 @@ const ProgressBar = ({ progress, status, expert_id, current_step }: ProgressBarP
   );
 };
 
-// Fonction de calcul intelligent de la progression
+// Fonction de calcul intelligent de la progression basée sur les étapes
 const calculateProgress = (produit: any): number => {
-  // Base : 0% si pas d'expert
-  if (!produit.expert_id) return 0;
-  
   // Si le dossier est terminé, 100%
   if (produit.statut === 'termine') return 100;
   
-  // Utiliser le progress existant ou calculer basé sur current_step
-  let baseProgress = produit.progress || 0;
+  // Calcul basé sur current_step (6 étapes au total)
+  const step = produit.current_step || 0;
   
-  // Ajustements selon le statut
-  switch (produit.statut) {
-    case 'en_cours':
-      baseProgress = Math.max(baseProgress, 25);
-      break;
-    case 'en_attente':
-      baseProgress = Math.max(baseProgress, 10);
-      break;
-    case 'eligible':
-      baseProgress = Math.max(baseProgress, 15);
-      break;
+  // Mapping précis : chaque étape = ~16.67% (100/6)
+  const stepProgress: { [key: number]: number } = {
+    0: 0,   // Pas encore commencé
+    1: 10,  // Étape 1 : Documents uploadés, en attente validation éligibilité
+    2: 30,  // Étape 2 : Éligibilité validée, expert sélectionné
+    3: 50,  // Étape 3 : Collecte documents complémentaires
+    4: 70,  // Étape 4 : Audit technique (verrouillé)
+    5: 85,  // Étape 5 : Validation finale
+    6: 100  // Étape 6 : Remboursement
+  };
+  
+  let calculatedProgress = stepProgress[step] || 0;
+  
+  // Ajustements selon le statut pour affiner
+  if (produit.statut === 'documents_uploaded' && step === 1) {
+    calculatedProgress = 10; // En attente de validation admin
   }
   
-  // Bonus pour expert sélectionné
-  if (produit.expert_id) {
-    baseProgress = Math.max(baseProgress, 10);
+  if (produit.statut === 'eligibility_validated' && step === 1) {
+    calculatedProgress = 25; // Éligibilité validée, peut passer à l'étape 2
   }
   
-  // Bonus pour étapes avancées
-  if (produit.current_step >= 3) baseProgress = Math.max(baseProgress, 50);
-  if (produit.current_step >= 4) baseProgress = Math.max(baseProgress, 75);
-  if (produit.current_step >= 5) baseProgress = Math.max(baseProgress, 90);
+  // Utiliser le progress de la BDD s'il est plus élevé
+  if (produit.progress && produit.progress > calculatedProgress) {
+    return Math.min(100, produit.progress);
+  }
   
-  return Math.min(100, Math.max(0, baseProgress));
+  return Math.min(100, Math.max(0, calculatedProgress));
 };
 
 // Composant ProductCard moderne
@@ -296,7 +313,7 @@ const ProductCard = ({ produit, onClick, onExpertSelection }: ProductCardProps) 
           />
         </div>
 
-        {/* Section Expert - hauteur fixe pour alignement */}
+        {/* Section Expert - hauteur fixe pour alignement - Affichage conditionnel */}
         <div className="mb-4 min-h-[3.5rem] flex flex-col justify-center">
           {produit.expert_id ? (
             <div 
@@ -345,21 +362,14 @@ const ProductCard = ({ produit, onClick, onExpertSelection }: ProductCardProps) 
               </div>
             </div>
           ) : (
-            <div className="bg-orange-50 p-3 rounded-lg border border-orange-200">
-              <p className="text-xs text-orange-700 mb-1 font-medium">Experts disponibles</p>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="text-orange-700 hover:text-orange-800 hover:bg-orange-100 p-0 h-auto"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (onExpertSelection) {
-                    onExpertSelection(produit.id, produit);
-                  }
-                }}
-              >
-                Voir les experts →
-              </Button>
+            /* N'afficher aucune carte "Experts disponibles" si pas d'expert assigné */
+            /* Le client doit d'abord faire valider ses documents par l'admin */
+            <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+              <p className="text-xs text-blue-700 mb-1 font-medium text-center">
+                {produit.statut === 'documents_uploaded' 
+                  ? 'Validation des documents en cours...' 
+                  : 'En attente de documents d\'éligibilité'}
+              </p>
             </div>
           )}
         </div>

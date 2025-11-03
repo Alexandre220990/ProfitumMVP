@@ -379,6 +379,42 @@ router.put('/produits-eligibles/:id', async (req, res) => {
 
     console.log('✅ Produit mis à jour avec succès:', { id, current_step: updatedProduit.current_step, progress: updatedProduit.progress });
 
+    // 📅 TIMELINE : Ajouter événement si statut = documents_uploaded
+    if (statut === 'documents_uploaded') {
+      try {
+        const { DossierTimelineService } = await import('../services/dossier-timeline-service');
+        
+        // Récupérer infos client et documents
+        const { data: clientData } = await supabase
+          .from('Client')
+          .select('company_name, name, first_name, last_name')
+          .eq('id', user.database_id)
+          .single();
+
+        const clientName = clientData?.company_name || 
+                          `${clientData?.first_name || ''} ${clientData?.last_name || ''}`.trim() || 
+                          clientData?.name || 
+                          'Client';
+
+        // Récupérer le nombre de documents
+        const { data: documentsData } = await supabase
+          .from('ClientProcessDocument')
+          .select('original_filename, document_type')
+          .eq('client_produit_id', id);
+
+        await DossierTimelineService.documentsPreEligibiliteUploades({
+          dossier_id: id,
+          client_name: clientName,
+          documents_count: documentsData?.length || 0,
+          documents: documentsData?.map(d => d.original_filename || d.document_type) || []
+        });
+
+        console.log('✅ Événement timeline ajouté (documents pré-éligibilité)');
+      } catch (timelineError) {
+        console.error('⚠️ Erreur timeline (non bloquant):', timelineError);
+      }
+    }
+
     return res.json({
       success: true,
       message: 'Produit éligible mis à jour avec succès',
@@ -454,38 +490,153 @@ router.put('/produits-eligibles/:id/assign-expert', async (req, res) => {
       });
     }
 
-    // Mettre à jour le produit éligible avec l'expert assigné
+    // Récupérer les infos du client et du produit
+    const { data: clientData } = await supabase
+      .from('Client')
+      .select('company_name, name, first_name, last_name, apporteur_id')
+      .eq('id', user.database_id)
+      .single();
+
+    const clientName = clientData?.company_name || 
+                      `${clientData?.first_name || ''} ${clientData?.last_name || ''}`.trim() || 
+                      clientData?.name || 
+                      'Client';
+
+    // Récupérer les infos du produit
+    const { data: produitInfo } = await supabase
+      .from('ProduitEligible')
+      .select('nom')
+      .eq('id', produitData.produitId)
+      .single();
+
+    // Mettre à jour le produit éligible avec expert_pending_id (pas expert_id)
+    // L'expert doit d'abord accepter avant que expertId soit confirmé
     const { data: updatedProduit, error: updateError } = await supabase
       .from('ClientProduitEligible')
       .update({ 
-        expert_id: expert_id,
-        statut: 'en_cours',
+        expert_pending_id: expert_id,  // ⚠️ Temporaire, en attente acceptation
+        statut: 'expert_pending_acceptance',
+        metadata: {
+          ...produitData.metadata,
+          expert_selection: {
+            expert_id: expert_id,
+            selected_at: new Date().toISOString(),
+            selected_by: user.database_id
+          }
+        },
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
-      .select('*')
+      .select('*, ProduitEligible(nom)')
       .single();
 
     if (updateError) {
       throw updateError;
     }
 
-    // Envoyer une notification à l'expert
+    console.log(`✅ Expert ${expert_id} proposé pour le dossier ${id} (en attente acceptation)`);
+
+    // 🔔 Envoyer notification à l'expert
     try {
-      await NotificationService.sendPreselectionNotification(
-        expert_id,
-        'prospect_id_placeholder',
-        'apporteur_id_placeholder'
-      );
+      const { ExpertNotificationService } = await import('../services/expert-notification-service');
+      
+      await ExpertNotificationService.notifyDossierPendingAcceptance({
+        expert_id: expert_id,
+        client_produit_id: id,
+        client_id: user.database_id,
+        client_company: clientData?.company_name,
+        client_name: clientName,
+        product_type: produitInfo?.nom || 'Produit',
+        product_name: produitInfo?.nom,
+        estimated_amount: produitData.montantFinal
+      });
+
+      console.log('✅ Notification expert (pending acceptance) envoyée');
     } catch (notificationError) {
-      console.error('Erreur lors de l\'envoi de la notification:', notificationError);
-      // Ne pas faire échouer la requête si la notification échoue
+      console.error('⚠️ Erreur notification expert (non bloquant):', notificationError);
+    }
+
+    // 📅 Ajouter événement timeline
+    try {
+      const { DossierTimelineService } = await import('../services/dossier-timeline-service');
+      
+      await DossierTimelineService.expertSelectionne({
+        dossier_id: id,
+        client_name: clientName,
+        expert_name: expertData.name
+      });
+
+      console.log('✅ Événement timeline ajouté');
+    } catch (timelineError) {
+      console.error('⚠️ Erreur timeline (non bloquant):', timelineError);
+    }
+
+    // 🔔 Notification Admin (info)
+    try {
+      const { data: admins } = await supabase
+        .from('Admin')
+        .select('auth_user_id')
+        .eq('is_active', true);
+
+      if (admins && admins.length > 0) {
+        for (const admin of admins) {
+          if (admin.auth_user_id) {
+            await supabase
+              .from('notification')
+              .insert({
+                user_id: admin.auth_user_id,
+                user_type: 'admin',
+                title: `ℹ️ Expert sélectionné - ${produitInfo?.nom || 'Dossier'}`,
+                message: `${clientName} a choisi ${expertData.name}`,
+                notification_type: 'admin_info',
+                priority: 'low',
+                is_read: false,
+                action_url: `/admin/dossiers/${id}`,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              });
+          }
+        }
+      }
+    } catch (adminNotifError) {
+      console.error('⚠️ Erreur notification admin (non bloquant):', adminNotifError);
+    }
+
+    // 🔔 Notification Apporteur (si relié)
+    if (clientData?.apporteur_id) {
+      try {
+        const { data: apporteurData } = await supabase
+          .from('ApporteurAffaires')
+          .select('auth_user_id')
+          .eq('id', clientData.apporteur_id)
+          .single();
+
+        if (apporteurData?.auth_user_id) {
+          await supabase
+            .from('notification')
+            .insert({
+              user_id: apporteurData.auth_user_id,
+              user_type: 'apporteur',
+              title: `ℹ️ Expert sélectionné - ${produitInfo?.nom || 'Dossier'}`,
+              message: `Votre client ${clientName} a choisi ${expertData.name}`,
+              notification_type: 'apporteur_info',
+              priority: 'low',
+              is_read: false,
+              action_url: `/apporteur/dossiers/${id}`,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+          console.log('✅ Notification apporteur envoyée');
+        }
+      } catch (apporteurError) {
+        console.error('⚠️ Erreur notification apporteur (non bloquant):', apporteurError);
+      }
     }
 
     return res.json({
       success: true,
       data: updatedProduit,
-      message: 'Expert assigné avec succès'
+      message: 'Expert sélectionné, en attente de son acceptation'
     });
 
   } catch (error) {
@@ -493,6 +644,214 @@ router.put('/produits-eligibles/:id/assign-expert', async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'Error assigning expert'
+    });
+  }
+});
+
+/**
+ * POST /api/client/dossier/:id/validate-complementary-documents
+ * Client valide que tous les documents complémentaires ont été uploadés
+ */
+router.post('/dossier/:id/validate-complementary-documents', async (req, res) => {
+  try {
+    const user = (req as AuthenticatedRequest).user;
+    const { id: client_produit_id } = req.params;
+
+    if (!user || user.type !== 'client') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux clients'
+      });
+    }
+
+    console.log('✅ Client valide documents complémentaires:', {
+      client_id: user.database_id,
+      client_produit_id
+    });
+
+    // Récupérer le dossier
+    const { data: dossier, error: fetchError } = await supabase
+      .from('ClientProduitEligible')
+      .select(`
+        *,
+        Client(id, auth_user_id, company_name, nom, prenom, first_name, last_name),
+        ProduitEligible(nom),
+        Expert(id, auth_user_id, name, email)
+      `)
+      .eq('id', client_produit_id)
+      .single();
+
+    if (fetchError || !dossier) {
+      return res.status(404).json({
+        success: false,
+        message: 'Dossier non trouvé'
+      });
+    }
+
+    // Vérifier que le dossier appartient au client
+    if (dossier.clientId !== user.database_id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès non autorisé'
+      });
+    }
+
+    // Mettre à jour le dossier
+    const { data: updatedDossier, error: updateError } = await supabase
+      .from('ClientProduitEligible')
+      .update({
+        statut: 'documents_complementaires_soumis',
+        current_step: 3,
+        progress: 50,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', client_produit_id)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error('❌ Erreur mise à jour dossier:', updateError);
+      throw updateError;
+    }
+
+    console.log('✅ Documents complémentaires validés');
+
+    // Infos client
+    const clientInfo = Array.isArray(dossier.Client) ? dossier.Client[0] : dossier.Client;
+    const clientName = clientInfo?.company_name || 
+                      `${clientInfo?.first_name || ''} ${clientInfo?.last_name || ''}`.trim() || 
+                      clientInfo?.nom || 
+                      'Client';
+
+    // Infos expert
+    const expertInfo = Array.isArray(dossier.Expert) ? dossier.Expert[0] : dossier.Expert;
+    const expertName = expertInfo?.name || 'Expert';
+
+    // Récupérer la liste des documents depuis metadata
+    const requiredDocs = dossier.metadata?.required_documents_expert || [];
+    
+    // 📅 TIMELINE : Ajouter événement
+    try {
+      const { DossierTimelineService } = await import('../services/dossier-timeline-service');
+      
+      await DossierTimelineService.documentsComplementairesEnvoyes({
+        dossier_id: client_produit_id,
+        client_name: clientName,
+        documents_count: requiredDocs.length,
+        documents: requiredDocs.map((d: any) => d.description)
+      });
+
+      console.log('✅ Événement timeline ajouté');
+    } catch (timelineError) {
+      console.error('⚠️ Erreur timeline (non bloquant):', timelineError);
+    }
+
+    // 🔔 NOTIFICATION → EXPERT
+    if (expertInfo?.auth_user_id) {
+      try {
+        await supabase
+          .from('notification')
+          .insert({
+            user_id: expertInfo.auth_user_id,
+            user_type: 'expert',
+            title: `✅ Dossier complété - ${dossier.ProduitEligible?.nom || 'Dossier'}`,
+            message: `${clientName} a envoyé tous les documents complémentaires. Vous pouvez désormais passer à l'audit.`,
+            notification_type: 'documents_completed',
+            priority: 'high',
+            is_read: false,
+            action_url: `/expert/dossier/${client_produit_id}`,
+            action_data: {
+              client_produit_id,
+              client_id: dossier.clientId,
+              client_name: clientName,
+              documents_count: requiredDocs.length,
+              completed_at: new Date().toISOString(),
+              next_step: 'start_audit'
+            },
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+
+        console.log('✅ Notification expert envoyée');
+      } catch (expertNotifError) {
+        console.error('⚠️ Erreur notification expert (non bloquant):', expertNotifError);
+      }
+    }
+
+    // 🔔 NOTIFICATION → ADMIN (info)
+    try {
+      const { data: admins } = await supabase
+        .from('Admin')
+        .select('auth_user_id')
+        .eq('is_active', true);
+
+      if (admins && admins.length > 0) {
+        for (const admin of admins) {
+          if (admin.auth_user_id) {
+            await supabase
+              .from('notification')
+              .insert({
+                user_id: admin.auth_user_id,
+                user_type: 'admin',
+                title: `ℹ️ Documents complémentaires reçus - ${dossier.ProduitEligible?.nom || 'Dossier'}`,
+                message: `${clientName} a envoyé les documents complémentaires`,
+                notification_type: 'admin_info',
+                priority: 'low',
+                is_read: false,
+                action_url: `/admin/dossiers/${client_produit_id}`,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              });
+          }
+        }
+      }
+    } catch (adminNotifError) {
+      console.error('⚠️ Erreur notification admin (non bloquant):', adminNotifError);
+    }
+
+    // 🔔 NOTIFICATION → APPORTEUR (si relié)
+    if (clientInfo?.apporteur_id) {
+      try {
+        const { data: apporteurData } = await supabase
+          .from('ApporteurAffaires')
+          .select('auth_user_id')
+          .eq('id', clientInfo.apporteur_id)
+          .single();
+
+        if (apporteurData?.auth_user_id) {
+          await supabase
+            .from('notification')
+            .insert({
+              user_id: apporteurData.auth_user_id,
+              user_type: 'apporteur',
+              title: `ℹ️ Documents reçus - ${dossier.ProduitEligible?.nom || 'Dossier'}`,
+              message: `Votre client ${clientName} a envoyé les documents complémentaires`,
+              notification_type: 'apporteur_info',
+              priority: 'low',
+              is_read: false,
+              action_url: `/apporteur/dossiers/${client_produit_id}`,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+          console.log('✅ Notification apporteur envoyée');
+        }
+      } catch (apporteurError) {
+        console.error('⚠️ Erreur notification apporteur (non bloquant):', apporteurError);
+      }
+    }
+
+    return res.json({
+      success: true,
+      message: 'Documents complémentaires validés avec succès',
+      data: updatedDossier
+    });
+
+  } catch (error: any) {
+    console.error('❌ Erreur validation documents complémentaires:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la validation',
+      details: error.message
     });
   }
 });

@@ -532,15 +532,21 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
     console.log('✅ Document enregistré en BDD:', doc.id);
     
     // 🔔 NOTIFICATION EXPERT : Document uploadé par client
+    // ⚠️ UNIQUEMENT si expert déjà assigné (pas pendant phase pré-éligibilité)
     if (user.type === 'client' && dossier_id) {
       try {
         const { data: clientProduit } = await supabase
           .from('ClientProduitEligible')
-          .select('expertId, clientId, Client!inner(nom, prenom)')
+          .select('expertId, clientId, statut, Client!inner(nom, prenom)')
           .eq('id', dossier_id)
           .single();
         
-        if (clientProduit?.expertId) {
+        // Ne notifier l'expert QUE si :
+        // 1. Un expert est assigné (expertId existe)
+        // 2. Le dossier n'est PAS en phase de pré-éligibilité
+        const isPreEligibilityPhase = ['eligible', 'documents_uploaded', 'eligible_confirmed'].includes(clientProduit?.statut || '');
+        
+        if (clientProduit?.expertId && !isPreEligibilityPhase) {
           const clientInfo = Array.isArray(clientProduit.Client) ? clientProduit.Client[0] : clientProduit.Client;
           
           const { NotificationTriggers } = await import('../services/NotificationTriggers');
@@ -562,6 +568,8 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
             }
           );
           console.log('✅ Notification expert envoyée');
+        } else if (isPreEligibilityPhase) {
+          console.log('ℹ️ Phase pré-éligibilité : notification expert non envoyée');
         }
       } catch (notifError) {
         console.error('❌ Erreur notification expert (non bloquant):', notifError);

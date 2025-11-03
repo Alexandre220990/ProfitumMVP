@@ -73,6 +73,7 @@ import {
 
 import expertNotificationsRoutes from './routes/expert/notifications';
 import expertAnalyticsRoutes from './routes/expert-analytics';
+import expertDossierActionsRoutes from './routes/expert-dossier-actions';
 import sessionMigrationRoutes from './routes/session-migration';
 // SUPPRIMÉ: import clientDocumentsRoutes (obsolète, remplacé par documents-unified-all)
 // SUPPRIMÉ: import enhancedClientDocumentsRoutes (obsolète, remplacé par documents-unified-all)
@@ -85,6 +86,7 @@ import debugRoutes from './routes/debug';
 import diagnosticRoutes from './routes/diagnostic';
 import dossierStepsRoutes from './routes/dossier-steps';
 import dossierCommentsRoutes from './routes/dossier-comments';
+import dossierTimelineRoutes from './routes/dossier-timeline';
 // SUPPRIMÉ: import documentsRoutes (obsolète, remplacé par documents-unified-all)
 import adminDocumentsUnifiedRoutes from './routes/admin-documents-unified';
 import documentsUnifiedAllRoutes from './routes/documents-unified-all';
@@ -93,6 +95,7 @@ import documentsUnifiedAllRoutes from './routes/documents-unified-all';
 import rdvCompletionService from './services/rdvCompletionService';
 import { getCorsConfig, corsMiddleware } from './config/cors';
 import { startCalendarRemindersCron } from './cron/calendar-reminders';
+import { startRefundRemindersCron } from './cron/refund-reminder';
 import routes from './routes';
 
 // Routes apporteurs d'affaires
@@ -278,6 +281,7 @@ app.use('/api/documents', simpleAuthMiddleware, documentsUnifiedAllRoutes);
 // Routes expert - PROTÉGÉES avec permissions spécifiques  
 app.use('/api/expert', enhancedAuthMiddleware, requireUserType('expert'), expertRoutes);
 app.use('/api/expert/analytics', enhancedAuthMiddleware, requireUserType('expert'), expertAnalyticsRoutes);
+app.use('/api/expert', enhancedAuthMiddleware, requireUserType('expert'), expertDossierActionsRoutes);
 
 // Routes admin - PROTÉGÉES avec permissions spécifiques
 // Routes admin avec authentification
@@ -565,6 +569,7 @@ app.use('/api/diagnostic', diagnosticRoutes);
 // Route de gestion des étapes de dossier
 app.use('/api/dossier-steps', dossierStepsRoutes);
 app.use('/api/dossier', dossierCommentsRoutes);
+app.use('/api/dossiers', enhancedAuthMiddleware, dossierTimelineRoutes);
 console.log('🔧 Routes dossier-steps montées sur /api/dossier-steps');
 
 // ===== ROUTES APPORTEURS D'AFFAIRES PROTÉGÉES =====
@@ -681,6 +686,14 @@ server.listen(PORT, HOST, () => {
     // La fonction logge déjà le succès du démarrage
   } catch (error) {
     console.error('❌ Erreur démarrage cron job rappels calendrier:', error);
+  }
+
+  // Démarrer le cron job pour les relances de demandes de remboursement
+  try {
+    startRefundRemindersCron();
+    // Relances automatiques J+7 et J+14 si demande pas envoyée
+  } catch (error) {
+    console.error('❌ Erreur démarrage cron job relances remboursement:', error);
   }
   
   // monitoringSystem.recordAuditLog({
