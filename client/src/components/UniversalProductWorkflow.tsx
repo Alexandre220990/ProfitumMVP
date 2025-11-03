@@ -479,9 +479,8 @@ export default function UniversalProductWorkflow({
               {/* Contenu intégré pour l'étape 1 */}
               {step.id === 1 && (
                 <div className="mt-4 pt-4 border-t border-gray-200 space-y-4">
-                  {/* Afficher le statut de validation si documents soumis */}
-                  {clientProduit && (clientProduit.statut === 'documents_uploaded' || 
-                                     clientProduit.statut === 'eligibility_validated' || 
+                  {/* Afficher le statut de validation UNIQUEMENT si validé ou rejeté (pas en attente) */}
+                  {clientProduit && (clientProduit.statut === 'eligibility_validated' || 
                                      clientProduit.statut === 'eligibility_rejected') && (
                     <EligibilityValidationStatus
                       clientProduit={clientProduit}
