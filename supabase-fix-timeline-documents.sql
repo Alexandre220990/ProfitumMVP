@@ -12,18 +12,18 @@ ORDER BY table_name, ordinal_position;
 
 -- 2. Trouver les événements de documents pour AlexTransport
 SELECT *
-FROM "DossierTimeline"
+FROM dossier_timeline
 WHERE dossier_id = '57f606c7-00a6-40f0-bb72-ae1831345d99'
 AND type = 'document'
 ORDER BY created_at DESC;
 
 -- 3. Mettre à jour la description avec le bon nombre de documents
-UPDATE "DossierTimeline"
+UPDATE dossier_timeline
 SET description = CONCAT(
     (
         SELECT jsonb_array_length(documents_sent)::text
         FROM "ClientProduitEligible"
-        WHERE id = "DossierTimeline".dossier_id
+        WHERE id = dossier_timeline.dossier_id
     ),
     ' documents uploadés'
 )
@@ -39,14 +39,14 @@ SELECT
     title,
     description,
     created_at
-FROM "DossierTimeline"
+FROM dossier_timeline
 WHERE dossier_id = '57f606c7-00a6-40f0-bb72-ae1831345d99'
 AND type = 'document'
 ORDER BY created_at DESC;
 
--- 5. (Optionnel) Corriger TOUS les dossiers
+-- 5. (Optionnel) Corriger TOUS les dossiers avec documents
 /*
-UPDATE "DossierTimeline" dt
+UPDATE dossier_timeline dt
 SET description = CONCAT(
     (
         SELECT COALESCE(jsonb_array_length(documents_sent), 0)::text
