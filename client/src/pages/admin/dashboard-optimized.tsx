@@ -258,6 +258,16 @@ const AdminDashboardOptimized: React.FC = () => {
     loadSectionData('overview');
   }, []);
 
+  // Rafraîchissement automatique des KPI toutes les 30 secondes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      console.log('🔄 Rafraîchissement automatique des KPI...');
+      loadKPIData();
+    }, 30000); // 30 secondes
+
+    return () => clearInterval(interval);
+  }, []);
+
   // Recharger le dashboard quand on revient à la page (navigation depuis autre page)
   useEffect(() => {
     // Si on arrive sur le dashboard ET qu'on vient d'une autre page admin
