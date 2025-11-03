@@ -8,7 +8,7 @@
 -- 1️⃣ Supprimer les produits éligibles
 DELETE FROM "ClientProduitEligible"
 WHERE "clientId" = (
-    SELECT id FROM "Client" WHERE email = 'alainbonin@gmail.com'
+    SELECT id FROM "Client" WHERE email = 'alainbonin@gmail.fr'
 );
 
 -- 2️⃣ Supprimer les simulations

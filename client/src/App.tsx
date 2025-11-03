@@ -208,6 +208,12 @@ function App() {
                     <Route path="/experts-verifies" element={<ExpertsVerifies />} />
                     <Route path="/unauthorized" element={<UnauthorizedPage />} />
                     
+                    {/* Routes PARTAGÉES - Accessibles à tous les utilisateurs authentifiés */}
+                    <Route element={<ProtectedRoute />}>
+                      <Route path="/notification-center" element={<NotificationCenter />} />
+                      <Route path="/notification-preferences" element={<NotificationPreferences />} />
+                    </Route>
+                    
                     {/* Routes CLIENT avec nouveau layout unifié */}
                     <Route element={<ProtectedRoute requiredType="client" />}>
                       <Route element={<ClientLayout />}>
@@ -222,11 +228,9 @@ function App() {
                         <Route path="/agenda-client" element={<AgendaClient />} />
                         <Route path="/google-calendar-integration" element={<GoogleCalendarIntegration />} />
                         
-                        {/* Messagerie & Notifications */}
+                        {/* Messagerie */}
                         <Route path="/messagerie" element={<MessagerieClient />} />
                         <Route path="/messagerie-client" element={<MessagerieClient />} />
-                        <Route path="/notification-center" element={<NotificationCenter />} />
-                        <Route path="/notification-preferences" element={<NotificationPreferences />} />
                         
                         {/* Documents & Dossiers */}
                         <Route path="documents" element={<ClientDocumentsPage />} />
