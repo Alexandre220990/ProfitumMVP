@@ -3504,7 +3504,7 @@ router.get('/dossiers/all', async (req, res) => {
           taux_max,
           categorie
         ),
-        Expert:expert_id(
+        Expert!fk_clientproduiteligible_expert(
           id,
           first_name,
           last_name,
