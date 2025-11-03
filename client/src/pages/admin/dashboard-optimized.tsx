@@ -18,7 +18,7 @@ import { UniversalNotificationCenter } from "@/components/notifications/Universa
 import { 
   RefreshCw, Users, FileText, 
   Eye, ClipboardList, Edit, Check, X,
-  UserCheck, AlertTriangle, Clock,
+  UserCheck, Clock,
   Download, Settings, TrendingUp, DollarSign,
   Bell, Mail, Target, CheckCircle, XCircle,
   Handshake, Package, Trash2, Calendar, Lock
@@ -2626,74 +2626,8 @@ const AdminDashboardOptimized: React.FC = () => {
                       </Card>
                     </div>
 
-                    {/* Alertes et notifications récentes */}
-                    <Card 
-                      className="cursor-pointer hover:shadow-lg transition-shadow"
-                      onClick={() => setActiveSection('validations')}
-                    >
-                      <CardHeader>
-                        <CardTitle className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Bell className="w-5 h-5" />
-                            Alertes Récentes
-                          </div>
-                          <Badge variant={kpiData.alertesUrgentes > 0 ? 'destructive' : 'default'}>
-                            {kpiData.validationsPending || 0}
-                          </Badge>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-3">
-                          {kpiData.alertesUrgentes > 0 && (
-                            <div className="flex items-center gap-3 p-3 bg-red-50 border border-red-200 rounded">
-                              <AlertTriangle className="w-4 h-4 text-red-600" />
-                              <div className="flex-1">
-                                <p className="font-medium text-red-800">Actions urgentes</p>
-                                <p className="text-sm text-red-600">
-                                  {kpiData.validationsDocuments} validation{kpiData.validationsDocuments > 1 ? 's' : ''} documents + 
-                                  {kpiData.expertsPendingValidation} expert{kpiData.expertsPendingValidation > 1 ? 's' : ''} &gt;48h
-                                </p>
-                              </div>
-                              <CheckCircle className="w-5 h-5 text-red-600" />
-                            </div>
-                          )}
-                          {kpiData.validationsExperts > 0 && (kpiData.expertsPendingValidation === 0 || (kpiData.validationsExperts - kpiData.expertsPendingValidation) > 0) && (
-                            <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded">
-                              <UserCheck className="w-4 h-4 text-blue-600" />
-                              <div className="flex-1">
-                                <p className="font-medium text-blue-800">Nouveaux experts en attente</p>
-                                <p className="text-sm text-blue-600">
-                                  {kpiData.validationsExperts - kpiData.expertsPendingValidation} expert{(kpiData.validationsExperts - kpiData.expertsPendingValidation) > 1 ? 's' : ''} à valider
-                                </p>
-                              </div>
-                              <Eye className="w-5 h-5 text-blue-600" />
-                            </div>
-                          )}
-                          {kpiData.dossiersEnRetard > 0 && (
-                            <div className="flex items-center gap-3 p-3 bg-yellow-50 border border-yellow-200 rounded">
-                              <Clock className="w-4 h-4 text-yellow-600" />
-                              <div className="flex-1">
-                                <p className="font-medium text-yellow-800">Dossiers en retard</p>
-                                <p className="text-sm text-yellow-600">{kpiData.dossiersEnRetard} dossier{kpiData.dossiersEnRetard > 1 ? 's' : ''} bloqué{kpiData.dossiersEnRetard > 1 ? 's' : ''} &gt;21 jours</p>
-                              </div>
-                              <Eye className="w-5 h-5 text-yellow-600" />
-                            </div>
-                          )}
-                          {kpiData.alertesUrgentes === 0 && kpiData.alertesNormales === 0 && (
-                            <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded">
-                              <CheckCircle className="w-4 h-4 text-green-600" />
-                              <div>
-                                <p className="font-medium text-green-800">Aucune alerte</p>
-                                <p className="text-sm text-green-600">Tout est à jour !</p>
-                              </div>
-                            </div>
-                          )}
-                          <p className="text-xs text-center text-gray-500 mt-2">
-                            Cliquez pour voir toutes les validations →
-                          </p>
-                        </div>
-                      </CardContent>
-                    </Card>
+                    {/* Centre de notifications */}
+                    <UniversalNotificationCenter mode="compact" />
                   </div>
                 )}
 
