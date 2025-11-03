@@ -143,15 +143,15 @@ export class URSSAFNotificationService {
       
       const { data: admins, error } = await supabase
         .from('Admin')
-        .select('id')
-        .eq('status', 'active');
+        .select('auth_user_id')
+        .eq('is_active', true);
       
       if (error) {
         console.error('❌ Erreur récupération admins:', error);
         return [];
       }
       
-      return admins?.map(admin => admin.id) || [];
+      return admins?.map(admin => admin.auth_user_id) || [];
     } catch (error) {
       console.error('❌ Erreur getAdminUserIds:', error);
       return [];
