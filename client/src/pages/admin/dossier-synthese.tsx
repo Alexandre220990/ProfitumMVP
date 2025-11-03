@@ -6,7 +6,6 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import DossierTimeline from '@/components/dossier/DossierTimeline';
 import {
@@ -15,8 +14,6 @@ import {
   Phone,
   Calendar,
   FileText,
-  Users,
-  TrendingUp,
   DollarSign,
   Target,
   CheckCircle,
@@ -30,7 +27,6 @@ import {
   XCircle,
   Send,
   Building,
-  MapPin,
   Clock,
   Percent
 } from 'lucide-react';
@@ -109,7 +105,7 @@ const DossierSynthese: React.FC = () => {
       // Charger les infos du dossier
       const response = await get(`/admin/dossiers/${id}`);
       if (response.success && response.data) {
-        setDossier(response.data);
+        setDossier(response.data as DossierData);
       } else {
         toast.error('Dossier non trouvé');
         navigate('/admin/dashboard-optimized');
@@ -617,9 +613,6 @@ const DossierSynthese: React.FC = () => {
                     {dossier.documents_sent && dossier.documents_sent.length > 0 ? (
                       <div className="space-y-2">
                         {dossier.documents_sent.map((doc: any, idx: number) => {
-                          const isImage = doc.mime_type?.startsWith('image/');
-                          const isPdf = doc.mime_type === 'application/pdf';
-                          
                           const handleViewDocument = async () => {
                             try {
                               const token = localStorage.getItem('token');
