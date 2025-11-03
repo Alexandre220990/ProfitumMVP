@@ -2,17 +2,12 @@ import express, { Router, Request, Response } from 'express';
 import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import bcrypt from 'bcrypt';
-import { ExpertNotificationService } from '../../services/expert-notification-service';
-
 const router = express.Router();
 
 // Configuration Supabase
 const supabaseUrl = process.env.SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-// Service de notifications
-const expertNotificationService = new ExpertNotificationService();
 
 // ============================================================================
 // SCHEMA DE VALIDATION
@@ -54,38 +49,6 @@ type DemoRequestData = z.infer<typeof demoRequestSchema>;
 // ============================================================================
 // FONCTIONS UTILITAIRES
 // ============================================================================
-
-/**
- * Envoyer une notification à l'admin via le service de notifications
- */
-const sendAdminNotification = async (expertData: any) => {
-  try {
-    await expertNotificationService.notifyAdminOfDemoRequest({
-      expert_id: expertData.id,
-      expert_name: expertData.name,
-      first_name: expertData.first_name,
-      last_name: expertData.last_name,
-      expert_email: expertData.email,
-      company_name: expertData.company_name,
-      siren: expertData.siren,
-      phone: expertData.phone,
-      location: expertData.location,
-      experience: expertData.experience,
-      specializations: expertData.specializations,
-      secteur_activite: expertData.secteur_activite,
-      languages: expertData.languages,
-      website: expertData.website,
-      linkedin: expertData.linkedin,
-      compensation: expertData.compensation,
-      max_clients: expertData.max_clients,
-      description: expertData.description
-    });
-
-    console.log('✅ Notification admin envoyée via le service');
-  } catch (error) {
-    console.error('❌ Erreur notification admin:', error);
-  }
-};
 
 /**
  * Créer une notification dans le dashboard admin
@@ -236,9 +199,6 @@ router.post('/', async (req: Request, res: Response) => {
     }
 
     console.log('✅ Expert créé avec succès:', newExpert.id);
-
-    // Envoyer notification admin par email
-    await sendAdminNotification(newExpert);
 
     // Créer notification dans le dashboard admin
     await createAdminNotification(newExpert);
