@@ -25,22 +25,26 @@ router.get('/stream', async (req: Request, res: Response) => {
       return;
     }
 
-    // Vérifier le token avec Supabase SDK (compatible avec tokens Supabase)
+    // Vérifier le token JWT avec Supabase - utiliser service_role pour validation
     const { createClient } = await import('@supabase/supabase-js');
-    const supabaseClient = createClient(
+    const supabaseAdmin = createClient(
       process.env.SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
     
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
+    // Valider le token JWT en utilisant la méthode getUser avec le token
+    const { data, error: authError } = await supabaseAdmin.auth.getUser(token);
 
-    if (authError || !user) {
+    if (authError || !data?.user) {
+      console.error('❌ Erreur auth SSE:', authError?.message);
       res.status(401).json({
         success: false,
         message: 'Token invalide ou expiré'
       });
       return;
     }
+
+    const user = data.user;
 
     const userId = user.id;
     const userType = user.user_metadata?.type || 'client';
