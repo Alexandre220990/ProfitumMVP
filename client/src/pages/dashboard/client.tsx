@@ -29,10 +29,14 @@ import {
   FileText,
   Shield,
   Users,
-  UserCheck
+  UserCheck,
+  Bell,
+  Sparkles
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useClientProducts } from '@/hooks/use-client-products';
+import { useDossierNotifications } from '@/hooks/useDossierNotifications';
+import { NotificationBanner } from '@/components/client/NotificationBanner';
 import { SectionTitle } from "@/components/dashboard/SectionTitle";
 import { EmptyEligibleProductsState } from "@/components/empty-eligible-products-state";
 import { toast } from 'sonner';
@@ -205,9 +209,15 @@ interface ProductCardProps {
   produit: any;
   onClick: () => void;
   onExpertSelection?: (produitId: string, produit: any) => void;
+  notificationData?: {
+    unreadCount: number;
+    hasActionRequired: boolean;
+    isNewStatus: boolean;
+    latestNotification?: any;
+  };
 }
 
-const ProductCard = ({ produit, onClick, onExpertSelection }: ProductCardProps) => {
+const ProductCard = ({ produit, onClick, onExpertSelection, notificationData }: ProductCardProps) => {
   const getProductIcon = (nom?: string) => {
     if (!nom) return <FolderOpen className="w-6 h-6" />;
     const nomLower = nom.toLowerCase();
@@ -251,10 +261,46 @@ const ProductCard = ({ produit, onClick, onExpertSelection }: ProductCardProps) 
   };
 
   return (
-    <Card className={`h-full flex flex-col hover:shadow-xl transition-all duration-300 cursor-pointer group border-2 ${
+    <Card className={`h-full flex flex-col hover:shadow-xl transition-all duration-300 cursor-pointer group border-2 relative ${
       isFromApporteur ? 'border-blue-300 bg-gradient-to-br from-blue-50/30 to-indigo-50/30' : 'hover:border-blue-300'
-    }`}>
+    } ${notificationData?.isNewStatus ? 'ring-2 ring-green-400 animate-pulse' : ''}`}>
+      {/* Pastille de notification en haut à droite */}
+      {notificationData && notificationData.unreadCount > 0 && (
+        <div className="absolute -top-2 -right-2 z-10">
+          <div className="relative">
+            <Bell className="h-5 w-5 text-white bg-red-500 rounded-full p-1 animate-bounce" />
+            <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center font-bold">
+              {notificationData.unreadCount}
+            </span>
+          </div>
+        </div>
+      )}
+
       <CardContent className="p-4 flex flex-col h-full">
+        {/* Badge "Action requise" */}
+        {notificationData?.hasActionRequired && (
+          <div className="mb-3 p-2 bg-gradient-to-r from-red-100 to-pink-100 rounded-lg border-2 border-red-300 animate-pulse">
+            <div className="flex items-center justify-center gap-2">
+              <Badge className="bg-red-600 text-white flex items-center gap-1 font-semibold">
+                <AlertCircle className="h-3 w-3" />
+                🔔 Action requise
+              </Badge>
+            </div>
+          </div>
+        )}
+
+        {/* Badge "Nouveau statut" */}
+        {notificationData?.isNewStatus && !notificationData?.hasActionRequired && (
+          <div className="mb-3 p-2 bg-gradient-to-r from-green-100 to-emerald-100 rounded-lg border border-green-300">
+            <div className="flex items-center justify-center gap-2">
+              <Badge className="bg-green-600 text-white flex items-center gap-1">
+                <Sparkles className="h-3 w-3" />
+                ✨ Nouveau statut
+              </Badge>
+            </div>
+          </div>
+        )}
+
         {/* Badge "Via Apporteur" si applicable */}
         {isFromApporteur && (
           <div className="mb-3 p-2 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-lg border border-blue-200">
@@ -408,6 +454,14 @@ export default function DashboardClient() {
     inProgressProducts
   } = useClientProducts();
 
+  // Hook pour les notifications par dossier
+  const {
+    notifications,
+    getDossierNotifications,
+    markAsRead,
+    markDossierAsRead
+  } = useDossierNotifications();
+
   // L'authentification est gérée par les hooks
 
   // Redirection automatique vers le simulateur client si le client n'a pas de produits éligibles
@@ -460,7 +514,6 @@ export default function DashboardClient() {
     navigate(0);
   }, [navigate]);
 
-
   // Fonction pour rediriger vers le workflow approprié
   const handleProductClick = useCallback((produit: any) => {
     const nomProduit = produit.ProduitEligible?.nom?.toLowerCase() || '';
@@ -501,6 +554,21 @@ export default function DashboardClient() {
     setSelectedProduitId(null);
     setSelectedProduit(null);
   }, []);
+
+  // Handler pour les notifications
+  const handleNotificationDismiss = useCallback((notificationId: string) => {
+    markAsRead(notificationId);
+  }, [markAsRead]);
+
+  const handleNotificationNavigate = useCallback((dossierId: string) => {
+    // Trouver le produit correspondant
+    const produit = produits.find((p) => p.id === dossierId);
+    if (produit) {
+      handleProductClick(produit);
+      // Marquer toutes les notifications de ce dossier comme lues
+      markDossierAsRead(dossierId);
+    }
+  }, [produits, handleProductClick, markDossierAsRead]);
 
   // Fonction appelée quand un expert est sélectionné
   const handleExpertSelected = useCallback((expert: any) => {
@@ -641,6 +709,13 @@ export default function DashboardClient() {
 
   return (
     <div>
+      {/* Bandeau de notifications en temps réel */}
+      <NotificationBanner
+        notifications={notifications}
+        onDismiss={handleNotificationDismiss}
+        onNavigate={handleNotificationNavigate}
+      />
+
       <div className="max-w-7xl mx-auto px-4 py-6">
         
         {/* Header moderne et compact */}
@@ -744,6 +819,7 @@ export default function DashboardClient() {
                     produit={produit}
                     onClick={() => handleProductClick(produit)}
                     onExpertSelection={handleExpertSelection}
+                    notificationData={getDossierNotifications(produit.id)}
                   />
                 ))}
             </div>
