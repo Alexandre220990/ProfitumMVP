@@ -605,9 +605,33 @@ const DossierSynthese: React.FC = () => {
                     {dossier.documents_sent && dossier.documents_sent.length > 0 ? (
                       <div className="space-y-2">
                         {dossier.documents_sent.map((doc: any, idx: number) => {
-                          const storageUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/${doc.bucket_name}/${doc.url}`;
                           const isImage = doc.mime_type?.startsWith('image/');
                           const isPdf = doc.mime_type === 'application/pdf';
+                          
+                          const handleViewDocument = async () => {
+                            try {
+                              const token = localStorage.getItem('token');
+                              const response = await fetch(`${import.meta.env.VITE_API_URL}/api/documents-secure/download/${doc.id}`, {
+                                headers: {
+                                  'Authorization': `Bearer ${token}`
+                                }
+                              });
+                              
+                              if (!response.ok) {
+                                throw new Error('Erreur lors du chargement du document');
+                              }
+                              
+                              const data = await response.json();
+                              if (data.success && data.data.signedUrl) {
+                                window.open(data.data.signedUrl, '_blank');
+                              } else {
+                                alert('Impossible d\'accéder au document');
+                              }
+                            } catch (error) {
+                              console.error('Erreur:', error);
+                              alert('Erreur lors du chargement du document');
+                            }
+                          };
                           
                           return (
                           <div key={doc.id || idx} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50">
@@ -621,7 +645,7 @@ const DossierSynthese: React.FC = () => {
                             <Button 
                               size="sm" 
                               variant="outline"
-                              onClick={() => window.open(storageUrl, '_blank')}
+                              onClick={handleViewDocument}
                             >
                               <Eye className="w-3 h-3 mr-1" />
                               Voir

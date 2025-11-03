@@ -91,6 +91,7 @@ import dossierTimelineRoutes from './routes/dossier-timeline';
 // SUPPRIMÉ: import documentsRoutes (obsolète, remplacé par documents-unified-all)
 import adminDocumentsUnifiedRoutes from './routes/admin-documents-unified';
 import documentsUnifiedAllRoutes from './routes/documents-unified-all';
+import documentsDownloadRoutes from './routes/documents-download';
 
 // Import du service de notification automatique pour RDV terminés
 import rdvCompletionService from './services/rdvCompletionService';
@@ -278,6 +279,9 @@ app.use('/api/client', enhancedAuthMiddleware, requireUserType('client'), client
 // Routes documents unifiées pour tous les users - PROTÉGÉES
 // Utilisation de simpleAuthMiddleware pour meilleure compatibilité avec tokens JWT clients
 app.use('/api/documents', simpleAuthMiddleware, documentsUnifiedAllRoutes);
+
+// Route sécurisée pour télécharger des documents depuis Storage privé
+app.use('/api/documents-secure', documentsDownloadRoutes);
 
 // Routes expert - PROTÉGÉES avec permissions spécifiques  
 app.use('/api/expert', enhancedAuthMiddleware, requireUserType('expert'), expertRoutes);
