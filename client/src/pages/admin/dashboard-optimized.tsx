@@ -253,19 +253,22 @@ const AdminDashboardOptimized: React.FC = () => {
   // CHARGEMENT DES DONNÉES
   // ========================================
 
+  // 📡 Connexion SSE pour notifications temps réel
+  const { connected: sseConnected, unreadCount: sseUnreadCount } = useNotificationSSE({
+    onNotification: (notification) => {
+      console.log('🔔 Nouvelle notification reçue via SSE:', notification);
+      // La notification toast est déjà gérée par le hook
+    },
+    onKPIRefresh: () => {
+      console.log('📊 Rafraîchissement KPI demandé via SSE');
+      loadKPIData();
+    },
+    enabled: true
+  });
+
   useEffect(() => {
     loadKPIData();
     loadSectionData('overview');
-  }, []);
-
-  // Rafraîchissement automatique des KPI toutes les 30 secondes
-  useEffect(() => {
-    const interval = setInterval(() => {
-      console.log('🔄 Rafraîchissement automatique des KPI...');
-      loadKPIData();
-    }, 30000); // 30 secondes
-
-    return () => clearInterval(interval);
   }, []);
 
   // Recharger le dashboard quand on revient à la page (navigation depuis autre page)

@@ -9,6 +9,19 @@ const supabaseUrl = process.env.SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+// Import SSE service (lazy pour éviter circular dependencies)
+let notificationSSE: any = null;
+const getSSEService = () => {
+  if (!notificationSSE) {
+    try {
+      notificationSSE = require('./notification-sse-service').notificationSSE;
+    } catch (error) {
+      // SSE pas encore initialisé
+    }
+  }
+  return notificationSSE;
+};
+
 export class AdminNotificationService {
   
   /**
@@ -98,6 +111,13 @@ export class AdminNotificationService {
 
         notificationIds.push(notification.id);
         console.log(`✅ Notification créée pour admin ${adminId}:`, notification.id);
+
+        // 📡 Envoyer via SSE en temps réel
+        const sse = getSSEService();
+        if (sse) {
+          sse.sendNotificationToUser(adminId, notification);
+          sse.sendKPIRefresh(); // Rafraîchir KPI dashboard admin
+        }
       }
 
       return {
@@ -162,8 +182,15 @@ export class AdminNotificationService {
           .select()
           .single();
 
-        if (!error) {
+        if (!error && notification) {
           notificationIds.push(notification.id);
+
+          // 📡 Envoyer via SSE en temps réel
+          const sse = getSSEService();
+          if (sse) {
+            sse.sendNotificationToUser(adminId, notification);
+            sse.sendKPIRefresh();
+          }
         }
       }
 
@@ -225,8 +252,15 @@ export class AdminNotificationService {
           .select()
           .single();
 
-        if (!error) {
+        if (!error && notification) {
           notificationIds.push(notification.id);
+
+          // 📡 Envoyer via SSE en temps réel
+          const sse = getSSEService();
+          if (sse) {
+            sse.sendNotificationToUser(adminId, notification);
+            sse.sendKPIRefresh();
+          }
         }
       }
 

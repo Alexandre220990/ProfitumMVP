@@ -80,6 +80,7 @@ import sessionMigrationRoutes from './routes/session-migration';
 import adminNotificationsRoutes from './routes/admin-notifications';
 import adminNotificationsNewRoutes from './routes/admin-notifications-new';
 import fcmNotificationsRoutes from './routes/fcm-notifications';
+import notificationsSSERoutes from './routes/notifications-sse';
 import analyticsRoutes from './routes/analytics';
 import googleCalendarRoutes from './routes/google-calendar';
 import debugRoutes from './routes/debug';
@@ -292,6 +293,7 @@ app.use('/api/admin/documents', enhancedAuthMiddleware, requireUserType('admin')
 app.use('/api/notifications', enhancedAuthMiddleware, adminNotificationsRoutes);
 app.use('/api/notifications', enhancedAuthMiddleware, adminNotificationsNewRoutes);
 app.use('/api/notifications/fcm', fcmNotificationsRoutes); // Routes FCM (auth dans le router)
+app.use('/api/notifications', notificationsSSERoutes); // Routes SSE (auth dans le router)
 
 // Route temporaire pour créer un admin (SANS AUTHENTIFICATION)
 app.post('/api/admin-setup', async (req, res) => {

@@ -3493,7 +3493,7 @@ router.get('/dossiers/all', async (req, res) => {
           last_name,
           email,
           statut,
-          phone,
+          phone_number,
           apporteur_id
         ),
         ProduitEligible(
