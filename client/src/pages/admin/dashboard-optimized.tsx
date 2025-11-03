@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/use-auth";
+import { useNotificationSSE } from "@/hooks/use-notification-sse";
 import { toast } from "sonner";
 import { get } from "@/lib/api";
 import { config } from "@/config/env";
