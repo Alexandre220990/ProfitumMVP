@@ -444,14 +444,14 @@ router.put('/produits-eligibles/:id', async (req, res) => {
         // Récupérer le nombre de documents
         const { data: documentsData } = await supabase
           .from('ClientProcessDocument')
-          .select('original_filename, document_type')
+          .select('filename, document_type')
           .eq('client_produit_id', id);
 
         await DossierTimelineService.documentsPreEligibiliteUploades({
           dossier_id: id,
           client_name: clientName,
           documents_count: documentsData?.length || 0,
-          documents: documentsData?.map(d => d.original_filename || d.document_type) || []
+          documents: documentsData?.map(d => d.filename || d.document_type) || []
         });
 
         console.log('✅ Événement timeline ajouté (documents pré-éligibilité)');
