@@ -783,7 +783,7 @@ router.post('/dossier/:id/validate-complementary-documents', async (req, res) =>
     try {
       const { DossierTimelineService } = await import('../services/dossier-timeline-service');
       
-      await DossierTimelineService.documentsComplementairesEnvoyes({
+      await DossierTimelineService.documentsComplementairesUploades({
         dossier_id: client_produit_id,
         client_name: clientName,
         documents_count: requiredDocs.length,

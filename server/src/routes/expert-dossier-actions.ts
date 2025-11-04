@@ -488,14 +488,17 @@ router.post('/dossier/:id/request-documents', enhancedAuthMiddleware, async (req
 
     // 📅 TIMELINE : Ajouter événement
     try {
-      const { DossierTimelineService } = await import('../services/dossier-timeline-service');
+      const { DossierTimelineService } = await import('../services/dossier-timeline-service');                                                                  
       
+      // Pour l'instant, on compte seulement les documents demandés
+      // TODO: Ajouter validated_count et rejected_count quand le frontend enverra ces infos
       await DossierTimelineService.documentsComplementairesDemandes({
         dossier_id: client_produit_id,
         expert_name: expertName,
-        documents_count: documents.length,
-        documents: documents.map((d: any) => d.description),
-        message: message
+        validated_count: 0,  // À compléter avec les données du frontend
+        rejected_count: 0,   // À compléter avec les données du frontend
+        requested_count: documents.length,
+        requested_documents: documents.map((d: any) => d.description)
       });
 
       console.log('✅ Événement timeline ajouté');
