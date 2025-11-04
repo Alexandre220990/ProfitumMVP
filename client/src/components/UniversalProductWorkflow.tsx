@@ -56,12 +56,23 @@ interface ClientProduit {
   current_step: number;
   progress: number;
   metadata?: any;
+  expert_id?: string;
   Client?: {
     company_name?: string;
     email?: string;
   };
   ProduitEligible?: {
     nom?: string;
+  };
+  Expert?: {
+    id: string;
+    name: string;
+    email: string;
+    company_name?: string;
+    specialites?: string[];
+    experience_years?: number;
+    rating?: number;
+    completed_projects?: number;
   };
 }
 
@@ -128,7 +139,13 @@ export default function UniversalProductWorkflow({
 
         // Si un expert est déjà assigné, le définir
         if (produitData.expert_id && produitData.Expert) {
-          setSelectedExpert(produitData.Expert);
+          setSelectedExpert({
+            ...produitData.Expert,
+            specialites: produitData.Expert.specialites || [],
+            experience_years: produitData.Expert.experience_years || 0,
+            rating: produitData.Expert.rating || 0,
+            completed_projects: produitData.Expert.completed_projects || 0
+          });
         }
       }
     } catch (error) {
