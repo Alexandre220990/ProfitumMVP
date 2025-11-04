@@ -496,7 +496,7 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
     docMetadata.description = description;
     docMetadata.user_type = user_type;
     
-    // Si dossier_id est fourni, l'ajouter aux métadonnées pour garder la référence
+    // Si dossier_id est fourni, l'ajouter aux métadonnées ET dans la colonne
     if (dossier_id) {
       docMetadata.client_produit_id = dossier_id;
     }
@@ -506,6 +506,7 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
       .insert({
         client_id: client_id || user.database_id,
         produit_id: finalProduitId || null,
+        client_produit_id: dossier_id || null, // ✅ Ajouter directement dans la colonne
         document_type,
         filename: originalFilename, // Garder le nom original pour l'affichage
         storage_path: storagePath, // Utiliser le chemin sanitizé pour le storage
