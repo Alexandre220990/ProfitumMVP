@@ -264,19 +264,11 @@ export default function ExpertDocumentsTab({
     <div className="space-y-6">
       {/* En-tête avec stats */}
       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-lg border">
-        <div className="flex items-center justify-between mb-4">
+        <div className="mb-4">
           <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
             <FileText className="h-5 w-5 text-blue-600" />
             Documents du Dossier
           </h3>
-          {onRequestDocuments && (
-            <Button 
-              onClick={onRequestDocuments}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              Demander des documents
-            </Button>
-          )}
         </div>
 
         <div className="grid grid-cols-4 gap-4">
