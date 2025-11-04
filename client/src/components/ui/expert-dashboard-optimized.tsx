@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -94,6 +95,7 @@ export const ExpertDashboardOptimized = () => {
   const [clientsList, setClientsList] = useState<any[]>([]);
   const [dossiersList, setDossiersList] = useState<any[]>([]);
   const [apporteursList, setApporteursList] = useState<any[]>([]);
+  const alertsRef = React.useRef<HTMLDivElement>(null);
 
   // Charger toutes les données du dashboard
   const loadDashboardData = useCallback(async () => {
@@ -324,9 +326,40 @@ export const ExpertDashboardOptimized = () => {
               </div>
             </CardContent>
           </Card>
+
+          {/* ✅ KPI 6 : MES ALERTES */}
+          <Card 
+            className={`bg-gradient-to-br from-red-500 to-red-600 text-white cursor-pointer hover:shadow-lg transition-all ${alerts.length > 0 ? 'ring-4 ring-red-300 animate-pulse' : ''}`} 
+            onClick={() => {
+              if (alertsRef.current) {
+                alertsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }
+            }}
+          >
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-red-100 text-sm font-medium mb-1">Mes alertes</p>
+                  <p className="text-3xl font-bold">{alerts.length}</p>
+                  {alerts.length > 0 && (
+                    <p className="text-xs text-red-200 mt-1">Actions requises</p>
+                  )}
+                </div>
+                <div className="relative">
+                  <Bell className="h-10 w-10 text-red-200" />
+                  {alerts.length > 0 && (
+                    <Badge className="absolute -top-2 -right-2 bg-red-700 text-white border-2 border-white">
+                      {alerts.length}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* 🚨 ALERTES URGENTES */}
+        <div ref={alertsRef}>
         {alerts.length > 0 && (
           <Card className="mb-8 border-red-200 bg-gradient-to-r from-red-50 to-orange-50">
             <CardHeader>
@@ -342,11 +375,16 @@ export const ExpertDashboardOptimized = () => {
               {alerts.slice(0, 5).map((alert) => (
                 <div 
                   key={alert.id}
-                  className={`p-4 rounded-lg border-l-4 ${
-                    alert.type === 'critique' ? 'bg-red-100 border-red-500' :
-                    alert.type === 'important' ? 'bg-orange-100 border-orange-500' :
-                    'bg-yellow-100 border-yellow-500'
+                  className={`p-4 rounded-lg border-l-4 cursor-pointer hover:shadow-md transition-all ${
+                    alert.type === 'critique' ? 'bg-red-100 border-red-500 hover:bg-red-200' :
+                    alert.type === 'important' ? 'bg-orange-100 border-orange-500 hover:bg-orange-200' :
+                    'bg-yellow-100 border-yellow-500 hover:bg-yellow-200'
                   }`}
+                  onClick={() => {
+                    if (alert.actionUrl) {
+                      navigate(alert.actionUrl);
+                    }
+                  }}
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
@@ -422,6 +460,7 @@ export const ExpertDashboardOptimized = () => {
             </CardContent>
           </Card>
         )}
+        </div>
 
         {/* 📊 TABLEAUX FILTRABLES (selon KPI cliqué) */}
 

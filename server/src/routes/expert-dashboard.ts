@@ -244,181 +244,88 @@ router.get('/alerts', enhancedAuthMiddleware, async (req: Request, res: Response
     }
 
     const expertId = authUser.database_id || authUser.id;
+    const expertAuthUserId = authUser.id; // auth_user_id utilisé dans la table notification
 
-    // Récupérer les alertes actives depuis la BDD
-    const { data: dbAlerts, error: alertError } = await supabase
-      .from('ExpertAlert')
+    // ✅ CORRECTION: Récupérer les notifications actionnables depuis la table notification
+    const { data: notifications, error: notificationsError } = await supabase
+      .from('notification')
       .select('*')
-      .eq('expert_id', expertId)
-      .eq('status', 'active')
-      .order('created_at', { ascending: false });
+      .eq('user_id', expertAuthUserId)
+      .eq('user_type', 'expert')
+      .eq('is_read', false)
+      .in('notification_type', [
+        'dossier_pending_acceptance',
+        'documents_completed',
+        'audit_required',
+        'audit_validated',
+        'client_message'
+      ])
+      .order('created_at', { ascending: false })
+      .limit(20);
 
-    if (alertError) {
-      console.error('❌ Erreur récupération alertes:', alertError);
-      // Fallback sur génération dynamique en cas d'erreur
+    if (notificationsError) {
+      console.error('❌ Erreur récupération notifications:', notificationsError);
     }
 
-    // Si alertes trouvées en BDD, les retourner
-    if (dbAlerts && dbAlerts.length > 0) {
-      // Transformer le format BDD vers le format API
-      const formattedAlerts: Alert[] = dbAlerts.map(alert => ({
-        id: alert.id,
-        type: alert.type as 'critique' | 'important' | 'attention',
-        category: alert.category,
-        title: alert.title,
-        description: alert.description,
-        dossierId: alert.dossier_id,
-        clientName: alert.metadata?.clientName || 'Client',
-        urgency: alert.type === 'critique' ? 100 : alert.type === 'important' ? 80 : 60,
-        actionLabel: alert.category === 'rdv' ? 'Confirmer' : alert.category === 'dossier' ? 'Voir dossier' : 'Planifier RDV',
-        actionUrl: alert.dossier_id ? `/expert/dossier/${alert.dossier_id}` : `/expert/agenda?rdv=${alert.rdv_id}`,
-        createdAt: alert.created_at
-      }));
+    // Transformer les notifications en alertes formatées
+    const alerts: Alert[] = (notifications || []).map((notif: any) => {
+      // Extraire les infos du dossier depuis action_data
+      const actionData = notif.action_data || {};
+      const client_produit_id = actionData.client_produit_id || '';
+      const clientName = actionData.client_company || actionData.client_name || 'Client';
+      const productName = actionData.product_name || actionData.product_type || 'Produit';
 
-      return res.json({
-        success: true,
-        data: formattedAlerts
-      });
-    }
-
-    // Sinon, générer les alertes dynamiquement (fallback)
-    const alerts: Alert[] = [];
-
-    // 1. ALERTES RDV
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const in48h = new Date();
-    in48h.setDate(in48h.getDate() + 2);
-
-    const { data: rdvs } = await supabase
-      .from('RDV')
-      .select(`
-        id,
-        scheduled_date,
-        scheduled_time,
-        status,
-        Client:client_id (
-          company_name,
-          name
-        )
-      `)
-      .eq('expert_id', expertId)
-      .in('status', ['proposed', 'confirmed'])
-      .gte('scheduled_date', new Date().toISOString().split('T')[0])
-      .lte('scheduled_date', in48h.toISOString().split('T')[0]);
-
-    (rdvs || []).forEach((rdv: any) => {
-      if (rdv.status === 'proposed') {
-        alerts.push({
-          id: `rdv-${rdv.id}`,
-          type: 'critique',
-          category: 'rdv',
-          title: 'RDV NON CONFIRMÉ',
-          description: `RDV ${rdv.scheduled_date} à ${rdv.scheduled_time} - Pas de confirmation client`,
-          clientName: rdv.Client?.company_name || rdv.Client?.name || 'Client',
-          urgency: 100,
-          actionLabel: 'Confirmer',
-          actionUrl: `/expert/agenda?rdv=${rdv.id}`,
-          createdAt: new Date().toISOString()
-        });
-      }
-    });
-
-    // 2. ALERTES DOSSIERS BLOQUÉS
-    const { data: dossiersBloqués } = await supabase
-      .from('ClientProduitEligible')
-      .select(`
-        id,
-        updated_at,
-        statut,
-        Client:clientId (
-          company_name,
-          name
-        )
-      `)
-      .eq('expert_id', expertId)
-      .eq('statut', 'en_cours');
-
-    const now = new Date();
-    (dossiersBloqués || []).forEach((dossier: any) => {
-      const daysSinceUpdate = Math.floor((now.getTime() - new Date(dossier.updated_at).getTime()) / (1000 * 60 * 60 * 24));
+      // Déterminer le type et la catégorie selon notification_type
+      let type: 'critique' | 'important' | 'attention' = 'important';
+      let category: 'rdv' | 'dossier' | 'documents' | 'prospect' = 'dossier';
+      let actionLabel = 'Voir dossier';
       
-      if (daysSinceUpdate >= 8) {
-        alerts.push({
-          id: `dossier-${dossier.id}`,
-          type: 'critique',
-          category: 'dossier',
-          title: 'DOSSIER BLOQUÉ',
-          description: `Pas d'interaction depuis ${daysSinceUpdate} jours`,
-          dossierId: dossier.id,
-          clientName: dossier.Client?.company_name || dossier.Client?.name || 'Client',
-          urgency: 90,
-          actionLabel: 'Relancer',
-          actionUrl: `/expert/dossier/${dossier.id}`,
-          createdAt: new Date().toISOString()
-        });
-      } else if (daysSinceUpdate >= 5) {
-        alerts.push({
-          id: `dossier-${dossier.id}`,
-          type: 'important',
-          category: 'dossier',
-          title: 'DOSSIER INACTIF',
-          description: `Pas d'interaction depuis ${daysSinceUpdate} jours`,
-          dossierId: dossier.id,
-          clientName: dossier.Client?.company_name || dossier.Client?.name || 'Client',
-          urgency: 70,
-          actionLabel: 'Voir dossier',
-          actionUrl: `/expert/dossier/${dossier.id}`,
-          createdAt: new Date().toISOString()
-        });
+      if (notif.notification_type === 'dossier_pending_acceptance') {
+        type = 'critique';
+        category = 'dossier';
+        actionLabel = 'Accepter ou refuser';
+      } else if (notif.notification_type === 'documents_completed') {
+        type = 'important';
+        category = 'documents';
+        actionLabel = 'Commencer l\'audit';
+      } else if (notif.notification_type === 'audit_required') {
+        type = 'important';
+        category = 'dossier';
+        actionLabel = 'Envoyer rapport';
+      } else if (notif.notification_type === 'audit_validated') {
+        type = 'attention';
+        category = 'dossier';
+        actionLabel = 'Voir dossier';
       }
+
+      // Urgence basée sur la priorité et le type
+      let urgency = 80;
+      if (notif.priority === 'high' || type === 'critique') {
+        urgency = 100;
+      } else if (type === 'attention') {
+        urgency = 60;
+      }
+
+      // Construire l'URL d'action
+      let actionUrl = notif.action_url || '';
+      if (!actionUrl && client_produit_id) {
+        actionUrl = `/expert/dossier/${client_produit_id}`;
+      }
+
+      return {
+        id: notif.id,
+        type,
+        category,
+        title: notif.title || 'Action requise',
+        description: notif.message || notif.description || '',
+        dossierId: client_produit_id,
+        clientName,
+        urgency,
+        actionLabel,
+        actionUrl,
+        createdAt: notif.created_at
+      };
     });
-
-    // 3. ALERTES PROSPECTS CHAUDS SANS RDV
-    const { data: prospectsChauds } = await supabase
-      .from('ClientProduitEligible')
-      .select(`
-        id,
-        "clientId",
-        "montantFinal",
-        Client:clientId (
-          company_name,
-          name
-        )
-      `)
-      .eq('expert_id', expertId)
-      .eq('statut', 'eligible');
-
-    // Vérifier si un RDV existe pour chaque prospect
-    for (const prospect of (prospectsChauds || [])) {
-      const { data: rdvExists } = await supabase
-        .from('RDV')
-        .select('id')
-        .eq('client_id', prospect.clientId)
-        .eq('expert_id', expertId)
-        .limit(1);
-
-      if (!rdvExists || rdvExists.length === 0) {
-        if ((prospect.montantFinal || 0) >= 20000) {
-          // Gérer le cas où Client peut être un array ou un objet
-          const client = Array.isArray(prospect.Client) ? prospect.Client[0] : prospect.Client;
-          
-          alerts.push({
-            id: `prospect-${prospect.id}`,
-            type: 'important',
-            category: 'prospect',
-            title: 'PROSPECT CHAUD SANS RDV',
-            description: `Prospect éligible • ${(prospect.montantFinal || 0).toLocaleString()}€ potentiel`,
-            dossierId: prospect.id,
-            clientName: client?.company_name || client?.name || 'Client',
-            urgency: 80,
-            actionLabel: 'Planifier RDV',
-            actionUrl: `/expert/dossier/${prospect.id}`,
-            createdAt: new Date().toISOString()
-          });
-        }
-      }
-    }
 
     // Trier par urgence décroissante
     alerts.sort((a, b) => b.urgency - a.urgency);

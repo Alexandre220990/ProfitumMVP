@@ -37,6 +37,27 @@ export class ExpertNotificationService {
         return { success: false };
       }
 
+      // ✅ CORRECTION: Récupérer le nom réel du produit si non fourni
+      let productDisplayName = data.product_name || data.product_type;
+      if (!data.product_name && data.client_produit_id) {
+        const { data: produitData } = await supabase
+          .from('ClientProduitEligible')
+          .select(`
+            ProduitEligible:produitId (
+              nom
+            )
+          `)
+          .eq('id', data.client_produit_id)
+          .single();
+        
+        if (produitData?.ProduitEligible) {
+          const produit = Array.isArray(produitData.ProduitEligible) 
+            ? produitData.ProduitEligible[0] 
+            : produitData.ProduitEligible;
+          productDisplayName = produit?.nom || data.product_type;
+        }
+      }
+
       const amountText = data.estimated_amount 
         ? ` (${data.estimated_amount.toLocaleString('fr-FR')} €)` 
         : '';
@@ -46,8 +67,8 @@ export class ExpertNotificationService {
         .insert({
           user_id: expertData.auth_user_id,
           user_type: 'expert',
-          title: `📋 Nouveau dossier ${data.product_type} en attente`,
-          message: `${data.client_company || data.client_name || 'Un client'} souhaite vous confier un dossier ${data.product_name || data.product_type}${amountText}. Souhaitez-vous traiter ce dossier ?`,
+          title: `📋 Nouveau dossier ${productDisplayName} en attente`,
+          message: `${data.client_company || data.client_name || 'Un client'} souhaite vous confier un dossier ${productDisplayName}${amountText}. Souhaitez-vous traiter ce dossier ?`,
           notification_type: 'dossier_pending_acceptance',
           priority: 'high',
           is_read: false,
