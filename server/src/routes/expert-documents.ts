@@ -523,6 +523,28 @@ router.post('/dossier/:id/launch-audit', enhancedAuthMiddleware, async (req: Req
       });
     }
 
+    // ✅ Validation groupée : Valider automatiquement tous les documents en attente
+    const { error: validateError } = await supabase
+      .from('ClientProcessDocument')
+      .update({
+        validation_status: 'validated',
+        validated_by: user.database_id,
+        validated_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('client_produit_id', dossierId)
+      .eq('validation_status', 'pending');
+
+    if (validateError) {
+      console.error('❌ Erreur validation groupée documents:', validateError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la validation des documents'
+      });
+    }
+
+    console.log('✅ Validation groupée : Tous les documents en attente ont été validés');
+
     // Mettre à jour le statut du dossier
     const { error: updateError } = await supabase
       .from('ClientProduitEligible')
