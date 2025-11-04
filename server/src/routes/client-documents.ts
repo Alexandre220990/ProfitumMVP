@@ -241,5 +241,303 @@ router.post('/dossier/:id/validate-complementary-documents', enhancedAuthMiddlew
   }
 });
 
+/**
+ * POST /api/client/dossier/:id/validate-step-3
+ * Valider l'étape 3 "Collecte des documents" du workflow
+ * Vérifie que tous les documents rejetés ont été remplacés et que tous les documents demandés ont été fournis
+ */
+router.post('/dossier/:id/validate-step-3', enhancedAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const user = (req as AuthenticatedRequest).user;
+    const { id: dossierId } = req.params;
+
+    if (!user || user.type !== 'client') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux clients'
+      });
+    }
+
+    console.log('✅ Client - Validation étape 3:', { dossierId, clientId: user.database_id });
+
+    // Vérifier que le dossier appartient au client
+    const { data: dossier } = await supabase
+      .from('ClientProduitEligible')
+      .select('"clientId", expert_id, metadata')
+      .eq('id', dossierId)
+      .single();
+
+    if (!dossier || dossier.clientId !== user.database_id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès non autorisé'
+      });
+    }
+
+    // Vérifier les documents rejetés
+    const { data: rejectedDocs, error: rejectedError } = await supabase
+      .from('ClientProcessDocument')
+      .select('id, filename, document_type')
+      .eq('client_produit_id', dossierId)
+      .eq('validation_status', 'rejected');
+
+    if (rejectedError) {
+      console.error('❌ Erreur vérification documents rejetés:', rejectedError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la vérification des documents'
+      });
+    }
+
+    // Vérifier la demande de documents complémentaires
+    const { data: documentRequest } = await supabase
+      .from('document_request')
+      .select('id, requested_documents, status')
+      .eq('dossier_id', dossierId)
+      .in('status', ['pending', 'in_progress'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    // Compter les documents encore manquants
+    const rejectedDocsCount = rejectedDocs?.length || 0;
+    const requestedDocs = (documentRequest?.requested_documents as any[]) || [];
+    const missingRequiredDocs = requestedDocs.filter((doc: any) => doc.required && !doc.uploaded);
+
+    if (rejectedDocsCount > 0 || missingRequiredDocs.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tous les documents requis n\'ont pas encore été fournis',
+        details: {
+          rejected_docs_count: rejectedDocsCount,
+          missing_required_docs: missingRequiredDocs.length
+        }
+      });
+    }
+
+    // Marquer l'étape 3 comme complétée
+    const { error: stepError } = await supabase
+      .from('DossierStep')
+      .update({
+        status: 'completed',
+        progress: 100,
+        completed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('dossier_id', dossierId)
+      .eq('step_name', 'Collecte des documents');
+
+    if (stepError) {
+      console.error('❌ Erreur mise à jour étape:', stepError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la mise à jour de l\'étape'
+      });
+    }
+
+    // Marquer la demande de documents comme complétée si elle existe
+    if (documentRequest) {
+      await supabase
+        .from('document_request')
+        .update({
+          status: 'completed',
+          completed_at: new Date().toISOString()
+        })
+        .eq('id', documentRequest.id);
+    }
+
+    // Mettre à jour le statut du dossier
+    await supabase
+      .from('ClientProduitEligible')
+      .update({
+        statut: 'documents_completes',
+        metadata: {
+          ...(dossier.metadata as any || {}),
+          documents_missing: false,
+          step_3_completed_at: new Date().toISOString()
+        },
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', dossierId);
+
+    // Activer l'étape 4 "Audit technique"
+    await supabase
+      .from('DossierStep')
+      .update({
+        status: 'in_progress',
+        updated_at: new Date().toISOString()
+      })
+      .eq('dossier_id', dossierId)
+      .eq('step_name', 'Audit technique')
+      .eq('status', 'pending');
+
+    // 📅 TIMELINE : Ajouter événement étape 3 complétée
+    try {
+      const { DossierTimelineService } = await import('../services/dossier-timeline-service');
+      
+      const { data: clientData } = await supabase
+        .from('Client')
+        .select('company_name')
+        .eq('id', user.database_id)
+        .single();
+
+      const clientName = clientData?.company_name || 'Client';
+      
+      await DossierTimelineService.addEvent({
+        dossier_id: dossierId,
+        type: 'status_change',
+        actor_type: 'client',
+        actor_name: clientName,
+        title: '✅ Étape 3 validée : Collecte des documents',
+        description: `${clientName} a fourni tous les documents requis. L'étape de collecte des documents est maintenant complétée.`,
+        metadata: {
+          step_number: 3,
+          step_name: 'Collecte des documents',
+          validated_at: new Date().toISOString()
+        },
+        icon: '✅',
+        color: 'green'
+      });
+
+      console.log('✅ Événement timeline ajouté (étape 3 validée)');
+    } catch (timelineError) {
+      console.error('⚠️ Erreur timeline (non bloquant):', timelineError);
+    }
+
+    // Envoyer notification à l'expert
+    if (dossier.expert_id) {
+      try {
+        const { data: expertData } = await supabase
+          .from('Expert')
+          .select('auth_user_id, name')
+          .eq('id', dossier.expert_id)
+          .single();
+
+        const { data: clientData } = await supabase
+          .from('Client')
+          .select('company_name')
+          .eq('id', dossier.clientId)
+          .single();
+
+        if (expertData?.auth_user_id) {
+          await supabase
+            .from('notification')
+            .insert({
+              user_id: expertData.auth_user_id,
+              user_type: 'expert',
+              title: `✅ Étape 3 complétée - Documents collectés`,
+              message: `${clientData?.company_name || 'Le client'} a fourni tous les documents requis. Vous pouvez maintenant procéder à l'audit technique.`,
+              notification_type: 'step_completed',
+              priority: 'high',
+              is_read: false,
+              action_url: `/expert/dossier/${dossierId}`,
+              action_data: {
+                dossier_id: dossierId,
+                client_id: dossier.clientId,
+                step_number: 3,
+                step_name: 'Collecte des documents',
+                completed_at: new Date().toISOString()
+              },
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+
+          console.log('📧 Notification expert envoyée (étape 3 validée)');
+        }
+      } catch (notifError) {
+        console.error('⚠️ Erreur notification (non bloquant):', notifError);
+      }
+    }
+
+    console.log(`✅ Étape 3 validée pour le dossier ${dossierId}`);
+
+    return res.json({
+      success: true,
+      message: 'Étape 3 validée avec succès ! L\'expert va maintenant procéder à l\'audit technique.'
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur validation étape 3:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+/**
+ * GET /api/client/dossier/:id/documents
+ * Récupérer tous les documents d'un dossier (pour le client)
+ */
+router.get('/dossier/:id/documents', enhancedAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const user = (req as AuthenticatedRequest).user;
+    const { id: dossierId } = req.params;
+
+    if (!user || user.type !== 'client') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux clients'
+      });
+    }
+
+    // Vérifier que le dossier appartient au client
+    const { data: dossier } = await supabase
+      .from('ClientProduitEligible')
+      .select('"clientId"')
+      .eq('id', dossierId)
+      .single();
+
+    if (!dossier || dossier.clientId !== user.database_id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès non autorisé'
+      });
+    }
+
+    // Récupérer tous les documents
+    const { data: documents, error } = await supabase
+      .from('ClientProcessDocument')
+      .select(`
+        id,
+        filename,
+        original_filename,
+        storage_path,
+        bucket_name,
+        mime_type,
+        file_size,
+        validation_status,
+        rejection_reason,
+        workflow_step,
+        document_type,
+        created_at,
+        validated_at,
+        updated_at
+      `)
+      .eq('client_produit_id', dossierId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('❌ Erreur récupération documents:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la récupération des documents'
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: documents || []
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route documents:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
 export default router;
 

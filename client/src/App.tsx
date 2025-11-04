@@ -172,7 +172,6 @@ function App() {
                     <Route path="/simulateur" element={<SimulateurEligibilite />} />
                     <Route path="/simulateur-eligibilite" element={<SimulateurEligibilite />} />
                     <Route path="/inscription-simulateur" element={<InscriptionSimulateur />} />
-                    <Route path="/simulateur-client" element={<SimulateurClient />} />
                     <Route path="/experts" element={<Experts />} />
                     <Route path="/experts/:id" element={<ExpertDetails />} />
                     <Route path="/connexion-client" element={<ConnexionClient />} />
@@ -227,6 +226,9 @@ function App() {
                         {/* Agenda & Calendar */}
                         <Route path="/agenda-client" element={<AgendaClient />} />
                         <Route path="/google-calendar-integration" element={<GoogleCalendarIntegration />} />
+                        
+                        {/* Simulateur */}
+                        <Route path="/simulateur-client" element={<SimulateurClient />} />
                         
                         {/* Messagerie */}
                         <Route path="/messagerie" element={<MessagerieClient />} />

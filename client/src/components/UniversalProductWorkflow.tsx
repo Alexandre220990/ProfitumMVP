@@ -16,6 +16,7 @@ import ProductUploadInline from './ProductUploadInline';
 import ExpertSelectionModal from './ExpertSelectionModal';
 import EligibilityValidationStatus from './EligibilityValidationStatus';
 import ClientDocumentUploadComplementary from './client/ClientDocumentUploadComplementary';
+import ClientStep3DocumentCollection from './client/ClientStep3DocumentCollection';
 import { useDossierSteps } from '@/hooks/use-dossier-steps';
 import { useDossierNotifications } from '@/hooks/useDossierNotifications';
 import { get } from '@/lib/api';
@@ -543,56 +544,19 @@ export default function UniversalProductWorkflow({
           );
         }
 
-        // Étape 3 : Documents manquants (si rejetés par expert mais pas de demande formelle)
-        if (currentStep === 3 && 
-            (clientProduit?.statut === 'documents_manquants' || 
-             clientProduit?.metadata?.documents_missing)) {
-          const rejectionInfo = clientProduit?.metadata?.last_document_rejection;
-          
+        // Étape 3 : Collecte des documents (avec nouveau design complet)
+        if (currentStep === 3) {
           return (
-            <div className="space-y-4">
-              <Card className="border-orange-200 bg-orange-50">
-                <CardContent className="p-6">
-                  <div className="flex items-start gap-3">
-                    <AlertCircle className="w-6 h-6 text-orange-600 flex-shrink-0 mt-1" />
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-orange-900 mb-2">
-                        📄 Documents manquants
-                      </h3>
-                      <p className="text-orange-800 mb-3">
-                        L'expert a besoin de documents complémentaires pour constituer votre dossier.
-                      </p>
-                      {rejectionInfo && (
-                        <div className="bg-white rounded-lg p-4 mb-4">
-                          <p className="text-sm font-medium text-gray-700 mb-1">
-                            Document rejeté : {rejectionInfo.document_name}
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            Raison : {rejectionInfo.rejection_reason}
-                          </p>
-                        </div>
-                      )}
-                      <p className="text-sm text-orange-700">
-                        Merci de consulter vos notifications et de fournir les documents demandés.
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <div className="text-center py-4">
-                <Button
-                  onClick={() => {
-                    // Recharger les données pour voir si des documents sont demandés
-                    loadClientProduit();
-                    loadDocumentRequest();
-                  }}
-                  variant="outline"
-                >
-                  Actualiser le statut
-                </Button>
-              </div>
-            </div>
+            <ClientStep3DocumentCollection
+              dossierId={clientProduitId}
+              onComplete={() => {
+                toast.success('✅ Étape 3 validée avec succès !');
+                // Recharger les données du dossier
+                loadClientProduit();
+                // Passer à l'étape suivante si applicable
+                setCurrentStep(4);
+              }}
+            />
           );
         }
 

@@ -482,8 +482,8 @@ const SimulateurClient = () => {
   // Écran de bienvenue
   if (showWelcomeScreen) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
-        <div className="max-w-6xl mx-auto px-4 py-16">
+      <div className="bg-gradient-to-br from-slate-50 via-white to-slate-100 -mx-4 sm:-mx-6 md:-mx-8 -my-6 py-16 px-4">
+        <div className="max-w-6xl mx-auto">
           <div className="text-center space-y-8">
             <div className="space-y-6">
               <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-4 rounded-full w-24 h-24 mx-auto flex items-center justify-center">
@@ -551,8 +551,8 @@ const SimulateurClient = () => {
   // Affichage des résultats
   if (showResults && updateProgress) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
-        <div className="max-w-7xl mx-auto px-6 py-12">
+      <div className="bg-gradient-to-br from-slate-50 via-white to-slate-100 -mx-4 sm:-mx-6 md:-mx-8 -my-6 py-12 px-6">
+        <div className="max-w-7xl mx-auto">
           <div className="text-center space-y-4 mb-12">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl shadow-lg mb-6">
               <CheckCircle className="w-8 h-8 text-white" />
@@ -657,7 +657,7 @@ const SimulateurClient = () => {
 
   // Affichage des questions
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+    <div className="bg-gradient-to-br from-slate-50 via-white to-slate-100 -mx-4 sm:-mx-6 md:-mx-8 -my-6">
       {/* Bandeau */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-6 px-8 shadow-lg">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between">
