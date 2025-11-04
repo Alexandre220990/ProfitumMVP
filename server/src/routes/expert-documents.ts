@@ -637,6 +637,12 @@ router.post('/dossier/:id/launch-audit', enhancedAuthMiddleware, async (req: Req
 
     // 📅 TIMELINE : Ajouter événement validation documents
     try {
+      console.log('📅 Début création événement timeline:', {
+        dossierId,
+        stats,
+        expertId: user.database_id
+      });
+
       const { DossierTimelineService } = await import('../services/dossier-timeline-service');
       
       const { data: expertData } = await supabase
@@ -646,6 +652,14 @@ router.post('/dossier/:id/launch-audit', enhancedAuthMiddleware, async (req: Req
         .single();
 
       const expertName = expertData?.name || 'Expert';
+      
+      console.log('📅 Appel DossierTimelineService.documentsValides avec:', {
+        dossier_id: dossierId,
+        expert_name: expertName,
+        validated_count: stats.pending,
+        rejected_count: stats.rejected,
+        total_count: stats.total
+      });
 
       await DossierTimelineService.documentsValides({
         dossier_id: dossierId,

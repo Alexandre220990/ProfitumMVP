@@ -535,6 +535,8 @@ export class DossierTimelineService {
     rejected_count: number;
     total_count: number;
   }): Promise<void> {
+    console.log('📋 DossierTimelineService.documentsValides appelé avec:', data);
+    
     const parts = [];
     
     if (data.validated_count > 0) {
@@ -549,7 +551,9 @@ export class DossierTimelineService {
       ? parts.join(', ') 
       : `${data.total_count} document${data.total_count > 1 ? 's' : ''} traité${data.total_count > 1 ? 's' : ''}`;
 
-    await this.addEvent({
+    console.log('📋 Description générée:', description);
+
+    const result = await this.addEvent({
       dossier_id: data.dossier_id,
       type: 'expert_action',
       actor_type: 'expert',
@@ -564,6 +568,8 @@ export class DossierTimelineService {
       icon: '📋',
       color: 'green'
     });
+
+    console.log('📋 Résultat addEvent:', result);
   }
 }
 
