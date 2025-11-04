@@ -413,6 +413,37 @@ router.post('/expert/select', enhancedAuthMiddleware, async (req: Request, res: 
     // Mettre à jour le progress global
     await DossierStepGenerator.updateDossierProgress(dossier_id);
 
+    // 📅 TIMELINE : Ajouter événement assignation expert
+    try {
+      const { DossierTimelineService } = await import('../services/dossier-timeline-service');
+      
+      // Récupérer les infos du dossier pour la timeline
+      const { data: dossierInfo } = await supabase
+        .from('ClientProduitEligible')
+        .select(`
+          id,
+          Client:clientId (company_name),
+          ProduitEligible:produitId (nom)
+        `)
+        .eq('id', dossier_id)
+        .single();
+
+      const clientName = (dossierInfo as any)?.Client?.company_name || 'Client';
+      const productName = (dossierInfo as any)?.ProduitEligible?.nom || 'Produit';
+      
+      await DossierTimelineService.expertAssigne({
+        dossier_id: dossier_id,
+        expert_id: expert_id,
+        expert_name: expert.name,
+        product_name: productName,
+        client_name: clientName
+      });
+
+      console.log('✅ Événement timeline ajouté (expert assigné)');
+    } catch (timelineError) {
+      console.error('⚠️ Erreur timeline (non bloquant):', timelineError);
+    }
+
     // 🔔 DEMANDE #6: Envoyer notification à l'expert
     try {
       const { ExpertNotificationService } = await import('../services/expert-notification-service');

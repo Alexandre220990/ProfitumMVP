@@ -167,6 +167,31 @@ router.put('/document/:id/validate', enhancedAuthMiddleware, async (req: Request
 
     console.log(`✅ Document validé:`, updatedDoc.filename);
 
+    // 📅 TIMELINE : Ajouter événement validation document
+    try {
+      const { DossierTimelineService } = await import('../services/dossier-timeline-service');
+      
+      // Récupérer le nom de l'expert
+      const { data: expertData } = await supabase
+        .from('Expert')
+        .select('name')
+        .eq('id', user.database_id)
+        .single();
+
+      const expertName = expertData?.name || 'Expert';
+      
+      await DossierTimelineService.documentValideIndividuel({
+        dossier_id: document.client_produit_id,
+        document_name: document.filename,
+        expert_id: user.database_id,
+        expert_name: expertName
+      });
+
+      console.log('✅ Événement timeline ajouté (document validé individuellement)');
+    } catch (timelineError) {
+      console.error('⚠️ Erreur timeline (non bloquant):', timelineError);
+    }
+
     return res.json({
       success: true,
       message: 'Document validé avec succès',

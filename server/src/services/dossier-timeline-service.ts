@@ -614,5 +614,61 @@ export class DossierTimelineService {
       color: 'red'
     });
   }
+
+  /**
+   * Événement : Document validé individuellement par l'expert
+   */
+  static async documentValideIndividuel(data: {
+    dossier_id: string;
+    document_name: string;
+    expert_id: string;
+    expert_name: string;
+  }): Promise<void> {
+    await this.addEvent({
+      dossier_id: data.dossier_id,
+      type: 'expert_action',
+      actor_type: 'expert',
+      actor_id: data.expert_id,
+      actor_name: data.expert_name,
+      title: '✅ Document validé',
+      description: `Expert ${data.expert_name} a validé le document "${data.document_name}"`,
+      metadata: {
+        document_name: data.document_name,
+        expert_id: data.expert_id,
+        validation_type: 'individual'
+      },
+      icon: '✅',
+      color: 'green'
+    });
+  }
+
+  /**
+   * Événement : Expert assigné au dossier
+   */
+  static async expertAssigne(data: {
+    dossier_id: string;
+    expert_id: string;
+    expert_name: string;
+    product_name: string;
+    client_name: string;
+  }): Promise<void> {
+    await this.addEvent({
+      dossier_id: data.dossier_id,
+      type: 'expert_action',
+      actor_type: 'expert',
+      actor_id: data.expert_id,
+      actor_name: data.expert_name,
+      title: '👨‍💼 Expert assigné',
+      description: `Expert ${data.expert_name} a accepté le dossier ${data.product_name} de ${data.client_name}`,
+      metadata: {
+        expert_id: data.expert_id,
+        expert_name: data.expert_name,
+        product_name: data.product_name,
+        client_name: data.client_name
+      },
+      icon: '👨‍💼',
+      color: 'blue'
+    });
+  }
 }
 
