@@ -225,7 +225,7 @@ export default function ExpertDocumentsTab({
 
       // Récupérer le document via une requête authentifiée
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/documents/view/${doc.id}`,
+        `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/expert/document/${doc.id}/view`,
         {
           method: 'GET',
           headers: {
@@ -278,7 +278,7 @@ export default function ExpertDocumentsTab({
 
       // Récupérer le document via une requête authentifiée
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/documents/view/${doc.id}`,
+        `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/expert/document/${doc.id}/view`,
         {
           method: 'GET',
           headers: {

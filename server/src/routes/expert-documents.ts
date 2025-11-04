@@ -740,5 +740,91 @@ router.get('/dossier/:id/document-request', enhancedAuthMiddleware, async (req: 
   }
 });
 
+/**
+ * GET /api/expert/document/:id/view
+ * Visualiser un document (stream du fichier)
+ */
+router.get('/document/:id/view', enhancedAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const user = (req as AuthenticatedRequest).user;
+    const { id: documentId } = req.params;
+
+    if (!user || user.type !== 'expert') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux experts'
+      });
+    }
+
+    console.log('🔍 Visualisation document:', { documentId, expertId: user.database_id });
+
+    // Récupérer les infos du document
+    const { data: document, error: docError } = await supabase
+      .from('ClientProcessDocument')
+      .select(`
+        id,
+        filename,
+        storage_path,
+        mime_type,
+        client_produit_id,
+        ClientProduitEligible:client_produit_id (
+          id,
+          expert_id
+        )
+      `)
+      .eq('id', documentId)
+      .single();
+
+    if (docError || !document) {
+      console.error('❌ Document non trouvé:', docError);
+      return res.status(404).json({
+        success: false,
+        message: 'Document non trouvé'
+      });
+    }
+
+    // Vérifier que l'expert a accès au dossier
+    const dossier = (document as any).ClientProduitEligible;
+    if (!dossier || dossier.expert_id !== user.database_id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès non autorisé à ce document'
+      });
+    }
+
+    // Télécharger le fichier depuis Supabase Storage
+    const { data: fileData, error: storageError } = await supabase.storage
+      .from('documents')
+      .download(document.storage_path);
+
+    if (storageError || !fileData) {
+      console.error('❌ Erreur téléchargement Storage:', storageError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la récupération du fichier'
+      });
+    }
+
+    console.log(`✅ Document récupéré: ${document.filename} (${document.mime_type})`);
+
+    // Envoyer le fichier avec les bons headers
+    res.setHeader('Content-Type', document.mime_type || 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${document.filename}"`);
+    
+    // Convertir le blob en buffer et l'envoyer
+    const arrayBuffer = await fileData.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    
+    return res.send(buffer);
+
+  } catch (error) {
+    console.error('❌ Erreur route visualisation document:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
 export default router;
 
