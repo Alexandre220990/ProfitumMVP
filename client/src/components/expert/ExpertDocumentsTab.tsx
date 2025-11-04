@@ -29,7 +29,7 @@ interface Document {
   workflow_step: string | null;
   rejection_reason: string | null;
   validated_at: string | null;
-  uploaded_at: string;
+  created_at: string;
   validated_by: string | null;
   Expert?: {
     id: string;
@@ -245,7 +245,7 @@ export default function ExpertDocumentsTab({ dossierId, onRequestDocuments }: Ex
                         <span>•</span>
                         <span className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
-                          {formatDistanceToNow(new Date(doc.uploaded_at), { addSuffix: true, locale: fr })}
+                          {formatDistanceToNow(new Date(doc.created_at), { addSuffix: true, locale: fr })}
                         </span>
                         {doc.workflow_step && (
                           <>

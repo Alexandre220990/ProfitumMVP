@@ -61,7 +61,7 @@ router.get('/dossier/:id/documents', enhancedAuthMiddleware, async (req: Request
         workflow_step,
         rejection_reason,
         validated_at,
-        uploaded_at,
+        created_at,
         validated_by,
         Expert:validated_by (
           id,
@@ -70,7 +70,7 @@ router.get('/dossier/:id/documents', enhancedAuthMiddleware, async (req: Request
         )
       `)
       .eq('client_produit_id', dossierId)
-      .order('uploaded_at', { ascending: false });
+      .order('created_at', { ascending: false });
 
     if (docsError) {
       console.error('❌ Erreur récupération documents:', docsError);
