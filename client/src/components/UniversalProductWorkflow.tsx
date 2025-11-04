@@ -125,20 +125,37 @@ export default function UniversalProductWorkflow({
       
       if (response.success && response.data) {
         const produitData = response.data as ClientProduit;
+        
+        // 🔍 DIAGNOSTIC : Afficher le statut exact
+        console.log('🔍 DIAGNOSTIC loadClientProduit:', {
+          dossier_id: clientProduitId,
+          statut: produitData.statut,
+          statut_exact: `"${produitData.statut}"`,
+          current_step_bdd: produitData.current_step,
+          progress_bdd: produitData.progress,
+          expert_id: produitData.expert_id
+        });
+        
         setClientProduit(produitData);
         
         // Mettre à jour eligibilityValidated basé sur le statut
         if (produitData.statut === 'eligibility_validated') {
+          console.log('✅ DIAGNOSTIC: Éligibilité validée détectée → Déblocage étape 2');
           setEligibilityValidated(true);
           setCurrentStep(2); // Déverrouiller étape 2
         } else if (produitData.statut === 'eligible' || produitData.statut === 'opportunité') {
           // État initial : permettre l'upload des documents
+          console.log('📝 DIAGNOSTIC: Statut initial → Étape 1');
           setEligibilityValidated(false);
           setCurrentStep(1);
+        } else {
+          // Autres statuts (documents_uploaded, etc.)
+          console.log('⏳ DIAGNOSTIC: Autre statut → Pas de changement étape');
         }
 
         // Si un expert est déjà assigné, le définir
         if (produitData.expert_id && produitData.Expert) {
+          console.log('👨‍💼 DIAGNOSTIC: Expert déjà assigné:', produitData.Expert.name);
           setSelectedExpert({
             ...produitData.Expert,
             specialites: produitData.Expert.specialites || [],
@@ -191,13 +208,22 @@ export default function UniversalProductWorkflow({
   }, [steps, documents, selectedExpert, eligibilityValidated]);
 
   // S'assurer que l'étape 1 est toujours accessible au début
+  // ⚠️ FIX : Ne forcer le retour à l'étape 1 QUE si on est au-delà de l'étape 2 sans validation
   useEffect(() => {
-    if (!eligibilityValidated && currentStep !== 1) {
+    if (!eligibilityValidated && currentStep > 2) {
+      console.log('⚠️ DIAGNOSTIC: Force retour étape 1 car pas validé et étape > 2');
       setCurrentStep(1);
     }
   }, [eligibilityValidated, currentStep]);
 
   const updateWorkflowSteps = useCallback(() => {
+    console.log('🔧 DIAGNOSTIC updateWorkflowSteps:', {
+      eligibilityValidated,
+      selectedExpert: selectedExpert?.name,
+      currentStep,
+      documents_count: documents.length
+    });
+    
     const updatedSteps = workflowSteps.map(step => {
       let status = 'pending';
       
@@ -214,6 +240,9 @@ export default function UniversalProductWorkflow({
         case 2: // Sélection de l'expert
           if (eligibilityValidated) {
             status = selectedExpert ? 'completed' : 'in_progress';
+            console.log(`📊 DIAGNOSTIC Étape 2: eligibilityValidated=${eligibilityValidated}, status=${status}`);
+          } else {
+            console.log(`📊 DIAGNOSTIC Étape 2: eligibilityValidated=${eligibilityValidated}, RESTE PENDING`);
           }
           break;
         case 3: // Collecte des documents
