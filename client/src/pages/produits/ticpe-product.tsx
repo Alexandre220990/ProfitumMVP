@@ -19,7 +19,7 @@ import {
   Shield,
   Euro
 } from "lucide-react";
-import TICPEWorkflow from "@/components/TICPEWorkflow";
+import UniversalProductWorkflow from "@/components/UniversalProductWorkflow";
 import { get } from "@/lib/api";
 
 interface ClientProduitEligible {
@@ -214,8 +214,9 @@ const TICPEProductPage = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <TICPEWorkflow
+              <UniversalProductWorkflow
                 clientProduitId={clientProduit.id}
+                productKey="ticpe"
                 companyName={clientProduit.Client?.company_name || 'Votre entreprise'}
                 estimatedAmount={clientProduit.montantFinal || 0}
                 onWorkflowComplete={() => {
