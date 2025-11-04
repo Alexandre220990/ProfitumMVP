@@ -571,5 +571,48 @@ export class DossierTimelineService {
 
     console.log('📋 Résultat addEvent:', result);
   }
+
+  /**
+   * Événement : Document rejeté par l'expert
+   */
+  static async documentRejete(data: {
+    dossier_id: string;
+    document_name: string;
+    rejection_reason: string;
+    expert_id: string;
+  }): Promise<void> {
+    // Récupérer le nom de l'expert
+    let expertName = 'Expert';
+    try {
+      const { data: expertData } = await supabase
+        .from('Expert')
+        .select('name')
+        .eq('id', data.expert_id)
+        .single();
+      
+      if (expertData?.name) {
+        expertName = expertData.name;
+      }
+    } catch (error) {
+      console.error('⚠️ Erreur récupération nom expert:', error);
+    }
+
+    await this.addEvent({
+      dossier_id: data.dossier_id,
+      type: 'expert_action',
+      actor_type: 'expert',
+      actor_id: data.expert_id,
+      actor_name: expertName,
+      title: '❌ Document rejeté',
+      description: `Expert ${expertName} a rejeté le document "${data.document_name}"\nRaison : ${data.rejection_reason}`,
+      metadata: {
+        document_name: data.document_name,
+        rejection_reason: data.rejection_reason,
+        expert_id: data.expert_id
+      },
+      icon: '❌',
+      color: 'red'
+    });
+  }
 }
 

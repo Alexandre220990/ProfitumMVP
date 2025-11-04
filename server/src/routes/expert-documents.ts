@@ -258,6 +258,58 @@ router.put('/document/:id/reject', enhancedAuthMiddleware, async (req: Request, 
       });
     }
 
+    // 🔄 WORKFLOW : Mettre à jour le dossier pour indiquer documents manquants
+    try {
+      const { data: currentDossier } = await supabase
+        .from('ClientProduitEligible')
+        .select('current_step, statut, metadata, ProduitEligible:produitId(nom, type_produit)')
+        .eq('id', document.client_produit_id)
+        .single();
+
+      // Si le dossier est en attente d'acceptation expert (étape 2) ou déjà en collecte (étape 3)
+      // on le met/maintient à l'étape 3 avec un statut indiquant des documents manquants
+      if (currentDossier && (currentDossier.current_step === 2 || currentDossier.current_step === 3)) {
+        await supabase
+          .from('ClientProduitEligible')
+          .update({
+            current_step: 3,
+            statut: 'documents_manquants', // Nouveau statut pour indiquer clairement l'état
+            metadata: {
+              ...currentDossier.metadata,
+              documents_missing: true,
+              last_document_rejection: {
+                document_id: documentId,
+                document_name: document.filename,
+                rejected_at: new Date().toISOString(),
+                rejection_reason: reason
+              }
+            },
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', document.client_produit_id);
+
+        console.log('🔄 Workflow mis à jour : étape 3 - documents manquants');
+      }
+    } catch (workflowError) {
+      console.error('⚠️ Erreur mise à jour workflow (non bloquant):', workflowError);
+    }
+
+    // 📅 TIMELINE : Ajouter événement rejet document
+    try {
+      const { DossierTimelineService } = await import('../services/dossier-timeline-service');
+      
+      await DossierTimelineService.documentRejete({
+        dossier_id: document.client_produit_id,
+        document_name: document.filename,
+        rejection_reason: reason,
+        expert_id: user.database_id
+      });
+
+      console.log('✅ Événement timeline ajouté (document rejeté)');
+    } catch (timelineError) {
+      console.error('⚠️ Erreur timeline (non bloquant):', timelineError);
+    }
+
     // Envoyer notification au client
     try {
       const { data: clientAuth } = await supabase
@@ -267,22 +319,34 @@ router.put('/document/:id/reject', enhancedAuthMiddleware, async (req: Request, 
         .single();
 
       if (clientAuth?.auth_user_id) {
+        // Récupérer les infos du produit pour l'URL
+        const { data: dossierInfo } = await supabase
+          .from('ClientProduitEligible')
+          .select('ProduitEligible:produitId(type_produit, nom)')
+          .eq('id', document.client_produit_id)
+          .single();
+
+        const produitType = (dossierInfo as any)?.ProduitEligible?.type_produit?.toLowerCase() || 'produit';
+        const produitNom = (dossierInfo as any)?.ProduitEligible?.nom || 'Produit';
+
         await supabase
           .from('notification')
           .insert({
             user_id: clientAuth.auth_user_id,
             user_type: 'client',
             title: `📄 Document rejeté - ${document.filename}`,
-            message: `Votre expert a rejeté le document "${document.filename}". Raison : ${reason}. Merci de fournir un nouveau document.`,
+            message: `Votre expert a rejeté le document "${document.filename}". Raison : ${reason}. Merci de fournir un nouveau document conforme.`,
             notification_type: 'document_rejected',
             priority: 'high',
             is_read: false,
-            action_url: `/produits/dossier/${document.client_produit_id}`,
+            action_url: `/produits/${produitType}/${document.client_produit_id}`,
             action_data: {
               document_id: documentId,
               document_name: document.filename,
               rejection_reason: reason,
-              dossier_id: document.client_produit_id
+              dossier_id: document.client_produit_id,
+              product_type: produitType,
+              product_name: produitNom
             },
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
