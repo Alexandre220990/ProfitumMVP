@@ -172,10 +172,14 @@ export default function UniversalProductWorkflow({
   }, [clientProduitId]);
 
   useEffect(() => {
+    console.log('🚀 DIAGNOSTIC: Montage composant UniversalProductWorkflow:', {
+      clientProduitId,
+      productKey
+    });
     if (clientProduitId) {
       loadClientProduit();
     }
-  }, [clientProduitId, loadClientProduit]);
+  }, [clientProduitId, loadClientProduit, productKey]);
 
   // Écouter les notifications pour ce dossier et recharger automatiquement
   useEffect(() => {
@@ -203,9 +207,16 @@ export default function UniversalProductWorkflow({
 
   // Mettre à jour le statut des étapes basé sur les données
   useEffect(() => {
+    console.log('🔄 DIAGNOSTIC: Déclenchement updateWorkflowSteps:', {
+      steps_length: steps.length,
+      eligibilityValidated,
+      currentStep,
+      selectedExpert: selectedExpert?.name
+    });
     if (steps.length > 0) {
       updateWorkflowSteps();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [steps, documents, selectedExpert, eligibilityValidated]);
 
   // S'assurer que l'étape 1 est toujours accessible au début

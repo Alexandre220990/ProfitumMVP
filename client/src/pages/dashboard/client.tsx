@@ -408,15 +408,39 @@ const ProductCard = ({ produit, onClick, onExpertSelection, notificationData }: 
               </div>
             </div>
           ) : (
-            /* N'afficher aucune carte "Experts disponibles" si pas d'expert assigné */
-            /* Le client doit d'abord faire valider ses documents par l'admin */
-            <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-              <p className="text-xs text-blue-700 mb-1 font-medium text-center">
-                {produit.statut === 'documents_uploaded' 
-                  ? 'Validation des documents en cours...' 
-                  : 'En attente de documents d\'éligibilité'}
-              </p>
-            </div>
+            /* Affichage conditionnel basé sur le statut */
+            <>
+              {produit.statut === 'eligibility_validated' ? (
+                /* ✅ Éligibilité validée : Bouton pour sélectionner un expert */
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-3 rounded-lg border-2 border-green-300">
+                  <p className="text-xs text-green-800 mb-2 font-semibold text-center">
+                    ✅ Éligibilité validée - Sélectionnez votre expert
+                  </p>
+                  <Button
+                    size="sm"
+                    className="w-full bg-green-600 hover:bg-green-700 text-white"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (onExpertSelection) {
+                        onExpertSelection(produit.id, produit);
+                      }
+                    }}
+                  >
+                    <Users className="h-3 w-3 mr-1" />
+                    Choisir mon expert
+                  </Button>
+                </div>
+              ) : (
+                /* En attente de validation ou de documents */
+                <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                  <p className="text-xs text-blue-700 mb-1 font-medium text-center">
+                    {produit.statut === 'documents_uploaded' 
+                      ? 'Validation des documents en cours...' 
+                      : 'En attente de documents d\'éligibilité'}
+                  </p>
+                </div>
+              )}
+            </>
           )}
         </div>
 
