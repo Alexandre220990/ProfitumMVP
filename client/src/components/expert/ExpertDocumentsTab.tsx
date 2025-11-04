@@ -139,8 +139,9 @@ export default function ExpertDocumentsTab({ dossierId, onRequestDocuments }: Ex
   };
 
   // Télécharger un document
-  const handleDownload = (_document: Document) => {
+  const handleDownload = (doc: Document) => {
     // TODO: Implémenter le téléchargement sécurisé
+    console.log('Téléchargement document:', doc.filename);
     toast.info('Téléchargement en cours...');
   };
 
