@@ -216,9 +216,17 @@ export default function ExpertDocumentsTab({
     try {
       toast.info('Téléchargement en cours...');
 
-      // Récupérer le token d'authentification
-      const token = localStorage.getItem('token');
+      // Récupérer le token d'authentification (essayer plusieurs clés)
+      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      
+      console.log('🔐 Tokens disponibles:', {
+        token: !!localStorage.getItem('token'),
+        supabase_token: !!localStorage.getItem('supabase_token'),
+        tokenToUse: !!token
+      });
+      
       if (!token) {
+        console.error('❌ Aucun token trouvé dans localStorage');
         toast.error('Session expirée, veuillez vous reconnecter');
         return;
       }
@@ -269,9 +277,17 @@ export default function ExpertDocumentsTab({
     try {
       toast.info('Ouverture du document...');
 
-      // Récupérer le token d'authentification
-      const token = localStorage.getItem('token');
+      // Récupérer le token d'authentification (essayer plusieurs clés)
+      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      
+      console.log('🔐 Tokens disponibles:', {
+        token: !!localStorage.getItem('token'),
+        supabase_token: !!localStorage.getItem('supabase_token'),
+        tokenToUse: !!token
+      });
+      
       if (!token) {
+        console.error('❌ Aucun token trouvé dans localStorage');
         toast.error('Session expirée, veuillez vous reconnecter');
         return;
       }

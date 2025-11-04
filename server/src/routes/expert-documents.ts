@@ -807,12 +807,29 @@ router.get('/document/:id/view', enhancedAuthMiddleware, async (req: Request, re
     }
 
     // Télécharger le fichier depuis Supabase Storage
+    console.log('📥 Tentative téléchargement Storage:', {
+      bucket: 'documents',
+      path: document.storage_path
+    });
+
+    // Nettoyer le path si nécessaire (enlever "documents/" au début si présent)
+    let cleanPath = document.storage_path;
+    if (cleanPath.startsWith('documents/')) {
+      cleanPath = cleanPath.replace('documents/', '');
+    }
+
+    console.log('📥 Path nettoyé:', cleanPath);
+
     const { data: fileData, error: storageError } = await supabase.storage
       .from('documents')
-      .download(document.storage_path);
+      .download(cleanPath);
 
     if (storageError || !fileData) {
-      console.error('❌ Erreur téléchargement Storage:', storageError);
+      console.error('❌ Erreur téléchargement Storage:', {
+        error: storageError,
+        originalPath: document.storage_path,
+        cleanedPath: cleanPath
+      });
       return res.status(500).json({
         success: false,
         message: 'Erreur lors de la récupération du fichier'
