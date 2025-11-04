@@ -378,7 +378,9 @@ const ProductCard = ({ produit, onClick, onExpertSelection, notificationData }: 
                 <div className="flex-1">
                   <p className="text-xs text-green-700 mb-1 font-medium">Expert sélectionné</p>
                   <p className="text-sm text-green-800 font-semibold">
-                    {produit.Expert?.name || 'Expert assigné'}
+                    {produit.Expert?.name || produit.Expert?.first_name && produit.Expert?.last_name 
+                      ? `${produit.Expert.first_name} ${produit.Expert.last_name}` 
+                      : 'Expert assigné'}
                   </p>
                   {produit.Expert && (
                     <div className="flex items-center gap-2 mt-1">

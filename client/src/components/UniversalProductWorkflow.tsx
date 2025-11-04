@@ -8,7 +8,8 @@ import {
   CheckCircle, 
   Users, 
   AlertCircle, 
-  ArrowRight
+  ArrowRight,
+  Clock
 } from 'lucide-react';
 
 import ProductUploadInline from './ProductUploadInline';
@@ -62,7 +63,9 @@ interface ClientProduit {
     email?: string;
   };
   ProduitEligible?: {
+    id?: string;
     nom?: string;
+    description?: string;
   };
   Expert?: {
     id: string;
@@ -304,7 +307,12 @@ export default function UniversalProductWorkflow({
   const handleExpertSelected = useCallback((expert: Expert) => {
     setSelectedExpert(expert);
     toast.success(`Expert sélectionné ! ${expert.name} vous accompagnera dans votre démarche`);
-  }, []);
+    
+    // ✅ DEMANDE #3: Refresh automatique après sélection expert
+    setTimeout(() => {
+      loadClientProduit(); // Recharger les données pour afficher l'expert
+    }, 1000);
+  }, [loadClientProduit]);
 
   const getStepIcon = (step: any) => {
     const Icon = step.icon;
@@ -595,13 +603,90 @@ export default function UniversalProductWorkflow({
                   )}
                 </div>
               )}
+
+              {/* Contenu intégré pour l'étape 2 - Sélection expert */}
+              {step.id === 2 && eligibilityValidated && (
+                <div className="mt-4 pt-4 border-t border-gray-200 space-y-4">
+                  {selectedExpert ? (
+                    /* Expert déjà sélectionné - Afficher card + Message d'attente */
+                    <>
+                      <Card className="border-green-200 bg-green-50">
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                <Users className="w-5 h-5 text-blue-600" />
+                              </div>
+                              <div>
+                                <h4 className="font-semibold text-gray-800">{selectedExpert.name}</h4>
+                                {selectedExpert.company_name && (
+                                  <p className="text-xs text-gray-600">{selectedExpert.company_name}</p>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <CheckCircle className="w-5 h-5 text-green-600" />
+                              {currentStep < 4 && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setShowExpertModal(true)}
+                                >
+                                  Changer
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* Message d'attente acceptation expert */}
+                      <Card className="border-amber-200 bg-amber-50">
+                        <CardContent className="p-4">
+                          <div className="flex items-start gap-3">
+                            <div className="flex-shrink-0 mt-1">
+                              <Clock className="w-5 h-5 text-amber-600" />
+                            </div>
+                            <div>
+                              <h4 className="font-semibold text-amber-900 mb-1">
+                                🕐 En attente d'acceptation
+                              </h4>
+                              <p className="text-sm text-amber-800 mb-2">
+                                Votre expert étudie votre dossier.
+                              </p>
+                              <p className="text-xs text-amber-700">
+                                ⏱️ Délai de traitement : jusqu'à 48h. Vous serez notifié dès que l'expert aura accepté votre demande.
+                              </p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </>
+                  ) : (
+                    /* Pas d'expert - Bouton de sélection */
+                    <div className="text-center p-6">
+                      <Button
+                        onClick={() => setShowExpertModal(true)}
+                        size="lg"
+                        className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                      >
+                        <Users className="w-4 h-4 mr-2" />
+                        Sélectionner un expert
+                      </Button>
+                      <p className="text-sm text-gray-600 mt-3">
+                        Choisissez l'expert qui vous accompagnera dans votre démarche {productConfig.productName}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Contenu de l'étape courante - seulement pour les étapes autres que l'étape 1 */}
-      {currentStep !== 1 && (
+      {/* Contenu de l'étape courante - seulement pour les étapes 3+ (1 et 2 sont intégrées) */}
+      {currentStep !== 1 && currentStep !== 2 && (
         <Card className="border-2 border-blue-200 bg-blue-50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -621,6 +706,11 @@ export default function UniversalProductWorkflow({
         onClose={() => setShowExpertModal(false)}
         dossierId={clientProduitId}
         onExpertSelected={handleExpertSelected}
+        produitEligible={clientProduit?.ProduitEligible ? {
+          id: clientProduit.ProduitEligible.id || clientProduitId,
+          nom: clientProduit.ProduitEligible.nom || 'Produit',
+          description: clientProduit.ProduitEligible.description
+        } : undefined}
       />
     </div>
   );

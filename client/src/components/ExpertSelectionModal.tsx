@@ -344,10 +344,15 @@ export default function ExpertSelectionModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Users className="w-5 h-5" />
-            Sélectionner un expert pour votre dossier {produitEligible?.nom || 'TICPE'}
+            Sélectionner un expert pour votre dossier {produitEligible?.nom || 'votre produit'}
           </DialogTitle>
-          <DialogDescription>
-            Choisissez l'expert qui vous accompagnera dans votre démarche de {produitEligible?.nom || 'TICPE'}.
+          <DialogDescription className="space-y-1">
+            <p>Choisissez l'expert qui vous accompagnera dans votre démarche {produitEligible?.nom ? `de ${produitEligible.nom}` : ''}.</p>
+            {produitEligible?.nom && (
+              <p className="text-sm text-blue-600 font-medium">
+                ✓ Filtrage automatique : Seuls les experts spécialisés en {produitEligible.nom} sont affichés.
+              </p>
+            )}
           </DialogDescription>
         </DialogHeader>
 

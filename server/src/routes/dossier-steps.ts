@@ -405,6 +405,36 @@ router.post('/expert/select', enhancedAuthMiddleware, async (req: Request, res: 
     // Mettre à jour le progress global
     await DossierStepGenerator.updateDossierProgress(dossier_id);
 
+    // 🔔 DEMANDE #6: Envoyer notification à l'expert
+    try {
+      const { ExpertNotificationService } = await import('../services/expert-notification-service');
+      
+      // Récupérer les infos client pour la notification
+      const { data: clientData } = await supabase
+        .from('Client')
+        .select('company_name, first_name, last_name')
+        .eq('id', dossier.clientId)
+        .single();
+      
+      const clientName = clientData?.first_name && clientData?.last_name
+        ? `${clientData.first_name} ${clientData.last_name}`
+        : clientData?.company_name || 'Client';
+      
+      await ExpertNotificationService.notifyDossierPendingAcceptance({
+        expert_id: expert_id,
+        client_produit_id: dossier_id,
+        client_id: dossier.clientId,
+        client_company: clientData?.company_name,
+        client_name: clientName,
+        product_type: expert.specializations?.[0] || 'Produit',
+        estimated_amount: 0 // Montant non disponible dans ce contexte
+      });
+      
+      console.log('✅ [DEBUG] Notification envoyée à l\'expert:', expert_id);
+    } catch (notifError) {
+      console.error('⚠️ [DEBUG] Erreur notification expert (non bloquant):', notifError);
+    }
+
     return res.json({
       success: true,
       message: 'Expert sélectionné avec succès',
