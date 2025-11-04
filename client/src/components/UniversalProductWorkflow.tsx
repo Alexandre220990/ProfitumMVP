@@ -166,9 +166,14 @@ export default function UniversalProductWorkflow({
           console.log('✅ DIAGNOSTIC: Éligibilité validée détectée → Déblocage étape 2');
           setEligibilityValidated(true);
           setCurrentStep(2); // Déverrouiller étape 2
+        } else if (produitData.statut === 'eligibility_rejected') {
+          // ❌ Documents de pré-éligibilité rejetés par l'ADMIN → RESTER ÉTAPE 1
+          console.log('❌ DIAGNOSTIC: Éligibilité rejetée par admin → RESTER ÉTAPE 1');
+          setEligibilityValidated(false);
+          setCurrentStep(1); // Forcer le retour à l'étape 1
         } else if (produitData.statut === 'documents_manquants') {
-          // 📄 Documents manquants - Afficher l'étape 3
-          console.log('📄 DIAGNOSTIC: Documents manquants détectés → Étape 3');
+          // 📄 Documents complémentaires rejetés par l'EXPERT → RESTER ÉTAPE 3
+          console.log('📄 DIAGNOSTIC: Documents manquants détectés par expert → RESTER ÉTAPE 3');
           setEligibilityValidated(true); // L'éligibilité est validée si on est à l'étape 3
           setCurrentStep(3); // Forcer l'étape 3
         } else if (produitData.statut === 'eligible' || produitData.statut === 'opportunité') {
