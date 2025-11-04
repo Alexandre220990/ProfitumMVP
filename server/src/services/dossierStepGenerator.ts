@@ -206,9 +206,28 @@ export class DossierStepGenerator {
 
   /**
    * Met à jour le progress et current_step dans ClientProduitEligible basé sur DossierStep
+   * ⚠️ IMPORTANT: Ne pas écraser si l'éligibilité a été validée manuellement par l'admin
    */
   static async updateDossierProgress(clientProduitId: string): Promise<boolean> {
     try {
+      // Récupérer le statut actuel du dossier
+      const { data: dossier, error: dossierError } = await supabase
+        .from('ClientProduitEligible')
+        .select('statut, current_step, progress')
+        .eq('id', clientProduitId)
+        .single();
+
+      if (dossierError || !dossier) {
+        console.error('❌ Erreur récupération du dossier:', dossierError);
+        return false;
+      }
+
+      // ⚠️ NE PAS écraser si l'éligibilité a été validée ou rejetée par l'admin
+      if (dossier.statut === 'eligibility_validated' || dossier.statut === 'eligibility_rejected') {
+        console.log(`⏩ Skip updateProgress: statut '${dossier.statut}' défini manuellement par admin`);
+        return true; // Retourner true car ce n'est pas une erreur
+      }
+
       // Récupérer toutes les étapes du dossier
       const { data: steps, error } = await supabase
         .from('DossierStep')
