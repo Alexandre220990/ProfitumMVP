@@ -265,7 +265,15 @@ router.post('/expert/select', enhancedAuthMiddleware, async (req: Request, res: 
     console.log('🔍 [DEBUG] Recherche dossier:', dossier_id);
     const { data: dossier, error: dossierError } = await supabase
       .from('ClientProduitEligible')
-      .select('"clientId", statut')
+      .select(`
+        "clientId", 
+        statut,
+        montantFinal,
+        ProduitEligible:produitId (
+          nom,
+          type_produit
+        )
+      `)
       .eq('id', dossier_id)
       .single();
 
@@ -420,14 +428,21 @@ router.post('/expert/select', enhancedAuthMiddleware, async (req: Request, res: 
         ? `${clientData.first_name} ${clientData.last_name}`
         : clientData?.company_name || 'Client';
       
+      // Récupérer le nom du produit depuis la relation
+      const produitNom = (dossier as any).ProduitEligible?.nom || expert.specializations?.[0] || 'Produit';
+      const produitType = (dossier as any).ProduitEligible?.type_produit || expert.specializations?.[0] || 'Produit';
+      
+      console.log(`📋 [DEBUG] Notification expert - Produit: ${produitNom}`);
+      
       await ExpertNotificationService.notifyDossierPendingAcceptance({
         expert_id: expert_id,
         client_produit_id: dossier_id,
         client_id: dossier.clientId,
         client_company: clientData?.company_name,
         client_name: clientName,
-        product_type: expert.specializations?.[0] || 'Produit',
-        estimated_amount: 0 // Montant non disponible dans ce contexte
+        product_type: produitType,
+        product_name: produitNom,
+        estimated_amount: (dossier as any).montantFinal || 0
       });
       
       console.log('✅ [DEBUG] Notification envoyée à l\'expert:', expert_id);
