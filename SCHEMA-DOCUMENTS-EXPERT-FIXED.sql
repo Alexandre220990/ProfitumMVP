@@ -23,6 +23,24 @@ ORDER BY table_name;
 -- =====================================================
 -- Cette table semble être la principale pour les documents clients
 
+-- ⚠️ IMPORTANT : Ajouter colonne de référence vers ClientProduitEligible (le dossier)
+ALTER TABLE "ClientProcessDocument" 
+ADD COLUMN IF NOT EXISTS client_produit_id UUID;
+
+-- Ajouter clé étrangère vers ClientProduitEligible
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'clientprocessdocument_client_produit_fkey'
+  ) THEN
+    ALTER TABLE "ClientProcessDocument" 
+    ADD CONSTRAINT clientprocessdocument_client_produit_fkey 
+    FOREIGN KEY (client_produit_id) 
+    REFERENCES "ClientProduitEligible"(id) 
+    ON DELETE CASCADE;
+  END IF;
+END $$;
+
 -- Ajouter les colonnes de validation par l'expert
 ALTER TABLE "ClientProcessDocument" 
 ADD COLUMN IF NOT EXISTS validated_by UUID;
