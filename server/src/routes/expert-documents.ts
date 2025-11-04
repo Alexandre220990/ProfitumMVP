@@ -116,8 +116,8 @@ router.put('/document/:id/validate', enhancedAuthMiddleware, async (req: Request
 
     // Récupérer le document et vérifier l'accès
     const { data: document, error: docError } = await supabase
-      .from('document')
-      .select('id, dossier_id, file_name')
+      .from('ClientProcessDocument')
+      .select('id, client_produit_id, filename')
       .eq('id', documentId)
       .single();
 
