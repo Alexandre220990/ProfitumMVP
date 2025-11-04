@@ -81,10 +81,9 @@ SET
     CASE 
       WHEN (SELECT COUNT(*) FROM "ClientProcessDocument" cpd WHERE cpd.client_produit_id = dt.dossier_id) > 0
       THEN E'\n' || (
-        SELECT STRING_AGG('• ' || filename, E'\n')
+        SELECT STRING_AGG('• ' || filename, E'\n' ORDER BY created_at)
         FROM "ClientProcessDocument" cpd
         WHERE cpd.client_produit_id = dt.dossier_id
-        ORDER BY cpd.created_at
       )
       ELSE ''
     END
@@ -101,7 +100,7 @@ SET
     ),
     '{documents}',
     (
-      SELECT COALESCE(jsonb_agg(filename ORDER BY created_at), '[]'::jsonb)
+      SELECT COALESCE(jsonb_agg(filename), '[]'::jsonb)
       FROM "ClientProcessDocument" cpd
       WHERE cpd.client_produit_id = dt.dossier_id
     )
