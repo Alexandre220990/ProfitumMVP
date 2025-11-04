@@ -523,6 +523,22 @@ router.post('/dossier/:id/launch-audit', enhancedAuthMiddleware, async (req: Req
       });
     }
 
+    // ✅ Compter les documents avant validation pour la timeline
+    const { data: docsBefore, error: countError } = await supabase
+      .from('ClientProcessDocument')
+      .select('id, validation_status')
+      .eq('client_produit_id', dossierId);
+
+    if (countError) {
+      console.error('❌ Erreur comptage documents:', countError);
+    }
+
+    const stats = {
+      pending: docsBefore?.filter(d => d.validation_status === 'pending').length || 0,
+      rejected: docsBefore?.filter(d => d.validation_status === 'rejected').length || 0,
+      total: docsBefore?.length || 0
+    };
+
     // ✅ Validation groupée : Valider automatiquement tous les documents en attente
     const { error: validateError } = await supabase
       .from('ClientProcessDocument')
@@ -543,7 +559,7 @@ router.post('/dossier/:id/launch-audit', enhancedAuthMiddleware, async (req: Req
       });
     }
 
-    console.log('✅ Validation groupée : Tous les documents en attente ont été validés');
+    console.log(`✅ Validation groupée : ${stats.pending} documents validés`);
 
     // Mettre à jour le statut du dossier
     const { error: updateError } = await supabase
@@ -617,6 +633,31 @@ router.post('/dossier/:id/launch-audit', enhancedAuthMiddleware, async (req: Req
       }
     } catch (notifError) {
       console.error('⚠️ Erreur notification (non bloquant):', notifError);
+    }
+
+    // 📅 TIMELINE : Ajouter événement validation documents
+    try {
+      const { DossierTimelineService } = await import('../services/dossier-timeline-service');
+      
+      const { data: expertData } = await supabase
+        .from('Expert')
+        .select('name')
+        .eq('id', user.database_id)
+        .single();
+
+      const expertName = expertData?.name || 'Expert';
+
+      await DossierTimelineService.documentsValides({
+        dossier_id: dossierId,
+        expert_name: expertName,
+        validated_count: stats.pending,
+        rejected_count: stats.rejected,
+        total_count: stats.total
+      });
+
+      console.log('✅ Événement timeline ajouté (documents validés)');
+    } catch (timelineError) {
+      console.error('⚠️ Erreur timeline (non bloquant):', timelineError);
     }
 
     console.log(`✅ Audit lancé pour le dossier ${dossierId}`);

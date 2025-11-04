@@ -524,5 +524,46 @@ export class DossierTimelineService {
       color: 'green'
     });
   }
+
+  /**
+   * Événement : Documents validés par l'expert
+   */
+  static async documentsValides(data: {
+    dossier_id: string;
+    expert_name: string;
+    validated_count: number;
+    rejected_count: number;
+    total_count: number;
+  }): Promise<void> {
+    const parts = [];
+    
+    if (data.validated_count > 0) {
+      parts.push(`${data.validated_count} document${data.validated_count > 1 ? 's validés' : ' validé'}`);
+    }
+    
+    if (data.rejected_count > 0) {
+      parts.push(`${data.rejected_count} rejeté${data.rejected_count > 1 ? 's' : ''}`);
+    }
+
+    const description = parts.length > 0 
+      ? parts.join(', ') 
+      : `${data.total_count} document${data.total_count > 1 ? 's' : ''} traité${data.total_count > 1 ? 's' : ''}`;
+
+    await this.addEvent({
+      dossier_id: data.dossier_id,
+      type: 'expert_action',
+      actor_type: 'expert',
+      actor_name: data.expert_name,
+      title: '📋 Documents validés',
+      description: `Expert ${data.expert_name} - ${description}`,
+      metadata: {
+        validated_count: data.validated_count,
+        rejected_count: data.rejected_count,
+        total_count: data.total_count
+      },
+      icon: '📋',
+      color: 'green'
+    });
+  }
 }
 
