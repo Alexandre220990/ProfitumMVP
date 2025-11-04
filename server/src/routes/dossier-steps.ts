@@ -300,14 +300,18 @@ router.post('/expert/select', enhancedAuthMiddleware, async (req: Request, res: 
 
     console.log('🔍 [DEBUG] Dossier trouvé:', { clientId: dossier.clientId, statut: dossier.statut });
     
-    // Permettre la sélection d'expert dès l'étape 1 (éligibilité)
-    if (dossier.statut !== 'eligible' && dossier.statut !== 'en_cours') {
-      console.error('❌ [DEBUG] Statut dossier incorrect:', dossier.statut);
+    // Permettre la sélection d'expert pour les dossiers éligibles ou validés
+    const statutsAutorises = ['eligible', 'en_cours', 'eligibility_validated', 'expert_pending_acceptance'];
+    
+    if (!statutsAutorises.includes(dossier.statut)) {
+      console.error('❌ [DEBUG] Statut dossier non autorisé:', dossier.statut);
       return res.status(400).json({
         success: false,
-        message: 'Le dossier doit être éligible ou en cours pour sélectionner un expert'
+        message: `Le dossier doit être éligible pour sélectionner un expert. Statut actuel: ${dossier.statut}`
       });
     }
+    
+    console.log('✅ [DEBUG] Statut autorisé pour sélection expert:', dossier.statut);
 
     // Vérifier que l'expert existe et est disponible
     const { data: expert, error: expertError } = await supabase
