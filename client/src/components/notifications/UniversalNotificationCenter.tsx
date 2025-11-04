@@ -17,6 +17,7 @@
  */
 
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -66,6 +67,7 @@ export function UniversalNotificationCenter({
 }: UniversalNotificationCenterProps) {
   // Détection du rôle utilisateur
   const { user } = useAuth();
+  const navigate = useNavigate();
   const userRole = user?.type || 'client';
 
   // Préférences et notifications push
@@ -168,11 +170,9 @@ export function UniversalNotificationCenter({
       await markAsRead(notification.id);
     }
 
-    // Rediriger si action_url existe
+    // ✅ Rediriger avec React Router si action_url existe
     if (notification.action_url) {
-      if (typeof window !== 'undefined') {
-        window.location.href = notification.action_url;
-      }
+      navigate(notification.action_url);
     }
   };
 

@@ -72,7 +72,7 @@ export class ExpertNotificationService {
           notification_type: 'dossier_pending_acceptance',
           priority: 'high',
           is_read: false,
-          action_url: `/expert/dossier/${data.client_produit_id}/review`,
+          action_url: `/expert/dossier/${data.client_produit_id}`,
           action_data: {
             client_produit_id: data.client_produit_id,
             client_id: data.client_id,

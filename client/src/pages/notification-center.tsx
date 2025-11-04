@@ -121,6 +121,19 @@ const NotificationCenterPage: React.FC = () => {
     }
   };
 
+  // ✅ Navigation sur clic de notification
+  const handleNotificationClick = async (notification: any) => {
+    // Marquer comme lu si non lu
+    if (!notification.is_read) {
+      await handleMarkAsRead(notification.id);
+    }
+
+    // Naviguer vers l'action_url si disponible
+    if (notification.action_url) {
+      navigate(notification.action_url);
+    }
+  };
+
   const handleMarkAllAsRead = async () => {
     try {
       // TODO: Implémenter l'action marquer tout comme lu
@@ -437,9 +450,10 @@ const NotificationCenterPage: React.FC = () => {
                         <Card
                           key={notification.id}
                           className={cn(
-                            "transition-all duration-200 hover:shadow-md",
+                            "transition-all duration-200 hover:shadow-md cursor-pointer",
                             !notification.is_read && "border-l-4 border-l-blue-500 bg-blue-50"
                           )}
+                          onClick={() => handleNotificationClick(notification)}
                         >
                           <CardContent className="p-4">
                             <div className="flex items-start justify-between">
@@ -486,12 +500,15 @@ const NotificationCenterPage: React.FC = () => {
                                 </div>
                               </div>
                               
-                              <div className="flex items-center space-x-1 ml-4">
+                              <div className="flex items-center space-x-1 ml-4" onClick={(e) => e.stopPropagation()}>
                                 {!notification.is_read && (
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    onClick={() => handleMarkAsRead(notification.id)}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleMarkAsRead(notification.id);
+                                    }}
                                     className="h-8 w-8 p-0"
                                   >
                                     <Check className="h-4 w-4" />
@@ -500,7 +517,10 @@ const NotificationCenterPage: React.FC = () => {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => handleDeleteNotification(notification.id)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteNotification(notification.id);
+                                  }}
                                   className="h-8 w-8 p-0 text-gray-400 hover:text-red-600"
                                 >
                                   <Trash2 className="h-4 w-4" />
