@@ -20,6 +20,7 @@ import { useDossierSteps } from '@/hooks/use-dossier-steps';
 import { useDossierNotifications } from '@/hooks/useDossierNotifications';
 import { get } from '@/lib/api';
 import { getProductConfig} from '@/config/productWorkflowConfigs';
+import { config } from '@/config/env';
 
 interface UniversalProductWorkflowProps {
   clientProduitId: string;
@@ -58,6 +59,7 @@ interface ClientProduit {
   progress: number;
   metadata?: any;
   expert_id?: string;
+  expert_pending_id?: string; // ✅ Expert en attente d'acceptation
   Client?: {
     company_name?: string;
     email?: string;
@@ -103,6 +105,8 @@ export default function UniversalProductWorkflow({
   const [currentStep, setCurrentStep] = useState(1);
   const [documents, setDocuments] = useState<DocumentFile[]>([]);
   const [selectedExpert, setSelectedExpert] = useState<Expert | null>(null);
+  const [tempSelectedExpert, setTempSelectedExpert] = useState<Expert | null>(null); // ✅ Expert temporaire avant validation
+  const [expertConfirmed, setExpertConfirmed] = useState(false); // ✅ Expert confirmé définitivement
   const [showExpertModal, setShowExpertModal] = useState(false);
   const [clientProduit, setClientProduit] = useState<ClientProduit | null>(null);
   const [eligibilityValidated, setEligibilityValidated] = useState(false);
@@ -157,8 +161,8 @@ export default function UniversalProductWorkflow({
           console.log('⏳ DIAGNOSTIC: Autre statut → Pas de changement étape');
         }
 
-        // Si un expert est déjà assigné, le définir
-        if (produitData.expert_id && produitData.Expert) {
+        // Si un expert est déjà assigné ou en attente d'acceptation, le définir
+        if ((produitData.expert_id || produitData.expert_pending_id) && produitData.Expert) {
           console.log('👨‍💼 DIAGNOSTIC: Expert déjà assigné:', produitData.Expert.name);
           setSelectedExpert({
             ...produitData.Expert,
@@ -166,6 +170,9 @@ export default function UniversalProductWorkflow({
             experience_years: produitData.Expert.experience_years || 0,
             rating: produitData.Expert.rating || 0
           });
+          // ✅ Marquer comme confirmé si expert assigné
+          setExpertConfirmed(true);
+          setTempSelectedExpert(null); // Pas d'expert temporaire
         }
       }
     } catch (error) {
@@ -305,14 +312,51 @@ export default function UniversalProductWorkflow({
   }, []);
 
   const handleExpertSelected = useCallback((expert: Expert) => {
-    setSelectedExpert(expert);
-    toast.success(`Expert sélectionné ! ${expert.name} vous accompagnera dans votre démarche`);
-    
-    // ✅ DEMANDE #3: Refresh automatique après sélection expert
-    setTimeout(() => {
-      loadClientProduit(); // Recharger les données pour afficher l'expert
-    }, 1000);
-  }, [loadClientProduit]);
+    // ✅ NOUVEAU: Sélection temporaire, pas encore confirmée
+    setTempSelectedExpert(expert);
+    setShowExpertModal(false);
+    toast.success(`Expert sélectionné : ${expert.name}. Validez définitivement votre choix pour continuer.`);
+  }, []);
+
+  // ✅ NOUVEAU: Confirmer définitivement la sélection d'expert
+  const handleConfirmExpert = useCallback(async () => {
+    if (!tempSelectedExpert) return;
+
+    try {
+      // Appeler l'API backend pour assigner l'expert
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${config.API_URL}/api/dossier-steps/expert/select`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          dossier_id: clientProduitId,
+          expert_id: tempSelectedExpert.id
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Erreur lors de la confirmation de l\'expert');
+      }
+
+      // Marquer comme confirmé
+      setSelectedExpert(tempSelectedExpert);
+      setExpertConfirmed(true);
+      setTempSelectedExpert(null);
+      
+      toast.success(`Expert confirmé ! ${tempSelectedExpert.name} a été notifié et va étudier votre dossier.`);
+      
+      // Recharger les données
+      setTimeout(() => {
+        loadClientProduit();
+      }, 1000);
+    } catch (error) {
+      console.error('❌ Erreur confirmation expert:', error);
+      toast.error('Impossible de confirmer l\'expert. Veuillez réessayer.');
+    }
+  }, [tempSelectedExpert, clientProduitId, loadClientProduit]);
 
   const getStepIcon = (step: any) => {
     const Icon = step.icon;
@@ -607,15 +651,75 @@ export default function UniversalProductWorkflow({
               {/* Contenu intégré pour l'étape 2 - Sélection expert */}
               {step.id === 2 && eligibilityValidated && (
                 <div className="mt-4 pt-4 border-t border-gray-200 space-y-4">
-                  {selectedExpert ? (
-                    /* Expert déjà sélectionné - Afficher card + Message d'attente */
+                  {tempSelectedExpert && !expertConfirmed ? (
+                    /* Expert sélectionné temporairement - Demander confirmation */
+                    <>
+                      <Card className="border-blue-200 bg-blue-50">
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                <Users className="w-5 h-5 text-blue-600" />
+                              </div>
+                              <div>
+                                <h4 className="font-semibold text-gray-800">{tempSelectedExpert.name}</h4>
+                                {tempSelectedExpert.company_name && (
+                                  <p className="text-xs text-gray-600">{tempSelectedExpert.company_name}</p>
+                                )}
+                                <div className="flex items-center gap-2 mt-1">
+                                  {tempSelectedExpert.specialites && tempSelectedExpert.specialites.length > 0 && (
+                                    <Badge variant="outline" className="text-xs">
+                                      {tempSelectedExpert.specialites[0]}
+                                    </Badge>
+                                  )}
+                                  {tempSelectedExpert.experience_years && (
+                                    <span className="text-xs text-gray-600">
+                                      {tempSelectedExpert.experience_years} ans d'expérience
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setTempSelectedExpert(null);
+                                setShowExpertModal(true);
+                              }}
+                            >
+                              Changer
+                            </Button>
+                          </div>
+                          
+                          {/* Bouton de validation définitive */}
+                          <div className="flex flex-col gap-2 pt-2 border-t border-blue-200">
+                            <p className="text-sm text-blue-800 font-medium">
+                              ⚠️ Confirmez votre choix d'expert
+                            </p>
+                            <p className="text-xs text-blue-700 mb-2">
+                              Une fois validé, l'expert sera notifié et vous ne pourrez plus modifier votre choix.
+                            </p>
+                            <Button
+                              onClick={handleConfirmExpert}
+                              className="bg-blue-600 hover:bg-blue-700 w-full"
+                            >
+                              <CheckCircle className="w-4 h-4 mr-2" />
+                              Valider définitivement
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </>
+                  ) : selectedExpert && expertConfirmed ? (
+                    /* Expert confirmé définitivement - Afficher card + Message d'attente */
                     <>
                       <Card className="border-green-200 bg-green-50">
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-3">
-                              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                                <Users className="w-5 h-5 text-blue-600" />
+                              <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                                <Users className="w-5 h-5 text-green-600" />
                               </div>
                               <div>
                                 <h4 className="font-semibold text-gray-800">{selectedExpert.name}</h4>
@@ -625,16 +729,9 @@ export default function UniversalProductWorkflow({
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
-                              <CheckCircle className="w-5 h-5 text-green-600" />
-                              {currentStep < 4 && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => setShowExpertModal(true)}
-                                >
-                                  Changer
-                                </Button>
-                              )}
+                              <Badge variant="outline" className="bg-green-100 text-green-700 border-green-300">
+                                ✓ Confirmé
+                              </Badge>
                             </div>
                           </div>
                         </CardContent>

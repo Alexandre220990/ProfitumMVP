@@ -361,28 +361,27 @@ const ProductCard = ({ produit, onClick, onExpertSelection, notificationData }: 
 
         {/* Section Expert - hauteur fixe pour alignement - Affichage conditionnel */}
         <div className="mb-4 min-h-[3.5rem] flex flex-col justify-center">
-          {produit.expert_id ? (
+          {produit.expert_id || produit.expert_pending_id ? (
             <div 
-              className={`bg-green-50 p-3 rounded-lg border border-green-200 transition-all duration-200 ${
-                produit.current_step < 4 ? 'cursor-pointer hover:bg-green-100 hover:shadow-md' : ''
-              }`}
-              onClick={(e) => {
-                e.stopPropagation();
-                // Permettre le changement d'expert seulement avant l'étape 4 (Audit technique)
-                if (produit.current_step < 4 && onExpertSelection) {
-                  onExpertSelection(produit.id, produit);
-                }
-              }}
+              className="bg-green-50 p-3 rounded-lg border border-green-200"
             >
               <div className="flex items-center justify-between">
                 <div className="flex-1">
-                  <p className="text-xs text-green-700 mb-1 font-medium">Expert sélectionné</p>
+                  <p className="text-xs text-green-700 mb-1 font-medium">
+                    {produit.expert_id ? '✓ Expert confirmé' : '⏳ Expert en attente d\'acceptation'}
+                  </p>
                   <p className="text-sm text-green-800 font-semibold">
                     {produit.Expert?.name || produit.Expert?.first_name && produit.Expert?.last_name 
                       ? `${produit.Expert.first_name} ${produit.Expert.last_name}` 
                       : 'Expert assigné'}
                   </p>
-                  {produit.Expert && (
+                  {!produit.expert_id && produit.expert_pending_id && (
+                    <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      L'expert va étudier votre dossier (jusqu'à 48h)
+                    </p>
+                  )}
+                  {produit.expert_id && produit.Expert && (
                     <div className="flex items-center gap-2 mt-1">
                       {produit.Expert.specialites && produit.Expert.specialites.length > 0 && (
                         <span className="text-xs text-green-600">
@@ -400,12 +399,7 @@ const ProductCard = ({ produit, onClick, onExpertSelection, notificationData }: 
                   )}
                 </div>
                 <div className="text-right">
-                  {produit.current_step < 4 && (
-                    <p className="text-xs text-green-600">Cliquer pour changer</p>
-                  )}
-                  {produit.current_step >= 4 && (
-                    <p className="text-xs text-green-600">Verrouillé</p>
-                  )}
+                  <UserCheck className="w-5 h-5 text-green-600" />
                 </div>
               </div>
             </div>

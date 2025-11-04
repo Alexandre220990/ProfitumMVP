@@ -154,6 +154,15 @@ router.get('/produits-eligibles', async (req, res) => {
           taux_max,
           duree_min,
           duree_max
+        ),
+        Expert:expert_id (
+          id,
+          name,
+          first_name,
+          last_name,
+          email,
+          company_name,
+          specializations
         )
       `)
       .eq('clientId', user.database_id)
@@ -168,6 +177,23 @@ router.get('/produits-eligibles', async (req, res) => {
     }
 
     console.log('✅ Produits éligibles récupérés:', produits?.length || 0);
+
+    // ✅ Pour chaque produit, si expert_pending_id existe mais pas Expert, récupérer l'expert
+    if (produits && produits.length > 0) {
+      for (const produit of produits) {
+        if (produit.expert_pending_id && !produit.Expert) {
+          const { data: expertData } = await supabase
+            .from('Expert')
+            .select('id, name, first_name, last_name, email, company_name, specializations')
+            .eq('id', produit.expert_pending_id)
+            .single();
+          
+          if (expertData) {
+            produit.Expert = expertData;
+          }
+        }
+      }
+    }
 
     // Mettre à jour last_activity_at pour le client
     await supabase
