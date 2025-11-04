@@ -1066,7 +1066,6 @@ router.get('/experts', async (req: Request, res: Response) => {
         rating,
         compensation,
         description,
-        certifications,
         completed_projects,
         disponibilites
       `)

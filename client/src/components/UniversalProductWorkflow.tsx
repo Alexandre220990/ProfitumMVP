@@ -47,7 +47,7 @@ interface Expert {
   specialites: string[];
   experience_years: number;
   rating: number;
-  completed_projects: number;
+  completed_projects?: number;
 }
 
 interface ClientProduit {
@@ -161,8 +161,7 @@ export default function UniversalProductWorkflow({
             ...produitData.Expert,
             specialites: produitData.Expert.specialites || [],
             experience_years: produitData.Expert.experience_years || 0,
-            rating: produitData.Expert.rating || 0,
-            completed_projects: produitData.Expert.completed_projects || 0
+            rating: produitData.Expert.rating || 0
           });
         }
       }
