@@ -142,6 +142,46 @@ router.post('/dossier/:id/validate-complementary-documents', enhancedAuthMiddlew
       console.warn('⚠️ Erreur mise à jour étape:', stepError);
     }
 
+    // 📅 TIMELINE : Ajouter événement documents complémentaires envoyés
+    try {
+      const { DossierTimelineService } = await import('../services/dossier-timeline-service');
+      
+      // Récupérer le nom du client
+      const { data: clientData } = await supabase
+        .from('Client')
+        .select('company_name')
+        .eq('id', user.database_id)
+        .single();
+
+      const clientName = clientData?.company_name || 'Client';
+      
+      // Compter les documents de la demande
+      const { data: requestData } = await supabase
+        .from('document_request')
+        .select('requested_documents')
+        .eq('dossier_id', dossierId)
+        .in('status', ['completed'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      const requestedDocs = (requestData?.requested_documents as any[]) || [];
+      const uploadedDocs = requestedDocs
+        .filter((doc: any) => doc.uploaded)
+        .map((doc: any) => doc.name);
+      
+      await DossierTimelineService.documentsComplementairesUploades({
+        dossier_id: dossierId,
+        client_name: clientName,
+        documents_count: uploadedDocs.length,
+        documents: uploadedDocs
+      });
+
+      console.log('✅ Événement timeline ajouté (documents complémentaires uploadés)');
+    } catch (timelineError) {
+      console.error('⚠️ Erreur timeline (non bloquant):', timelineError);
+    }
+
     // Envoyer notification à l'expert
     if (dossier.expert_id) {
       try {

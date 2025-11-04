@@ -329,50 +329,6 @@ export class DossierTimelineService {
     });
   }
 
-  /**
-   * Événement : Documents complémentaires demandés
-   */
-  static async documentsComplementairesDemandes(data: {
-    dossier_id: string;
-    expert_name: string;
-    documents_count: number;
-    documents: string[];
-    message?: string;
-  }): Promise<void> {
-    await this.addEvent({
-      dossier_id: data.dossier_id,
-      type: 'expert_action',
-      actor_type: 'expert',
-      actor_name: data.expert_name,
-      title: '📋 Documents complémentaires demandés',
-      description: `Expert ${data.expert_name} - ${data.documents_count} documents requis\n${data.documents.map(d => `• ${d}`).join('\n')}${data.message ? '\nMessage: ' + data.message : ''}`,
-      metadata: { documents: data.documents, message: data.message },
-      icon: '📋',
-      color: 'orange'
-    });
-  }
-
-  /**
-   * Événement : Documents complémentaires envoyés
-   */
-  static async documentsComplementairesEnvoyes(data: {
-    dossier_id: string;
-    client_name: string;
-    documents_count: number;
-    documents?: string[];
-  }): Promise<void> {
-    await this.addEvent({
-      dossier_id: data.dossier_id,
-      type: 'document',
-      actor_type: 'client',
-      actor_name: data.client_name,
-      title: '📤 Documents complémentaires envoyés',
-      description: `Client - ${data.documents_count}/${data.documents_count} documents uploadés${data.documents ? '\n' + data.documents.map(d => `• ${d}`).join('\n') : ''}`,
-      metadata: { documents: data.documents },
-      icon: '📤',
-      color: 'blue'
-    });
-  }
 
   /**
    * Événement : Audit démarré
@@ -667,6 +623,83 @@ export class DossierTimelineService {
         client_name: data.client_name
       },
       icon: '👨‍💼',
+      color: 'blue'
+    });
+  }
+
+  /**
+   * Événement : Documents complémentaires demandés par l'expert
+   */
+  static async documentsComplementairesDemandes(data: {
+    dossier_id: string;
+    expert_name: string;
+    validated_count: number;
+    rejected_count: number;
+    requested_count: number;
+    requested_documents?: string[];
+  }): Promise<void> {
+    const parts = [];
+    
+    if (data.validated_count > 0) {
+      parts.push(`${data.validated_count} validé${data.validated_count > 1 ? 's' : ''}`);
+    }
+    
+    if (data.rejected_count > 0) {
+      parts.push(`${data.rejected_count} rejeté${data.rejected_count > 1 ? 's' : ''}`);
+    }
+    
+    if (data.requested_count > 0) {
+      parts.push(`${data.requested_count} complémentaire${data.requested_count > 1 ? 's' : ''}`);
+    }
+
+    const description = `Expert ${data.expert_name} - ${parts.join(', ')}`;
+
+    await this.addEvent({
+      dossier_id: data.dossier_id,
+      type: 'expert_action',
+      actor_type: 'expert',
+      actor_name: data.expert_name,
+      title: '📄 Documents complémentaires demandés',
+      description: description,
+      metadata: {
+        validated_count: data.validated_count,
+        rejected_count: data.rejected_count,
+        requested_count: data.requested_count,
+        requested_documents: data.requested_documents || []
+      },
+      icon: '📄',
+      color: 'orange'
+    });
+  }
+
+  /**
+   * Événement : Client envoie des documents complémentaires
+   */
+  static async documentsComplementairesUploades(data: {
+    dossier_id: string;
+    client_name: string;
+    documents_count: number;
+    documents?: string[];
+  }): Promise<void> {
+    const description = `Client ${data.client_name} - ${data.documents_count} document${data.documents_count > 1 ? 's uploadés' : ' uploadé'}${
+      data.documents && data.documents.length > 0 
+        ? '\n\n• ' + data.documents.join('\n• ') 
+        : ''
+    }`;
+
+    await this.addEvent({
+      dossier_id: data.dossier_id,
+      type: 'document',
+      actor_type: 'client',
+      actor_name: data.client_name,
+      title: '📤 Documents complémentaires envoyés',
+      description: description,
+      metadata: {
+        documents_count: data.documents_count,
+        documents: data.documents || [],
+        is_complementary: true
+      },
+      icon: '📤',
       color: 'blue'
     });
   }

@@ -548,6 +548,35 @@ router.post('/dossier/:id/request-documents', enhancedAuthMiddleware, async (req
       console.error('⚠️ Erreur notification (non bloquant):', notifError);
     }
 
+    // 📅 TIMELINE : Ajouter événement demande documents complémentaires
+    try {
+      const { DossierTimelineService } = await import('../services/dossier-timeline-service');
+      
+      // Récupérer le nom de l'expert
+      const { data: expertData } = await supabase
+        .from('Expert')
+        .select('name')
+        .eq('id', user.database_id)
+        .single();
+
+      const expertName = expertData?.name || 'Expert';
+      
+      // Pour l'instant, on compte seulement les documents demandés
+      // TODO: Ajouter validated_count et rejected_count quand le frontend enverra ces infos
+      await DossierTimelineService.documentsComplementairesDemandes({
+        dossier_id: dossierId,
+        expert_name: expertName,
+        validated_count: 0, // À compléter plus tard avec les données du frontend
+        rejected_count: 0,  // À compléter plus tard avec les données du frontend
+        requested_count: documents.length,
+        requested_documents: documents
+      });
+
+      console.log('✅ Événement timeline ajouté (documents complémentaires demandés)');
+    } catch (timelineError) {
+      console.error('⚠️ Erreur timeline (non bloquant):', timelineError);
+    }
+
     console.log(`✅ Demande de ${documents.length} document(s) créée`);
 
     return res.json({
