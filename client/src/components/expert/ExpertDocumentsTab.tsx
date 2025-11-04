@@ -212,20 +212,104 @@ export default function ExpertDocumentsTab({
   };
 
   // Télécharger un document
-  const handleDownload = (doc: Document) => {
-    // TODO: Implémenter le téléchargement sécurisé
-    console.log('Téléchargement document:', doc.filename);
-    toast.info('Téléchargement en cours...');
+  const handleDownload = async (doc: Document) => {
+    try {
+      toast.info('Téléchargement en cours...');
+
+      // Récupérer le token d'authentification
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast.error('Session expirée, veuillez vous reconnecter');
+        return;
+      }
+
+      // Récupérer le document via une requête authentifiée
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/documents/view/${doc.id}`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Erreur HTTP: ${response.status}`);
+      }
+
+      // Créer un blob à partir de la réponse
+      const blob = await response.blob();
+      
+      // Créer une URL temporaire pour le blob
+      const blobUrl = URL.createObjectURL(blob);
+      
+      // Créer un lien invisible pour déclencher le téléchargement
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = doc.filename || 'document.pdf';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Nettoyer l'URL après le téléchargement
+      setTimeout(() => {
+        URL.revokeObjectURL(blobUrl);
+      }, 100);
+      
+      toast.success('Document téléchargé avec succès');
+    } catch (error) {
+      console.error('Erreur téléchargement document:', error);
+      toast.error('Erreur lors du téléchargement du document');
+    }
   };
 
   // Visualiser un document
-  const handleView = (doc: Document) => {
+  const handleView = async (doc: Document) => {
     try {
-      // Construction de l'URL de visualisation via l'API backend
-      const viewUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/documents/view/${doc.id}`;
+      toast.info('Ouverture du document...');
+
+      // Récupérer le token d'authentification
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast.error('Session expirée, veuillez vous reconnecter');
+        return;
+      }
+
+      // Récupérer le document via une requête authentifiée
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/documents/view/${doc.id}`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Erreur HTTP: ${response.status}`);
+      }
+
+      // Créer un blob à partir de la réponse
+      const blob = await response.blob();
       
-      // Ouverture dans un nouvel onglet
-      window.open(viewUrl, '_blank', 'noopener,noreferrer');
+      // Créer une URL temporaire pour le blob
+      const blobUrl = URL.createObjectURL(blob);
+      
+      // Ouvrir dans un nouvel onglet
+      const newWindow = window.open(blobUrl, '_blank', 'noopener,noreferrer');
+      
+      if (!newWindow) {
+        toast.error('Popup bloquée - Veuillez autoriser les popups');
+        URL.revokeObjectURL(blobUrl);
+        return;
+      }
+
+      // Nettoyer l'URL après 1 minute
+      setTimeout(() => {
+        URL.revokeObjectURL(blobUrl);
+      }, 60000);
       
       toast.success('Document ouvert dans un nouvel onglet');
     } catch (error) {
