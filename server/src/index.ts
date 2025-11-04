@@ -115,6 +115,7 @@ import rdvRoutes from './routes/rdv';
 import testEmailRoutes from './routes/test-email';
 import publicUploadRoutes from './routes/public-upload';
 import expertDemoRequestRoutes from './routes/expert/demo-request';
+import expertDocumentsRoutes from './routes/expert-documents';
 
 // Créer l'application Express
 const app = express();
@@ -287,6 +288,7 @@ app.use('/api/documents-secure', documentsDownloadRoutes);
 app.use('/api/expert', enhancedAuthMiddleware, requireUserType('expert'), expertRoutes);
 app.use('/api/expert/analytics', enhancedAuthMiddleware, requireUserType('expert'), expertAnalyticsRoutes);
 app.use('/api/expert', enhancedAuthMiddleware, requireUserType('expert'), expertDossierActionsRoutes);
+app.use('/api/expert', enhancedAuthMiddleware, requireUserType('expert'), expertDocumentsRoutes);
 
 // Routes admin - PROTÉGÉES avec permissions spécifiques
 // Routes admin avec authentification
