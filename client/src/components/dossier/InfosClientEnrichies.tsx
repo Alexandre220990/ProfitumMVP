@@ -104,6 +104,7 @@ interface InfosClientEnrichiesProps {
   };
   dossierId?: string;
   onRequestDocuments?: () => void;
+  documentsCount?: number; // ✅ Nombre de documents pour affichage badge
 }
 
 // ============================================================================
@@ -171,7 +172,8 @@ export default function InfosClientEnrichies({
   apporteur,
   potentielTotal,
   dossierId,
-  onRequestDocuments
+  onRequestDocuments,
+  documentsCount
 }: InfosClientEnrichiesProps) {
   
   const qualificationScore = getQualificationScore(client?.qualification_score);
@@ -201,6 +203,11 @@ export default function InfosClientEnrichies({
             <TabsTrigger value="documents">
               <FileText className="h-4 w-4 mr-2" />
               Documents
+              {documentsCount !== undefined && documentsCount > 0 && (
+                <Badge className="ml-2 bg-blue-600 text-white text-xs px-2 py-0.5">
+                  {documentsCount}
+                </Badge>
+              )}
             </TabsTrigger>
             <TabsTrigger value="commercial">
               <Target className="h-4 w-4 mr-2" />

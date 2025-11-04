@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import {
   FileText,
   Download,
+  Eye,
   CheckCircle,
   XCircle,
   Loader2,
@@ -217,6 +218,22 @@ export default function ExpertDocumentsTab({
     toast.info('Téléchargement en cours...');
   };
 
+  // Visualiser un document
+  const handleView = (doc: Document) => {
+    try {
+      // Construction de l'URL de visualisation via l'API backend
+      const viewUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/documents/view/${doc.id}`;
+      
+      // Ouverture dans un nouvel onglet
+      window.open(viewUrl, '_blank', 'noopener,noreferrer');
+      
+      toast.success('Document ouvert dans un nouvel onglet');
+    } catch (error) {
+      console.error('Erreur visualisation document:', error);
+      toast.error('Erreur lors de l\'ouverture du document');
+    }
+  };
+
   // Formatter la taille du fichier
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
@@ -336,14 +353,25 @@ export default function ExpertDocumentsTab({
                       </div>
                     </div>
 
-                    {/* Bouton télécharger */}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDownload(doc)}
-                    >
-                      <Download className="h-4 w-4" />
-                    </Button>
+                    {/* Boutons visualiser et télécharger */}
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleView(doc)}
+                        title="Visualiser le document"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDownload(doc)}
+                        title="Télécharger le document"
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
 
                   {/* Zone de validation */}

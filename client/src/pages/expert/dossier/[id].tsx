@@ -110,6 +110,7 @@ export default function ExpertDossierSynthese() {
   const [recommendation, setRecommendation] = useState<'favorable' | 'defavorable' | null>(null);
   const [saving, setSaving] = useState(false);
   const [showDocRequestForm, setShowDocRequestForm] = useState(false);
+  const [documentsCount, setDocumentsCount] = useState<number>(0);
 
   // Charger les données du CPE
   useEffect(() => {
@@ -137,6 +138,25 @@ export default function ExpertDossierSynthese() {
 
     loadCPE();
   }, [id, navigate]);
+
+  // ✅ Charger le nombre de documents pour le badge
+  useEffect(() => {
+    const loadDocumentsCount = async () => {
+      if (!id) return;
+
+      try {
+        const response = await get<Document[]>(`/api/expert/dossier/${id}/documents`);
+        if (response.success && response.data) {
+          setDocumentsCount(Array.isArray(response.data) ? response.data.length : 0);
+        }
+      } catch (error) {
+        console.error('Erreur chargement documents count:', error);
+        setDocumentsCount(0);
+      }
+    };
+
+    loadDocumentsCount();
+  }, [id]);
 
   // Sauvegarder les notes
   const handleSaveNotes = async () => {
@@ -427,6 +447,7 @@ export default function ExpertDossierSynthese() {
               }}
               dossierId={id}
               onRequestDocuments={() => setShowDocRequestForm(true)}
+              documentsCount={documentsCount}
             />
           </div>
         )}
