@@ -111,6 +111,7 @@ export default function UniversalProductWorkflow({
   const [clientProduit, setClientProduit] = useState<ClientProduit | null>(null);
   const [eligibilityValidated, setEligibilityValidated] = useState(false);
   const [calculatedSteps, setCalculatedSteps] = useState<any[]>([]);
+  const [documentRequest, setDocumentRequest] = useState<any>(null); // ✅ Demande de documents complémentaires
 
   // Hook pour les étapes du dossier
   const {
@@ -125,6 +126,20 @@ export default function UniversalProductWorkflow({
 
   // Définir les étapes du workflow depuis la config
   const workflowSteps = productConfig.workflowSteps;
+
+  // Charger la demande de documents complémentaires
+  const loadDocumentRequest = useCallback(async () => {
+    try {
+      const response = await get(`/api/client/dossier/${clientProduitId}/document-request`);
+      
+      if (response.success && response.data) {
+        setDocumentRequest(response.data);
+        console.log('📄 Demande de documents chargée:', response.data);
+      }
+    } catch (error) {
+      console.error('⚠️ Erreur chargement demande documents (non bloquant):', error);
+    }
+  }, [clientProduitId]);
 
   // Charger le clientProduit pour avoir le statut de validation
   const loadClientProduit = useCallback(async () => {
@@ -187,8 +202,9 @@ export default function UniversalProductWorkflow({
     });
     if (clientProduitId) {
       loadClientProduit();
+      loadDocumentRequest(); // ✅ Charger la demande de documents
     }
-  }, [clientProduitId, loadClientProduit, productKey]);
+  }, [clientProduitId, loadClientProduit, loadDocumentRequest, productKey]);
 
   // Écouter les notifications pour ce dossier et recharger automatiquement
   useEffect(() => {
@@ -472,9 +488,17 @@ export default function UniversalProductWorkflow({
 
       default:
         // Étape 3 : Documents complémentaires (si demandés par expert)
-        if (currentStep === 3 && clientProduit?.statut === 'documents_complementaires_requis') {
-          const requiredDocs = clientProduit?.metadata?.required_documents_expert || [];
-          const expertMessage = clientProduit?.metadata?.expert_request?.message || '';
+        if (currentStep === 3 && documentRequest && documentRequest.status !== 'completed') {
+          const requiredDocs = (documentRequest.requested_documents || []).map((doc: any) => ({
+            id: doc.id,
+            description: doc.name,
+            required: doc.mandatory !== false,
+            uploaded: doc.uploaded || false,
+            uploaded_at: doc.uploaded_at || null,
+            document_id: doc.document_id || null
+          }));
+          
+          const expertMessage = documentRequest.notes || '';
           
           return (
             <div className="space-y-4">
@@ -483,7 +507,7 @@ export default function UniversalProductWorkflow({
                   📋 Documents complémentaires requis
                 </h3>
                 <p className="text-gray-600">
-                  Votre expert a besoin de documents supplémentaires pour finaliser l'analyse
+                  Votre expert {documentRequest.Expert?.name || 'Expert'} a besoin de documents supplémentaires pour finaliser l'analyse
                 </p>
               </div>
 
@@ -492,19 +516,10 @@ export default function UniversalProductWorkflow({
                 requiredDocuments={requiredDocs}
                 expertMessage={expertMessage}
                 onComplete={() => {
-                  // Recharger le clientProduit après validation
-                  const loadClientProduit = async () => {
-                    try {
-                      const response = await get(`/api/client/produits-eligibles/${clientProduitId}`);
-                      if (response.success && response.data) {
-                        setClientProduit(response.data as ClientProduit);
-                      }
-                    } catch (error) {
-                      console.error('❌ Erreur rechargement:', error);
-                    }
-                  };
-                  loadClientProduit();
                   toast.success('Documents validés ! Votre expert va maintenant procéder à l\'audit.');
+                  // Recharger les données
+                  loadClientProduit();
+                  loadDocumentRequest();
                 }}
               />
             </div>

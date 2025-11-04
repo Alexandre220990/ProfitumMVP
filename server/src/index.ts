@@ -116,6 +116,7 @@ import testEmailRoutes from './routes/test-email';
 import publicUploadRoutes from './routes/public-upload';
 import expertDemoRequestRoutes from './routes/expert/demo-request';
 import expertDocumentsRoutes from './routes/expert-documents';
+import clientDocumentsRoutes from './routes/client-documents';
 
 // Créer l'application Express
 const app = express();
@@ -270,6 +271,7 @@ app.use('/api/simulation', enhancedAuthMiddleware, simulationRoutes);
 
 // Routes client - PROTÉGÉES avec permissions spécifiques
 app.use('/api/client', enhancedAuthMiddleware, requireUserType('client'), clientRoutes);
+app.use('/api/client', enhancedAuthMiddleware, requireUserType('client'), clientDocumentsRoutes);
 
 // Routes simulation client - PROTÉGÉES
 app.use('/api/client/simulation', enhancedAuthMiddleware, requireUserType('client'), clientSimulationRoutes);

@@ -318,6 +318,21 @@ const ProductCard = ({ produit, onClick, onExpertSelection, notificationData }: 
           </div>
         )}
 
+        {/* Badge "Documents manquants" si demande active */}
+        {produit.has_pending_document_request && (
+          <div className="mb-3 p-2 bg-gradient-to-r from-orange-100 to-amber-100 rounded-lg border-2 border-orange-300 animate-pulse">
+            <div className="flex items-center justify-center gap-2">
+              <Badge className="bg-orange-600 text-white flex items-center gap-1 font-semibold">
+                <FileText className="h-3 w-3" />
+                📄 Documents manquants ({produit.pending_documents_count})
+              </Badge>
+            </div>
+            <p className="text-xs text-orange-800 text-center mt-1 font-medium">
+              Votre expert attend des documents
+            </p>
+          </div>
+        )}
+
         {/* En-tête avec titre centré et icône */}
         <div className="text-center mb-3">
           <div className="inline-flex items-center justify-center w-10 h-10 bg-blue-50 rounded-xl mb-2 text-blue-600">

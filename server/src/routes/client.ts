@@ -178,9 +178,10 @@ router.get('/produits-eligibles', async (req, res) => {
 
     console.log('✅ Produits éligibles récupérés:', produits?.length || 0);
 
-    // ✅ Pour chaque produit, si expert_pending_id existe mais pas Expert, récupérer l'expert
+    // ✅ Pour chaque produit, enrichir avec expert pending et demandes de documents
     if (produits && produits.length > 0) {
       for (const produit of produits) {
+        // Expert pending
         if (produit.expert_pending_id && !produit.Expert) {
           const { data: expertData } = await supabase
             .from('Expert')
@@ -191,6 +192,24 @@ router.get('/produits-eligibles', async (req, res) => {
           if (expertData) {
             produit.Expert = expertData;
           }
+        }
+
+        // ✅ Vérifier s'il y a une demande de documents active
+        const { data: docRequest } = await supabase
+          .from('document_request')
+          .select('id, status, requested_documents')
+          .eq('dossier_id', produit.id)
+          .in('status', ['pending', 'in_progress'])
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (docRequest) {
+          produit.has_pending_document_request = true;
+          produit.pending_documents_count = (docRequest.requested_documents as any[])?.length || 0;
+        } else {
+          produit.has_pending_document_request = false;
+          produit.pending_documents_count = 0;
         }
       }
     }

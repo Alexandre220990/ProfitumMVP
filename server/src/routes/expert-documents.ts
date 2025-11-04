@@ -613,5 +613,69 @@ router.post('/dossier/:id/launch-audit', enhancedAuthMiddleware, async (req: Req
   }
 });
 
+/**
+ * GET /api/expert/dossier/:id/document-request
+ * Récupérer la dernière demande de documents pour un dossier
+ */
+router.get('/dossier/:id/document-request', enhancedAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const user = (req as AuthenticatedRequest).user;
+    const { id: dossierId } = req.params;
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Non authentifié'
+      });
+    }
+
+    console.log('🔍 Récupération demande documents:', { dossierId, userType: user.type });
+
+    // Récupérer la dernière demande active
+    const { data: request, error } = await supabase
+      .from('document_request')
+      .select(`
+        *,
+        Expert:expert_id (
+          id,
+          name,
+          email
+        ),
+        Client:client_id (
+          id,
+          company_name,
+          email
+        )
+      `)
+      .eq('dossier_id', dossierId)
+      .in('status', ['pending', 'in_progress'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows
+      console.error('❌ Erreur récupération demande:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur serveur'
+      });
+    }
+
+    console.log(request ? `✅ Demande trouvée: ${(request.requested_documents as any[]).length} documents` : 'Aucune demande active');
+
+    return res.json({
+      success: true,
+      data: request || null
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route document-request:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
 export default router;
 

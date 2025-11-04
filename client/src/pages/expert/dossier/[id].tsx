@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import DossierTimeline from '@/components/dossier/DossierTimeline';
 import InfosClientEnrichies from '@/components/dossier/InfosClientEnrichies';
-import ExpertDocumentRequestForm from '@/components/expert/ExpertDocumentRequestForm';
+import ExpertDocumentRequestModal from '@/components/expert/ExpertDocumentRequestModal';
 import {
   Loader2,
   ArrowLeft,
@@ -415,6 +415,8 @@ export default function ExpertDossierSynthese() {
                 montant: cpe.montantFinal || 0,
                 taux: cpe.tauxFinal ?? 0
               }}
+              dossierId={id}
+              onRequestDocuments={() => setShowDocRequestForm(true)}
             />
           </div>
         )}
@@ -456,13 +458,14 @@ export default function ExpertDossierSynthese() {
           </div>
         )}
 
-        {/* Formulaire demande documents complémentaires */}
+        {/* Modal demande documents complémentaires */}
         {id && showDocRequestForm && (
           <div className="mb-8">
-            <ExpertDocumentRequestForm
+            <ExpertDocumentRequestModal
               dossierId={id}
               onSuccess={() => {
                 setShowDocRequestForm(false);
+                toast.success('Le client a été notifié');
                 // Recharger le dossier
                 const loadCPE = async () => {
                   try {

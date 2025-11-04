@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
+import ExpertDocumentsTab from '@/components/expert/ExpertDocumentsTab';
 import {
   Building2,
   Phone,
@@ -10,7 +11,6 @@ import {
   Users,
   Globe,
   Target,
-  DollarSign,
   Clock,
   CheckCircle,
   Star,
@@ -102,6 +102,8 @@ interface InfosClientEnrichiesProps {
     montant: number;
     taux: number;
   };
+  dossierId?: string;
+  onRequestDocuments?: () => void;
 }
 
 // ============================================================================
@@ -167,9 +169,9 @@ const getQualificationScore = (score?: number) => {
 export default function InfosClientEnrichies({
   client,
   apporteur,
-  autresProduitsSimulation = [],
   potentielTotal,
-  produitActuel
+  dossierId,
+  onRequestDocuments
 }: InfosClientEnrichiesProps) {
   
   const qualificationScore = getQualificationScore(client?.qualification_score);
@@ -196,9 +198,9 @@ export default function InfosClientEnrichies({
               <Phone className="h-4 w-4 mr-2" />
               Contact
             </TabsTrigger>
-            <TabsTrigger value="simulation">
-              <DollarSign className="h-4 w-4 mr-2" />
-              Simulation
+            <TabsTrigger value="documents">
+              <FileText className="h-4 w-4 mr-2" />
+              Documents
             </TabsTrigger>
             <TabsTrigger value="commercial">
               <Target className="h-4 w-4 mr-2" />
@@ -377,95 +379,21 @@ export default function InfosClientEnrichies({
             </div>
           </TabsContent>
 
-          {/* ONGLET 3: Simulation */}
-          <TabsContent value="simulation" className="space-y-6">
-            <div className="bg-gradient-to-br from-emerald-50 to-teal-50 p-6 rounded-lg border border-emerald-200">
-              <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                <DollarSign className="h-5 w-5 text-emerald-600" />
-                Résultats de Simulation
-                {client.simulationId && (
-                  <Badge variant="outline" className="ml-2">
-                    #{client.simulationId}
-                  </Badge>
-                )}
-              </h3>
-              
-              {client.first_simulation_at && (
-                <p className="text-sm text-gray-600 mb-4">
-                  Date: {formatDateTime(client.first_simulation_at)}
+          {/* ONGLET 3: Documents */}
+          <TabsContent value="documents" className="space-y-6">
+            {dossierId ? (
+              <ExpertDocumentsTab 
+                dossierId={dossierId} 
+                onRequestDocuments={onRequestDocuments}
+              />
+            ) : (
+              <div className="bg-gray-50 p-8 rounded-lg text-center">
+                <FileText className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                <p className="text-gray-600">
+                  Onglet Documents disponible uniquement dans la vue dossier
                 </p>
-              )}
-
-              {/* Produit actuel */}
-              <div className="bg-white p-4 rounded-lg mb-4 border-2 border-blue-200">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-semibold text-blue-900 flex items-center gap-2">
-                    <CheckCircle className="h-5 w-5 text-blue-600" />
-                    {produitActuel.nom}
-                  </h4>
-                  <Badge className="bg-blue-100 text-blue-800">Dossier actuel</Badge>
-                </div>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <span className="text-gray-600">Montant: </span>
-                    <span className="font-semibold text-blue-600">{formatCurrency(produitActuel.montant)}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Taux: </span>
-                    <span className="font-semibold text-blue-600">{produitActuel.taux.toFixed(2)}%</span>
-                  </div>
-                </div>
               </div>
-
-              {/* Autres produits de la simulation */}
-              {autresProduitsSimulation && autresProduitsSimulation.length > 0 && (
-                <div className="space-y-2 mb-4">
-                  <h4 className="font-semibold text-sm text-gray-700 mb-2">
-                    Autres produits éligibles ({autresProduitsSimulation.length})
-                  </h4>
-                  {autresProduitsSimulation.map((produit) => (
-                    <div key={produit.id} className="bg-white p-3 rounded-lg border">
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="font-medium text-gray-900 text-sm">
-                          {produit.ProduitEligible?.nom || 'Produit inconnu'}
-                        </p>
-                        <Badge variant="outline" className="text-xs">
-                          {produit.statut}
-                        </Badge>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
-                        <span>Montant: {formatCurrency(produit.montantFinal)}</span>
-                        <span>Taux: {produit.tauxFinal?.toFixed(2)}%</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Potentiel total */}
-              {potentielTotal && (
-                <div className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white p-6 rounded-lg">
-                  <h4 className="font-semibold mb-3 text-emerald-100">💎 Potentiel Total</h4>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <p className="text-xs text-emerald-200 mb-1">Montant total éligible</p>
-                      <p className="text-2xl font-bold">{formatCurrency(potentielTotal.montantTotal)}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-emerald-200 mb-1">Commission expert</p>
-                      <p className="text-2xl font-bold">{formatCurrency(potentielTotal.commissionExpert)}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-emerald-200 mb-1">Produits</p>
-                      <p className="text-2xl font-bold">{potentielTotal.nombreProduits}</p>
-                    </div>
-                  </div>
-                  <div className="mt-3 pt-3 border-t border-emerald-400">
-                    <p className="text-xs text-emerald-200">Durée estimée: 3-6 mois</p>
-                  </div>
-                </div>
-              )}
-            </div>
+            )}
           </TabsContent>
 
           {/* ONGLET 4: Commercial */}
