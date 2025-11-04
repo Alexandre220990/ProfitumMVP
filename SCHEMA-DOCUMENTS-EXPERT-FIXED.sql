@@ -105,6 +105,8 @@ END $$;
 CREATE INDEX IF NOT EXISTS idx_clientprocessdocument_validation_status ON "ClientProcessDocument"(validation_status);
 CREATE INDEX IF NOT EXISTS idx_clientprocessdocument_validated_by ON "ClientProcessDocument"(validated_by);
 CREATE INDEX IF NOT EXISTS idx_clientprocessdocument_client_produit ON "ClientProcessDocument"(client_produit_id);
+CREATE INDEX IF NOT EXISTS idx_clientprocessdocument_client ON "ClientProcessDocument"(client_id);
+CREATE INDEX IF NOT EXISTS idx_clientprocessdocument_produit ON "ClientProcessDocument"(produit_id);
 
 -- =====================================================
 -- 2️⃣ CRÉATION TABLE document_request
