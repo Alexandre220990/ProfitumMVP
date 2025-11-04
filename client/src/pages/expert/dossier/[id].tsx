@@ -111,6 +111,8 @@ export default function ExpertDossierSynthese() {
   const [saving, setSaving] = useState(false);
   const [showDocRequestForm, setShowDocRequestForm] = useState(false);
   const [documentsCount, setDocumentsCount] = useState<number>(0);
+  const [preFilledDocuments, setPreFilledDocuments] = useState<Array<{name: string; reason: string}>>([]);
+  const [documentsReloadKey, setDocumentsReloadKey] = useState(0);
 
   // Charger les données du CPE
   useEffect(() => {
@@ -446,8 +448,16 @@ export default function ExpertDossierSynthese() {
                 taux: cpe.tauxFinal ?? 0
               }}
               dossierId={id}
-              onRequestDocuments={() => setShowDocRequestForm(true)}
+              onRequestDocuments={() => {
+                setPreFilledDocuments([]);
+                setShowDocRequestForm(true);
+              }}
+              onRequestDocumentsWithInvalid={(invalidDocs) => {
+                setPreFilledDocuments(invalidDocs);
+                setShowDocRequestForm(true);
+              }}
               documentsCount={documentsCount}
+              documentsReloadKey={documentsReloadKey}
             />
           </div>
         )}
@@ -494,9 +504,15 @@ export default function ExpertDossierSynthese() {
           <div className="mb-8">
             <ExpertDocumentRequestModal
               dossierId={id}
+              preFilledDocuments={preFilledDocuments}
               onSuccess={() => {
                 setShowDocRequestForm(false);
+                setPreFilledDocuments([]);
                 toast.success('Le client a été notifié');
+                
+                // Forcer rechargement de l'onglet Documents
+                setDocumentsReloadKey(prev => prev + 1);
+                
                 // Recharger le dossier
                 const loadCPE = async () => {
                   try {
@@ -510,7 +526,10 @@ export default function ExpertDossierSynthese() {
                 };
                 loadCPE();
               }}
-              onCancel={() => setShowDocRequestForm(false)}
+              onCancel={() => {
+                setShowDocRequestForm(false);
+                setPreFilledDocuments([]);
+              }}
             />
           </div>
         )}

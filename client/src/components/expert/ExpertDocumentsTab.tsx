@@ -10,7 +10,8 @@ import {
   CheckCircle,
   XCircle,
   Loader2,
-  Calendar
+  Calendar,
+  Clock
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -23,6 +24,7 @@ interface Document {
   id: string;
   filename: string;
   storage_path: string;
+  bucket_name: string;
   mime_type: string;
   file_size: number;
   validation_status: 'pending' | 'validated' | 'rejected';
@@ -63,6 +65,7 @@ export default function ExpertDocumentsTab({
   const [loading, setLoading] = useState(true);
   const [validations, setValidations] = useState<Record<string, DocumentValidation>>({});
   const [isProcessing, setIsProcessing] = useState(false);
+  const [hasActiveDocumentRequest, setHasActiveDocumentRequest] = useState(false);
 
   // Charger les documents
   const loadDocuments = async () => {
@@ -98,8 +101,25 @@ export default function ExpertDocumentsTab({
   useEffect(() => {
     if (dossierId) {
       loadDocuments();
+      checkActiveDocumentRequest();
     }
   }, [dossierId]);
+
+  // Vérifier s'il y a une demande de documents active
+  const checkActiveDocumentRequest = async () => {
+    try {
+      const response = await get(`/api/expert/dossier/${dossierId}/document-request`);
+      if (response.success && response.data) {
+        setHasActiveDocumentRequest(true);
+        console.log('📋 Demande de documents active trouvée');
+      } else {
+        setHasActiveDocumentRequest(false);
+      }
+    } catch (error) {
+      console.error('Erreur vérification document request:', error);
+      setHasActiveDocumentRequest(false);
+    }
+  };
 
   // Changer le statut d'un document (valid/invalid)
   const handleToggleValidation = (documentId: string, status: 'valid' | 'invalid') => {
@@ -169,6 +189,8 @@ export default function ExpertDocumentsTab({
 
   // Demander documents complémentaires (avec ou sans invalides)
   const handleRequestDocuments = async () => {
+    console.log('📋 handleRequestDocuments appelé', { hasInvalid, validations });
+    
     if (hasInvalid) {
       // Cas avec documents invalides : pré-remplir le modal
       const invalidDocs = Object.entries(validations)
@@ -176,10 +198,12 @@ export default function ExpertDocumentsTab({
         .map(([docId, v]) => {
           const doc = documents.find(d => d.id === docId);
           return {
-            name: `${doc?.filename} (${doc?.workflow_step || 'document invalide'})`,
+            name: doc?.filename || 'Document',
             reason: v.rejectionReason || ''
           };
         });
+
+      console.log('📋 Documents invalides préparés:', invalidDocs);
 
       // Valider d'abord les documents valides en arrière-plan
       const validDocIds = Object.entries(validations)
@@ -200,13 +224,23 @@ export default function ExpertDocumentsTab({
       }
 
       // Appeler le callback avec les documents invalides
+      console.log('📋 Appel onRequestDocumentsWithInvalid');
       if (onRequestDocumentsWithInvalid) {
         onRequestDocumentsWithInvalid(invalidDocs);
+        // Marquer qu'une demande va être créée
+        setHasActiveDocumentRequest(true);
+      } else {
+        console.warn('⚠️ onRequestDocumentsWithInvalid non défini');
       }
     } else {
       // Cas sans invalides : modal vide
+      console.log('📋 Appel onRequestDocuments (sans invalides)');
       if (onRequestDocuments) {
         onRequestDocuments();
+        // Marquer qu'une demande va être créée
+        setHasActiveDocumentRequest(true);
+      } else {
+        console.warn('⚠️ onRequestDocuments non défini');
       }
     }
   };
@@ -219,7 +253,7 @@ export default function ExpertDocumentsTab({
       // Récupérer le token d'authentification (essayer plusieurs clés)
       const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
       
-      console.log('🔐 Tokens disponibles:', {
+      console.log('🔐 Téléchargement - Tokens disponibles:', {
         token: !!localStorage.getItem('token'),
         supabase_token: !!localStorage.getItem('supabase_token'),
         tokenToUse: !!token
@@ -230,6 +264,13 @@ export default function ExpertDocumentsTab({
         toast.error('Session expirée, veuillez vous reconnecter');
         return;
       }
+
+      console.log('📥 Téléchargement document:', {
+        id: doc.id,
+        filename: doc.filename,
+        bucket: doc.bucket_name,
+        path: doc.storage_path
+      });
 
       // Récupérer le document via une requête authentifiée
       const response = await fetch(
@@ -280,7 +321,7 @@ export default function ExpertDocumentsTab({
       // Récupérer le token d'authentification (essayer plusieurs clés)
       const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
       
-      console.log('🔐 Tokens disponibles:', {
+      console.log('🔐 Visualisation - Tokens disponibles:', {
         token: !!localStorage.getItem('token'),
         supabase_token: !!localStorage.getItem('supabase_token'),
         tokenToUse: !!token
@@ -291,6 +332,13 @@ export default function ExpertDocumentsTab({
         toast.error('Session expirée, veuillez vous reconnecter');
         return;
       }
+
+      console.log('👁️ Visualisation document:', {
+        id: doc.id,
+        filename: doc.filename,
+        bucket: doc.bucket_name,
+        path: doc.storage_path
+      });
 
       // Récupérer le document via une requête authentifiée
       const response = await fetch(
@@ -551,7 +599,7 @@ export default function ExpertDocumentsTab({
           </div>
 
           {/* Résumé et boutons d'action globaux */}
-          {allValidated && (
+          {allValidated && !hasActiveDocumentRequest && (
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-lg border-2 border-blue-200">
               <div className="mb-4">
                 <h4 className="font-semibold text-gray-900 mb-2">📊 Résumé de validation</h4>
@@ -566,6 +614,26 @@ export default function ExpertDocumentsTab({
                     <span className="text-yellow-700">⏳ {validationStats.pending} en attente</span>
                   )}
                 </div>
+
+                {/* Liste des documents invalides pour visibilité */}
+                {hasInvalid && (
+                  <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm font-medium text-red-800 mb-2">Documents invalides :</p>
+                    <ul className="space-y-1">
+                      {Object.entries(validations)
+                        .filter(([_, v]) => v.status === 'invalid')
+                        .map(([docId, v]) => {
+                          const doc = documents.find(d => d.id === docId);
+                          return (
+                            <li key={docId} className="text-sm text-red-700">
+                              • {doc?.filename} - {v.rejectionReason || 'Raison non spécifiée'}
+                            </li>
+                          );
+                        })
+                      }
+                    </ul>
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-3">
@@ -607,6 +675,20 @@ export default function ExpertDocumentsTab({
                   ⚠️ Veuillez fournir une raison pour tous les documents invalides
                 </p>
               )}
+            </div>
+          )}
+
+          {/* Message en attente documents complémentaires */}
+          {hasActiveDocumentRequest && (
+            <div className="bg-yellow-50 p-6 rounded-lg border-2 border-yellow-200">
+              <div className="flex items-center gap-3 mb-2">
+                <Clock className="h-5 w-5 text-yellow-600" />
+                <h4 className="font-semibold text-yellow-900">En attente des documents complémentaires</h4>
+              </div>
+              <p className="text-sm text-yellow-800">
+                Vous avez demandé des documents complémentaires au client. 
+                Vous serez notifié lorsque le client aura uploadé les documents.
+              </p>
             </div>
           )}
         </>

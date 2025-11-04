@@ -55,6 +55,7 @@ router.get('/dossier/:id/documents', enhancedAuthMiddleware, async (req: Request
         id,
         filename,
         storage_path,
+        bucket_name,
         mime_type,
         file_size,
         validation_status,
@@ -779,6 +780,7 @@ router.get('/document/:id/view', enhancedAuthMiddleware, async (req: Request, re
         id,
         filename,
         storage_path,
+        bucket_name,
         mime_type,
         client_produit_id,
         ClientProduitEligible:client_produit_id (
@@ -807,21 +809,26 @@ router.get('/document/:id/view', enhancedAuthMiddleware, async (req: Request, re
     }
 
     // Télécharger le fichier depuis Supabase Storage
+    const bucketName = (document as any).bucket_name || 'client-documents';
+    
     console.log('📥 Tentative téléchargement Storage:', {
-      bucket: 'documents',
+      bucket: bucketName,
       path: document.storage_path
     });
 
-    // Nettoyer le path si nécessaire (enlever "documents/" au début si présent)
+    // Nettoyer le path si nécessaire (enlever préfixe bucket si présent)
     let cleanPath = document.storage_path;
     if (cleanPath.startsWith('documents/')) {
       cleanPath = cleanPath.replace('documents/', '');
     }
+    if (cleanPath.startsWith('client-documents/')) {
+      cleanPath = cleanPath.replace('client-documents/', '');
+    }
 
-    console.log('📥 Path nettoyé:', cleanPath);
+    console.log('📥 Téléchargement:', { bucket: bucketName, cleanPath });
 
     const { data: fileData, error: storageError } = await supabase.storage
-      .from('documents')
+      .from(bucketName)
       .download(cleanPath);
 
     if (storageError || !fileData) {

@@ -104,7 +104,9 @@ interface InfosClientEnrichiesProps {
   };
   dossierId?: string;
   onRequestDocuments?: () => void;
-  documentsCount?: number; // ✅ Nombre de documents pour affichage badge
+  onRequestDocumentsWithInvalid?: (invalidDocs: Array<{name: string; reason: string}>) => void;
+  documentsCount?: number;
+  documentsReloadKey?: number; // ✅ Key pour forcer rechargement onglet Documents
 }
 
 // ============================================================================
@@ -173,7 +175,9 @@ export default function InfosClientEnrichies({
   potentielTotal,
   dossierId,
   onRequestDocuments,
-  documentsCount
+  onRequestDocumentsWithInvalid,
+  documentsCount,
+  documentsReloadKey
 }: InfosClientEnrichiesProps) {
   
   const qualificationScore = getQualificationScore(client?.qualification_score);
@@ -390,8 +394,10 @@ export default function InfosClientEnrichies({
           <TabsContent value="documents" className="space-y-6">
             {dossierId ? (
               <ExpertDocumentsTab 
+                key={documentsReloadKey}
                 dossierId={dossierId} 
                 onRequestDocuments={onRequestDocuments}
+                onRequestDocumentsWithInvalid={onRequestDocumentsWithInvalid}
               />
             ) : (
               <div className="bg-gray-50 p-8 rounded-lg text-center">
