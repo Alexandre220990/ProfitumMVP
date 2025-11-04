@@ -103,6 +103,7 @@ export default function UniversalProductWorkflow({
   const [showExpertModal, setShowExpertModal] = useState(false);
   const [clientProduit, setClientProduit] = useState<ClientProduit | null>(null);
   const [eligibilityValidated, setEligibilityValidated] = useState(false);
+  const [calculatedSteps, setCalculatedSteps] = useState<any[]>([]);
 
   // Hook pour les étapes du dossier
   const {
@@ -276,11 +277,13 @@ export default function UniversalProductWorkflow({
       return { ...step, status };
     });
     
-    // Mettre à jour l'étape courante
-    const currentStepIndex = updatedSteps.findIndex((step: any) => step.status === 'in_progress');
-    if (currentStepIndex !== -1) {
-      setCurrentStep(currentStepIndex + 1);
-    }
+    // ✅ FIX MAJEUR: STOCKER les steps calculés dans l'état
+    setCalculatedSteps(updatedSteps);
+    
+    console.log('🔧 DIAGNOSTIC: workflowSteps mis à jour avec status:', {
+      currentStep,
+      steps: updatedSteps.map(s => ({ id: s.id, name: s.name, status: s.status }))
+    });
   }, [steps, documents, selectedExpert, eligibilityValidated, workflowSteps]);
 
   const handleDocumentsComplete = useCallback((uploadedDocuments: DocumentFile[]) => {
@@ -321,7 +324,8 @@ export default function UniversalProductWorkflow({
   };
 
   const renderStepContent = () => {
-    const currentWorkflowStep = workflowSteps.find(step => step.id === currentStep);
+    const steps = calculatedSteps.length > 0 ? calculatedSteps : workflowSteps;
+    const currentWorkflowStep = steps.find(step => step.id === currentStep);
     
     if (!currentWorkflowStep) return null;
 
@@ -498,7 +502,7 @@ export default function UniversalProductWorkflow({
 
       {/* Étapes du workflow */}
       <div className="grid gap-4">
-        {workflowSteps.map((step: any) => (
+        {(calculatedSteps.length > 0 ? calculatedSteps : workflowSteps).map((step: any) => (
           <Card 
             key={step.id}
             className={`transition-all duration-200 ${getStepStatusColor(step.status)} ${
