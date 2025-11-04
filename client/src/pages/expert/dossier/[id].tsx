@@ -71,6 +71,8 @@ interface ClientProduitEligible {
     id: string;
     nom: string;
     description: string;
+    type_produit?: string;
+    categorie?: string;
   };
   ApporteurAffaires?: {
     id: string;
