@@ -598,9 +598,13 @@ export default function DashboardClient() {
   const handleExpertSelected = useCallback((expert: any) => {
     toast.success(`${expert.name} a été assigné à votre dossier.`);
     handleCloseExpertModal();
-    // Optionnel : rafraîchir les données
-    window.location.reload();
-  }, [handleCloseExpertModal]);
+    
+    // ✅ FIX: Rafraîchir les données sans reload complet (évite problèmes d'auth)
+    setTimeout(() => {
+      // Le useClientProducts se rafraîchira automatiquement
+      navigate('/dashboard/client', { replace: true });
+    }, 500);
+  }, [handleCloseExpertModal, navigate]);
 
   // Calcul des vraies données KPI depuis ClientProduitEligible
   const kpiData = {
