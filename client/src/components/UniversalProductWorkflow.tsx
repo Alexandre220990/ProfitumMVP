@@ -271,7 +271,8 @@ export default function UniversalProductWorkflow({
       
       switch (step.id) {
         case 1: // Confirmer l'éligibilité
-          if (eligibilityValidated) {
+          // ✅ FIX : Marquer comme complété si on est au-delà de l'étape 1
+          if (currentStep > 1 || eligibilityValidated) {
             status = 'completed';
           } else if (documents.length >= 1) {
             status = 'in_progress';
@@ -280,7 +281,10 @@ export default function UniversalProductWorkflow({
           }
           break;
         case 2: // Sélection de l'expert
-          if (eligibilityValidated) {
+          // ✅ FIX : Marquer comme complété si on est au-delà de l'étape 2
+          if (currentStep > 2) {
+            status = 'completed';
+          } else if (eligibilityValidated) {
             status = selectedExpert ? 'completed' : 'in_progress';
             console.log(`📊 DIAGNOSTIC Étape 2: eligibilityValidated=${eligibilityValidated}, status=${status}`);
           } else {
@@ -291,7 +295,7 @@ export default function UniversalProductWorkflow({
           if (clientProduit?.statut === 'documents_manquants' || 
               clientProduit?.metadata?.documents_missing) {
             status = 'in_progress'; // Documents manquants - Étape en cours
-          } else if (selectedExpert) {
+          } else if (selectedExpert || currentStep >= 3) {
             status = 'in_progress';
           }
           break;
@@ -690,8 +694,8 @@ export default function UniversalProductWorkflow({
                 </div>
               </div>
 
-              {/* Contenu intégré pour l'étape 1 */}
-              {step.id === 1 && (
+              {/* Contenu intégré pour l'étape 1 - SEULEMENT si on est à l'étape 1 */}
+              {step.id === 1 && currentStep === 1 && (
                 <div className="mt-4 pt-4 border-t border-gray-200 space-y-4">
                   {/* Afficher le statut de validation UNIQUEMENT si validé ou rejeté (pas en attente) */}
                   {clientProduit && (clientProduit.statut === 'eligibility_validated' || 
@@ -724,8 +728,8 @@ export default function UniversalProductWorkflow({
                 </div>
               )}
 
-              {/* Contenu intégré pour l'étape 2 - Sélection expert */}
-              {step.id === 2 && eligibilityValidated && (
+              {/* Contenu intégré pour l'étape 2 - Sélection expert - SEULEMENT si on est à l'étape 2 */}
+              {step.id === 2 && currentStep === 2 && eligibilityValidated && (
                 <div className="mt-4 pt-4 border-t border-gray-200 space-y-4">
                   {tempSelectedExpert && !expertConfirmed ? (
                     /* Expert sélectionné temporairement - Demander confirmation */
