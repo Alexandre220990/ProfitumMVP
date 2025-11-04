@@ -291,10 +291,18 @@ export default function ExpertDossierSynthese() {
               Retour
             </Button>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                {cpe.Client?.company_name || cpe.Client?.name || 'Client inconnu'}
-              </h1>
-              <p className="text-gray-600">Dossier #{cpe.id?.slice(0, 8) || 'N/A'} | Client: {cpe.Client?.first_name || cpe.Client?.name || 'N/A'}</p>
+              <div className="flex items-center gap-3 mb-1">
+                <h1 className="text-3xl font-bold text-gray-900">
+                  {cpe.ProduitEligible?.nom || 'Produit'}
+                </h1>
+                <Badge className="bg-blue-100 text-blue-800 text-sm">
+                  {cpe.ProduitEligible?.type_produit || cpe.ProduitEligible?.categorie || 'Dossier'}
+                </Badge>
+              </div>
+              <p className="text-gray-600">
+                Client: {cpe.Client?.company_name || cpe.Client?.name || 'Client inconnu'} | 
+                Dossier #{cpe.id?.slice(0, 8) || 'N/A'}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2">

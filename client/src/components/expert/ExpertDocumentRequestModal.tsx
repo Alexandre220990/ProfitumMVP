@@ -3,7 +3,7 @@
  * Interface simplifiée : input + bouton Ajouter → liste → Valider
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,16 +15,28 @@ interface ExpertDocumentRequestModalProps {
   dossierId: string;
   onSuccess?: () => void;
   onCancel?: () => void;
+  preFilledDocuments?: Array<{name: string; reason: string}>; // ✅ Documents invalides pré-remplis
 }
 
 export default function ExpertDocumentRequestModal({
   dossierId,
   onSuccess,
-  onCancel
+  onCancel,
+  preFilledDocuments = []
 }: ExpertDocumentRequestModalProps) {
   const [currentInput, setCurrentInput] = useState('');
   const [documentsList, setDocumentsList] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // ✅ Initialiser avec les documents pré-remplis
+  useEffect(() => {
+    if (preFilledDocuments && preFilledDocuments.length > 0) {
+      const docNames = preFilledDocuments.map(d => 
+        d.reason ? `${d.name} - ${d.reason}` : d.name
+      );
+      setDocumentsList(docNames);
+    }
+  }, [preFilledDocuments]);
 
   // Ajouter un document à la liste
   const handleAdd = () => {
@@ -93,6 +105,11 @@ export default function ExpertDocumentRequestModal({
       <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
         <CardTitle className="flex items-center gap-2 text-blue-900">
           📋 Documents manquants - Complément de dossier
+          {preFilledDocuments.length > 0 && (
+            <Badge className="bg-red-100 text-red-800 ml-2">
+              {preFilledDocuments.length} invalide{preFilledDocuments.length > 1 ? 's' : ''}
+            </Badge>
+          )}
         </CardTitle>
       </CardHeader>
 

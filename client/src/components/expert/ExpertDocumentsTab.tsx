@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { get, put } from '@/lib/api';
+import { get, put, post } from '@/lib/api';
 import { toast } from 'sonner';
 import {
   FileText,
@@ -9,7 +9,6 @@ import {
   CheckCircle,
   XCircle,
   Loader2,
-  AlertCircle,
   Calendar
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
@@ -41,20 +40,28 @@ interface Document {
 interface ExpertDocumentsTabProps {
   dossierId: string;
   onRequestDocuments?: () => void;
+  onRequestDocumentsWithInvalid?: (invalidDocs: Array<{name: string; reason: string}>) => void;
+}
+
+interface DocumentValidation {
+  documentId: string;
+  status: 'valid' | 'invalid' | 'pending';
+  rejectionReason?: string;
 }
 
 // ============================================================================
 // COMPOSANT
 // ============================================================================
 
-export default function ExpertDocumentsTab({ dossierId, onRequestDocuments }: ExpertDocumentsTabProps) {
+export default function ExpertDocumentsTab({ 
+  dossierId, 
+  onRequestDocuments,
+  onRequestDocumentsWithInvalid 
+}: ExpertDocumentsTabProps) {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
-  const [validating, setValidating] = useState<string | null>(null);
-  const [rejecting, setRejecting] = useState<string | null>(null);
-  const [rejectReason, setRejectReason] = useState('');
-  const [showRejectModal, setShowRejectModal] = useState(false);
-  const [documentToReject, setDocumentToReject] = useState<string | null>(null);
+  const [validations, setValidations] = useState<Record<string, DocumentValidation>>({});
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Charger les documents
   const loadDocuments = async () => {
@@ -64,6 +71,18 @@ export default function ExpertDocumentsTab({ dossierId, onRequestDocuments }: Ex
       
       if (response.success && response.data) {
         setDocuments(response.data);
+        // Initialiser les validations pour les documents pending
+        const initialValidations: Record<string, DocumentValidation> = {};
+        response.data.forEach(doc => {
+          if (doc.validation_status === 'pending') {
+            initialValidations[doc.id] = {
+              documentId: doc.id,
+              status: 'pending',
+              rejectionReason: ''
+            };
+          }
+        });
+        setValidations(initialValidations);
       } else {
         toast.error('Erreur lors du chargement des documents');
       }
@@ -81,61 +100,114 @@ export default function ExpertDocumentsTab({ dossierId, onRequestDocuments }: Ex
     }
   }, [dossierId]);
 
-  // Valider un document
-  const handleValidate = async (documentId: string) => {
-    try {
-      setValidating(documentId);
-      const response = await put(`/api/expert/document/${documentId}/validate`, {});
-      
-      if (response.success) {
-        toast.success('Document validé avec succès');
-        await loadDocuments(); // Recharger la liste
-      } else {
-        toast.error('Erreur lors de la validation');
+  // Changer le statut d'un document (valid/invalid)
+  const handleToggleValidation = (documentId: string, status: 'valid' | 'invalid') => {
+    setValidations(prev => ({
+      ...prev,
+      [documentId]: {
+        documentId,
+        status,
+        rejectionReason: status === 'valid' ? '' : prev[documentId]?.rejectionReason || ''
       }
-    } catch (error) {
-      console.error('Erreur validation:', error);
-      toast.error('Erreur lors de la validation');
-    } finally {
-      setValidating(null);
-    }
+    }));
   };
 
-  // Rejeter un document
-  const handleReject = async () => {
-    if (!documentToReject || !rejectReason.trim()) {
-      toast.error('Veuillez fournir une raison pour le rejet');
-      return;
-    }
+  // Mettre à jour la raison de rejet
+  const handleRejectionReasonChange = (documentId: string, reason: string) => {
+    setValidations(prev => ({
+      ...prev,
+      [documentId]: {
+        ...prev[documentId],
+        rejectionReason: reason
+      }
+    }));
+  };
 
+  // Calculer les stats de validation
+  const validationStats = {
+    total: Object.keys(validations).length,
+    valid: Object.values(validations).filter(v => v.status === 'valid').length,
+    invalid: Object.values(validations).filter(v => v.status === 'invalid').length,
+    pending: Object.values(validations).filter(v => v.status === 'pending').length
+  };
+
+  const allValidated = validationStats.pending === 0 && validationStats.total > 0;
+  const hasInvalid = validationStats.invalid > 0;
+  const allValid = validationStats.valid === validationStats.total && validationStats.total > 0;
+
+  // Valider le dossier (tous documents valides + lancer audit)
+  const handleValidateDossier = async () => {
     try {
-      setRejecting(documentToReject);
-      const response = await put(`/api/expert/document/${documentToReject}/reject`, {
-        reason: rejectReason
-      });
-      
+      setIsProcessing(true);
+
+      // 1. Valider tous les documents
+      const validDocIds = Object.entries(validations)
+        .filter(([_, v]) => v.status === 'valid')
+        .map(([docId]) => docId);
+
+      for (const docId of validDocIds) {
+        await put(`/api/expert/document/${docId}/validate`, {});
+      }
+
+      // 2. Lancer l'audit
+      const response = await post(`/api/expert/dossier/${dossierId}/launch-audit`, {});
+
       if (response.success) {
-        toast.success('Document rejeté');
-        setShowRejectModal(false);
-        setRejectReason('');
-        setDocumentToReject(null);
+        toast.success('✅ Dossier validé - Audit lancé !');
         await loadDocuments();
       } else {
-        toast.error('Erreur lors du rejet');
+        toast.error('Erreur lors du lancement de l\'audit');
       }
     } catch (error) {
-      console.error('Erreur rejet:', error);
-      toast.error('Erreur lors du rejet');
+      console.error('Erreur validation dossier:', error);
+      toast.error('Erreur lors de la validation');
     } finally {
-      setRejecting(null);
+      setIsProcessing(false);
     }
   };
 
-  // Ouvrir le modal de rejet
-  const openRejectModal = (documentId: string) => {
-    setDocumentToReject(documentId);
-    setShowRejectModal(true);
-    setRejectReason('');
+  // Demander documents complémentaires (avec ou sans invalides)
+  const handleRequestDocuments = async () => {
+    if (hasInvalid) {
+      // Cas avec documents invalides : pré-remplir le modal
+      const invalidDocs = Object.entries(validations)
+        .filter(([_, v]) => v.status === 'invalid')
+        .map(([docId, v]) => {
+          const doc = documents.find(d => d.id === docId);
+          return {
+            name: `${doc?.filename} (${doc?.workflow_step || 'document invalide'})`,
+            reason: v.rejectionReason || ''
+          };
+        });
+
+      // Valider d'abord les documents valides en arrière-plan
+      const validDocIds = Object.entries(validations)
+        .filter(([_, v]) => v.status === 'valid')
+        .map(([docId]) => docId);
+
+      for (const docId of validDocIds) {
+        await put(`/api/expert/document/${docId}/validate`, {});
+      }
+
+      // Rejeter les invalides
+      for (const [docId, validation] of Object.entries(validations)) {
+        if (validation.status === 'invalid' && validation.rejectionReason) {
+          await put(`/api/expert/document/${docId}/reject`, {
+            reason: validation.rejectionReason
+          });
+        }
+      }
+
+      // Appeler le callback avec les documents invalides
+      if (onRequestDocumentsWithInvalid) {
+        onRequestDocumentsWithInvalid(invalidDocs);
+      }
+    } else {
+      // Cas sans invalides : modal vide
+      if (onRequestDocuments) {
+        onRequestDocuments();
+      }
+    }
   };
 
   // Télécharger un document
@@ -220,178 +292,204 @@ export default function ExpertDocumentsTab({ dossierId, onRequestDocuments }: Ex
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {documents.map((doc) => (
-            <div
-              key={doc.id}
-              className={`bg-white p-4 rounded-lg border-2 transition-all ${
-                doc.validation_status === 'validated' ? 'border-green-200 bg-green-50' :
-                doc.validation_status === 'rejected' ? 'border-red-200 bg-red-50' :
-                'border-gray-200 hover:border-blue-300'
-              }`}
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <FileText className={`h-5 w-5 ${
-                      doc.validation_status === 'validated' ? 'text-green-600' :
-                      doc.validation_status === 'rejected' ? 'text-red-600' :
-                      'text-blue-600'
-                    }`} />
-                    <div className="flex-1">
-                      <p className="font-semibold text-gray-900">{doc.filename}</p>
-                      <div className="flex items-center gap-3 text-sm text-gray-600 mt-1">
-                        <span>{formatFileSize(doc.file_size)}</span>
-                        <span>•</span>
-                        <span className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          {formatDistanceToNow(new Date(doc.created_at), { addSuffix: true, locale: fr })}
-                        </span>
-                        {doc.workflow_step && (
-                          <>
-                            <span>•</span>
-                            <Badge variant="outline">{doc.workflow_step}</Badge>
-                          </>
-                        )}
+        <>
+          <div className="space-y-3">
+            {documents.map((doc) => {
+              const validation = validations[doc.id];
+              const isPending = doc.validation_status === 'pending';
+              
+              return (
+                <div
+                  key={doc.id}
+                  className={`bg-white p-4 rounded-lg border-2 transition-all ${
+                    doc.validation_status === 'validated' ? 'border-green-200 bg-green-50' :
+                    doc.validation_status === 'rejected' ? 'border-red-200 bg-red-50' :
+                    validation?.status === 'valid' ? 'border-green-300' :
+                    validation?.status === 'invalid' ? 'border-red-300' :
+                    'border-gray-200'
+                  }`}
+                >
+                  {/* En-tête document */}
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-3 flex-1">
+                      <FileText className={`h-5 w-5 ${
+                        doc.validation_status === 'validated' ? 'text-green-600' :
+                        doc.validation_status === 'rejected' ? 'text-red-600' :
+                        'text-blue-600'
+                      }`} />
+                      <div className="flex-1">
+                        <p className="font-semibold text-gray-900">{doc.filename}</p>
+                        <div className="flex items-center gap-3 text-sm text-gray-600 mt-1">
+                          <span>{formatFileSize(doc.file_size)}</span>
+                          <span>•</span>
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {formatDistanceToNow(new Date(doc.created_at), { addSuffix: true, locale: fr })}
+                          </span>
+                          {doc.workflow_step && (
+                            <>
+                              <span>•</span>
+                              <Badge variant="outline" className="text-xs">{doc.workflow_step}</Badge>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
+
+                    {/* Bouton télécharger */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDownload(doc)}
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
                   </div>
 
-                  {/* Statut de validation */}
-                  <div className="ml-8">
+                  {/* Zone de validation */}
+                  <div className="ml-8 space-y-3">
+                    {/* Documents déjà validés/rejetés */}
                     {doc.validation_status === 'validated' && (
                       <div className="inline-flex items-center gap-2 text-green-700 bg-green-100 px-3 py-1 rounded-full">
                         <CheckCircle className="h-4 w-4" />
-                        <span className="text-sm font-medium">Validé</span>
+                        <span className="text-sm font-medium">✅ Document validé</span>
                         {doc.validated_at && (
                           <span className="text-xs">
-                            - {formatDistanceToNow(new Date(doc.validated_at), { addSuffix: true, locale: fr })}
+                            • {formatDistanceToNow(new Date(doc.validated_at), { addSuffix: true, locale: fr })}
                           </span>
                         )}
                       </div>
                     )}
-                    
+
                     {doc.validation_status === 'rejected' && (
                       <div className="bg-red-100 px-3 py-2 rounded">
                         <div className="flex items-center gap-2 text-red-700 mb-1">
                           <XCircle className="h-4 w-4" />
-                          <span className="text-sm font-medium">Document rejeté</span>
+                          <span className="text-sm font-medium">❌ Document rejeté</span>
                         </div>
                         {doc.rejection_reason && (
-                          <p className="text-sm text-red-600 ml-6">
+                          <p className="text-sm text-red-600">
                             Raison : {doc.rejection_reason}
                           </p>
                         )}
                       </div>
                     )}
 
-                    {doc.validation_status === 'pending' && (
-                      <div className="flex items-center gap-2 text-yellow-700">
-                        <AlertCircle className="h-4 w-4" />
-                        <span className="text-sm font-medium">En attente de validation</span>
+                    {/* Documents en attente - Radio buttons */}
+                    {isPending && validation && (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-4">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name={`validation-${doc.id}`}
+                              checked={validation.status === 'valid'}
+                              onChange={() => handleToggleValidation(doc.id, 'valid')}
+                              className="w-4 h-4 text-green-600 focus:ring-green-500"
+                            />
+                            <span className="text-sm font-medium text-green-700">✅ Document valide</span>
+                          </label>
+
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name={`validation-${doc.id}`}
+                              checked={validation.status === 'invalid'}
+                              onChange={() => handleToggleValidation(doc.id, 'invalid')}
+                              className="w-4 h-4 text-red-600 focus:ring-red-500"
+                            />
+                            <span className="text-sm font-medium text-red-700">❌ Document invalide</span>
+                          </label>
+                        </div>
+
+                        {/* Champ raison si invalide */}
+                        {validation.status === 'invalid' && (
+                          <div className="mt-2 bg-red-50 p-3 rounded-lg border border-red-200">
+                            <label className="block text-sm font-medium text-red-900 mb-2">
+                              Raison du rejet *
+                            </label>
+                            <textarea
+                              className="w-full border border-red-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                              placeholder="Ex: Document illisible, date expirée, informations manquantes..."
+                              value={validation.rejectionReason || ''}
+                              onChange={(e) => handleRejectionReasonChange(doc.id, e.target.value)}
+                              rows={2}
+                            />
+                            {(!validation.rejectionReason || validation.rejectionReason.trim().length === 0) && (
+                              <p className="text-xs text-red-600 mt-1">
+                                ⚠️ La raison est obligatoire pour les documents invalides
+                              </p>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
                 </div>
+              );
+            })}
+          </div>
 
-                {/* Actions */}
-                <div className="flex items-center gap-2 ml-4">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDownload(doc)}
-                  >
-                    <Download className="h-4 w-4" />
-                  </Button>
-
-                  {doc.validation_status === 'pending' && (
-                    <>
-                      <Button
-                        size="sm"
-                        className="bg-green-600 hover:bg-green-700"
-                        onClick={() => handleValidate(doc.id)}
-                        disabled={validating === doc.id}
-                      >
-                        {validating === doc.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <CheckCircle className="h-4 w-4" />
-                        )}
-                        <span className="ml-1">Valider</span>
-                      </Button>
-                      
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => openRejectModal(doc.id)}
-                        disabled={rejecting === doc.id}
-                      >
-                        <XCircle className="h-4 w-4" />
-                        <span className="ml-1">Rejeter</span>
-                      </Button>
-                    </>
+          {/* Résumé et boutons d'action globaux */}
+          {allValidated && (
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-lg border-2 border-blue-200">
+              <div className="mb-4">
+                <h4 className="font-semibold text-gray-900 mb-2">📊 Résumé de validation</h4>
+                <div className="flex items-center gap-4 text-sm">
+                  {validationStats.valid > 0 && (
+                    <span className="text-green-700">✅ {validationStats.valid} valide{validationStats.valid > 1 ? 's' : ''}</span>
+                  )}
+                  {validationStats.invalid > 0 && (
+                    <span className="text-red-700">❌ {validationStats.invalid} invalide{validationStats.invalid > 1 ? 's' : ''}</span>
+                  )}
+                  {validationStats.pending > 0 && (
+                    <span className="text-yellow-700">⏳ {validationStats.pending} en attente</span>
                   )}
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
 
-      {/* Modal de rejet */}
-      {showRejectModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-red-600">
-              <XCircle className="h-5 w-5" />
-              Rejeter le document
-            </h3>
-            
-            <p className="text-sm text-gray-600 mb-4">
-              Veuillez indiquer la raison du rejet. Le client recevra cette information.
-            </p>
-
-            <textarea
-              className="w-full border rounded-lg p-3 mb-4 min-h-[100px]"
-              placeholder="Ex: Document illisible, date expirée, informations manquantes..."
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              autoFocus
-            />
-
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={() => {
-                  setShowRejectModal(false);
-                  setDocumentToReject(null);
-                  setRejectReason('');
-                }}
-              >
-                Annuler
-              </Button>
-              <Button
-                variant="destructive"
-                className="flex-1"
-                onClick={handleReject}
-                disabled={!rejectReason.trim() || rejecting !== null}
-              >
-                {rejecting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Rejet...
-                  </>
-                ) : (
-                  <>
-                    <XCircle className="h-4 w-4 mr-2" />
-                    Confirmer le rejet
-                  </>
+              <div className="flex gap-3">
+                {/* Bouton "Valider dossier" uniquement si tous valides */}
+                {allValid && (
+                  <Button
+                    onClick={handleValidateDossier}
+                    disabled={isProcessing}
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    {isProcessing ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Traitement...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Valider le dossier - Lancer l'audit
+                      </>
+                    )}
+                  </Button>
                 )}
-              </Button>
+
+                {/* Bouton "Demander documents" - toujours disponible */}
+                <Button
+                  onClick={handleRequestDocuments}
+                  disabled={isProcessing || (hasInvalid && Object.values(validations).some(v => v.status === 'invalid' && !v.rejectionReason?.trim()))}
+                  className={`${allValid ? 'flex-1' : 'w-full'} bg-blue-600 hover:bg-blue-700 text-white`}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Demander documents complémentaires
+                  {hasInvalid && ` (${validationStats.invalid} invalide${validationStats.invalid > 1 ? 's' : ''})`}
+                </Button>
+              </div>
+
+              {hasInvalid && Object.values(validations).some(v => v.status === 'invalid' && !v.rejectionReason?.trim()) && (
+                <p className="text-xs text-red-600 mt-3 text-center">
+                  ⚠️ Veuillez fournir une raison pour tous les documents invalides
+                </p>
+              )}
             </div>
-          </div>
-        </div>
+          )}
+        </>
       )}
     </div>
   );
