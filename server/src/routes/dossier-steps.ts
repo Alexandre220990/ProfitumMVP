@@ -350,14 +350,20 @@ router.post('/expert/select', enhancedAuthMiddleware, async (req: Request, res: 
       .from('expertassignment')
       .insert({
         expert_id: expert_id,
-        client_id: user?.id,
+        client_id: user?.database_id,  // ✅ FIX: database_id au lieu de auth_user_id
         client_produit_eligible_id: dossier_id,
-        status: 'pending',  // Corrigé: statut → status
+        status: 'pending',
         assignment_date: new Date().toISOString(),
-        notes: `Assignation pour dossier TICPE ${dossier_id}`
+        notes: `Assignation pour dossier ${dossier_id}`
       })
       .select()
       .single();
+    
+    console.log('✅ [DEBUG] Assignation créée:', { 
+      expert_id, 
+      client_id: user?.database_id,
+      dossier_id 
+    });
 
     if (assignError) {
       console.error('❌ Erreur création assignation:', assignError);
