@@ -897,12 +897,30 @@ router.post("/register", registerRateLimiter, async (req: Request, res: Response
 
       if (insertError || !insertedClient) {
         console.error('❌ Erreur insertion Client:', insertError);
+        
+        // Détecter le type d'erreur spécifique
+        let errorMessage = "Erreur lors de la création du profil client";
+        let errorCode = 'CLIENT_INSERTION_FAILED';
+        
+        // Erreur de SIREN dupliqué
+        if (insertError?.code === '23505' && insertError?.message?.includes('Client_siren_key')) {
+          errorMessage = "Ce numéro SIREN est déjà utilisé par un autre client";
+          errorCode = 'DUPLICATE_SIREN';
+          console.error('❌ SIREN dupliqué détecté:', clientData.siren);
+        }
+        // Erreur d'email dupliqué
+        else if (insertError?.code === '23505' && insertError?.message?.includes('Client_email_key')) {
+          errorMessage = "Cette adresse email est déjà utilisée";
+          errorCode = 'DUPLICATE_EMAIL';
+        }
+        
         // Nettoyage : suppression de l'utilisateur Supabase Auth en cas d'échec
         await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
+        
         return res.status(400).json({
           success: false,
-          message: "Erreur lors de la création du profil client",
-          error: 'CLIENT_INSERTION_FAILED',
+          message: errorMessage,
+          error: errorCode,
           details: insertError?.message || 'Insertion échouée ou données manquantes'
         });
       }

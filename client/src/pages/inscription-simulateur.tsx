@@ -177,6 +177,29 @@ const InscriptionSimulateur = () => {
       const registerResult = await registerResponse.json();
 
       if (!registerResult.success || !registerResult.data) {
+        // Gérer spécifiquement l'erreur de SIREN dupliqué
+        if (registerResult.error === 'DUPLICATE_SIREN') {
+          form.setError('siren', {
+            type: 'manual',
+            message: '⚠️ Ce numéro SIREN est déjà utilisé. Veuillez en entrer un autre.'
+          });
+          setMigrationStep('idle');
+          toast.error('SIREN déjà existant - Veuillez modifier le numéro SIREN');
+          return; // Ne pas lancer d'exception, juste arrêter le processus
+        }
+        
+        // Gérer l'erreur d'email dupliqué
+        if (registerResult.error === 'DUPLICATE_EMAIL') {
+          form.setError('email', {
+            type: 'manual',
+            message: '⚠️ Cette adresse email est déjà utilisée.'
+          });
+          setMigrationStep('idle');
+          toast.error('Email déjà existant - Utilisez une autre adresse');
+          return;
+        }
+        
+        // Autres erreurs
         throw new Error(registerResult.message || "Erreur lors de la création du compte");
       }
 
