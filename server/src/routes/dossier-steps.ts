@@ -285,11 +285,12 @@ router.post('/expert/select', enhancedAuthMiddleware, async (req: Request, res: 
       });
     }
 
-    if (!user || dossier.clientId !== user.id) {
+    if (!user || dossier.clientId !== user.database_id) {
       console.error('❌ [DEBUG] Accès refusé:', { 
         dossierClientId: dossier.clientId, 
-        userId: user?.id,
-        match: dossier.clientId === user?.id 
+        userDatabaseId: user?.database_id,
+        userAuthId: user?.id,
+        match: dossier.clientId === user?.database_id 
       });
       return res.status(403).json({
         success: false,
