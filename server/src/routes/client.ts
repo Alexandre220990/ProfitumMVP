@@ -437,8 +437,8 @@ router.put('/produits-eligibles/:id', async (req, res) => {
   }
 });
 
-// PUT /api/client/produits-eligibles/:id/assign-expert - Attribuer un expert à un produit éligible
-router.put('/produits-eligibles/:id/assign-expert', async (req, res) => {
+// PUT/POST /api/client/produits-eligibles/:id/assign-expert - Attribuer un expert à un produit éligible
+const assignExpertHandler = async (req: Request, res: Response) => {
   try {
     const user = (req as AuthenticatedRequest).user;
     
@@ -646,7 +646,11 @@ router.put('/produits-eligibles/:id/assign-expert', async (req, res) => {
       message: 'Error assigning expert'
     });
   }
-});
+};
+
+// Enregistrer les deux méthodes HTTP pour la compatibilité
+router.put('/produits-eligibles/:id/assign-expert', assignExpertHandler);
+router.post('/produits-eligibles/:id/assign-expert', assignExpertHandler);
 
 /**
  * POST /api/client/dossier/:id/validate-complementary-documents

@@ -16,6 +16,7 @@ import ExpertSelectionModal from './ExpertSelectionModal';
 import EligibilityValidationStatus from './EligibilityValidationStatus';
 import ClientDocumentUploadComplementary from './client/ClientDocumentUploadComplementary';
 import { useDossierSteps } from '@/hooks/use-dossier-steps';
+import { useDossierNotifications } from '@/hooks/useDossierNotifications';
 import { get } from '@/lib/api';
 import { getProductConfig} from '@/config/productWorkflowConfigs';
 
@@ -100,38 +101,63 @@ export default function UniversalProductWorkflow({
     overallProgress
   } = useDossierSteps(clientProduitId);
 
+  // Hook pour les notifications en temps réel
+  const { getDossierNotifications } = useDossierNotifications();
+
   // Définir les étapes du workflow depuis la config
   const workflowSteps = productConfig.workflowSteps;
 
   // Charger le clientProduit pour avoir le statut de validation
-  useEffect(() => {
-    const loadClientProduit = async () => {
-      try {
-        const response = await get(`/api/client/produits-eligibles/${clientProduitId}`);
+  const loadClientProduit = useCallback(async () => {
+    try {
+      const response = await get(`/api/client/produits-eligibles/${clientProduitId}`);
+      
+      if (response.success && response.data) {
+        const produitData = response.data as ClientProduit;
+        setClientProduit(produitData);
         
-        if (response.success && response.data) {
-          const produitData = response.data as ClientProduit;
-          setClientProduit(produitData);
-          
-          // Mettre à jour eligibilityValidated basé sur le statut
-          if (produitData.statut === 'eligibility_validated') {
-            setEligibilityValidated(true);
-            setCurrentStep(2); // Déverrouiller étape 2
-          } else if (produitData.statut === 'eligible' || produitData.statut === 'opportunité') {
-            // État initial : permettre l'upload des documents
-            setEligibilityValidated(false);
-            setCurrentStep(1);
-          }
+        // Mettre à jour eligibilityValidated basé sur le statut
+        if (produitData.statut === 'eligibility_validated') {
+          setEligibilityValidated(true);
+          setCurrentStep(2); // Déverrouiller étape 2
+        } else if (produitData.statut === 'eligible' || produitData.statut === 'opportunité') {
+          // État initial : permettre l'upload des documents
+          setEligibilityValidated(false);
+          setCurrentStep(1);
         }
-      } catch (error) {
-        console.error('❌ Erreur chargement ClientProduit:', error);
-      }
-    };
 
+        // Si un expert est déjà assigné, le définir
+        if (produitData.expert_id && produitData.Expert) {
+          setSelectedExpert(produitData.Expert);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Erreur chargement ClientProduit:', error);
+    }
+  }, [clientProduitId]);
+
+  useEffect(() => {
     if (clientProduitId) {
       loadClientProduit();
     }
-  }, [clientProduitId]);
+  }, [clientProduitId, loadClientProduit]);
+
+  // Écouter les notifications pour ce dossier et recharger automatiquement
+  useEffect(() => {
+    const dossierNotifs = getDossierNotifications(clientProduitId);
+    
+    // Si une nouvelle notification arrive (< 10 secondes), recharger le dossier
+    if (dossierNotifs.latestNotification) {
+      const notifDate = new Date(dossierNotifs.latestNotification.created_at);
+      const now = new Date();
+      const secondsDiff = (now.getTime() - notifDate.getTime()) / 1000;
+      
+      if (secondsDiff < 10) {
+        console.log('🔔 Nouvelle notification détectée - Rechargement du dossier...');
+        loadClientProduit();
+      }
+    }
+  }, [getDossierNotifications, clientProduitId, loadClientProduit]);
 
   // Initialiser les étapes au chargement
   useEffect(() => {
