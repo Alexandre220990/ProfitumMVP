@@ -308,14 +308,19 @@ router.post('/expert/select', enhancedAuthMiddleware, async (req: Request, res: 
 
     console.log('🔍 [DEBUG] Dossier trouvé:', { clientId: dossier.clientId, statut: dossier.statut });
     
-    // Permettre la sélection d'expert pour les dossiers éligibles ou validés
-    const statutsAutorises = ['eligible', 'en_cours', 'eligibility_validated', 'expert_pending_acceptance'];
+    // Permettre la sélection d'expert pour les dossiers avec validation admin OK
+    const statutsAutorises = [
+      // Anciens statuts (compatibilité)
+      'eligible', 'en_cours', 'eligibility_validated', 'expert_pending_acceptance',
+      // Nouveaux statuts
+      'admin_validated', 'expert_selection', 'pending_admin_validation'
+    ];
     
     if (!statutsAutorises.includes(dossier.statut)) {
       console.error('❌ [DEBUG] Statut dossier non autorisé:', dossier.statut);
       return res.status(400).json({
         success: false,
-        message: `Le dossier doit être éligible pour sélectionner un expert. Statut actuel: ${dossier.statut}`
+        message: `Le dossier doit être validé par l'admin pour sélectionner un expert. Statut actuel: ${dossier.statut}`
       });
     }
     

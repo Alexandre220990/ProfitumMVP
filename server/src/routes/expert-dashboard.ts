@@ -114,7 +114,12 @@ router.get('/prioritized', enhancedAuthMiddleware, async (req: Request, res: Res
           )
         `)
         .eq('expert_id', expertId)
-        .in('statut', ['eligible', 'en_cours']);
+        .in('statut', [
+          // Anciens statuts
+          'eligible', 'en_cours', 
+          // Nouveaux statuts
+          'admin_validated', 'expert_assigned', 'documents_requested', 'documents_completes', 'audit_en_cours'
+        ]);
       
       dossiers = result.data || [];
       error = result.error;
@@ -172,9 +177,11 @@ router.get('/prioritized', enhancedAuthMiddleware, async (req: Request, res: Res
 
       // Déterminer la prochaine action
       let nextAction = '';
-      if (dossier.statut === 'eligible') {
-        nextAction = 'Planifier RDV';
-      } else if (dossier.statut === 'en_cours') {
+      if (dossier.statut === 'eligible' || dossier.statut === 'admin_validated' || dossier.statut === 'expert_assigned') {
+        nextAction = 'Examiner documents';
+      } else if (dossier.statut === 'documents_requested') {
+        nextAction = 'Attendre documents client';
+      } else if (dossier.statut === 'en_cours' || dossier.statut === 'audit_en_cours') {
         if (daysSinceLastContact > 7) {
           nextAction = 'Relancer client';
         } else {

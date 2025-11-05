@@ -3885,10 +3885,11 @@ router.post('/dossiers/:id/validate-eligibility', asyncHandler(async (req, res) 
       });
     }
 
-    console.log('📝 Validation éligibilité:', {
+    console.log('📝 Admin - Validation éligibilité:', {
       dossier_id: id,
       action,
       admin_id: admin.database_id,
+      admin_email: admin.email,
       notes
     });
 
@@ -3907,30 +3908,24 @@ router.post('/dossiers/:id/validate-eligibility', asyncHandler(async (req, res) 
       });
     }
 
-    // Préparer les métadonnées de validation
-    const currentMetadata = dossier.metadata || {};
-    const validationMetadata = {
-      ...currentMetadata,
-      eligibility_validation: {
-        status: action === 'approve' ? 'validated' : 'rejected',
-        validated_by: admin.database_id,
-        validated_by_email: admin.email,
-        validated_at: new Date().toISOString(),
-        notes: notes || ''
-      }
-    };
+    // ✅ NOUVEAUX CHAMPS : Utiliser les colonnes dédiées au lieu de metadata
+    const isApproved = action === 'approve';
+    const newStatut = isApproved ? 'admin_validated' : 'admin_rejected';
+    const newStep = isApproved ? 2 : 1;
+    const newProgress = isApproved ? 25 : 10;
 
-    // Déterminer le nouveau statut
-    const newStatut = action === 'approve' ? 'eligibility_validated' : 'eligibility_rejected';
-    const newStep = action === 'approve' ? 2 : 1;
-    const newProgress = action === 'approve' ? 25 : 10;
-
-    // Mettre à jour le dossier
+    // Mettre à jour le dossier avec les nouveaux champs
     const { data: updatedDossier, error: updateError } = await supabaseClient
       .from('ClientProduitEligible')
       .update({
+        // ✅ Nouveau système
+        admin_eligibility_status: isApproved ? 'validated' : 'rejected',
+        admin_validated_by: admin.database_id,
+        eligibility_validated_at: isApproved ? new Date().toISOString() : null,
+        validation_admin_notes: notes || null,
+        
+        // Statut global
         statut: newStatut,
-        metadata: validationMetadata,
         current_step: newStep,
         progress: newProgress,
         updated_at: new Date().toISOString()
@@ -3944,7 +3939,10 @@ router.post('/dossiers/:id/validate-eligibility', asyncHandler(async (req, res) 
       throw updateError;
     }
 
-    console.log(`✅ Éligibilité ${action === 'approve' ? 'validée' : 'rejetée'} pour le dossier ${id}`);
+    console.log(`✅ Admin - Éligibilité ${isApproved ? 'validée' : 'rejetée'} pour le dossier ${id}`, {
+      admin_eligibility_status: isApproved ? 'validated' : 'rejected',
+      statut: newStatut
+    });
 
     // 📅 TIMELINE : Ajouter événement validation/refus éligibilité
     try {

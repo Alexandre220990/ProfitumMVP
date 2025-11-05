@@ -61,6 +61,15 @@ interface ClientProduit {
   metadata?: any;
   expert_id?: string;
   expert_pending_id?: string; // ✅ Expert en attente d'acceptation
+  
+  // ✅ NOUVEAUX CHAMPS - Validations séparées
+  admin_eligibility_status?: 'pending' | 'validated' | 'rejected';
+  admin_validated_by?: string;
+  eligibility_validated_at?: string;
+  validation_admin_notes?: string;
+  expert_validation_status?: 'pending' | 'validated' | 'rejected' | 'documents_requested';
+  expert_validated_at?: string;
+  
   Client?: {
     company_name?: string;
     email?: string;

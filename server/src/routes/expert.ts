@@ -1577,7 +1577,7 @@ router.put('/dossier/:id/notes', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/expert/dossier/:id/validate-eligibility - Valider ou refuser l'éligibilité
+// POST /api/expert/dossier/:id/validate-eligibility - Valider ou refuser les documents (validation finale expert)
 router.post('/dossier/:id/validate-eligibility', async (req: Request, res: Response) => {
   try {
     if (!req.user) {
@@ -1592,49 +1592,155 @@ router.post('/dossier/:id/validate-eligibility', async (req: Request, res: Respo
       return res.status(403).json({ success: false, message: 'Accès non autorisé' });
     }
 
-    // Récupérer le CPE actuel pour fusionner metadata
-    const { data: currentCPE } = await supabase
+    console.log('📝 Expert - Validation documents:', {
+      dossier_id: id,
+      expert_id: authUser.database_id,
+      validated,
+      notes
+    });
+
+    // Récupérer le dossier pour vérifier qu'il existe et appartient à l'expert
+    const { data: currentCPE, error: fetchError } = await supabase
       .from('ClientProduitEligible')
-      .select('metadata')
+      .select('*, Client(company_name, email)')
       .eq('id', id)
-      .eq('expert_id', authUser.id)
+      .eq('expert_id', authUser.database_id)
       .single();
 
-    // Fusionner metadata avec validation_state
-    const updatedMetadata = {
-      ...(currentCPE?.metadata || {}),
-      validation_state: validated ? 'eligibility_validated' : 'rejected',
-      eligible_validated_at: validated ? new Date().toISOString() : null
-    };
+    if (fetchError || !currentCPE) {
+      console.error('❌ Dossier non trouvé ou non assigné à cet expert:', fetchError);
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Dossier non trouvé ou non autorisé' 
+      });
+    }
 
-    // Mettre à jour le statut du CPE
+    // ✅ NOUVEAUX CHAMPS : Utiliser les colonnes dédiées
+    const isValidated = validated === true;
+    const newStatut = isValidated ? 'documents_completes' : 'expert_rejected';
+
+    // Mettre à jour le dossier avec les nouveaux champs
     const { data, error } = await supabase
       .from('ClientProduitEligible')
       .update({ 
-        metadata: updatedMetadata,
-        statut: validated ? 'en_cours' : 'annule',
+        // ✅ Nouveau système - Validation expert
+        expert_validation_status: isValidated ? 'validated' : 'rejected',
+        expert_validated_at: isValidated ? new Date().toISOString() : null,
         notes: notes,
+        
+        // Statut global
+        statut: newStatut,
+        current_step: isValidated ? 4 : 3, // Si validé → Étape 4 (Audit), sinon reste à 3
+        progress: isValidated ? 50 : 30,
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
-      .eq('expert_id', authUser.id)
+      .eq('expert_id', authUser.database_id)
       .select()
       .single();
 
     if (error) {
-      console.error('Erreur validation éligibilité:', error);
+      console.error('❌ Erreur validation documents par expert:', error);
       return res.status(500).json({ success: false, message: 'Erreur serveur' });
     }
 
-    // TODO: Créer notification pour le client
+    console.log(`✅ Expert - Documents ${isValidated ? 'validés' : 'rejetés'} pour le dossier ${id}`, {
+      expert_validation_status: isValidated ? 'validated' : 'rejected',
+      statut: newStatut
+    });
+
+    // 📅 TIMELINE : Ajouter événement validation expert
+    try {
+      const { DossierTimelineService } = await import('../services/dossier-timeline-service');
+      
+      const expertName = authUser.email || 'Expert';
+      const clientName = (currentCPE as any).Client?.company_name || 'Client';
+      
+      if (isValidated) {
+        await DossierTimelineService.addEvent({
+          dossier_id: id,
+          type: 'validation',
+          actor_type: 'expert',
+          actor_name: expertName,
+          title: '✅ Documents validés par l\'expert',
+          description: `L'expert a validé tous les documents du dossier. Le dossier passe en phase d'audit technique.`,
+          metadata: {
+            expert_id: authUser.database_id,
+            validated_at: new Date().toISOString(),
+            notes
+          },
+          icon: '✅',
+          color: 'green'
+        });
+      } else {
+        await DossierTimelineService.addEvent({
+          dossier_id: id,
+          type: 'rejection',
+          actor_type: 'expert',
+          actor_name: expertName,
+          title: '❌ Dossier refusé par l\'expert',
+          description: `L'expert a refusé le dossier. Raison : ${notes || 'Non précisée'}`,
+          metadata: {
+            expert_id: authUser.database_id,
+            rejected_at: new Date().toISOString(),
+            reason: notes
+          },
+          icon: '❌',
+          color: 'red'
+        });
+      }
+
+      console.log('✅ Événement timeline ajouté (validation expert)');
+    } catch (timelineError) {
+      console.error('⚠️ Erreur timeline (non bloquant):', timelineError);
+    }
+
+    // 📧 NOTIFICATION AU CLIENT
+    try {
+      const { data: clientAuthUser } = await supabase
+        .from('Client')
+        .select('auth_user_id')
+        .eq('id', (currentCPE as any).clientId)
+        .single();
+
+      if (clientAuthUser?.auth_user_id) {
+        await supabase
+          .from('notification')
+          .insert({
+            user_id: clientAuthUser.auth_user_id,
+            user_type: 'client',
+            title: isValidated 
+              ? `✅ Documents validés - ${(currentCPE as any).Client?.company_name || 'Votre dossier'}` 
+              : `❌ Dossier refusé`,
+            message: isValidated
+              ? `Votre expert a validé tous les documents. Votre dossier passe maintenant en phase d'audit technique.`
+              : `Votre expert a refusé le dossier. Raison : ${notes || 'Non précisée'}`,
+            notification_type: isValidated ? 'documents_validated' : 'dossier_rejected',
+            priority: 'high',
+            is_read: false,
+            action_url: `/client/dossier/${id}`,
+            action_data: {
+              dossier_id: id,
+              expert_decision: isValidated ? 'validated' : 'rejected',
+              timestamp: new Date().toISOString()
+            },
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+
+        console.log('📧 Notification client envoyée (validation expert)');
+      }
+    } catch (notifError) {
+      console.error('⚠️ Erreur notification (non bloquant):', notifError);
+    }
 
     return res.json({
       success: true,
       data,
-      message: validated ? 'Éligibilité validée' : 'Éligibilité refusée'
+      message: validated ? 'Documents validés avec succès' : 'Dossier refusé'
     });
   } catch (error) {
-    console.error('Erreur validation éligibilité:', error);
+    console.error('❌ Erreur validation documents par expert:', error);
     return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });
