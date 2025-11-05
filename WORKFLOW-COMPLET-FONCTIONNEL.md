@@ -938,6 +938,81 @@ OPTION B: CLIENT REFUSE ❌
 📧 NOTIFICATION → ADMIN
    "Retour administration - Dossier [ID]"
    "Vérifier cohérence si montant différent"
+   ↓
+🧾 GÉNÉRATION AUTOMATIQUE DE LA FACTURE PROFITUM
+   ↓
+💾 INSERT invoice (facture Profitum):
+   - invoice_number: "PROF-2025-XXXX"
+   - client_id: client_id
+   - client_produit_eligible_id: dossier_id
+   - expert_id: expert_id
+   - apporteur_id: apporteur_id (si présent)
+   - montant_audit: montant_reel_accorde (montant RÉEL de l'administration)
+   - taux_compensation_expert: expert.compensation (ex: 0.30) ou 0.30 si NULL
+   - taux_commission_apporteur: apporteur.commission_rate (ex: 0.10) ou 0.10 si NULL
+   - amount: montant_reel × taux_compensation (montant HT)
+   - metadata: {
+       montant_ttc: amount + (amount × 0.20),
+       tva: amount × 0.20,
+       dossier_ref,
+       expert_name,
+       apporteur_name,
+       commission_apporteur: amount × taux_apporteur,
+       calculation_date
+     }
+   - status: 'generated'
+   - issue_date: now()
+   - due_date: now() + 30 jours
+   - description: "Rémunération dossier [Produit] - Réf: [CPE_ID]"
+   - items: JSONB avec détail ligne facture
+   ↓
+   SI ERREUR (expert.compensation NULL ou montant_reel = 0):
+   ↓
+💾 INSERT invoice avec erreur:
+   - amount: 0
+   - status: 'error'
+   - error_message: "ERREUR: Impossible de calculer - Expert.compensation NULL ou montant = 0"
+   - metadata: { error_details, expert_id, missing_fields }
+   ↓
+📄 PDF Facture généré automatiquement (même si erreur)
+   - En-tête Profitum
+   - Coordonnées client
+   - Référence dossier + Expert + Apporteur
+   - Détail calcul OU mention "ERREUR - Contacter support@profitum.fr"
+   - Total HT/TVA/TTC OU "0.00 € - Calcul impossible"
+   ↓
+💾 Upload PDF vers Supabase Storage:
+   - Bucket: 'invoices'
+   - Path: 'profitum/2025/PROF-2025-XXXX.pdf'
+   ↓
+💾 UPDATE invoice:
+   - pdf_storage_path: path
+   - pdf_generated_at: now()
+   ↓
+📅 TIMELINE: "🧾 Facture Profitum générée"
+   - Icon: 🧾
+   - Color: blue
+   - Metadata: { facture_id, numero, montant_ttc }
+   ↓
+📧 NOTIFICATION → CLIENT (priorité: high)
+   "✅ Remboursement confirmé !"
+   "Montant reçu: XX €"
+   "🧾 Facture Profitum disponible"
+   "Montant facture: XX € TTC (rémunération expert XX%)"
+   Action: "Télécharger la facture"
+   ↓
+📧 NOTIFICATION → EXPERT
+   "🧾 Facture Profitum générée"
+   "Votre dossier [Client] - XX € TTC"
+   Action: "Voir la facture"
+   ↓
+📧 NOTIFICATION → APPORTEUR
+   "🧾 Facture générée pour [Client]"
+   "Votre commission: XX €"
+   ↓
+📧 NOTIFICATION → ADMIN
+   "Facture auto générée - Dossier [ID]"
+   "Vérifier si status = 'error'"
 ```
 
 ---

@@ -24,9 +24,36 @@
 ## 🧾 **FACTURATION AUTOMATIQUE**
 
 ### **Déclencheur**
-✅ **Quand le CLIENT valide l'audit** (Phase 9)
+✅ **Quand l'EXPERT saisit le montant RÉEL reçu de l'administration** (Phase 10.3)
 
-### **Contenu de la facture**
+### **Rappel conditions lors validation audit par client** (Phase 9)
+```
+Quand le CLIENT valide l'audit :
+
+AFFICHAGE MODAL CONFIRMATION :
+┌──────────────────────────────────────────────┐
+│ ⚠️ En validant, vous acceptez :              │
+│                                              │
+│ 💰 Rémunération Profitum : XX%              │
+│    Expert: [Nom]                             │
+│    Taux: XX% du montant remboursé           │
+│                                              │
+│ 📊 Sur un remboursement de XX € :           │
+│    Rémunération estimée : XX € HT           │
+│    TVA 20% : XX €                            │
+│    Total TTC estimé : XX €                   │
+│                                              │
+│ ⚠️ La facture sera émise à la réception    │
+│    effective du remboursement                │
+│                                              │
+│ [Annuler] [✓ J'accepte ces conditions]     │
+└──────────────────────────────────────────────┘
+
+→ Pas de facture générée à ce stade
+→ Juste enregistrement de l'acceptation des conditions
+```
+
+### **Contenu de la facture** (Générée lors réception remboursement)
 ```
 FACTURE PROFITUM N° PROF-2025-XXXX
 Date: [date_validation_audit]
