@@ -495,35 +495,66 @@ router.get('/dossier/:id/documents', enhancedAuthMiddleware, async (req: Request
       });
     }
 
-    // Récupérer tous les documents
-    const { data: documents, error } = await supabase
+    // Récupérer tous les documents (uniquement les versions actives, pas les remplacements)
+    // Un document est "actif" s'il n'a pas été remplacé (is_replacement = false)
+    // OU s'il est la dernière version (pas de document plus récent avec même parent)
+    const { data: allDocuments, error: fetchError } = await supabase
       .from('ClientProcessDocument')
-      .select(`
-        id,
-        filename,
-        original_filename,
-        storage_path,
-        bucket_name,
-        mime_type,
-        file_size,
-        validation_status,
-        rejection_reason,
-        workflow_step,
-        document_type,
-        created_at,
-        validated_at,
-        updated_at
-      `)
+      .select('*')
       .eq('client_produit_id', dossierId)
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('❌ Erreur récupération documents:', error);
+    if (fetchError) {
+      console.error('❌ Erreur récupération documents:', fetchError);
       return res.status(500).json({
         success: false,
         message: 'Erreur lors de la récupération des documents'
       });
     }
+
+    // Filtrer pour ne garder que les versions actives
+    // Un document est "actif" si :
+    // 1. Il n'a pas de parent (document original)
+    // 2. OU il est la dernière version de son parent
+    const activeDocuments = (allDocuments || []).filter(doc => {
+      // Si pas de parent, c'est un document original = actif
+      if (!doc.parent_document_id) {
+        // Vérifier qu'il n'existe pas un remplacement plus récent
+        const hasNewerReplacement = (allDocuments || []).some(other => 
+          other.parent_document_id === doc.id && 
+          new Date(other.created_at) > new Date(doc.created_at)
+        );
+        return !hasNewerReplacement;
+      }
+      
+      // Si c'est un remplacement, vérifier qu'il est le plus récent
+      const newerReplacements = (allDocuments || []).filter(other => 
+        other.parent_document_id === doc.parent_document_id &&
+        new Date(other.created_at) > new Date(doc.created_at)
+      );
+      return newerReplacements.length === 0;
+    });
+
+    // Mapper les données pour le frontend (avec fallbacks)
+    const documents = activeDocuments.map(doc => ({
+      id: doc.id,
+      filename: doc.filename,
+      original_filename: doc.filename, // Fallback si colonne n'existe pas
+      storage_path: doc.storage_path,
+      bucket_name: doc.bucket_name,
+      mime_type: doc.mime_type,
+      file_size: doc.file_size,
+      validation_status: doc.validation_status || doc.status || 'pending',
+      rejection_reason: doc.rejection_reason,
+      workflow_step: doc.workflow_step,
+      document_type: doc.document_type,
+      created_at: doc.created_at,
+      validated_at: doc.validated_at,
+      updated_at: doc.updated_at,
+      parent_document_id: doc.parent_document_id,
+      version_number: doc.version_number || 1,
+      is_replacement: doc.is_replacement || false
+    }));
 
     return res.json({
       success: true,

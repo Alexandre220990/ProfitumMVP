@@ -377,7 +377,8 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
       category,
       description,
       user_type,
-      metadata
+      metadata,
+      parent_document_id // ✅ NOUVEAU : ID du document à remplacer
     } = req.body;
     
     console.log('📤 Upload document - User:', user.email, 'Type:', user.type);
@@ -501,12 +502,43 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
       docMetadata.client_produit_id = dossier_id;
     }
     
+    // ✅ Vérifier si parent_document_id existe et appartient au même dossier
+    if (parent_document_id) {
+      const { data: parentDoc, error: parentError } = await supabase
+        .from('ClientProcessDocument')
+        .select('id, client_produit_id, document_type')
+        .eq('id', parent_document_id)
+        .single();
+      
+      if (parentError || !parentDoc) {
+        return res.status(404).json({
+          success: false,
+          message: 'Document parent non trouvé'
+        });
+      }
+      
+      // Vérifier que le parent appartient au même dossier
+      if (dossier_id && parentDoc.client_produit_id !== dossier_id) {
+        return res.status(403).json({
+          success: false,
+          message: 'Le document parent n\'appartient pas à ce dossier'
+        });
+      }
+      
+      console.log('🔄 Remplacement document:', {
+        parent_id: parent_document_id,
+        parent_type: parentDoc.document_type,
+        new_type: document_type
+      });
+    }
+    
     const { data: doc, error: dbError } = await supabase
       .from('ClientProcessDocument')
       .insert({
         client_id: client_id || user.database_id,
         produit_id: finalProduitId || null,
-        client_produit_id: dossier_id || null, // ✅ Ajouter directement dans la colonne
+        client_produit_id: dossier_id || null,
+        parent_document_id: parent_document_id || null, // ✅ NOUVEAU : Lien vers document remplacé
         document_type,
         filename: originalFilename, // Garder le nom original pour l'affichage
         storage_path: storagePath, // Utiliser le chemin sanitizé pour le storage
@@ -516,6 +548,7 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
         uploaded_by: user.database_id,
         uploaded_by_type: user.type,
         status: 'pending',
+        validation_status: 'pending', // Réinitialiser le statut de validation
         metadata: docMetadata,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()

@@ -152,7 +152,8 @@ export default function ClientStep3DocumentCollection({
       formData.append('dossier_id', dossierId);
       formData.append('document_type', documentType || 'document_complementaire');
       formData.append('category', 'document_complementaire');
-      formData.append('description', `Re-upload : ${file.name}`);
+      formData.append('description', `Remplacement : ${file.name}`);
+      formData.append('parent_document_id', docId); // ✅ Lien vers document rejeté
 
       const response = await fetch(`${config.API_URL}/api/documents/upload`, {
         method: 'POST',
