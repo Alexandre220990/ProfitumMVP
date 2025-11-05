@@ -1,6 +1,6 @@
 import express, { Request, Response } from 'express';
 import { supabaseClient } from '../config/supabase';
-import { enhancedAuthMiddleware, AuthenticatedRequest } from '../middleware/auth-enhanced';
+import { optionalAuthMiddleware } from '../middleware/optional-auth';
 import { asyncHandler } from '../utils/asyncHandler';
 
 const router = express.Router();
@@ -36,15 +36,16 @@ interface ClientSimulationResponse {
  * POST /api/client/simulation/update
  * Met à jour la simulation d'un client connecté avec fusion intelligente
  */
-router.post('/update', enhancedAuthMiddleware, asyncHandler(async (req: Request, res: Response) => {
+router.post('/update', optionalAuthMiddleware, asyncHandler(async (req: Request, res: Response) => {
   try {
-    const authReq = req as AuthenticatedRequest;
-    const user = authReq.user;
+    // Vérifier l'authentification
+    const user = (req as any).user;
     
     if (!user || user.type !== 'client') {
-      return res.status(403).json({
+      console.error('❌ Accès non autorisé:', { hasUser: !!user, userType: user?.type });
+      return res.status(401).json({
         success: false,
-        message: 'Accès réservé aux clients connectés'
+        message: 'Authentification requise - Veuillez vous reconnecter'
       });
     }
 
@@ -52,6 +53,7 @@ router.post('/update', enhancedAuthMiddleware, asyncHandler(async (req: Request,
 
     console.log('🚀 Simulation client connecté:', {
       clientId: user.database_id,
+      email: user.email,
       simulationType,
       responsesCount: Object.keys(responses || {}).length
     });
