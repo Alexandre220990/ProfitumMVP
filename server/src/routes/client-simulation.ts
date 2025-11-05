@@ -243,15 +243,14 @@ router.get('/history', optionalAuthMiddleware, asyncHandler(async (req: Request,
  * GET /api/client/simulation/status
  * Vérifie le statut de la dernière simulation
  */
-router.get('/status', enhancedAuthMiddleware, asyncHandler(async (req: Request, res: Response) => {
+router.get('/status', optionalAuthMiddleware, asyncHandler(async (req: Request, res: Response) => {
   try {
-    const authReq = req as AuthenticatedRequest;
-    const user = authReq.user;
+    const user = (req as any).user;
     
     if (!user || user.type !== 'client') {
-      return res.status(403).json({
+      return res.status(401).json({
         success: false,
-        message: 'Accès réservé aux clients connectés'
+        message: 'Authentification requise'
       });
     }
 
