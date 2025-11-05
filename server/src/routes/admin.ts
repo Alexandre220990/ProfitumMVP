@@ -1425,68 +1425,123 @@ router.get('/clients', asyncHandler(async (req, res) => {
   }
 }));
 
-// POST /api/admin/clients - Créer un nouveau client
+// POST /api/admin/clients - Créer un nouveau client avec compte Auth
 router.post('/clients', asyncHandler(async (req, res) => {
   try {
     const {
+      first_name,
+      last_name,
       email,
+      password,
       company_name,
-      phone_number,
+      phone,
+      address,
       city,
+      postal_code,
       siren,
-      description,
-      statut = 'actif'
+      secteurActivite,
+      nombreEmployes,
+      revenuAnnuel,
+      notes,
+      username
     } = req.body;
 
     // Validation des données
-    if (!email || !company_name) {
+    if (!email || !company_name || !first_name || !last_name || !password) {
       return res.status(400).json({
         success: false,
-        message: 'Email et nom de l\'entreprise sont requis'
+        message: 'Email, nom, prénom, entreprise et mot de passe sont requis'
       });
     }
 
-    // Vérifier si l'email existe déjà
-    const { data: existingClient } = await supabaseClient
-      .from('Client')
-      .select('id')
-      .eq('email', email)
-      .single();
+    // Vérifier si l'email existe déjà dans Supabase Auth
+    const { data: existingAuthUser } = await supabaseClient.auth.admin.listUsers();
+    const emailExists = existingAuthUser?.users?.some(u => u.email === email);
 
-    if (existingClient) {
+    if (emailExists) {
       return res.status(400).json({
         success: false,
-        message: 'Un client avec cet email existe déjà'
+        message: 'Un utilisateur avec cet email existe déjà'
       });
     }
 
-    // Créer le client
-    const { data: newClient, error } = await supabaseClient
+    // 1. Créer le compte Supabase Auth
+    const { data: authData, error: authError } = await supabaseClient.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: {
+        first_name,
+        last_name,
+        name: `${first_name} ${last_name}`,
+        type: 'client',
+        company_name,
+        phone_number: phone,
+        siren,
+        city,
+        postal_code,
+        address,
+        email_verified: true
+      }
+    });
+
+    if (authError || !authData.user) {
+      console.error('❌ Erreur création auth:', authError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la création du compte utilisateur',
+        details: authError?.message
+      });
+    }
+
+    // 2. Créer l'entrée dans la table Client
+    const { data: newClient, error: clientError } = await supabaseClient
       .from('Client')
       .insert({
+        auth_user_id: authData.user.id,
         email,
+        first_name,
+        last_name,
+        name: `${first_name} ${last_name}`,
+        username: username || `${first_name}${last_name}`,
         company_name,
-        phone_number,
+        phone_number: phone,
+        address,
         city,
+        postal_code,
         siren,
-        description,
-        statut,
+        secteurActivite,
+        nombreEmployes,
+        revenuAnnuel,
+        type: 'client',
+        statut: 'actif',
+        notes,
+        dateCreation: new Date().toISOString(),
+        derniereConnexion: null,
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        created_by_admin: (req as any).user?.database_id || null,
+        metadata: {
+          created_via: 'admin_form',
+          created_by: (req as any).user?.email,
+          created_at: new Date().toISOString()
+        }
       })
       .select()
       .single();
 
-    if (error) {
-      console.error('Erreur création client:', error);
-      throw error;
+    if (clientError) {
+      console.error('❌ Erreur création client dans BDD:', clientError);
+      // Supprimer le compte Auth si échec création client
+      await supabaseClient.auth.admin.deleteUser(authData.user.id);
+      throw clientError;
     }
 
-    // Log de l'action
+    // 3. Log de l'action admin
     await supabaseClient
       .from('AdminAuditLog')
       .insert({
-        admin_id: (req as any).user.id,
+        admin_id: (req as any).user?.id,
         action: 'client_created',
         table_name: 'Client',
         record_id: newClient.id,
@@ -1495,9 +1550,18 @@ router.post('/clients', asyncHandler(async (req, res) => {
         user_agent: req.get('User-Agent')
       });
 
+    console.log('✅ Client créé avec succès par admin:', {
+      clientId: newClient.id,
+      email: newClient.email,
+      authUserId: authData.user.id
+    });
+
     return res.status(201).json({
       success: true,
-      data: newClient,
+      data: {
+        client: newClient,
+        auth_user_id: authData.user.id
+      },
       message: 'Client créé avec succès'
     });
 

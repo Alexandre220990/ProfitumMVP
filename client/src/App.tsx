@@ -97,6 +97,7 @@ const AdminMonitoring = React.lazy(() => import('./pages/admin/monitoring'));
 // SUPPRIMÉ: AdminValidationDashboard (remplacé par Centre de Notifications dans dashboard-optimized)
 // const AdminValidationDashboard = React.lazy(() => import('./pages/admin/validation-dashboard'));
 const AdminFormulaireExpert = React.lazy(() => import('./pages/admin/formulaire-expert'));
+const AdminFormulaireClient = React.lazy(() => import('./pages/admin/formulaire-client'));
 const AdminDocumentsGEDUnifie = React.lazy(() => import('./pages/admin/documents-ged-unifie')); // ✅ PAGE UNIFIÉE (GED + Documentation + Upload)
 const AdminClientSynthese = React.lazy(() => import('./pages/admin/client-synthese')); // ✅ PAGE SYNTHÈSE CLIENT
 const AdminExpertSynthese = React.lazy(() => import('./pages/admin/expert-synthese')); // ✅ PAGE SYNTHÈSE EXPERT
@@ -339,6 +340,7 @@ function App() {
                         {/* SUPPRIMÉ: validation-dashboard - Utilisez /admin/dashboard-optimized?section=validations */}
                         <Route path="monitoring" element={<AdminMonitoring />} />
                         <Route path="formulaire-expert" element={<AdminFormulaireExpert />} />
+                        <Route path="formulaire-client" element={<AdminFormulaireClient />} />
                       </Route>
                       
                       {/* Routes dashboard/admin pour compatibilité */}

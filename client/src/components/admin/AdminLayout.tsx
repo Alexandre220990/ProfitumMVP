@@ -103,6 +103,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       href: '/admin/formulaire-expert',
       icon: UserPlus,
       current: location.pathname === '/admin/formulaire-expert'
+    },
+    {
+      name: 'Formulaire Client',
+      href: '/admin/formulaire-client',
+      icon: User,
+      current: location.pathname === '/admin/formulaire-client'
     }
   ];
 
