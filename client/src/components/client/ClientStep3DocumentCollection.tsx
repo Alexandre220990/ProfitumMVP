@@ -5,19 +5,15 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { 
   Upload, 
-  Check, 
   AlertCircle, 
   FileText, 
   CheckCircle2,
-  XCircle,
   Eye,
-  Download,
   RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -112,24 +108,28 @@ export default function ClientStep3DocumentCollection({
   }, [loadDocuments, loadDocumentRequest]);
 
   // Séparer les documents par statut
-  const validatedDocs = documents.filter(d => d.validation_status === 'validated');
+  // ✅ Note : Le backend filtre déjà les documents pour ne retourner que les versions actives
+  // Si un document rejeté apparaît dans cette liste, c'est qu'il n'a PAS été remplacé
   const rejectedDocs = documents.filter(d => d.validation_status === 'rejected');
-  const pendingDocs = documents.filter(d => d.validation_status === 'pending');
 
   // Calculer le nombre de documents complétés
-  const rejectedDocsCount = rejectedDocs.length;
-  const rejectedDocsReuploaded = rejectedDocs.filter(d => {
-    // Vérifier si un nouveau document pending existe pour remplacer celui-ci
-    return pendingDocs.some(p => p.document_type === d.document_type);
-  }).length;
+  // ✅ CONCORDANCE EXACTE AVEC LE BACKEND :
+  // - Un document rejeté dans la liste = il n'a pas été remplacé (bloqueur)
+  // - Le backend filtre déjà via parent_document_id, donc pas besoin de re-vérifier ici
+  const unresolvedRejectedDocsCount = rejectedDocs.length; // Documents rejetés NON remplacés
 
   const requestedDocsCount = requestedDocs.filter(d => d.required).length;
   const requestedDocsUploaded = requestedDocs.filter(d => d.required && d.uploaded).length;
 
-  const totalRequiredActions = rejectedDocsCount + requestedDocsCount;
-  const totalCompletedActions = rejectedDocsReuploaded + requestedDocsUploaded;
-
-  const allCompleted = totalRequiredActions === 0 || totalCompletedActions >= totalRequiredActions;
+  // ✅ Calculer les actions restantes (pas les complétées, car on ne connaît pas l'historique)
+  const missingRequestedDocs = requestedDocsCount - requestedDocsUploaded;
+  const totalRemainingActions = unresolvedRejectedDocsCount + missingRequestedDocs;
+  
+  // Pour la barre de progression : calculer sur ce qu'on connaît (docs demandés uniquement)
+  const totalRequiredActions = requestedDocsCount + unresolvedRejectedDocsCount;
+  const totalCompletedActions = requestedDocsUploaded + 0; // Les docs rejetés ne comptent pas tant qu'ils ne sont pas remplacés
+  
+  const allCompleted = totalRemainingActions === 0;
   const progressPercentage = totalRequiredActions > 0 
     ? Math.round((totalCompletedActions / totalRequiredActions) * 100) 
     : 100;
@@ -300,410 +300,357 @@ export default function ClientStep3DocumentCollection({
     toast.success('Données actualisées');
   };
 
+  // Visualiser un document (avec authentification)
+  const handleViewDocument = async (doc: Document) => {
+    try {
+      toast.info('Ouverture du document...');
+
+      // Récupérer le token d'authentification
+      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      
+      if (!token) {
+        console.error('❌ Aucun token trouvé dans localStorage');
+        toast.error('Session expirée, veuillez vous reconnecter');
+        return;
+      }
+
+      console.log('👁️ Visualisation document:', {
+        id: doc.id,
+        filename: doc.filename
+      });
+
+      // Récupérer le document via une requête authentifiée
+      const response = await fetch(
+        `${config.API_URL}/api/client/document/${doc.id}/view`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Erreur HTTP: ${response.status}`);
+      }
+
+      // Créer un blob à partir de la réponse
+      const blob = await response.blob();
+      
+      // Créer une URL temporaire pour le blob
+      const blobUrl = URL.createObjectURL(blob);
+      
+      // Ouvrir dans un nouvel onglet
+      const newWindow = window.open(blobUrl, '_blank', 'noopener,noreferrer');
+      
+      if (!newWindow) {
+        toast.error('Popup bloquée - Veuillez autoriser les popups');
+        URL.revokeObjectURL(blobUrl);
+        return;
+      }
+
+      // Nettoyer l'URL après 1 minute
+      setTimeout(() => {
+        URL.revokeObjectURL(blobUrl);
+      }, 60000);
+      
+      toast.success('Document ouvert dans un nouvel onglet');
+    } catch (error: any) {
+      console.error('Erreur visualisation document:', error);
+      toast.error('Erreur lors de l\'ouverture du document', {
+        description: error.message
+      });
+    }
+  };
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
+      <div className="flex items-center justify-center py-8">
         <div className="text-center">
-          <RefreshCw className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Chargement des documents...</p>
+          <RefreshCw className="w-6 h-6 animate-spin text-blue-600 mx-auto mb-3" />
+          <p className="text-sm text-gray-600">Chargement des documents...</p>
         </div>
       </div>
     );
   }
 
+  // Fusionner tous les documents + les documents demandés non uploadés
+  const allItems: Array<{
+    type: 'document' | 'requested';
+    data: Document | RequestedDocument;
+  }> = [
+    ...documents.map(doc => ({ type: 'document' as const, data: doc })),
+    ...requestedDocs
+      .filter(req => !req.uploaded)
+      .map(req => ({ type: 'requested' as const, data: req }))
+  ];
+
   return (
-    <div className="space-y-6">
-      {/* En-tête avec message */}
-      <Card className="border-orange-200 bg-orange-50">
-        <CardContent className="p-6">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="w-6 h-6 text-orange-600 flex-shrink-0 mt-1" />
-            <div className="flex-1">
-              <h3 className="text-lg font-semibold text-orange-900 mb-2">
-                📄 Documents manquants
-              </h3>
-              <p className="text-orange-800 mb-2">
-                L'expert a besoin de documents complémentaires pour constituer votre dossier.
-              </p>
-              {documentRequest?.message && (
-                <div className="bg-white rounded-lg p-3 mb-3 border border-orange-200">
-                  <p className="text-sm font-medium text-gray-700 mb-1">
-                    Message de l'expert :
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    {documentRequest.message}
-                  </p>
-                </div>
-              )}
-              <p className="text-sm text-orange-700">
-                Merci de fournir les documents demandés ci-dessous.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Barre de progression */}
-      {totalRequiredActions > 0 && (
-        <Card>
-          <CardContent className="p-6">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-700">
-                  Progression : {totalCompletedActions}/{totalRequiredActions} actions complétées
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleRefresh}
-                  disabled={loading}
-                >
-                  <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                </Button>
-              </div>
-              <Progress value={progressPercentage} className="h-2" />
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Documents validés (VERT) */}
-      {validatedDocs.length > 0 && (
-        <div className="space-y-3">
-          <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-green-600" />
-            Documents validés ({validatedDocs.length})
-          </h4>
-          {validatedDocs.map((doc) => (
-            <Card key={doc.id} className="border-green-300 bg-green-50">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3 flex-1">
-                    <div className="flex-shrink-0 w-10 h-10 rounded-full bg-green-500 flex items-center justify-center">
-                      <CheckCircle2 className="w-6 h-6 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <h5 className="font-semibold text-gray-900">
-                        {doc.original_filename || doc.filename}
-                      </h5>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Badge className="bg-green-600 text-white text-xs">
-                          ✓ Validé
-                        </Badge>
-                        {doc.validated_at && (
-                          <span className="text-xs text-gray-600">
-                            Le {new Date(doc.validated_at).toLocaleDateString('fr-FR')}
-                          </span>
-                        )}
-                        {doc.file_size && (
-                          <span className="text-xs text-gray-500">
-                            {(doc.file_size / 1024).toFixed(0)} KB
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="border-green-300 hover:bg-green-100"
-                      onClick={() => window.open(`${config.API_URL}/api/client/document/${doc.id}/view`, '_blank')}
-                      title="Visualiser le document"
-                    >
-                      <Eye className="w-4 h-4 mr-1" />
-                      Voir
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => window.open(`${config.API_URL}/api/client/document/${doc.id}/download`, '_blank')}
-                      title="Télécharger le document"
-                    >
-                      <Download className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+    <div className="space-y-4">
+      {/* En-tête avec message expert si présent */}
+      {documentRequest?.message && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <p className="text-sm font-medium text-blue-900 mb-1">
+            💬 Message de l'expert :
+          </p>
+          <p className="text-sm text-blue-800">
+            {documentRequest.message}
+          </p>
         </div>
       )}
 
-      {/* Documents rejetés (ROUGE) */}
-      {rejectedDocs.length > 0 && (
-        <div className="space-y-3">
-          <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-            <XCircle className="w-4 h-4 text-red-600" />
-            Documents rejetés - À remplacer ({rejectedDocs.length})
-          </h4>
-          {rejectedDocs.map((doc) => (
-            <Card key={doc.id} className="border-red-300 bg-red-50">
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-start gap-3 flex-1">
-                    <div className="flex-shrink-0 w-10 h-10 rounded-full bg-red-500 flex items-center justify-center">
-                      <XCircle className="w-6 h-6 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <h5 className="font-semibold text-gray-900 mb-1">
+      {/* Barre de progression compacte */}
+      {totalRemainingActions > 0 && (
+        <div className="bg-white border rounded-lg p-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-gray-700">
+              {totalRemainingActions === 1 ? '1 action restante' : `${totalRemainingActions} actions restantes`}
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={loading}
+              className="h-8 w-8 p-0"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            </Button>
+          </div>
+          <Progress value={progressPercentage} className="h-1.5" />
+        </div>
+      )}
+
+      {/* Liste unifiée de tous les documents */}
+      {allItems.length === 0 ? (
+        <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
+          <FileText className="h-10 w-10 text-gray-400 mx-auto mb-2" />
+          <p className="text-sm text-gray-600">Aucun document</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {allItems.map((item, index) => {
+            if (item.type === 'document') {
+              const doc = item.data as Document;
+              const isValidated = doc.validation_status === 'validated';
+              const isRejected = doc.validation_status === 'rejected';
+              
+              return (
+                <div
+                  key={`doc-${doc.id}`}
+                  className={`flex items-center gap-3 p-3 rounded-lg border transition-all hover:shadow-sm ${
+                    isValidated ? 'bg-green-50 border-green-200' :
+                    isRejected ? 'bg-red-50 border-red-200' :
+                    'bg-white border-gray-200'
+                  }`}
+                >
+                  {/* Icône document */}
+                  <div className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center ${
+                    isValidated ? 'bg-green-500' :
+                    isRejected ? 'bg-red-500' :
+                    'bg-gray-400'
+                  }`}>
+                    <FileText className="w-5 h-5 text-white" />
+                  </div>
+
+                  {/* Infos document */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <p className="font-medium text-sm text-gray-900 truncate">
                         {doc.original_filename || doc.filename}
-                      </h5>
-                      <div className="flex items-center gap-2 mb-2">
-                        <Badge variant="destructive" className="text-xs">
+                      </p>
+                      {isValidated && (
+                        <Badge className="bg-green-600 text-white text-xs px-2 py-0">
+                          ✓ Validé
+                        </Badge>
+                      )}
+                      {isRejected && (
+                        <Badge variant="destructive" className="text-xs px-2 py-0">
                           ✗ Rejeté
                         </Badge>
-                        {doc.file_size && (
-                          <span className="text-xs text-gray-500">
-                            {(doc.file_size / 1024).toFixed(0)} KB
-                          </span>
-                        )}
-                      </div>
-                      {doc.rejection_reason && (
-                        <div className="bg-white rounded-lg p-3 border border-red-200 mb-3">
-                          <p className="text-xs font-medium text-red-900 mb-1">
-                            Raison du rejet :
-                          </p>
-                          <p className="text-sm text-red-800">
-                            {doc.rejection_reason}
-                          </p>
-                        </div>
                       )}
-                      <div className="flex items-center gap-2">
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                      {doc.file_size && (
+                        <span>{(doc.file_size / 1024).toFixed(0)} KB</span>
+                      )}
+                      {doc.validated_at && (
+                        <>
+                          <span>•</span>
+                          <span>{new Date(doc.validated_at).toLocaleDateString('fr-FR')}</span>
+                        </>
+                      )}
+                    </div>
+                    {/* Raison du rejet */}
+                    {isRejected && doc.rejection_reason && (
+                      <div className="mt-2 text-xs text-red-700 bg-white rounded px-2 py-1 border border-red-200">
+                        <span className="font-medium">Raison : </span>
+                        {doc.rejection_reason}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-2">
+                    {isValidated && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleViewDocument(doc)}
+                        className="h-8 px-3"
+                      >
+                        <Eye className="w-4 h-4 mr-1" />
+                        Voir
+                      </Button>
+                    )}
+                    {isRejected && (
+                      <>
+                        <input
+                          type="file"
+                          id={`reupload-${doc.id}`}
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              handleReuploadDocument(doc.id, file, doc.document_type || '');
+                            }
+                          }}
+                          disabled={uploadingId === doc.id}
+                        />
                         <Button
                           variant="outline"
                           size="sm"
-                          className="border-red-300 hover:bg-red-100 text-xs"
-                          onClick={() => window.open(`${config.API_URL}/api/client/document/${doc.id}/view`, '_blank')}
-                          title="Visualiser le document rejeté"
+                          onClick={() => document.getElementById(`reupload-${doc.id}`)?.click()}
+                          disabled={uploadingId === doc.id}
+                          className="h-8 px-3 border-red-300 hover:bg-red-100"
                         >
-                          <Eye className="w-3 h-3 mr-1" />
-                          Voir l'ancien
+                          {uploadingId === doc.id ? (
+                            <>
+                              <RefreshCw className="w-4 h-4 mr-1 animate-spin" />
+                              Upload...
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="w-4 h-4 mr-1" />
+                              Remplacer
+                            </>
+                          )}
                         </Button>
-                      </div>
-                    </div>
+                      </>
+                    )}
                   </div>
-                  <div className="flex flex-col gap-2">
+                </div>
+              );
+            } else {
+              // Document demandé non uploadé
+              const req = item.data as RequestedDocument;
+              
+              return (
+                <div
+                  key={`req-${req.id}`}
+                  className="flex items-center gap-3 p-3 rounded-lg border border-orange-200 bg-orange-50 transition-all hover:shadow-sm"
+                >
+                  {/* Icône numéro */}
+                  <div className="flex-shrink-0 w-9 h-9 rounded-full bg-orange-500 flex items-center justify-center text-white font-bold text-sm">
+                    {index + 1}
+                  </div>
+
+                  {/* Infos document demandé */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <p className="font-medium text-sm text-gray-900">
+                        {req.description}
+                      </p>
+                      {req.required && (
+                        <Badge className="bg-orange-500 text-white text-xs px-2 py-0">
+                          Obligatoire
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      Document à fournir
+                    </p>
+                  </div>
+
+                  {/* Action upload */}
+                  <div>
                     <input
                       type="file"
-                      id={`reupload-${doc.id}`}
+                      id={`upload-req-${req.id}`}
                       className="hidden"
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         if (file) {
-                          handleReuploadDocument(doc.id, file, doc.document_type || '');
+                          handleUploadRequestedDocument(req.id, file, req.description);
                         }
                       }}
-                      disabled={uploadingId === doc.id}
+                      disabled={uploadingId === req.id}
                     />
                     <Button
                       variant="outline"
                       size="sm"
-                      className="border-red-300 hover:bg-red-100"
-                      onClick={() => document.getElementById(`reupload-${doc.id}`)?.click()}
-                      disabled={uploadingId === doc.id}
+                      onClick={() => document.getElementById(`upload-req-${req.id}`)?.click()}
+                      disabled={uploadingId === req.id}
+                      className="h-8 px-3 border-orange-300 hover:bg-orange-100"
                     >
-                      {uploadingId === doc.id ? (
+                      {uploadingId === req.id ? (
                         <>
-                          <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
+                          <RefreshCw className="w-4 h-4 mr-1 animate-spin" />
                           Upload...
                         </>
                       ) : (
                         <>
-                          <Upload className="h-4 w-4 mr-2" />
-                          Remplacer
+                          <Upload className="w-4 h-4 mr-1" />
+                          Uploader
                         </>
                       )}
                     </Button>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-
-      {/* Documents demandés (GRIS) */}
-      {requestedDocs.length > 0 && (
-        <div className="space-y-3">
-          <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-            <FileText className="w-4 h-4 text-gray-600" />
-            Nouveaux documents demandés ({requestedDocs.length})
-          </h4>
-          {requestedDocs.map((doc, index) => {
-            // Trouver le document uploadé correspondant
-            const uploadedDoc = doc.document_id ? documents.find(d => d.id === doc.document_id) : null;
-            
-            return (
-              <Card 
-                key={doc.id} 
-                className={doc.uploaded ? 'border-green-300 bg-green-50' : 'border-gray-300 bg-gray-50'}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-3 flex-1">
-                      <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${
-                        doc.uploaded 
-                          ? 'bg-green-500 text-white' 
-                          : 'bg-gray-300 text-gray-700'
-                      }`}>
-                        {doc.uploaded ? <Check className="h-6 w-6" /> : (index + 1)}
-                      </div>
-                      <div className="flex-1">
-                        <h5 className="font-semibold text-gray-900 mb-1">
-                          {doc.description}
-                        </h5>
-                        <div className="flex items-center gap-2 mb-2">
-                          {doc.required ? (
-                            <Badge className="bg-orange-500 text-white text-xs">
-                              Obligatoire
-                            </Badge>
-                          ) : (
-                            <Badge variant="secondary" className="text-xs">
-                              Optionnel
-                            </Badge>
-                          )}
-                          {doc.uploaded && (
-                            <Badge className="bg-green-500 text-white text-xs">
-                              ✓ Uploadé
-                            </Badge>
-                          )}
-                        </div>
-                        {doc.uploaded && uploadedDoc && (
-                          <div className="flex items-center gap-2 mt-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="border-green-300 hover:bg-green-100 text-xs"
-                              onClick={() => window.open(`${config.API_URL}/api/client/document/${uploadedDoc.id}/view`, '_blank')}
-                              title="Visualiser le document"
-                            >
-                              <Eye className="w-3 h-3 mr-1" />
-                              Voir
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => window.open(`${config.API_URL}/api/client/document/${uploadedDoc.id}/download`, '_blank')}
-                              title="Télécharger"
-                            >
-                              <Download className="w-3 h-3" />
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div>
-                      {!doc.uploaded ? (
-                        <>
-                          <input
-                            type="file"
-                            id={`upload-${doc.id}`}
-                            className="hidden"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                handleUploadRequestedDocument(doc.id, file, doc.description);
-                              }
-                            }}
-                            disabled={uploadingId === doc.id}
-                          />
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="border-gray-400 hover:bg-gray-100"
-                            onClick={() => document.getElementById(`upload-${doc.id}`)?.click()}
-                            disabled={uploadingId === doc.id}
-                          >
-                            {uploadingId === doc.id ? (
-                              <>
-                                <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-                                Upload...
-                              </>
-                            ) : (
-                              <>
-                                <Upload className="h-4 w-4 mr-2" />
-                                Choisir
-                              </>
-                            )}
-                          </Button>
-                        </>
-                      ) : (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-green-600"
-                          disabled
-                        >
-                          <CheckCircle2 className="h-5 w-5" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
+              );
+            }
           })}
         </div>
       )}
 
       {/* Bouton de validation finale */}
-      <Card className={allCompleted ? 'border-green-300 bg-green-50' : 'border-gray-200'}>
-        <CardContent className="p-6">
-          {allCompleted ? (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-green-700">
-                <CheckCircle2 className="h-5 w-5" />
-                <span className="font-semibold">
-                  ✅ Tous les documents requis ont été fournis
-                </span>
-              </div>
+      {allCompleted && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-green-700">
+            <CheckCircle2 className="h-5 w-5" />
+            <span className="font-medium">
+              ✅ Tous les documents requis ont été fournis
+            </span>
+          </div>
 
-              <Button
-                onClick={handleValidateStep}
-                disabled={isValidating}
-                className="w-full bg-green-600 hover:bg-green-700"
-                size="lg"
-              >
-                {isValidating ? (
-                  <>
-                    <div className="h-5 w-5 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    Validation en cours...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="h-5 w-5 mr-2" />
-                    Valider l'étape 3
-                  </>
-                )}
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-orange-700">
-                <AlertCircle className="h-5 w-5" />
-                <span className="font-medium">
-                  ⚠️ Progression : {totalCompletedActions}/{totalRequiredActions} actions complétées
-                </span>
-              </div>
+          <Button
+            onClick={handleValidateStep}
+            disabled={isValidating}
+            className="bg-green-600 hover:bg-green-700"
+          >
+            {isValidating ? (
+              <>
+                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                Validation...
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="w-4 h-4 mr-2" />
+                Valider l'étape
+              </>
+            )}
+          </Button>
+        </div>
+      )}
 
-              <Button
-                disabled
-                className="w-full"
-                size="lg"
-                variant="secondary"
-              >
-                <Upload className="h-5 w-5 mr-2" />
-                Valider l'étape 3 (désactivé)
-              </Button>
-
-              <p className="text-xs text-gray-600 text-center">
-                Le bouton sera activé quand tous les documents requis seront fournis
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {!allCompleted && totalRemainingActions > 0 && (
+        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 flex items-center gap-2 text-orange-700">
+          <AlertCircle className="h-5 w-5" />
+          <span className="text-sm font-medium">
+            ⚠️ {totalRemainingActions === 1 ? '1 action restante' : `${totalRemainingActions} actions restantes`} - Complétez tous les documents pour valider l'étape
+          </span>
+        </div>
+      )}
     </div>
   );
 }

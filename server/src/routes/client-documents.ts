@@ -289,6 +289,27 @@ router.post('/dossier/:id/validate-step-3', enhancedAuthMiddleware, async (req: 
       });
     }
 
+    // ✅ VÉRIFICATION AVEC VERSIONING : Exclure les documents rejetés qui ont été remplacés
+    const { data: allDocs } = await supabase
+      .from('ClientProcessDocument')
+      .select('id, parent_document_id, validation_status')
+      .eq('client_produit_id', dossierId);
+
+    // Filtrer les documents rejetés qui n'ont PAS été remplacés
+    const unresolvedRejectedDocs = (rejectedDocs || []).filter(rejectedDoc => {
+      // Vérifier s'il existe un document de remplacement (avec parent_document_id = rejectedDoc.id)
+      const hasReplacement = (allDocs || []).some(doc => 
+        doc.parent_document_id === rejectedDoc.id && 
+        doc.validation_status !== 'rejected' // Le remplacement doit être pending ou validated
+      );
+      return !hasReplacement; // Garder seulement ceux qui n'ont PAS de remplacement
+    });
+
+    console.log('🔍 Vérification documents rejetés:', {
+      total_rejected: rejectedDocs?.length || 0,
+      unresolved_rejected: unresolvedRejectedDocs.length
+    });
+
     // Vérifier la demande de documents complémentaires
     const { data: documentRequest } = await supabase
       .from('document_request')
@@ -300,7 +321,7 @@ router.post('/dossier/:id/validate-step-3', enhancedAuthMiddleware, async (req: 
       .maybeSingle();
 
     // Compter les documents encore manquants
-    const rejectedDocsCount = rejectedDocs?.length || 0;
+    const rejectedDocsCount = unresolvedRejectedDocs.length; // ✅ Utiliser la version filtrée
     const requestedDocs = (documentRequest?.requested_documents as any[]) || [];
     const missingRequiredDocs = requestedDocs.filter((doc: any) => doc.required && !doc.uploaded);
 
@@ -310,7 +331,8 @@ router.post('/dossier/:id/validate-step-3', enhancedAuthMiddleware, async (req: 
         message: 'Tous les documents requis n\'ont pas encore été fournis',
         details: {
           rejected_docs_count: rejectedDocsCount,
-          missing_required_docs: missingRequiredDocs.length
+          missing_required_docs: missingRequiredDocs.length,
+          unresolved_rejected: unresolvedRejectedDocs.map(d => d.filename)
         }
       });
     }
@@ -563,6 +585,225 @@ router.get('/dossier/:id/documents', enhancedAuthMiddleware, async (req: Request
 
   } catch (error) {
     console.error('❌ Erreur route documents:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+/**
+ * GET /api/client/document/:id/view
+ * Visualiser un document (stream du fichier avec authentification)
+ */
+router.get('/document/:id/view', enhancedAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const user = (req as AuthenticatedRequest).user;
+    const { id: documentId } = req.params;
+
+    if (!user || user.type !== 'client') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux clients'
+      });
+    }
+
+    console.log('👁️ Client - Visualisation document:', { documentId, clientId: user.database_id });
+
+    // Récupérer les infos du document + vérifier la propriété via client_produit_id
+    const { data: document, error: docError } = await supabase
+      .from('ClientProcessDocument')
+      .select(`
+        id,
+        filename,
+        storage_path,
+        bucket_name,
+        mime_type,
+        client_produit_id,
+        ClientProduitEligible:client_produit_id (
+          id,
+          "clientId"
+        )
+      `)
+      .eq('id', documentId)
+      .single();
+
+    if (docError || !document) {
+      console.error('❌ Document non trouvé:', docError);
+      return res.status(404).json({
+        success: false,
+        message: 'Document non trouvé'
+      });
+    }
+
+    // Vérifier que le document appartient au client
+    const dossier = (document as any).ClientProduitEligible;
+    if (!dossier || dossier.clientId !== user.database_id) {
+      console.error('❌ Accès refusé:', { 
+        dossierClientId: dossier?.clientId, 
+        userClientId: user.database_id 
+      });
+      return res.status(403).json({
+        success: false,
+        message: 'Accès non autorisé à ce document'
+      });
+    }
+
+    // Télécharger le fichier depuis Supabase Storage
+    const bucketName = (document as any).bucket_name || 'client-documents';
+    
+    console.log('📥 Tentative téléchargement Storage:', {
+      bucket: bucketName,
+      path: document.storage_path
+    });
+
+    // Nettoyer le path si nécessaire (enlever préfixe bucket si présent)
+    let cleanPath = document.storage_path;
+    if (cleanPath.startsWith('documents/')) {
+      cleanPath = cleanPath.replace('documents/', '');
+    }
+    if (cleanPath.startsWith('client-documents/')) {
+      cleanPath = cleanPath.replace('client-documents/', '');
+    }
+
+    console.log('📥 Téléchargement:', { bucket: bucketName, cleanPath });
+
+    const { data: fileData, error: storageError } = await supabase.storage
+      .from(bucketName)
+      .download(cleanPath);
+
+    if (storageError || !fileData) {
+      console.error('❌ Erreur téléchargement Storage:', {
+        error: storageError,
+        originalPath: document.storage_path,
+        cleanedPath: cleanPath
+      });
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la récupération du fichier'
+      });
+    }
+
+    console.log(`✅ Document récupéré pour visualisation: ${document.filename} (${document.mime_type})`);
+
+    // Envoyer le fichier avec les bons headers pour visualisation inline
+    res.setHeader('Content-Type', document.mime_type || 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${document.filename}"`);
+    
+    // Convertir le blob en buffer et l'envoyer
+    const arrayBuffer = await fileData.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    
+    return res.send(buffer);
+
+  } catch (error) {
+    console.error('❌ Erreur visualisation document:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+/**
+ * GET /api/client/document/:id/download
+ * Télécharger un document (force le téléchargement)
+ */
+router.get('/document/:id/download', enhancedAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const user = (req as AuthenticatedRequest).user;
+    const { id: documentId } = req.params;
+
+    if (!user || user.type !== 'client') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux clients'
+      });
+    }
+
+    console.log('📥 Client - Téléchargement document:', { documentId, clientId: user.database_id });
+
+    // Récupérer les infos du document + vérifier la propriété via client_produit_id
+    const { data: document, error: docError } = await supabase
+      .from('ClientProcessDocument')
+      .select(`
+        id,
+        filename,
+        storage_path,
+        bucket_name,
+        mime_type,
+        client_produit_id,
+        ClientProduitEligible:client_produit_id (
+          id,
+          "clientId"
+        )
+      `)
+      .eq('id', documentId)
+      .single();
+
+    if (docError || !document) {
+      console.error('❌ Document non trouvé:', docError);
+      return res.status(404).json({
+        success: false,
+        message: 'Document non trouvé'
+      });
+    }
+
+    // Vérifier que le document appartient au client
+    const dossier = (document as any).ClientProduitEligible;
+    if (!dossier || dossier.clientId !== user.database_id) {
+      console.error('❌ Accès refusé:', { 
+        dossierClientId: dossier?.clientId, 
+        userClientId: user.database_id 
+      });
+      return res.status(403).json({
+        success: false,
+        message: 'Accès non autorisé à ce document'
+      });
+    }
+
+    // Télécharger le fichier depuis Supabase Storage
+    const bucketName = (document as any).bucket_name || 'client-documents';
+    
+    // Nettoyer le path si nécessaire
+    let cleanPath = document.storage_path;
+    if (cleanPath.startsWith('documents/')) {
+      cleanPath = cleanPath.replace('documents/', '');
+    }
+    if (cleanPath.startsWith('client-documents/')) {
+      cleanPath = cleanPath.replace('client-documents/', '');
+    }
+
+    const { data: fileData, error: storageError } = await supabase.storage
+      .from(bucketName)
+      .download(cleanPath);
+
+    if (storageError || !fileData) {
+      console.error('❌ Erreur téléchargement Storage:', {
+        error: storageError,
+        originalPath: document.storage_path,
+        cleanedPath: cleanPath
+      });
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la récupération du fichier'
+      });
+    }
+
+    console.log(`✅ Document récupéré pour téléchargement: ${document.filename}`);
+
+    // Envoyer le fichier avec les bons headers pour forcer le téléchargement
+    res.setHeader('Content-Type', document.mime_type || 'application/octet-stream');
+    res.setHeader('Content-Disposition', `attachment; filename="${document.filename}"`);
+    
+    // Convertir le blob en buffer et l'envoyer
+    const arrayBuffer = await fileData.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    
+    return res.send(buffer);
+
+  } catch (error) {
+    console.error('❌ Erreur téléchargement document:', error);
     return res.status(500).json({
       success: false,
       message: 'Erreur serveur'
