@@ -84,22 +84,34 @@ SET metadata = jsonb_set(
 WHERE statut IS NOT NULL;
 
 -- Mapper les anciens statuts vers les nouveaux statuts clarifiés
+-- Basé sur l'audit : 58 'eligible', 4 'en_cours', 2 'eligibility_validated', 1 'documents_manquants', 1 'documents_uploaded'
 UPDATE "ClientProduitEligible"
 SET statut = CASE
-  -- Statuts clairs à conserver
+  -- 1. Documents manquants (1 dossier) → Expert a demandé des docs
   WHEN statut = 'documents_manquants' THEN 'documents_requested'
-  WHEN statut = 'documents_uploaded' AND admin_eligibility_status = 'pending' THEN 'pending_admin_validation'
+  
+  -- 2. Documents uploaded (1 dossier) → Dépend de la validation admin
   WHEN statut = 'documents_uploaded' AND admin_eligibility_status = 'validated' THEN 'admin_validated'
+  WHEN statut = 'documents_uploaded' AND admin_eligibility_status = 'pending' THEN 'pending_admin_validation'
+  
+  -- 3. Eligibility validated (2 dossiers) → Admin a validé, sélection expert en cours
+  WHEN statut = 'eligibility_validated' AND expert_id IS NOT NULL THEN 'expert_assigned'
+  WHEN statut = 'eligibility_validated' AND expert_pending_id IS NOT NULL THEN 'expert_pending_acceptance'
   WHEN statut = 'eligibility_validated' THEN 'admin_validated'
+  
+  -- 4. En cours (4 dossiers) → Dépend de l'expert assigné
+  WHEN statut = 'en_cours' AND expert_id IS NOT NULL AND current_step >= 3 THEN 'expert_assigned'
   WHEN statut = 'en_cours' AND expert_id IS NOT NULL THEN 'expert_assigned'
-  WHEN statut = 'en_cours' AND expert_id IS NULL THEN 'admin_validated'
+  WHEN statut = 'en_cours' THEN 'admin_validated'
   
-  -- Statuts ambigus à clarifier
+  -- 5. Eligible (58 dossiers - 88%) → La majorité, dépend de current_step
+  WHEN statut = 'eligible' AND admin_eligibility_status = 'validated' AND expert_id IS NOT NULL THEN 'expert_assigned'
   WHEN statut = 'eligible' AND admin_eligibility_status = 'validated' THEN 'admin_validated'
-  WHEN statut = 'eligible' AND admin_eligibility_status = 'pending' AND current_step >= 1 THEN 'pending_admin_validation'
-  WHEN statut = 'eligible' THEN 'pending_upload'
+  WHEN statut = 'eligible' AND current_step >= 1 THEN 'pending_admin_validation'
+  WHEN statut = 'eligible' AND current_step = 0 THEN 'pending_upload'
+  WHEN statut = 'eligible' THEN 'pending_admin_validation' -- Par défaut pour 'eligible'
   
-  -- Par défaut
+  -- Par défaut : garder tel quel
   ELSE statut
 END;
 
@@ -196,11 +208,30 @@ SELECT
   admin_eligibility_status,
   expert_validation_status,
   CASE WHEN expert_id IS NOT NULL THEN '✓' ELSE '✗' END as expert_assigne,
+  current_step,
   TO_CHAR(eligibility_validated_at, 'YYYY-MM-DD') as date_admin,
   TO_CHAR(expert_validated_at, 'YYYY-MM-DD') as date_expert
 FROM "ClientProduitEligible"
 ORDER BY updated_at DESC
 LIMIT 10;
+
+-- Vérifier les 4 dossiers critiques identifiés dans l'audit
+SELECT 
+  id,
+  metadata->'old_statut' as ancien_statut,
+  statut as nouveau_statut,
+  admin_eligibility_status,
+  expert_validation_status,
+  current_step,
+  TO_CHAR(updated_at, 'YYYY-MM-DD HH24:MI') as derniere_maj
+FROM "ClientProduitEligible"
+WHERE id IN (
+  'ffddb8df-4182-4447-8a43-3944bb85d976', -- documents_manquants
+  '57f606c7-00a6-40f0-bb72-ae1831345d99', -- documents_uploaded
+  'ba8e69b4-2837-42b1-8163-01f8612ff1c0', -- eligibility_validated
+  '4f14164f-d6ca-4d82-bf43-cd4953c88f2d'  -- eligibility_validated
+)
+ORDER BY updated_at DESC;
 
 -- ============================================================================
 -- ROLLBACK (En cas de problème - NE PAS EXÉCUTER SAUF SI NÉCESSAIRE)
