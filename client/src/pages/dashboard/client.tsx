@@ -31,7 +31,8 @@ import {
   Users,
   UserCheck,
   Bell,
-  Sparkles
+  Sparkles,
+  Upload
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useClientProducts } from '@/hooks/use-client-products';
@@ -232,13 +233,48 @@ const ProductCard = ({ produit, onClick, onExpertSelection, notificationData }: 
   const getStatusConfig = (statut: string) => {
     switch (statut) {
       case 'termine':
-        return { color: 'bg-green-100 text-green-800', icon: <CheckCircle2 className="w-4 h-4" /> };
+        return { 
+          color: 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border border-green-300', 
+          icon: <CheckCircle2 className="w-4 h-4" />,
+          label: '✅ Terminé'
+        };
+      case 'admin_validated':
+      case 'eligibility_validated':
+        return { 
+          color: 'bg-gradient-to-r from-emerald-100 to-green-100 text-emerald-800 border-2 border-emerald-400', 
+          icon: <CheckCircle2 className="w-4 h-4" />,
+          label: '✓ Validé par admin'
+        };
       case 'en_cours':
-        return { color: 'bg-blue-100 text-blue-800', icon: <Play className="w-4 h-4" /> };
+        return { 
+          color: 'bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-800 border border-blue-300', 
+          icon: <Play className="w-4 h-4" />,
+          label: '⚙️ En cours'
+        };
+      case 'documents_uploaded':
+        return { 
+          color: 'bg-gradient-to-r from-purple-100 to-violet-100 text-purple-800 border border-purple-300', 
+          icon: <FileText className="w-4 h-4" />,
+          label: '📄 Docs reçus'
+        };
       case 'en_attente':
-        return { color: 'bg-yellow-100 text-yellow-800', icon: <Clock3 className="w-4 h-4" /> };
+        return { 
+          color: 'bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-800 border border-yellow-300', 
+          icon: <Clock3 className="w-4 h-4" />,
+          label: '⏳ En attente'
+        };
+      case 'eligible':
+        return { 
+          color: 'bg-gradient-to-r from-cyan-100 to-sky-100 text-cyan-800 border border-cyan-300', 
+          icon: <CheckCircle2 className="w-4 h-4" />,
+          label: '✨ Éligible'
+        };
       default:
-        return { color: 'bg-gray-100 text-gray-800', icon: <AlertTriangle className="w-4 h-4" /> };
+        return { 
+          color: 'bg-gradient-to-r from-gray-100 to-slate-100 text-gray-800 border border-gray-300', 
+          icon: <AlertTriangle className="w-4 h-4" />,
+          label: statut
+        };
     }
   };
 
@@ -346,13 +382,11 @@ const ProductCard = ({ produit, onClick, onExpertSelection, notificationData }: 
           </p>
         </div>
 
-        {/* Badge de statut */}
+        {/* Badge de statut amélioré */}
         <div className="flex justify-center mb-3">
-          <Badge className={`${statusConfig.color} flex items-center gap-1 px-2 py-0.5 text-xs`}>
+          <Badge className={`${statusConfig.color} flex items-center gap-1.5 px-3 py-1 text-xs font-semibold`}>
             {statusConfig.icon}
-            {produit.statut === 'en_cours' ? 'En cours' : 
-             produit.statut === 'en_attente' ? 'En attente' : 
-             produit.statut === 'termine' ? 'Terminé' : produit.statut}
+            {statusConfig.label}
           </Badge>
         </div>
 
@@ -443,11 +477,35 @@ const ProductCard = ({ produit, onClick, onExpertSelection, notificationData }: 
                 </div>
               ) : (
                 /* En attente de validation ou de documents */
-                <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-                  <p className="text-xs text-blue-700 mb-1 font-medium text-center">
+                <div className={`p-3 rounded-lg border-2 ${
+                  produit.statut === 'documents_uploaded'
+                    ? 'bg-gradient-to-r from-purple-50 to-violet-50 border-purple-300'
+                    : 'bg-gradient-to-r from-orange-50 to-amber-50 border-orange-300'
+                }`}>
+                  <div className="flex items-center justify-center gap-2 mb-1.5">
+                    {produit.statut === 'documents_uploaded' ? (
+                      <div className="w-6 h-6 rounded-full bg-purple-200 flex items-center justify-center">
+                        <FileText className="w-3.5 h-3.5 text-purple-700" />
+                      </div>
+                    ) : (
+                      <div className="w-6 h-6 rounded-full bg-orange-200 flex items-center justify-center animate-pulse">
+                        <Upload className="w-3.5 h-3.5 text-orange-700" />
+                      </div>
+                    )}
+                  </div>
+                  <p className={`text-xs font-semibold text-center mb-0.5 ${
+                    produit.statut === 'documents_uploaded' ? 'text-purple-800' : 'text-orange-800'
+                  }`}>
                     {produit.statut === 'documents_uploaded' 
-                      ? 'Validation des documents en cours...' 
-                      : 'En attente de documents d\'éligibilité'}
+                      ? '⏳ Validation en cours' 
+                      : '📄 Documents requis'}
+                  </p>
+                  <p className={`text-xs text-center leading-relaxed ${
+                    produit.statut === 'documents_uploaded' ? 'text-purple-600' : 'text-orange-600'
+                  }`}>
+                    {produit.statut === 'documents_uploaded' 
+                      ? 'Notre équipe vérifie vos documents' 
+                      : 'Uploadez vos documents d\'éligibilité'}
                   </p>
                 </div>
               )}
