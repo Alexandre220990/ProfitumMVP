@@ -378,6 +378,7 @@ router.post('/session', async (req, res) => {
           session_token: sessionTokenAuth,
           client_id: clientId,
           status: 'en_cours',
+          type: 'authentifiee', // ✅ Champ obligatoire pour session authentifiée
           answers: {},
           metadata: {
             ip_address: ipAddress,

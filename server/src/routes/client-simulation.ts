@@ -62,8 +62,8 @@ router.post('/update', enhancedAuthMiddleware, asyncHandler(async (req: Request,
       .insert({
         client_id: user.database_id,
         session_token: `client-sim-${Date.now()}-${user.database_id.substring(0, 8)}`,
-        type: 'authentifiee',
-        status: 'in_progress',
+        type: 'authentifiee', // ✅ Champ obligatoire
+        status: 'en_cours', // ✅ Cohérent avec le reste du code
         answers: responses, // Déjà avec les codes questions
         created_at: new Date().toISOString()
       })

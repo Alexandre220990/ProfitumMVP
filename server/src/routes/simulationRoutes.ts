@@ -91,12 +91,14 @@ router.post('/', async (req: Request, res: Response) => {
       .from('simulations')
       .insert({
         client_id: client_id,
-        CheminParcouru: cheminParcouruInitial,
-        Answers: answers || {},
-        statut: 'en_cours',
-        dateCreation: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        type: 'authentifiee', // ✅ Champ obligatoire
+        status: 'en_cours', // ✅ Colonne correcte (pas 'statut')
+        answers: answers || {}, // ✅ Colonne correcte (minuscule)
+        metadata: {
+          chemin_parcouru: cheminParcouruInitial, // Stocker dans metadata au lieu d'une colonne inexistante
+          source: 'simulationRoutes',
+          created_at: new Date().toISOString()
+        }
       })
       .select()
       .single();
