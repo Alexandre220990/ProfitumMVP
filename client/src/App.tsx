@@ -235,7 +235,7 @@ function App() {
                         <Route path="/messagerie-client" element={<MessagerieClient />} />
                         
                         {/* Documents & Dossiers */}
-                        <Route path="documents" element={<ClientDocumentsPage />} />
+                        <Route path="/documents-client" element={<ClientDocumentsPage />} />
                         <Route path="/dossier-client/:produit/:id" element={<ProduitClient />} />
                         
                         {/* Produits */}
