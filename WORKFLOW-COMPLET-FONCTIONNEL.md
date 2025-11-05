@@ -703,46 +703,94 @@ OPTION B: CLIENT REFUSE ❌
 
 ---
 
-### **PHASE 9 : ÉTAPE 5 - VALIDATION FINALE ADMIN**
+### **PHASE 9 : ÉTAPE 5 - VALIDATION FINALE (CLIENT VALIDE L'AUDIT)**
 
-#### **9.1 Admin contrôle qualité**
+#### **9.1 Client valide l'audit = Validation finale** ✅
 ```
-👨‍💼 ADMIN reçoit notification "Audit validé par client"
+👤 CLIENT consulte l'audit de l'expert
    ↓
-👨‍💼 ADMIN examine le dossier complet :
-   - Tous les documents
-   - Rapport d'audit expert
-   - Calculs et justifications
+👤 CLIENT clique "Valider l'audit"
    ↓
-👨‍💼 ADMIN vérifie :
-   - Cohérence des calculs
-   - Conformité réglementaire
-   - Qualité du dossier
-```
-
-#### **9.2 Admin valide définitivement** ✅
-```
-👨‍💼 ADMIN clique "Validation finale"
+💾 UPDATE Audit:
+   - status: 'validated_by_client'
+   - client_validated_at: timestamp
    ↓
 💾 UPDATE ClientProduitEligible:
-   - statut: 'validation_finale'
-   - current_step: 6
-   - progress: 90
-   - metadata: { admin_final_validation: { admin_id, date } }
+   - statut: 'validation_finale' (⚠️ = VALIDATION FINALE DU DOSSIER)
+   - date_audit_validated_by_client: timestamp
+   - current_step: 5
+   - progress: 75
    ↓
-📅 TIMELINE: "Admin a validé définitivement le dossier"
+📅 TIMELINE: "✅ VALIDATION FINALE : Client a validé l'audit"
+   - Icon: ✅
+   - Color: green
    ↓
-📧 NOTIFICATION → CLIENT
-   "✅ Validation finale effectuée !"
-   "Votre dossier est prêt pour la demande de remboursement"
+🧾 GÉNÉRATION AUTOMATIQUE DE LA FACTURE PROFITUM
    ↓
-📧 NOTIFICATION → EXPERT
-   "Dossier [ID] validé par l'admin"
-   💰 Commission confirmée
+💾 INSERT invoice (facture Profitum):
+   - numero_facture: "PROF-2025-XXXX"
+   - client_id: client_id
+   - client_produit_eligible_id: dossier_id
+   - expert_id: expert_id
+   - apporteur_id: apporteur_id (si présent)
+   - montant_audit: montantFinal (ex: 75 000 €)
+   - taux_compensation_expert: expert.compensation (ex: 10%) ou 20% si NULL
+   - montant_ht: montantFinal × taux_compensation
+   - tva: montant_ht × 0.20
+   - montant_ttc: montant_ht + tva
+   - status: 'generated'
+   - metadata: {
+       dossier_ref,
+       expert_name,
+       apporteur_name,
+       calculation_details
+     }
+   - created_at: timestamp
+   ↓
+   SI ERREUR (données manquantes ou calcul impossible):
+   ↓
+💾 INSERT Facture avec mention erreur:
+   - montant_ht: 0
+   - montant_ttc: 0
+   - status: 'error'
+   - error_message: "ERREUR: [détails]"
+   - metadata: { error_details, missing_data }
+   ↓
+📄 PDF Facture généré automatiquement (même si erreur)
+   - En-tête Profitum
+   - Coordonnées client
+   - Référence dossier
+   - Expert assigné
+   - Apporteur (si présent)
+   - Détail calcul OU mention erreur
+   - Total HT/TTC OU "ERREUR - Contacter support"
+   ↓
+📅 TIMELINE: "Facture Profitum générée"
+   - Metadata: { facture_id, montant, numero }
+   ↓
+📧 NOTIFICATION → EXPERT (priorité: high)
+   "✅ Audit validé par le client !"
+   "💼 Dossier sous votre responsabilité jusqu'au remboursement"
+   "🧾 Facture Profitum générée"
+   Action: "Voir la facture"
    ↓
 📧 NOTIFICATION → APPORTEUR
-   "Dossier [Client] validé définitivement"
-   💰 Commission confirmée
+   "✅ Audit validé pour [Client]"
+   "💰 Facture générée - Commission confirmée"
+   ↓
+📧 NOTIFICATION → ADMIN
+   "Audit validé - Facture générée automatiquement"
+   "Vérifier facture si erreur de calcul"
+```
+
+#### **9.2 Expert prend en charge le dossier**
+```
+👨‍🔧 EXPERT voit notification "Audit validé"
+   ↓
+👨‍🔧 EXPERT devient responsable jusqu'au remboursement final
+   - Prépare dossier administratif
+   - Suit l'avancée
+   - Informe le client des étapes
 ```
 
 ---
@@ -758,94 +806,205 @@ OPTION B: CLIENT REFUSE ❌
    - Justificatifs
    ↓
 💾 UPDATE ClientProduitEligible:
-   - statut: 'demande_remboursement'
+   - statut: 'preparation_demande'
+   - current_step: 6
    - documents_sent: JSONB[] (liste docs envoyés)
    ↓
 📅 TIMELINE: "Dossier prêt pour soumission"
 ```
 
-#### **10.2 Soumission à l'administration**
+#### **10.2 Expert soumet le dossier à l'administration**
 ```
-👨‍🔧 EXPERT soumet le dossier :
-   - Télédéclaration ou courrier recommandé
-   - Accusé de réception
+👨‍🔧 EXPERT dans son interface dossier
+   ↓
+👨‍🔧 Voit bouton [Marquer comme soumis à l'administration]
+   ↓
+👨‍🔧 Clique sur le bouton
+   ↓
+📝 Modal :
+   - Date de soumission
+   - Référence AR (recommandé)
+   - Organisme (DGDDI, URSSAF, etc.)
+   - Commentaires
+   ↓
+📤 POST /api/expert/dossier/:id/mark-as-submitted
+   {
+     submission_date,
+     reference,
+     organisme,
+     notes
+   }
    ↓
 💾 UPDATE ClientProduitEligible:
-   - statut: 'en_attente_remboursement'
-   - date_demande_envoyee: timestamp
-   - metadata: { submission_ref, submission_date }
+   - statut: 'soumis_administration'
+   - date_demande_envoyee: submission_date
+   - metadata: {
+       submission_ref: reference,
+       submission_organisme: organisme,
+       submission_method: 'expert_declaration'
+     }
    ↓
-📅 TIMELINE: "Demande de remboursement envoyée"
-   - Metadata: { reference, date, organisme }
+📅 TIMELINE: "📨 Dossier soumis à l'administration"
+   - Icon: 📨
+   - Color: blue
+   - Metadata: { reference, organisme, date }
    ↓
-📧 NOTIFICATION → CLIENT
+📧 NOTIFICATION → CLIENT (priorité: high)
    "📨 Demande de remboursement envoyée !"
    "Référence: [XXX]"
+   "Organisme: [DGDDI/URSSAF/etc.]"
    "Délai estimé: 6-12 mois"
+   "Votre expert assure le suivi"
    ↓
 📧 NOTIFICATION → APPORTEUR
-   "Demande envoyée pour [Client]"
+   "📨 Demande envoyée pour [Client]"
+   "Référence: [XXX]"
+   ↓
+📧 NOTIFICATION → ADMIN
+   "Dossier [ID] soumis à l'administration"
+   ↓
+🔄 Bouton expert change automatiquement →
+   [Retour obtenu : Saisir résultat final]
+```
+
+#### **10.3 Expert reçoit le retour de l'administration**
+```
+👨‍🔧 EXPERT reçoit retour administration (6-18 mois plus tard)
+   - Email/Courrier de l'administration
+   - Montant accordé (peut différer du montant demandé)
+   - Décision : Accepté / Partiellement accepté / Refusé
+   ↓
+👨‍🔧 EXPERT clique [Retour obtenu : Saisir résultat final]
+   ↓
+📝 Modal :
+   - Date de retour
+   - Décision: Accepté / Partiel / Refusé
+   - Montant RÉEL accordé
+   - Motif si différent du montant demandé
+   - Documents justificatifs
+   ↓
+📤 POST /api/expert/dossier/:id/record-final-result
+   {
+     decision,
+     montant_reel_accorde,
+     date_retour,
+     motif_difference,
+     documents
+   }
+   ↓
+💾 UPDATE ClientProduitEligible:
+   - statut: 'resultat_obtenu'
+   - metadata: {
+       administration_decision: decision,
+       montant_demande: montantFinal,
+       montant_accorde: montant_reel,
+       difference: montant_reel - montantFinal,
+       date_retour,
+       motif_difference
+     }
+   ↓
+📅 TIMELINE: "📋 Retour administration reçu"
+   - Icon: 📋
+   - Color: decision === 'accepte' ? 'green' : 'orange'
+   - Metadata: {
+       decision,
+       montant_demande,
+       montant_accorde,
+       difference
+     }
+   ↓
+📧 NOTIFICATION → CLIENT (priorité: high)
+   SI ACCEPTÉ TOTAL:
+   "✅ Demande acceptée !"
+   "Montant accordé: XX €"
+   "Prochaine étape: Réception du remboursement"
+   
+   SI ACCEPTÉ PARTIEL:
+   "⚠️ Demande partiellement acceptée"
+   "Montant demandé: XX €"
+   "Montant accordé: XX €"
+   "Différence: -XX €"
+   "Motif: [...]"
+   
+   SI REFUSÉ:
+   "❌ Demande refusée"
+   "Motif: [...]"
+   ↓
+📧 NOTIFICATION → APPORTEUR
+   "Retour administration pour [Client]"
+   "Décision: [...]"
+   "Montant: XX €"
+   ↓
+📧 NOTIFICATION → ADMIN
+   "Retour administration - Dossier [ID]"
+   "Vérifier cohérence si montant différent"
 ```
 
 ---
 
-### **PHASE 11 : SUIVI ET FINALISATION**
+### **PHASE 11 : RÉCEPTION DU REMBOURSEMENT**
 
-#### **11.1 Suivi de la demande**
+#### **11.1 Client confirme réception du remboursement** 💰
 ```
-🔄 Suivi régulier (manuel ou via API si disponible)
+👤 CLIENT reçoit le virement de l'administration
+   - Sur son compte bancaire
+   - Montant accordé par l'administration
    ↓
-👨‍🔧 EXPERT met à jour le statut :
-   - "Instruction en cours"
-   - "Complément demandé"
-   - "Acceptée"
-   - "Refusée"
+👤 CLIENT se connecte → Dossier
    ↓
-💾 UPDATE ClientProduitEligible.metadata:
-   - remboursement_status: statut
-   - remboursement_updates: []
+👤 Voit bouton [Confirmer réception du remboursement]
    ↓
-📧 NOTIFICATIONS à chaque changement
-   → Client, Apporteur, Admin
-```
-
-#### **11.2 Remboursement reçu** 💰
-```
-👤 CLIENT reçoit le remboursement
+👤 CLIENT clique
    ↓
-👤 ou 👨‍🔧 EXPERT saisit dans le système
+📝 Modal :
+   - Date de réception
+   - Montant reçu (pré-rempli si déjà connu)
+   - Confirmation
+   ↓
+📤 POST /api/client/dossier/:id/confirm-payment-received
+   { date_reception, montant_reel }
    ↓
 💾 UPDATE ClientProduitEligible:
    - statut: 'completed' ✅
-   - date_remboursement: timestamp
+   - date_remboursement: date_reception
    - current_step: 6
    - progress: 100
    - metadata: { 
        remboursement_recu: true,
-       montant_reel: montant,
-       date_reception
+       montant_reel_recu: montant,
+       confirme_par_client: true,
+       date_confirmation
      }
    ↓
-📅 TIMELINE: "🎉 Remboursement reçu !"
+📅 TIMELINE: "🎉 Remboursement reçu et confirmé !"
    - Icon: 💰
    - Color: gold
    - Montant affiché
    ↓
-📧 NOTIFICATION → CLIENT
-   "🎉 Félicitations ! Remboursement reçu !"
-   "Montant: XX €"
-   "Merci de votre confiance"
-   ↓
-📧 NOTIFICATION → EXPERT
-   "Remboursement confirmé pour [Client]"
-   💰 Votre commission: XX €
+📧 NOTIFICATION → EXPERT (priorité: high)
+   "🎉 Remboursement confirmé pour [Client] !"
+   "Montant reçu: XX €"
+   "💰 Votre commission: XX € (calculée sur montant réel)"
+   Action: "Voir détails commissions"
    ↓
 📧 NOTIFICATION → APPORTEUR
-   "Remboursement confirmé pour [Client]"
-   💰 Votre commission: XX €
+   "🎉 Remboursement confirmé pour [Client]"
+   "💰 Votre commission: XX €"
+   Action: "Voir détails commissions"
    ↓
 📧 NOTIFICATION → ADMIN
-   "Dossier [ID] finalisé avec succès"
+   "✅ Dossier [ID] finalisé avec succès"
+   "Montant: XX €"
+   "Préparer paiement commissions"
+   ↓
+💰 Recalcul automatique des commissions sur montant RÉEL:
+   - Commission expert = montant_reel × taux_expert
+   - Commission apporteur = commission_expert × taux_apporteur
+   ↓
+💾 UPDATE ApporteurCommission + ExpertCommission:
+   - montant_base: montant_reel (actualisé)
+   - commission_calculee: recalculée
+   - status: 'ready_to_pay'
 ```
 
 ---
@@ -979,34 +1138,88 @@ Après acceptation expert :
 
 ## 💰 **CALCUL DES COMMISSIONS**
 
-### **Commission Expert**
+### **Commission Expert (Rémunération Profitum)**
 ```
-Base: montantFinal du dossier
-Taux: 10% (par défaut, peut varier selon contrat)
-Commission = montantFinal × 10%
+Base: montant RÉEL reçu par le client
+Taux: Expert.compensation (colonne BDD)
+  - Défaut: 30% (0.30) pour nouveaux experts
+  - Personnalisable par admin selon contrat expert
+Commission Profitum = montant_reel × Expert.compensation
 
-Exemple: 75 000 € × 10% = 7 500 €
+Exemple: 
+- Expert avec compensation 30% : 75 000 € × 30% = 22 500 €
+- Expert avec compensation 25% : 75 000 € × 25% = 18 750 €
+- Expert avec compensation 35% : 75 000 € × 35% = 26 250 €
+
+⚠️ Cette commission = ce que Profitum facture au client
+⚠️ L'expert reçoit une partie de cette commission (selon son contrat)
 ```
 
 ### **Commission Apporteur**
 ```
-Base: Commission de l'expert
-Taux: 10% de la commission expert
-Commission = commission_expert × 10%
+Base: Commission de l'expert (= Commission Profitum)
+Taux: ApporteurAffaires.commission_rate (colonne BDD)
+  - Défaut: 10% (0.10) standard
+  - Modifiable par admin manuellement pour chaque apporteur
+Commission = commission_profitum × taux_apporteur
 
-Exemple: 7 500 € × 10% = 750 €
+Exemple:
+- Commission Profitum = 22 500 €
+- Taux apporteur standard (10%) : 22 500 € × 10% = 2 250 €
+- Taux apporteur spécial (15%) : 22 500 € × 15% = 3 375 €
 ```
 
-### **Table ApporteurCommission**
-```sql
-INSERT ApporteurCommission:
-- apporteur_id
-- client_produit_eligible_id
-- expert_id
-- montant_base: 75 000 €
-- taux_commission: 0.10
-- commission_calculee: 750 €
-- status: 'pending' → 'paid'
+### **Calcul automatique dans le système**
+```typescript
+// Lors de la génération de facture (client valide audit)
+const expertCompensation = expert.compensation ?? 0.30; // 30% par défaut
+const apporteurRate = apporteur?.commission_rate ?? 0.10; // 10% par défaut
+
+// Commission Profitum (= ce qui est facturé au client)
+const commissionProfitum = montantAudit × expertCompensation;
+
+// Commission apporteur (% de la commission Profitum)
+const commissionApporteur = commissionProfitum × apporteurRate;
+
+// Facture Profitum
+const montant_ht = commissionProfitum;
+const tva = montant_ht × 0.20; // TVA 20%
+const montant_ttc = montant_ht + tva;
+
+// Sauvegarde BDD
+INSERT Facture {
+  montant_audit: montantAudit,
+  taux_compensation_expert: expertCompensation,
+  taux_commission_apporteur: apporteurRate,
+  montant_ht: commissionProfitum,
+  tva: tva,
+  montant_ttc: montant_ttc,
+  status: 'generated'
+}
+```
+
+### **Exemple complet**
+```
+Dossier TICPE :
+- Montant audit validé par client : 75 000 €
+- Expert.compensation : 30%
+- Apporteur.commission_rate : 10%
+
+Calculs :
+1. Commission Profitum = 75 000 € × 30% = 22 500 € HT
+2. TVA = 22 500 € × 20% = 4 500 €
+3. Total facture client = 27 000 € TTC
+
+4. Commission apporteur = 22 500 € × 10% = 2 250 €
+
+Facture Profitum au client :
+- Montant HT : 22 500 €
+- TVA 20% : 4 500 €
+- Total TTC : 27 000 €
+
+Commissions à verser :
+- Expert : (selon contrat avec Profitum)
+- Apporteur : 2 250 €
 ```
 
 ---
