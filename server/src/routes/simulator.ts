@@ -201,6 +201,15 @@ async function mergeClientProductsIntelligent(
 
     const existingMap = new Map(existingProducts?.map(p => [p.produitId, p]) || []);
 
+    // Récupérer les CPE avec documents (PROTECTION ABSOLUE)
+    const { data: cpeWithDocs } = await supabaseClient
+      .from('GEDDocument')
+      .select('client_produit_eligible_id')
+      .eq('client_id', clientId)
+      .not('client_produit_eligible_id', 'is', null);
+    
+    const cpeWithDocsSet = new Set(cpeWithDocs?.map(d => d.client_produit_eligible_id) || []);
+
     // Pour chaque produit éligible calculé
     for (const produit of produitsCalcules) {
       if (!produit.is_eligible) continue; // Ignorer les non éligibles
@@ -211,19 +220,56 @@ async function mergeClientProductsIntelligent(
       if (existing) {
         // Produit existe déjà
         
+        // 🔒 PROTECTION ABSOLUE : Si le CPE a des documents uploadés
+        const hasDocuments = cpeWithDocsSet.has(existing.id);
+        
+        if (hasDocuments) {
+          // CPE avec documents → PROTÉGÉ contre suppression
+          // MAIS on peut mettre à jour le montant
+          const nouveauMontant = produit.montant_estime || 0;
+          const ancienMontant = existing.montantFinal || 0;
+          
+          if (nouveauMontant !== ancienMontant) {
+            await supabaseClient
+              .from('ClientProduitEligible')
+              .update({
+                montantFinal: nouveauMontant,
+                simulationId: simulationId,
+                calcul_details: produit.calcul_details,
+                metadata: {
+                  ...(existing.metadata || {}),
+                  updated_from_simulation: simulationId,
+                  previous_amount: ancienMontant,
+                  updated_at: new Date().toISOString(),
+                  protected: true,
+                  protection_reason: 'documents_uploaded'
+                },
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', existing.id);
+            
+            console.log(`🔒📝 CPE protégé avec docs - Montant mis à jour: ${produit.produit_nom} (${ancienMontant}€ → ${nouveauMontant}€)`);
+            products_updated++;
+          } else {
+            console.log(`🔒 CPE protégé avec docs - Inchangé: ${produit.produit_nom}`);
+            products_protected++;
+          }
+          continue;
+        }
+        
         // Cas 1 : Produit en cours de traitement → PROTÉGER
         if (['en_cours', 'documents_collecte', 'expert_assigne', 'en_attente_expert', 'dossier_constitue'].includes(existing.statut)) {
-          console.log(`🔒 Produit protégé (en cours): ${produit.produit_nom}`);
+          console.log(`🔒 Produit protégé (workflow en cours): ${produit.produit_nom}`);
           products_protected++;
           continue;
         }
 
-        // Cas 2 : Produit 'eligible' → METTRE À JOUR si amélioration
+        // Cas 2 : Produit 'eligible' → METTRE À JOUR si différent
         if (existing.statut === 'eligible') {
           const nouveauMontant = produit.montant_estime || 0;
           const ancienMontant = existing.montantFinal || 0;
 
-          if (nouveauMontant > ancienMontant) {
+          if (nouveauMontant !== ancienMontant) {
             await supabaseClient
               .from('ClientProduitEligible')
               .update({
@@ -244,7 +290,7 @@ async function mergeClientProductsIntelligent(
             console.log(`✅ Produit mis à jour: ${produit.produit_nom} (${ancienMontant}€ → ${nouveauMontant}€)`);
             products_updated++;
           } else {
-            console.log(`→ Produit inchangé: ${produit.produit_nom} (${ancienMontant}€ >= ${nouveauMontant}€)`);
+            console.log(`→ Produit inchangé: ${produit.produit_nom} (${ancienMontant}€)`);
             products_protected++;
           }
         }
