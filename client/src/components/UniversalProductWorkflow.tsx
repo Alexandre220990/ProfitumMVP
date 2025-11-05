@@ -826,13 +826,29 @@ export default function UniversalProductWorkflow({
                   )}
                 </div>
               )}
+
+              {/* Contenu intégré pour l'étape 3 - Collecte des documents - SEULEMENT si on est à l'étape 3 */}
+              {step.id === 3 && currentStep === 3 && (
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <ClientStep3DocumentCollection
+                    dossierId={clientProduitId}
+                    onComplete={() => {
+                      toast.success('✅ Étape 3 validée avec succès !');
+                      // Recharger les données du dossier
+                      loadClientProduit();
+                      // Passer à l'étape suivante si applicable
+                      setCurrentStep(4);
+                    }}
+                  />
+                </div>
+              )}
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Contenu de l'étape courante - seulement pour les étapes 3+ (1 et 2 sont intégrées) */}
-      {currentStep !== 1 && currentStep !== 2 && (
+      {/* Contenu de l'étape courante - seulement pour les étapes 4+ (1, 2 et 3 sont intégrées) */}
+      {currentStep >= 4 && (
         <Card className="border-2 border-blue-200 bg-blue-50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">

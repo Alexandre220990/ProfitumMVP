@@ -14,7 +14,8 @@ import {
   FileText, 
   CheckCircle2,
   Eye,
-  RefreshCw
+  RefreshCw,
+  Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { config } from '@/config/env';
@@ -252,6 +253,44 @@ export default function ClientStep3DocumentCollection({
       });
     } finally {
       setUploadingId(null);
+    }
+  };
+
+  // Supprimer un document
+  const handleDeleteDocument = async (docId: string) => {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer ce document ?')) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      
+      if (!token) {
+        toast.error('Session expirée, veuillez vous reconnecter');
+        return;
+      }
+
+      const response = await fetch(`${config.API_URL}/api/documents/${docId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Erreur lors de la suppression');
+      }
+
+      toast.success('Document supprimé avec succès');
+      await loadDocuments();
+      await loadDocumentRequest();
+    } catch (error: any) {
+      console.error('❌ Erreur suppression document:', error);
+      toast.error('Erreur lors de la suppression', {
+        description: error.message
+      });
     }
   };
 
@@ -502,6 +541,29 @@ export default function ClientStep3DocumentCollection({
                         <Eye className="w-4 h-4 mr-1" />
                         Voir
                       </Button>
+                    )}
+                    {!isValidated && !isRejected && (
+                      /* Documents pending : Visualiser + Effacer */
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleViewDocument(doc)}
+                          className="h-8 px-3"
+                        >
+                          <Eye className="w-4 h-4 mr-1" />
+                          Voir
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteDocument(doc.id)}
+                          className="h-8 px-3 text-red-600 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-4 h-4 mr-1" />
+                          Effacer
+                        </Button>
+                      </>
                     )}
                     {isRejected && (
                       <>
