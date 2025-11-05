@@ -201,14 +201,33 @@ async function mergeClientProductsIntelligent(
 
     const existingMap = new Map(existingProducts?.map(p => [p.produitId, p]) || []);
 
-    // Récupérer les CPE avec documents (PROTECTION ABSOLUE)
+    // Récupérer les CPE avec activité workflow (PROTECTION ABSOLUE)
+    // 1. Documents uploadés
     const { data: cpeWithDocs } = await supabaseClient
       .from('GEDDocument')
       .select('client_produit_eligible_id')
       .eq('client_id', clientId)
       .not('client_produit_eligible_id', 'is', null);
     
-    const cpeWithDocsSet = new Set(cpeWithDocs?.map(d => d.client_produit_eligible_id) || []);
+    // 2. CPE avec expert assigné
+    const { data: cpeWithExpert } = await supabaseClient
+      .from('ClientProduitEligible')
+      .select('id')
+      .eq('clientId', clientId)
+      .not('expert_id', 'is', null);
+    
+    // 3. CPE avec factures
+    const { data: cpeWithInvoice } = await supabaseClient
+      .from('invoice')
+      .select('client_produit_eligible_id')
+      .not('client_produit_eligible_id', 'is', null);
+    
+    // Combiner tous les CPE protégés
+    const protectedCpeSet = new Set([
+      ...(cpeWithDocs?.map(d => d.client_produit_eligible_id) || []),
+      ...(cpeWithExpert?.map(e => e.id) || []),
+      ...(cpeWithInvoice?.map(i => i.client_produit_eligible_id) || [])
+    ]);
 
     // Pour chaque produit éligible calculé
     for (const produit of produitsCalcules) {
@@ -220,11 +239,11 @@ async function mergeClientProductsIntelligent(
       if (existing) {
         // Produit existe déjà
         
-        // 🔒 PROTECTION ABSOLUE : Si le CPE a des documents uploadés
-        const hasDocuments = cpeWithDocsSet.has(existing.id);
+        // 🔒 PROTECTION ABSOLUE : Si le CPE a une activité workflow
+        const hasWorkflowActivity = protectedCpeSet.has(existing.id);
         
-        if (hasDocuments) {
-          // CPE avec documents → PROTÉGÉ contre suppression
+        if (hasWorkflowActivity) {
+          // CPE avec activité → PROTÉGÉ contre suppression
           // MAIS on peut mettre à jour le montant
           const nouveauMontant = produit.montant_estime || 0;
           const ancienMontant = existing.montantFinal || 0;
@@ -242,16 +261,16 @@ async function mergeClientProductsIntelligent(
                   previous_amount: ancienMontant,
                   updated_at: new Date().toISOString(),
                   protected: true,
-                  protection_reason: 'documents_uploaded'
+                  protection_reason: 'workflow_activity'
                 },
                 updated_at: new Date().toISOString()
               })
               .eq('id', existing.id);
             
-            console.log(`🔒📝 CPE protégé avec docs - Montant mis à jour: ${produit.produit_nom} (${ancienMontant}€ → ${nouveauMontant}€)`);
+            console.log(`🔒💼 CPE protégé (workflow actif) - Montant mis à jour: ${produit.produit_nom} (${ancienMontant}€ → ${nouveauMontant}€)`);
             products_updated++;
           } else {
-            console.log(`🔒 CPE protégé avec docs - Inchangé: ${produit.produit_nom}`);
+            console.log(`🔒 CPE protégé (workflow actif) - Inchangé: ${produit.produit_nom}`);
             products_protected++;
           }
           continue;
