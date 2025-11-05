@@ -138,7 +138,6 @@ export class AdminApporteurService {
                     company_name,
                     company_type,
                     siren,
-                    commission_rate,
                     status,
                     approved_at,
                     created_at,

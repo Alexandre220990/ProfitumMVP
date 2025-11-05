@@ -36,7 +36,7 @@ router.get('/stream', async (req: Request, res: Response) => {
     // Créer un client avec le token de l'utilisateur pour validation
     const supabaseWithToken = createClient(
       process.env.SUPABASE_URL!,
-      process.env.SUPABASE_KEY!, // Clé publique
+      process.env.SUPABASE_ANON_KEY!, // ✅ Clé publique correcte
       {
         global: {
           headers: {
