@@ -36,6 +36,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { config } from '@/config';
+import { ClientEmbeddedSimulator } from '@/components/ClientEmbeddedSimulator';
 
 interface ClientFormData {
   // Étape 1 : Identité
@@ -79,29 +80,14 @@ const SECTEURS = [
   'Autre'
 ];
 
-const NOMBRE_EMPLOYES = [
-  '1 à 5',
-  '6 à 10',
-  '11 à 20',
-  '21 à 50',
-  '51 à 100',
-  'Plus de 100'
-];
-
-const REVENU_ANNUEL = [
-  'Moins de 100 000€',
-  '100 000€ - 500 000€',
-  '500 000€ - 1 000 000€',
-  '1 000 000€ - 5 000 000€',
-  'Plus de 5 000 000€'
-];
-
 export default function FormulaireClientComplet() {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [eligibleProducts] = useState<any[]>([]);
+  const [eligibleProducts, setEligibleProducts] = useState<any[]>([]);
+  const [simulationStarted, setSimulationStarted] = useState(false);
+  const [simulationCompleted, setSimulationCompleted] = useState(false);
   
   const [formData, setFormData] = useState<ClientFormData>({
     first_name: '',
@@ -193,6 +179,37 @@ export default function FormulaireClientComplet() {
     toast.success('Mot de passe généré');
   };
 
+  const handleSimulationComplete = (answers: Record<string, string | string[]>) => {
+    console.log('✅ Simulation terminée, réponses reçues:', answers);
+    
+    // Stocker les réponses dans formData
+    setFormData(prev => ({
+      ...prev,
+      simulationAnswers: answers
+    }));
+    
+    setSimulationCompleted(true);
+    setSimulationStarted(false);
+    
+    toast.success('✅ Simulation enregistrée ! Les produits éligibles seront calculés lors de la création.');
+  };
+
+  const handleSimulationCancel = () => {
+    setSimulationStarted(false);
+    setFormData(prev => ({ ...prev, doSimulation: false }));
+  };
+
+  const handleStartSimulation = () => {
+    // Vérifier que les données de base sont renseignées
+    if (!formData.secteurActivite || !formData.nombreEmployes || !formData.revenuAnnuel) {
+      toast.warning('Veuillez d\'abord renseigner les informations de l\'entreprise (secteur, effectif, CA)');
+      setCurrentStep(2); // Retour à l'étape entreprise
+      return;
+    }
+    
+    setSimulationStarted(true);
+  };
+
   const handleSubmit = async () => {
     setLoading(true);
     try {
@@ -232,9 +249,14 @@ export default function FormulaireClientComplet() {
       const data = await response.json();
       const clientId = data.data.client.id;
 
-      // 2. Si simulation demandée, la faire maintenant
+      // 2. Si simulation demandée, calculer l'éligibilité
       if (formData.doSimulation && formData.simulationAnswers && Object.keys(formData.simulationAnswers).length > 0) {
-        await runSimulation(clientId);
+        const simulationResult = await runSimulation(clientId);
+        
+        // Stocker les produits éligibles pour l'affichage
+        if (simulationResult && simulationResult.eligible_products) {
+          setEligibleProducts(simulationResult.eligible_products);
+        }
       }
 
       // 3. Envoyer l'email de bienvenue si demandé
@@ -258,11 +280,43 @@ export default function FormulaireClientComplet() {
 
   const runSimulation = async (clientId: string) => {
     try {
-      // TODO: Implémenter l'appel à l'API de simulation
-      console.log('🧮 Simulation pour client:', clientId);
-      toast.info('Simulation en cours...');
-    } catch (error) {
-      console.error('Erreur simulation:', error);
+      console.log('🧮 Calcul des produits éligibles pour le client:', clientId);
+      toast.info('Calcul des produits éligibles...');
+      
+      const token = localStorage.getItem('token');
+      
+      // Créer une simulation et calculer l'éligibilité
+      const response = await fetch(`${config.API_URL}/api/admin/clients/${clientId}/simulation`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          answers: formData.simulationAnswers
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Erreur lors du calcul d\'éligibilité');
+      }
+      
+      const result = await response.json();
+      console.log('✅ Résultats de simulation:', result);
+      
+      if (result.data && result.data.eligible_products) {
+        const eligibleCount = result.data.eligible_products.length;
+        toast.success(`${eligibleCount} produit(s) éligible(s) identifié(s) !`);
+        return result.data;
+      }
+      
+      return null;
+      
+    } catch (error: any) {
+      console.error('❌ Erreur simulation:', error);
+      toast.error(`Erreur simulation : ${error.message}`);
+      return null;
     }
   };
 
@@ -459,30 +513,35 @@ export default function FormulaireClientComplet() {
 
         <div className="space-y-2">
           <Label htmlFor="nombreEmployes">Nombre d'employés</Label>
-          <Select value={formData.nombreEmployes} onValueChange={(value) => handleInputChange('nombreEmployes', value)}>
-            <SelectTrigger>
-              <SelectValue placeholder="Sélectionner" />
-            </SelectTrigger>
-            <SelectContent>
-              {NOMBRE_EMPLOYES.map(n => (
-                <SelectItem key={n} value={n}>{n}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Input
+            id="nombreEmployes"
+            type="number"
+            min="0"
+            max="10000"
+            value={formData.nombreEmployes}
+            onChange={(e) => handleInputChange('nombreEmployes', e.target.value)}
+            placeholder="Ex: 25"
+          />
+          <p className="text-xs text-gray-500">💡 Entrez le nombre exact d'employés</p>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="revenuAnnuel">Chiffre d'affaires</Label>
-          <Select value={formData.revenuAnnuel} onValueChange={(value) => handleInputChange('revenuAnnuel', value)}>
-            <SelectTrigger>
-              <SelectValue placeholder="Sélectionner" />
-            </SelectTrigger>
-            <SelectContent>
-              {REVENU_ANNUEL.map(r => (
-                <SelectItem key={r} value={r}>{r}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Label htmlFor="revenuAnnuel">Chiffre d'affaires annuel</Label>
+          <div className="relative">
+            <Input
+              id="revenuAnnuel"
+              type="number"
+              min="0"
+              max="100000000"
+              step="1000"
+              value={formData.revenuAnnuel}
+              onChange={(e) => handleInputChange('revenuAnnuel', e.target.value)}
+              placeholder="Ex: 250000"
+              className="pr-8"
+            />
+            <span className="absolute right-3 top-3 text-gray-400 text-sm">€</span>
+          </div>
+          <p className="text-xs text-gray-500">💡 Entrez le montant exact du CA annuel (ex: 250000 pour 250 k€)</p>
         </div>
       </div>
 
@@ -542,32 +601,96 @@ export default function FormulaireClientComplet() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-start space-x-3">
-            <Checkbox
-              id="doSimulation"
-              checked={formData.doSimulation}
-              onCheckedChange={(checked) => handleInputChange('doSimulation', checked)}
-            />
-            <div className="flex-1">
-              <Label htmlFor="doSimulation" className="font-medium cursor-pointer">
-                Lancer une simulation pour ce client
-              </Label>
-              <p className="text-sm text-gray-600 mt-1">
-                Calculer automatiquement les produits éligibles selon son profil
-              </p>
-            </div>
-          </div>
+          {!simulationStarted ? (
+            <>
+              <div className="flex items-start space-x-3">
+                <Checkbox
+                  id="doSimulation"
+                  checked={formData.doSimulation}
+                  onCheckedChange={(checked) => {
+                    handleInputChange('doSimulation', checked);
+                    if (!checked) {
+                      setSimulationCompleted(false);
+                      setFormData(prev => ({ ...prev, simulationAnswers: {} }));
+                    }
+                  }}
+                />
+                <div className="flex-1">
+                  <Label htmlFor="doSimulation" className="font-medium cursor-pointer">
+                    Lancer une simulation pour ce client
+                  </Label>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Calculer automatiquement les produits éligibles selon son profil (TICPE, DFS, etc.)
+                  </p>
+                </div>
+              </div>
 
-          {formData.doSimulation && (
-            <div className="bg-white p-4 rounded-lg border space-y-3">
-              <p className="text-sm font-medium text-gray-700">
-                Les données renseignées seront utilisées pour la simulation
-              </p>
-              <Badge className="bg-blue-100 text-blue-700">
-                <Sparkles className="w-3 h-3 mr-1" />
-                Simulation basée sur : {formData.secteurActivite || 'Secteur'}, {formData.nombreEmployes || 'Effectif'}, {formData.revenuAnnuel || 'CA'}
-              </Badge>
-            </div>
+              {formData.doSimulation && (
+                <div className="space-y-3">
+                  <div className="bg-white p-4 rounded-lg border space-y-3">
+                    <p className="text-sm font-medium text-gray-700">
+                      📋 Informations pour la simulation :
+                    </p>
+                    <div className="grid grid-cols-3 gap-2 text-sm">
+                      <Badge variant="outline" className="justify-center">
+                        {formData.secteurActivite || '❌ Secteur'}
+                      </Badge>
+                      <Badge variant="outline" className="justify-center">
+                        {formData.nombreEmployes || '❌ Effectif'}
+                      </Badge>
+                      <Badge variant="outline" className="justify-center">
+                        {formData.revenuAnnuel || '❌ CA'}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  {simulationCompleted ? (
+                    <div className="bg-green-50 border-2 border-green-300 rounded-lg p-4">
+                      <div className="flex items-center gap-2 text-green-800">
+                        <CheckCircle className="w-5 h-5" />
+                        <span className="font-semibold">Simulation terminée !</span>
+                      </div>
+                      <p className="text-sm text-green-700 mt-1">
+                        {Object.keys(formData.simulationAnswers || {}).length} réponse(s) enregistrée(s)
+                      </p>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setSimulationCompleted(false);
+                          setFormData(prev => ({ ...prev, simulationAnswers: {} }));
+                        }}
+                        className="mt-2"
+                      >
+                        Recommencer la simulation
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      type="button"
+                      onClick={handleStartSimulation}
+                      className="w-full bg-purple-600 hover:bg-purple-700"
+                    >
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      Démarrer la Simulation Intelligente
+                    </Button>
+                  )}
+                </div>
+              )}
+            </>
+          ) : (
+            <ClientEmbeddedSimulator
+              clientData={{
+                company_name: formData.company_name,
+                secteurActivite: formData.secteurActivite,
+                nombreEmployes: formData.nombreEmployes,
+                revenuAnnuel: formData.revenuAnnuel
+              }}
+              prefilledAnswers={{}}
+              onComplete={handleSimulationComplete}
+              onCancel={handleSimulationCancel}
+            />
           )}
         </CardContent>
       </Card>
@@ -661,12 +784,6 @@ export default function FormulaireClientComplet() {
               <p className="text-gray-700">{formData.siren || 'Non renseigné'}</p>
             </div>
             <div>
-              <span className="font-semibold">Simulation :</span>
-              <Badge variant={formData.doSimulation ? 'default' : 'secondary'}>
-                {formData.doSimulation ? '✓ Oui' : 'Non'}
-              </Badge>
-            </div>
-            <div>
               <span className="font-semibold">Email bienvenue :</span>
               <Badge variant={formData.sendWelcomeEmail ? 'default' : 'secondary'}>
                 {formData.sendWelcomeEmail ? '✓ Oui' : 'Non'}
@@ -675,6 +792,35 @@ export default function FormulaireClientComplet() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Simulation info */}
+      {formData.doSimulation && simulationCompleted && (
+        <Card className="border-2 border-purple-300 bg-purple-50/30">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Calculator className="w-5 h-5 text-purple-600" />
+              Simulation d'éligibilité
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center gap-2 text-purple-800">
+              <CheckCircle className="w-5 h-5" />
+              <span className="font-semibold">Simulation complétée</span>
+            </div>
+            <div className="bg-white p-3 rounded-lg border">
+              <p className="text-sm text-gray-700">
+                <strong>{Object.keys(formData.simulationAnswers || {}).length} réponse(s)</strong> enregistrée(s)
+              </p>
+              <p className="text-xs text-gray-600 mt-1">
+                Les produits éligibles (TICPE, DFS, etc.) seront calculés automatiquement lors de la création du client.
+              </p>
+            </div>
+            <div className="text-xs text-purple-700 bg-purple-100 p-2 rounded">
+              💡 Le calcul d'éligibilité utilisera les réponses fournies lors de la simulation pour identifier les produits adaptés au profil du client.
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Produits éligibles si simulation */}
       {formData.doSimulation && eligibleProducts.length > 0 && (

@@ -21,7 +21,8 @@ import {
   UserCheck, Clock,
   Download, Settings, TrendingUp, DollarSign,
   Bell, Mail, Target, CheckCircle, XCircle,
-  Handshake, Package, Trash2, Calendar, Lock
+  Handshake, Package, Trash2, Calendar, Lock,
+  Building, Phone
 } from "lucide-react";
 import { TypeSwitcher } from "@/components/TypeSwitcher";
 import { motion } from "framer-motion";
@@ -390,24 +391,32 @@ const AdminDashboardOptimized: React.FC = () => {
       // Charger les clients
       const clientsResponse = await get('/admin/clients');
       const clients = clientsResponse.success ? (clientsResponse.data as any)?.clients || [] : [];
+      console.log('👥 Clients chargés:', clients.length, '(brut)');
       
-      // Charger les experts
-      const expertsResponse = await get('/admin/experts');
+      // Charger TOUS les experts (sans pagination)
+      const expertsResponse = await get('/admin/experts/all');
       const experts = expertsResponse.success ? (expertsResponse.data as any)?.experts || [] : [];
+      console.log('👔 Experts chargés:', experts.length, 'experts');
+      console.log('📊 Détail experts:', expertsResponse);
       
       // Charger les dossiers
       const dossiersResponse = await get('/admin/dossiers/all');
-      console.log('📦 Dossiers pour KPI:', dossiersResponse);
       const dossiers = dossiersResponse.success ? (dossiersResponse.data as any)?.dossiers || [] : [];
+      console.log('📁 Dossiers chargés:', dossiers.length, 'dossiers');
       
-      // Charger les produits
+      // Charger les produits du catalogue (structure: { success, produits })
       const produitsResponse = await get('/admin/produits');
-      console.log('📦 Produits pour KPI:', produitsResponse);
-      const produits = produitsResponse.success ? (produitsResponse.data as any)?.produits || [] : [];
+      console.log('📦 Réponse produits complète:', produitsResponse);
+      const produits = produitsResponse.success ? (produitsResponse as any)?.produits || [] : [];
+      console.log('📦 Produits catalogue chargés:', produits.length, 'produits');
       
-      // Calculer les KPIs
-      const totalClients = clients.length;
-      const clientsThisMonth = clients.filter((client: any) => {
+      // Calculer les KPIs (EXCLURE les clients temporaires)
+      const realClients = clients.filter((client: any) => 
+        !client.email?.includes('@profitum.temp')
+      );
+      
+      const totalClients = realClients.length;
+      const clientsThisMonth = realClients.filter((client: any) => {
         const clientDate = new Date(client.created_at);
         const now = new Date();
         return clientDate.getMonth() === now.getMonth() && clientDate.getFullYear() === now.getFullYear();
@@ -574,6 +583,7 @@ const AdminDashboardOptimized: React.FC = () => {
         activeExperts,
         pendingExperts,
         totalDossiers,
+        totalProduits: produits.length,
         pendingDossiers,
         montantPotentiel,
         montantRealise
@@ -595,7 +605,7 @@ const AdminDashboardOptimized: React.FC = () => {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('supabase.auth.token')}`
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         credentials: 'include',
         body: JSON.stringify({ statut: newStatut })
@@ -656,7 +666,7 @@ const AdminDashboardOptimized: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('supabase.auth.token')}`
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         credentials: 'include',
         body: JSON.stringify({ expert_id: expertId })
@@ -720,7 +730,7 @@ const AdminDashboardOptimized: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('supabase.auth.token')}`
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         credentials: 'include',
         body: JSON.stringify({
@@ -755,7 +765,7 @@ const AdminDashboardOptimized: React.FC = () => {
       const response = await fetch(`${config.API_URL}/admin/dossiers/${selectedDossierForHistoire.id}/commentaires/${commentId}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('supabase.auth.token')}`
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         credentials: 'include'
       });
@@ -808,12 +818,17 @@ const AdminDashboardOptimized: React.FC = () => {
           if (clientsResponse.success) {
             const clients = (clientsResponse.data as any)?.clients || [];
             
+            // ✅ FILTRER les clients temporaires
+            const realClients = clients.filter((client: any) => 
+              !client.email?.includes('@profitum.temp')
+            );
+            
             // Enrichir avec le nombre de dossiers à valider
             const dossiersResponse = await get('/admin/dossiers/all');
             if (dossiersResponse.success) {
               const allDossiers = (dossiersResponse.data as any)?.dossiers || [];
               
-              data = clients.map((client: any) => {
+              data = realClients.map((client: any) => {
                 const clientDossiersAValider = allDossiers.filter((d: any) => 
                   d.clientId === client.id && 
                   (d.statut === 'documents_uploaded' || d.statut === 'eligible_confirmed')
@@ -825,7 +840,7 @@ const AdminDashboardOptimized: React.FC = () => {
                 };
               });
             } else {
-              data = clients;
+              data = realClients;
             }
           } else {
             console.error('❌ Erreur chargement clients:', clientsResponse.message);
@@ -2016,40 +2031,80 @@ const AdminDashboardOptimized: React.FC = () => {
                                             </Button>
                                           </div>
                                           
-                                          <div className="space-y-2 max-h-96 overflow-y-auto">
+                                          <div className="space-y-1.5 max-h-96 overflow-y-auto">
                                             {selectedTileData.slice(0, 10).map((client: any) => (
-                                              <div key={client.id} className="p-3 border rounded-lg hover:bg-gray-50">
-                                                <div className="flex justify-between items-start">
-                                                  <div className="flex-1">
-                                                    <div className="flex items-center gap-2 mb-1">
-                                                      <h5 className="font-medium text-gray-800">
+                                              <div 
+                                                key={client.id} 
+                                                className="group relative p-2.5 border border-gray-200 rounded-md hover:border-green-300 hover:shadow-sm transition-all duration-200 bg-white hover:bg-gradient-to-r hover:from-white hover:to-green-50/30"
+                                              >
+                                                <div className="flex items-center gap-3">
+                                                  {/* Avatar/Icône Entreprise */}
+                                                  <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center text-white font-semibold text-sm shadow-sm">
+                                                    {(client.company_name || client.first_name || 'C')[0].toUpperCase()}
+                                                  </div>
+                                                  
+                                                  {/* Informations principales (Colonne 1) */}
+                                                  <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2 mb-0.5">
+                                                      <h5 className="font-semibold text-gray-900 text-sm truncate">
                                                         {client.company_name || `${client.first_name || ''} ${client.last_name || ''}`.trim() || 'N/A'}
                                                       </h5>
-                                                      <Badge variant={
-                                                        client.statut === 'active' ? 'default' :
-                                                        client.statut === 'pending' ? 'secondary' : 'outline'
-                                                      }>
+                                                      <Badge 
+                                                        variant={client.statut === 'active' || client.statut === 'actif' ? 'default' : 'secondary'}
+                                                        className="text-[10px] px-1.5 py-0 h-4"
+                                                      >
                                                         {client.statut}
                                                       </Badge>
                                                       {client.dossiersAValider > 0 && (
-                                                        <Badge variant="destructive" className="animate-pulse">
-                                                          ⚠️ {client.dossiersAValider} à valider
+                                                        <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4 animate-pulse">
+                                                          ⚠️ {client.dossiersAValider}
                                                         </Badge>
                                                       )}
                                                     </div>
-                                                    
-                                                    <div className="text-sm text-gray-600">
-                                                      <p>📧 {client.email}</p>
-                                                      {client.phone && <p>📞 {client.phone}</p>}
-                                                      <p>📅 Créé le {new Date(client.created_at).toLocaleDateString('fr-FR')}</p>
+                                                    <div className="flex items-center gap-3 text-xs text-gray-600">
+                                                      <span className="flex items-center gap-1">
+                                                        <Mail className="w-3 h-3" />
+                                                        {client.email?.length > 25 ? `${client.email.substring(0, 25)}...` : client.email}
+                                                      </span>
+                                                      {client.phone_number && (
+                                                        <span className="flex items-center gap-1">
+                                                          <Phone className="w-3 h-3" />
+                                                          {client.phone_number}
+                                                        </span>
+                                                      )}
                                                     </div>
                                                   </div>
                                                   
-                                                  <div className="text-right">
+                                                  {/* Informations métier (Colonne 2) */}
+                                                  <div className="hidden lg:flex flex-col gap-0.5 text-xs text-gray-600 min-w-[160px]">
+                                                    {client.secteurActivite && (
+                                                      <div className="flex items-center gap-1.5">
+                                                        <Building className="w-3 h-3 text-blue-500" />
+                                                        <span className="truncate">{client.secteurActivite}</span>
+                                                      </div>
+                                                    )}
+                                                    {client.nombreEmployes && (
+                                                      <div className="flex items-center gap-1.5">
+                                                        <Users className="w-3 h-3 text-purple-500" />
+                                                        <span>{client.nombreEmployes} emp.</span>
+                                                      </div>
+                                                    )}
+                                                    {!client.secteurActivite && !client.nombreEmployes && (
+                                                      <span className="text-gray-400 italic text-[10px]">Infos entreprise manquantes</span>
+                                                    )}
+                                                  </div>
+                                                  
+                                                  {/* Date & Actions (Colonne 3) */}
+                                                  <div className="flex items-center gap-2">
+                                                    <div className="text-right text-xs text-gray-500 hidden md:block min-w-[70px]">
+                                                      <div className="font-medium text-[10px] text-gray-400 uppercase tracking-wide">Créé</div>
+                                                      <div>{new Date(client.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' })}</div>
+                                                    </div>
                                                     <Button 
                                                       variant="ghost" 
                                                       size="sm"
                                                       onClick={() => navigate(`/admin/clients/${client.id}`)}
+                                                      className="h-8 w-8 p-0 hover:bg-green-100 group-hover:visible invisible lg:visible"
                                                       title="Voir la synthèse du client"
                                                     >
                                                       <Eye className="w-4 h-4" />

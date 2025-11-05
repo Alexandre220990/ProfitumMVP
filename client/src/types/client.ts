@@ -5,9 +5,9 @@ export interface Client { id: number;
   company: string | null;
   siren: string | null;
   phone: string | null;
-  revenuAnnuel: number | null;
+  revenuAnnuel: number | null; // Montant exact en euros (ex: 250000)
   secteurActivite: string | null;
-  nombreEmployes: number | null;
+  nombreEmployes: number | null; // Nombre exact d'employés (ex: 25)
   ancienneteEntreprise: number | null;
   besoinFinancement: boolean | null;
   typeProjet: string | null;

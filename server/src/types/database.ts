@@ -61,9 +61,9 @@ export interface Client extends BaseEntity {
   name: string | null;
   company_name: string | null;
   phone_number: string | null;
-  revenuAnnuel: DoublePrecision | null;
+  revenuAnnuel: number | null; // Montant exact en euros (ex: 250000)
   secteurActivite: string | null;
-  nombreEmployes: number | null;
+  nombreEmployes: number | null; // Nombre exact d'employés (ex: 25)
   ancienneteEntreprise: number | null;
   typeProjet: string | null;
   dateSimulation: Timestamp | null;

@@ -1574,6 +1574,140 @@ router.post('/clients', asyncHandler(async (req, res) => {
   }
 }));
 
+// POST /api/admin/clients/:clientId/simulation - Créer simulation et calculer éligibilité
+router.post('/clients/:clientId/simulation', asyncHandler(async (req, res) => {
+  try {
+    const { clientId } = req.params;
+    const { answers } = req.body;
+
+    if (!answers || Object.keys(answers).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Les réponses de simulation sont requises'
+      });
+    }
+
+    console.log('🧮 Création simulation pour client:', clientId, `avec ${Object.keys(answers).length} réponse(s)`);
+
+    // 1. Vérifier que le client existe
+    const { data: client, error: clientError } = await supabaseClient
+      .from('Client')
+      .select('id, email, company_name')
+      .eq('id', clientId)
+      .single();
+
+    if (clientError || !client) {
+      return res.status(404).json({
+        success: false,
+        message: 'Client non trouvé'
+      });
+    }
+
+    // 2. Créer la simulation
+    const { data: simulation, error: simulationError } = await supabaseClient
+      .from('simulations')
+      .insert({
+        client_id: clientId,
+        type: 'authentifiee',
+        status: 'completed',
+        answers: answers,
+        metadata: {
+          source: 'admin_form',
+          created_by: (req as any).user?.email,
+          created_at: new Date().toISOString()
+        }
+      })
+      .select()
+      .single();
+
+    if (simulationError || !simulation) {
+      console.error('❌ Erreur création simulation:', simulationError);
+      throw simulationError || new Error('Erreur lors de la création de la simulation');
+    }
+
+    console.log('✅ Simulation créée:', simulation.id);
+
+    // 3. Calculer l'éligibilité via la fonction SQL
+    const { data: resultatsSQL, error: calcError } = await supabaseClient
+      .rpc('evaluer_eligibilite_avec_calcul', {
+        p_simulation_id: simulation.id
+      });
+
+    if (calcError) {
+      console.error('❌ Erreur calcul éligibilité:', calcError);
+      // Continue même si le calcul échoue
+    }
+
+    console.log(`✅ Calcul terminé: ${resultatsSQL?.total_eligible || 0} produit(s) éligible(s)`);
+
+    // 4. Récupérer les produits éligibles créés
+    const { data: produitsEligibles, error: produitsError } = await supabaseClient
+      .from('ClientProduitEligible')
+      .select(`
+        *,
+        ProduitEligible!inner(
+          id,
+          nom,
+          description,
+          categorie,
+          montant_min,
+          montant_max,
+          taux_min,
+          taux_max
+        )
+      `)
+      .eq('clientId', clientId)
+      .eq('statut', 'eligible')
+      .order('montantFinal', { ascending: false, nullsFirst: false });
+
+    if (produitsError) {
+      console.error('❌ Erreur récupération produits:', produitsError);
+    }
+
+    const eligibleProducts = (produitsEligibles || []).map((cp: any) => ({
+      id: cp.id,
+      produitId: cp.produitId,
+      statut: cp.statut,
+      tauxFinal: cp.tauxFinal,
+      montantFinal: cp.montantFinal,
+      dureeFinale: cp.dureeFinale,
+      produit: cp.ProduitEligible
+    }));
+
+    // 5. Log de l'action admin
+    await supabaseClient
+      .from('AdminAuditLog')
+      .insert({
+        admin_id: (req as any).user?.id,
+        action: 'simulation_created',
+        table_name: 'simulations',
+        record_id: simulation.id,
+        new_values: { simulation_id: simulation.id, client_id: clientId, eligible_count: eligibleProducts.length },
+        ip_address: req.ip,
+        user_agent: req.get('User-Agent')
+      });
+
+    return res.status(201).json({
+      success: true,
+      data: {
+        simulation_id: simulation.id,
+        eligible_products: eligibleProducts,
+        total_eligible: eligibleProducts.length,
+        total_savings: eligibleProducts.reduce((sum: number, p: any) => sum + (p.montantFinal || 0), 0)
+      },
+      message: `${eligibleProducts.length} produit(s) éligible(s) identifié(s)`
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur simulation admin:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors du calcul d\'éligibilité',
+      details: error instanceof Error ? error.message : 'Erreur inconnue'
+    });
+  }
+}));
+
 // GET /api/admin/clients/:id - Détails d'un client
 router.get('/clients/:id', asyncHandler(async (req, res) => {
   try {
