@@ -21,7 +21,6 @@ import {
   Phone, 
   Building, 
   CheckCircle, 
-  AlertCircle,
   ArrowLeft,
   ArrowRight,
   Shield,
@@ -31,14 +30,12 @@ import {
   Eye,
   EyeOff,
   Check,
-  X,
   MapPin,
   FileText,
   Sparkles
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { config } from '@/config';
-import { useAuth } from '@/hooks/use-auth';
 
 interface ClientFormData {
   // Étape 1 : Identité
@@ -101,12 +98,10 @@ const REVENU_ANNUEL = [
 
 export default function FormulaireClientComplet() {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [createdClientId, setCreatedClientId] = useState<string | null>(null);
-  const [eligibleProducts, setEligibleProducts] = useState<any[]>([]);
+  const [eligibleProducts] = useState<any[]>([]);
   
   const [formData, setFormData] = useState<ClientFormData>({
     first_name: '',
@@ -235,16 +230,16 @@ export default function FormulaireClientComplet() {
       }
 
       const data = await response.json();
-      setCreatedClientId(data.data.client.id);
+      const clientId = data.data.client.id;
 
       // 2. Si simulation demandée, la faire maintenant
       if (formData.doSimulation && formData.simulationAnswers && Object.keys(formData.simulationAnswers).length > 0) {
-        await runSimulation(data.data.client.id);
+        await runSimulation(clientId);
       }
 
       // 3. Envoyer l'email de bienvenue si demandé
       if (formData.sendWelcomeEmail) {
-        await sendWelcomeEmail(data.data.client.id);
+        await sendWelcomeEmail(clientId);
       }
 
       toast.success('✅ Client créé avec succès !');
