@@ -5,7 +5,27 @@
 -- ============================================================================
 
 -- ============================================================================
--- PARTIE 1 : AJOUTER LES NOUVEAUX CHAMPS
+-- PARTIE 1 : SUPPRIMER LA CONTRAINTE CHECK SUR statut (si elle existe)
+-- ============================================================================
+
+-- Identifier et supprimer la contrainte CHECK qui bloque les nouveaux statuts
+DO $$ 
+BEGIN
+    -- Vérifier si la contrainte existe
+    IF EXISTS (
+        SELECT 1 
+        FROM pg_constraint 
+        WHERE conrelid = '"ClientProduitEligible"'::regclass 
+        AND conname LIKE '%statut%check%'
+    ) THEN
+        -- Supprimer la contrainte
+        ALTER TABLE "ClientProduitEligible" DROP CONSTRAINT IF EXISTS "ClientProduitEligible_statut_check";
+        RAISE NOTICE 'Contrainte CHECK sur statut supprimée';
+    END IF;
+END $$;
+
+-- ============================================================================
+-- PARTIE 2 : AJOUTER LES NOUVEAUX CHAMPS
 -- ============================================================================
 
 -- Validation Admin
@@ -21,7 +41,7 @@ ALTER TABLE "ClientProduitEligible"
 -- Note: eligibility_validated_at, pre_eligibility_validated_at, validation_admin_notes existent déjà
 
 -- ============================================================================
--- PARTIE 2 : MIGRER LES DONNÉES EXISTANTES
+-- PARTIE 3 : MIGRER LES DONNÉES EXISTANTES
 -- ============================================================================
 
 -- 2.1 Migrer validation ADMIN depuis metadata vers les colonnes dédiées
@@ -71,7 +91,7 @@ WHERE statut IN ('eligibility_validated', 'documents_uploaded', 'documents_manqu
   AND admin_eligibility_status = 'pending';
 
 -- ============================================================================
--- PARTIE 3 : NETTOYER LE CHAMP statut
+-- PARTIE 4 : NETTOYER LE CHAMP statut
 -- ============================================================================
 
 -- Créer une sauvegarde de l'ancien statut dans metadata
@@ -116,7 +136,58 @@ SET statut = CASE
 END;
 
 -- ============================================================================
--- PARTIE 4 : NETTOYER LE METADATA (Optionnel - décommenter si souhaité)
+-- PARTIE 5 : RECRÉER UNE CONTRAINTE CHECK ÉLARGIE (Optionnel)
+-- ============================================================================
+
+-- Créer une nouvelle contrainte CHECK avec tous les statuts autorisés
+ALTER TABLE "ClientProduitEligible"
+  ADD CONSTRAINT "ClientProduitEligible_statut_check_v2" CHECK (
+    statut IN (
+      -- Phase 1 : Upload et validation admin
+      'pending_upload',
+      'pending_admin_validation',
+      'admin_validated',
+      'admin_rejected',
+      
+      -- Phase 2 : Sélection expert
+      'expert_selection',
+      'expert_pending_acceptance',
+      'expert_assigned',
+      
+      -- Phase 3 : Validation expert + docs
+      'pending_expert_validation',
+      'documents_requested',
+      'documents_pending',
+      'documents_completes',
+      
+      -- Phase 4+ : Suite workflow
+      'audit_en_cours',
+      'validation_finale',
+      'demande_remboursement',
+      'completed',
+      'cancelled',
+      
+      -- Anciens statuts (compatibilité temporaire - de la contrainte originale)
+      'opportunité',
+      'eligible',
+      'en_cours',
+      'eligibility_validated',
+      'eligibility_rejected',
+      'documents_manquants',
+      'documents_uploaded',
+      'expert_assigned',
+      'audit_en_cours',
+      'audit_termine',
+      'audit_rejected_by_client',
+      'validated',
+      'termine',
+      'annule',
+      'rejete'
+    )
+  );
+
+-- ============================================================================
+-- PARTIE 6 : NETTOYER LE METADATA (Optionnel - décommenter si souhaité)
 -- ============================================================================
 
 -- Supprimer les clés devenues redondantes (ATTENTION : à faire après vérification)
@@ -125,7 +196,7 @@ END;
 -- WHERE metadata IS NOT NULL;
 
 -- ============================================================================
--- PARTIE 5 : CRÉER LES INDEX
+-- PARTIE 7 : CRÉER LES INDEX
 -- ============================================================================
 
 -- Index pour les nouveaux champs
@@ -144,7 +215,7 @@ CREATE INDEX IF NOT EXISTS idx_cpe_expert_validated_at
   WHERE expert_validated_at IS NOT NULL;
 
 -- ============================================================================
--- PARTIE 6 : AJOUTER LES COMMENTAIRES
+-- PARTIE 8 : AJOUTER LES COMMENTAIRES
 -- ============================================================================
 
 COMMENT ON COLUMN "ClientProduitEligible".admin_eligibility_status IS 
@@ -163,7 +234,7 @@ COMMENT ON COLUMN "ClientProduitEligible".statut IS
   'Statut global du dossier - Valeurs: pending_upload, pending_admin_validation, admin_validated, admin_rejected, expert_assigned, documents_requested, documents_completes, audit_en_cours, completed, cancelled';
 
 -- ============================================================================
--- PARTIE 7 : VÉRIFICATIONS POST-MIGRATION
+-- PARTIE 9 : VÉRIFICATIONS POST-MIGRATION
 -- ============================================================================
 
 -- Compter les dossiers par statut admin
