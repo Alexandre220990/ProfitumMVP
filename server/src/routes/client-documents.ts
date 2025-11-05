@@ -891,7 +891,7 @@ router.post('/dossier/:id/confirm-payment-received', enhancedAuthMiddleware, asy
       const { DossierTimelineService } = await import('../services/dossier-timeline-service');
       await DossierTimelineService.addEvent({
         dossier_id: dossierId,
-        type: 'completion',
+        type: 'client_action',
         actor_type: 'client',
         actor_name: clientName,
         title: '🎉 Remboursement reçu et confirmé !',
@@ -902,7 +902,7 @@ router.post('/dossier/:id/confirm-payment-received', enhancedAuthMiddleware, asy
           confirme_at: new Date().toISOString()
         },
         icon: '💰',
-        color: 'gold'
+        color: 'green'
       });
     } catch (timelineError) {
       console.error('⚠️ Erreur timeline (non bloquant):', timelineError);
@@ -991,6 +991,71 @@ router.post('/dossier/:id/confirm-payment-received', enhancedAuthMiddleware, asy
 
   } catch (error) {
     console.error('❌ Erreur confirmation remboursement:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+/**
+ * GET /api/client/dossier/:id/invoice
+ * Récupérer la facture Profitum pour un dossier
+ */
+router.get('/dossier/:id/invoice', enhancedAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const user = (req as AuthenticatedRequest).user;
+    const { id: dossierId } = req.params;
+
+    if (!user || user.type !== 'client') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux clients'
+      });
+    }
+
+    // Vérifier que le dossier appartient au client
+    const { data: dossier } = await supabase
+      .from('ClientProduitEligible')
+      .select('"clientId"')
+      .eq('id', dossierId)
+      .single();
+
+    if (!dossier || dossier.clientId !== user.database_id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès non autorisé'
+      });
+    }
+
+    // Récupérer la facture
+    const { data: invoice, error } = await supabase
+      .from('invoice')
+      .select('*')
+      .eq('client_produit_eligible_id', dossierId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+      throw error;
+    }
+
+    if (!invoice) {
+      return res.json({
+        success: true,
+        data: null,
+        message: 'Aucune facture générée pour ce dossier'
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: invoice
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur récupération facture client:', error);
     return res.status(500).json({
       success: false,
       message: 'Erreur serveur'

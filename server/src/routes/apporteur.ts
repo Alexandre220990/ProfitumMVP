@@ -651,4 +651,86 @@ router.put('/profile', async (req: any, res: any): Promise<void> => {
     }
 });
 
+/**
+ * GET /api/apporteur/commissions
+ * Liste des commissions Profitum pour l'apporteur
+ */
+router.get('/commissions', async (req: any, res: any): Promise<void> => {
+  try {
+    const apporteurId = req.user?.database_id;
+
+    if (!apporteurId) {
+      res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux apporteurs'
+      });
+      return;
+    }
+
+    console.log('💰 Récupération commissions apporteur:', apporteurId);
+
+    // Récupérer toutes les factures avec commission apporteur
+    const { data: invoices, error } = await supabase
+      .from('invoice')
+      .select(`
+        *,
+        ClientProduitEligible(
+          id,
+          montantFinal,
+          Client(company_name, nom, prenom),
+          ProduitEligible(nom)
+        )
+      `)
+      .eq('apporteur_id', apporteurId)
+      .order('issue_date', { ascending: false });
+
+    if (error) {
+      console.error('❌ Erreur récupération commissions apporteur:', error);
+      throw error;
+    }
+
+    // Calculer les commissions à partir des factures
+    const commissionsAvecDetails = (invoices || []).map(inv => {
+      const metadata = inv.metadata as any || {};
+      const commissionApporteur = metadata.commission_apporteur || 0;
+      const tauxApporteur = inv.taux_commission_apporteur || 0.10;
+
+      return {
+        ...inv,
+        commission_apporteur: commissionApporteur,
+        taux_commission: tauxApporteur
+      };
+    });
+
+    // Calculer les totaux
+    const totaux = {
+      nombre_factures: commissionsAvecDetails.length,
+      total_commissions: commissionsAvecDetails.reduce((sum, inv) => sum + (inv.commission_apporteur || 0), 0),
+      commissions_payees: commissionsAvecDetails.filter(inv => inv.status === 'paid').length,
+      montant_paye: commissionsAvecDetails
+        .filter(inv => inv.status === 'paid')
+        .reduce((sum, inv) => sum + (inv.commission_apporteur || 0), 0),
+      montant_en_attente: commissionsAvecDetails
+        .filter(inv => inv.status !== 'paid')
+        .reduce((sum, inv) => sum + (inv.commission_apporteur || 0), 0)
+    };
+
+    console.log(`✅ ${totaux.nombre_factures} commission(s) trouvée(s)`);
+
+    res.json({
+      success: true,
+      data: commissionsAvecDetails,
+      totaux
+    });
+
+  } catch (error: any) {
+    console.error('❌ Erreur récupération commissions apporteur:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur',
+      details: error.message
+    });
+  }
+});
+
 export default router;

@@ -14,10 +14,15 @@ interface GenerateFactureParams {
 interface FactureData {
   id: string;
   invoice_number: string;
+  montant_remboursement: number;
+  expert_total_fee: number;
+  profitum_total_fee: number;
   montant_ht: number;
   tva: number;
   montant_ttc: number;
-  commission_apporteur?: number;
+  apporteur_commission: number;
+  expert_garde: number;
+  profitum_garde: number;
 }
 
 export class FactureService {
@@ -63,7 +68,7 @@ export class FactureService {
           clientId,
           montantFinal,
           Client(id, company_name, siren, apporteur_id),
-          Expert(id, name, email, compensation),
+          Expert(id, name, email, client_fee_percentage, profitum_fee_percentage),
           ProduitEligible(nom)
         `)
         .eq('id', dossierId)
@@ -83,26 +88,27 @@ export class FactureService {
 
       // 2. Récupérer l'apporteur si présent
       let apporteurInfo: any = null;
-      let tauxApporteur = 0.10; // 10% par défaut
+      let apporteurSharePercentage = 0.10; // 10% de ce que Profitum touche
 
       if (clientInfo?.apporteur_id) {
         const { data: apporteur } = await supabase
           .from('ApporteurAffaires')
-          .select('id, nom, prenom, commission_rate')
+          .select('id, nom, prenom, profitum_share_percentage')
           .eq('id', clientInfo.apporteur_id)
           .single();
 
         if (apporteur) {
           apporteurInfo = apporteur;
-          tauxApporteur = apporteur.commission_rate ?? 0.10;
+          apporteurSharePercentage = apporteur.profitum_share_percentage ?? 0.10;
         }
       }
 
-      // 3. Calculer les montants
-      const tauxExpert = expertInfo?.compensation ?? 0.30; // 30% par défaut
+      // 3. Calculer les montants selon le WATERFALL CORRECT
+      const clientFeePercentage = expertInfo?.client_fee_percentage ?? 0.30; // Client paie 30% à expert
+      const profitumFeePercentage = expertInfo?.profitum_fee_percentage ?? 0.30; // Expert paie 30% à Profitum
       
       // Si données manquantes, créer facture avec erreur
-      if (!tauxExpert || montantReelAccorde === 0 || !montantReelAccorde) {
+      if (!clientFeePercentage || !profitumFeePercentage || montantReelAccorde === 0 || !montantReelAccorde) {
         const invoiceNumber = await this.generateInvoiceNumber();
         
         const { data: errorFacture, error: insertError } = await supabase
@@ -113,18 +119,20 @@ export class FactureService {
             expert_id: expertId,
             client_produit_eligible_id: dossierId,
             apporteur_id: apporteurInfo?.id || null,
-            montant_audit: montantReelAccorde || 0,
-            taux_compensation_expert: tauxExpert || 0,
-            taux_commission_apporteur: tauxApporteur,
+            montant_remboursement: montantReelAccorde || 0,
+            client_fee_percentage: clientFeePercentage || 0,
+            profitum_fee_percentage: profitumFeePercentage || 0,
+            apporteur_share_percentage: apporteurSharePercentage,
             amount: 0,
             status: 'error',
-            error_message: `ERREUR: Données manquantes - Expert.compensation=${tauxExpert}, montant=${montantReelAccorde}`,
+            error_message: `ERREUR: Données manquantes - Expert.client_fee_percentage=${clientFeePercentage}, Expert.profitum_fee_percentage=${profitumFeePercentage}, montant=${montantReelAccorde}`,
             currency: 'EUR',
             issue_date: new Date().toISOString(),
             description: `Rémunération dossier ${produitInfo?.nom || 'Produit'} - ERREUR DE CALCUL`,
             metadata: {
               error_details: {
-                missing_compensation: !tauxExpert,
+                missing_client_fee: !clientFeePercentage,
+                missing_profitum_fee: !profitumFeePercentage,
                 missing_montant: !montantReelAccorde,
                 expert_id: expertId,
                 dossier_id: dossierId
@@ -148,33 +156,53 @@ export class FactureService {
           data: {
             id: errorFacture.id,
             invoice_number: invoiceNumber,
+            montant_remboursement: montantReelAccorde || 0,
+            expert_total_fee: 0,
+            profitum_total_fee: 0,
             montant_ht: 0,
             tva: 0,
-            montant_ttc: 0
+            montant_ttc: 0,
+            apporteur_commission: 0,
+            expert_garde: 0,
+            profitum_garde: 0
           }
         };
       }
 
-      // Calculs normaux
-      const montantHT = montantReelAccorde * tauxExpert;
-      const tva = montantHT * 0.20; // TVA 20%
-      const montantTTC = montantHT + tva;
-      const commissionApporteur = apporteurInfo ? (montantHT * tauxApporteur) : 0;
+      // CALCULS WATERFALL CORRECT
+      // 1. Client paie X% à l'expert
+      const expertTotalFee = montantReelAccorde * clientFeePercentage;
+      
+      // 2. Expert paie Y% à Profitum (sur ce qu'il a reçu)
+      const profitumTotalFee = expertTotalFee * profitumFeePercentage;
+      
+      // 3. Profitum reverse Z% à l'apporteur (sur ce que Profitum touche)
+      const apporteurCommission = apporteurInfo ? (profitumTotalFee * apporteurSharePercentage) : 0;
+      
+      // 4. TVA sur ce que Profitum facture à l'expert
+      const tva = profitumTotalFee * 0.20;
+      const profitumTotalTTC = profitumTotalFee + tva;
+      
+      // 5. Ce que garde vraiment chacun
+      const expertKeeps = expertTotalFee - profitumTotalFee; // Expert garde 70%
+      const profitumKeeps = profitumTotalFee - apporteurCommission; // Profitum garde 90%
 
-      console.log('💰 Calculs facture:', {
-        montant_base: montantReelAccorde,
-        taux_expert: `${(tauxExpert * 100).toFixed(0)}%`,
-        montant_ht: montantHT.toFixed(2),
-        tva: tva.toFixed(2),
-        montant_ttc: montantTTC.toFixed(2),
-        commission_apporteur: commissionApporteur.toFixed(2)
+      console.log('💰 Calculs facture WATERFALL:', {
+        montant_remboursement: montantReelAccorde,
+        '1_client_paie_expert': `${expertTotalFee.toFixed(2)}€ (${(clientFeePercentage * 100).toFixed(0)}%)`,
+        '2_expert_paie_profitum': `${profitumTotalFee.toFixed(2)}€ (${(profitumFeePercentage * 100).toFixed(0)}%)`,
+        '3_profitum_reverse_apporteur': `${apporteurCommission.toFixed(2)}€ (${(apporteurSharePercentage * 100).toFixed(0)}%)`,
+        expert_garde: `${expertKeeps.toFixed(2)}€`,
+        profitum_garde: `${profitumKeeps.toFixed(2)}€`,
+        tva: `${tva.toFixed(2)}€`,
+        facture_profitum_ttc: `${profitumTotalTTC.toFixed(2)}€`
       });
 
       // 4. Générer numéro de facture
       const invoiceNumber = await this.generateInvoiceNumber();
 
       // 5. Créer la facture
-      const { data: facture, error: insertError } = await supabase
+      const { data: facture, error: insertError} = await supabase
         .from('invoice')
         .insert({
           invoice_number: invoiceNumber,
@@ -183,11 +211,15 @@ export class FactureService {
           client_produit_eligible_id: dossierId,
           apporteur_id: apporteurInfo?.id || null,
           
-          // Montants
-          montant_audit: montantReelAccorde,
-          taux_compensation_expert: tauxExpert,
-          taux_commission_apporteur: tauxApporteur,
-          amount: montantHT,
+          // Montants WATERFALL
+          montant_remboursement: montantReelAccorde,
+          client_fee_percentage: clientFeePercentage,
+          expert_total_fee: expertTotalFee,
+          profitum_fee_percentage: profitumFeePercentage,
+          profitum_total_fee: profitumTotalFee,
+          apporteur_share_percentage: apporteurSharePercentage,
+          apporteur_commission: apporteurCommission,
+          amount: profitumTotalFee, // Montant HT facturé par Profitum
           currency: 'EUR',
           
           // Statut
@@ -202,9 +234,10 @@ export class FactureService {
           
           // Métadata enrichie
           metadata: {
-            montant_ttc: montantTTC,
+            montant_ttc: profitumTotalTTC,
             tva: tva,
-            commission_apporteur: commissionApporteur,
+            expert_garde: expertKeeps,
+            profitum_garde: profitumKeeps,
             dossier_ref: dossierId,
             expert_name: expertInfo?.name,
             expert_email: expertInfo?.email,
@@ -212,17 +245,23 @@ export class FactureService {
             client_name: clientInfo?.company_name,
             client_siren: clientInfo?.siren,
             produit: produitInfo?.nom,
-            calcul_date: new Date().toISOString()
+            calcul_date: new Date().toISOString(),
+            waterfall: {
+              step1_client_paie_expert: expertTotalFee,
+              step2_expert_paie_profitum: profitumTotalFee,
+              step3_profitum_reverse_apporteur: apporteurCommission
+            }
           },
           
           // Items (détail ligne facture)
           items: [
             {
-              description: `Accompagnement ${produitInfo?.nom || 'Produit'}`,
-              montant_base: montantReelAccorde,
-              taux: tauxExpert,
-              montant_ht: montantHT,
-              tva: tva
+              description: `Frais Profitum - Dossier ${produitInfo?.nom || 'Produit'}`,
+              montant_base_expert: expertTotalFee,
+              taux_profitum: profitumFeePercentage,
+              montant_ht: profitumTotalFee,
+              tva: tva,
+              montant_ttc: profitumTotalTTC
             }
           ],
           
@@ -247,10 +286,15 @@ export class FactureService {
         data: {
           id: facture.id,
           invoice_number: invoiceNumber,
-          montant_ht: montantHT,
+          montant_remboursement: montantReelAccorde,
+          expert_total_fee: expertTotalFee,
+          profitum_total_fee: profitumTotalFee,
+          montant_ht: profitumTotalFee,
           tva: tva,
-          montant_ttc: montantTTC,
-          commission_apporteur: commissionApporteur
+          montant_ttc: profitumTotalTTC,
+          apporteur_commission: apporteurCommission,
+          expert_garde: expertKeeps,
+          profitum_garde: profitumKeeps
         }
       };
 

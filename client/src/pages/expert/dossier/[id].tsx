@@ -11,6 +11,7 @@ import { Progress } from '@/components/ui/progress';
 import DossierTimeline from '@/components/dossier/DossierTimeline';
 import InfosClientEnrichies from '@/components/dossier/InfosClientEnrichies';
 import ExpertDocumentRequestModal from '@/components/expert/ExpertDocumentRequestModal';
+import ExpertDossierActions from '@/components/expert/ExpertDossierActions';
 import {
   Loader2,
   ArrowLeft,
@@ -468,6 +469,30 @@ export default function ExpertDossierSynthese() {
             <DossierTimeline 
               dossierId={id} 
               userType={user.type as 'expert' | 'admin' | 'apporteur'} 
+            />
+          </div>
+        )}
+
+        {/* 🚀 ACTIONS EXPERT : Soumission & Résultat Final */}
+        {id && cpe && (
+          <div className="mb-8">
+            <ExpertDossierActions
+              dossierId={id}
+              clientName={cpe.Client?.company_name || cpe.Client?.name}
+              montantDemande={cpe.montantFinal || 0}
+              statut={cpe.statut}
+              onActionCompleted={async () => {
+                // Recharger le dossier après action
+                try {
+                  const response = await get<ClientProduitEligible>(`/api/expert/dossier/${id}`);
+                  if (response.success && response.data) {
+                    setCPE(response.data);
+                    toast.success('✅ Dossier mis à jour avec succès');
+                  }
+                } catch (error) {
+                  console.error('Erreur rechargement:', error);
+                }
+              }}
             />
           </div>
         )}

@@ -1008,7 +1008,7 @@ router.get('/client/dossier/:id/audit-commission-info', enhancedAuthMiddleware, 
         id,
         clientId,
         montantFinal,
-        Expert(id, name, email, compensation)
+        Expert(id, name, email, client_fee_percentage, profitum_fee_percentage)
       `)
       .eq('id', client_produit_id)
       .single();
@@ -1021,24 +1021,30 @@ router.get('/client/dossier/:id/audit-commission-info', enhancedAuthMiddleware, 
     }
 
     const expertInfo = Array.isArray(dossier.Expert) ? dossier.Expert[0] : dossier.Expert;
-    const expertCompensation = expertInfo?.compensation ?? 0.30;
-    const montantAudit = dossier.montantFinal || 0;
+    const clientFeePercentage = expertInfo?.client_fee_percentage ?? 0.30;
+    const profitumFeePercentage = expertInfo?.profitum_fee_percentage ?? 0.30;
+    const montantRemboursement = dossier.montantFinal || 0;
     
-    // Calculer estimation
-    const commissionHT = montantAudit * expertCompensation;
-    const tva = commissionHT * 0.20;
-    const commissionTTC = commissionHT + tva;
+    // Calcul WATERFALL pour estimation
+    const expertTotalFee = montantRemboursement * clientFeePercentage; // Client → Expert
+    const profitumTotalFee = expertTotalFee * profitumFeePercentage; // Expert → Profitum
+    const tva = profitumTotalFee * 0.20;
+    const profitumTotalTTC = profitumTotalFee + tva;
 
     return res.json({
       success: true,
       data: {
         expert_name: expertInfo?.name,
-        taux_compensation: expertCompensation,
-        taux_compensation_percent: (expertCompensation * 100).toFixed(0),
-        montant_audit: montantAudit,
-        estimation_commission_ht: commissionHT,
+        client_fee_percentage: clientFeePercentage,
+        client_fee_percent: (clientFeePercentage * 100).toFixed(0),
+        profitum_fee_percentage: profitumFeePercentage,
+        profitum_fee_percent: (profitumFeePercentage * 100).toFixed(0),
+        montant_remboursement: montantRemboursement,
+        expert_total_fee: expertTotalFee,
+        profitum_total_fee: profitumTotalFee,
+        estimation_ht: profitumTotalFee,
         estimation_tva: tva,
-        estimation_commission_ttc: commissionTTC
+        estimation_ttc: profitumTotalTTC
       }
     });
 
@@ -1081,14 +1087,14 @@ router.post('/client/dossier/:id/validate-audit', enhancedAuthMiddleware, async 
       reason
     });
 
-    // Récupérer le dossier avec infos expert (compensation)
+    // Récupérer le dossier avec infos expert
     const { data: dossier, error: fetchError } = await supabase
       .from('ClientProduitEligible')
       .select(`
         *,
         Client(id, auth_user_id, company_name, nom, prenom, first_name, last_name, apporteur_id),
         ProduitEligible(nom),
-        Expert(id, auth_user_id, name, email, compensation)
+        Expert(id, auth_user_id, name, email, client_fee_percentage, profitum_fee_percentage)
       `)
       .eq('id', client_produit_id)
       .single();
@@ -1115,13 +1121,15 @@ router.post('/client/dossier/:id/validate-audit', enhancedAuthMiddleware, async 
 
     const expertInfo = Array.isArray(dossier.Expert) ? dossier.Expert[0] : dossier.Expert;
     const expertName = expertInfo?.name || 'Expert';
-    const expertCompensation = expertInfo?.compensation ?? 0.30; // 30% par défaut
+    const clientFeePercentage = expertInfo?.client_fee_percentage ?? 0.30;
+    const profitumFeePercentage = expertInfo?.profitum_fee_percentage ?? 0.30;
 
-    // Calculer estimation commission Profitum (pour info client)
-    const montantAudit = dossier.montantFinal || 0;
-    const commissionHT = montantAudit * expertCompensation;
-    const tva = commissionHT * 0.20;
-    const commissionTTC = commissionHT + tva;
+    // Calculer estimation WATERFALL (pour info client)
+    const montantRemboursement = dossier.montantFinal || 0;
+    const expertTotalFee = montantRemboursement * clientFeePercentage;
+    const profitumTotalFee = expertTotalFee * profitumFeePercentage;
+    const tva = profitumTotalFee * 0.20;
+    const profitumTotalTTC = profitumTotalFee + tva;
 
     // Mettre à jour selon action
     const newStatut = action === 'accept' ? 'validation_finale' : 'audit_rejected_by_client';
@@ -1142,19 +1150,23 @@ router.post('/client/dossier/:id/validate-audit', enhancedAuthMiddleware, async 
     // Si acceptation, enregistrer les conditions de commission acceptées
     if (action === 'accept') {
       metadataUpdate.commission_conditions_accepted = {
-        taux_expert: expertCompensation,
-        montant_audit: montantAudit,
-        estimation_commission_ht: commissionHT,
+        waterfall_model: true,
+        client_fee_percentage: clientFeePercentage,
+        profitum_fee_percentage: profitumFeePercentage,
+        montant_remboursement: montantRemboursement,
+        expert_total_fee: expertTotalFee,
+        profitum_total_fee: profitumTotalFee,
+        estimation_ht: profitumTotalFee,
         estimation_tva: tva,
-        estimation_commission_ttc: commissionTTC,
+        estimation_ttc: profitumTotalTTC,
         accepted_at: new Date().toISOString(),
         expert_id: expertInfo?.id,
         expert_name: expertName
       };
-      console.log('💰 Conditions commission acceptées:', {
-        taux: `${(expertCompensation * 100).toFixed(0)}%`,
-        estimation_ht: `${commissionHT.toFixed(2)} €`,
-        estimation_ttc: `${commissionTTC.toFixed(2)} €`
+      console.log('💰 Conditions commission WATERFALL acceptées:', {
+        client_paie_expert: `${expertTotalFee.toFixed(2)} € (${(clientFeePercentage * 100).toFixed(0)}%)`,
+        expert_paie_profitum: `${profitumTotalFee.toFixed(2)} € (${(profitumFeePercentage * 100).toFixed(0)}%)`,
+        profitum_ttc: `${profitumTotalTTC.toFixed(2)} €`
       });
     }
 
@@ -2410,6 +2422,73 @@ router.post('/dossier/:id/mark-as-submitted', enhancedAuthMiddleware, async (req
     return res.status(500).json({
       success: false,
       message: 'Erreur lors de la soumission',
+      details: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/expert/invoices
+ * Liste des factures/commissions Profitum pour l'expert
+ */
+router.get('/invoices', enhancedAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const user = (req as AuthenticatedRequest).user;
+
+    if (!user || user.type !== 'expert') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux experts'
+      });
+    }
+
+    console.log('💰 Récupération factures expert:', user.database_id);
+
+    // Récupérer toutes les factures de l'expert
+    const { data: invoices, error } = await supabase
+      .from('invoice')
+      .select(`
+        *,
+        ClientProduitEligible(
+          id,
+          montantFinal,
+          Client(company_name, nom, prenom),
+          ProduitEligible(nom)
+        )
+      `)
+      .eq('expert_id', user.database_id)
+      .order('issue_date', { ascending: false });
+
+    if (error) {
+      console.error('❌ Erreur récupération factures expert:', error);
+      throw error;
+    }
+
+    // Calculer les totaux
+    const totaux = {
+      nombre_factures: invoices?.length || 0,
+      total_ht: invoices?.reduce((sum, inv) => sum + (inv.amount || 0), 0) || 0,
+      total_ttc: invoices?.reduce((sum, inv) => {
+        const ht = inv.amount || 0;
+        const tva = (inv.metadata as any)?.tva || (ht * 0.20);
+        return sum + ht + tva;
+      }, 0) || 0,
+      factures_payees: invoices?.filter(inv => inv.status === 'paid').length || 0
+    };
+
+    console.log(`✅ ${totaux.nombre_factures} facture(s) trouvée(s)`);
+
+    return res.json({
+      success: true,
+      data: invoices || [],
+      totaux
+    });
+
+  } catch (error: any) {
+    console.error('❌ Erreur récupération factures expert:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur',
       details: error.message
     });
   }

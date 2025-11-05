@@ -17,6 +17,8 @@ import ExpertSelectionModal from './ExpertSelectionModal';
 import EligibilityValidationStatus from './EligibilityValidationStatus';
 import ClientDocumentUploadComplementary from './client/ClientDocumentUploadComplementary';
 import ClientStep3DocumentCollection from './client/ClientStep3DocumentCollection';
+import AuditValidationModal from './client/AuditValidationModal';
+import InvoiceDisplay from './client/InvoiceDisplay';
 import { useDossierSteps } from '@/hooks/use-dossier-steps';
 import { useDossierNotifications } from '@/hooks/useDossierNotifications';
 import { get } from '@/lib/api';
@@ -122,6 +124,12 @@ export default function UniversalProductWorkflow({
   const [eligibilityValidated, setEligibilityValidated] = useState(false);
   const [calculatedSteps, setCalculatedSteps] = useState<any[]>([]);
   const [documentRequest, setDocumentRequest] = useState<any>(null); // ✅ Demande de documents complémentaires
+  
+  // États modal validation audit
+  const [showAuditValidationModal, setShowAuditValidationModal] = useState(false);
+  
+  // État facture Profitum
+  const [invoice, setInvoice] = useState<any>(null);
 
   // Hook pour les étapes du dossier
   const {
@@ -148,6 +156,20 @@ export default function UniversalProductWorkflow({
       }
     } catch (error) {
       console.error('⚠️ Erreur chargement demande documents (non bloquant):', error);
+    }
+  }, [clientProduitId]);
+
+  // Charger la facture Profitum si générée
+  const loadInvoice = useCallback(async () => {
+    try {
+      const response = await get(`/api/client/dossier/${clientProduitId}/invoice`);
+      
+      if (response.success && response.data) {
+        setInvoice(response.data);
+        console.log('🧾 Facture Profitum chargée:', response.data);
+      }
+    } catch (error) {
+      console.error('⚠️ Erreur chargement facture (non bloquant):', error);
     }
   }, [clientProduitId]);
 
@@ -223,8 +245,9 @@ export default function UniversalProductWorkflow({
     if (clientProduitId) {
       loadClientProduit();
       loadDocumentRequest(); // ✅ Charger la demande de documents
+      loadInvoice(); // ✅ Charger la facture Profitum
     }
-  }, [clientProduitId, loadClientProduit, loadDocumentRequest, productKey]);
+  }, [clientProduitId, loadClientProduit, loadDocumentRequest, loadInvoice, productKey]);
 
   // Écouter les notifications pour ce dossier et recharger automatiquement
   useEffect(() => {
@@ -569,16 +592,130 @@ export default function UniversalProductWorkflow({
           );
         }
 
-        // Par défaut : étape gérée par l'expert
+        // Étape 4 : Audit technique - Bouton validation si audit terminé
+        if (currentStep === 4) {
+          // Si l'audit est terminé, afficher bouton de validation
+          const auditCompleted = clientProduit?.statut === 'validated' || 
+                                 clientProduit?.statut === 'audit_completed' ||
+                                 clientProduit?.statut === 'pending_client_validation';
+          
+          return (
+            <div className="text-center py-12 space-y-6">
+              <div>
+                <h3 className="text-xl font-semibold text-gray-800 mb-2">
+                  {currentWorkflowStep.name}
+                </h3>
+                <p className="text-gray-600">{currentWorkflowStep.description}</p>
+              </div>
+
+              {auditCompleted ? (
+                <Card className="max-w-2xl mx-auto border-green-200 bg-green-50">
+                  <CardContent className="p-6 text-center">
+                    <CheckCircle className="w-12 h-12 text-green-600 mx-auto mb-4" />
+                    <h4 className="text-lg font-semibold text-green-900 mb-2">
+                      ✅ Audit technique terminé
+                    </h4>
+                    <p className="text-sm text-green-800 mb-4">
+                      Votre expert a finalisé l'audit technique de votre dossier.
+                      Veuillez consulter les résultats et valider pour poursuivre.
+                    </p>
+                    <Button
+                      onClick={() => setShowAuditValidationModal(true)}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      Consulter et valider l'audit
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card className="max-w-2xl mx-auto border-blue-200 bg-blue-50">
+                  <CardContent className="p-6 text-center">
+                    <Clock className="w-12 h-12 text-blue-600 mx-auto mb-4" />
+                    <h4 className="text-lg font-semibold text-blue-900 mb-2">
+                      🔍 Audit en cours
+                    </h4>
+                    <p className="text-sm text-blue-800">
+                      Votre expert analyse votre dossier et prépare l'audit technique.
+                      Vous serez notifié dès que l'audit sera prêt pour validation.
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          );
+        }
+
+        // Étapes 5-6 : Gestion administrative (gérée par expert côté backend)
+        // Le client voit juste l'état d'avancement
         return (
-          <div className="text-center py-12">
-            <h3 className="text-xl font-semibold text-gray-800 mb-2">
-              {currentWorkflowStep.name}
-            </h3>
-            <p className="text-gray-600">{currentWorkflowStep.description}</p>
-            <p className="text-sm text-gray-500 mt-4">
-              Cette étape sera gérée par votre expert sélectionné.
-            </p>
+          <div className="text-center py-12 space-y-6">
+            <div>
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">
+                {currentWorkflowStep.name}
+              </h3>
+              <p className="text-gray-600">{currentWorkflowStep.description}</p>
+            </div>
+
+            {/* Message d'attente selon le statut */}
+            {clientProduit?.statut === 'soumis_administration' && (
+              <Card className="max-w-2xl mx-auto border-blue-200 bg-blue-50">
+                <CardContent className="p-6 text-center">
+                  <Clock className="w-12 h-12 text-blue-600 mx-auto mb-4" />
+                  <h4 className="text-lg font-semibold text-blue-900 mb-2">
+                    📨 Dossier soumis à l'administration
+                  </h4>
+                  <p className="text-sm text-blue-800">
+                    Votre expert a soumis votre dossier à l'administration française.
+                    Délai d'instruction : 6 à 12 mois. Votre expert assure le suivi.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
+            {clientProduit?.statut === 'resultat_obtenu' && (
+              <div className="space-y-4">
+                <Card className="max-w-2xl mx-auto border-green-200 bg-green-50">
+                  <CardContent className="p-6 text-center">
+                    <CheckCircle className="w-12 h-12 text-green-600 mx-auto mb-4" />
+                    <h4 className="text-lg font-semibold text-green-900 mb-2">
+                      ✅ Résultat reçu !
+                    </h4>
+                    <p className="text-sm text-green-800">
+                      L'administration a rendu sa décision. 
+                      Vous serez notifié dès réception du remboursement.
+                    </p>
+                  </CardContent>
+                </Card>
+
+                {/* Affichage facture Profitum */}
+                {invoice && (
+                  <div className="max-w-2xl mx-auto">
+                    <InvoiceDisplay
+                      invoice={invoice}
+                      dossierId={clientProduitId}
+                      onPaymentConfirmed={() => {
+                        loadClientProduit();
+                        loadInvoice();
+                        toast.success('🎉 Dossier finalisé avec succès !');
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {!['soumis_administration', 'resultat_obtenu'].includes(clientProduit?.statut || '') && (
+              <Card className="max-w-2xl mx-auto border-gray-200">
+                <CardContent className="p-6 text-center">
+                  <Clock className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-sm text-gray-600">
+                    Cette étape est gérée par votre expert.
+                    Vous serez notifié de toute avancée.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
           </div>
         );
     }
@@ -882,6 +1019,18 @@ export default function UniversalProductWorkflow({
           nom: clientProduit.ProduitEligible.nom || 'Produit',
           description: clientProduit.ProduitEligible.description
         } : undefined}
+      />
+
+      {/* Modal validation audit avec conditions commission */}
+      <AuditValidationModal
+        isOpen={showAuditValidationModal}
+        onClose={() => setShowAuditValidationModal(false)}
+        dossierId={clientProduitId}
+        onValidated={() => {
+          // Recharger le dossier après validation
+          loadClientProduit();
+          toast.success('🎉 Audit validé ! Votre expert va maintenant soumettre votre dossier.');
+        }}
       />
     </div>
   );

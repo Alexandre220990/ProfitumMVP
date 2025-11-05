@@ -1659,7 +1659,7 @@ router.post('/dossier/:id/validate-eligibility', async (req: Request, res: Respo
       if (isValidated) {
         await DossierTimelineService.addEvent({
           dossier_id: id,
-          type: 'validation',
+          type: 'expert_action',
           actor_type: 'expert',
           actor_name: expertName,
           title: '✅ Documents validés par l\'expert',
@@ -1675,7 +1675,7 @@ router.post('/dossier/:id/validate-eligibility', async (req: Request, res: Respo
       } else {
         await DossierTimelineService.addEvent({
           dossier_id: id,
-          type: 'rejection',
+          type: 'expert_action',
           actor_type: 'expert',
           actor_name: expertName,
           title: '❌ Dossier refusé par l\'expert',
