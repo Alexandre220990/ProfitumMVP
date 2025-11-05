@@ -97,7 +97,7 @@ const AdminMonitoring = React.lazy(() => import('./pages/admin/monitoring'));
 // SUPPRIMÉ: AdminValidationDashboard (remplacé par Centre de Notifications dans dashboard-optimized)
 // const AdminValidationDashboard = React.lazy(() => import('./pages/admin/validation-dashboard'));
 const AdminFormulaireExpert = React.lazy(() => import('./pages/admin/formulaire-expert'));
-const AdminFormulaireClient = React.lazy(() => import('./pages/admin/formulaire-client'));
+const AdminFormulaireClient = React.lazy(() => import('./pages/admin/formulaire-client-complet'));
 const AdminDocumentsGEDUnifie = React.lazy(() => import('./pages/admin/documents-ged-unifie')); // ✅ PAGE UNIFIÉE (GED + Documentation + Upload)
 const AdminClientSynthese = React.lazy(() => import('./pages/admin/client-synthese')); // ✅ PAGE SYNTHÈSE CLIENT
 const AdminExpertSynthese = React.lazy(() => import('./pages/admin/expert-synthese')); // ✅ PAGE SYNTHÈSE EXPERT
