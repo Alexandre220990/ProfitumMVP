@@ -986,6 +986,72 @@ router.post('/dossier/:id/complete-audit', enhancedAuthMiddleware, async (req: R
 });
 
 /**
+ * GET /api/client/dossier/:id/audit-commission-info
+ * Récupérer les infos de commission pour affichage modal (avant validation)
+ */
+router.get('/client/dossier/:id/audit-commission-info', enhancedAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const user = (req as AuthenticatedRequest).user;
+    const { id: client_produit_id } = req.params;
+
+    if (!user || user.type !== 'client') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux clients'
+      });
+    }
+
+    // Récupérer le dossier avec expert
+    const { data: dossier, error: fetchError } = await supabase
+      .from('ClientProduitEligible')
+      .select(`
+        id,
+        clientId,
+        montantFinal,
+        Expert(id, name, email, compensation)
+      `)
+      .eq('id', client_produit_id)
+      .single();
+
+    if (fetchError || !dossier || dossier.clientId !== user.database_id) {
+      return res.status(404).json({
+        success: false,
+        message: 'Dossier non trouvé ou non autorisé'
+      });
+    }
+
+    const expertInfo = Array.isArray(dossier.Expert) ? dossier.Expert[0] : dossier.Expert;
+    const expertCompensation = expertInfo?.compensation ?? 0.30;
+    const montantAudit = dossier.montantFinal || 0;
+    
+    // Calculer estimation
+    const commissionHT = montantAudit * expertCompensation;
+    const tva = commissionHT * 0.20;
+    const commissionTTC = commissionHT + tva;
+
+    return res.json({
+      success: true,
+      data: {
+        expert_name: expertInfo?.name,
+        taux_compensation: expertCompensation,
+        taux_compensation_percent: (expertCompensation * 100).toFixed(0),
+        montant_audit: montantAudit,
+        estimation_commission_ht: commissionHT,
+        estimation_tva: tva,
+        estimation_commission_ttc: commissionTTC
+      }
+    });
+
+  } catch (error: any) {
+    console.error('❌ Erreur récupération infos commission:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+/**
  * POST /api/client/dossier/:id/validate-audit
  * Client valide ou refuse l'audit
  */
@@ -1015,14 +1081,14 @@ router.post('/client/dossier/:id/validate-audit', enhancedAuthMiddleware, async 
       reason
     });
 
-    // Récupérer le dossier
+    // Récupérer le dossier avec infos expert (compensation)
     const { data: dossier, error: fetchError } = await supabase
       .from('ClientProduitEligible')
       .select(`
         *,
         Client(id, auth_user_id, company_name, nom, prenom, first_name, last_name, apporteur_id),
         ProduitEligible(nom),
-        Expert(id, auth_user_id, name, email)
+        Expert(id, auth_user_id, name, email, compensation)
       `)
       .eq('id', client_produit_id)
       .single();
@@ -1049,11 +1115,48 @@ router.post('/client/dossier/:id/validate-audit', enhancedAuthMiddleware, async 
 
     const expertInfo = Array.isArray(dossier.Expert) ? dossier.Expert[0] : dossier.Expert;
     const expertName = expertInfo?.name || 'Expert';
+    const expertCompensation = expertInfo?.compensation ?? 0.30; // 30% par défaut
+
+    // Calculer estimation commission Profitum (pour info client)
+    const montantAudit = dossier.montantFinal || 0;
+    const commissionHT = montantAudit * expertCompensation;
+    const tva = commissionHT * 0.20;
+    const commissionTTC = commissionHT + tva;
 
     // Mettre à jour selon action
-    const newStatut = action === 'accept' ? 'validated' : 'audit_rejected_by_client';
+    const newStatut = action === 'accept' ? 'validation_finale' : 'audit_rejected_by_client';
     const newStep = action === 'accept' ? 5 : 4;
-    const newProgress = action === 'accept' ? 85 : 70;
+    const newProgress = action === 'accept' ? 75 : 70;
+
+    // Construire metadata selon action
+    let metadataUpdate: any = {
+      ...dossier.metadata,
+      client_validation: {
+        validated_by: user.database_id,
+        validated_at: new Date().toISOString(),
+        action: action,
+        reason: reason || null
+      }
+    };
+
+    // Si acceptation, enregistrer les conditions de commission acceptées
+    if (action === 'accept') {
+      metadataUpdate.commission_conditions_accepted = {
+        taux_expert: expertCompensation,
+        montant_audit: montantAudit,
+        estimation_commission_ht: commissionHT,
+        estimation_tva: tva,
+        estimation_commission_ttc: commissionTTC,
+        accepted_at: new Date().toISOString(),
+        expert_id: expertInfo?.id,
+        expert_name: expertName
+      };
+      console.log('💰 Conditions commission acceptées:', {
+        taux: `${(expertCompensation * 100).toFixed(0)}%`,
+        estimation_ht: `${commissionHT.toFixed(2)} €`,
+        estimation_ttc: `${commissionTTC.toFixed(2)} €`
+      });
+    }
 
     const { data: updatedDossier, error: updateError } = await supabase
       .from('ClientProduitEligible')
@@ -1062,15 +1165,7 @@ router.post('/client/dossier/:id/validate-audit', enhancedAuthMiddleware, async 
         current_step: newStep,
         progress: newProgress,
         date_audit_validated_by_client: action === 'accept' ? new Date().toISOString() : null,
-        metadata: {
-          ...dossier.metadata,
-          client_validation: {
-            validated_by: user.database_id,
-            validated_at: new Date().toISOString(),
-            action: action,
-            reason: reason || null
-          }
-        },
+        metadata: metadataUpdate,
         updated_at: new Date().toISOString()
       })
       .eq('id', client_produit_id)
@@ -1827,6 +1922,496 @@ Par: ${user.email}
         details: error.message
       });
     }
+  }
+});
+
+/**
+ * POST /api/expert/dossier/:id/record-final-result
+ * Expert saisit le résultat final de l'administration + Génération facture automatique
+ */
+router.post('/dossier/:id/record-final-result', enhancedAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const user = (req as AuthenticatedRequest).user;
+    const { id: client_produit_id } = req.params;
+    const { decision, montant_reel_accorde, date_retour, motif_difference } = req.body;
+
+    if (!user || user.type !== 'expert') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux experts'
+      });
+    }
+
+    if (!decision || !['accepte', 'partiel', 'refuse'].includes(decision)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Décision invalide (accepte, partiel ou refuse requis)'
+      });
+    }
+
+    if (!montant_reel_accorde || !date_retour) {
+      return res.status(400).json({
+        success: false,
+        message: 'Données manquantes (montant_reel_accorde, date_retour requis)'
+      });
+    }
+
+    console.log('📋 Expert saisit résultat final administration:', {
+      expert_id: user.database_id,
+      client_produit_id,
+      decision,
+      montant_reel: montant_reel_accorde
+    });
+
+    // Récupérer le dossier
+    const { data: dossier, error: fetchError } = await supabase
+      .from('ClientProduitEligible')
+      .select(`
+        *,
+        Client(id, auth_user_id, company_name, nom, prenom, apporteur_id),
+        ProduitEligible(nom),
+        Expert(id, name, compensation)
+      `)
+      .eq('id', client_produit_id)
+      .eq('expert_id', user.database_id)
+      .single();
+
+    if (fetchError || !dossier) {
+      return res.status(404).json({
+        success: false,
+        message: 'Dossier non trouvé ou non autorisé'
+      });
+    }
+
+    const clientInfo = Array.isArray(dossier.Client) ? dossier.Client[0] : dossier.Client;
+    const clientName = clientInfo?.company_name || clientInfo?.nom || 'Client';
+    const expertInfo = Array.isArray(dossier.Expert) ? dossier.Expert[0] : dossier.Expert;
+    const expertName = expertInfo?.name || user.email || 'Expert';
+
+    const montantDemande = dossier.montantFinal || 0;
+    const difference = montant_reel_accorde - montantDemande;
+
+    // Mettre à jour le dossier
+    const { data: updatedDossier, error: updateError } = await supabase
+      .from('ClientProduitEligible')
+      .update({
+        statut: 'resultat_obtenu',
+        current_step: 6,
+        progress: 90,
+        metadata: {
+          ...dossier.metadata,
+          administration_result: {
+            decision: decision,
+            montant_demande: montantDemande,
+            montant_accorde: montant_reel_accorde,
+            difference: difference,
+            date_retour: date_retour,
+            motif_difference: motif_difference || null,
+            recorded_by: user.database_id,
+            recorded_at: new Date().toISOString()
+          }
+        },
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', client_produit_id)
+      .select()
+      .single();
+
+    if (updateError) {
+      throw updateError;
+    }
+
+    console.log(`✅ Résultat administration enregistré - ${decision} - ${montant_reel_accorde} €`);
+
+    // 🧾 GÉNÉRATION AUTOMATIQUE DE LA FACTURE PROFITUM
+    let factureData: any = null;
+    
+    try {
+      const { FactureService } = await import('../services/facture-service');
+      
+      const result = await FactureService.generate({
+        dossierId: client_produit_id,
+        montantReelAccorde: montant_reel_accorde,
+        expertId: user.database_id
+      });
+
+      if (result.success) {
+        factureData = result.data;
+        console.log(`✅ Facture ${result.data?.invoice_number} générée automatiquement`);
+      } else {
+        console.error('❌ Erreur génération facture:', result.error);
+      }
+    } catch (factureError) {
+      console.error('⚠️ Erreur génération facture (non bloquant):', factureError);
+    }
+
+    // 📅 TIMELINE
+    try {
+      const { DossierTimelineService } = await import('../services/dossier-timeline-service');
+      
+      const color = decision === 'accepte' ? 'green' : decision === 'partiel' ? 'orange' : 'red';
+      const icon = decision === 'accepte' ? '✅' : decision === 'partiel' ? '⚠️' : '❌';
+      
+      await DossierTimelineService.addEvent({
+        dossier_id: client_produit_id,
+        type: 'expert_action',
+        actor_type: 'expert',
+        actor_name: expertName,
+        title: `${icon} Retour administration reçu`,
+        description: `Décision: ${decision}. Montant accordé: ${montant_reel_accorde.toLocaleString('fr-FR')} €${difference !== 0 ? ` (${difference > 0 ? '+' : ''}${difference.toLocaleString('fr-FR')} € vs demandé)` : ''}`,
+        metadata: {
+          decision,
+          montant_demande: montantDemande,
+          montant_accorde: montant_reel_accorde,
+          difference,
+          date_retour,
+          motif_difference
+        },
+        icon: icon,
+        color: color
+      });
+
+      // Timeline facture si générée
+      if (factureData) {
+        await DossierTimelineService.addEvent({
+          dossier_id: client_produit_id,
+          type: 'system_action',
+          actor_type: 'system',
+          actor_name: 'Système',
+          title: '🧾 Facture Profitum générée',
+          description: `Facture ${factureData.invoice_number} - ${factureData.montant_ttc.toLocaleString('fr-FR')} € TTC`,
+          metadata: {
+            facture_id: factureData.id,
+            numero: factureData.invoice_number,
+            montant_ht: factureData.montant_ht,
+            tva: factureData.tva,
+            montant_ttc: factureData.montant_ttc
+          },
+          icon: '🧾',
+          color: 'blue'
+        });
+      }
+    } catch (timelineError) {
+      console.error('⚠️ Erreur timeline (non bloquant):', timelineError);
+    }
+
+    // 🔔 NOTIFICATIONS
+    const montantMessage = decision === 'accepte' 
+      ? `Montant accordé: ${montant_reel_accorde.toLocaleString('fr-FR')} €`
+      : decision === 'partiel'
+      ? `Montant accordé: ${montant_reel_accorde.toLocaleString('fr-FR')} € (${difference.toLocaleString('fr-FR')} € de différence)`
+      : `Demande refusée. Motif: ${motif_difference || 'Non précisé'}`;
+
+    // NOTIFICATION → CLIENT
+    if (clientInfo?.auth_user_id) {
+      const title = decision === 'accepte' ? '✅ Demande acceptée !' : decision === 'partiel' ? '⚠️ Demande partiellement acceptée' : '❌ Demande refusée';
+      
+      await supabase.from('notification').insert({
+        user_id: clientInfo.auth_user_id,
+        user_type: 'client',
+        title: title,
+        message: `${montantMessage}${factureData ? `. 🧾 Facture Profitum disponible : ${factureData.montant_ttc.toLocaleString('fr-FR')} € TTC` : ''}`,
+        notification_type: decision === 'refuse' ? 'dossier_refused' : 'administration_result',
+        priority: 'high',
+        is_read: false,
+        action_url: `/produits/${(dossier.ProduitEligible as any)?.nom?.toLowerCase()}/${client_produit_id}`,
+        action_data: {
+          decision,
+          montant_accorde: montant_reel_accorde,
+          facture_numero: factureData?.invoice_number
+        },
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      });
+    }
+
+    // NOTIFICATION → APPORTEUR
+    if (clientInfo?.apporteur_id) {
+      const { data: apporteurData } = await supabase
+        .from('ApporteurAffaires')
+        .select('auth_user_id')
+        .eq('id', clientInfo.apporteur_id)
+        .single();
+
+      if (apporteurData?.auth_user_id && factureData) {
+        await supabase.from('notification').insert({
+          user_id: apporteurData.auth_user_id,
+          user_type: 'apporteur',
+          title: `🧾 Facture générée pour ${clientName}`,
+          message: `Montant: ${montant_reel_accorde.toLocaleString('fr-FR')} €. Votre commission: ${factureData.commission_apporteur?.toLocaleString('fr-FR')} €`,
+          notification_type: 'apporteur_commission',
+          priority: 'high',
+          is_read: false,
+          action_data: {
+            facture_id: factureData.id,
+            commission: factureData.commission_apporteur
+          },
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+      }
+    }
+
+    // NOTIFICATION → EXPERT (facture)
+    if (factureData) {
+      await supabase.from('notification').insert({
+        user_id: user.auth_user_id,
+        user_type: 'expert',
+        title: `🧾 Facture Profitum générée`,
+        message: `Dossier ${clientName} - ${factureData.invoice_number} - ${factureData.montant_ttc.toLocaleString('fr-FR')} € TTC`,
+        notification_type: 'invoice_generated',
+        priority: 'medium',
+        is_read: false,
+        action_url: `/expert/dossier/${client_produit_id}`,
+        action_data: {
+          facture_id: factureData.id,
+          invoice_number: factureData.invoice_number
+        },
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      });
+    }
+
+    // NOTIFICATION → ADMIN
+    const { data: admins } = await supabase
+      .from('Admin')
+      .select('auth_user_id')
+      .eq('is_active', true);
+
+    if (admins && factureData) {
+      for (const admin of admins) {
+        if (admin.auth_user_id) {
+          await supabase.from('notification').insert({
+            user_id: admin.auth_user_id,
+            user_type: 'admin',
+            title: factureData.montant_ht > 0 
+              ? `🧾 Facture auto générée - ${clientName}`
+              : `⚠️ Facture avec erreur - ${clientName}`,
+            message: factureData.montant_ht > 0
+              ? `${factureData.invoice_number} - ${factureData.montant_ttc.toLocaleString('fr-FR')} € TTC`
+              : `Erreur de calcul - Vérifier Expert.compensation`,
+            notification_type: 'admin_info',
+            priority: factureData.montant_ht > 0 ? 'low' : 'high',
+            is_read: false,
+            action_url: `/admin/dossiers/${client_produit_id}`,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+        }
+      }
+    }
+
+    return res.json({
+      success: true,
+      message: 'Résultat final enregistré avec succès',
+      data: {
+        dossier: updatedDossier,
+        facture: factureData
+      }
+    });
+
+  } catch (error: any) {
+    console.error('❌ Erreur enregistrement résultat final:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de l\'enregistrement',
+      details: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/expert/dossier/:id/mark-as-submitted
+ * Expert marque le dossier comme soumis à l'administration française
+ */
+router.post('/dossier/:id/mark-as-submitted', enhancedAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const user = (req as AuthenticatedRequest).user;
+    const { id: client_produit_id } = req.params;
+    const { submission_date, reference, organisme, notes } = req.body;
+
+    if (!user || user.type !== 'expert') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux experts'
+      });
+    }
+
+    if (!submission_date || !reference || !organisme) {
+      return res.status(400).json({
+        success: false,
+        message: 'Données manquantes (submission_date, reference, organisme requis)'
+      });
+    }
+
+    console.log('📨 Expert marque dossier comme soumis:', {
+      expert_id: user.database_id,
+      client_produit_id,
+      reference,
+      organisme
+    });
+
+    // Récupérer le dossier
+    const { data: dossier, error: fetchError } = await supabase
+      .from('ClientProduitEligible')
+      .select(`
+        *,
+        Client(id, auth_user_id, company_name, nom, prenom, apporteur_id),
+        ProduitEligible(nom),
+        Expert(id, name)
+      `)
+      .eq('id', client_produit_id)
+      .eq('expert_id', user.database_id)
+      .single();
+
+    if (fetchError || !dossier) {
+      return res.status(404).json({
+        success: false,
+        message: 'Dossier non trouvé ou non autorisé'
+      });
+    }
+
+    const clientInfo = Array.isArray(dossier.Client) ? dossier.Client[0] : dossier.Client;
+    const clientName = clientInfo?.company_name || clientInfo?.nom || 'Client';
+    const expertInfo = Array.isArray(dossier.Expert) ? dossier.Expert[0] : dossier.Expert;
+    const expertName = expertInfo?.name || user.email || 'Expert';
+
+    // Mettre à jour le dossier
+    const { data: updatedDossier, error: updateError } = await supabase
+      .from('ClientProduitEligible')
+      .update({
+        statut: 'soumis_administration',
+        date_demande_envoyee: new Date(submission_date).toISOString(),
+        current_step: 6,
+        progress: 85,
+        metadata: {
+          ...dossier.metadata,
+          submission_info: {
+            submitted_by: user.database_id,
+            submission_date: submission_date,
+            reference: reference,
+            organisme: organisme,
+            notes: notes || null,
+            submitted_at: new Date().toISOString()
+          }
+        },
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', client_produit_id)
+      .select()
+      .single();
+
+    if (updateError) {
+      throw updateError;
+    }
+
+    console.log(`✅ Dossier marqué comme soumis - Réf: ${reference}`);
+
+    // 📅 TIMELINE
+    try {
+      const { DossierTimelineService } = await import('../services/dossier-timeline-service');
+      await DossierTimelineService.addEvent({
+        dossier_id: client_produit_id,
+        type: 'expert_action',
+        actor_type: 'expert',
+        actor_name: expertName,
+        title: '📨 Dossier soumis à l\'administration',
+        description: `Le dossier a été soumis à ${organisme}. Référence : ${reference}`,
+        metadata: {
+          reference,
+          organisme,
+          submission_date,
+          expert_id: user.database_id
+        },
+        icon: '📨',
+        color: 'blue'
+      });
+    } catch (timelineError) {
+      console.error('⚠️ Erreur timeline (non bloquant):', timelineError);
+    }
+
+    // 🔔 NOTIFICATION → CLIENT
+    if (clientInfo?.auth_user_id) {
+      await supabase.from('notification').insert({
+        user_id: clientInfo.auth_user_id,
+        user_type: 'client',
+        title: `📨 Demande de remboursement envoyée`,
+        message: `Votre expert a soumis votre dossier à ${organisme}. Référence : ${reference}. Délai estimé : 6-12 mois. Votre expert assure le suivi.`,
+        notification_type: 'dossier_submitted',
+        priority: 'high',
+        is_read: false,
+        action_url: `/produits/${(dossier.ProduitEligible as any)?.nom?.toLowerCase()}/${client_produit_id}`,
+        action_data: {
+          reference,
+          organisme,
+          submission_date
+        },
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      });
+    }
+
+    // 🔔 NOTIFICATION → APPORTEUR
+    if (clientInfo?.apporteur_id) {
+      const { data: apporteurData } = await supabase
+        .from('ApporteurAffaires')
+        .select('auth_user_id')
+        .eq('id', clientInfo.apporteur_id)
+        .single();
+
+      if (apporteurData?.auth_user_id) {
+        await supabase.from('notification').insert({
+          user_id: apporteurData.auth_user_id,
+          user_type: 'apporteur',
+          title: `📨 Demande envoyée pour ${clientName}`,
+          message: `Dossier soumis à ${organisme}. Référence: ${reference}`,
+          notification_type: 'apporteur_info',
+          priority: 'medium',
+          is_read: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+      }
+    }
+
+    // 🔔 NOTIFICATION → ADMIN
+    const { data: admins } = await supabase
+      .from('Admin')
+      .select('auth_user_id')
+      .eq('is_active', true);
+
+    if (admins) {
+      for (const admin of admins) {
+        if (admin.auth_user_id) {
+          await supabase.from('notification').insert({
+            user_id: admin.auth_user_id,
+            user_type: 'admin',
+            title: `📨 Dossier soumis - ${clientName}`,
+            message: `Expert: ${expertName} - ${organisme} - Réf: ${reference}`,
+            notification_type: 'admin_info',
+            priority: 'low',
+            is_read: false,
+            action_url: `/admin/dossiers/${client_produit_id}`,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+        }
+      }
+    }
+
+    return res.json({
+      success: true,
+      message: 'Dossier marqué comme soumis avec succès',
+      data: updatedDossier
+    });
+
+  } catch (error: any) {
+    console.error('❌ Erreur soumission dossier:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la soumission',
+      details: error.message
+    });
   }
 });
 

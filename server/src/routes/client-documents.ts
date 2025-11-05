@@ -811,5 +811,192 @@ router.get('/document/:id/download', enhancedAuthMiddleware, async (req: Request
   }
 });
 
+/**
+ * POST /api/client/dossier/:id/confirm-payment-received
+ * Client confirme avoir reçu le remboursement (finalisation dossier)
+ */
+router.post('/dossier/:id/confirm-payment-received', enhancedAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const user = (req as AuthenticatedRequest).user;
+    const { id: dossierId } = req.params;
+    const { date_reception, montant_reel } = req.body;
+
+    if (!user || user.type !== 'client') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux clients'
+      });
+    }
+
+    if (!date_reception || !montant_reel) {
+      return res.status(400).json({
+        success: false,
+        message: 'Données manquantes (date_reception, montant_reel requis)'
+      });
+    }
+
+    console.log('🎉 Client confirme réception remboursement:', {
+      client_id: user.database_id,
+      dossierId,
+      montant_reel
+    });
+
+    // Vérifier que le dossier appartient au client
+    const { data: dossier } = await supabase
+      .from('ClientProduitEligible')
+      .select('"clientId", expert_id, montantFinal, Client(company_name, apporteur_id), ProduitEligible(nom)')
+      .eq('id', dossierId)
+      .single();
+
+    if (!dossier || dossier.clientId !== user.database_id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès non autorisé'
+      });
+    }
+
+    const clientInfo = Array.isArray(dossier.Client) ? dossier.Client[0] : dossier.Client;
+    const clientName = clientInfo?.company_name || 'Client';
+
+    // Mettre à jour le dossier
+    const { error: updateError } = await supabase
+      .from('ClientProduitEligible')
+      .update({
+        statut: 'completed',
+        date_remboursement: new Date(date_reception).toISOString(),
+        current_step: 6,
+        progress: 100,
+        metadata: {
+          remboursement_recu: true,
+          montant_reel_recu: montant_reel,
+          confirme_par_client: true,
+          date_confirmation: new Date().toISOString()
+        },
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', dossierId);
+
+    if (updateError) {
+      console.error('❌ Erreur mise à jour dossier:', updateError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la confirmation'
+      });
+    }
+
+    console.log(`✅ Remboursement confirmé - Dossier complété`);
+
+    // 📅 TIMELINE
+    try {
+      const { DossierTimelineService } = await import('../services/dossier-timeline-service');
+      await DossierTimelineService.addEvent({
+        dossier_id: dossierId,
+        type: 'completion',
+        actor_type: 'client',
+        actor_name: clientName,
+        title: '🎉 Remboursement reçu et confirmé !',
+        description: `Le client a confirmé la réception du remboursement de ${montant_reel.toLocaleString('fr-FR')} €. Dossier finalisé avec succès.`,
+        metadata: {
+          montant_reel,
+          date_reception,
+          confirme_at: new Date().toISOString()
+        },
+        icon: '💰',
+        color: 'gold'
+      });
+    } catch (timelineError) {
+      console.error('⚠️ Erreur timeline (non bloquant):', timelineError);
+    }
+
+    // 🔔 NOTIFICATIONS
+    // Expert
+    if (dossier.expert_id) {
+      const { data: expertData } = await supabase
+        .from('Expert')
+        .select('auth_user_id, compensation')
+        .eq('id', dossier.expert_id)
+        .single();
+
+      if (expertData?.auth_user_id) {
+        const compensation = expertData.compensation ?? 0.30;
+        const commission = montant_reel * compensation;
+
+        await supabase.from('notification').insert({
+          user_id: expertData.auth_user_id,
+          user_type: 'expert',
+          title: `🎉 Remboursement confirmé - ${clientName}`,
+          message: `Le client a reçu ${montant_reel.toLocaleString('fr-FR')} €. Dossier finalisé.`,
+          notification_type: 'dossier_completed',
+          priority: 'high',
+          is_read: false,
+          action_url: `/expert/dossier/${dossierId}`,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+      }
+    }
+
+    // Apporteur
+    if (clientInfo?.apporteur_id) {
+      const { data: apporteurData } = await supabase
+        .from('ApporteurAffaires')
+        .select('auth_user_id, commission_rate')
+        .eq('id', clientInfo.apporteur_id)
+        .single();
+
+      if (apporteurData?.auth_user_id) {
+        await supabase.from('notification').insert({
+          user_id: apporteurData.auth_user_id,
+          user_type: 'apporteur',
+          title: `🎉 Dossier finalisé - ${clientName}`,
+          message: `Remboursement de ${montant_reel.toLocaleString('fr-FR')} € confirmé.`,
+          notification_type: 'dossier_completed',
+          priority: 'medium',
+          is_read: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+      }
+    }
+
+    // Admin
+    const { data: admins } = await supabase
+      .from('Admin')
+      .select('auth_user_id')
+      .eq('is_active', true);
+
+    if (admins) {
+      for (const admin of admins) {
+        if (admin.auth_user_id) {
+          await supabase.from('notification').insert({
+            user_id: admin.auth_user_id,
+            user_type: 'admin',
+            title: `✅ Dossier finalisé - ${clientName}`,
+            message: `Remboursement ${montant_reel.toLocaleString('fr-FR')} € confirmé. Préparer paiement commissions.`,
+            notification_type: 'admin_info',
+            priority: 'medium',
+            is_read: false,
+            action_url: `/admin/dossiers/${dossierId}`,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+        }
+      }
+    }
+
+    return res.json({
+      success: true,
+      message: 'Remboursement confirmé avec succès'
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur confirmation remboursement:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
 export default router;
 
