@@ -26,7 +26,6 @@ import {
 import { useAuth } from '@/hooks/use-auth';
 import { get } from '@/lib/api';
 import { toast } from 'sonner';
-import AdminLayout from '@/components/admin/AdminLayout';
 
 interface ClientData {
   id: string;
@@ -119,7 +118,7 @@ const ClientSynthese: React.FC = () => {
         }
       } else {
         toast.error('Client non trouvé');
-        navigate('/admin/dashboard');
+        navigate('/admin/dashboard-optimized');
         return;
       }
 
@@ -179,41 +178,40 @@ const ClientSynthese: React.FC = () => {
   };
 
   return (
-    <AdminLayout>
-      <div className="min-h-screen bg-gray-50 p-6">
-        {/* Header */}
-        <div className="mb-6">
-          <Button
-            variant="ghost"
-            onClick={() => navigate('/admin/dashboard')}
-            className="mb-4"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Retour au Dashboard
-          </Button>
+    <div className="w-full">
+      {/* Header */}
+      <div className="mb-6">
+        <Button
+          variant="ghost"
+          onClick={() => navigate('/admin/dashboard-optimized')}
+          className="mb-4"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Retour au Dashboard
+        </Button>
 
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                Synthèse Client
-              </h1>
-              <p className="text-gray-600">
-                {loading ? 'Chargement...' : getClientDisplayName()}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              Synthèse Client
+            </h1>
+            <p className="text-gray-600">
+              {loading ? 'Chargement...' : getClientDisplayName()}
+            </p>
+            {client?.company_name && (
+              <p className="text-sm text-gray-500">
+                🏢 {client.company_name}
               </p>
-              {client?.company_name && (
-                <p className="text-sm text-gray-500">
-                  🏢 {client.company_name}
-                </p>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={loadClientData}>
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Actualiser
-              </Button>
-            </div>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={loadClientData}>
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Actualiser
+            </Button>
           </div>
         </div>
+      </div>
 
         {loading ? (
           <div className="flex items-center justify-center py-20">
@@ -614,8 +612,7 @@ const ClientSynthese: React.FC = () => {
             </Tabs>
           </div>
         )}
-      </div>
-    </AdminLayout>
+    </div>
   );
 };
 
