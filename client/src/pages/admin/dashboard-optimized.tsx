@@ -1977,7 +1977,10 @@ const AdminDashboardOptimized: React.FC = () => {
                                   ? 'border-orange-500 bg-orange-50 shadow-md' 
                                   : 'border-gray-200 hover:border-orange-300 hover:bg-orange-50'
                               }`}
-                              onClick={() => setSelectedEcosystemTile('produits')}
+                              onClick={() => {
+                                console.log('🎯 CLIC sur tuile Produits - selectedEcosystemTile va être mis à "produits"');
+                                setSelectedEcosystemTile('produits');
+                              }}
                             >
                               <div className="flex items-center justify-between">
                                 <div>
