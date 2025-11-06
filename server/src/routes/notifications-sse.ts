@@ -8,6 +8,16 @@ import { enhancedAuthMiddleware } from '../middleware/auth-enhanced';
 
 const router = express.Router();
 
+// Récupérer la clé anonyme avec fallback
+const getSupabaseAnonKey = (): string => {
+  const anonKey = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY;
+  if (!anonKey) {
+    console.warn('⚠️ SUPABASE_ANON_KEY non défini, utilisation de SUPABASE_SERVICE_ROLE_KEY');
+    return process.env.SUPABASE_SERVICE_ROLE_KEY!;
+  }
+  return anonKey;
+};
+
 /**
  * GET /api/notifications/stream - Connexion SSE pour recevoir les notifications en temps réel
  * Note: EventSource ne supporte pas les headers, donc le token est passé en query param
@@ -33,10 +43,24 @@ router.get('/stream', async (req: Request, res: Response) => {
     // Vérifier le token JWT avec Supabase
     const { createClient } = await import('@supabase/supabase-js');
     
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseAnonKey = getSupabaseAnonKey();
+    
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error('❌ SSE: Configuration Supabase manquante');
+      res.status(500).json({
+        success: false,
+        message: 'Configuration serveur invalide'
+      });
+      return;
+    }
+    
+    console.log('🔍 SSE: Configuration Supabase OK, création client...');
+    
     // Créer un client avec le token de l'utilisateur pour validation
     const supabaseWithToken = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_ANON_KEY!, // ✅ Clé publique correcte
+      supabaseUrl,
+      supabaseAnonKey,
       {
         global: {
           headers: {
