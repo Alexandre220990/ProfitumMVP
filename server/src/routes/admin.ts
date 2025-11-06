@@ -2185,7 +2185,9 @@ router.get('/produits', async (req, res) => {
 
     return res.json({
       success: true,
-      produits: produits || []
+      data: {
+        produits: produits || []
+      }
     });
 
   } catch (error) {
@@ -2254,11 +2256,13 @@ router.get('/produits/stats', asyncHandler(async (req, res): Promise<void> => {
 
     res.json({
       success: true,
-      stats: {
-        total_produits: totalProduits,
-        par_categorie: parCategorie,
-        total_utilisations: utilisations?.length || 0,
-        top_3_produits: top3
+      data: {
+        stats: {
+          total_produits: totalProduits,
+          par_categorie: parCategorie,
+          total_utilisations: utilisations?.length || 0,
+          top_3_produits: top3
+        }
       }
     });
     return;
@@ -2282,6 +2286,8 @@ router.post('/produits', async (req, res) => {
       nom,
       description,
       categorie,
+      type_produit,
+      active,
       montant_min,
       montant_max,
       taux_min,
@@ -2296,6 +2302,8 @@ router.post('/produits', async (req, res) => {
         nom,
         description,
         categorie,
+        type_produit: type_produit || 'financier',
+        active: active !== undefined ? active : true,
         montant_min: montant_min ? parseFloat(montant_min) : null,
         montant_max: montant_max ? parseFloat(montant_max) : null,
         taux_min: taux_min ? parseFloat(taux_min) : null,
@@ -2315,7 +2323,9 @@ router.post('/produits', async (req, res) => {
 
     return res.json({
       success: true,
-      produit
+      data: {
+        produit
+      }
     });
 
   } catch (error) {
@@ -2334,6 +2344,8 @@ router.put('/produits/:id', async (req, res) => {
       nom,
       description,
       categorie,
+      type_produit,
+      active,
       montant_min,
       montant_max,
       taux_min,
@@ -2348,6 +2360,8 @@ router.put('/produits/:id', async (req, res) => {
         nom,
         description,
         categorie,
+        type_produit,
+        active: active !== undefined ? active : true,
         montant_min: montant_min ? parseFloat(montant_min) : null,
         montant_max: montant_max ? parseFloat(montant_max) : null,
         taux_min: taux_min ? parseFloat(taux_min) : null,
@@ -2373,7 +2387,9 @@ router.put('/produits/:id', async (req, res) => {
 
     return res.json({
       success: true,
-      produit
+      data: {
+        produit
+      }
     });
 
   } catch (error) {
