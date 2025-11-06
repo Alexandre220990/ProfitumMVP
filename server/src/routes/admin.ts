@@ -2429,6 +2429,324 @@ router.delete('/produits/:id', async (req, res) => {
   }
 });
 
+// ============================================================================
+// ROUTES SYNTHÈSE PRODUIT
+// ============================================================================
+
+// Route pour obtenir les détails d'un produit
+router.get('/produits/:id', asyncHandler(async (req, res) => {
+  try {
+    console.log('📦 Récupération détails produit:', req.params.id);
+
+    const { id } = req.params;
+
+    const { data: produit, error } = await supabaseAdmin
+      .from('ProduitEligible')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      console.error('❌ Erreur récupération produit:', error);
+      return res.status(404).json({ 
+        success: false,
+        error: 'Produit non trouvé' 
+      });
+    }
+
+    console.log('✅ Produit récupéré:', produit);
+
+    return res.json({
+      success: true,
+      data: {
+        produit
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route détails produit:', error);
+    return res.status(500).json({ 
+      success: false,
+      error: 'Erreur serveur' 
+    });
+  }
+}));
+
+// Route pour obtenir les statistiques commerciales d'un produit
+router.get('/produits/:id/stats', asyncHandler(async (req, res) => {
+  try {
+    console.log('📊 Récupération statistiques produit:', req.params.id);
+
+    const { id } = req.params;
+
+    // Requête SQL pour les statistiques
+    const { data: stats, error } = await supabaseAdmin
+      .rpc('get_produit_stats', { produit_id: id });
+
+    if (error) {
+      console.error('❌ Erreur récupération stats:', error);
+      
+      // Si la fonction RPC n'existe pas encore, calculer manuellement
+      const { data: dossiers, error: dossiersError } = await supabaseAdmin
+        .from('ClientProduitEligible')
+        .select('statut, "montantFinal", "tauxFinal"')
+        .eq('produitId', id);
+
+      if (dossiersError) {
+        return res.status(500).json({ 
+          success: false,
+          error: 'Erreur lors de la récupération des statistiques' 
+        });
+      }
+
+      // Calculer les stats manuellement
+      const total_dossiers = dossiers?.length || 0;
+      const dossiers_valides = dossiers?.filter(d => d.statut === 'validated').length || 0;
+      const dossiers_en_cours = dossiers?.filter(d => 
+        ['pending', 'in_progress', 'documents_uploaded', 'eligible'].includes(d.statut)
+      ).length || 0;
+      const dossiers_rejetes = dossiers?.filter(d => d.statut === 'rejected').length || 0;
+
+      const montantsValides = dossiers?.map(d => d.montantFinal || 0).filter(m => m > 0) || [];
+      const tauxValides = dossiers?.map(d => d.tauxFinal || 0).filter(t => t > 0) || [];
+
+      const montant_total = montantsValides.reduce((sum, m) => sum + m, 0);
+      const montant_moyen = montantsValides.length > 0 ? montant_total / montantsValides.length : 0;
+      const montant_min_reel = montantsValides.length > 0 ? Math.min(...montantsValides) : 0;
+      const montant_max_reel = montantsValides.length > 0 ? Math.max(...montantsValides) : 0;
+
+      const taux_moyen = tauxValides.length > 0 ? tauxValides.reduce((sum, t) => sum + t, 0) / tauxValides.length : 0;
+      const taux_min_reel = tauxValides.length > 0 ? Math.min(...tauxValides) : 0;
+      const taux_max_reel = tauxValides.length > 0 ? Math.max(...tauxValides) : 0;
+
+      return res.json({
+        success: true,
+        data: {
+          stats: {
+            total_dossiers,
+            dossiers_valides,
+            dossiers_en_cours,
+            dossiers_rejetes,
+            montant_total,
+            montant_moyen,
+            montant_min_reel,
+            montant_max_reel,
+            taux_moyen,
+            taux_min_reel,
+            taux_max_reel
+          }
+        }
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        stats: stats[0] || {}
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route stats produit:', error);
+    return res.status(500).json({ 
+      success: false,
+      error: 'Erreur serveur' 
+    });
+  }
+}));
+
+// Route pour obtenir le top 5 des clients d'un produit
+router.get('/produits/:id/top-clients', asyncHandler(async (req, res) => {
+  try {
+    console.log('👥 Récupération top clients produit:', req.params.id);
+
+    const { id } = req.params;
+
+    const { data: topClients, error } = await supabaseAdmin
+      .from('ClientProduitEligible')
+      .select(`
+        clientId,
+        "montantFinal",
+        Client!ClientProduitEligible_clientId_fkey (
+          company_name,
+          email
+        )
+      `)
+      .eq('produitId', id)
+      .not('Client.email', 'like', '%@profitum.temp');
+
+    if (error) {
+      console.error('❌ Erreur récupération top clients:', error);
+      return res.status(500).json({ 
+        success: false,
+        error: 'Erreur lors de la récupération des top clients' 
+      });
+    }
+
+    // Grouper par client et calculer les stats
+    const clientsMap = new Map();
+    
+    topClients?.forEach((item: any) => {
+      const clientId = item.clientId;
+      const client = item.Client;
+      const montant = item.montantFinal || 0;
+
+      if (!clientsMap.has(clientId)) {
+        clientsMap.set(clientId, {
+          company_name: client?.company_name || 'N/A',
+          email: client?.email || 'N/A',
+          nombre_dossiers: 0,
+          montant_total: 0
+        });
+      }
+
+      const clientData = clientsMap.get(clientId);
+      clientData.nombre_dossiers += 1;
+      clientData.montant_total += montant;
+    });
+
+    // Convertir en tableau et calculer la moyenne
+    const topClientsArray = Array.from(clientsMap.values())
+      .map(client => ({
+        ...client,
+        montant_moyen: client.nombre_dossiers > 0 ? client.montant_total / client.nombre_dossiers : 0
+      }))
+      .sort((a, b) => b.nombre_dossiers - a.nombre_dossiers || b.montant_total - a.montant_total)
+      .slice(0, 5);
+
+    return res.json({
+      success: true,
+      data: {
+        topClients: topClientsArray
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route top clients:', error);
+    return res.status(500).json({ 
+      success: false,
+      error: 'Erreur serveur' 
+    });
+  }
+}));
+
+// Route pour obtenir l'évolution mensuelle d'un produit
+router.get('/produits/:id/evolution', asyncHandler(async (req, res) => {
+  try {
+    console.log('📈 Récupération évolution produit:', req.params.id);
+
+    const { id } = req.params;
+
+    const { data: dossiers, error } = await supabaseAdmin
+      .from('ClientProduitEligible')
+      .select('created_at, "montantFinal"')
+      .eq('produitId', id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('❌ Erreur récupération évolution:', error);
+      return res.status(500).json({ 
+        success: false,
+        error: 'Erreur lors de la récupération de l\'évolution' 
+      });
+    }
+
+    // Grouper par mois
+    const evolutionMap = new Map();
+    
+    dossiers?.forEach((dossier: any) => {
+      const date = new Date(dossier.created_at);
+      const mois = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const montant = dossier.montantFinal || 0;
+
+      if (!evolutionMap.has(mois)) {
+        evolutionMap.set(mois, {
+          mois,
+          nombre_dossiers: 0,
+          montant_total: 0
+        });
+      }
+
+      const moisData = evolutionMap.get(mois);
+      moisData.nombre_dossiers += 1;
+      moisData.montant_total += montant;
+    });
+
+    // Convertir en tableau et calculer la moyenne
+    const evolutionArray = Array.from(evolutionMap.values())
+      .map(mois => ({
+        ...mois,
+        montant_moyen: mois.nombre_dossiers > 0 ? mois.montant_total / mois.nombre_dossiers : 0
+      }))
+      .sort((a, b) => b.mois.localeCompare(a.mois))
+      .slice(0, 12); // 12 derniers mois
+
+    return res.json({
+      success: true,
+      data: {
+        evolution: evolutionArray
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route évolution:', error);
+    return res.status(500).json({ 
+      success: false,
+      error: 'Erreur serveur' 
+    });
+  }
+}));
+
+// Route pour obtenir les dossiers liés à un produit
+router.get('/produits/:id/dossiers', asyncHandler(async (req, res) => {
+  try {
+    console.log('📁 Récupération dossiers produit:', req.params.id);
+
+    const { id } = req.params;
+
+    const { data: dossiers, error } = await supabaseAdmin
+      .from('ClientProduitEligible')
+      .select(`
+        *,
+        Client!ClientProduitEligible_clientId_fkey (
+          id,
+          company_name,
+          first_name,
+          last_name,
+          email
+        )
+      `)
+      .eq('produitId', id)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('❌ Erreur récupération dossiers:', error);
+      return res.status(500).json({ 
+        success: false,
+        error: 'Erreur lors de la récupération des dossiers' 
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        dossiers: dossiers || []
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route dossiers produit:', error);
+    return res.status(500).json({ 
+      success: false,
+      error: 'Erreur serveur' 
+    });
+  }
+}));
+
+// ============================================================================
+// FIN ROUTES SYNTHÈSE PRODUIT
+// ============================================================================
+
 // Route pour ajouter un nouveau dossier
 router.post('/dossiers', async (req, res) => {
   try {

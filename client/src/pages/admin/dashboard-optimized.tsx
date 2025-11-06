@@ -22,7 +22,7 @@ import {
   Download, Settings, TrendingUp, DollarSign,
   Bell, Mail, Target, CheckCircle, XCircle,
   Handshake, Package, Trash2, Calendar, Lock,
-  Building, Phone
+  Building, Phone, Plus
 } from "lucide-react";
 import { TypeSwitcher } from "@/components/TypeSwitcher";
 import { motion } from "framer-motion";
@@ -84,6 +84,23 @@ interface ClientProduitEligible {
     rating?: number;
     approval_status?: string;
   };
+}
+
+interface ProduitEligible {
+  id: string;
+  nom: string;
+  description: string;
+  categorie?: string;
+  montant_min?: number;
+  montant_max?: number;
+  taux_min?: number;
+  taux_max?: number;
+  duree_min?: number;
+  duree_max?: number;
+  active?: boolean;
+  type_produit?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 type ActiveSection = 'overview' | 'experts' | 'clients' | 'dossiers' | 'apporteurs' | 'validations' | 'performance';
@@ -162,6 +179,25 @@ const AdminDashboardOptimized: React.FC = () => {
     dossiers: []
   });
   const [loading, setLoading] = useState(false);
+  
+  // États Gestion Produits
+  const [showAddProduitModal, setShowAddProduitModal] = useState(false);
+  const [showEditProduitModal, setShowEditProduitModal] = useState(false);
+  const [showDeleteProduitModal, setShowDeleteProduitModal] = useState(false);
+  const [selectedProduit, setSelectedProduit] = useState<ProduitEligible | null>(null);
+  const [produitForm, setProduitForm] = useState({
+    nom: '',
+    description: '',
+    categorie: '',
+    type_produit: 'financier',
+    montant_min: '',
+    montant_max: '',
+    taux_min: '',
+    taux_max: '',
+    duree_min: '',
+    duree_max: '',
+    active: true
+  });
   
   // ===== DONNÉES KPI PROFITUM =====
   const [kpiData, setKpiData] = useState({
@@ -867,8 +903,12 @@ const AdminDashboardOptimized: React.FC = () => {
           
         case 'produits':
           const produitsResponse = await get('/admin/produits');
+          console.log('📦 Réponse produits:', produitsResponse);
           if (produitsResponse.success) {
-            data = (produitsResponse.data as any)?.produits || [];
+            // Gérer les deux formats de réponse possibles
+            const produitsData = (produitsResponse as any).produits || (produitsResponse.data as any)?.produits || [];
+            console.log('📦 Produits chargés:', produitsData.length, produitsData);
+            data = produitsData;
           } else {
             console.error('❌ Erreur chargement produits:', produitsResponse.message);
           }
@@ -2527,78 +2567,139 @@ const AdminDashboardOptimized: React.FC = () => {
                                           <span className="ml-2 text-gray-600">Chargement des produits...</span>
                                         </div>
                                       ) : selectedTileData.length > 0 ? (
-                                        <div className="space-y-3">
+                                        <div className="space-y-4">
                                           <div className="flex justify-between items-center">
                                             <h4 className="font-semibold text-gray-800">
-                                              Produits éligibles ({selectedTileData.length})
+                                              Catalogue Produits Éligibles ({selectedTileData.length})
                                             </h4>
-                                            <Button 
-                                              variant="outline" 
-                                              size="sm"
-                                              onClick={() => navigate('/admin/gestion-produits')}
-                                            >
-                                              Gérer
-                                            </Button>
+                                            <div className="flex gap-2">
+                                              <Button 
+                                                variant="default" 
+                                                size="sm"
+                                                onClick={() => setShowAddProduitModal(true)}
+                                              >
+                                                <Plus className="w-4 h-4 mr-1" />
+                                                Nouveau Produit
+                                              </Button>
+                                            </div>
                                           </div>
                                           
-                                          <div className="space-y-2 max-h-96 overflow-y-auto">
-                                            {selectedTileData.slice(0, 10).map((produit: any) => (
-                                              <div key={produit.id} className="p-3 border rounded-lg hover:bg-gray-50">
-                                                <div className="flex justify-between items-start">
-                                                  <div className="flex-1">
-                                                    <div className="flex items-center gap-2 mb-1">
-                                                      <h5 className="font-medium text-gray-800">
-                                                        {produit.nom || 'N/A'}
-                                                      </h5>
-                                                      <Badge variant="default">
-                                                        {produit.categorie || 'Autre'}
+                                          {/* Tableau des produits */}
+                                          <div className="rounded-md border overflow-hidden">
+                                            <table className="w-full text-sm">
+                                              <thead className="bg-slate-50 border-b border-slate-200">
+                                                <tr>
+                                                  <th className="px-4 py-3 text-left font-semibold text-slate-900">Nom</th>
+                                                  <th className="px-4 py-3 text-left font-semibold text-slate-900">Description</th>
+                                                  <th className="px-4 py-3 text-left font-semibold text-slate-900">Catégorie</th>
+                                                  <th className="px-4 py-3 text-left font-semibold text-slate-900">Montant</th>
+                                                  <th className="px-4 py-3 text-left font-semibold text-slate-900">Taux</th>
+                                                  <th className="px-4 py-3 text-left font-semibold text-slate-900">Durée</th>
+                                                  <th className="px-4 py-3 text-left font-semibold text-slate-900">Statut</th>
+                                                  <th className="px-4 py-3 text-center font-semibold text-slate-900">Actions</th>
+                                                </tr>
+                                              </thead>
+                                              <tbody className="divide-y divide-slate-200">
+                                                {selectedTileData.map((produit: ProduitEligible) => (
+                                                  <tr key={produit.id} className="hover:bg-slate-50 transition-colors">
+                                                    <td className="px-4 py-3 font-medium text-slate-900">{produit.nom}</td>
+                                                    <td className="px-4 py-3 max-w-xs truncate text-slate-600">{produit.description}</td>
+                                                    <td className="px-4 py-3">
+                                                      {produit.categorie ? (
+                                                        <Badge variant="outline">{produit.categorie}</Badge>
+                                                      ) : 'N/A'}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-slate-600">
+                                                      {produit.montant_min && produit.montant_max 
+                                                        ? `${formatCurrency(produit.montant_min)} - ${formatCurrency(produit.montant_max)}`
+                                                        : 'N/A'
+                                                      }
+                                                    </td>
+                                                    <td className="px-4 py-3 text-slate-600">
+                                                      {produit.taux_min !== null && produit.taux_min !== undefined && produit.taux_max !== null && produit.taux_max !== undefined
+                                                        ? `${(produit.taux_min * 100).toFixed(1)}% - ${(produit.taux_max * 100).toFixed(1)}%`
+                                                        : 'N/A'
+                                                      }
+                                                    </td>
+                                                    <td className="px-4 py-3 text-slate-600">
+                                                      {produit.duree_min && produit.duree_max 
+                                                        ? `${produit.duree_min} - ${produit.duree_max} mois`
+                                                        : 'N/A'
+                                                      }
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                      <Badge 
+                                                        variant={produit.active ? 'default' : 'secondary'}
+                                                        className={produit.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}
+                                                      >
+                                                        {produit.active ? 'Actif' : 'Inactif'}
                                                       </Badge>
-                                                    </div>
-                                                    
-                                                    <div className="text-sm text-gray-600">
-                                                      {produit.description && (
-                                                        <p className="mb-1 line-clamp-2">{produit.description}</p>
-                                                      )}
-                                                      <div className="flex items-center gap-4">
-                                                        {produit.montant_min && produit.montant_max && (
-                                                          <p>💰 {produit.montant_min.toLocaleString('fr-FR')}€ - {produit.montant_max.toLocaleString('fr-FR')}€</p>
-                                                        )}
-                                                        {produit.taux_min && produit.taux_max && (
-                                                          <p>📊 {produit.taux_min}% - {produit.taux_max}%</p>
-                                                        )}
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                      <div className="flex items-center justify-center gap-1">
+                                                        <Button
+                                                          variant="ghost"
+                                                          size="sm"
+                                                          onClick={() => navigate(`/admin/produits/${produit.id}`)}
+                                                          title="Voir la synthèse"
+                                                        >
+                                                          <Eye className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button
+                                                          variant="ghost"
+                                                          size="sm"
+                                                          onClick={() => {
+                                                            setSelectedProduit(produit);
+                                                            setProduitForm({
+                                                              nom: produit.nom,
+                                                              description: produit.description,
+                                                              categorie: produit.categorie || '',
+                                                              type_produit: produit.type_produit || 'financier',
+                                                              montant_min: produit.montant_min?.toString() || '',
+                                                              montant_max: produit.montant_max?.toString() || '',
+                                                              taux_min: produit.taux_min?.toString() || '',
+                                                              taux_max: produit.taux_max?.toString() || '',
+                                                              duree_min: produit.duree_min?.toString() || '',
+                                                              duree_max: produit.duree_max?.toString() || '',
+                                                              active: produit.active !== false
+                                                            });
+                                                            setShowEditProduitModal(true);
+                                                          }}
+                                                          title="Éditer le produit"
+                                                        >
+                                                          <Edit className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button
+                                                          variant="ghost"
+                                                          size="sm"
+                                                          onClick={() => {
+                                                            setSelectedProduit(produit);
+                                                            setShowDeleteProduitModal(true);
+                                                          }}
+                                                          title="Supprimer le produit"
+                                                        >
+                                                          <Trash2 className="h-4 w-4 text-red-600" />
+                                                        </Button>
                                                       </div>
-                                                      {produit.eligibility_criteria && (
-                                                        <p className="mt-1 text-xs text-gray-500">
-                                                          Critères: {Object.keys(produit.eligibility_criteria).length} conditions
-                                                        </p>
-                                                      )}
-                                                    </div>
-                                                  </div>
-                                                  
-                                                  <div className="text-right">
-                                                    <Button 
-                                                      variant="ghost" 
-                                                      size="sm"
-                                                      onClick={() => navigate('/admin/gestion-produits')}
-                                                    >
-                                                      <Eye className="w-4 h-4" />
-                                                    </Button>
-                                                  </div>
-                                                </div>
-                                              </div>
-                                            ))}
-                                            
-                                            {selectedTileData.length > 10 && (
-                                              <div className="text-center py-2 text-sm text-gray-500">
-                                                ... et {selectedTileData.length - 10} autres produits
-                                              </div>
-                                            )}
+                                                    </td>
+                                                  </tr>
+                                                ))}
+                                              </tbody>
+                                            </table>
                                           </div>
                                         </div>
                                       ) : (
                                         <div className="text-center py-8">
                                           <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                                           <p className="text-gray-500">Aucun produit trouvé</p>
+                                          <Button 
+                                            variant="outline" 
+                                            className="mt-4"
+                                            onClick={() => setShowAddProduitModal(true)}
+                                          >
+                                            <Plus className="w-4 h-4 mr-2" />
+                                            Créer le premier produit
+                                          </Button>
                                         </div>
                                       )}
                                     </div>
@@ -3750,6 +3851,402 @@ const AdminDashboardOptimized: React.FC = () => {
             >
               <CheckCircle className="w-4 h-4 mr-2" />
               Valider l'éligibilité
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Ajout Produit */}
+      <Dialog open={showAddProduitModal} onOpenChange={setShowAddProduitModal}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Ajouter un nouveau produit</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="add-nom">Nom du produit *</Label>
+                <Input
+                  id="add-nom"
+                  value={produitForm.nom}
+                  onChange={(e) => setProduitForm(prev => ({ ...prev, nom: e.target.value }))}
+                  placeholder="Ex: TICPE, URSSAF..."
+                />
+              </div>
+              <div>
+                <Label htmlFor="add-type">Type de produit</Label>
+                <Select value={produitForm.type_produit} onValueChange={(val) => setProduitForm(prev => ({ ...prev, type_produit: val }))}>
+                  <SelectTrigger id="add-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="financier">Financier</SelectItem>
+                    <SelectItem value="qualitatif">Qualitatif</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="add-description">Description *</Label>
+              <Textarea
+                id="add-description"
+                value={produitForm.description}
+                onChange={(e) => setProduitForm(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="Description détaillée du produit"
+                rows={3}
+              />
+            </div>
+            <div>
+              <Label htmlFor="add-categorie">Catégorie</Label>
+              <Input
+                id="add-categorie"
+                value={produitForm.categorie}
+                onChange={(e) => setProduitForm(prev => ({ ...prev, categorie: e.target.value }))}
+                placeholder="Ex: general, logiciel..."
+              />
+            </div>
+            <div className="border-t pt-4">
+              <h4 className="font-semibold mb-3">Montants (€)</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="add-montant-min">Minimum</Label>
+                  <Input
+                    id="add-montant-min"
+                    type="number"
+                    value={produitForm.montant_min}
+                    onChange={(e) => setProduitForm(prev => ({ ...prev, montant_min: e.target.value }))}
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="add-montant-max">Maximum</Label>
+                  <Input
+                    id="add-montant-max"
+                    type="number"
+                    value={produitForm.montant_max}
+                    onChange={(e) => setProduitForm(prev => ({ ...prev, montant_max: e.target.value }))}
+                    placeholder="50000"
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="border-t pt-4">
+              <h4 className="font-semibold mb-3">Taux (en décimal, ex: 0.05 pour 5%)</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="add-taux-min">Minimum</Label>
+                  <Input
+                    id="add-taux-min"
+                    type="number"
+                    step="0.01"
+                    value={produitForm.taux_min}
+                    onChange={(e) => setProduitForm(prev => ({ ...prev, taux_min: e.target.value }))}
+                    placeholder="0.05"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="add-taux-max">Maximum</Label>
+                  <Input
+                    id="add-taux-max"
+                    type="number"
+                    step="0.01"
+                    value={produitForm.taux_max}
+                    onChange={(e) => setProduitForm(prev => ({ ...prev, taux_max: e.target.value }))}
+                    placeholder="0.40"
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="border-t pt-4">
+              <h4 className="font-semibold mb-3">Durée (mois)</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="add-duree-min">Minimum</Label>
+                  <Input
+                    id="add-duree-min"
+                    type="number"
+                    value={produitForm.duree_min}
+                    onChange={(e) => setProduitForm(prev => ({ ...prev, duree_min: e.target.value }))}
+                    placeholder="1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="add-duree-max">Maximum</Label>
+                  <Input
+                    id="add-duree-max"
+                    type="number"
+                    value={produitForm.duree_max}
+                    onChange={(e) => setProduitForm(prev => ({ ...prev, duree_max: e.target.value }))}
+                    placeholder="12"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddProduitModal(false)}>Annuler</Button>
+            <Button onClick={async () => {
+              try {
+                const response = await fetch(`${config.API_URL}/api/admin/produits`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                  },
+                  credentials: 'include',
+                  body: JSON.stringify({
+                    ...produitForm,
+                    montant_min: produitForm.montant_min ? parseFloat(produitForm.montant_min) : null,
+                    montant_max: produitForm.montant_max ? parseFloat(produitForm.montant_max) : null,
+                    taux_min: produitForm.taux_min ? parseFloat(produitForm.taux_min) : null,
+                    taux_max: produitForm.taux_max ? parseFloat(produitForm.taux_max) : null,
+                    duree_min: produitForm.duree_min ? parseInt(produitForm.duree_min) : null,
+                    duree_max: produitForm.duree_max ? parseInt(produitForm.duree_max) : null
+                  })
+                });
+                if (response.ok) {
+                  toast.success('Produit créé avec succès');
+                  setShowAddProduitModal(false);
+                  setProduitForm({
+                    nom: '',
+                    description: '',
+                    categorie: '',
+                    type_produit: 'financier',
+                    montant_min: '',
+                    montant_max: '',
+                    taux_min: '',
+                    taux_max: '',
+                    duree_min: '',
+                    duree_max: '',
+                    active: true
+                  });
+                  loadTileData('produits');
+                  loadKPIData();
+                } else {
+                  toast.error('Erreur lors de la création');
+                }
+              } catch (error) {
+                console.error('Erreur création produit:', error);
+                toast.error('Erreur lors de la création');
+              }
+            }}>
+              Créer le produit
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Édition Produit */}
+      <Dialog open={showEditProduitModal} onOpenChange={setShowEditProduitModal}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Modifier le produit</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="edit-nom">Nom du produit</Label>
+                <Input
+                  id="edit-nom"
+                  value={produitForm.nom}
+                  onChange={(e) => setProduitForm(prev => ({ ...prev, nom: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-type">Type de produit</Label>
+                <Select value={produitForm.type_produit} onValueChange={(val) => setProduitForm(prev => ({ ...prev, type_produit: val }))}>
+                  <SelectTrigger id="edit-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="financier">Financier</SelectItem>
+                    <SelectItem value="qualitatif">Qualitatif</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="edit-description">Description</Label>
+              <Textarea
+                id="edit-description"
+                value={produitForm.description}
+                onChange={(e) => setProduitForm(prev => ({ ...prev, description: e.target.value }))}
+                rows={3}
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-categorie">Catégorie</Label>
+              <Input
+                id="edit-categorie"
+                value={produitForm.categorie}
+                onChange={(e) => setProduitForm(prev => ({ ...prev, categorie: e.target.value }))}
+              />
+            </div>
+            <div className="border-t pt-4">
+              <h4 className="font-semibold mb-3">Montants (€)</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="edit-montant-min">Minimum</Label>
+                  <Input
+                    id="edit-montant-min"
+                    type="number"
+                    value={produitForm.montant_min}
+                    onChange={(e) => setProduitForm(prev => ({ ...prev, montant_min: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-montant-max">Maximum</Label>
+                  <Input
+                    id="edit-montant-max"
+                    type="number"
+                    value={produitForm.montant_max}
+                    onChange={(e) => setProduitForm(prev => ({ ...prev, montant_max: e.target.value }))}
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="border-t pt-4">
+              <h4 className="font-semibold mb-3">Taux (en décimal)</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="edit-taux-min">Minimum</Label>
+                  <Input
+                    id="edit-taux-min"
+                    type="number"
+                    step="0.01"
+                    value={produitForm.taux_min}
+                    onChange={(e) => setProduitForm(prev => ({ ...prev, taux_min: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-taux-max">Maximum</Label>
+                  <Input
+                    id="edit-taux-max"
+                    type="number"
+                    step="0.01"
+                    value={produitForm.taux_max}
+                    onChange={(e) => setProduitForm(prev => ({ ...prev, taux_max: e.target.value }))}
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="border-t pt-4">
+              <h4 className="font-semibold mb-3">Durée (mois)</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="edit-duree-min">Minimum</Label>
+                  <Input
+                    id="edit-duree-min"
+                    type="number"
+                    value={produitForm.duree_min}
+                    onChange={(e) => setProduitForm(prev => ({ ...prev, duree_min: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-duree-max">Maximum</Label>
+                  <Input
+                    id="edit-duree-max"
+                    type="number"
+                    value={produitForm.duree_max}
+                    onChange={(e) => setProduitForm(prev => ({ ...prev, duree_max: e.target.value }))}
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="border-t pt-4">
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="edit-active"
+                  checked={produitForm.active}
+                  onChange={(e) => setProduitForm(prev => ({ ...prev, active: e.target.checked }))}
+                  className="rounded"
+                />
+                <Label htmlFor="edit-active" className="cursor-pointer">Produit actif</Label>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditProduitModal(false)}>Annuler</Button>
+            <Button onClick={async () => {
+              if (!selectedProduit) return;
+              try {
+                const response = await fetch(`${config.API_URL}/api/admin/produits/${selectedProduit.id}`, {
+                  method: 'PUT',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                  },
+                  credentials: 'include',
+                  body: JSON.stringify({
+                    ...produitForm,
+                    montant_min: produitForm.montant_min ? parseFloat(produitForm.montant_min) : null,
+                    montant_max: produitForm.montant_max ? parseFloat(produitForm.montant_max) : null,
+                    taux_min: produitForm.taux_min ? parseFloat(produitForm.taux_min) : null,
+                    taux_max: produitForm.taux_max ? parseFloat(produitForm.taux_max) : null,
+                    duree_min: produitForm.duree_min ? parseInt(produitForm.duree_min) : null,
+                    duree_max: produitForm.duree_max ? parseInt(produitForm.duree_max) : null
+                  })
+                });
+                if (response.ok) {
+                  toast.success('Produit modifié avec succès');
+                  setShowEditProduitModal(false);
+                  setSelectedProduit(null);
+                  loadTileData('produits');
+                  loadKPIData();
+                } else {
+                  toast.error('Erreur lors de la modification');
+                }
+              } catch (error) {
+                console.error('Erreur modification produit:', error);
+                toast.error('Erreur lors de la modification');
+              }
+            }}>
+              Modifier
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Suppression Produit */}
+      <Dialog open={showDeleteProduitModal} onOpenChange={setShowDeleteProduitModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Supprimer le produit</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-gray-600">
+              Êtes-vous sûr de vouloir supprimer le produit <strong>{selectedProduit?.nom}</strong> ?
+              Cette action est irréversible.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteProduitModal(false)}>Annuler</Button>
+            <Button variant="destructive" onClick={async () => {
+              if (!selectedProduit) return;
+              try {
+                const response = await fetch(`${config.API_URL}/api/admin/produits/${selectedProduit.id}`, {
+                  method: 'DELETE',
+                  headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                  },
+                  credentials: 'include'
+                });
+                if (response.ok) {
+                  toast.success('Produit supprimé avec succès');
+                  setShowDeleteProduitModal(false);
+                  setSelectedProduit(null);
+                  loadTileData('produits');
+                  loadKPIData();
+                } else {
+                  toast.error('Erreur lors de la suppression');
+                }
+              } catch (error) {
+                console.error('Erreur suppression produit:', error);
+                toast.error('Erreur lors de la suppression');
+              }
+            }}>
+              Supprimer
             </Button>
           </DialogFooter>
         </DialogContent>
