@@ -440,10 +440,10 @@ const AdminDashboardOptimized: React.FC = () => {
       const dossiers = dossiersResponse.success ? (dossiersResponse.data as any)?.dossiers || [] : [];
       console.log('📁 Dossiers chargés:', dossiers.length, 'dossiers');
       
-      // Charger les produits du catalogue (structure: { success, produits })
+      // Charger les produits du catalogue (structure: { success, data: { produits } })
       const produitsResponse = await get('/admin/produits');
       console.log('📦 Réponse produits complète:', produitsResponse);
-      const produits = produitsResponse.success ? (produitsResponse as any)?.produits || [] : [];
+      const produits = produitsResponse.success ? (produitsResponse.data as any)?.produits || [] : [];
       console.log('📦 Produits catalogue chargés:', produits.length, 'produits');
       
       // Calculer les KPIs (EXCLURE les clients temporaires)
@@ -906,16 +906,12 @@ const AdminDashboardOptimized: React.FC = () => {
         case 'produits':
           const produitsResponse = await get('/admin/produits');
           console.log('📦 Réponse produits COMPLÈTE:', produitsResponse);
-          console.log('📦 Type de réponse:', typeof produitsResponse);
-          console.log('📦 Clés de la réponse:', Object.keys(produitsResponse));
           if (produitsResponse.success) {
-            // Gérer les deux formats de réponse possibles
-            const produitsData = (produitsResponse as any).produits || (produitsResponse.data as any)?.produits || [];
+            // Format standard : { success: true, data: { produits: [...] } }
+            const produitsData = (produitsResponse.data as any)?.produits || [];
             console.log('📦 Produits extraits:', produitsData);
             console.log('📦 Nombre de produits:', produitsData.length);
-            console.log('📦 Premier produit:', produitsData[0]);
             data = produitsData;
-            console.log('📦 Data final assigné:', data);
           } else {
             console.error('❌ Erreur chargement produits:', produitsResponse.message);
           }
@@ -2049,7 +2045,7 @@ const AdminDashboardOptimized: React.FC = () => {
                                     {selectedEcosystemTile === 'produits' && (
                                       <>
                                         <Package className="w-5 h-5 text-orange-600" />
-                                        Détails Produits ({kpiData.totalProduits})
+                                        Catalogue Produits Éligibles
                                       </>
                                     )}
                                     {selectedEcosystemTile === 'performance' && (
@@ -2580,14 +2576,25 @@ const AdminDashboardOptimized: React.FC = () => {
                                         </div>
                                       ) : selectedTileData.length > 0 ? (
                                         <div className="space-y-4">
-                                          <div className="flex justify-between items-center">
-                                            <h4 className="font-semibold text-gray-800">
-                                              Catalogue Produits Éligibles ({selectedTileData.length})
-                                            </h4>
+                                          <div className="flex justify-between items-center mb-4">
+                                            <div className="flex items-center gap-3">
+                                              <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-amber-600 rounded-lg flex items-center justify-center">
+                                                <Package className="w-6 h-6 text-white" />
+                                              </div>
+                                              <div>
+                                                <h4 className="text-xl font-bold text-gray-900">
+                                                  Catalogue Produits Éligibles
+                                                </h4>
+                                                <p className="text-sm text-gray-600">
+                                                  {selectedTileData.length} produit{selectedTileData.length > 1 ? 's' : ''} dans votre catalogue
+                                                </p>
+                                              </div>
+                                            </div>
                                             <div className="flex gap-2">
                                               <Button 
                                                 variant="default" 
                                                 size="sm"
+                                                className="bg-orange-600 hover:bg-orange-700"
                                                 onClick={() => setShowAddProduitModal(true)}
                                               >
                                                 <Plus className="w-4 h-4 mr-1" />
