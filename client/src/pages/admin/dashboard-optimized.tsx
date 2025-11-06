@@ -903,12 +903,17 @@ const AdminDashboardOptimized: React.FC = () => {
           
         case 'produits':
           const produitsResponse = await get('/admin/produits');
-          console.log('📦 Réponse produits:', produitsResponse);
+          console.log('📦 Réponse produits COMPLÈTE:', produitsResponse);
+          console.log('📦 Type de réponse:', typeof produitsResponse);
+          console.log('📦 Clés de la réponse:', Object.keys(produitsResponse));
           if (produitsResponse.success) {
             // Gérer les deux formats de réponse possibles
             const produitsData = (produitsResponse as any).produits || (produitsResponse.data as any)?.produits || [];
-            console.log('📦 Produits chargés:', produitsData.length, produitsData);
+            console.log('📦 Produits extraits:', produitsData);
+            console.log('📦 Nombre de produits:', produitsData.length);
+            console.log('📦 Premier produit:', produitsData[0]);
             data = produitsData;
+            console.log('📦 Data final assigné:', data);
           } else {
             console.error('❌ Erreur chargement produits:', produitsResponse.message);
           }
@@ -931,7 +936,9 @@ const AdminDashboardOptimized: React.FC = () => {
         }
       }));
       
+      console.log(`📦 AVANT setSelectedTileData - data.length:`, data.length);
       setSelectedTileData(data);
+      console.log(`✅ APRÈS setSelectedTileData - Tuile ${tile} chargée avec ${data.length} éléments`);
       
     } catch (error) {
       console.error(`❌ Erreur chargement tuile ${tile}:`, error);
