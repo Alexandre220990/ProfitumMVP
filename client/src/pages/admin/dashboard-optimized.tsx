@@ -824,12 +824,14 @@ const AdminDashboardOptimized: React.FC = () => {
   // ========================================
 
   const loadTileData = async (tile: string) => {
+    console.log(`🎯 loadTileData appelé avec tile="${tile}"`);
+    
     // Vérifier le cache (valide pendant 5 minutes)
     const now = Date.now();
     const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
     
     if (dataCache[tile] && (now - dataCache[tile].timestamp) < CACHE_DURATION) {
-      console.log(`💾 Utilisation du cache pour: ${tile}`);
+      console.log(`💾 Utilisation du cache pour: ${tile} - ${dataCache[tile].data.length} éléments`);
       setSelectedTileData(dataCache[tile].data);
       return;
     }
