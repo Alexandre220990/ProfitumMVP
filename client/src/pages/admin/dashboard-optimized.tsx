@@ -2324,7 +2324,11 @@ const AdminDashboardOptimized: React.FC = () => {
                                           
                                           <div className="space-y-2 max-h-96 overflow-y-auto">
                                             {selectedTileData.slice(0, 10).map((apporteur: any) => (
-                                              <div key={apporteur.id} className="p-3 border rounded-lg hover:bg-gray-50">
+                                              <div
+                                                key={apporteur.id}
+                                                className="p-3 border rounded-lg hover:bg-purple-50 cursor-pointer transition-colors"
+                                                onClick={() => navigate(`/admin/apporteurs/${apporteur.id}`)}
+                                              >
                                                 <div className="flex justify-between items-start">
                                                   <div className="flex-1">
                                                     <div className="flex items-center gap-2 mb-1">
@@ -2355,10 +2359,11 @@ const AdminDashboardOptimized: React.FC = () => {
                                                     <Button 
                                                       variant="ghost" 
                                                       size="sm"
-                                                      onClick={() => {
-                                                        setActiveSection('apporteurs');
-                                                        setSelectedEcosystemTile(null);
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        navigate(`/admin/apporteurs/${apporteur.id}`);
                                                       }}
+                                                      title="Voir la synthèse de l'apporteur"
                                                     >
                                                       <Eye className="w-4 h-4" />
                                                     </Button>
