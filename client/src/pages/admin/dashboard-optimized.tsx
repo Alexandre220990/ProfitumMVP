@@ -2620,15 +2620,12 @@ const AdminDashboardOptimized: React.FC = () => {
                                               </thead>
                                               <tbody className="divide-y divide-slate-200">
                                                 {selectedTileData.map((produit: ProduitEligible) => (
-                                                  <tr key={produit.id} className="hover:bg-slate-50 transition-colors">
-                                                    <td className="px-4 py-3 font-medium text-slate-900">
-                                                      <button
-                                                        onClick={() => navigate(`/admin/produits/${produit.id}`)}
-                                                        className="text-left text-orange-600 hover:text-orange-700 hover:underline transition-colors"
-                                                      >
-                                                        {produit.nom}
-                                                      </button>
-                                                    </td>
+                                                  <tr 
+                                                    key={produit.id} 
+                                                    className="hover:bg-orange-50 cursor-pointer transition-colors"
+                                                    onClick={() => navigate(`/admin/produits/${produit.id}`)}
+                                                  >
+                                                    <td className="px-4 py-3 font-medium text-slate-900">{produit.nom}</td>
                                                     <td className="px-4 py-3 max-w-xs truncate text-slate-600">{produit.description}</td>
                                                     <td className="px-4 py-3">
                                                       {produit.categorie ? (
@@ -2661,7 +2658,7 @@ const AdminDashboardOptimized: React.FC = () => {
                                                         {produit.active ? 'Actif' : 'Inactif'}
                                                       </Badge>
                                                     </td>
-                                                    <td className="px-4 py-3">
+                                                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                                                       <div className="flex items-center justify-center gap-1">
                                                         <Button
                                                           variant="ghost"
@@ -2674,7 +2671,8 @@ const AdminDashboardOptimized: React.FC = () => {
                                                         <Button
                                                           variant="ghost"
                                                           size="sm"
-                                                          onClick={() => {
+                                                          onClick={(e) => {
+                                                            e.stopPropagation();
                                                             setSelectedProduit(produit);
                                                             setProduitForm({
                                                               nom: produit.nom,
@@ -2698,7 +2696,8 @@ const AdminDashboardOptimized: React.FC = () => {
                                                         <Button
                                                           variant="ghost"
                                                           size="sm"
-                                                          onClick={() => {
+                                                          onClick={(e) => {
+                                                            e.stopPropagation();
                                                             setSelectedProduit(produit);
                                                             setShowDeleteProduitModal(true);
                                                           }}
