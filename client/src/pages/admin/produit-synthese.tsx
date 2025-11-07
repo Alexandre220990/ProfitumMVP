@@ -9,9 +9,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/hooks/use-auth';
 import { toast } from 'sonner';
 import { get } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
 import {
   ArrowLeft, Package, TrendingUp, Users, FileText,
   DollarSign, Calendar, Edit, Activity, Target,
@@ -83,6 +89,21 @@ export default function ProduitSynthese() {
   const [evolution, setEvolution] = useState<EvolutionData[]>([]);
   const [dossiers, setDossiers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [editForm, setEditForm] = useState({
+    nom: '',
+    description: '',
+    categorie: '',
+    type_produit: 'financier',
+    montant_min: '',
+    montant_max: '',
+    taux_min: '',
+    taux_max: '',
+    duree_min: '',
+    duree_max: '',
+    active: true
+  });
 
   // ============================================================================
   // CHARGEMENT DONNÉES
@@ -102,7 +123,21 @@ export default function ProduitSynthese() {
       // Charger les infos du produit
       const produitResponse = await get(`/admin/produits/${id}`) as any;
       if (produitResponse.success && produitResponse.data) {
-        setProduit(produitResponse.data.produit || produitResponse.data);
+        const produitData = produitResponse.data.produit || produitResponse.data;
+        setProduit(produitData);
+        setEditForm({
+          nom: produitData.nom || '',
+          description: produitData.description || '',
+          categorie: produitData.categorie || '',
+          type_produit: produitData.type_produit || 'financier',
+          montant_min: produitData.montant_min !== null && produitData.montant_min !== undefined ? produitData.montant_min.toString() : '',
+          montant_max: produitData.montant_max !== null && produitData.montant_max !== undefined ? produitData.montant_max.toString() : '',
+          taux_min: produitData.taux_min !== null && produitData.taux_min !== undefined ? produitData.taux_min.toString() : '',
+          taux_max: produitData.taux_max !== null && produitData.taux_max !== undefined ? produitData.taux_max.toString() : '',
+          duree_min: produitData.duree_min !== null && produitData.duree_min !== undefined ? produitData.duree_min.toString() : '',
+          duree_max: produitData.duree_max !== null && produitData.duree_max !== undefined ? produitData.duree_max.toString() : '',
+          active: produitData.active !== false
+        });
       }
 
       // Charger les statistiques
@@ -228,13 +263,10 @@ export default function ProduitSynthese() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => {
-                    // TODO: Ouvrir modal édition
-                    toast.info('Édition depuis le dashboard');
-                  }}
+                  onClick={() => setShowEditModal(true)}
                 >
                   <Edit className="w-4 h-4 mr-2" />
-                  Éditer
+                  Modifier
                 </Button>
               </div>
             </div>
@@ -549,6 +581,172 @@ export default function ProduitSynthese() {
           </>
         )}
       </div>
+      <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Modifier le produit</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-2">
+            <div className="col-span-1 md:col-span-2">
+              <Label htmlFor="nom">Nom</Label>
+              <Input
+                id="nom"
+                value={editForm.nom}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, nom: e.target.value }))}
+                placeholder="Nom du produit"
+              />
+            </div>
+            <div className="col-span-1 md:col-span-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                value={editForm.description}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, description: e.target.value }))}
+                rows={4}
+              />
+            </div>
+            <div>
+              <Label htmlFor="categorie">Catégorie</Label>
+              <Input
+                id="categorie"
+                value={editForm.categorie}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, categorie: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label htmlFor="type_produit">Type de produit</Label>
+              <Input
+                id="type_produit"
+                value={editForm.type_produit}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, type_produit: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label htmlFor="montant_min">Montant minimum (€)</Label>
+              <Input
+                id="montant_min"
+                type="number"
+                value={editForm.montant_min}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, montant_min: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label htmlFor="montant_max">Montant maximum (€)</Label>
+              <Input
+                id="montant_max"
+                type="number"
+                value={editForm.montant_max}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, montant_max: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label htmlFor="taux_min">Taux minimum (%)</Label>
+              <Input
+                id="taux_min"
+                type="number"
+                step="0.01"
+                value={editForm.taux_min}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, taux_min: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label htmlFor="taux_max">Taux maximum (%)</Label>
+              <Input
+                id="taux_max"
+                type="number"
+                step="0.01"
+                value={editForm.taux_max}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, taux_max: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label htmlFor="duree_min">Durée minimum (mois)</Label>
+              <Input
+                id="duree_min"
+                type="number"
+                value={editForm.duree_min}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, duree_min: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label htmlFor="duree_max">Durée maximum (mois)</Label>
+              <Input
+                id="duree_max"
+                type="number"
+                value={editForm.duree_max}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, duree_max: e.target.value }))}
+              />
+            </div>
+            <div className="col-span-1 md:col-span-2 flex items-center gap-2">
+              <Checkbox
+                id="active"
+                checked={editForm.active}
+                onCheckedChange={(checked) => setEditForm((prev) => ({ ...prev, active: Boolean(checked) }))}
+              />
+              <Label htmlFor="active">Produit actif</Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditModal(false)} disabled={isSaving}>
+              Annuler
+            </Button>
+            <Button
+              onClick={async () => {
+                if (!produit?.id) return;
+                setIsSaving(true);
+                try {
+                  const { data: { session } } = await supabase.auth.getSession();
+                  if (!session) {
+                    toast.error('Session expirée, veuillez vous reconnecter');
+                    return;
+                  }
+
+                  const payload = {
+                    nom: editForm.nom,
+                    description: editForm.description,
+                    categorie: editForm.categorie || null,
+                    type_produit: editForm.type_produit || null,
+                    active: editForm.active,
+                    montant_min: editForm.montant_min ? parseFloat(editForm.montant_min) : null,
+                    montant_max: editForm.montant_max ? parseFloat(editForm.montant_max) : null,
+                    taux_min: editForm.taux_min ? parseFloat(editForm.taux_min) : null,
+                    taux_max: editForm.taux_max ? parseFloat(editForm.taux_max) : null,
+                    duree_min: editForm.duree_min ? parseInt(editForm.duree_min) : null,
+                    duree_max: editForm.duree_max ? parseInt(editForm.duree_max) : null
+                  };
+
+                  const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/produits/${produit.id}`, {
+                    method: 'PUT',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${session.access_token}`
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify(payload)
+                  });
+
+                  if (response.ok) {
+                    toast.success('Produit mis à jour');
+                    setShowEditModal(false);
+                    loadProduitData();
+                  } else {
+                    const error = await response.json().catch(() => null);
+                    toast.error(error?.message || 'Erreur lors de la mise à jour');
+                  }
+                } catch (error) {
+                  console.error('Erreur mise à jour produit:', error);
+                  toast.error('Erreur lors de la mise à jour du produit');
+                } finally {
+                  setIsSaving(false);
+                }
+              }}
+              disabled={isSaving}
+            >
+              {isSaving ? 'Enregistrement...' : 'Enregistrer'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

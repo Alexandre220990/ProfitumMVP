@@ -2685,7 +2685,7 @@ router.get('/produits/:id/stats', asyncHandler(async (req, res) => {
       .rpc('get_produit_stats', { produit_id: id });
 
     if (error) {
-      console.error('❌ Erreur récupération stats:', error);
+      console.warn('ℹ️ RPC get_produit_stats indisponible, fallback manuel:', error);
       
       // Si la fonction RPC n'existe pas encore, calculer manuellement
       const { data: dossiers, error: dossiersError } = await supabaseAdmin
@@ -2763,18 +2763,10 @@ router.get('/produits/:id/top-clients', asyncHandler(async (req, res) => {
 
     const { id } = req.params;
 
-    const { data: topClients, error } = await supabaseAdmin
+    const { data: topClientsRaw, error } = await supabaseAdmin
       .from('ClientProduitEligible')
-      .select(`
-        clientId,
-        "montantFinal",
-        Client!ClientProduitEligible_clientId_fkey (
-          company_name,
-          email
-        )
-      `)
-      .eq('produitId', id)
-      .not('Client.email', 'like', '%@profitum.temp');
+      .select('clientId, "montantFinal"')
+      .eq('produitId', id);
 
     if (error) {
       console.error('❌ Erreur récupération top clients:', error);
@@ -2784,34 +2776,53 @@ router.get('/produits/:id/top-clients', asyncHandler(async (req, res) => {
       });
     }
 
-    // Grouper par client et calculer les stats
-    const clientsMap = new Map();
-    
-    topClients?.forEach((item: any) => {
-      const clientId = item.clientId;
-      const client = item.Client;
+    const clientsMap = new Map<string, { nombre_dossiers: number; montant_total: number }>();
+    const clientIds = new Set<string>();
+
+    topClientsRaw?.forEach((item: any) => {
+      if (!item.clientId) return;
       const montant = item.montantFinal || 0;
-
-      if (!clientsMap.has(clientId)) {
-        clientsMap.set(clientId, {
-          company_name: client?.company_name || 'N/A',
-          email: client?.email || 'N/A',
-          nombre_dossiers: 0,
-          montant_total: 0
-        });
+      if (!clientsMap.has(item.clientId)) {
+        clientsMap.set(item.clientId, { nombre_dossiers: 0, montant_total: 0 });
       }
-
-      const clientData = clientsMap.get(clientId);
+      const clientData = clientsMap.get(item.clientId)!;
       clientData.nombre_dossiers += 1;
       clientData.montant_total += montant;
+      clientIds.add(item.clientId);
     });
 
-    // Convertir en tableau et calculer la moyenne
-    const topClientsArray = Array.from(clientsMap.values())
-      .map(client => ({
-        ...client,
-        montant_moyen: client.nombre_dossiers > 0 ? client.montant_total / client.nombre_dossiers : 0
-      }))
+    let clientsInfoIndex: Record<string, { company_name: string; email: string }> = {};
+
+    if (clientIds.size > 0) {
+      const { data: clientsInfo, error: clientsError } = await supabaseAdmin
+        .from('Client')
+        .select('id, company_name, first_name, last_name, email')
+        .in('id', Array.from(clientIds));
+
+      if (!clientsError && clientsInfo) {
+        clientsInfo.forEach((client: any) => {
+          const displayName = client.company_name || `${client.first_name || ''} ${client.last_name || ''}`.trim() || 'N/A';
+          clientsInfoIndex[client.id] = {
+            company_name: displayName,
+            email: client.email || 'N/A'
+          };
+        });
+      }
+    }
+
+    const topClientsArray = Array.from(clientsMap.entries())
+      .map(([clientId, stats]) => {
+        const info = clientsInfoIndex[clientId] || { company_name: 'N/A', email: 'N/A' };
+        return {
+          clientId,
+          company_name: info.company_name,
+          email: info.email,
+          nombre_dossiers: stats.nombre_dossiers,
+          montant_total: stats.montant_total,
+          montant_moyen: stats.nombre_dossiers > 0 ? stats.montant_total / stats.nombre_dossiers : 0
+        };
+      })
+      .filter(client => !client.email?.includes('@profitum.temp'))
       .sort((a, b) => b.nombre_dossiers - a.nombre_dossiers || b.montant_total - a.montant_total)
       .slice(0, 5);
 
@@ -2905,18 +2916,9 @@ router.get('/produits/:id/dossiers', asyncHandler(async (req, res) => {
 
     const { id } = req.params;
 
-    const { data: dossiers, error } = await supabaseAdmin
+    const { data: dossiersRaw, error } = await supabaseAdmin
       .from('ClientProduitEligible')
-      .select(`
-        *,
-        Client!ClientProduitEligible_clientId_fkey (
-          id,
-          company_name,
-          first_name,
-          last_name,
-          email
-        )
-      `)
+      .select('*')
       .eq('produitId', id)
       .order('created_at', { ascending: false });
 
@@ -2928,10 +2930,34 @@ router.get('/produits/:id/dossiers', asyncHandler(async (req, res) => {
       });
     }
 
+    const clientIds = Array.from(new Set((dossiersRaw || [])
+      .map((d: any) => d.clientId)
+      .filter((id: string | null) => !!id)));
+
+    let clientsIndex: Record<string, any> = {};
+
+    if (clientIds.length > 0) {
+      const { data: clientsData, error: clientsError } = await supabaseAdmin
+        .from('Client')
+        .select('id, company_name, first_name, last_name, email')
+        .in('id', clientIds);
+
+      if (!clientsError && clientsData) {
+        clientsData.forEach((client: any) => {
+          clientsIndex[client.id] = client;
+        });
+      }
+    }
+
+    const dossiers = (dossiersRaw || []).map((dossier: any) => ({
+      ...dossier,
+      Client: dossier.clientId ? clientsIndex[dossier.clientId] || null : null
+    }));
+
     return res.json({
       success: true,
       data: {
-        dossiers: dossiers || []
+        dossiers
       }
     });
 
