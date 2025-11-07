@@ -33,6 +33,11 @@ interface ClientProduitEligible {
   current_step: number;
   progress: number;
   expert_id?: string;
+  expert_pending_id?: string;
+  admin_eligibility_status?: 'pending' | 'validated' | 'rejected';
+  admin_validated_by?: string;
+  eligibility_validated_at?: string;
+  validation_admin_notes?: string;
   created_at: string;
   updated_at: string;
   metadata?: {
@@ -93,6 +98,15 @@ const TICPEProductPage = () => {
 
   const isFromApporteur = clientProduit?.metadata?.source === 'apporteur';
   const isHighPriority = clientProduit?.priorite === 1;
+
+  const eligibilityValidated = clientProduit?.admin_eligibility_status === 'validated' ||
+    ['eligibility_validated', 'admin_validated', 'expert_selection', 'expert_pending_acceptance', 'documents_manquants'].includes(clientProduit?.statut || '');
+
+  const eligibilityRejected = clientProduit?.admin_eligibility_status === 'rejected' ||
+    ['eligibility_rejected', 'admin_rejected'].includes(clientProduit?.statut || '');
+
+  const badgeVariant = eligibilityRejected ? 'outline' : eligibilityValidated ? 'default' : 'secondary';
+  const badgeLabel = eligibilityRejected ? 'Non éligible' : eligibilityValidated ? 'Éligible' : 'En cours';
 
   if (loading) {
     return (
@@ -174,10 +188,10 @@ const TICPEProductPage = () => {
                   </div>
                 </div>
                 <Badge 
-                  variant={clientProduit.statut === 'eligible' ? 'default' : 'secondary'}
+                  variant={badgeVariant}
                   className="text-sm"
                 >
-                  {clientProduit.statut === 'eligible' ? 'Éligible' : 'En cours'}
+                  {badgeLabel}
                 </Badge>
               </div>
             </CardHeader>

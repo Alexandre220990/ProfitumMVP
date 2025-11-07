@@ -193,30 +193,60 @@ export default function UniversalProductWorkflow({
         
         setClientProduit(produitData);
         
-        // Mettre à jour eligibilityValidated basé sur le statut
-        if (produitData.statut === 'eligibility_validated') {
-          console.log('✅ DIAGNOSTIC: Éligibilité validée détectée → Déblocage étape 2');
-          setEligibilityValidated(true);
-          setCurrentStep(2); // Déverrouiller étape 2
-        } else if (produitData.statut === 'eligibility_rejected') {
-          // ❌ Documents de pré-éligibilité rejetés par l'ADMIN → RESTER ÉTAPE 1
-          console.log('❌ DIAGNOSTIC: Éligibilité rejetée par admin → RESTER ÉTAPE 1');
-          setEligibilityValidated(false);
-          setCurrentStep(1); // Forcer le retour à l'étape 1
-        } else if (produitData.statut === 'documents_manquants') {
-          // 📄 Documents complémentaires rejetés par l'EXPERT → RESTER ÉTAPE 3
-          console.log('📄 DIAGNOSTIC: Documents manquants détectés par expert → RESTER ÉTAPE 3');
-          setEligibilityValidated(true); // L'éligibilité est validée si on est à l'étape 3
-          setCurrentStep(3); // Forcer l'étape 3
-        } else if (produitData.statut === 'eligible' || produitData.statut === 'opportunité') {
-          // État initial : permettre l'upload des documents
-          console.log('📝 DIAGNOSTIC: Statut initial → Étape 1');
-          setEligibilityValidated(false);
-          setCurrentStep(1);
+        const statut = produitData.statut || '';
+        const adminStatus = produitData.admin_eligibility_status || 'pending';
+
+        const adminValidatedStatuses = new Set([
+          'eligibility_validated',
+          'admin_validated',
+          'expert_selection',
+          'expert_pending_acceptance',
+          'expert_assigned',
+          'documents_manquants',
+          'audit_in_progress',
+          'audit_completed',
+          'validation_finale',
+          'demande_remboursement',
+          'signed'
+        ]);
+
+        const adminRejectedStatuses = new Set([
+          'eligibility_rejected',
+          'admin_rejected'
+        ]);
+
+        const isAdminValidated = adminStatus === 'validated' || adminValidatedStatuses.has(statut);
+        const isAdminRejected = adminStatus === 'rejected' || adminRejectedStatuses.has(statut);
+
+        let nextStep = Math.max(1, produitData.current_step || 1);
+        let eligibilityUnlocked = false;
+
+        if (isAdminRejected) {
+          console.log('❌ DIAGNOSTIC: Éligibilité rejetée par admin → retour étape 1');
+          eligibilityUnlocked = false;
+          nextStep = 1;
+        } else if (statut === 'documents_manquants') {
+          console.log('📄 DIAGNOSTIC: Documents complémentaires requis → étape minimale 3');
+          eligibilityUnlocked = true;
+          nextStep = Math.max(nextStep, 3);
+        } else if (isAdminValidated) {
+          console.log('✅ DIAGNOSTIC: Validation admin détectée → déblocage étape 2');
+          eligibilityUnlocked = true;
+          nextStep = Math.max(nextStep, 2);
+        } else if (statut === 'eligible' || statut === 'opportunité' || statut === 'pending_admin_validation') {
+          console.log('📝 DIAGNOSTIC: Statut initial → étape 1');
+          eligibilityUnlocked = false;
+          nextStep = 1;
         } else {
-          // Autres statuts (documents_uploaded, etc.)
-          console.log('⏳ DIAGNOSTIC: Autre statut → Pas de changement étape');
+          console.log('⏳ DIAGNOSTIC: Statut inchangé → conservation étape actuelle', {
+            statut,
+            adminStatus,
+            nextStep
+          });
         }
+
+        setEligibilityValidated(eligibilityUnlocked);
+        setCurrentStep(Math.max(1, nextStep));
 
         // Si un expert est déjà assigné ou en attente d'acceptation, le définir
         if ((produitData.expert_id || produitData.expert_pending_id) && produitData.Expert) {
