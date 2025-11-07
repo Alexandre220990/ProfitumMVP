@@ -2621,7 +2621,14 @@ const AdminDashboardOptimized: React.FC = () => {
                                               <tbody className="divide-y divide-slate-200">
                                                 {selectedTileData.map((produit: ProduitEligible) => (
                                                   <tr key={produit.id} className="hover:bg-slate-50 transition-colors">
-                                                    <td className="px-4 py-3 font-medium text-slate-900">{produit.nom}</td>
+                                                    <td className="px-4 py-3 font-medium text-slate-900">
+                                                      <button
+                                                        onClick={() => navigate(`/admin/produits/${produit.id}`)}
+                                                        className="text-left text-orange-600 hover:text-orange-700 hover:underline transition-colors"
+                                                      >
+                                                        {produit.nom}
+                                                      </button>
+                                                    </td>
                                                     <td className="px-4 py-3 max-w-xs truncate text-slate-600">{produit.description}</td>
                                                     <td className="px-4 py-3">
                                                       {produit.categorie ? (
