@@ -420,6 +420,26 @@ const AdminDashboardOptimized: React.FC = () => {
   // CHARGEMENT DES DONNÉES KPI
   // ========================================
   
+  const fetchAllExperts = async () => {
+    try {
+      const response = await get('/admin/experts/all');
+      if (response.success) {
+        return (response.data as any)?.experts || [];
+      }
+      console.warn('⚠️ /admin/experts/all indisponible, fallback sur /admin/experts?limit=1000');
+    } catch (error) {
+      console.warn('⚠️ Erreur lors de l\'appel /admin/experts/all:', error);
+    }
+
+    const fallbackResponse = await get('/admin/experts?limit=1000');
+    if (fallbackResponse.success) {
+      return (fallbackResponse.data as any)?.experts || [];
+    }
+
+    console.error('❌ Impossible de charger les experts:', fallbackResponse.message);
+    return [];
+  };
+
   const loadKPIData = async () => {
     try {
       console.log('📊 Chargement des données KPI...');
@@ -430,10 +450,8 @@ const AdminDashboardOptimized: React.FC = () => {
       console.log('👥 Clients chargés:', clients.length, '(brut)');
       
       // Charger TOUS les experts (sans pagination)
-      const expertsResponse = await get('/admin/experts/all');
-      const experts = expertsResponse.success ? (expertsResponse.data as any)?.experts || [] : [];
+      const experts = await fetchAllExperts();
       console.log('👔 Experts chargés:', experts.length, 'experts');
-      console.log('📊 Détail experts:', expertsResponse);
       
       // Charger les dossiers
       const dossiersResponse = await get('/admin/dossiers/all');
@@ -671,17 +689,9 @@ const AdminDashboardOptimized: React.FC = () => {
   const loadAvailableExperts = async () => {
     setLoadingExperts(true);
     try {
-      const expertsResponse = await get('/admin/experts');
-      if (expertsResponse.success) {
-        const allExperts = (expertsResponse.data as any)?.experts || [];
-        // Filtrer uniquement les experts approuvés
-        const approvedExperts = allExperts.filter((expert: any) => expert.approval_status === 'approved');
-        setAvailableExperts(approvedExperts);
-      } else {
-        console.error('❌ Erreur chargement experts:', expertsResponse.message);
-        toast.error('Erreur lors du chargement des experts');
-        setAvailableExperts([]);
-      }
+      const allExperts = await fetchAllExperts();
+      const approvedExperts = allExperts.filter((expert: any) => expert.approval_status === 'approved');
+      setAvailableExperts(approvedExperts);
     } catch (error) {
       console.error('Erreur loadAvailableExperts:', error);
       toast.error('Erreur lors du chargement des experts');
@@ -886,13 +896,9 @@ const AdminDashboardOptimized: React.FC = () => {
           break;
           
         case 'experts':
-          const expertsResponse = await get('/admin/experts/all');
-          console.log('👔 Réponse experts COMPLÈTE:', expertsResponse);
-          if (expertsResponse.success) {
-            data = (expertsResponse.data as any)?.experts || [];
-          } else {
-            console.error('❌ Erreur chargement experts:', expertsResponse.message);
-          }
+          const expertsTileData = await fetchAllExperts();
+          console.log('👔 Données experts pour tuile:', expertsTileData.length);
+          data = expertsTileData;
           break;
           
         case 'apporteurs':
@@ -960,14 +966,9 @@ const AdminDashboardOptimized: React.FC = () => {
       
       switch (section) {
         case 'experts':
-          console.log('📡 Appel API /admin/experts/all...');
-          const expertsResponse = await get('/admin/experts/all');
-          console.log('📦 Réponse experts:', expertsResponse);
-          if (expertsResponse.success) {
-            setSectionData((prev: SectionData) => ({ ...prev, experts: (expertsResponse.data as any)?.experts || [] }));
-          } else {
-            console.error('❌ Erreur experts:', expertsResponse.message);
-          }
+          console.log('📡 Appel fetchAllExperts() pour section experts...');
+          const expertsSectionData = await fetchAllExperts();
+          setSectionData((prev: SectionData) => ({ ...prev, experts: expertsSectionData }));
           break;
           
         case 'clients':
