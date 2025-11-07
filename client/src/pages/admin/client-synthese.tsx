@@ -48,7 +48,9 @@ interface DossierData {
   tauxFinal?: number;
   progress?: number;
   created_at: string;
+  produitId?: string;
   ProduitEligible?: {
+    id?: string;
     nom: string;
     categorie: string;
   };
@@ -469,7 +471,20 @@ const ClientSynthese: React.FC = () => {
                               </div>
 
                               <div className="flex flex-col gap-1">
-                                <Button variant="outline" size="sm">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => {
+                                    if (dossier.produitId) {
+                                      navigate(`/admin/produits/${dossier.produitId}`);
+                                    } else if (dossier.ProduitEligible?.id) {
+                                      navigate(`/admin/produits/${dossier.ProduitEligible.id}`);
+                                    } else {
+                                      toast.error('Aucune fiche produit liée à ce dossier.');
+                                    }
+                                  }}
+                                  title="Ouvrir la synthèse Produit"
+                                >
                                   <Eye className="w-4 h-4" />
                                 </Button>
                               </div>

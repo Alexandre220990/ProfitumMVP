@@ -70,7 +70,9 @@ interface DossierData {
   ProduitEligible?: {
     nom: string;
     categorie: string;
+    id: string;
   };
+  produitId?: string;
 }
 
 interface ClientData {
@@ -814,8 +816,18 @@ const ExpertSynthese: React.FC = () => {
                                 <Button 
                                   variant="outline" 
                                   size="sm"
-                                  onClick={() => navigate(`/admin/clients/${dossier.Client?.id}`)}
-                                  title="Voir le client"
+                                  onClick={() => {
+                                    if (dossier.produitId) {
+                                      navigate(`/admin/produits/${dossier.produitId}`);
+                                    } else if (dossier.ProduitEligible?.id) {
+                                      navigate(`/admin/produits/${dossier.ProduitEligible.id}`);
+                                    } else if (dossier.Client?.id) {
+                                      navigate(`/admin/clients/${dossier.Client.id}`);
+                                    } else {
+                                      toast.error('Impossible d\'ouvrir la fiche liée au dossier');
+                                    }
+                                  }}
+                                  title="Voir la fiche liée"
                                 >
                                   <Eye className="w-4 h-4" />
                                 </Button>
