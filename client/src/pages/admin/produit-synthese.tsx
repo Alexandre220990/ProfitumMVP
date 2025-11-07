@@ -3,7 +3,7 @@
  * Vue complète d'un produit éligible avec statistiques commerciales
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -72,6 +72,16 @@ interface EvolutionData {
   nombre_dossiers: number;
   montant_total: number;
   montant_moyen: number;
+}
+
+interface TimelineEvent {
+  id: string;
+  date?: string;
+  statut: string;
+  montant: number;
+  client: string;
+  dossierLink: string;
+  clientLink?: string | null;
 }
 
 // ============================================================================
@@ -183,9 +193,41 @@ export default function ProduitSynthese() {
     }).format(amount);
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return '—';
     return new Date(dateString).toLocaleDateString('fr-FR');
   };
+
+  const formatDateTime = (dateString?: string) => {
+    if (!dateString) return '—';
+    return new Date(dateString).toLocaleString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const timelineEvents = useMemo<TimelineEvent[]>(() => {
+    if (!dossiers || dossiers.length === 0) return [];
+
+    return [...dossiers]
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .map((dossier: any) => ({
+        id: dossier.id,
+        date: dossier.created_at,
+        statut: dossier.statut,
+        montant: dossier.montantFinal || 0,
+        client:
+          dossier.Client?.company_name ||
+          `${dossier.Client?.first_name || ''} ${dossier.Client?.last_name || ''}`.trim() ||
+          dossier.Client?.email ||
+          'Client inconnu',
+        dossierLink: `/admin/dossiers/${dossier.id}`,
+        clientLink: dossier.Client?.id ? `/admin/clients/${dossier.Client.id}` : null
+      }));
+  }, [dossiers]);
 
   // ============================================================================
   // AUTHENTIFICATION
@@ -581,6 +623,64 @@ export default function ProduitSynthese() {
           </>
         )}
       </div>
+
+      <div className="container mx-auto px-6 pb-10">
+        <Card className="border border-gray-200 shadow-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="w-5 h-5 text-orange-600" />
+              Historique des dossiers ({timelineEvents.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {timelineEvents.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">
+                <Clock className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                Aucune activité enregistrée pour ce produit.
+              </div>
+            ) : (
+              <div className="relative pl-5 space-y-5">
+                <div className="absolute left-2 top-1 bottom-2 w-0.5 bg-gradient-to-b from-orange-200 via-purple-200 to-blue-200" />
+                {timelineEvents.map((event: TimelineEvent) => (
+                  <div key={event.id} className="relative">
+                    <div className="absolute -left-6 top-2 w-3.5 h-3.5 rounded-full border-2 border-white ring-2 ring-orange-200 bg-orange-500" />
+                    <div className="bg-white border border-gray-100 rounded-lg shadow-sm p-4 hover:border-orange-200 transition-colors">
+                      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+                        <div>
+                          <p className="text-sm text-gray-500">{formatDateTime(event.date)}</p>
+                          <p className="text-lg font-semibold text-gray-900">
+                            Dossier {event.id.slice(0, 8)} • {event.statut}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            Client : <span className="font-medium text-gray-900">{event.client}</span>
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            Montant : <span className="font-medium text-gray-900">{formatCurrency(event.montant)}</span>
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <Button variant="ghost" size="sm" onClick={() => navigate(event.dossierLink)}>
+                            <FileText className="w-4 h-4 mr-2" />
+                            Voir dossier
+                          </Button>
+                          {event.clientLink && (
+                            <Button variant="ghost" size="sm" onClick={() => navigate(event.clientLink!)}>
+                              <Users className="w-4 h-4 mr-2" />
+                              Fiche client
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
       <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
