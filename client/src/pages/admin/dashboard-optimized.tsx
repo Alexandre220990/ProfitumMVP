@@ -886,7 +886,8 @@ const AdminDashboardOptimized: React.FC = () => {
           break;
           
         case 'experts':
-          const expertsResponse = await get('/admin/experts');
+          const expertsResponse = await get('/admin/experts/all');
+          console.log('👔 Réponse experts COMPLÈTE:', expertsResponse);
           if (expertsResponse.success) {
             data = (expertsResponse.data as any)?.experts || [];
           } else {
@@ -959,8 +960,8 @@ const AdminDashboardOptimized: React.FC = () => {
       
       switch (section) {
         case 'experts':
-          console.log('📡 Appel API /admin/experts...');
-          const expertsResponse = await get('/admin/experts');
+          console.log('📡 Appel API /admin/experts/all...');
+          const expertsResponse = await get('/admin/experts/all');
           console.log('📦 Réponse experts:', expertsResponse);
           if (expertsResponse.success) {
             setSectionData((prev: SectionData) => ({ ...prev, experts: (expertsResponse.data as any)?.experts || [] }));
@@ -2027,7 +2028,7 @@ const AdminDashboardOptimized: React.FC = () => {
                                     {selectedEcosystemTile === 'experts' && (
                                       <>
                                         <UserCheck className="w-5 h-5 text-blue-600" />
-                                        Détails Experts ({kpiData.totalExperts})
+                                        Annuaire Experts Certifiés
                                       </>
                                     )}
                                     {selectedEcosystemTile === 'apporteurs' && (
@@ -2186,11 +2187,21 @@ const AdminDashboardOptimized: React.FC = () => {
                                           <span className="ml-2 text-gray-600">Chargement des experts...</span>
                                         </div>
                                       ) : selectedTileData.length > 0 ? (
-                                        <div className="space-y-3">
-                                          <div className="flex justify-between items-center">
-                                            <h4 className="font-semibold text-gray-800">
-                                              Experts ({selectedTileData.length})
-                                            </h4>
+                                        <div className="space-y-4">
+                                          <div className="flex justify-between items-center mb-4">
+                                            <div className="flex items-center gap-3">
+                                              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                                                <UserCheck className="w-6 h-6 text-white" />
+                                              </div>
+                                              <div>
+                                                <h4 className="text-xl font-bold text-gray-900">
+                                                  Annuaire Experts Certifiés
+                                                </h4>
+                                                <p className="text-sm text-gray-600">
+                                                  {selectedTileData.length} expert{selectedTileData.length > 1 ? 's' : ''} référencé{selectedTileData.length > 1 ? 's' : ''}
+                                                </p>
+                                              </div>
+                                            </div>
                                             <Button 
                                               variant="outline" 
                                               size="sm"
@@ -2199,59 +2210,84 @@ const AdminDashboardOptimized: React.FC = () => {
                                               Voir tous
                                             </Button>
                                           </div>
-                                          
-                                          <div className="space-y-2 max-h-96 overflow-y-auto">
-                                            {selectedTileData.slice(0, 10).map((expert: any) => (
-                                              <div key={expert.id} className="p-3 border rounded-lg hover:bg-gray-50">
-                                                <div className="flex justify-between items-start">
-                                                  <div className="flex-1">
-                                                    <div className="flex items-center gap-2 mb-1">
-                                                      <h5 className="font-medium text-gray-800">
-                                                        {`${expert.first_name || ''} ${expert.last_name || ''}`.trim() || expert.company_name || 'N/A'}
-                                                      </h5>
-                                                      <Badge variant={
-                                                        expert.approval_status === 'approved' ? 'default' :
-                                                        expert.approval_status === 'pending' ? 'secondary' :
-                                                        expert.approval_status === 'rejected' ? 'destructive' : 'outline'
-                                                      }>
-                                                        {expert.approval_status}
-                                                      </Badge>
-                                                      {expert.rating && (
-                                                        <span className="text-xs text-yellow-600">
-                                                          ⭐ {expert.rating}/5
-                                                        </span>
-                                                      )}
-                                                    </div>
-                                                    
-                                                    <div className="text-sm text-gray-600">
-                                                      {expert.company_name && <p>🏢 {expert.company_name}</p>}
-                                                      <p>📧 {expert.email}</p>
-                                                      {expert.specializations && expert.specializations.length > 0 && (
-                                                        <p>🎯 {expert.specializations.slice(0, 2).join(', ')}</p>
-                                                      )}
-                                                      <p>📅 Créé le {new Date(expert.created_at).toLocaleDateString('fr-FR')}</p>
-                                                    </div>
-                                                  </div>
-                                                  
-                                                  <div className="text-right">
-                                                    <Button 
-                                                      variant="ghost" 
-                                                      size="sm"
+
+                                          <div className="rounded-md border overflow-hidden">
+                                            <table className="w-full text-sm">
+                                              <thead className="bg-slate-50 border-b border-slate-200">
+                                                <tr>
+                                                  <th className="px-4 py-3 text-left font-semibold text-slate-900">Expert</th>
+                                                  <th className="px-4 py-3 text-left font-semibold text-slate-900">Email</th>
+                                                  <th className="px-4 py-3 text-left font-semibold text-slate-900">Spécialisations</th>
+                                                  <th className="px-4 py-3 text-left font-semibold text-slate-900">Statut</th>
+                                                  <th className="px-4 py-3 text-left font-semibold text-slate-900">Créé le</th>
+                                                  <th className="px-4 py-3 text-center font-semibold text-slate-900">Actions</th>
+                                                </tr>
+                                              </thead>
+                                              <tbody className="divide-y divide-slate-200">
+                                                {selectedTileData.map((expert: any) => {
+                                                  const fullName = `${expert.first_name || ''} ${expert.last_name || ''}`.trim();
+                                                  const displayName = fullName || expert.company_name || expert.name || 'N/A';
+                                                  const specialisations = expert.specializations?.length ? expert.specializations.join(', ') : '—';
+                                                  return (
+                                                    <tr
+                                                      key={expert.id}
+                                                      className="hover:bg-blue-50 cursor-pointer transition-colors"
                                                       onClick={() => navigate(`/admin/experts/${expert.id}`)}
-                                                      title="Voir la synthèse de l'expert"
                                                     >
-                                                      <Eye className="w-4 h-4" />
-                                                    </Button>
-                                                  </div>
-                                                </div>
-                                              </div>
-                                            ))}
-                                            
-                                            {selectedTileData.length > 10 && (
-                                              <div className="text-center py-2 text-sm text-gray-500">
-                                                ... et {selectedTileData.length - 10} autres experts
-                                              </div>
-                                            )}
+                                                      <td className="px-4 py-3 font-medium text-slate-900 flex flex-col">
+                                                        <span>{displayName}</span>
+                                                        {expert.company_name && (
+                                                          <span className="text-xs text-slate-500">{expert.company_name}</span>
+                                                        )}
+                                                      </td>
+                                                      <td className="px-4 py-3 text-slate-600">{expert.email || '—'}</td>
+                                                      <td className="px-4 py-3 text-slate-600">{specialisations}</td>
+                                                      <td className="px-4 py-3">
+                                                        <Badge
+                                                          variant={
+                                                            expert.approval_status === 'approved' ? 'default' :
+                                                            expert.approval_status === 'pending' ? 'secondary' :
+                                                            'destructive'
+                                                          }
+                                                          className={
+                                                            expert.approval_status === 'approved'
+                                                              ? 'bg-blue-100 text-blue-800'
+                                                              : expert.approval_status === 'pending'
+                                                              ? 'bg-yellow-100 text-yellow-800'
+                                                              : 'bg-red-100 text-red-800'
+                                                          }
+                                                        >
+                                                          {expert.approval_status || 'N/A'}
+                                                        </Badge>
+                                                      </td>
+                                                      <td className="px-4 py-3 text-slate-600">
+                                                        {expert.created_at ? new Date(expert.created_at).toLocaleDateString('fr-FR') : '—'}
+                                                      </td>
+                                                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                                                        <div className="flex items-center justify-center gap-1">
+                                                          <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => navigate(`/admin/experts/${expert.id}`)}
+                                                            title="Voir la synthèse"
+                                                          >
+                                                            <Eye className="h-4 w-4" />
+                                                          </Button>
+                                                          <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => navigate(`/admin/messagerie-admin?user=${expert.id}`)}
+                                                            title="Contacter l'expert"
+                                                          >
+                                                            <Mail className="h-4 w-4" />
+                                                          </Button>
+                                                        </div>
+                                                      </td>
+                                                    </tr>
+                                                  );
+                                                })}
+                                              </tbody>
+                                            </table>
                                           </div>
                                         </div>
                                       ) : (
