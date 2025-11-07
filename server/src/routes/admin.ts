@@ -822,6 +822,192 @@ router.put('/experts/:id/reject', asyncHandler(async (req, res) => {
   }
 }));
 
+// PUT /api/admin/experts/:id/suspend - Suspendre un expert approuvé
+router.put('/experts/:id/suspend', asyncHandler(async (req, res) => {
+  try {
+    const { id } = req.params;
+    const adminId = (req as any).user.id;
+    const { reason } = req.body || {};
+
+    const { data: expert, error: expertError } = await supabaseClient
+      .from('Expert')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (expertError || !expert) {
+      return res.status(404).json({
+        success: false,
+        message: 'Expert non trouvé'
+      });
+    }
+
+    const { data, error } = await supabaseClient
+      .from('Expert')
+      .update({
+        status: 'suspended',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    await supabaseClient
+      .from('AdminAuditLog')
+      .insert({
+        admin_id: adminId,
+        action: 'expert_suspended',
+        table_name: 'Expert',
+        record_id: id,
+        old_values: { status: expert.status },
+        new_values: { status: 'suspended', reason },
+        ip_address: req.ip,
+        user_agent: req.get('User-Agent')
+      });
+
+    return res.json({
+      success: true,
+      data,
+      message: 'Expert suspendu avec succès'
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur suspension expert:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la suspension de l\'expert'
+    });
+  }
+}));
+
+// PUT /api/admin/experts/:id/reactivate - Réactiver un expert refusé ou suspendu
+router.put('/experts/:id/reactivate', asyncHandler(async (req, res) => {
+  try {
+    const { id } = req.params;
+    const adminId = (req as any).user.id;
+
+    const { data: expert, error: expertError } = await supabaseClient
+      .from('Expert')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (expertError || !expert) {
+      return res.status(404).json({
+        success: false,
+        message: 'Expert non trouvé'
+      });
+    }
+
+    const updateData: any = {
+      status: 'active',
+      updated_at: new Date().toISOString()
+    };
+
+    if (expert.approval_status !== 'approved') {
+      updateData.approval_status = 'approved';
+      updateData.approved_at = new Date().toISOString();
+      updateData.approved_by = adminId;
+    }
+
+    const { data, error } = await supabaseClient
+      .from('Expert')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    await supabaseClient
+      .from('AdminAuditLog')
+      .insert({
+        admin_id: adminId,
+        action: 'expert_reactivated',
+        table_name: 'Expert',
+        record_id: id,
+        old_values: { status: expert.status, approval_status: expert.approval_status },
+        new_values: { status: 'active', approval_status: updateData.approval_status || expert.approval_status },
+        ip_address: req.ip,
+        user_agent: req.get('User-Agent')
+      });
+
+    return res.json({
+      success: true,
+      data,
+      message: 'Expert réactivé avec succès'
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur réactivation expert:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la réactivation de l\'expert'
+    });
+  }
+}));
+
+// DELETE /api/admin/experts/:id - Supprimer définitivement un expert
+router.delete('/experts/:id', asyncHandler(async (req, res) => {
+  try {
+    const { id } = req.params;
+    const adminId = (req as any).user.id;
+
+    const { data: expert, error: expertError } = await supabaseClient
+      .from('Expert')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (expertError || !expert) {
+      return res.status(404).json({
+        success: false,
+        message: 'Expert non trouvé'
+      });
+    }
+
+    const { error } = await supabaseClient
+      .from('Expert')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      throw error;
+    }
+
+    await supabaseClient
+      .from('AdminAuditLog')
+      .insert({
+        admin_id: adminId,
+        action: 'expert_deleted',
+        table_name: 'Expert',
+        record_id: id,
+        old_values: expert,
+        new_values: {},
+        ip_address: req.ip,
+        user_agent: req.get('User-Agent')
+      });
+
+    return res.json({
+      success: true,
+      message: 'Expert supprimé avec succès'
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur suppression expert:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la suppression de l\'expert'
+    });
+  }
+}));
+
 // PUT /api/admin/experts/:id - Modifier un expert
 router.put('/experts/:id', asyncHandler(async (req, res) => {
   try {

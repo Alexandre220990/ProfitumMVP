@@ -28,7 +28,8 @@ import {
   MessageSquare,
   CalendarPlus,
   XCircle,
-  Send
+  Send,
+  Trash2
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { get } from '@/lib/api';
@@ -193,22 +194,34 @@ const ExpertSynthese: React.FC = () => {
   // ACTIONS RAPIDES
   // ========================================
 
+  const buildAuthHeaders = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      toast.error('Session expirée, veuillez vous reconnecter');
+      return null;
+    }
+
+    return {
+      session,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`
+      }
+    };
+  };
+
   const handleApproveExpert = async () => {
     if (!expert?.id) return;
     setIsProcessing(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast.error('Session expirée, veuillez vous reconnecter');
+      const auth = await buildAuthHeaders();
+      if (!auth) {
+        setIsProcessing(false);
         return;
       }
-
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/experts/${expert.id}/approve`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
+        headers: auth.headers,
         credentials: 'include'
       });
 
@@ -235,18 +248,15 @@ const ExpertSynthese: React.FC = () => {
     
     setIsProcessing(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast.error('Session expirée, veuillez vous reconnecter');
+      const auth = await buildAuthHeaders();
+      if (!auth) {
+        setIsProcessing(false);
         return;
       }
 
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/experts/${expert.id}/reject`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
+        headers: auth.headers,
         credentials: 'include',
         body: JSON.stringify({ reason: rejectionReason })
       });
@@ -265,6 +275,106 @@ const ExpertSynthese: React.FC = () => {
     } finally {
       setIsProcessing(false);
       setRejectionReason('');
+    }
+  };
+
+  const handleSuspendExpert = async () => {
+    if (!expert?.id) return;
+    if (!window.confirm('Suspendre cet expert ?')) return;
+    setIsProcessing(true);
+    try {
+      const auth = await buildAuthHeaders();
+      if (!auth) {
+        setIsProcessing(false);
+        return;
+      }
+
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/experts/${expert.id}/suspend`, {
+        method: 'PUT',
+        headers: auth.headers,
+        credentials: 'include',
+        body: JSON.stringify({ reason: 'Suspension via synthèse admin' })
+      });
+
+      const json = await response.json().catch(() => null);
+
+      if (response.ok) {
+        toast.success('Expert suspendu');
+        await loadExpertData();
+      } else {
+        toast.error(json?.message || 'Erreur lors de la suspension');
+      }
+    } catch (error) {
+      console.error('Erreur suspension:', error);
+      toast.error('Erreur lors de la suspension');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleReactivateExpert = async () => {
+    if (!expert?.id) return;
+    if (!window.confirm('Réactiver cet expert ?')) return;
+    setIsProcessing(true);
+    try {
+      const auth = await buildAuthHeaders();
+      if (!auth) {
+        setIsProcessing(false);
+        return;
+      }
+
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/experts/${expert.id}/reactivate`, {
+        method: 'PUT',
+        headers: auth.headers,
+        credentials: 'include'
+      });
+
+      const json = await response.json().catch(() => null);
+
+      if (response.ok) {
+        toast.success('Expert réactivé');
+        await loadExpertData();
+      } else {
+        toast.error(json?.message || 'Erreur lors de la réactivation');
+      }
+    } catch (error) {
+      console.error('Erreur réactivation:', error);
+      toast.error('Erreur lors de la réactivation');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDeleteExpert = async () => {
+    if (!expert?.id) return;
+    if (!window.confirm('Supprimer définitivement cet expert ?')) return;
+    setIsProcessing(true);
+    try {
+      const auth = await buildAuthHeaders();
+      if (!auth) {
+        setIsProcessing(false);
+        return;
+      }
+
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/experts/${expert.id}`, {
+        method: 'DELETE',
+        headers: auth.headers,
+        credentials: 'include'
+      });
+
+      const json = await response.json().catch(() => null);
+
+      if (response.ok) {
+        toast.success('Expert supprimé');
+        navigate('/admin/dashboard-optimized?section=experts');
+      } else {
+        toast.error(json?.message || 'Erreur lors de la suppression');
+      }
+    } catch (error) {
+      console.error('Erreur suppression:', error);
+      toast.error('Erreur lors de la suppression');
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -362,7 +472,7 @@ const ExpertSynthese: React.FC = () => {
                     className="bg-green-600 hover:bg-green-700 text-white"
                   >
                     <CheckCircle className="w-4 h-4 mr-2" />
-                    Approuver l'expert
+                    Valider
                   </Button>
                   <Button 
                     onClick={() => setShowValidationDialog(true)}
@@ -370,10 +480,43 @@ const ExpertSynthese: React.FC = () => {
                     variant="destructive"
                   >
                     <XCircle className="w-4 h-4 mr-2" />
-                    Rejeter la demande
+                    Refuser
                   </Button>
                 </>
               )}
+
+              {expert.approval_status === 'approved' && expert.status !== 'suspended' && (
+                <Button
+                  onClick={handleSuspendExpert}
+                  disabled={isProcessing}
+                  variant="outline"
+                  className="border-amber-300 text-amber-700 hover:bg-amber-50"
+                >
+                  <AlertTriangle className="w-4 h-4 mr-2" />
+                  Suspendre
+                </Button>
+              )}
+
+              {(expert.approval_status === 'rejected' || expert.status === 'suspended') && (
+                <Button
+                  onClick={handleReactivateExpert}
+                  disabled={isProcessing}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Réactiver
+                </Button>
+              )}
+
+              <Button
+                onClick={handleDeleteExpert}
+                disabled={isProcessing}
+                variant="destructive"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Supprimer
+              </Button>
+
               <Button 
                 onClick={() => setShowMessageDialog(true)}
                 variant="outline"
