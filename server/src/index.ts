@@ -126,10 +126,10 @@ dotenv.config();
 const PORT = Number(process.env.PORT) || 5001;
 const HOST = process.env.NODE_ENV === 'production' ? '0.0.0.0' : '::'; // En production, écouter sur toutes les interfaces
 
-// Configuration trust proxy pour Railway et autres reverse proxies
-if (process.env.NODE_ENV === 'production') {
-  app.set('trust proxy', 1); // Faire confiance au premier proxy (Railway)
-}
+// Configuration trust proxy pour Railway, Vercel, Netlify et autres reverse proxies
+// Certains services ajoutent systématiquement l'en-tête X-Forwarded-For même en préprod
+// Pour éviter les warnings/erreurs express-rate-limit, on fait toujours confiance au 1er proxy
+app.set('trust proxy', 1);
 
 // Configuration Supabase avec gestion d'erreur
 const supabaseUrl = process.env.SUPABASE_URL;
