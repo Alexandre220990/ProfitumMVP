@@ -205,6 +205,35 @@ export class NotificationTriggers {
   }
 
   /**
+   * CLIENT 4bis: Signature de charte demandée
+   */
+  static async onCharteSignatureRequested(
+    clientAuthId: string | null,
+    data: { dossier_id: string; produit: string; expert_name: string; charte_url?: string }
+  ): Promise<boolean> {
+    if (!clientAuthId) {
+      console.warn('⚠️ onCharteSignatureRequested appelé sans clientAuthId', data);
+      return false;
+    }
+
+    return this.createNotification({
+      user_id: clientAuthId,
+      user_type: 'client',
+      title: '✍️ Signature de charte requise',
+      message: `${data.expert_name} a envoyé la charte commerciale pour votre dossier ${data.produit}. Merci de la lire et de la signer pour poursuivre.`,
+      notification_type: 'charte_signature_requested',
+      priority: 'high',
+      event_id: data.dossier_id,
+      metadata: {
+        dossier_id: data.dossier_id,
+        produit: data.produit,
+        expert_name: data.expert_name,
+        charte_url: data.charte_url || null
+      }
+    });
+  }
+
+  /**
    * CLIENT 4: Commentaire d'un expert sur le dossier
    */
   static async onExpertComment(
@@ -392,6 +421,34 @@ Date : ${data.paiement_date}` : ''}`,
   // ============================================================================
   // NOTIFICATIONS EXPERT (5 types)
   // ============================================================================
+
+  /**
+   * EXPERT 0: Charte signée par le client
+   */
+  static async onCharteSigned(
+    expertAuthId: string | null,
+    data: { dossier_id: string; produit: string; client_name: string }
+  ): Promise<boolean> {
+    if (!expertAuthId) {
+      console.warn('⚠️ onCharteSigned appelé sans expertAuthId', data);
+      return false;
+    }
+
+    return this.createNotification({
+      user_id: expertAuthId,
+      user_type: 'expert',
+      title: '✅ Charte signée par le client',
+      message: `${data.client_name} a signé la charte commerciale pour le dossier ${data.produit}. Vous pouvez lancer l'audit.`,
+      notification_type: 'charte_signed',
+      priority: 'medium',
+      event_id: data.dossier_id,
+      metadata: {
+        dossier_id: data.dossier_id,
+        produit: data.produit,
+        client_name: data.client_name
+      }
+    });
+  }
 
   /**
    * EXPERT 1: Client a uploadé un document
