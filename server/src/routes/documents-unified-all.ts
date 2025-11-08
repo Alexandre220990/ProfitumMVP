@@ -25,6 +25,7 @@
 import express, { Request, Response } from 'express';
 import { createClient } from '@supabase/supabase-js';
 import multer from 'multer';
+import { normalizeDossierStatus } from '../utils/dossierStatus';
 
 const router = express.Router();
 
@@ -578,7 +579,9 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
         // Ne notifier l'expert QUE si :
         // 1. Un expert est assigné (expertId existe)
         // 2. Le dossier n'est PAS en phase de pré-éligibilité
-        const isPreEligibilityPhase = ['eligible', 'documents_uploaded', 'eligible_confirmed'].includes(clientProduit?.statut || '');
+        const isPreEligibilityPhase = ['pending_upload', 'pending_admin_validation'].includes(
+          normalizeDossierStatus(clientProduit?.statut)
+        );
         
         if (clientProduit?.expertId && !isPreEligibilityPhase) {
           const clientInfo = Array.isArray(clientProduit.Client) ? clientProduit.Client[0] : clientProduit.Client;

@@ -703,5 +703,215 @@ export class DossierTimelineService {
       color: 'blue'
     });
   }
+
+  static async documentsComplementairesValides(data: {
+    dossier_id: string;
+    expert_name: string;
+    documents_count: number;
+    documents?: string[];
+    notes?: string;
+  }): Promise<void> {
+    await this.addEvent({
+      dossier_id: data.dossier_id,
+      type: 'expert_action',
+      actor_type: 'expert',
+      actor_name: data.expert_name,
+      title: '✅ Documents complémentaires validés',
+      description: `${data.expert_name} a validé ${data.documents_count} document${data.documents_count > 1 ? 's' : ''} complémentaire${data.documents_count > 1 ? 's' : ''}.${data.notes ? '\nNote : ' + data.notes : ''}${data.documents && data.documents.length ? '\n\n• ' + data.documents.join('\n• ') : ''}`,
+      metadata: {
+        documents_count: data.documents_count,
+        documents: data.documents || [],
+        notes: data.notes || null
+      },
+      icon: '✅',
+      color: 'green'
+    });
+  }
+
+  static async documentsComplementairesRefuses(data: {
+    dossier_id: string;
+    expert_name: string;
+    rejected_documents?: string[];
+    reason?: string;
+  }): Promise<void> {
+    await this.addEvent({
+      dossier_id: data.dossier_id,
+      type: 'expert_action',
+      actor_type: 'expert',
+      actor_name: data.expert_name,
+      title: '⚠️ Documents complémentaires refusés',
+      description: `${data.expert_name} a rejeté les documents complémentaires.${data.reason ? '\nMotif : ' + data.reason : ''}${data.rejected_documents && data.rejected_documents.length ? '\n\n• ' + data.rejected_documents.join('\n• ') : ''}`,
+      metadata: {
+        rejected_documents: data.rejected_documents || [],
+        reason: data.reason || null
+      },
+      icon: '⚠️',
+      color: 'orange'
+    });
+  }
+
+  static async charteEnvoyee(data: {
+    dossier_id: string;
+    actor_name: string;
+    message?: string;
+    document_url?: string;
+  }): Promise<void> {
+    await this.addEvent({
+      dossier_id: data.dossier_id,
+      type: 'expert_action',
+      actor_type: 'expert',
+      actor_name: data.actor_name,
+      title: '📑 Charte commerciale envoyée',
+      description: data.message ? data.message : `${data.actor_name} a envoyé la charte de collaboration pour signature.`,
+      metadata: {
+        document_url: data.document_url || null
+      },
+      icon: '📑',
+      color: 'orange',
+      action_url: data.document_url || undefined
+    });
+  }
+
+  static async charteSignee(data: {
+    dossier_id: string;
+    client_name: string;
+  }): Promise<void> {
+    await this.addEvent({
+      dossier_id: data.dossier_id,
+      type: 'client_action',
+      actor_type: 'client',
+      actor_name: data.client_name,
+      title: '✍️ Charte commerciale signée',
+      description: `${data.client_name} a signé la charte commerciale.`,
+      icon: '✍️',
+      color: 'green'
+    });
+  }
+
+  static async implementationEnCours(data: {
+    dossier_id: string;
+    expert_name: string;
+    organisme?: string;
+    reference?: string;
+    submission_date?: string;
+  }): Promise<void> {
+    await this.addEvent({
+      dossier_id: data.dossier_id,
+      type: 'expert_action',
+      actor_type: 'expert',
+      actor_name: data.expert_name,
+      title: '🛠️ Mise en œuvre en cours',
+      description: `${data.expert_name} a confirmé la transmission du dossier à l'administration.${data.organisme ? `
+Organisme : ${data.organisme}` : ''}${data.reference ? `
+Référence : ${data.reference}` : ''}${data.submission_date ? `
+Date : ${data.submission_date}` : ''}`,
+      metadata: {
+        organisme: data.organisme || null,
+        reference: data.reference || null,
+        submission_date: data.submission_date || null
+      },
+      icon: '🛠️',
+      color: 'blue'
+    });
+  }
+
+  static async implementationValidee(data: {
+    dossier_id: string;
+    expert_name: string;
+    montant_accorde: number;
+    decision: 'accepte' | 'partiel' | 'refuse';
+    difference?: number;
+    date_retour?: string;
+  }): Promise<void> {
+    const icon = data.decision === 'accepte' ? '✅' : data.decision === 'partiel' ? '⚠️' : '❌';
+    const color = data.decision === 'accepte' ? 'green' : data.decision === 'partiel' ? 'orange' : 'red';
+
+    await this.addEvent({
+      dossier_id: data.dossier_id,
+      type: 'expert_action',
+      actor_type: 'expert',
+      actor_name: data.expert_name,
+      title: `${icon} Résultat de l'administration`,
+      description: `${data.expert_name} a confirmé le retour de l'administration (${data.decision}). Montant accordé : ${data.montant_accorde.toLocaleString('fr-FR')} €${typeof data.difference === 'number' && data.difference !== 0 ? ` (${data.difference > 0 ? '+' : ''}${data.difference.toLocaleString('fr-FR')} € vs estimation)` : ''}${data.date_retour ? `
+Date : ${data.date_retour}` : ''}`,
+      metadata: {
+        decision: data.decision,
+        montant_accorde: data.montant_accorde,
+        difference: data.difference || null,
+        date_retour: data.date_retour || null
+      },
+      icon,
+      color
+    });
+  }
+
+  static async paiementDemande(data: {
+    dossier_id: string;
+    expert_name: string;
+    montant: number;
+    facture_reference?: string;
+    notes?: string;
+  }): Promise<void> {
+    await this.addEvent({
+      dossier_id: data.dossier_id,
+      type: 'expert_action',
+      actor_type: 'expert',
+      actor_name: data.expert_name,
+      title: '💶 Remboursement obtenu – facture émise',
+      description: `${data.expert_name} a confirmé le remboursement et émis la facture de ${data.montant.toLocaleString('fr-FR')} €.${data.facture_reference ? `
+Facture : ${data.facture_reference}` : ''}${data.notes ? `
+Note : ${data.notes}` : ''}`,
+      metadata: {
+        montant: data.montant,
+        facture_reference: data.facture_reference || null,
+        notes: data.notes || null
+      },
+      icon: '💶',
+      color: 'purple'
+    });
+  }
+
+  static async paiementEnCours(data: {
+    dossier_id: string;
+    montant: number;
+    mode: 'virement' | 'en_ligne';
+  }): Promise<void> {
+    await this.addEvent({
+      dossier_id: data.dossier_id,
+      type: 'client_action',
+      actor_type: 'client',
+      actor_name: 'Client',
+      title: '💳 Paiement en cours',
+      description: `Le client a initié un paiement de ${data.montant.toLocaleString('fr-FR')} € (${data.mode === 'virement' ? 'virement bancaire' : 'paiement en ligne'}).`,
+      metadata: {
+        montant: data.montant,
+        mode: data.mode
+      },
+      icon: '💳',
+      color: 'blue'
+    });
+  }
+
+  static async remboursementTermine(data: {
+    dossier_id: string;
+    montant: number;
+    paiement_date?: string;
+  }): Promise<void> {
+    await this.addEvent({
+      dossier_id: data.dossier_id,
+      type: 'system_action',
+      actor_type: 'system',
+      actor_name: 'Système',
+      title: '✅ Paiement confirmé – dossier clôturé',
+      description: `Paiement final de ${data.montant.toLocaleString('fr-FR')} € confirmé.${data.paiement_date ? `
+Date : ${data.paiement_date}` : ''}`,
+      metadata: {
+        montant: data.montant,
+        paiement_date: data.paiement_date || null
+      },
+      icon: '✅',
+      color: 'green'
+    });
+  }
 }
 

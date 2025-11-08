@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import { supabaseAdmin as supabaseClient } from '../config/supabase';
 import { v4 as uuidv4 } from 'uuid';
+import { normalizeDossierStatus } from '../utils/dossierStatus';
 // Import traiterSimulation supprimé - utilise maintenant les fonctions SQL
 
 const router = express.Router();
@@ -277,14 +278,16 @@ async function mergeClientProductsIntelligent(
         }
         
         // Cas 1 : Produit en cours de traitement → PROTÉGER
-        if (['en_cours', 'documents_collecte', 'expert_assigne', 'en_attente_expert', 'dossier_constitue'].includes(existing.statut)) {
+        const existingStatus = normalizeDossierStatus(existing.statut);
+
+        if (['audit_in_progress', 'complementary_documents_validated', 'expert_validated', 'expert_assigned', 'charte_signed'].includes(existingStatus)) {
           console.log(`🔒 Produit protégé (workflow en cours): ${produit.produit_nom}`);
           products_protected++;
           continue;
         }
 
         // Cas 2 : Produit 'eligible' → METTRE À JOUR si différent
-        if (existing.statut === 'eligible') {
+        if (existingStatus === 'pending_upload') {
           const nouveauMontant = produit.montant_estime || 0;
           const ancienMontant = existing.montantFinal || 0;
 
@@ -321,7 +324,7 @@ async function mergeClientProductsIntelligent(
             clientId: clientId,
             produitId: produit.produit_id,
             simulationId: simulationId,
-            statut: 'eligible',
+            statut: 'pending_upload',
             montantFinal: produit.montant_estime,
             notes: produit.notes,
             calcul_details: produit.calcul_details,

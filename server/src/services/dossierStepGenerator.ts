@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { normalizeDossierStatus } from '../utils/dossierStatus';
 
 // Types pour les relations
 interface ProduitEligible {
@@ -168,7 +169,16 @@ export class DossierStepGenerator {
       const { data: eligibleDossiers, error } = await supabase
         .from('ClientProduitEligible')
         .select('id')
-        .in('statut', ['eligible', 'en_cours']);
+        .in('statut', [
+          'pending_upload',
+          'pending_admin_validation',
+          'admin_validated',
+          'expert_assigned',
+          'expert_pending_validation',
+          'expert_validated',
+          'charte_pending',
+          'charte_signed'
+        ]);
 
       if (error) {
         console.error('❌ Erreur récupération des dossiers éligibles:', error);
@@ -223,8 +233,10 @@ export class DossierStepGenerator {
       }
 
       // ⚠️ NE PAS écraser si l'éligibilité a été validée ou rejetée par l'admin
-      if (dossier.statut === 'eligibility_validated' || dossier.statut === 'eligibility_rejected') {
-        console.log(`⏩ Skip updateProgress: statut '${dossier.statut}' défini manuellement par admin`);
+      const normalizedStatus = normalizeDossierStatus(dossier.statut);
+
+      if (['admin_validated', 'admin_rejected'].includes(normalizedStatus)) {
+        console.log(`⏩ Skip updateProgress: statut '${normalizedStatus}' défini manuellement par admin`);
         return true; // Retourner true car ce n'est pas une erreur
       }
 

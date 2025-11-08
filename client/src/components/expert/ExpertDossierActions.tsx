@@ -33,8 +33,8 @@ export default function ExpertDossierActions({
   const [showFinalResultModal, setShowFinalResultModal] = useState(false);
 
   // Déterminer les actions disponibles selon le statut
-  const canSubmit = statut === 'validation_finale' || statut === 'validated' || statut === 'audit_completed';
-  const canRecordResult = statut === 'soumis_administration' || statut === 'pending_result';
+  const canSubmit = ['validation_pending', 'validated', 'audit_completed'].includes(statut);
+  const canRecordResult = statut === 'implementation_in_progress';
 
   // Si aucune action disponible, ne rien afficher
   if (!canSubmit && !canRecordResult) {
@@ -60,7 +60,7 @@ export default function ExpertDossierActions({
                 className="w-full bg-blue-600 hover:bg-blue-700"
               >
                 <SendHorizonal className="w-4 h-4 mr-2" />
-                📨 Marquer comme soumis à l'administration
+                🛠️ Lancer la mise en œuvre administration
               </Button>
             )}
 

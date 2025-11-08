@@ -3,12 +3,15 @@
  * Accepter/Refuser des dossiers
  */
 
-import express, { Request, Response } from 'express';
+import { Router, Request, Response } from 'express';
+import { supabase } from '../lib/supabase';
 import { enhancedAuthMiddleware, AuthenticatedRequest } from '../middleware/auth-enhanced';
 import { ExpertNotificationService } from '../services/expert-notification-service';
-import { supabase } from '../lib/supabase';
+import { DossierTimelineService } from '../services/dossier-timeline-service';
+import { NotificationTriggers } from '../services/NotificationTriggers';
+import { normalizeDossierStatus } from '../utils/dossierStatus';
 
-const router = express.Router();
+const router = Router();
 
 /**
  * POST /api/expert/dossier/:id/accept
@@ -80,24 +83,26 @@ router.post('/dossier/:id/accept', enhancedAuthMiddleware, async (req: Request, 
     }
 
     // Mettre à jour le dossier : confirmer l'expert et passer à l'étape 3
+    const now = new Date().toISOString();
+
     const { data: updatedDossier, error: updateError } = await supabase
       .from('ClientProduitEligible')
       .update({
         expertId: user.database_id,
         expert_pending_id: null,
-        statut: 'en_cours',
+        statut: 'expert_validated',
         current_step: 3,
-        progress: 30,
-        date_expert_accepted: new Date().toISOString(),
+        progress: 35,
+        date_expert_accepted: now,
+        updated_at: now,
         metadata: {
           ...dossier.metadata,
           expert_acceptance: {
             expert_id: user.database_id,
-            accepted_at: new Date().toISOString(),
+            accepted_at: now,
             notes: notes || ''
           }
-        },
-        updated_at: new Date().toISOString()
+        }
       })
       .eq('id', client_produit_id)
       .select()
@@ -112,8 +117,6 @@ router.post('/dossier/:id/accept', enhancedAuthMiddleware, async (req: Request, 
 
     // 📅 TIMELINE : Ajouter événement acceptation
     try {
-      const { DossierTimelineService } = await import('../services/dossier-timeline-service');
-      
       await DossierTimelineService.expertAccepte({
         dossier_id: client_produit_id,
         expert_name: expertName,
@@ -293,8 +296,6 @@ router.post('/dossier/:id/reject', enhancedAuthMiddleware, async (req: Request, 
 
     // 📅 TIMELINE : Ajouter événement refus
     try {
-      const { DossierTimelineService } = await import('../services/dossier-timeline-service');
-      
       await DossierTimelineService.expertRefuse({
         dossier_id: client_produit_id,
         expert_name: expertName,
@@ -458,22 +459,25 @@ router.post('/dossier/:id/request-documents', enhancedAuthMiddleware, async (req
     }));
 
     // Mettre à jour le dossier
+    const now = new Date().toISOString();
+
     const { data: updatedDossier, error: updateError } = await supabase
       .from('ClientProduitEligible')
       .update({
-        statut: 'documents_complementaires_requis',
+        statut: 'complementary_documents_upload_pending',
         current_step: 3,
+        progress: 40,
         metadata: {
           ...dossier.metadata,
           required_documents_expert: documentsWithIds,
           expert_request: {
             requested_by: user.database_id,
-            requested_at: new Date().toISOString(),
+            requested_at: now,
             message: message || '',
             documents_count: documents.length
           }
         },
-        updated_at: new Date().toISOString()
+        updated_at: now
       })
       .eq('id', client_produit_id)
       .select()
@@ -488,10 +492,6 @@ router.post('/dossier/:id/request-documents', enhancedAuthMiddleware, async (req
 
     // 📅 TIMELINE : Ajouter événement
     try {
-      const { DossierTimelineService } = await import('../services/dossier-timeline-service');                                                                  
-      
-      // Pour l'instant, on compte seulement les documents demandés
-      // TODO: Ajouter validated_count et rejected_count quand le frontend enverra ces infos
       await DossierTimelineService.documentsComplementairesDemandes({
         dossier_id: client_produit_id,
         expert_name: expertName,
@@ -626,6 +626,208 @@ router.post('/dossier/:id/request-documents', enhancedAuthMiddleware, async (req
 });
 
 /**
+ * POST /api/expert/dossier/:id/review-complementary-documents
+ * Expert valide ou refuse les documents complémentaires
+ */
+router.post('/dossier/:id/review-complementary-documents', enhancedAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const user = (req as AuthenticatedRequest).user;
+    const { id: dossierId } = req.params;
+    const { action, notes, rejected_documents } = req.body;
+
+    if (!user || user.type !== 'expert') {
+      return res.status(403).json({ success: false, message: 'Accès réservé aux experts' });
+    }
+
+    if (!['validate', 'reject'].includes(action)) {
+      return res.status(400).json({ success: false, message: 'Action invalide (validate ou reject requis)' });
+    }
+
+    const { data: dossier, error: dossierError } = await supabase
+      .from('ClientProduitEligible')
+      .select(`
+        *,
+        Client:clientId (
+          id,
+          auth_user_id,
+          company_name
+        ),
+        ProduitEligible:produitId (
+          id,
+          nom
+        )
+      `)
+      .eq('id', dossierId)
+      .single();
+
+    if (dossierError || !dossier) {
+      return res.status(404).json({ success: false, message: 'Dossier non trouvé' });
+    }
+
+    if (dossier.expert_id !== user.database_id) {
+      return res.status(403).json({ success: false, message: 'Ce dossier ne vous est pas assigné' });
+    }
+
+    const expertNameFallback = user.email || 'Expert';
+    const expertName = dossier.Expert[0]?.name || expertNameFallback;
+
+    const { data: docRequest, error: requestError } = await supabase
+      .from('document_request')
+      .select('id, requested_documents, status')
+      .eq('dossier_id', dossierId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (requestError || !docRequest) {
+      return res.status(404).json({ success: false, message: 'Aucune demande de documents complémentaires trouvée' });
+    }
+
+    const now = new Date().toISOString();
+    const requestedDocs = (docRequest.requested_documents as any[]) || [];
+    const requestedDocNames = requestedDocs.map(doc => doc.name || doc.description || 'Document');
+    const clientInfo = Array.isArray(dossier.Client) ? dossier.Client[0] : dossier.Client;
+    const produitNom = dossier.ProduitEligible?.nom || 'Produit';
+
+    if (action === 'validate') {
+      const { data: updatedDossier, error: updateError } = await supabase
+        .from('ClientProduitEligible')
+        .update({
+          statut: 'complementary_documents_validated',
+          current_step: 3,
+          progress: 45,
+          updated_at: now,
+          metadata: {
+            ...dossier.metadata,
+            complementary_documents: {
+              ...(dossier.metadata?.complementary_documents || {}),
+              status: 'validated',
+              validated_at: now,
+              validated_by: user.database_id,
+              notes: notes || null,
+              requested_documents: requestedDocs
+            }
+          }
+        })
+        .eq('id', dossierId)
+        .select()
+        .single();
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      await supabase
+        .from('document_request')
+        .update({
+          status: 'validated',
+          completed_at: now,
+          notes: notes || null
+        })
+        .eq('id', docRequest.id);
+
+      try {
+        await DossierTimelineService.documentsComplementairesValides({
+          dossier_id: dossierId,
+          expert_name: expertName,
+          documents_count: requestedDocs.length,
+          documents: requestedDocNames,
+          notes
+        });
+      } catch (timelineError) {
+        console.error('⚠️ Erreur timeline (documents validés):', timelineError);
+      }
+
+      if (clientInfo?.auth_user_id) {
+        await NotificationTriggers.onComplementaryDocumentsValidated(clientInfo.auth_user_id, {
+          dossier_id: dossierId,
+          produit: produitNom,
+          expert_name: expertName,
+          documents_count: requestedDocs.length
+        });
+      }
+
+      return res.json({
+        success: true,
+        message: 'Documents complémentaires validés',
+        data: updatedDossier
+      });
+    }
+
+    const rejectedList: string[] = Array.isArray(rejected_documents) ? rejected_documents : [];
+
+    const { data: updatedDossier, error: updateError } = await supabase
+      .from('ClientProduitEligible')
+      .update({
+        statut: 'complementary_documents_refused',
+        current_step: 3,
+        progress: 35,
+        updated_at: now,
+        metadata: {
+          ...dossier.metadata,
+          complementary_documents: {
+            ...(dossier.metadata?.complementary_documents || {}),
+            status: 'refused',
+            rejected_at: now,
+            rejected_by: user.database_id,
+            reason: notes || null,
+            rejected_documents: rejectedList
+          }
+        }
+      })
+      .eq('id', dossierId)
+      .select()
+      .single();
+
+    if (updateError) {
+      throw updateError;
+    }
+
+    await supabase
+      .from('document_request')
+      .update({
+        status: 'pending',
+        notes: notes || null,
+        updated_at: now
+      })
+      .eq('id', docRequest.id);
+
+    try {
+      await DossierTimelineService.documentsComplementairesRefuses({
+        dossier_id: dossierId,
+        expert_name: expertName,
+        rejected_documents: rejectedList.length ? rejectedList : requestedDocNames,
+        reason: notes
+      });
+    } catch (timelineError) {
+      console.error('⚠️ Erreur timeline (documents refusés):', timelineError);
+    }
+
+    if (clientInfo?.auth_user_id) {
+      await NotificationTriggers.onComplementaryDocumentsRejected(clientInfo.auth_user_id, {
+        dossier_id: dossierId,
+        produit: produitNom,
+        expert_name: expertName,
+        reason: notes || undefined
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: 'Documents complémentaires refusés, nouvelle action requise',
+      data: updatedDossier
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur review documents complémentaires:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la revue des documents complémentaires'
+    });
+  }
+});
+
+/**
  * POST /api/expert/dossier/:id/start-audit
  * Expert démarre l'audit (sans demander de documents complémentaires)
  */
@@ -648,7 +850,7 @@ router.post('/dossier/:id/start-audit', enhancedAuthMiddleware, async (req: Requ
       .eq('id', user.database_id)
       .single();
 
-    const expertName = expertData?.name || user.email || 'Expert';
+    const expertNameFallback = expertData?.name || user.email || 'Expert';
 
     // Récupérer le dossier
     const { data: dossier, error: fetchError } = await supabase
@@ -673,6 +875,13 @@ router.post('/dossier/:id/start-audit', enhancedAuthMiddleware, async (req: Requ
       return res.status(403).json({
         success: false,
         message: 'Ce dossier ne vous est pas assigné'
+      });
+    }
+
+    if (!dossier.charte_signed) {
+      return res.status(400).json({
+        success: false,
+        message: "La charte commerciale doit être signée avant de démarrer l'audit"
       });
     }
 
@@ -709,10 +918,9 @@ router.post('/dossier/:id/start-audit', enhancedAuthMiddleware, async (req: Requ
 
     // 📅 TIMELINE
     try {
-      const { DossierTimelineService } = await import('../services/dossier-timeline-service');
       await DossierTimelineService.auditDemarre({
         dossier_id: client_produit_id,
-        expert_name: expertName,
+        expert_name: expertNameFallback,
         documents_complementaires: false
       });
     } catch (timelineError) {
@@ -727,7 +935,7 @@ router.post('/dossier/:id/start-audit', enhancedAuthMiddleware, async (req: Requ
           user_id: clientInfo.auth_user_id,
           user_type: 'client',
           title: `ℹ️ Audit démarré - ${dossier.ProduitEligible?.nom || 'Dossier'}`,
-          message: `${expertName} analyse actuellement votre dossier`,
+          message: `${expertNameFallback} analyse actuellement votre dossier`,
           notification_type: 'audit_started',
           priority: 'medium',
           is_read: false,
@@ -750,7 +958,7 @@ router.post('/dossier/:id/start-audit', enhancedAuthMiddleware, async (req: Requ
             user_id: admin.auth_user_id,
             user_type: 'admin',
             title: `ℹ️ Audit démarré - ${dossier.ProduitEligible?.nom || 'Dossier'}`,
-            message: `${expertName} démarre l'audit pour ${clientName}`,
+            message: `${expertNameFallback} démarre l'audit pour ${clientName}`,
             notification_type: 'admin_info',
             priority: 'medium',
             is_read: false,
@@ -815,7 +1023,7 @@ router.post('/dossier/:id/complete-audit', enhancedAuthMiddleware, async (req: R
       .eq('id', user.database_id)
       .single();
 
-    const expertName = expertData?.name || user.email || 'Expert';
+    const expertNameFallback = expertData?.name || user.email || 'Expert';
 
     // Récupérer le dossier
     const { data: dossier, error: fetchError } = await supabase
@@ -880,10 +1088,9 @@ router.post('/dossier/:id/complete-audit', enhancedAuthMiddleware, async (req: R
 
     // 📅 TIMELINE
     try {
-      const { DossierTimelineService } = await import('../services/dossier-timeline-service');
       await DossierTimelineService.auditTermine({
         dossier_id: client_produit_id,
-        expert_name: expertName,
+        expert_name: expertNameFallback,
         montant_final: montant_final,
         rapport_url: rapport_url,
         notes: notes
@@ -908,7 +1115,7 @@ router.post('/dossier/:id/complete-audit', enhancedAuthMiddleware, async (req: R
           action_data: {
             client_produit_id,
             expert_id: user.database_id,
-            expert_name: expertName,
+            expert_name: expertNameFallback,
             montant_final: montant_final,
             rapport_url: rapport_url,
             completed_at: new Date().toISOString(),
@@ -933,7 +1140,7 @@ router.post('/dossier/:id/complete-audit', enhancedAuthMiddleware, async (req: R
             user_id: admin.auth_user_id,
             user_type: 'admin',
             title: `📋 Audit terminé - En attente validation client`,
-            message: `${expertName} - ${clientName} - Montant : ${montant_final.toLocaleString('fr-FR')} €`,
+            message: `${expertNameFallback} - ${clientName} - Montant : ${montant_final.toLocaleString('fr-FR')} €`,
             notification_type: 'admin_info',
             priority: 'medium',
             is_read: false,
@@ -1120,7 +1327,7 @@ router.post('/client/dossier/:id/validate-audit', enhancedAuthMiddleware, async 
                       'Client';
 
     const expertInfo = Array.isArray(dossier.Expert) ? dossier.Expert[0] : dossier.Expert;
-    const expertName = expertInfo?.name || 'Expert';
+    const expertNameFallback = expertInfo?.name || user.email || 'Expert';
     const clientFeePercentage = expertInfo?.client_fee_percentage ?? 0.30;
     const profitumFeePercentage = expertInfo?.profitum_fee_percentage ?? 0.30;
 
@@ -1161,7 +1368,7 @@ router.post('/client/dossier/:id/validate-audit', enhancedAuthMiddleware, async 
         estimation_ttc: profitumTotalTTC,
         accepted_at: new Date().toISOString(),
         expert_id: expertInfo?.id,
-        expert_name: expertName
+        expert_name: expertNameFallback
       };
       console.log('💰 Conditions commission WATERFALL acceptées:', {
         client_paie_expert: `${expertTotalFee.toFixed(2)} € (${(clientFeePercentage * 100).toFixed(0)}%)`,
@@ -1192,8 +1399,6 @@ router.post('/client/dossier/:id/validate-audit', enhancedAuthMiddleware, async 
 
     // 📅 TIMELINE
     try {
-      const { DossierTimelineService } = await import('../services/dossier-timeline-service');
-      
       if (action === 'accept') {
         await DossierTimelineService.auditAccepte({
           dossier_id: client_produit_id,
@@ -1367,7 +1572,7 @@ router.post('/dossier/:id/update-refund-status', enhancedAuthMiddleware, async (
       .eq('id', user.database_id)
       .single();
 
-    const expertName = expertData?.name || user.email || 'Expert';
+    const expertNameFallback = expertData?.name || user.email || 'Expert';
 
     // Récupérer le dossier
     const { data: dossier, error: fetchError } = await supabase
@@ -1454,20 +1659,18 @@ router.post('/dossier/:id/update-refund-status', enhancedAuthMiddleware, async (
     // 📅 TIMELINE
     if (status === 'in_preparation') {
       try {
-        const { DossierTimelineService } = await import('../services/dossier-timeline-service');
         await DossierTimelineService.demandeEnPreparation({
           dossier_id: client_produit_id,
-          expert_name: expertName
+          expert_name: expertNameFallback
         });
       } catch (timelineError) {
         console.error('⚠️ Erreur timeline (non bloquant):', timelineError);
       }
     } else if (status === 'submitted') {
       try {
-        const { DossierTimelineService } = await import('../services/dossier-timeline-service');
         await DossierTimelineService.demandeEnvoyee({
           dossier_id: client_produit_id,
-          expert_name: expertName,
+          expert_name: expertNameFallback,
           montant: dossier.montantFinal || 0,
           reference: reference || 'N/A'
         });
@@ -1588,7 +1791,7 @@ router.post('/dossier/:id/confirm-refund', enhancedAuthMiddleware, async (req: R
       .eq('id', user.database_id)
       .single();
 
-    const expertName = expertData?.name || user.email || 'Expert';
+    const expertNameFallback = expertData?.name || user.email || 'Expert';
 
     // Récupérer le dossier
     const { data: dossier, error: fetchError } = await supabase
@@ -1596,7 +1799,8 @@ router.post('/dossier/:id/confirm-refund', enhancedAuthMiddleware, async (req: R
       .select(`
         *,
         Client(id, auth_user_id, company_name, nom, prenom, apporteur_id),
-        ProduitEligible(nom)
+        ProduitEligible(nom),
+        Expert(id, name)
       `)
       .eq('id', client_produit_id)
       .single();
@@ -1618,26 +1822,71 @@ router.post('/dossier/:id/confirm-refund', enhancedAuthMiddleware, async (req: R
 
     const clientInfo = Array.isArray(dossier.Client) ? dossier.Client[0] : dossier.Client;
     const clientName = clientInfo?.company_name || clientInfo?.nom || 'Client';
+    const expertInfo = Array.isArray(dossier.Expert) ? dossier.Expert[0] : dossier.Expert;
+    const expertName = expertInfo?.name || expertNameFallback;
+    const produitInfo = Array.isArray(dossier.ProduitEligible) ? dossier.ProduitEligible[0] : dossier.ProduitEligible;
+    const produitNom = produitInfo?.nom || 'Produit';
+
+    // 🧾 Génération (ou récupération) de la facture Profitum
+    let factureData: any = null;
+    try {
+      const { FactureService } = await import('../services/facture-service');
+      const result = await FactureService.generate({
+        dossierId: client_produit_id,
+        montantReelAccorde: refund_amount,
+        expertId: user.database_id
+      });
+
+      if (result.success) {
+        factureData = result.data;
+        console.log(`✅ Facture ${result.data?.invoice_number} générée pour la phase paiement`);
+      } else {
+        console.error('❌ Erreur génération facture:', result.error);
+      }
+    } catch (factureError) {
+      console.error('⚠️ Erreur génération facture (non bloquant):', factureError);
+    }
+
+    const now = new Date().toISOString();
 
     // Mettre à jour le dossier
     const { data: updatedDossier, error: updateError } = await supabase
       .from('ClientProduitEligible')
       .update({
-        statut: 'termine',
-        current_step: 6,
-        progress: 100,
+        statut: 'payment_requested',
+        current_step: 8,
+        progress: 95,
         date_remboursement: new Date(refund_date).toISOString(),
         metadata: {
-          ...dossier.metadata,
-          refund_completed: {
-            confirmed_by: user.database_id,
-            refund_date: refund_date,
-            refund_amount: refund_amount,
-            payment_reference: payment_reference,
-            completed_at: new Date().toISOString()
+          ...(dossier.metadata || {}),
+          implementation: {
+            ...(dossier.metadata?.implementation || {}),
+            status: 'validated',
+            refund_reference: payment_reference,
+            refund_amount,
+            refund_date,
+            last_update: now
+          },
+          payment: {
+            ...(dossier.metadata?.payment || {}),
+            status: 'requested',
+            requested_by: user.database_id,
+            requested_at: now,
+            requested_amount: factureData?.montant_ttc || refund_amount,
+            refund_amount,
+            refund_date,
+            payment_reference,
+            invoice: factureData
+              ? {
+                  id: factureData.id,
+                  number: factureData.invoice_number,
+                  montant_ht: factureData.montant_ht,
+                  montant_ttc: factureData.montant_ttc
+                }
+              : null
           }
         },
-        updated_at: new Date().toISOString()
+        updated_at: now
       })
       .eq('id', client_produit_id)
       .select()
@@ -1647,53 +1896,32 @@ router.post('/dossier/:id/confirm-refund', enhancedAuthMiddleware, async (req: R
       throw updateError;
     }
 
-    console.log(`🎉 Remboursement confirmé: ${refund_amount} €`);
+    console.log(`✅ Remboursement obtenu – paiement demandé: ${refund_amount} €`);
 
     // 📅 TIMELINE
     try {
-      const { DossierTimelineService } = await import('../services/dossier-timeline-service');
-      await DossierTimelineService.remboursementObtenu({
+      await DossierTimelineService.paiementDemande({
         dossier_id: client_produit_id,
         expert_name: expertName,
-        montant: refund_amount,
-        reference: payment_reference,
-        date_remboursement: refund_date
+        montant: factureData?.montant_ttc || refund_amount,
+        facture_reference: factureData?.invoice_number || payment_reference,
+        notes: `Remboursement confirmé le ${refund_date}. Référence: ${payment_reference}`
       });
     } catch (timelineError) {
-      console.error('⚠️ Erreur timeline (non bloquant):', timelineError);
+      console.error('⚠️ Erreur timeline (paiement demandé):', timelineError);
     }
 
-    // 🔔 NOTIFICATION → CLIENT
+    // 🔔 NOTIFICATIONS → CLIENT (paiement requis)
     if (clientInfo?.auth_user_id) {
-      await supabase.from('notification').insert({
-        user_id: clientInfo.auth_user_id,
-        user_type: 'client',
-        title: `🎉 Remboursement obtenu - ${dossier.ProduitEligible?.nom || 'Dossier'}`,
-        message: `Félicitations ! Remboursement de ${refund_amount.toLocaleString('fr-FR')} € obtenu (Réf: ${payment_reference})`,
-        notification_type: 'refund_completed',
-        priority: 'high',
-        is_read: false,
-        action_url: `/produits/${dossier.ProduitEligible?.nom?.toLowerCase()}/${client_produit_id}`,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+      await NotificationTriggers.onPaymentRequested(clientInfo.auth_user_id, {
+        dossier_id: client_produit_id,
+        produit: produitNom,
+        montant: factureData?.montant_ttc || refund_amount,
+        facture_reference: factureData?.invoice_number || payment_reference
       });
     }
 
-    // 🔔 NOTIFICATION → EXPERT
-    await supabase.from('notification').insert({
-      user_id: user.auth_user_id,
-      user_type: 'expert',
-      title: `🎉 Dossier terminé avec succès`,
-      message: `${clientName} - ${dossier.ProduitEligible?.nom || 'Dossier'} - ${refund_amount.toLocaleString('fr-FR')} € remboursé`,
-      notification_type: 'dossier_completed',
-      priority: 'medium',
-      is_read: false,
-      action_url: `/expert/dossier/${client_produit_id}`,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    });
-
-    // 🔔 NOTIFICATION → ADMIN
+    // 🔔 NOTIFICATION → ADMIN (information)
     const { data: admins } = await supabase
       .from('Admin')
       .select('auth_user_id')
@@ -1705,20 +1933,34 @@ router.post('/dossier/:id/confirm-refund', enhancedAuthMiddleware, async (req: R
           await supabase.from('notification').insert({
             user_id: admin.auth_user_id,
             user_type: 'admin',
-            title: `🎉 Remboursement confirmé`,
-            message: `${clientName} - ${dossier.ProduitEligible?.nom || 'Dossier'} - ${refund_amount.toLocaleString('fr-FR')} € remboursé`,
-            notification_type: 'admin_info',
+            title: '💶 Facturation client requise',
+            message: `${clientName} - ${produitNom} - ${refund_amount.toLocaleString('fr-FR')} € remboursés`,
+            notification_type: 'payment_requested',
             priority: 'medium',
             is_read: false,
             action_url: `/admin/dossiers/${client_produit_id}`,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            created_at: now,
+            updated_at: now
           });
         }
       }
     }
 
-    // 🔔 NOTIFICATION → APPORTEUR
+    // 🔔 NOTIFICATION → EXPERT (information)
+    await supabase.from('notification').insert({
+      user_id: user.auth_user_id,
+      user_type: 'expert',
+      title: '💶 Paiement client demandé',
+      message: `Facture ${factureData?.invoice_number || payment_reference} envoyée au client (${(factureData?.montant_ttc || refund_amount).toLocaleString('fr-FR')} €).`,
+      notification_type: 'payment_requested',
+      priority: 'medium',
+      is_read: false,
+      action_url: `/expert/dossier/${client_produit_id}`,
+      created_at: now,
+      updated_at: now
+    });
+
+    // 🔔 NOTIFICATION → APPORTEUR (si existant)
     if (clientInfo?.apporteur_id) {
       const { data: apporteurData } = await supabase
         .from('ApporteurAffaires')
@@ -1730,22 +1972,25 @@ router.post('/dossier/:id/confirm-refund', enhancedAuthMiddleware, async (req: R
         await supabase.from('notification').insert({
           user_id: apporteurData.auth_user_id,
           user_type: 'apporteur',
-          title: `🎉 Remboursement obtenu`,
-          message: `Succès ! ${refund_amount.toLocaleString('fr-FR')} € remboursé pour ${clientName}`,
-          notification_type: 'apporteur_info',
-          priority: 'high',
+          title: `💶 Paiement en attente pour ${clientName}`,
+          message: `Montant attendu : ${(factureData?.montant_ttc || refund_amount).toLocaleString('fr-FR')} €.` ,
+          notification_type: 'payment_requested',
+          priority: 'medium',
           is_read: false,
           action_url: `/apporteur/dossiers/${client_produit_id}`,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          created_at: now,
+          updated_at: now
         });
       }
     }
 
     return res.json({
       success: true,
-      message: 'Remboursement confirmé',
-      data: updatedDossier
+      message: 'Remboursement confirmé, paiement client demandé',
+      data: {
+        dossier: updatedDossier,
+        facture: factureData
+      }
     });
 
   } catch (error: any) {
@@ -1998,20 +2243,24 @@ router.post('/dossier/:id/record-final-result', enhancedAuthMiddleware, async (r
     const clientInfo = Array.isArray(dossier.Client) ? dossier.Client[0] : dossier.Client;
     const clientName = clientInfo?.company_name || clientInfo?.nom || 'Client';
     const expertInfo = Array.isArray(dossier.Expert) ? dossier.Expert[0] : dossier.Expert;
-    const expertName = expertInfo?.name || user.email || 'Expert';
+    const expertNameFallback = expertInfo?.name || user.email || 'Expert';
 
     const montantDemande = dossier.montantFinal || 0;
     const difference = montant_reel_accorde - montantDemande;
 
-    // Mettre à jour le dossier
+    const isPositiveDecision = decision !== 'refuse';
+    const statutResultat = isPositiveDecision ? 'implementation_validated' : 'implementation_in_progress';
+    const stepResultat = isPositiveDecision ? 7 : Math.max(dossier.current_step || 6, 6);
+    const progressResultat = isPositiveDecision ? 90 : Math.min((dossier.progress || 80), 85);
+
     const { data: updatedDossier, error: updateError } = await supabase
       .from('ClientProduitEligible')
       .update({
-        statut: 'resultat_obtenu',
-        current_step: 6,
-        progress: 90,
+        statut: statutResultat,
+        current_step: stepResultat,
+        progress: progressResultat,
         metadata: {
-          ...dossier.metadata,
+          ...(dossier.metadata || {}),
           administration_result: {
             decision: decision,
             montant_demande: montantDemande,
@@ -2021,6 +2270,14 @@ router.post('/dossier/:id/record-final-result', enhancedAuthMiddleware, async (r
             motif_difference: motif_difference || null,
             recorded_by: user.database_id,
             recorded_at: new Date().toISOString()
+          },
+          implementation: {
+            ...(dossier.metadata?.implementation || {}),
+            status: isPositiveDecision ? 'validated' : 'rejected',
+            validated_by: user.database_id,
+            validated_at: new Date().toISOString(),
+            decision,
+            montant_accorde: montant_reel_accorde
           }
         },
         updated_at: new Date().toISOString()
@@ -2035,72 +2292,32 @@ router.post('/dossier/:id/record-final-result', enhancedAuthMiddleware, async (r
 
     console.log(`✅ Résultat administration enregistré - ${decision} - ${montant_reel_accorde} €`);
 
-    // 🧾 GÉNÉRATION AUTOMATIQUE DE LA FACTURE PROFITUM
-    let factureData: any = null;
-    
-    try {
-      const { FactureService } = await import('../services/facture-service');
-      
-      const result = await FactureService.generate({
-        dossierId: client_produit_id,
-        montantReelAccorde: montant_reel_accorde,
-        expertId: user.database_id
-      });
-
-      if (result.success) {
-        factureData = result.data;
-        console.log(`✅ Facture ${result.data?.invoice_number} générée automatiquement`);
-      } else {
-        console.error('❌ Erreur génération facture:', result.error);
-      }
-    } catch (factureError) {
-      console.error('⚠️ Erreur génération facture (non bloquant):', factureError);
-    }
-
     // 📅 TIMELINE
     try {
-      const { DossierTimelineService } = await import('../services/dossier-timeline-service');
-      
-      const color = decision === 'accepte' ? 'green' : decision === 'partiel' ? 'orange' : 'red';
-      const icon = decision === 'accepte' ? '✅' : decision === 'partiel' ? '⚠️' : '❌';
-      
-      await DossierTimelineService.addEvent({
-        dossier_id: client_produit_id,
-        type: 'expert_action',
-        actor_type: 'expert',
-        actor_name: expertName,
-        title: `${icon} Retour administration reçu`,
-        description: `Décision: ${decision}. Montant accordé: ${montant_reel_accorde.toLocaleString('fr-FR')} €${difference !== 0 ? ` (${difference > 0 ? '+' : ''}${difference.toLocaleString('fr-FR')} € vs demandé)` : ''}`,
-        metadata: {
-          decision,
-          montant_demande: montantDemande,
+      if (isPositiveDecision) {
+        await DossierTimelineService.implementationValidee({
+          dossier_id: client_produit_id,
+          expert_name: expertNameFallback,
           montant_accorde: montant_reel_accorde,
+          decision,
           difference,
-          date_retour,
-          motif_difference
-        },
-        icon: icon,
-        color: color
-      });
-
-      // Timeline facture si générée
-      if (factureData) {
+          date_retour
+        });
+      } else {
         await DossierTimelineService.addEvent({
           dossier_id: client_produit_id,
-          type: 'system_action',
-          actor_type: 'system',
-          actor_name: 'Système',
-          title: '🧾 Facture Profitum générée',
-          description: `Facture ${factureData.invoice_number} - ${factureData.montant_ttc.toLocaleString('fr-FR')} € TTC`,
+          type: 'expert_action',
+          actor_type: 'expert',
+          actor_name: expertNameFallback,
+          title: '❌ Administration: dossier refusé',
+          description: `Décision finale : refusée. Motif : ${motif_difference || 'Non communiqué'}`,
           metadata: {
-            facture_id: factureData.id,
-            numero: factureData.invoice_number,
-            montant_ht: factureData.montant_ht,
-            tva: factureData.tva,
-            montant_ttc: factureData.montant_ttc
+            decision,
+            motif_difference: motif_difference || null,
+            date_retour
           },
-          icon: '🧾',
-          color: 'blue'
+          icon: '❌',
+          color: 'red'
         });
       }
     } catch (timelineError) {
@@ -2108,102 +2325,71 @@ router.post('/dossier/:id/record-final-result', enhancedAuthMiddleware, async (r
     }
 
     // 🔔 NOTIFICATIONS
-    const montantMessage = decision === 'accepte' 
-      ? `Montant accordé: ${montant_reel_accorde.toLocaleString('fr-FR')} €`
-      : decision === 'partiel'
-      ? `Montant accordé: ${montant_reel_accorde.toLocaleString('fr-FR')} € (${difference.toLocaleString('fr-FR')} € de différence)`
-      : `Demande refusée. Motif: ${motif_difference || 'Non précisé'}`;
+    const produitInfo = Array.isArray(dossier.ProduitEligible) ? dossier.ProduitEligible[0] : dossier.ProduitEligible;
+    const produitNom = produitInfo?.nom || 'Produit';
 
-    // NOTIFICATION → CLIENT
     if (clientInfo?.auth_user_id) {
-      const title = decision === 'accepte' ? '✅ Demande acceptée !' : decision === 'partiel' ? '⚠️ Demande partiellement acceptée' : '❌ Demande refusée';
-      
-      await supabase.from('notification').insert({
-        user_id: clientInfo.auth_user_id,
-        user_type: 'client',
-        title: title,
-        message: `${montantMessage}${factureData ? `. 🧾 Facture Profitum disponible : ${factureData.montant_ttc.toLocaleString('fr-FR')} € TTC` : ''}`,
-        notification_type: decision === 'refuse' ? 'dossier_refused' : 'administration_result',
-        priority: 'high',
-        is_read: false,
-        action_url: `/produits/${(dossier.ProduitEligible as any)?.nom?.toLowerCase()}/${client_produit_id}`,
-        action_data: {
-          decision,
+      if (isPositiveDecision) {
+        await NotificationTriggers.onImplementationValidated(clientInfo.auth_user_id, {
+          dossier_id: client_produit_id,
+          produit: produitNom,
           montant_accorde: montant_reel_accorde,
-          facture_numero: factureData?.invoice_number
-        },
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      });
-    }
-
-    // NOTIFICATION → APPORTEUR
-    if (clientInfo?.apporteur_id) {
-      const { data: apporteurData } = await supabase
-        .from('ApporteurAffaires')
-        .select('auth_user_id')
-        .eq('id', clientInfo.apporteur_id)
-        .single();
-
-      if (apporteurData?.auth_user_id && factureData) {
+          decision
+        });
+      } else {
         await supabase.from('notification').insert({
-          user_id: apporteurData.auth_user_id,
-          user_type: 'apporteur',
-          title: `🧾 Facture générée pour ${clientName}`,
-          message: `Montant: ${montant_reel_accorde.toLocaleString('fr-FR')} €. Votre commission: ${factureData.commission_apporteur?.toLocaleString('fr-FR')} €`,
-          notification_type: 'apporteur_commission',
+          user_id: clientInfo.auth_user_id,
+          user_type: 'client',
+          title: '❌ Dossier refusé par l\'administration',
+          message: `Motif communiqué : ${motif_difference || 'Non précisé'}. Votre expert vous contactera pour la suite.`,
+          notification_type: 'dossier_refused',
           priority: 'high',
           is_read: false,
-          action_data: {
-            facture_id: factureData.id,
-            commission: factureData.commission_apporteur
-          },
+          action_url: `/produits/${produitNom.toLowerCase()}/${client_produit_id}`,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         });
       }
     }
 
-    // NOTIFICATION → EXPERT (facture)
-    if (factureData) {
-      await supabase.from('notification').insert({
-        user_id: user.auth_user_id,
-        user_type: 'expert',
-        title: `🧾 Facture Profitum générée`,
-        message: `Dossier ${clientName} - ${factureData.invoice_number} - ${factureData.montant_ttc.toLocaleString('fr-FR')} € TTC`,
-        notification_type: 'invoice_generated',
-        priority: 'medium',
-        is_read: false,
-        action_url: `/expert/dossier/${client_produit_id}`,
-        action_data: {
-          facture_id: factureData.id,
-          invoice_number: factureData.invoice_number
-        },
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      });
+    if (isPositiveDecision && clientInfo?.apporteur_id) {
+      const { data: apporteurData } = await supabase
+        .from('ApporteurAffaires')
+        .select('auth_user_id')
+        .eq('id', clientInfo.apporteur_id)
+        .single();
+
+      if (apporteurData?.auth_user_id) {
+        await supabase.from('notification').insert({
+          user_id: apporteurData.auth_user_id,
+          user_type: 'apporteur',
+          title: `✅ Résultat positif pour ${clientName}`,
+          message: `Montant accordé : ${montant_reel_accorde.toLocaleString('fr-FR')} €. Nous préparons la facturation.` ,
+          notification_type: 'implementation_validated',
+          priority: 'medium',
+          is_read: false,
+          action_url: `/apporteur/dossiers/${client_produit_id}`,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+      }
     }
 
-    // NOTIFICATION → ADMIN
     const { data: admins } = await supabase
       .from('Admin')
       .select('auth_user_id')
       .eq('is_active', true);
 
-    if (admins && factureData) {
+    if (admins) {
       for (const admin of admins) {
         if (admin.auth_user_id) {
           await supabase.from('notification').insert({
             user_id: admin.auth_user_id,
             user_type: 'admin',
-            title: factureData.montant_ht > 0 
-              ? `🧾 Facture auto générée - ${clientName}`
-              : `⚠️ Facture avec erreur - ${clientName}`,
-            message: factureData.montant_ht > 0
-              ? `${factureData.invoice_number} - ${factureData.montant_ttc.toLocaleString('fr-FR')} € TTC`
-              : `Erreur de calcul - Vérifier Expert.compensation`,
-            notification_type: 'admin_info',
-            priority: factureData.montant_ht > 0 ? 'low' : 'high',
+            title: `${isPositiveDecision ? '✅' : '❌'} Résultat administration`,
+            message: `${clientName} - Décision: ${decision} - ${montant_reel_accorde.toLocaleString('fr-FR')} €`,
+            notification_type: isPositiveDecision ? 'implementation_validated' : 'dossier_refused',
+            priority: isPositiveDecision ? 'medium' : 'high',
             is_read: false,
             action_url: `/admin/dossiers/${client_produit_id}`,
             created_at: new Date().toISOString(),
@@ -2217,8 +2403,7 @@ router.post('/dossier/:id/record-final-result', enhancedAuthMiddleware, async (r
       success: true,
       message: 'Résultat final enregistré avec succès',
       data: {
-        dossier: updatedDossier,
-        facture: factureData
+        dossier: updatedDossier
       }
     });
 
@@ -2286,25 +2471,27 @@ router.post('/dossier/:id/mark-as-submitted', enhancedAuthMiddleware, async (req
     const clientInfo = Array.isArray(dossier.Client) ? dossier.Client[0] : dossier.Client;
     const clientName = clientInfo?.company_name || clientInfo?.nom || 'Client';
     const expertInfo = Array.isArray(dossier.Expert) ? dossier.Expert[0] : dossier.Expert;
-    const expertName = expertInfo?.name || user.email || 'Expert';
+    const expertNameFallback = expertInfo?.name || user.email || 'Expert';
 
     // Mettre à jour le dossier
     const { data: updatedDossier, error: updateError } = await supabase
       .from('ClientProduitEligible')
       .update({
-        statut: 'soumis_administration',
+        statut: 'implementation_in_progress',
         date_demande_envoyee: new Date(submission_date).toISOString(),
         current_step: 6,
-        progress: 85,
+        progress: 80,
         metadata: {
-          ...dossier.metadata,
-          submission_info: {
+          ...(dossier.metadata || {}),
+          implementation: {
+            ...(dossier.metadata?.implementation || {}),
+            status: 'in_progress',
             submitted_by: user.database_id,
-            submission_date: submission_date,
-            reference: reference,
-            organisme: organisme,
+            submission_date,
+            reference,
+            organisme,
             notes: notes || null,
-            submitted_at: new Date().toISOString()
+            updated_at: new Date().toISOString()
           }
         },
         updated_at: new Date().toISOString()
@@ -2321,22 +2508,12 @@ router.post('/dossier/:id/mark-as-submitted', enhancedAuthMiddleware, async (req
 
     // 📅 TIMELINE
     try {
-      const { DossierTimelineService } = await import('../services/dossier-timeline-service');
-      await DossierTimelineService.addEvent({
+      await DossierTimelineService.implementationEnCours({
         dossier_id: client_produit_id,
-        type: 'expert_action',
-        actor_type: 'expert',
-        actor_name: expertName,
-        title: '📨 Dossier soumis à l\'administration',
-        description: `Le dossier a été soumis à ${organisme}. Référence : ${reference}`,
-        metadata: {
-          reference,
-          organisme,
-          submission_date,
-          expert_id: user.database_id
-        },
-        icon: '📨',
-        color: 'blue'
+        expert_name: expertNameFallback,
+        organisme,
+        reference,
+        submission_date
       });
     } catch (timelineError) {
       console.error('⚠️ Erreur timeline (non bloquant):', timelineError);
@@ -2344,22 +2521,11 @@ router.post('/dossier/:id/mark-as-submitted', enhancedAuthMiddleware, async (req
 
     // 🔔 NOTIFICATION → CLIENT
     if (clientInfo?.auth_user_id) {
-      await supabase.from('notification').insert({
-        user_id: clientInfo.auth_user_id,
-        user_type: 'client',
-        title: `📨 Demande de remboursement envoyée`,
-        message: `Votre expert a soumis votre dossier à ${organisme}. Référence : ${reference}. Délai estimé : 6-12 mois. Votre expert assure le suivi.`,
-        notification_type: 'dossier_submitted',
-        priority: 'high',
-        is_read: false,
-        action_url: `/produits/${(dossier.ProduitEligible as any)?.nom?.toLowerCase()}/${client_produit_id}`,
-        action_data: {
-          reference,
-          organisme,
-          submission_date
-        },
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+      await NotificationTriggers.onImplementationInProgress(clientInfo.auth_user_id, {
+        dossier_id: client_produit_id,
+        produit: dossier.ProduitEligible?.nom || 'Produit',
+        organisme,
+        reference
       });
     }
 
@@ -2375,11 +2541,17 @@ router.post('/dossier/:id/mark-as-submitted', enhancedAuthMiddleware, async (req
         await supabase.from('notification').insert({
           user_id: apporteurData.auth_user_id,
           user_type: 'apporteur',
-          title: `📨 Demande envoyée pour ${clientName}`,
-          message: `Dossier soumis à ${organisme}. Référence: ${reference}`,
-          notification_type: 'apporteur_info',
+          title: `🛠️ Dossier ${clientName} en mise en œuvre`,
+          message: `${expertNameFallback} suit le remboursement auprès de ${organisme}. Référence : ${reference}.`,
+          notification_type: 'implementation_in_progress',
           priority: 'medium',
           is_read: false,
+          action_url: `/apporteur/dossiers/${client_produit_id}`,
+          action_data: {
+            reference,
+            organisme,
+            submission_date
+          },
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         });
@@ -2398,9 +2570,9 @@ router.post('/dossier/:id/mark-as-submitted', enhancedAuthMiddleware, async (req
           await supabase.from('notification').insert({
             user_id: admin.auth_user_id,
             user_type: 'admin',
-            title: `📨 Dossier soumis - ${clientName}`,
-            message: `Expert: ${expertName} - ${organisme} - Réf: ${reference}`,
-            notification_type: 'admin_info',
+            title: `🛠️ Dossier en mise en œuvre`,
+            message: `${clientName} - ${expertNameFallback} - Réf: ${reference}`,
+            notification_type: 'implementation_in_progress',
             priority: 'low',
             is_read: false,
             action_url: `/admin/dossiers/${client_produit_id}`,

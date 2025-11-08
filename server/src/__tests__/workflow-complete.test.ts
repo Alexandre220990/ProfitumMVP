@@ -41,7 +41,7 @@ describe('Workflow Complet E2E', () => {
         data: {
           id: dossierId,
           clientId,
-          statut: 'eligible',
+          statut: 'pending_upload',
           current_step: 0,
           progress: 0
         },
@@ -53,11 +53,11 @@ describe('Workflow Complet E2E', () => {
         .insert({
           clientId,
           produitId: 'urssaf-1',
-          statut: 'eligible',
+          statut: 'pending_upload',
           montantFinal: 50000
         });
 
-      expect(creationResult.data.statut).toBe('eligible');
+      expect(creationResult.data.statut).toBe('pending_upload');
       expect(creationResult.data.current_step).toBe(0);
 
       // ====================================================================
@@ -68,7 +68,7 @@ describe('Workflow Complet E2E', () => {
       mockSupabase.update.mockResolvedValueOnce({
         data: {
           id: dossierId,
-          statut: 'documents_uploaded',
+          statut: 'pending_admin_validation',
           current_step: 1,
           progress: 10
         },
@@ -78,19 +78,19 @@ describe('Workflow Complet E2E', () => {
       const uploadDocsResult = await mockSupabase
         .from('ClientProduitEligible')
         .update({
-          statut: 'documents_uploaded',
+          statut: 'pending_admin_validation',
           current_step: 1,
           progress: 10
         })
         .eq('id', dossierId);
 
-      expect(uploadDocsResult.data.statut).toBe('documents_uploaded');
+      expect(uploadDocsResult.data.statut).toBe('pending_admin_validation');
 
       // 1.2 - Admin valide éligibilité
       mockSupabase.update.mockResolvedValueOnce({
         data: {
           id: dossierId,
-          statut: 'eligibility_validated',
+          statut: 'admin_validated',
           current_step: 2,
           progress: 25
         },
@@ -100,13 +100,13 @@ describe('Workflow Complet E2E', () => {
       const adminValidationResult = await mockSupabase
         .from('ClientProduitEligible')
         .update({
-          statut: 'eligibility_validated',
+          statut: 'admin_validated',
           current_step: 2,
           progress: 25
         })
         .eq('id', dossierId);
 
-      expect(adminValidationResult.data.statut).toBe('eligibility_validated');
+      expect(adminValidationResult.data.statut).toBe('admin_validated');
       expect(adminValidationResult.data.current_step).toBe(2);
 
       // ====================================================================
@@ -118,7 +118,7 @@ describe('Workflow Complet E2E', () => {
         data: {
           id: dossierId,
           expert_pending_id: expertId,
-          statut: 'expert_pending_acceptance',
+          statut: 'expert_pending_validation',
           current_step: 2
         },
         error: null
@@ -128,12 +128,12 @@ describe('Workflow Complet E2E', () => {
         .from('ClientProduitEligible')
         .update({
           expert_pending_id: expertId,
-          statut: 'expert_pending_acceptance'
+          statut: 'expert_pending_validation'
         })
         .eq('id', dossierId);
 
       expect(selectExpertResult.data.expert_pending_id).toBe(expertId);
-      expect(selectExpertResult.data.statut).toBe('expert_pending_acceptance');
+      expect(selectExpertResult.data.statut).toBe('expert_pending_validation');
 
       // 2.2 - Expert accepte le dossier
       mockSupabase.update.mockResolvedValueOnce({
@@ -141,9 +141,9 @@ describe('Workflow Complet E2E', () => {
           id: dossierId,
           expert_id: expertId,
           expert_pending_id: null,
-          statut: 'en_cours',
+          statut: 'expert_validated',
           current_step: 3,
-          progress: 30,
+          progress: 35,
           date_expert_accepted: new Date().toISOString()
         },
         error: null
@@ -154,14 +154,14 @@ describe('Workflow Complet E2E', () => {
         .update({
           expert_id: expertId,
           expert_pending_id: null,
-          statut: 'en_cours',
+          statut: 'expert_validated',
           current_step: 3,
-          progress: 30
+          progress: 35
         })
         .eq('id', dossierId);
 
       expect(expertAcceptResult.data.expert_id).toBe(expertId);
-      expect(expertAcceptResult.data.statut).toBe('en_cours');
+      expect(expertAcceptResult.data.statut).toBe('expert_validated');
       expect(expertAcceptResult.data.current_step).toBe(3);
 
       // ====================================================================
@@ -172,7 +172,7 @@ describe('Workflow Complet E2E', () => {
       mockSupabase.update.mockResolvedValueOnce({
         data: {
           id: dossierId,
-          statut: 'documents_complementaires_requis',
+          statut: 'complementary_documents_upload_pending',
           current_step: 3,
           metadata: {
             required_documents_expert: [
@@ -187,7 +187,7 @@ describe('Workflow Complet E2E', () => {
       const requestDocsResult = await mockSupabase
         .from('ClientProduitEligible')
         .update({
-          statut: 'documents_complementaires_requis',
+          statut: 'complementary_documents_upload_pending',
           metadata: {
             required_documents_expert: [
               { description: 'Bulletins Q1 2024', required: true },
@@ -197,13 +197,13 @@ describe('Workflow Complet E2E', () => {
         })
         .eq('id', dossierId);
 
-      expect(requestDocsResult.data.statut).toBe('documents_complementaires_requis');
+      expect(requestDocsResult.data.statut).toBe('complementary_documents_upload_pending');
 
       // 3.2 - Client valide documents complémentaires
       mockSupabase.update.mockResolvedValueOnce({
         data: {
           id: dossierId,
-          statut: 'documents_complementaires_soumis',
+          statut: 'complementary_documents_sent',
           current_step: 3,
           progress: 50
         },
@@ -213,12 +213,12 @@ describe('Workflow Complet E2E', () => {
       const validateComplementaryResult = await mockSupabase
         .from('ClientProduitEligible')
         .update({
-          statut: 'documents_complementaires_soumis',
+          statut: 'complementary_documents_sent',
           progress: 50
         })
         .eq('id', dossierId);
 
-      expect(validateComplementaryResult.data.statut).toBe('documents_complementaires_soumis');
+      expect(validateComplementaryResult.data.statut).toBe('complementary_documents_sent');
 
       // ====================================================================
       // ÉTAPE 4: Audit technique
@@ -308,40 +308,128 @@ describe('Workflow Complet E2E', () => {
       expect(clientValidateAuditResult.data.current_step).toBe(5);
 
       // ====================================================================
-      // ÉTAPE 5: Production & Demande remboursement
+      // ÉTAPE 5: Mise en œuvre auprès de l'administration
       // ====================================================================
 
-      // 5.1 - Expert marque demande envoyée
       mockSupabase.update.mockResolvedValueOnce({
         data: {
           id: dossierId,
-          statut: 'demande_envoyee',
-          current_step: 5,
-          progress: 85,
-          date_demande_envoyee: new Date().toISOString()
+          statut: 'implementation_in_progress',
+          current_step: 6,
+          progress: 80,
+          metadata: {
+            implementation: {
+              status: 'in_progress'
+            }
+          }
         },
         error: null
       });
 
-      const sendRefundRequestResult = await mockSupabase
+      const implementationProgressResult = await mockSupabase
         .from('ClientProduitEligible')
         .update({
-          statut: 'demande_envoyee',
-          date_demande_envoyee: new Date().toISOString()
+          statut: 'implementation_in_progress',
+          current_step: 6,
+          progress: 80
         })
         .eq('id', dossierId);
 
-      expect(sendRefundRequestResult.data.statut).toBe('demande_envoyee');
-      expect(sendRefundRequestResult.data.date_demande_envoyee).toBeDefined();
+      expect(implementationProgressResult.data.statut).toBe('implementation_in_progress');
+      expect(implementationProgressResult.data.current_step).toBe(6);
 
-      // ====================================================================
-      // ÉTAPE 6: Remboursement obtenu
-      // ====================================================================
       mockSupabase.update.mockResolvedValueOnce({
         data: {
           id: dossierId,
-          statut: 'termine',
-          current_step: 6,
+          statut: 'implementation_validated',
+          current_step: 7,
+          progress: 90,
+          metadata: {
+            implementation: {
+              status: 'validated',
+              montant_accorde: 52000
+            }
+          }
+        },
+        error: null
+      });
+
+      const implementationValidatedResult = await mockSupabase
+        .from('ClientProduitEligible')
+        .update({
+          statut: 'implementation_validated',
+          current_step: 7,
+          progress: 90
+        })
+        .eq('id', dossierId);
+
+      expect(implementationValidatedResult.data.statut).toBe('implementation_validated');
+      expect(implementationValidatedResult.data.current_step).toBe(7);
+
+      // ====================================================================
+      // ÉTAPE 6: Phase paiement & clôture dossier
+      // ====================================================================
+
+      mockSupabase.update.mockResolvedValueOnce({
+        data: {
+          id: dossierId,
+          statut: 'payment_requested',
+          current_step: 8,
+          progress: 95,
+          metadata: {
+            payment: {
+              status: 'requested',
+              requested_amount: 5200
+            }
+          }
+        },
+        error: null
+      });
+
+      const paymentRequestedResult = await mockSupabase
+        .from('ClientProduitEligible')
+        .update({
+          statut: 'payment_requested',
+          current_step: 8,
+          progress: 95
+        })
+        .eq('id', dossierId);
+
+      expect(paymentRequestedResult.data.statut).toBe('payment_requested');
+      expect(paymentRequestedResult.data.current_step).toBe(8);
+
+      mockSupabase.update.mockResolvedValueOnce({
+        data: {
+          id: dossierId,
+          statut: 'payment_in_progress',
+          current_step: 8,
+          progress: 96,
+          metadata: {
+            payment: {
+              status: 'in_progress',
+              mode: 'virement'
+            }
+          }
+        },
+        error: null
+      });
+
+      const paymentInProgressResult = await mockSupabase
+        .from('ClientProduitEligible')
+        .update({
+          statut: 'payment_in_progress',
+          current_step: 8,
+          progress: 96
+        })
+        .eq('id', dossierId);
+
+      expect(paymentInProgressResult.data.statut).toBe('payment_in_progress');
+
+      mockSupabase.update.mockResolvedValueOnce({
+        data: {
+          id: dossierId,
+          statut: 'refund_completed',
+          current_step: 8,
           progress: 100,
           date_remboursement: new Date().toISOString()
         },
@@ -351,15 +439,14 @@ describe('Workflow Complet E2E', () => {
       const confirmRefundResult = await mockSupabase
         .from('ClientProduitEligible')
         .update({
-          statut: 'termine',
-          current_step: 6,
+          statut: 'refund_completed',
+          current_step: 8,
           progress: 100,
           date_remboursement: new Date().toISOString()
         })
         .eq('id', dossierId);
 
-      expect(confirmRefundResult.data.statut).toBe('termine');
-      expect(confirmRefundResult.data.current_step).toBe(6);
+      expect(confirmRefundResult.data.statut).toBe('refund_completed');
       expect(confirmRefundResult.data.progress).toBe(100);
 
       // ====================================================================
@@ -367,13 +454,12 @@ describe('Workflow Complet E2E', () => {
       // ====================================================================
       expect(confirmRefundResult.data.expert_id).toBe(expertId);
       expect(confirmRefundResult.data.montantFinal).toBe(50000);
-      expect(confirmRefundResult.data.date_demande_envoyee).toBeDefined();
       expect(confirmRefundResult.data.date_remboursement).toBeDefined();
 
       console.log('✅ Workflow complet validé avec succès !');
-      console.log('📊 6 étapes franchies');
+      console.log('📊 8 étapes franchies');
       console.log('💰 Montant final : 50000€');
-      console.log('🎉 Statut final : termine (100%)');
+      console.log('🎉 Statut final : refund_completed (100%)');
     });
 
     it('devrait gérer le refus admin à l\'étape 1', async () => {
@@ -383,7 +469,7 @@ describe('Workflow Complet E2E', () => {
       mockSupabase.update.mockResolvedValueOnce({
         data: {
           id: dossierId,
-          statut: 'eligibility_refused',
+          statut: 'admin_rejected',
           current_step: 1,
           progress: 0
         },
@@ -393,12 +479,12 @@ describe('Workflow Complet E2E', () => {
       const refuseResult = await mockSupabase
         .from('ClientProduitEligible')
         .update({
-          statut: 'eligibility_refused',
+          statut: 'admin_rejected',
           current_step: 1
         })
         .eq('id', dossierId);
 
-      expect(refuseResult.data.statut).toBe('eligibility_refused');
+      expect(refuseResult.data.statut).toBe('admin_rejected');
       expect(refuseResult.data.current_step).toBe(1);
     });
 
@@ -410,7 +496,7 @@ describe('Workflow Complet E2E', () => {
         data: {
           id: dossierId,
           expert_pending_id: null,
-          statut: 'eligibility_validated',
+          statut: 'admin_validated',
           current_step: 2
         },
         error: null
@@ -420,12 +506,12 @@ describe('Workflow Complet E2E', () => {
         .from('ClientProduitEligible')
         .update({
           expert_pending_id: null,
-          statut: 'eligibility_validated'
+          statut: 'admin_validated'
         })
         .eq('id', dossierId);
 
       expect(expertRefuseResult.data.expert_pending_id).toBeNull();
-      expect(expertRefuseResult.data.statut).toBe('eligibility_validated');
+      expect(expertRefuseResult.data.statut).toBe('admin_validated');
     });
   });
 });

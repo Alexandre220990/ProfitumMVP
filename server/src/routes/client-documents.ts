@@ -2,6 +2,8 @@ import express, { Request, Response } from 'express';
 import { supabase } from '../lib/supabase';
 import { AuthUser } from '../types/auth';
 import { enhancedAuthMiddleware, AuthenticatedRequest } from '../middleware/auth-enhanced';
+import { DossierTimelineService } from '../services/dossier-timeline-service';
+import { NotificationTriggers } from '../services/NotificationTriggers';
 
 const router = express.Router();
 
@@ -118,7 +120,7 @@ router.post('/dossier/:id/validate-complementary-documents', enhancedAuthMiddlew
     const { error: updateError } = await supabase
       .from('document_request')
       .update({
-        status: 'completed',
+        status: 'in_review',
         completed_at: new Date().toISOString()
       })
       .eq('dossier_id', dossierId)
@@ -819,7 +821,7 @@ router.post('/dossier/:id/confirm-payment-received', enhancedAuthMiddleware, asy
   try {
     const user = (req as AuthenticatedRequest).user;
     const { id: dossierId } = req.params;
-    const { date_reception, montant_reel } = req.body;
+    const { action, montant, mode, paiement_date } = req.body;
 
     if (!user || user.type !== 'client') {
       return res.status(403).json({
@@ -828,23 +830,24 @@ router.post('/dossier/:id/confirm-payment-received', enhancedAuthMiddleware, asy
       });
     }
 
-    if (!date_reception || !montant_reel) {
+    if (!action || !['initiate', 'confirm'].includes(action)) {
       return res.status(400).json({
         success: false,
-        message: 'Données manquantes (date_reception, montant_reel requis)'
+        message: 'Action invalide (attendu: initiate ou confirm)'
       });
     }
 
-    console.log('🎉 Client confirme réception remboursement:', {
+    console.log('💳 Client paiement action:', {
       client_id: user.database_id,
       dossierId,
-      montant_reel
+      action,
+      montant
     });
 
     // Vérifier que le dossier appartient au client
     const { data: dossier } = await supabase
       .from('ClientProduitEligible')
-      .select('"clientId", expert_id, montantFinal, Client(company_name, apporteur_id), ProduitEligible(nom)')
+      .select('"clientId", expert_id, montantFinal, statut, metadata, current_step, progress, Client(company_name, apporteur_id), ProduitEligible(nom)')
       .eq('id', dossierId)
       .single();
 
@@ -857,24 +860,129 @@ router.post('/dossier/:id/confirm-payment-received', enhancedAuthMiddleware, asy
 
     const clientInfo = Array.isArray(dossier.Client) ? dossier.Client[0] : dossier.Client;
     const clientName = clientInfo?.company_name || 'Client';
+    const produitInfo = Array.isArray(dossier.ProduitEligible) ? dossier.ProduitEligible[0] : dossier.ProduitEligible;
+    const produitNom = produitInfo?.nom || 'Produit';
 
-    // Mettre à jour le dossier
-    const { error: updateError } = await supabase
+    const now = new Date().toISOString();
+
+    if (action === 'initiate') {
+      const amountValue = Number(montant);
+
+      if (!montant || Number.isNaN(amountValue) || amountValue <= 0 || !mode || !['virement', 'en_ligne'].includes(mode)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Données invalides pour l’initiation (montant > 0, mode requis)'
+        });
+      }
+
+      const { data: updatedDossier, error: updateError } = await supabase
+        .from('ClientProduitEligible')
+        .update({
+          statut: 'payment_in_progress',
+          current_step: Math.max(dossier.current_step || 8, 8),
+          progress: Math.max(dossier.progress || 95, 96),
+          metadata: {
+            ...(dossier.metadata || {}),
+            payment: {
+              ...(dossier.metadata?.payment || {}),
+              status: 'in_progress',
+              initiated_by: user.database_id,
+              initiated_at: now,
+              mode,
+              initiated_amount: amountValue,
+              last_update: now
+            }
+          },
+          updated_at: now
+        })
+        .eq('id', dossierId)
+        .select()
+        .single();
+
+      if (updateError) {
+        console.error('❌ Erreur mise à jour paiement (initiate):', updateError);
+        return res.status(500).json({ success: false, message: 'Erreur lors de l’initiation du paiement' });
+      }
+
+      try {
+        await DossierTimelineService.paiementEnCours({
+          dossier_id: dossierId,
+          montant: amountValue,
+          mode: mode as 'virement' | 'en_ligne'
+        });
+      } catch (timelineError) {
+        console.error('⚠️ Erreur timeline (paiement en cours):', timelineError);
+      }
+
+      // Notifier l'expert que le client a lancé le paiement
+      if (dossier.expert_id) {
+        const { data: expertUser } = await supabase
+          .from('Expert')
+          .select('auth_user_id')
+          .eq('id', dossier.expert_id)
+          .single();
+
+        if (expertUser?.auth_user_id) {
+          await supabase.from('notification').insert({
+            user_id: expertUser.auth_user_id,
+            user_type: 'expert',
+            title: '💳 Paiement client en cours',
+            message: `${clientName} a initié un paiement de ${amountValue.toLocaleString('fr-FR')} € (${mode === 'virement' ? 'virement bancaire' : 'paiement en ligne'}).`,
+            notification_type: 'payment_in_progress',
+            priority: 'medium',
+            is_read: false,
+            action_url: `/expert/dossier/${dossierId}`,
+            created_at: now,
+            updated_at: now
+          });
+        }
+      }
+
+      return res.json({
+        success: true,
+        message: 'Paiement client lancé',
+        data: updatedDossier
+      });
+    }
+
+    // action === 'confirm'
+    const amountValue = Number(montant);
+
+    if (!montant || Number.isNaN(amountValue) || amountValue <= 0 || !paiement_date) {
+      return res.status(400).json({
+        success: false,
+        message: 'Données invalides pour la confirmation (montant > 0, paiement_date requis)'
+      });
+    }
+
+    const { data: updatedDossier, error: updateError } = await supabase
       .from('ClientProduitEligible')
       .update({
-        statut: 'completed',
-        date_remboursement: new Date(date_reception).toISOString(),
-        current_step: 6,
+        statut: 'refund_completed',
+        date_remboursement: new Date(paiement_date).toISOString(),
+        current_step: 8,
         progress: 100,
         metadata: {
+          ...(dossier.metadata || {}),
+          payment: {
+            ...(dossier.metadata?.payment || {}),
+            status: 'completed',
+            completed_by: user.database_id,
+            completed_at: now,
+            paid_amount: amountValue,
+            paiement_date,
+            last_update: now
+          },
           remboursement_recu: true,
-          montant_reel_recu: montant_reel,
+          montant_reel_recu: amountValue,
           confirme_par_client: true,
-          date_confirmation: new Date().toISOString()
+          date_confirmation: now
         },
-        updated_at: new Date().toISOString()
+        updated_at: now
       })
-      .eq('id', dossierId);
+      .eq('id', dossierId)
+      .select()
+      .single();
 
     if (updateError) {
       console.error('❌ Erreur mise à jour dossier:', updateError);
@@ -884,63 +992,48 @@ router.post('/dossier/:id/confirm-payment-received', enhancedAuthMiddleware, asy
       });
     }
 
-    console.log(`✅ Remboursement confirmé - Dossier complété`);
+    console.log('🎉 Paiement confirmé - Dossier clôturé');
 
     // 📅 TIMELINE
     try {
-      const { DossierTimelineService } = await import('../services/dossier-timeline-service');
-      await DossierTimelineService.addEvent({
+      await DossierTimelineService.remboursementTermine({
         dossier_id: dossierId,
-        type: 'client_action',
-        actor_type: 'client',
-        actor_name: clientName,
-        title: '🎉 Remboursement reçu et confirmé !',
-        description: `Le client a confirmé la réception du remboursement de ${montant_reel.toLocaleString('fr-FR')} €. Dossier finalisé avec succès.`,
-        metadata: {
-          montant_reel,
-          date_reception,
-          confirme_at: new Date().toISOString()
-        },
-        icon: '💰',
-        color: 'green'
+        montant: amountValue,
+        paiement_date
       });
     } catch (timelineError) {
       console.error('⚠️ Erreur timeline (non bloquant):', timelineError);
     }
 
-    // 🔔 NOTIFICATIONS
-    // Expert
+    // 🔔 NOTIFICATION → EXPERT (si existant)
     if (dossier.expert_id) {
       const { data: expertData } = await supabase
         .from('Expert')
-        .select('auth_user_id, compensation')
+        .select('auth_user_id')
         .eq('id', dossier.expert_id)
         .single();
 
       if (expertData?.auth_user_id) {
-        const compensation = expertData.compensation ?? 0.30;
-        const commission = montant_reel * compensation;
-
         await supabase.from('notification').insert({
           user_id: expertData.auth_user_id,
           user_type: 'expert',
-          title: `🎉 Remboursement confirmé - ${clientName}`,
-          message: `Le client a reçu ${montant_reel.toLocaleString('fr-FR')} €. Dossier finalisé.`,
-          notification_type: 'dossier_completed',
-          priority: 'high',
+          title: '✅ Paiement client confirmé',
+          message: `${clientName} a confirmé le paiement de ${amountValue.toLocaleString('fr-FR')} €`,
+          notification_type: 'payment_confirmed',
+          priority: 'medium',
           is_read: false,
           action_url: `/expert/dossier/${dossierId}`,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          created_at: now,
+          updated_at: now
         });
       }
     }
 
-    // Apporteur
+    // 🔔 NOTIFICATION → APPORTEUR (si existant)
     if (clientInfo?.apporteur_id) {
       const { data: apporteurData } = await supabase
         .from('ApporteurAffaires')
-        .select('auth_user_id, commission_rate')
+        .select('auth_user_id')
         .eq('id', clientInfo.apporteur_id)
         .single();
 
@@ -948,49 +1041,35 @@ router.post('/dossier/:id/confirm-payment-received', enhancedAuthMiddleware, asy
         await supabase.from('notification').insert({
           user_id: apporteurData.auth_user_id,
           user_type: 'apporteur',
-          title: `🎉 Dossier finalisé - ${clientName}`,
-          message: `Remboursement de ${montant_reel.toLocaleString('fr-FR')} € confirmé.`,
-          notification_type: 'dossier_completed',
+          title: `✅ Paiement confirmé pour ${clientName}`,
+          message: `Montant réglé : ${amountValue.toLocaleString('fr-FR')} €`,
+          notification_type: 'payment_confirmed',
           priority: 'medium',
           is_read: false,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          action_url: `/apporteur/dossiers/${dossierId}`,
+          created_at: now,
+          updated_at: now
         });
       }
     }
 
-    // Admin
-    const { data: admins } = await supabase
-      .from('Admin')
-      .select('auth_user_id')
-      .eq('is_active', true);
-
-    if (admins) {
-      for (const admin of admins) {
-        if (admin.auth_user_id) {
-          await supabase.from('notification').insert({
-            user_id: admin.auth_user_id,
-            user_type: 'admin',
-            title: `✅ Dossier finalisé - ${clientName}`,
-            message: `Remboursement ${montant_reel.toLocaleString('fr-FR')} € confirmé. Préparer paiement commissions.`,
-            notification_type: 'admin_info',
-            priority: 'medium',
-            is_read: false,
-            action_url: `/admin/dossiers/${dossierId}`,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          });
-        }
-      }
+    if (user.auth_user_id) {
+      await NotificationTriggers.onPaymentConfirmed(user.auth_user_id, {
+        dossier_id: dossierId,
+        produit: produitNom,
+        montant: amountValue,
+        paiement_date
+      });
     }
 
     return res.json({
       success: true,
-      message: 'Remboursement confirmé avec succès'
+      message: 'Paiement confirmé, dossier clôturé',
+      data: updatedDossier
     });
 
   } catch (error) {
-    console.error('❌ Erreur confirmation remboursement:', error);
+    console.error('❌ Erreur confirmation paiement:', error);
     return res.status(500).json({
       success: false,
       message: 'Erreur serveur'

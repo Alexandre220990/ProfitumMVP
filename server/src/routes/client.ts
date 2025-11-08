@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { AuthUser } from '../types/auth';
 import { enhancedAuthMiddleware, AuthenticatedRequest } from '../middleware/auth-enhanced';
 import { NotificationService } from '../services/NotificationService';
+import { normalizeDossierStatus } from '../utils/dossierStatus';
 
 const router = express.Router();
 
@@ -425,7 +426,7 @@ router.put('/produits-eligibles/:id', async (req, res) => {
     console.log('✅ Produit mis à jour avec succès:', { id, current_step: updatedProduit.current_step, progress: updatedProduit.progress });
 
     // 📅 TIMELINE : Ajouter événement si statut = documents_uploaded
-    if (statut === 'documents_uploaded') {
+    if (normalizeDossierStatus(statut) === 'pending_admin_validation') {
       try {
         const { DossierTimelineService } = await import('../services/dossier-timeline-service');
         
@@ -560,7 +561,7 @@ const assignExpertHandler = async (req: Request, res: Response) => {
       .from('ClientProduitEligible')
       .update({ 
         expert_pending_id: expert_id,  // ⚠️ Temporaire, en attente acceptation
-        statut: 'expert_pending_acceptance',
+        statut: 'expert_pending_validation',
         metadata: {
           ...produitData.metadata,
           expert_selection: {
@@ -749,7 +750,7 @@ router.post('/dossier/:id/validate-complementary-documents', async (req, res) =>
     const { data: updatedDossier, error: updateError } = await supabase
       .from('ClientProduitEligible')
       .update({
-        statut: 'documents_complementaires_soumis',
+        statut: 'complementary_documents_sent',
         current_step: 3,
         progress: 50,
         updated_at: new Date().toISOString()

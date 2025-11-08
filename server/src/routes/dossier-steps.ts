@@ -3,6 +3,9 @@ import { supabase } from '../lib/supabase';
 import { DossierStepGenerator } from '../services/dossierStepGenerator';
 import { enhancedAuthMiddleware } from '../middleware/auth-enhanced';
 import jwt from 'jsonwebtoken';
+import { normalizeDossierStatus, DossierStatus } from '../utils/dossierStatus';
+import { DossierTimelineService } from '../services/dossier-timeline-service';
+import { NotificationTriggers } from '../services/NotificationTriggers';
 
 const router = Router();
 
@@ -157,7 +160,7 @@ router.post('/eligibility/validate', enhancedAuthMiddleware, async (req: Request
     const { error: updateError } = await supabase
       .from('ClientProduitEligible')
       .update({
-        statut: is_eligible ? 'eligible_confirmed' : 'non_eligible',
+        statut: is_eligible ? 'admin_validated' : 'admin_rejected',
         notes: admin_notes,
         updated_at: new Date().toISOString()
       })
@@ -212,6 +215,309 @@ router.post('/eligibility/validate', enhancedAuthMiddleware, async (req: Request
     return res.status(500).json({
       success: false,
       message: 'Erreur serveur'
+    });
+  }
+});
+
+router.post('/charte/send', enhancedAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const { dossier_id, document_url, message } = req.body;
+
+    if (!user || (user.type !== 'expert' && user.type !== 'admin')) {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux experts ou administrateurs'
+      });
+    }
+
+    if (!dossier_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'dossier_id requis'
+      });
+    }
+
+    const { data: dossier, error: dossierError } = await supabase
+      .from('ClientProduitEligible')
+      .select(`
+        *,
+        Client:clientId (
+          id,
+          auth_user_id,
+          company_name,
+          first_name,
+          last_name
+        ),
+        ProduitEligible:produitId (
+          id,
+          nom
+        ),
+        Expert:expert_id (
+          id,
+          name,
+          auth_user_id
+        )
+      `)
+      .eq('id', dossier_id)
+      .single();
+
+    if (dossierError || !dossier) {
+      console.error('❌ Dossier non trouvé pour charte:', dossierError);
+      return res.status(404).json({ success: false, message: 'Dossier non trouvé' });
+    }
+
+    const normalizedStatus = normalizeDossierStatus(dossier.statut);
+
+    if (normalizedStatus === 'charte_signed') {
+      return res.status(400).json({
+        success: false,
+        message: 'La charte est déjà signée'
+      });
+    }
+
+    if (!['expert_validated', 'charte_pending'].includes(normalizedStatus)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Le dossier doit être validé par l’expert avant l’envoi de la charte'
+      });
+    }
+
+    if (user.type === 'expert' && dossier.expert_id !== user.database_id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Ce dossier ne vous est pas assigné'
+      });
+    }
+
+    const now = new Date().toISOString();
+    const actorName = await (async () => {
+      if (user.type === 'expert') {
+        const { data } = await supabase
+          .from('Expert')
+          .select('name, email')
+          .eq('id', user.database_id)
+          .single();
+        return data?.name || data?.email || 'Expert';
+      }
+
+      const { data } = await supabase
+        .from('Admin')
+        .select('name, email')
+        .eq('id', user.database_id)
+        .single();
+      return data?.name || data?.email || 'Admin';
+    })();
+
+    const { data: updatedDossier, error: updateError } = await supabase
+      .from('ClientProduitEligible')
+      .update({
+        statut: 'charte_pending',
+        charte_signed: false,
+        charte_signed_at: null,
+        updated_at: now,
+        metadata: {
+          ...dossier.metadata,
+          charte: {
+            ...(dossier.metadata?.charte || {}),
+            status: 'pending',
+            sent_at: now,
+            sent_by: user.database_id || user.id,
+            sent_by_type: user.type,
+            document_url: document_url || null,
+            message: message || null
+          }
+        }
+      })
+      .eq('id', dossier_id)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error('❌ Erreur mise à jour dossier (charte):', updateError);
+      throw updateError;
+    }
+
+    try {
+      await DossierTimelineService.charteEnvoyee({
+        dossier_id,
+        actor_name: actorName,
+        message,
+        document_url
+      });
+    } catch (timelineError) {
+      console.error('⚠️ Erreur timeline charte (non bloquant):', timelineError);
+    }
+
+    const clientInfo = Array.isArray(dossier.Client) ? dossier.Client[0] : dossier.Client;
+
+    if (clientInfo?.auth_user_id) {
+      await NotificationTriggers.onCharteSignatureRequested(clientInfo.auth_user_id, {
+        dossier_id,
+        produit: dossier.ProduitEligible?.nom || 'Produit',
+        expert_name: actorName,
+        charte_url: document_url
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: 'Charte envoyée avec succès',
+      data: updatedDossier
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur envoi charte:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de l’envoi de la charte'
+    });
+  }
+});
+
+router.post('/charte/sign', enhancedAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const { dossier_id, accept_terms } = req.body;
+
+    if (!user || user.type !== 'client') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux clients'
+      });
+    }
+
+    if (!dossier_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'dossier_id requis'
+      });
+    }
+
+    if (!accept_terms) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vous devez accepter les conditions pour signer la charte'
+      });
+    }
+
+    const { data: dossier, error: dossierError } = await supabase
+      .from('ClientProduitEligible')
+      .select(`
+        *,
+        Client:clientId (
+          id,
+          auth_user_id,
+          company_name
+        ),
+        ProduitEligible:produitId (
+          id,
+          nom
+        ),
+        Expert:expert_id (
+          id,
+          name,
+          auth_user_id
+        )
+      `)
+      .eq('id', dossier_id)
+      .single();
+
+    if (dossierError || !dossier) {
+      return res.status(404).json({ success: false, message: 'Dossier non trouvé' });
+    }
+
+    if (dossier.clientId !== user.database_id) {
+      return res.status(403).json({ success: false, message: 'Accès non autorisé' });
+    }
+
+    const normalizedStatus = normalizeDossierStatus(dossier.statut);
+
+    if (normalizedStatus !== 'charte_pending' && normalizedStatus !== 'charte_signed') {
+      return res.status(400).json({
+        success: false,
+        message: 'La charte doit être envoyée avant signature'
+      });
+    }
+
+    const now = new Date().toISOString();
+    const userAgent = req.get('User-Agent') || null;
+    const ipHeader = req.headers['x-forwarded-for'];
+    const ipAddress = Array.isArray(ipHeader) ? ipHeader[0] : ipHeader || req.ip || null;
+
+    const { error: signatureError } = await supabase
+      .from('client_charte_signature')
+      .upsert({
+        client_id: dossier.clientId,
+        produit_id: dossier.produitId,
+        client_produit_eligible_id: dossier_id,
+        signature_date: now,
+        ip_address: ipAddress || null,
+        user_agent: userAgent
+      }, { onConflict: 'client_produit_eligible_id' });
+
+    if (signatureError) {
+      console.error('❌ Erreur enregistrement signature charte:', signatureError);
+      throw signatureError;
+    }
+
+    const { data: updatedDossier, error: updateError } = await supabase
+      .from('ClientProduitEligible')
+      .update({
+        statut: 'charte_signed',
+        charte_signed: true,
+        charte_signed_at: now,
+        updated_at: now,
+        metadata: {
+          ...dossier.metadata,
+          charte: {
+            ...(dossier.metadata?.charte || {}),
+            status: 'signed',
+            signed_at: now,
+            signed_ip: ipAddress,
+            signed_user_agent: userAgent
+          }
+        }
+      })
+      .eq('id', dossier_id)
+      .select()
+      .single();
+
+    if (updateError) {
+      throw updateError;
+    }
+
+    const clientInfo = Array.isArray(dossier.Client) ? dossier.Client[0] : dossier.Client;
+    const clientName = clientInfo?.company_name || 'Client';
+
+    try {
+      await DossierTimelineService.charteSignee({
+        dossier_id,
+        client_name: clientName
+      });
+    } catch (timelineError) {
+      console.error('⚠️ Erreur timeline charte signée (non bloquant):', timelineError);
+    }
+
+    const expertInfo = Array.isArray(dossier.Expert) ? dossier.Expert[0] : dossier.Expert;
+
+    await NotificationTriggers.onCharteSigned(expertInfo?.auth_user_id || null, {
+      dossier_id,
+      produit: dossier.ProduitEligible?.nom || 'Produit',
+      client_name: clientName
+    });
+
+    return res.json({
+      success: true,
+      message: 'Charte signée avec succès',
+      data: updatedDossier
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur signature charte:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la signature de la charte'
     });
   }
 });
@@ -308,23 +614,25 @@ router.post('/expert/select', enhancedAuthMiddleware, async (req: Request, res: 
 
     console.log('🔍 [DEBUG] Dossier trouvé:', { clientId: dossier.clientId, statut: dossier.statut });
     
-    // Permettre la sélection d'expert pour les dossiers avec validation admin OK
-    const statutsAutorises = [
-      // Anciens statuts (compatibilité)
-      'eligible', 'en_cours', 'eligibility_validated', 'expert_pending_acceptance',
-      // Nouveaux statuts
-      'admin_validated', 'expert_selection', 'pending_admin_validation'
-    ];
-    
-    if (!statutsAutorises.includes(dossier.statut)) {
+    const normalized = normalizeDossierStatus(dossier.statut);
+    const allowedStatuses = new Set<DossierStatus>([
+      'pending_upload',
+      'pending_admin_validation',
+      'admin_validated',
+      'expert_assigned',
+      'expert_pending_validation',
+      'expert_validated'
+    ]);
+
+    if (!allowedStatuses.has(normalized)) {
       console.error('❌ [DEBUG] Statut dossier non autorisé:', dossier.statut);
       return res.status(400).json({
         success: false,
         message: `Le dossier doit être validé par l'admin pour sélectionner un expert. Statut actuel: ${dossier.statut}`
       });
     }
-    
-    console.log('✅ [DEBUG] Statut autorisé pour sélection expert:', dossier.statut);
+ 
+    console.log('✅ [DEBUG] Statut autorisé pour sélection expert:', normalized);
 
     // Vérifier que l'expert existe et est disponible
     const { data: expert, error: expertError } = await supabase

@@ -252,7 +252,7 @@ router.put('/admin/:id/status', enhancedAuthMiddleware, async (req: Request, res
       const { error: updateError } = await supabase
         .from('ClientProduitEligible')
         .update({
-          statut: 'eligible_confirmed',
+          statut: 'admin_validated',
           notes: `Éligibilité validée par l'admin - ${admin_notes || ''}`,
           updated_at: new Date().toISOString()
         })

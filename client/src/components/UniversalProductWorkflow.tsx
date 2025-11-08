@@ -9,7 +9,10 @@ import {
   Users, 
   AlertCircle, 
   ArrowRight,
-  Clock
+  Clock,
+  CreditCard,
+  FileSignature,
+  Loader2
 } from 'lucide-react';
 
 import ProductUploadInline from './ProductUploadInline';
@@ -21,9 +24,11 @@ import AuditValidationModal from './client/AuditValidationModal';
 import InvoiceDisplay from './client/InvoiceDisplay';
 import { useDossierSteps } from '@/hooks/use-dossier-steps';
 import { useDossierNotifications } from '@/hooks/useDossierNotifications';
-import { get } from '@/lib/api';
+import { get, post } from '@/lib/api';
 import { getProductConfig} from '@/config/productWorkflowConfigs';
 import { config } from '@/config/env';
+import CharterDialog from '@/components/CharterDialog';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface UniversalProductWorkflowProps {
   clientProduitId: string;
@@ -131,6 +136,17 @@ export default function UniversalProductWorkflow({
   // État facture Profitum
   const [invoice, setInvoice] = useState<any>(null);
 
+  // Gestion charte commerciale
+  const [showCharterDialog, setShowCharterDialog] = useState(false);
+  const [charterRead, setCharterRead] = useState(false);
+  const [charterSigning, setCharterSigning] = useState(false);
+  const [charterAgreements, setCharterAgreements] = useState({
+    cgu: false,
+    cgv: false,
+    contract: false
+  });
+  const allCharterAgreementsAccepted = charterAgreements.cgu && charterAgreements.cgv && charterAgreements.contract;
+
   // Hook pour les étapes du dossier
   const {
     steps,
@@ -144,6 +160,9 @@ export default function UniversalProductWorkflow({
 
   // Définir les étapes du workflow depuis la config
   const workflowSteps = productConfig.workflowSteps;
+  const currentDossierStatus = clientProduit?.statut || '';
+  const isCharterPending = currentDossierStatus === 'charte_pending';
+  const isCharterSigned = currentDossierStatus === 'charte_signed';
 
   // Charger la demande de documents complémentaires
   const loadDocumentRequest = useCallback(async () => {
@@ -202,11 +221,29 @@ export default function UniversalProductWorkflow({
           'expert_selection',
           'expert_pending_acceptance',
           'expert_assigned',
+          'expert_pending_validation',
+          'expert_validated',
+          'charte_pending',
+          'charte_signed',
           'documents_manquants',
+          'documents_requested',
+          'complementary_documents_upload_pending',
+          'complementary_documents_sent',
+          'complementary_documents_validated',
+          'complementary_documents_refused',
           'audit_in_progress',
           'audit_completed',
+          'validated',
           'validation_finale',
           'demande_remboursement',
+          'soumis_administration',
+          'pending_result',
+          'resultat_obtenu',
+          'implementation_in_progress',
+          'implementation_validated',
+          'payment_requested',
+          'payment_in_progress',
+          'refund_completed',
           'signed'
         ]);
 
@@ -233,6 +270,30 @@ export default function UniversalProductWorkflow({
           console.log('✅ DIAGNOSTIC: Validation admin détectée → déblocage étape 2');
           eligibilityUnlocked = true;
           nextStep = Math.max(nextStep, 2);
+        } else if (statut === 'expert_pending_validation' || statut === 'expert_assigned') {
+          console.log('👥 DIAGNOSTIC: Attente validation expert → étape 2 minimum');
+          eligibilityUnlocked = true;
+          nextStep = Math.max(nextStep, 2);
+        } else if (statut === 'expert_validated' || statut === 'charte_pending' || statut === 'charte_signed') {
+          console.log('📄 DIAGNOSTIC: Étape charte / expert validé → étape minimale 3');
+          eligibilityUnlocked = true;
+          nextStep = Math.max(nextStep, 3);
+        } else if (statut.startsWith('complementary_documents')) {
+          console.log('📎 DIAGNOSTIC: Boucle documents complémentaires → étape minimale 3');
+          eligibilityUnlocked = true;
+          nextStep = Math.max(nextStep, 3);
+        } else if (['audit_in_progress', 'audit_completed', 'validated'].includes(statut)) {
+          console.log('🧪 DIAGNOSTIC: Phase audit → étape minimale 4');
+          eligibilityUnlocked = true;
+          nextStep = Math.max(nextStep, 4);
+        } else if (['implementation_in_progress', 'implementation_validated', 'soumis_administration', 'pending_result', 'resultat_obtenu'].includes(statut)) {
+          console.log('🏛️ DIAGNOSTIC: Phase mise en œuvre administration → étape minimale 5');
+          eligibilityUnlocked = true;
+          nextStep = Math.max(nextStep, 5);
+        } else if (['payment_requested', 'payment_in_progress', 'refund_completed', 'completed'].includes(statut)) {
+          console.log('💶 DIAGNOSTIC: Phase paiement → étape minimale 6');
+          eligibilityUnlocked = true;
+          nextStep = Math.max(nextStep, 6);
         } else if (statut === 'eligible' || statut === 'opportunité' || statut === 'pending_admin_validation') {
           console.log('📝 DIAGNOSTIC: Statut initial → étape 1');
           eligibilityUnlocked = false;
@@ -325,6 +386,21 @@ export default function UniversalProductWorkflow({
       setCurrentStep(1);
     }
   }, [eligibilityValidated, currentStep]);
+
+  useEffect(() => {
+    if (!clientProduit) {
+      return;
+    }
+
+    if (clientProduit.statut === 'charte_pending') {
+      setCharterAgreements({ cgu: false, cgv: false, contract: false });
+      setCharterRead(false);
+      setCharterSigning(false);
+    } else if (clientProduit.statut === 'charte_signed') {
+      setShowCharterDialog(false);
+      setCharterSigning(false);
+    }
+  }, [clientProduit]);
 
   const updateWorkflowSteps = useCallback(() => {
     console.log('🔧 DIAGNOSTIC updateWorkflowSteps:', {
@@ -453,6 +529,176 @@ export default function UniversalProductWorkflow({
       toast.error('Impossible de confirmer l\'expert. Veuillez réessayer.');
     }
   }, [tempSelectedExpert, clientProduitId, loadClientProduit]);
+
+  const handleCharterAgreementChange = useCallback(
+    (key: 'cgu' | 'cgv' | 'contract') => (value: boolean | "indeterminate") => {
+      setCharterAgreements(prev => ({
+        ...prev,
+        [key]: value === true
+      }));
+    },
+    []
+  );
+
+  const handleOpenCharterDialog = useCallback(() => {
+    setCharterRead(false);
+    setShowCharterDialog(true);
+  }, []);
+
+  const handleCharterScrollEnd = useCallback(() => {
+    setCharterRead(true);
+  }, []);
+
+  const handleSignCharter = useCallback(async () => {
+    if (!charterRead) {
+      toast.error('Veuillez lire la charte jusqu\'au bout avant de signer.');
+      return;
+    }
+
+    if (!allCharterAgreementsAccepted) {
+      toast.error('Merci d\'accepter toutes les conditions pour signer la charte.');
+      return;
+    }
+
+    setCharterSigning(true);
+    try {
+      const response = await post('/api/dossier-steps/charte/sign', {
+        dossier_id: clientProduitId,
+        accept_terms: true
+      });
+
+      if (response.success) {
+        toast.success('✍️ Charte signée avec succès !');
+        setCharterAgreements({ cgu: false, cgv: false, contract: false });
+        setCharterRead(false);
+        setShowCharterDialog(false);
+        loadClientProduit();
+      } else {
+        toast.error(response.message || 'Erreur lors de la signature de la charte');
+      }
+    } catch (error) {
+      console.error('❌ Erreur signature charte:', error);
+      toast.error('Erreur lors de la signature de la charte');
+    } finally {
+      setCharterSigning(false);
+    }
+  }, [allCharterAgreementsAccepted, charterRead, clientProduitId, loadClientProduit]);
+
+  const renderCharterPendingCard = () => (
+    <Card className="border-amber-300 bg-amber-50">
+      <CardContent className="space-y-4">
+        <div className="flex items-start gap-3">
+          <div className="flex-shrink-0 mt-1">
+            <FileSignature className="w-5 h-5 text-amber-600" />
+          </div>
+          <div>
+            <h4 className="font-semibold text-amber-900 mb-1">
+              Signature de la charte commerciale requise
+            </h4>
+            <p className="text-sm text-amber-800">
+              Avant de lancer l'audit, merci de lire et d'accepter la charte commerciale contractuelle.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-col md:flex-row gap-3">
+          <Button
+            variant="outline"
+            onClick={handleOpenCharterDialog}
+            className="flex-1 border-amber-200 text-amber-900 hover:bg-amber-100"
+          >
+            <FileSignature className="w-4 h-4 mr-2" />
+            Lire la charte complète
+          </Button>
+          <Button
+            onClick={handleSignCharter}
+            disabled={charterSigning || !charterRead || !allCharterAgreementsAccepted}
+            className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {charterSigning ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Signature en cours...
+              </>
+            ) : (
+              <>
+                <CheckCircle className="w-4 h-4 mr-2" />
+                Signer la charte
+              </>
+            )}
+          </Button>
+        </div>
+
+        <div className="space-y-3">
+          <div className="flex items-start gap-2">
+            <Checkbox
+              id={`charter-cgu-${clientProduitId}`}
+              checked={charterAgreements.cgu}
+              onCheckedChange={handleCharterAgreementChange('cgu')}
+            />
+            <label
+              htmlFor={`charter-cgu-${clientProduitId}`}
+              className="text-sm text-amber-900 leading-relaxed"
+            >
+              J'accepte les Conditions Générales d'Utilisation (CGU)
+            </label>
+          </div>
+          <div className="flex items-start gap-2">
+            <Checkbox
+              id={`charter-cgv-${clientProduitId}`}
+              checked={charterAgreements.cgv}
+              onCheckedChange={handleCharterAgreementChange('cgv')}
+            />
+            <label
+              htmlFor={`charter-cgv-${clientProduitId}`}
+              className="text-sm text-amber-900 leading-relaxed"
+            >
+              J'accepte les Conditions Générales de Vente (CGV)
+            </label>
+          </div>
+          <div className="flex items-start gap-2">
+            <Checkbox
+              id={`charter-contract-${clientProduitId}`}
+              checked={charterAgreements.contract}
+              onCheckedChange={handleCharterAgreementChange('contract')}
+            />
+            <label
+              htmlFor={`charter-contract-${clientProduitId}`}
+              className="text-sm text-amber-900 leading-relaxed"
+            >
+              Je confirme le contrat d'application avec l'expert sélectionné
+            </label>
+          </div>
+        </div>
+
+        {!charterRead && (
+          <p className="text-xs text-amber-700">
+            Faites défiler la charte jusqu'en bas pour activer la signature.
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+
+  const renderCharterSignedCard = () => (
+    <Card className="border-green-200 bg-green-50">
+      <CardContent className="p-4">
+        <div className="flex items-start gap-3">
+          <div className="flex-shrink-0 mt-1">
+            <CheckCircle className="w-5 h-5 text-green-600" />
+          </div>
+          <div>
+            <h4 className="font-semibold text-green-900 mb-1">
+              Charte signée
+            </h4>
+            <p className="text-sm text-green-800">
+              Merci ! Votre charte commerciale est validée. Votre expert peut désormais lancer l'audit.
+            </p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 
   const getStepIcon = (step: any) => {
     const Icon = step.icon;
@@ -608,17 +854,28 @@ export default function UniversalProductWorkflow({
 
         // Étape 3 : Collecte des documents (avec nouveau design complet)
         if (currentStep === 3) {
+          if (isCharterPending) {
+            return (
+              <div className="space-y-6">
+                {renderCharterPendingCard()}
+              </div>
+            );
+          }
+
           return (
-            <ClientStep3DocumentCollection
-              dossierId={clientProduitId}
-              onComplete={() => {
-                toast.success('✅ Étape 3 validée avec succès !');
-                // Recharger les données du dossier
-                loadClientProduit();
-                // Passer à l'étape suivante si applicable
-                setCurrentStep(4);
-              }}
-            />
+            <div className="space-y-6">
+              {isCharterSigned && renderCharterSignedCard()}
+              <ClientStep3DocumentCollection
+                dossierId={clientProduitId}
+                onComplete={() => {
+                  toast.success('✅ Étape 3 validée avec succès !');
+                  // Recharger les données du dossier
+                  loadClientProduit();
+                  // Passer à l'étape suivante si applicable
+                  setCurrentStep(4);
+                }}
+              />
+            </div>
           );
         }
 
@@ -688,32 +945,31 @@ export default function UniversalProductWorkflow({
             </div>
 
             {/* Message d'attente selon le statut */}
-            {clientProduit?.statut === 'soumis_administration' && (
+            {clientProduit?.statut === 'implementation_in_progress' && (
               <Card className="max-w-2xl mx-auto border-blue-200 bg-blue-50">
                 <CardContent className="p-6 text-center">
                   <Clock className="w-12 h-12 text-blue-600 mx-auto mb-4" />
                   <h4 className="text-lg font-semibold text-blue-900 mb-2">
-                    📨 Dossier soumis à l'administration
+                    🛠️ Suivi administration en cours
                   </h4>
                   <p className="text-sm text-blue-800">
-                    Votre expert a soumis votre dossier à l'administration française.
-                    Délai d'instruction : 6 à 12 mois. Votre expert assure le suivi.
+                    Votre expert pilote désormais la mise en œuvre auprès de l'administration.
+                    Nous vous informerons dès réception du résultat officiel.
                   </p>
                 </CardContent>
               </Card>
             )}
 
-            {clientProduit?.statut === 'resultat_obtenu' && (
+            {clientProduit?.statut === 'implementation_validated' && (
               <div className="space-y-4">
                 <Card className="max-w-2xl mx-auto border-green-200 bg-green-50">
                   <CardContent className="p-6 text-center">
                     <CheckCircle className="w-12 h-12 text-green-600 mx-auto mb-4" />
                     <h4 className="text-lg font-semibold text-green-900 mb-2">
-                      ✅ Résultat reçu !
+                      ✅ Résultat confirmé
                     </h4>
                     <p className="text-sm text-green-800">
-                      L'administration a rendu sa décision. 
-                      Vous serez notifié dès réception du remboursement.
+                      L'administration a validé votre dossier. Votre remboursement est en préparation.
                     </p>
                   </CardContent>
                 </Card>
@@ -735,7 +991,65 @@ export default function UniversalProductWorkflow({
               </div>
             )}
 
-            {!['soumis_administration', 'resultat_obtenu'].includes(clientProduit?.statut || '') && (
+            {clientProduit?.statut === 'payment_requested' && (
+              <div className="space-y-4">
+                <Card className="max-w-2xl mx-auto border-purple-200 bg-purple-50">
+                  <CardContent className="p-6 text-center">
+                    <CreditCard className="w-12 h-12 text-purple-600 mx-auto mb-4" />
+                    <h4 className="text-lg font-semibold text-purple-900 mb-2">
+                      💶 Paiement requis
+                    </h4>
+                    <p className="text-sm text-purple-800">
+                      Votre remboursement est disponible. Merci de régler les honoraires pour finaliser le dossier.
+                    </p>
+                  </CardContent>
+                </Card>
+
+                {invoice && (
+                  <div className="max-w-2xl mx-auto">
+                    <InvoiceDisplay
+                      invoice={invoice}
+                      dossierId={clientProduitId}
+                      onPaymentConfirmed={() => {
+                        loadClientProduit();
+                        loadInvoice();
+                        toast.success('🎉 Paiement confirmé !');
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {clientProduit?.statut === 'payment_in_progress' && (
+              <Card className="max-w-2xl mx-auto border-blue-200 bg-blue-50">
+                <CardContent className="p-6 text-center">
+                  <CreditCard className="w-12 h-12 text-blue-600 mx-auto mb-4" />
+                  <h4 className="text-lg font-semibold text-blue-900 mb-2">
+                    💳 Paiement en cours de traitement
+                  </h4>
+                  <p className="text-sm text-blue-800">
+                    Votre paiement est en cours de validation. Vous serez notifié dès sa confirmation.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
+            {clientProduit?.statut === 'refund_completed' && (
+              <Card className="max-w-2xl mx-auto border-green-200 bg-green-50">
+                <CardContent className="p-6 text-center">
+                  <CheckCircle className="w-12 h-12 text-green-600 mx-auto mb-4" />
+                  <h4 className="text-lg font-semibold text-green-900 mb-2">
+                    🎉 Dossier clôturé
+                  </h4>
+                  <p className="text-sm text-green-800">
+                    Félicitations, votre remboursement est confirmé et le dossier est terminé.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
+            {!['implementation_in_progress', 'implementation_validated', 'payment_requested', 'payment_in_progress', 'refund_completed'].includes(clientProduit?.statut || '') && (
               <Card className="max-w-2xl mx-auto border-gray-200">
                 <CardContent className="p-6 text-center">
                   <Clock className="w-12 h-12 text-gray-400 mx-auto mb-4" />
@@ -963,26 +1277,32 @@ export default function UniversalProductWorkflow({
                       </Card>
 
                       {/* Message d'attente acceptation expert */}
-                      <Card className="border-amber-200 bg-amber-50">
-                        <CardContent className="p-4">
-                          <div className="flex items-start gap-3">
-                            <div className="flex-shrink-0 mt-1">
-                              <Clock className="w-5 h-5 text-amber-600" />
+                      {(['expert_pending_validation', 'expert_assigned', 'expert_pending_acceptance'] as string[]).includes(currentDossierStatus) && (
+                        <Card className="border-amber-200 bg-amber-50">
+                          <CardContent className="p-4">
+                            <div className="flex items-start gap-3">
+                              <div className="flex-shrink-0 mt-1">
+                                <Clock className="w-5 h-5 text-amber-600" />
+                              </div>
+                              <div>
+                                <h4 className="font-semibold text-amber-900 mb-1">
+                                  🕐 En attente d'acceptation
+                                </h4>
+                                <p className="text-sm text-amber-800 mb-2">
+                                  Votre expert étudie votre dossier.
+                                </p>
+                                <p className="text-xs text-amber-700">
+                                  ⏱️ Délai de traitement : jusqu'à 48h. Vous serez notifié dès que l'expert aura accepté votre demande.
+                                </p>
+                              </div>
                             </div>
-                            <div>
-                              <h4 className="font-semibold text-amber-900 mb-1">
-                                🕐 En attente d'acceptation
-                              </h4>
-                              <p className="text-sm text-amber-800 mb-2">
-                                Votre expert étudie votre dossier.
-                              </p>
-                              <p className="text-xs text-amber-700">
-                                ⏱️ Délai de traitement : jusqu'à 48h. Vous serez notifié dès que l'expert aura accepté votre demande.
-                              </p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
+                          </CardContent>
+                        </Card>
+                      )}
+
+                      {/* Signature charte */}
+                      {isCharterPending && renderCharterPendingCard()}
+                      {isCharterSigned && renderCharterSignedCard()}
                     </>
                   ) : (
                     /* Pas d'expert - Bouton de sélection */
@@ -1037,6 +1357,13 @@ export default function UniversalProductWorkflow({
           </CardContent>
         </Card>
       )}
+
+      <CharterDialog
+        open={showCharterDialog}
+        onClose={() => setShowCharterDialog(false)}
+        onScrollEnd={handleCharterScrollEnd}
+        auditType={productKey}
+      />
 
       {/* Modal de sélection d'expert */}
       <ExpertSelectionModal

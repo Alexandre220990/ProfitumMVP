@@ -2,6 +2,7 @@ import express, { Request, Response } from 'express';
 import { supabaseClient } from '../config/supabase';
 import { optionalAuthMiddleware } from '../middleware/optional-auth';
 import { asyncHandler } from '../utils/asyncHandler';
+import { normalizeDossierStatus } from '../utils/dossierStatus';
 
 const router = express.Router();
 
@@ -402,20 +403,22 @@ async function mergeClientProductsSQL(clientId: string, simulationId: string, pr
         }
         
         // Cas 1 : Produit en cours de traitement → PROTÉGER
-        if (['en_cours', 'documents_collecte', 'expert_assigne', 'en_attente_expert', 'dossier_constitue'].includes(existing.statut)) {
+        const existingStatus = normalizeDossierStatus(existing.statut);
+
+        if (['audit_in_progress', 'complementary_documents_validated', 'expert_validated', 'expert_assigned', 'charte_signed'].includes(existingStatus)) {
           console.log(`🔒 Produit protégé (workflow en cours): ${produit.produit_nom}`);
           productsProtected++;
           conflicts.push({
             produitId: produit.produit_id,
             produitNom: produit.produit_nom,
             reason: 'Produit en cours de traitement',
-            existingStatut: existing.statut
+            existingStatut: existingStatus
           });
           continue;
         }
 
         // Cas 2 : Produit 'eligible' → METTRE À JOUR si différent
-        if (existing.statut === 'eligible') {
+        if (existingStatus === 'pending_upload') {
           const nouveauMontant = produit.montant_estime || 0;
           const ancienMontant = existing.montantFinal || 0;
 
@@ -454,7 +457,7 @@ async function mergeClientProductsSQL(clientId: string, simulationId: string, pr
             clientId: clientId,
             produitId: produit.produit_id,
             simulationId: simulationId,
-            statut: 'eligible',
+            statut: 'pending_upload',
             montantFinal: produit.montant_estime,
             tauxFinal: null,
             dureeFinale: null,

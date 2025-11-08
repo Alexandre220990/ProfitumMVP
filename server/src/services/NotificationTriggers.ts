@@ -258,6 +258,137 @@ export class NotificationTriggers {
     });
   }
 
+  static async onComplementaryDocumentsValidated(
+    clientAuthId: string,
+    data: { dossier_id: string; produit: string; expert_name: string; documents_count: number }
+  ): Promise<boolean> {
+    return this.createNotification({
+      user_id: clientAuthId,
+      user_type: 'client',
+      title: '✅ Documents complémentaires validés',
+      message: `${data.expert_name} a validé ${data.documents_count} document${data.documents_count > 1 ? 's' : ''} pour votre dossier ${data.produit}. L'audit peut continuer.`,
+      notification_type: 'complementary_documents_validated',
+      priority: 'medium',
+      event_id: data.dossier_id,
+      metadata: {
+        dossier_id: data.dossier_id,
+        produit: data.produit,
+        expert_name: data.expert_name,
+        documents_count: data.documents_count
+      }
+    });
+  }
+
+  static async onComplementaryDocumentsRejected(
+    clientAuthId: string,
+    data: { dossier_id: string; produit: string; expert_name: string; reason?: string }
+  ): Promise<boolean> {
+    return this.createNotification({
+      user_id: clientAuthId,
+      user_type: 'client',
+      title: '⚠️ Documents complémentaires à reprendre',
+      message: `${data.expert_name} a besoin de documents complémentaires supplémentaires pour ${data.produit}.${data.reason ? '\nMotif : ' + data.reason : ''}`,
+      notification_type: 'complementary_documents_rejected',
+      priority: 'high',
+      event_id: data.dossier_id,
+      metadata: {
+        dossier_id: data.dossier_id,
+        produit: data.produit,
+        expert_name: data.expert_name,
+        reason: data.reason || null
+      }
+    });
+  }
+
+  static async onImplementationInProgress(
+    clientAuthId: string,
+    data: { dossier_id: string; produit: string; organisme?: string; reference?: string }
+  ): Promise<boolean> {
+    return this.createNotification({
+      user_id: clientAuthId,
+      user_type: 'client',
+      title: '🛠️ Dossier transmis à l’administration',
+      message: `Votre expert a transmis votre dossier ${data.produit} à l’administration.${data.organisme ? ` Organisme : ${data.organisme}.` : ''}${data.reference ? ` Référence : ${data.reference}.` : ''}`,
+      notification_type: 'implementation_in_progress',
+      priority: 'medium',
+      event_id: data.dossier_id,
+      metadata: {
+        dossier_id: data.dossier_id,
+        produit: data.produit,
+        organisme: data.organisme || null,
+        reference: data.reference || null
+      }
+    });
+  }
+
+  static async onImplementationValidated(
+    clientAuthId: string,
+    data: { dossier_id: string; produit: string; montant_accorde: number; decision: 'accepte' | 'partiel' | 'refuse' }
+  ): Promise<boolean> {
+    const icon = data.decision === 'accepte' ? '✅' : data.decision === 'partiel' ? '⚠️' : '❌';
+    const priority: 'medium' | 'high' = data.decision === 'refuse' ? 'high' : 'medium';
+
+    return this.createNotification({
+      user_id: clientAuthId,
+      user_type: 'client',
+      title: `${icon} Résultat administration` ,
+      message: `L'administration a rendu sa décision (${data.decision}). Montant accordé : ${data.montant_accorde.toLocaleString('fr-FR')} € pour ${data.produit}.`,
+      notification_type: 'implementation_validated',
+      priority,
+      event_id: data.dossier_id,
+      metadata: {
+        dossier_id: data.dossier_id,
+        produit: data.produit,
+        montant_accorde: data.montant_accorde,
+        decision: data.decision
+      }
+    });
+  }
+
+  static async onPaymentRequested(
+    clientAuthId: string,
+    data: { dossier_id: string; produit: string; montant: number; facture_reference?: string }
+  ): Promise<boolean> {
+    return this.createNotification({
+      user_id: clientAuthId,
+      user_type: 'client',
+      title: '💶 Paiement requis',
+      message: `Votre remboursement est disponible pour ${data.produit}. Merci de régler ${data.montant.toLocaleString('fr-FR')} €.${data.facture_reference ? `
+Facture : ${data.facture_reference}` : ''}`,
+      notification_type: 'payment_requested',
+      priority: 'high',
+      event_id: data.dossier_id,
+      metadata: {
+        dossier_id: data.dossier_id,
+        produit: data.produit,
+        montant: data.montant,
+        facture_reference: data.facture_reference || null
+      }
+    });
+  }
+
+  static async onPaymentConfirmed(
+    clientAuthId: string,
+    data: { dossier_id: string; produit: string; montant: number; paiement_date?: string }
+  ): Promise<boolean> {
+    return this.createNotification({
+      user_id: clientAuthId,
+      user_type: 'client',
+      title: '✅ Paiement confirmé',
+      message: `Nous avons bien reçu le paiement de ${data.montant.toLocaleString('fr-FR')} € pour ${data.produit}. Le dossier est désormais clôturé.${data.paiement_date ? `
+Date : ${data.paiement_date}` : ''}`,
+      notification_type: 'payment_confirmed',
+      priority: 'medium',
+      event_id: data.dossier_id,
+      metadata: {
+        dossier_id: data.dossier_id,
+        produit: data.produit,
+        montant: data.montant,
+        paiement_date: data.paiement_date || null
+      }
+    });
+  }
+
   // ============================================================================
   // NOTIFICATIONS EXPERT (5 types)
   // ============================================================================

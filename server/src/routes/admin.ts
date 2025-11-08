@@ -4,6 +4,7 @@ import bcrypt from 'bcrypt';
 import { asyncHandler } from '../utils/asyncHandler';
 import { AuthUser } from '../types/auth';
 import messagesRouter from './admin/messages';
+import { normalizeDossierStatus } from '../utils/dossierStatus';
 
 const router = express.Router();
 
@@ -31,6 +32,14 @@ interface UpdateData {
   expert_id?: string;
   commentaire?: string;
 }
+
+type NormalizedStatus = ReturnType<typeof normalizeDossierStatus>;
+
+type StatusUpdate = {
+  id: string;
+  current: string | null;
+  normalized: NormalizedStatus;
+};
 
 // Route de test pour vérifier que les routes admin fonctionnent
 router.get('/test', asyncHandler(async (req, res) => {
@@ -217,7 +226,8 @@ router.get('/dashboard', asyncHandler(async (req, res) => {
         acc[produitId] = { total: 0, eligible: 0 };
       }
       acc[produitId].total++;
-      if (item.statut === 'eligible') {
+      const normalized = normalizeDossierStatus(item.statut);
+      if (normalized === 'pending_upload' || normalized === 'pending_admin_validation') {
         acc[produitId].eligible++;
       }
       return acc;
@@ -305,7 +315,7 @@ router.get('/dashboard', asyncHandler(async (req, res) => {
     const { count: totalEligibleProducts } = await supabaseClient
       .from('ClientProduitEligible')
       .select('*', { count: 'exact', head: true })
-      .eq('statut', 'eligible');
+      .in('statut', ['pending_upload', 'pending_admin_validation', 'admin_validated']);
 
     // Gestion des valeurs null
     const totalClientsCount = totalClients || 0;
@@ -1411,7 +1421,10 @@ router.get('/clients/stats', asyncHandler(async (req, res): Promise<void> => {
     
     const dossiers_en_cours = clientsList.reduce((acc, c) => {
       const dossiers = (c.ClientProduitEligible as any[]) || [];
-      return acc + dossiers.filter(d => ['eligible', 'en_cours'].includes(d.statut)).length;
+      return acc + dossiers.filter(d => {
+        const status = normalizeDossierStatus(d.statut);
+        return status !== 'admin_rejected' && status !== 'refund_completed';
+      }).length;
     }, 0);
     
     const date_30j = new Date();
@@ -1500,11 +1513,34 @@ router.get('/dossiers/stats', asyncHandler(async (req, res): Promise<void> => {
 
     const dossiersList = dossiers || [];
     const total_dossiers = dossiersList.length;
-    const dossiers_actifs = dossiersList.filter(d => ['eligible', 'en_cours'].includes(d.statut)).length;
-    const dossiers_valides = dossiersList.filter(d => d.statut === 'validated').length;
+    const activeStatuses = new Set([
+      'pending_upload',
+      'pending_admin_validation',
+      'admin_validated',
+      'expert_assigned',
+      'expert_pending_validation',
+      'expert_validated',
+      'charte_pending',
+      'charte_signed',
+      'documents_requested',
+      'complementary_documents_upload_pending',
+      'complementary_documents_sent',
+      'complementary_documents_validated',
+      'complementary_documents_refused',
+      'audit_in_progress',
+      'audit_completed',
+      'validation_pending',
+      'validated',
+      'implementation_in_progress',
+      'implementation_validated',
+      'payment_requested',
+      'payment_in_progress'
+    ]);
+    const dossiers_actifs = dossiersList.filter(d => activeStatuses.has(normalizeDossierStatus(d.statut))).length;
+    const dossiers_valides = dossiersList.filter(d => normalizeDossierStatus(d.statut) === 'validated').length;
     const taux_reussite = total_dossiers > 0 ? parseFloat(((dossiers_valides / total_dossiers) * 100).toFixed(1)) : 0;
     
-    const en_pre_eligibilite = dossiersList.filter(d => d.validation_state === 'documents_uploaded').length;
+    const en_pre_eligibilite = dossiersList.filter(d => normalizeDossierStatus(d.statut) === 'pending_admin_validation').length;
     
     // Calculer montants (depuis metadata.montant_estime ou champ direct)
     const montants = dossiersList
@@ -1842,7 +1878,7 @@ router.post('/clients/:clientId/simulation', asyncHandler(async (req, res) => {
         )
       `)
       .eq('clientId', clientId)
-      .eq('statut', 'eligible')
+      .in('statut', ['pending_upload', 'pending_admin_validation', 'admin_validated'])
       .order('montantFinal', { ascending: false, nullsFirst: false });
 
     if (produitsError) {
@@ -1952,7 +1988,10 @@ router.get('/clients/:id', asyncHandler(async (req, res) => {
     const stats = {
       totalProduits: produitsEligibles && produitsEligibles.length ? produitsEligibles.length : 0,
       produitsEligibles: produitsEligibles && produitsEligibles.length ? 
-        produitsEligibles.filter(p => p.statut === 'eligible').length : 0,
+        produitsEligibles.filter(p => {
+          const status = normalizeDossierStatus(p.statut);
+          return status === 'pending_upload' || status === 'pending_admin_validation' || status === 'admin_validated';
+        }).length : 0,
       totalAudits: audits && audits.length ? audits.length : 0,
       auditsEnCours: audits && audits.length ? 
         audits.filter(a => a.status === 'en_cours').length : 0,
@@ -5292,5 +5331,70 @@ router.delete('/dossiers/:dossierId/commentaires/:commentId', async (req, res) =
     });
   }
 });
+
+router.post('/dossiers/:id/recalculate-progress', asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const { DossierStepGenerator } = await import('../services/dossierStepGenerator');
+
+  const success = await DossierStepGenerator.updateDossierProgress(id);
+
+  if (!success) {
+    return res.status(500).json({
+      success: false,
+      message: 'Impossible de recalculer la progression du dossier'
+    });
+  }
+
+  const { data: dossier } = await supabaseAdmin
+    .from('ClientProduitEligible')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  return res.json({
+    success: true,
+    data: dossier
+  });
+}));
+
+router.post('/dossiers/normalize-statuses', asyncHandler(async (_req, res) => {
+  const { data: dossiers, error } = await supabaseAdmin
+    .from('ClientProduitEligible')
+    .select('id, statut');
+
+  if (error) {
+    console.error('❌ Erreur lecture statuts legacy:', error);
+    throw error;
+  }
+
+  const updates: StatusUpdate[] = (dossiers || [])
+    .map((d: { id: string; statut: string | null }): StatusUpdate => ({
+      id: d.id,
+      current: d.statut,
+      normalized: normalizeDossierStatus(d.statut)
+    }))
+    .filter(d => d.current !== d.normalized);
+
+  for (let index = 0; index < updates.length; index += 100) {
+    const chunk = updates.slice(index, index + 100);
+    const { error: updateError } = await supabaseAdmin
+      .from('ClientProduitEligible')
+      .upsert(
+        chunk.map(({ id, normalized }: StatusUpdate) => ({ id, statut: normalized })),
+        { onConflict: 'id' }
+      );
+
+    if (updateError) {
+      console.error('❌ Erreur normalisation statuts:', updateError);
+      throw updateError;
+    }
+  }
+
+  return res.json({
+    success: true,
+    updated: updates.length
+  });
+}));
 
 export default router;

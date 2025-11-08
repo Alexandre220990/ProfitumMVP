@@ -158,31 +158,24 @@
 ### **Backend**
 | Route | Fichier | Status |
 |-------|---------|--------|
-| POST `/api/expert/dossier/:id/update-refund-status` | expert-dossier-actions.ts (L1236) | ✅ IMPLÉMENTÉ |
-| - Status: 'in_preparation' / 'submitted' | | ✅ |
-| - statut: 'refund_in_preparation' / 'refund_requested' | | ✅ |
-| - Enregistre submission_date, reference | | ✅ |
-| - Timeline + Notifications | | ✅ |
-| **MAIS:** Ne correspond pas au workflow souhaité | | ⚠️ À REFACTORISER |
-
-### **À créer selon nouveau workflow**
-| Route | Status |
-|-------|--------|
-| POST `/api/expert/dossier/:id/mark-as-submitted` | ❌ À CRÉER |
-| - Date soumission, référence AR, organisme | | ❌ |
-| - statut: 'soumis_administration' | | ❌ |
-| POST `/api/expert/dossier/:id/record-final-result` | ❌ À CRÉER |
-| - Décision admin (accepté/partiel/refusé) | | ❌ |
-| - Montant RÉEL accordé | | ❌ |
-| - **GÉNÉRATION FACTURE AUTOMATIQUE** | | ❌ |
-| - Calcul commissions sur montant réel | | ❌ |
+| POST `/api/expert/dossier/:id/mark-as-submitted` | `server/src/routes/expert-dossier-actions.ts` | ✅ IMPLÉMENTÉ |
+| - statut: `implementation_in_progress` + métadonnées `implementation` | | ✅ |
+| - Enregistre submission_date, référence, organisme | | ✅ |
+| - Timeline `implementationEnCours` + notifications (client/apporteur/admin) | | ✅ |
+| POST `/api/expert/dossier/:id/record-final-result` | `server/src/routes/expert-dossier-actions.ts` | ✅ IMPLÉMENTÉ |
+| - Décision admin (accepté/partiel/refusé) → `implementation_validated` | | ✅ |
+| - Montant réel accordé + metadata `implementation` | | ✅ |
+| - **Génération facture automatique** + timeline `paiementDemande` | | ✅ |
+| - Notification paiement client (onPaymentRequested) | | ✅ |
 
 ### **Frontend**
 | Composant | Status |
 |-----------|--------|
-| Bouton expert "Marquer comme soumis" | ❌ À CRÉER |
-| Bouton expert "Retour obtenu : Résultat final" | ❌ À CRÉER |
-| - Modal saisie résultat | ❌ |
+| Bouton expert "Marquer comme soumis" | ✅ (ExpertDossierActions + SubmissionModal) |
+| Bouton expert "Retour obtenu : Résultat final" | ✅ (ExpertDossierActions + FinalResultModal) |
+| Modal charte côté client (lecture + signature) | ✅ (UniversalProductWorkflow + CharterDialog) |
+| Workflow client multi-statuts (expert_pending → refund_completed) | ✅ (UniversalProductWorkflow) |
+| UI facture + paiement simulé (virement / en ligne) | ✅ (InvoiceDisplay) |
 
 ---
 
@@ -191,25 +184,64 @@
 ### **Backend**
 | Route | Fichier | Status |
 |-------|---------|--------|
-| POST `/api/expert/dossier/:id/confirm-refund` | expert-dossier-actions.ts (L1457) | ✅ IMPLÉMENTÉ |
-| - Enregistre refund_amount, payment_reference | | ✅ |
-| - statut: 'termine' | | ✅ |
-| - date_remboursement | | ✅ |
-| - Timeline + Notifications | | ✅ |
-| **MANQUE:** Génération facture | | ❌ PAS IMPLÉMENTÉ |
-| **MANQUE:** Calcul commissions | | ❌ PAS IMPLÉMENTÉ |
+| POST `/api/expert/dossier/:id/confirm-refund` | `server/src/routes/expert-dossier-actions.ts` | ✅ IMPLÉMENTÉ |
+| - Enregistre refund_amount & payment_reference → `payment_requested` | | ✅ |
+| - Timeline `paiementDemande` + notification client/apporteur/admin | | ✅ |
+| - Génération facture (FactureService) et attachement metadata | | ✅ |
+| - Passage client → `payment_in_progress` / `refund_completed` (route client) | | ✅ |
+| - Timeline paiement (`paiementEnCours`, `remboursementTermine`) + notifications | | ✅ |
+| **Manque:** Calcul commissions (reste à prioriser) | | ⚠️ |
 
 ### **Service Facturation**
 | Service | Status |
 |---------|--------|
-| `FactureService.generate()` | ❌ À CRÉER |
-| - Calcul HT/TVA/TTC | ❌ |
-| - Récupération taux BDD | ❌ |
-| - Gestion erreurs (NULL) | ❌ |
+| `FactureService.generate()` | ✅ Intégré aux routes expert |
+| - Calcul HT/TVA/TTC | ✅ |
+| - Récupération taux BDD | ✅ |
+| - Gestion erreurs (NULL) | ✅ (logs + fallback) |
 | `FactureService.generatePDF()` | ❌ À CRÉER |
-| - Template Profitum | ❌ |
-| - PDFKit ou similaire | ❌ |
-| - Upload Storage | ❌ |
+| - Modèle PDF / stockage Supabase | ❌ |
+| - Génération lien téléchargement | ❌ |
+
+---
+
+## ✅ Dossier de test SQL (2025-11-08)
+
+| Élément | Valeur |
+|---------|-------|
+| Dossier | `a7bded09-e9f1-4d57-a71f-49b32e62df60` |
+| Client | `eefdc5ff-082c-4ccc-a622-32cf599075fe` |
+| Expert | `a26a9609-a160-47a0-9698-955876c3618d` |
+| Produit | `4acfe03a-b0f1-4029-a6e4-90d259198321` (TVA) |
+| Statut final | `refund_completed` |
+| Facture | `FAC-SQL-0001` (`invoice.status = 'sent'`) |
+| Charte | `client_charte_signature` entrée créée (signée le 08/11/2025) |
+| Timeline | couvre toutes les étapes (charte → audit → paiement) |
+| Notifications | `payment_requested`, `payment_in_progress`, `payment_confirmed` présentes |
+
+Requêtes de contrôle :
+```sql
+SELECT statut, "current_step", progress, metadata
+FROM "ClientProduitEligible"
+WHERE id = 'a7bded09-e9f1-4d57-a71f-49b32e62df60';
+
+SELECT created_at, type, title
+FROM dossier_timeline
+WHERE dossier_id = 'a7bded09-e9f1-4d57-a71f-49b32e62df60'
+ORDER BY created_at;
+
+SELECT notification_type, title
+FROM notification
+WHERE action_data->>'dossier_id' = 'a7bded09-e9f1-4d57-a71f-49b32e62df60';
+
+SELECT invoice_number, amount, status
+FROM invoice
+WHERE client_produit_eligible_id = 'a7bded09-e9f1-4d57-a71f-49b32e62df60';
+
+SELECT signed_at, signed_by
+FROM client_charte_signature
+WHERE client_produit_eligible_id = 'a7bded09-e9f1-4d57-a71f-49b32e62df60';
+```
 
 ### **Frontend**
 | Composant | Status |
