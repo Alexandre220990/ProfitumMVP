@@ -1022,17 +1022,34 @@ export default function UniversalProductWorkflow({
             )}
 
             {clientProduit?.statut === 'payment_in_progress' && (
-              <Card className="max-w-2xl mx-auto border-blue-200 bg-blue-50">
-                <CardContent className="p-6 text-center">
-                  <CreditCard className="w-12 h-12 text-blue-600 mx-auto mb-4" />
-                  <h4 className="text-lg font-semibold text-blue-900 mb-2">
-                    💳 Paiement en cours de traitement
-                  </h4>
-                  <p className="text-sm text-blue-800">
-                    Votre paiement est en cours de validation. Vous serez notifié dès sa confirmation.
-                  </p>
-                </CardContent>
-              </Card>
+              <div className="space-y-4">
+                <Card className="max-w-2xl mx-auto border-blue-200 bg-blue-50">
+                  <CardContent className="p-6 text-center">
+                    <CreditCard className="w-12 h-12 text-blue-600 mx-auto mb-4" />
+                    <h4 className="text-lg font-semibold text-blue-900 mb-2">
+                      💳 Paiement en cours de traitement
+                    </h4>
+                    <p className="text-sm text-blue-800">
+                      Votre paiement est initié. Dès confirmation de la réception, validez ci-dessous pour clôturer le dossier.
+                    </p>
+                  </CardContent>
+                </Card>
+
+                {invoice && (
+                  <div className="max-w-2xl mx-auto">
+                    <InvoiceDisplay
+                      invoice={invoice}
+                      dossierId={clientProduitId}
+                      showPaymentOptions={false}
+                      onPaymentConfirmed={() => {
+                        loadClientProduit();
+                        loadInvoice();
+                        toast.success('🎉 Paiement confirmé !');
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
             )}
 
             {clientProduit?.statut === 'refund_completed' && (

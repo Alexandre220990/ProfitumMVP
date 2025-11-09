@@ -34,6 +34,7 @@ interface InvoiceDisplayProps {
   dossierId: string;
   onPaymentConfirmed?: () => void;
   showConfirmPayment?: boolean;
+  showPaymentOptions?: boolean;
   ribDetails?: {
     iban: string;
     bic: string;
@@ -47,6 +48,7 @@ export default function InvoiceDisplay({
   dossierId,
   onPaymentConfirmed,
   showConfirmPayment = true,
+  showPaymentOptions = true,
   ribDetails = {
     iban: 'FR76 3000 4000 5000 6000 7000 189',
     bic: 'BNPAFRPP',
@@ -232,7 +234,7 @@ export default function InvoiceDisplay({
             </div>
           )}
 
-          {invoice.status !== 'paid' && (
+          {showPaymentOptions && invoice.status !== 'paid' && (
             <div className="space-y-3 pt-2">
               <p className="text-sm font-medium text-gray-800">
                 Choisissez votre mode de paiement :
