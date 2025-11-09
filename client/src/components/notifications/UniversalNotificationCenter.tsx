@@ -16,7 +16,7 @@
  * Date: 27 Octobre 2025
  */
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -84,39 +84,85 @@ export function UniversalNotificationCenter({
   const { notifications, loading, reload } = useSupabaseNotifications();
   
   // État local
-  const [filter, setFilter] = useState<'all' | 'unread' | 'archived'>('all');
+  const [filter, setFilter] = useState<'all' | 'unread' | 'archived' | 'late'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showPreferences, setShowPreferences] = useState(false);
   const [showAll, setShowAll] = useState(false);
+  const [groupByDossier, setGroupByDossier] = useState(true);
   const expandLimit = 5; // Afficher 5 par défaut
 
+  const enrichedNotifications = useMemo(() => {
+    const now = Date.now();
+    return notifications.map((notification: any) => {
+      const metadata =
+        notification.metadata && typeof notification.metadata === 'object'
+          ? notification.metadata
+          : {};
+
+      const dueAt = metadata.due_at ? new Date(metadata.due_at) : null;
+      const triggeredAt = metadata.triggered_at ? new Date(metadata.triggered_at) : null;
+      const slaHours =
+        metadata.sla_hours !== undefined ? Number(metadata.sla_hours) : null;
+      const isLate =
+        notification.status === 'late' ||
+        (!!dueAt && dueAt.getTime() <= now && !notification.is_read);
+      const hoursRemaining =
+        dueAt && dueAt.getTime() > now
+          ? (dueAt.getTime() - now) / (1000 * 60 * 60)
+          : 0;
+
+      return {
+        ...notification,
+        metadata,
+        sla: {
+          dueAt,
+          triggeredAt,
+          slaHours,
+          isLate,
+          hoursRemaining
+        }
+      };
+    });
+  }, [notifications]);
+
   // Statistiques
-  const totalCount = notifications.filter(n => n.status !== 'archived').length;
-  const unreadCount = notifications.filter(n => n.status === 'unread' || !n.is_read).length;
-  const archivedCount = notifications.filter(n => n.status === 'archived').length;
+  const totalCount = enrichedNotifications.filter((n) => n.status !== 'archived').length;
+  const unreadCount = enrichedNotifications.filter(
+    (n) => (n.status === 'unread' || !n.is_read) && n.status !== 'archived'
+  ).length;
+  const archivedCount = enrichedNotifications.filter((n) => n.status === 'archived').length;
+  const lateCount = enrichedNotifications.filter(
+    (n) => n.status !== 'archived' && n.sla.isLate
+  ).length;
 
   // Filtrage dynamique selon le rôle
-  const filteredNotifications = notifications.filter(notification => {
-    const matchesSearch = notification.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                         notification.message?.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    // Filtre par statut
-    let matchesFilter = true;
-    if (filter === 'unread') {
-      matchesFilter = notification.status === 'unread' || !notification.is_read;
-    } else if (filter === 'archived') {
-      matchesFilter = notification.status === 'archived';
-    } else if (filter === 'all') {
-      // "All" exclut les archivées
-      matchesFilter = notification.status !== 'archived';
-    }
-    
-    // Filtrage spécifique au rôle
-    if (userRole === 'client' && notification.user_type === 'admin') return false;
-    if (userRole === 'expert' && notification.user_type === 'admin') return false;
-    
-    return matchesSearch && matchesFilter;
-  });
+  const filteredNotifications = useMemo(() => {
+    return enrichedNotifications.filter((notification: any) => {
+      const matchesSearch =
+        notification.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        notification.message?.toLowerCase().includes(searchQuery.toLowerCase());
+
+      let matchesFilter = true;
+      if (filter === 'unread') {
+        matchesFilter = notification.status === 'unread' || !notification.is_read;
+      } else if (filter === 'archived') {
+        matchesFilter = notification.status === 'archived';
+      } else if (filter === 'late') {
+        matchesFilter = notification.sla.isLate;
+      } else if (filter === 'all') {
+        matchesFilter = notification.status !== 'archived';
+      }
+
+      if (userRole === 'client' && notification.user_type === 'admin') {
+        return false;
+      }
+      if (userRole === 'expert' && notification.user_type === 'admin') {
+        return false;
+      }
+
+      return matchesSearch && matchesFilter;
+    });
+  }, [enrichedNotifications, filter, searchQuery, userRole]);
 
   // ============================================================================
   // ACTIONS
@@ -164,15 +210,61 @@ export function UniversalNotificationCenter({
     }
   };
 
+  const getPrimaryActionUrl = (notification: any): string | null => {
+    if (notification.action_url) {
+      return notification.action_url;
+    }
+
+    if (notification.action_data && notification.action_data.action_url) {
+      return notification.action_data.action_url;
+    }
+
+    const metadata = notification.metadata || {};
+
+    if (metadata.action_url) {
+      return metadata.action_url;
+    }
+
+    const dossierId = metadata.dossier_id;
+
+    if (!dossierId) {
+      return null;
+    }
+
+    const produitSource = metadata.produit_slug || metadata.produit || 'dossier';
+    const slug = produitSource
+      .toString()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '') || 'dossier';
+
+    if (userRole === 'client') {
+      return `/produits/${slug}/${dossierId}`;
+    }
+
+    if (userRole === 'expert') {
+      return `/expert/dossier/${dossierId}`;
+    }
+
+    if (userRole === 'admin') {
+      return `/admin/dossiers/${dossierId}`;
+    }
+
+    if (userRole === 'apporteur') {
+      return `/apporteur/dossiers/${dossierId}`;
+    }
+
+    return null;
+  };
+
   const handleNotificationClick = async (notification: any) => {
-    // Marquer comme lu si non lu
     if (!notification.is_read) {
       await markAsRead(notification.id);
     }
 
-    // ✅ Rediriger avec React Router si action_url existe
-    if (notification.action_url) {
-      navigate(notification.action_url);
+    const targetUrl = getPrimaryActionUrl(notification);
+    if (targetUrl) {
+      navigate(targetUrl);
     }
   };
 
@@ -233,7 +325,9 @@ export function UniversalNotificationCenter({
 
   const markAllAsRead = async () => {
     try {
-      const unreadNotifs = notifications.filter(n => n.status === 'unread' || !n.is_read);
+      const unreadNotifs = enrichedNotifications.filter(
+        (n) => (n.status === 'unread' || !n.is_read) && n.status !== 'archived'
+      );
       await Promise.all(unreadNotifs.map(n => markAsRead(n.id)));
     } catch (error) {
       console.error('Erreur marquage tout lu:', error);
@@ -242,8 +336,9 @@ export function UniversalNotificationCenter({
 
   const deleteAllRead = async () => {
     try {
-      const readNotifs = notifications.filter(n => n.status === 'read');
+      const readNotifs = enrichedNotifications.filter((n) => n.status === 'read');
       await Promise.all(readNotifs.map(n => deleteNotification(n.id)));
+      reload();
     } catch (error) {
       console.error('Erreur suppression tout lu:', error);
     }
@@ -280,10 +375,46 @@ export function UniversalNotificationCenter({
     switch (priority) {
       case 'urgent': return 'bg-red-100 text-red-800 border-red-200';
       case 'high': return 'bg-orange-100 text-orange-800 border-orange-200';
-      case 'normal': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case 'low': return 'bg-blue-100 text-blue-800 border-blue-200';
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
+  };
+
+  const formatFutureTime = (hours: number | null) => {
+    if (hours === null) return null;
+    if (hours <= 0) return 'immédiatement';
+    if (hours < 1) return 'dans moins d’une heure';
+    if (hours < 24) return `dans ${Math.ceil(hours)}h`;
+    const days = Math.ceil(hours / 24);
+    return `dans ${days} jour${days > 1 ? 's' : ''}`;
+  };
+
+  const formatPastTime = (date: Date) => {
+    const diffMs = Date.now() - date.getTime();
+    const diffHours = diffMs / (1000 * 60 * 60);
+    if (diffHours < 1) return 'moins d’une heure';
+    if (diffHours < 24) return `${Math.floor(diffHours)}h`;
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays < 7) return `${diffDays}j`;
+    const diffWeeks = Math.floor(diffDays / 7);
+    return `${diffWeeks}sem`;
+  };
+
+  const formatSlaDescription = (notification: any) => {
+    if (!notification.sla.dueAt) {
+      return null;
+    }
+
+    if (notification.sla.isLate) {
+      return `En retard depuis ${formatPastTime(notification.sla.dueAt)}`;
+    }
+
+    const futureLabel = formatFutureTime(notification.sla.hoursRemaining);
+    if (!futureLabel) {
+      return null;
+    }
+
+    return `À traiter ${futureLabel}`;
   };
 
   const formatDate = (dateString: string) => {
@@ -307,9 +438,213 @@ export function UniversalNotificationCenter({
     }
   };
 
+  const renderNotificationCard = (notification: any) => {
+    const metadata = notification.metadata || {};
+    const slaDescription = formatSlaDescription(notification);
+    const actionUrl = getPrimaryActionUrl(notification);
+    const dossierLabel =
+      metadata.dossier_nom ||
+      metadata.produit ||
+      (metadata.dossier_id ? `Dossier ${metadata.dossier_id.slice(0, 8)}…` : null);
+    const isArchived = notification.status === 'archived';
+
+    return (
+      <Card
+        key={notification.id}
+        className={cn(
+          "transition-all duration-200 hover:shadow-md",
+          notification.sla.isLate && !isArchived
+            ? "border-l-4 border-l-red-500 bg-red-50"
+            : !isArchived && notification.status === 'unread'
+            ? "border-l-4 border-l-blue-500 bg-blue-50"
+            : ""
+        )}
+      >
+        <CardContent
+          className="p-4"
+          onClick={() => {
+            if (!isArchived) {
+              handleNotificationClick(notification);
+            }
+          }}
+        >
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start space-x-3 flex-1">
+              <div className="mt-1">
+                {getTypeIcon(notification.notification_type)}
+              </div>
+              <div className="flex-1 min-w-0 space-y-1">
+                <div className="flex items-center flex-wrap gap-2">
+                  <h4 className="font-medium text-gray-900 truncate">
+                    {notification.title}
+                  </h4>
+                  <Badge
+                    variant="secondary"
+                    className={cn("text-xs capitalize", getPriorityColor(notification.priority))}
+                  >
+                    {notification.priority}
+                  </Badge>
+                  {notification.sla.isLate && !isArchived && (
+                    <Badge
+                      variant="destructive"
+                      className="text-xs bg-red-100 text-red-700 border-red-200"
+                    >
+                      En retard
+                    </Badge>
+                  )}
+                  {notification.sla.slaHours && (
+                    <Badge variant="outline" className="text-xs">
+                      {notification.sla.slaHours}h SLA
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-sm text-gray-600 line-clamp-2">
+                  {notification.message}
+                </p>
+                {(metadata.next_step_label || metadata.next_step_description) && (
+                  <div className="text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-md px-3 py-2 space-y-1">
+                    <div className="font-medium text-gray-700">
+                      Prochaine étape : {metadata.next_step_label || 'à définir'}
+                    </div>
+                    {metadata.next_step_description && (
+                      <div>{metadata.next_step_description}</div>
+                    )}
+                  </div>
+                )}
+                {metadata.recommended_action && (
+                  <div className="text-xs text-gray-500">
+                    Action recommandée : {metadata.recommended_action}
+                  </div>
+                )}
+                {metadata.support_email && (
+                  <div className="text-xs text-gray-400">
+                    Besoin d’aide ? {metadata.support_email}
+                  </div>
+                )}
+                {slaDescription && !isArchived && (
+                  <p
+                    className={cn(
+                      "text-xs font-medium",
+                      notification.sla.isLate ? "text-red-600" : "text-gray-500"
+                    )}
+                  >
+                    {slaDescription}
+                  </p>
+                )}
+                {(dossierLabel || metadata.client_nom) && (
+                  <p className="text-xs text-gray-500 flex flex-wrap items-center gap-2">
+                    {dossierLabel && <span>{dossierLabel}</span>}
+                    {metadata.client_nom && <span>• {metadata.client_nom}</span>}
+                  </p>
+                )}
+                <span className="text-xs text-gray-400">
+                  {formatDate(notification.created_at)}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex flex-col items-end gap-2">
+              {isArchived ? (
+                <div
+                  className="flex items-center gap-2"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => unarchiveNotification(notification.id)}
+                    className="h-8 px-2 text-green-600 hover:text-green-700"
+                    title="Restaurer"
+                  >
+                    <ArchiveRestore className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => deleteNotification(notification.id)}
+                    className="h-8 px-2 text-red-600 hover:text-red-700"
+                    title="Supprimer définitivement"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <div
+                    className="flex items-center gap-3"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <div className="flex items-center gap-1">
+                      <Switch
+                        checked={notification.is_read}
+                        onCheckedChange={() => toggleReadStatus(notification)}
+                        className="data-[state=checked]:bg-green-600"
+                      />
+                      <span className="text-xs text-gray-600 whitespace-nowrap">
+                        {notification.is_read ? 'Lu' : 'Non lu'}
+                      </span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        archiveNotification(notification.id);
+                      }}
+                      className="h-8 px-2 text-gray-500 hover:text-red-600 hover:bg-red-50"
+                      title="Archiver"
+                    >
+                      <Archive className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  {actionUrl && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handleNotificationClick(notification);
+                      }}
+                      className="flex items-center gap-2"
+                    >
+                      Ouvrir
+                    </Button>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
   // ============================================================================
   // RENDER - Mode Compact
   // ============================================================================
+
+  const groupedNotifications = useMemo(() => {
+    if (!groupByDossier || filter === 'archived') {
+      return null;
+    }
+
+    const groups = new Map<string, any[]>();
+    filteredNotifications.forEach((notification: any) => {
+      const key = notification.metadata?.dossier_id || '__autres__';
+      if (!groups.has(key)) {
+        groups.set(key, []);
+      }
+      groups.get(key)!.push(notification);
+    });
+
+    return Array.from(groups.entries()).map(([dossierId, items]) => ({
+      dossierId,
+      items: items.sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      )
+    }));
+  }, [filteredNotifications, groupByDossier]);
 
   if (mode === 'compact') {
     return (
@@ -502,6 +837,21 @@ export function UniversalNotificationCenter({
                     </Badge>
                   </button>
                   <button
+                    onClick={() => setFilter('late')}
+                    className={cn(
+                      "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between",
+                      filter === 'late' ? "bg-red-100 text-red-700" : "text-gray-600 hover:bg-gray-100"
+                    )}
+                  >
+                    <div className="flex items-center">
+                      <AlertCircle className="h-4 w-4 mr-2" />
+                      <span>En retard</span>
+                    </div>
+                    <Badge variant="destructive" className="ml-2 bg-red-500 text-white">
+                      {lateCount}
+                    </Badge>
+                  </button>
+                  <button
                     onClick={() => setFilter('archived')}
                     className={cn(
                       "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between",
@@ -536,11 +886,23 @@ export function UniversalNotificationCenter({
                     size="sm"
                     onClick={deleteAllRead}
                     className="w-full justify-start text-red-600 hover:text-red-700"
-                    disabled={!notifications.some(n => n.status === 'read')}
+                    disabled={!enrichedNotifications.some(n => n.status === 'read')}
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
                     Supprimer tout lu
                   </Button>
+                </div>
+              </div>
+
+              {/* Affichage */}
+              <div className="border-t pt-4">
+                <h3 className="font-medium text-gray-900 mb-3">Affichage</h3>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Regrouper par dossier</span>
+                  <Switch
+                    checked={groupByDossier}
+                    onCheckedChange={setGroupByDossier}
+                  />
                 </div>
               </div>
 
@@ -605,107 +967,67 @@ export function UniversalNotificationCenter({
                     <BellOff className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <p className="text-gray-500">Aucune notification trouvée</p>
                   </div>
-                ) : (
-                  filteredNotifications.map((notification) => (
-                    <Card
-                      key={notification.id}
-                      className={cn(
-                        "transition-all duration-200 hover:shadow-md cursor-pointer",
-                        notification.status === 'unread' && "border-l-4 border-l-blue-500 bg-blue-50"
-                      )}
-                    >
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-start space-x-3 flex-1">
-                            <div className="mt-1">
-                              {getTypeIcon(notification.notification_type)}
+                ) : groupByDossier && groupedNotifications && groupedNotifications.length > 0 ? (
+                  groupedNotifications.map((group) => {
+                    const first = group.items[0];
+                    const metadata = first.metadata || {};
+                    const groupLabel =
+                      metadata.dossier_nom ||
+                      metadata.produit ||
+                      (group.dossierId === '__autres__'
+                        ? 'Autres notifications'
+                        : `Dossier ${group.dossierId.slice(0, 8)}…`);
+                    const lateInGroup = group.items.filter((item: any) => item.sla.isLate).length;
+                    const actionUrl =
+                      group.items
+                        .map((item: any) => getPrimaryActionUrl(item))
+                        .find((url: string | null) => !!url) || null;
+
+                    return (
+                      <Card key={`${group.dossierId}-${group.items.length}`} className="border border-gray-200">
+                        <CardContent className="p-4 space-y-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <h3 className="text-sm font-semibold text-gray-900">{groupLabel}</h3>
+                              {metadata.client_nom && (
+                                <p className="text-xs text-gray-500">{metadata.client_nom}</p>
+                              )}
+                              {metadata.produit && metadata.produit !== groupLabel && (
+                                <p className="text-xs text-gray-500">{metadata.produit}</p>
+                              )}
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center space-x-2 mb-1">
-                                <h4 className="font-medium text-gray-900 truncate">
-                                  {notification.title}
-                                </h4>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="text-xs">
+                                {group.items.length} notif.
+                              </Badge>
+                              {lateInGroup > 0 && (
                                 <Badge
-                                  variant="secondary"
-                                  className={cn("text-xs", getPriorityColor(notification.priority))}
+                                  variant="destructive"
+                                  className="text-xs bg-red-100 text-red-700 border-red-200"
                                 >
-                                  {notification.priority}
+                                  {lateInGroup} en retard
                                 </Badge>
-                                {notification.status === 'unread' && (
-                                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                                )}
-                              </div>
-                              <p className="text-sm text-gray-600 mb-2 line-clamp-2">
-                                {notification.message}
-                              </p>
-                              <div className="flex items-center justify-between text-xs text-gray-500">
-                                <span>{formatDate(notification.created_at)}</span>
-                                <span className="capitalize">{notification.user_type || userRole}</span>
-                              </div>
+                              )}
+                              {actionUrl && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => navigate(actionUrl)}
+                                >
+                                  Ouvrir
+                                </Button>
+                              )}
                             </div>
                           </div>
-                          <div className="flex items-center space-x-1 ml-4">
-                            {notification.status === 'archived' ? (
-                              // Boutons pour notifications archivées
-                              <>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => unarchiveNotification(notification.id)}
-                                  className="h-8 w-8 p-0 text-green-600 hover:text-green-700"
-                                  title="Restaurer"
-                                >
-                                  <ArchiveRestore className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => deleteNotification(notification.id)}
-                                  className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
-                                  title="Supprimer définitivement"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </>
-                            ) : (
-                              // Boutons pour notifications actives
-                              <>
-                                {notification.status === 'unread' && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => markAsRead(notification.id)}
-                                    className="h-8 w-8 p-0"
-                                    title="Marquer comme lu"
-                                  >
-                                    <Check className="h-4 w-4" />
-                                  </Button>
-                                )}
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => archiveNotification(notification.id)}
-                                  className="h-8 w-8 p-0 text-orange-600 hover:text-orange-700"
-                                  title="Archiver"
-                                >
-                                  <Archive className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => deleteNotification(notification.id)}
-                                  className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
-                                  title="Supprimer"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </>
-                            )}
+                          <div className="space-y-3">
+                            {group.items.map((notification: any) => renderNotificationCard(notification))}
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))
+                        </CardContent>
+                      </Card>
+                    );
+                  })
+                ) : (
+                  filteredNotifications.map((notification: any) => renderNotificationCard(notification))
                 )}
               </div>
             </ScrollArea>

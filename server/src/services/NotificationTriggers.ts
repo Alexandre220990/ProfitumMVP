@@ -22,39 +22,100 @@ const supabase = createClient(
  * Date: 27 Octobre 2025
  */
 
+const PRIORITY_SLA_MAP: Record<'urgent' | 'high' | 'medium' | 'low', number> = {
+  urgent: 24,
+  high: 48,
+  medium: 72,
+  low: 96
+};
+
+type NotificationPriority = 'low' | 'medium' | 'high' | 'urgent';
+
 interface NotificationData {
   user_id: string;
   user_type: 'client' | 'expert' | 'admin' | 'apporteur';
   title: string;
   message: string;
   notification_type: string;
-  priority: 'low' | 'medium' | 'high' | 'urgent';
+  priority: NotificationPriority;
   event_id?: string;
   event_title?: string;
   metadata?: any;
+  action_url?: string;
+  action_data?: any;
 }
 
 interface AdminNotificationData {
   type: string;
   title: string;
   message: string;
-  priority: 'low' | 'medium' | 'high' | 'urgent';
+  priority: NotificationPriority;
   metadata?: any;
   action_url?: string;
   action_label?: string;
 }
 
 export class NotificationTriggers {
+  private static readonly SUPPORT_EMAIL = 'support@profitum.fr';
+
+  private static normalizeSlug(value?: string | null): string | null {
+    if (!value) {
+      return null;
+    }
+
+    const slug = value
+      .toString()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+
+    return slug || null;
+  }
   
   // ============================================================================
   // HELPERS PRIVÉS
   // ============================================================================
   
+  private static buildMetadata(
+    metadata: Record<string, any> | undefined,
+    priority: NotificationPriority
+  ): Record<string, any> {
+    const safeMetadata =
+      metadata && typeof metadata === 'object' && !Array.isArray(metadata) ? { ...metadata } : {};
+
+    const triggeredAt: string =
+      safeMetadata.triggered_at ??
+      new Date().toISOString();
+
+    const slaHours: number =
+      safeMetadata.sla_hours ??
+      PRIORITY_SLA_MAP[priority] ??
+      PRIORITY_SLA_MAP.medium;
+
+    const dueAt: string =
+      safeMetadata.due_at ??
+      new Date(new Date(triggeredAt).getTime() + slaHours * 60 * 60 * 1000).toISOString();
+
+    return {
+      ...safeMetadata,
+      triggered_at: triggeredAt,
+      sla_hours: slaHours,
+      due_at: dueAt,
+      escalation_level: safeMetadata.escalation_level ?? 0
+    };
+  }
+
   /**
    * Créer une notification standard (client/expert/apporteur)
    */
   private static async createNotification(data: NotificationData): Promise<boolean> {
     try {
+      const metadata = this.buildMetadata(data.metadata, data.priority);
+      const actionData =
+        data.action_data && typeof data.action_data === 'object' ? data.action_data : {};
+
       const { error } = await supabase
         .from('notification')
         .insert({
@@ -68,7 +129,9 @@ export class NotificationTriggers {
           event_title: data.event_title,
           status: 'unread',
           is_read: false,
-          metadata: data.metadata,
+          action_url: data.action_url || null,
+          action_data: actionData,
+          metadata,
           created_at: new Date().toISOString()
         });
 
@@ -90,6 +153,8 @@ export class NotificationTriggers {
    */
   private static async createAdminNotification(data: AdminNotificationData): Promise<boolean> {
     try {
+      const metadata = this.buildMetadata(data.metadata, data.priority);
+
       const { error } = await supabase
         .from('AdminNotification')
         .insert({
@@ -98,7 +163,7 @@ export class NotificationTriggers {
           message: data.message,
           priority: data.priority,
           status: 'pending',
-          metadata: data.metadata,
+          metadata,
           action_url: data.action_url,
           action_label: data.action_label,
           created_at: new Date().toISOString()
@@ -216,19 +281,27 @@ export class NotificationTriggers {
       return false;
     }
 
+    const produitSlug = this.normalizeSlug(data.produit);
+
     return this.createNotification({
       user_id: clientAuthId,
       user_type: 'client',
       title: '✍️ Signature de charte requise',
-      message: `${data.expert_name} a envoyé la charte commerciale pour votre dossier ${data.produit}. Merci de la lire et de la signer pour poursuivre.`,
+      message: `${data.expert_name} a envoyé la charte commerciale pour votre dossier ${data.produit}. Merci de la signer pour qu’il puisse démarrer l’audit.`,
       notification_type: 'charte_signature_requested',
       priority: 'high',
       event_id: data.dossier_id,
+      action_url: produitSlug ? `/produits/${produitSlug}/${data.dossier_id}` : undefined,
       metadata: {
         dossier_id: data.dossier_id,
         produit: data.produit,
+        produit_slug: produitSlug || undefined,
         expert_name: data.expert_name,
-        charte_url: data.charte_url || null
+        charte_url: data.charte_url || null,
+        next_step_label: 'Signer la charte commerciale',
+        next_step_description: `L’expert ${data.expert_name} attend votre signature pour démarrer l’audit.`,
+        recommended_action: 'Consulter et signer la charte dans votre espace documents.',
+        support_email: NotificationTriggers.SUPPORT_EMAIL
       }
     });
   }
@@ -303,7 +376,11 @@ export class NotificationTriggers {
         dossier_id: data.dossier_id,
         produit: data.produit,
         expert_name: data.expert_name,
-        documents_count: data.documents_count
+        documents_count: data.documents_count,
+        next_step_label: 'Suivre l’analyse de votre expert',
+        next_step_description: `${data.expert_name} poursuit désormais l’audit avec les documents validés.`,
+        recommended_action: 'Consulter la timeline du dossier pour suivre l’avancement.',
+        support_email: NotificationTriggers.SUPPORT_EMAIL
       }
     });
   }
@@ -324,7 +401,11 @@ export class NotificationTriggers {
         dossier_id: data.dossier_id,
         produit: data.produit,
         expert_name: data.expert_name,
-        reason: data.reason || null
+        reason: data.reason || null,
+        next_step_label: 'Téléverser de nouveaux documents',
+        next_step_description: `${data.expert_name} a besoin d’éléments supplémentaires pour poursuivre l’audit.`,
+        recommended_action: 'Consulter la liste des documents rejetés et téléverser une nouvelle version.',
+        support_email: NotificationTriggers.SUPPORT_EMAIL
       }
     });
   }
@@ -345,7 +426,11 @@ export class NotificationTriggers {
         dossier_id: data.dossier_id,
         produit: data.produit,
         organisme: data.organisme || null,
-        reference: data.reference || null
+        reference: data.reference || null,
+        next_step_label: 'Attendre la décision de l’administration',
+        next_step_description: 'Vous serez notifié automatiquement dès que l’administration aura répondu.',
+        recommended_action: 'Vérifier régulièrement votre espace client et préparer les justificatifs complémentaires si nécessaire.',
+        support_email: NotificationTriggers.SUPPORT_EMAIL
       }
     });
   }
@@ -369,7 +454,17 @@ export class NotificationTriggers {
         dossier_id: data.dossier_id,
         produit: data.produit,
         montant_accorde: data.montant_accorde,
-        decision: data.decision
+        decision: data.decision,
+        next_step_label: data.decision === 'refuse'
+          ? 'Contacter votre expert'
+          : 'Régler la commission Profitum',
+        next_step_description: data.decision === 'refuse'
+          ? 'Votre expert vous contactera afin de préparer les suites possibles.'
+          : 'Procédez au paiement pour finaliser le dossier et déclencher l’émission de la facture expert.',
+        recommended_action: data.decision === 'refuse'
+          ? 'Consulter le détail dans votre espace dossier et préparer les éléments de contestation.'
+          : 'Régler la facture Profitum depuis votre espace client.',
+        support_email: NotificationTriggers.SUPPORT_EMAIL
       }
     });
   }
@@ -378,6 +473,8 @@ export class NotificationTriggers {
     clientAuthId: string,
     data: { dossier_id: string; produit: string; montant: number; facture_reference?: string }
   ): Promise<boolean> {
+    const produitSlug = this.normalizeSlug(data.produit);
+
     return this.createNotification({
       user_id: clientAuthId,
       user_type: 'client',
@@ -387,11 +484,17 @@ Facture : ${data.facture_reference}` : ''}`,
       notification_type: 'payment_requested',
       priority: 'high',
       event_id: data.dossier_id,
+      action_url: produitSlug ? `/produits/${produitSlug}/${data.dossier_id}` : undefined,
       metadata: {
         dossier_id: data.dossier_id,
         produit: data.produit,
+        produit_slug: produitSlug || undefined,
         montant: data.montant,
-        facture_reference: data.facture_reference || null
+        facture_reference: data.facture_reference || null,
+        next_step_label: 'Régler la commission Profitum',
+        next_step_description: 'Ce paiement permet de clôturer définitivement votre dossier et de rémunérer l’expert qui vous a accompagné.',
+        recommended_action: 'Effectuer le règlement depuis votre espace client. En cas de question, contactez notre support.',
+        support_email: NotificationTriggers.SUPPORT_EMAIL
       }
     });
   }
@@ -400,6 +503,8 @@ Facture : ${data.facture_reference}` : ''}`,
     clientAuthId: string,
     data: { dossier_id: string; produit: string; montant: number; paiement_date?: string }
   ): Promise<boolean> {
+    const produitSlug = this.normalizeSlug(data.produit);
+
     return this.createNotification({
       user_id: clientAuthId,
       user_type: 'client',
@@ -409,11 +514,17 @@ Date : ${data.paiement_date}` : ''}`,
       notification_type: 'payment_confirmed',
       priority: 'medium',
       event_id: data.dossier_id,
+      action_url: produitSlug ? `/produits/${produitSlug}/${data.dossier_id}` : undefined,
       metadata: {
         dossier_id: data.dossier_id,
         produit: data.produit,
         montant: data.montant,
-        paiement_date: data.paiement_date || null
+        produit_slug: produitSlug || undefined,
+        paiement_date: data.paiement_date || null,
+        next_step_label: 'Télécharger vos reçus',
+        next_step_description: 'Vos justificatifs (facture Profitum et synthèse dossier) sont disponibles dans votre espace.',
+        recommended_action: 'Archiver les pièces justificatives et informer votre comptabilité si nécessaire.',
+        support_email: NotificationTriggers.SUPPORT_EMAIL
       }
     });
   }
@@ -445,7 +556,11 @@ Date : ${data.paiement_date}` : ''}`,
       metadata: {
         dossier_id: data.dossier_id,
         produit: data.produit,
-        client_name: data.client_name
+        client_name: data.client_name,
+        next_step_label: 'Démarrer l’audit',
+        next_step_description: 'L’audit peut commencer immédiatement, pensez à informer le client des premières actions.',
+        recommended_action: 'Planifier l’audit et mettre à jour la timeline avec la date de démarrage.',
+        support_email: NotificationTriggers.SUPPORT_EMAIL
       }
     });
   }
@@ -500,7 +615,11 @@ Date : ${data.paiement_date}` : ''}`,
       metadata: {
         dossier_id: dossier.id,
         client_nom: dossier.client_nom,
-        jours_inactivite: dossier.jours_inactivite
+        jours_inactivite: dossier.jours_inactivite,
+        next_step_label: 'Reprendre contact avec le client',
+        next_step_description: `Le dossier ${dossier.nom} est en attente depuis ${dossier.jours_inactivite} jour(s).`,
+        recommended_action: 'Envoyer un message ou planifier un rendez-vous pour maintenir l’élan du dossier.',
+        support_email: NotificationTriggers.SUPPORT_EMAIL
       }
     });
   }
