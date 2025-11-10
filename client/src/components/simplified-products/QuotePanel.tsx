@@ -32,6 +32,133 @@ export default function QuotePanel({ dossierId, devis, userType, onUpdate }: Quo
   const isClient = userType === 'client';
   const isExpert = userType === 'expert';
 
+  const quoteType: 'chronotachygraphes' | 'logiciel_solid' =
+    formulaire.type ||
+    (formulaire.nb_chauffeurs || formulaire.prix_par_fiche ? 'logiciel_solid' : 'chronotachygraphes');
+
+  const formatAmount = (value?: number | null, suffix: string = '€') => {
+    if (value === undefined || value === null || Number.isNaN(value)) {
+      return '—';
+    }
+    return `${value.toLocaleString('fr-FR')} ${suffix}`.trim();
+  };
+
+  const renderFinancialSummary = () => {
+    if (quoteType === 'logiciel_solid') {
+      const nbChauffeurs = formulaire.nb_chauffeurs ?? formulaire.nb_utilisateurs;
+      const prixParFiche = formatAmount(formulaire.prix_par_fiche);
+      const coutMensuelUnitaire = formatAmount(formulaire.cout_mensuel_unitaire);
+      const coutAnnuelUnitaire = formatAmount(formulaire.cout_annuel_unitaire);
+      const coutMensuelTotal = formatAmount(formulaire.cout_mensuel_total);
+      const coutAnnuelTotal = formatAmount(formulaire.cout_annuel_total);
+      const benefits: string[] =
+        formulaire.benefits || [
+          'Conformité garantie lors des contrôles',
+          'Sécurisation des procédures RH',
+          'Gain de temps sur la préparation salariale',
+          'Optimisation des charges (service auto-financé)'
+        ];
+
+      return (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
+            <div>
+              <p className="text-sm text-gray-600">Nombre de chauffeurs</p>
+              <p className="text-2xl font-bold text-gray-900">{nbChauffeurs ?? '—'}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Prix par fiche de paie</p>
+              <p className="text-xl font-semibold text-gray-900">{prixParFiche}</p>
+              <p className="text-xs text-gray-500">Montant mensuel par fiche</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Coût annuel total</p>
+              <p className="text-xl font-semibold text-gray-900">{coutAnnuelTotal}</p>
+              <p className="text-xs text-gray-500">Inclut licences + accompagnement</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+              <p className="font-semibold text-blue-900 mb-1">Coûts unitaires</p>
+              <p>Mensuel : {coutMensuelUnitaire}</p>
+              <p>Annuel : {coutAnnuelUnitaire}</p>
+            </div>
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+              <p className="font-semibold text-emerald-900 mb-1">Coût total</p>
+              <p>Mensuel : {coutMensuelTotal}</p>
+              <p>Annuel : {coutAnnuelTotal}</p>
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+            <p className="font-semibold text-sm text-emerald-900 mb-2">
+              Bénéfices inclus dans l’offre :
+            </p>
+            <ul className="list-disc list-inside space-y-1 text-sm text-emerald-900">
+              {benefits.map((benefit: string) => (
+                <li key={benefit}>{benefit}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      );
+    }
+
+    const nombreCamions = formulaire.nombre_camions ?? formulaire.nb_camions;
+    const installations = formulaire.installations_souhaitees ?? formulaire.nb_installations;
+    const prixInstallation = formatAmount(formulaire.prix_installation_unitaire);
+    const prixAbonnementMensuel = formatAmount(formulaire.prix_abonnement_mensuel);
+    const prixAbonnementAnnuel = formatAmount(formulaire.prix_abonnement_annuel);
+    const totalInstallation = formatAmount(formulaire.total_installation);
+    const totalAbonnementMensuel = formatAmount(formulaire.total_abonnement_mensuel);
+    const totalAbonnementAnnuel = formatAmount(formulaire.total_abonnement_annuel);
+
+    return (
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
+          <div>
+            <p className="text-sm text-gray-600">Véhicules concernés</p>
+            <p className="text-2xl font-bold text-gray-900">{nombreCamions ?? '—'}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-600">Nouvelles installations</p>
+            <p className="text-xl font-semibold text-gray-900">{installations ?? '—'}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-600">Installation unitaire</p>
+            <p className="text-xl font-semibold text-gray-900">{prixInstallation}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-600">Abonnement mensuel / camion</p>
+            <p className="text-xl font-semibold text-gray-900">{prixAbonnementMensuel}</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+            <p className="font-semibold text-blue-900 mb-1">Investissement installation</p>
+            <p>{totalInstallation}</p>
+          </div>
+          <div className="rounded-lg border border-purple-200 bg-purple-50 p-4 text-sm text-purple-900">
+            <p className="font-semibold text-purple-900 mb-1">Abonnement mensuel total</p>
+            <p>{totalAbonnementMensuel}</p>
+          </div>
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+            <p className="font-semibold text-emerald-900 mb-1">Abonnement annuel total</p>
+            <p>{totalAbonnementAnnuel}</p>
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          <p>
+            L’abonnement inclut la conformité règlementaire, la supervision des données chrono, et un accompagnement complet en cas de contrôle.
+          </p>
+        </div>
+      </div>
+    );
+  };
+
   const handleAccept = async () => {
     try {
       setLoading(true);
@@ -140,27 +267,8 @@ export default function QuotePanel({ dossierId, devis, userType, onUpdate }: Quo
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Informations du devis */}
-        {formulaire.total && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
-            <div>
-              <p className="text-sm text-gray-600">Montant total</p>
-              <p className="text-2xl font-bold text-gray-900">{formulaire.total.toLocaleString('fr-FR')}€</p>
-            </div>
-            {formulaire.nombre_camions && (
-              <div>
-                <p className="text-sm text-gray-600">Nombre de camions</p>
-                <p className="text-xl font-semibold text-gray-900">{formulaire.nombre_camions}</p>
-              </div>
-            )}
-            {formulaire.prix_unit && (
-              <div>
-                <p className="text-sm text-gray-600">Prix unitaire</p>
-                <p className="text-xl font-semibold text-gray-900">{formulaire.prix_unit.toLocaleString('fr-FR')}€</p>
-              </div>
-            )}
-          </div>
-        )}
+        {/* Informations financières */}
+        {renderFinancialSummary()}
 
         {validUntil && (
           <div className="flex items-center gap-2 text-sm text-gray-600">

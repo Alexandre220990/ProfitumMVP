@@ -62,10 +62,10 @@ export default function PartnerRequestCard({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="p-4 bg-white rounded-lg border border-blue-200">
+          <div className="p-4 bg-white rounded-lg border border-blue-200">
           <p className="text-sm text-gray-700 mb-3">
-            {partnerName === 'O\'clock'
-              ? 'O\'clock apparaît comme une excellente solution pour équiper vos véhicules de chronotachygraphes digitaux.'
+            {partnerName.toLowerCase().includes('sdei')
+              ? 'SDEI est le partenaire recommandé pour déployer vos chronotachygraphes digitaux et assurer la conformité de votre flotte.'
               : `${partnerName} propose une solution complète pour automatiser votre gestion comptable et RH.`}
           </p>
           <p className="text-sm font-semibold text-gray-900">

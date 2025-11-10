@@ -55,6 +55,28 @@ function getFirst<T>(value: T | T[] | null | undefined): T | undefined {
   return value ?? undefined;
 }
 
+function determineProductKey(productName: string): 'chronotachygraphes' | 'logiciel_solid' {
+  const normalized = (productName || '').toLowerCase();
+  return normalized.includes('chrono') ? 'chronotachygraphes' : 'logiciel_solid';
+}
+
+function parseNumber(value: any): number | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'number' && !Number.isNaN(value)) return value;
+  if (typeof value === 'string') {
+    const matches = value.match(/\d+/g);
+    if (!matches || matches.length === 0) return null;
+    return Number.parseInt(matches[matches.length - 1], 10);
+  }
+  return null;
+}
+
+function ensurePositiveInteger(value: any): number {
+  const parsed = parseNumber(value);
+  const safeValue = parsed !== null && parsed > 0 ? parsed : 0;
+  return safeValue;
+}
+
 // ============================================================================
 // HELPER: Récupérer l'expert distributeur par produit
 // ============================================================================
@@ -78,6 +100,81 @@ async function getDistributorExpert(productKey: 'chronotachygraphes' | 'logiciel
   return expert;
 }
 
+function formatCurrencyForTimeline(value?: number | null): string {
+  if (value === undefined || value === null || Number.isNaN(value)) {
+    return '—';
+  }
+  return `${Number(value).toLocaleString('fr-FR')}€`;
+}
+
+// ============================================================================
+// GET /api/simplified-products/:dossierId/initial-checks
+// Récupérer les informations du questionnaire initial
+// ============================================================================
+router.get('/:dossierId/initial-checks', enhancedAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const user = (req as AuthenticatedRequest).user;
+    const { dossierId } = req.params;
+
+    if (!user || user.type !== 'client') {
+      return res.status(403).json({ success: false, message: 'Accès réservé aux clients' });
+    }
+
+    const { data: dossier, error: dossierError } = await supabase
+      .from('ClientProduitEligible')
+      .select('id, clientId, produitId, simulationId, metadata, ProduitEligible:produitId(nom)')
+      .eq('id', dossierId)
+      .eq('clientId', user.database_id)
+      .single();
+
+    if (dossierError || !dossier) {
+      return res.status(404).json({ success: false, message: 'Dossier non trouvé' });
+    }
+
+    const produitEligible = getFirst(dossier.ProduitEligible);
+    const productKey = determineProductKey(produitEligible?.nom || '');
+    const checklistKey = `${productKey}_checklist`;
+    const metadata = dossier.metadata || {};
+    const currentChecklist = metadata[checklistKey] || null;
+    const partnerRequest = metadata.partner_request || null;
+
+    const defaults: Record<string, any> = {};
+
+    if (dossier.simulationId) {
+      const { data: simulation } = await supabase
+        .from('simulations')
+        .select('answers')
+        .eq('id', dossier.simulationId)
+        .single();
+
+      if (simulation?.answers) {
+        const answers = simulation.answers as Record<string, any>;
+        if (productKey === 'logiciel_solid') {
+          defaults.chauffeurs_estimes = ensurePositiveInteger(answers['GENERAL_003']);
+        } else {
+          defaults.total_camions_estime = ensurePositiveInteger(answers['GENERAL_003']);
+          defaults.camions_equipes_estime = ensurePositiveInteger(answers['TICPE_004']);
+          defaults.installations_souhaitees_estime = ensurePositiveInteger(answers['TICPE_005']);
+        }
+      }
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        productKey,
+        checklist: currentChecklist,
+        partnerRequest,
+        defaults,
+        requiredDocument: productKey === 'logiciel_solid' ? 'fiche_paie' : 'carte_grise'
+      }
+    });
+  } catch (error: any) {
+    console.error('❌ Erreur lecture initial-checks:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // ============================================================================
 // POST /api/simplified-products/:dossierId/initial-checks
 // Enregistrer les réponses du questionnaire initial
@@ -86,7 +183,14 @@ router.post('/:dossierId/initial-checks', enhancedAuthMiddleware, async (req: Re
   try {
     const user = (req as AuthenticatedRequest).user;
     const { dossierId } = req.params;
-    const { nb_camions, equipement_chrono, nb_utilisateurs, besoins } = req.body;
+    const {
+      total_camions,
+      camions_equipes,
+      installations_souhaitees,
+      chauffeurs_estimes,
+      chauffeurs_confirmes,
+      source
+    } = req.body;
 
     if (!user || user.type !== 'client') {
       return res.status(403).json({ success: false, message: 'Accès réservé aux clients' });
@@ -95,7 +199,7 @@ router.post('/:dossierId/initial-checks', enhancedAuthMiddleware, async (req: Re
     // Vérifier que le dossier appartient au client
     const { data: dossier, error: dossierError } = await supabase
       .from('ClientProduitEligible')
-      .select('id, clientId, produitId, ProduitEligible:produitId(nom, type_produit), metadata')
+      .select('id, clientId, produitId, current_step, progress, ProduitEligible:produitId(nom, type_produit), metadata')
       .eq('id', dossierId)
       .eq('clientId', user.database_id)
       .single();
@@ -107,25 +211,85 @@ router.post('/:dossierId/initial-checks', enhancedAuthMiddleware, async (req: Re
     // Déterminer le productKey
     const produitEligible = getFirst(dossier.ProduitEligible);
     const productName = produitEligible?.nom || '';
-    const productKey = productName.toLowerCase().includes('chronotachygraphe') 
-      ? 'chronotachygraphes' 
-      : 'logiciel_solid';
+    const productKey = determineProductKey(productName);
 
-    // Préparer les métadonnées
-    const checklist = productKey === 'chronotachygraphes'
-      ? { nb_camions, equipement_chrono, validated_at: new Date().toISOString() }
-      : { nb_utilisateurs, besoins, validated_at: new Date().toISOString() };
+    const now = new Date().toISOString();
 
-    const metadata = {
-      ...(dossier.metadata || {}),
-      [`${productKey}_checklist`]: checklist
-    };
+    const checklistKey = `${productKey}_checklist`;
+    const metadata = { ...(dossier.metadata || {}) };
+    let timelineDescription = '';
+    let expertMessage = '';
+    let partnerSummary: Record<string, any> = {};
 
-    // Assigner l'expert distributeur automatiquement
+    if (productKey === 'chronotachygraphes') {
+      const totalVehicles = ensurePositiveInteger(total_camions);
+      if (totalVehicles <= 0) {
+        return res.status(400).json({ success: false, message: 'Nombre de véhicules invalide' });
+      }
+
+      const equippedVehicles = Math.min(
+        ensurePositiveInteger(camions_equipes),
+        totalVehicles
+      );
+      const installationsValue = Math.min(
+        ensurePositiveInteger(installations_souhaitees) || Math.max(totalVehicles - equippedVehicles, 0),
+        totalVehicles
+      );
+
+      metadata[checklistKey] = {
+        total_vehicles: totalVehicles,
+        equipped_vehicles: equippedVehicles,
+        installations_requested: installationsValue,
+        validated_at: now
+      };
+
+      partnerSummary = {
+        total_vehicles: totalVehicles,
+        equipped_vehicles: equippedVehicles,
+        installations_requested: installationsValue
+      };
+
+      timelineDescription = `${totalVehicles} véhicule(s) déclarés, ${equippedVehicles} déjà équipés, ${installationsValue} installation(s) supplémentaires souhaitées.`;
+      expertMessage = `Nouveau dossier à traiter : ${totalVehicles} véhicules déclarés (${equippedVehicles} déjà équipés). Prévoir ${installationsValue} installation(s) de chronotachygraphe(s).`;
+    } else {
+      const confirmedDrivers = ensurePositiveInteger(
+        chauffeurs_confirmes ?? chauffeurs_estimes
+      );
+      if (confirmedDrivers <= 0) {
+        return res.status(400).json({ success: false, message: 'Nombre de chauffeurs invalide' });
+      }
+
+      const estimatedDrivers = ensurePositiveInteger(chauffeurs_estimes) || confirmedDrivers;
+
+      metadata[checklistKey] = {
+        chauffeurs_estimes: estimatedDrivers,
+        chauffeurs_confirmes: confirmedDrivers,
+        source: source === 'simulation' ? 'simulation' : 'manual',
+        validated_at: now
+      };
+
+      partnerSummary = {
+        chauffeurs_estimes: estimatedDrivers,
+        chauffeurs_confirmes: confirmedDrivers
+      };
+
+      timelineDescription = `${confirmedDrivers} chauffeur(s) confirmés pour la mise en place du logiciel.`;
+      expertMessage = `Demande client reçue pour ${confirmedDrivers} chauffeur(s). Prévoir le chiffrage (prix par fiche de paie mensuel & annuel).`;
+    }
+
     const distributorExpert = await getDistributorExpert(productKey);
     if (!distributorExpert) {
       return res.status(500).json({ success: false, message: 'Expert distributeur non disponible' });
     }
+
+    metadata.partner_request = {
+      product_key: productKey,
+      sent_at: now,
+      requested_at: now,
+      status: 'pending_expert_quote',
+      summary: partnerSummary,
+      expert_email: distributorExpert.email
+    };
 
     // Mettre à jour le dossier
     const { error: updateError } = await supabase
@@ -133,8 +297,8 @@ router.post('/:dossierId/initial-checks', enhancedAuthMiddleware, async (req: Re
       .update({
         metadata,
         expert_id: distributorExpert.id,
-        current_step: 1,
-        progress: 25,
+        current_step: Math.max(dossier.current_step || 1, 2),
+        progress: Math.max(dossier.progress || 0, 50),
         statut: 'expert_assigned',
         updated_at: new Date().toISOString()
       })
@@ -184,11 +348,49 @@ router.post('/:dossierId/initial-checks', enhancedAuthMiddleware, async (req: Re
       actor_id: user.database_id,
       actor_name: user.email,
       title: 'Vérifications initiales complétées',
-      description: productKey === 'chronotachygraphes'
-        ? `${nb_camions} véhicules de +7,5T, équipement chrono: ${equipement_chrono ? 'Oui' : 'Non'}`
-        : `${nb_utilisateurs} utilisateurs, besoins: ${besoins}`,
+      description: timelineDescription,
       icon: 'check-circle',
       color: 'green'
+    });
+
+    const partnerStepName = 'Proposition partenaire';
+    const { data: existingPartnerStep } = await supabase
+      .from('DossierStep')
+      .select('id')
+      .eq('dossier_id', dossierId)
+      .eq('step_name', partnerStepName)
+      .maybeSingle();
+
+    if (!existingPartnerStep) {
+      await supabase.from('DossierStep').insert({
+        dossier_id: dossierId,
+        dossier_name: productName,
+        step_name: partnerStepName,
+        step_type: 'expertise',
+        status: 'in_progress',
+        progress: 50,
+        assignee_id: distributorExpert.id,
+        assignee_name: distributorExpert.name,
+        assignee_type: 'expert',
+        priority: 'high',
+        estimated_duration_minutes: 120,
+        created_at: now,
+        updated_at: now
+      });
+    }
+
+    await DossierTimelineService.addEvent({
+      dossier_id: dossierId,
+      type: 'system_action',
+      actor_type: 'system',
+      actor_name: 'Profitum',
+      title: 'Demande de devis envoyée au partenaire',
+      description:
+        productKey === 'chronotachygraphes'
+          ? `Résumé : ${partnerSummary.total_vehicles ?? '—'} véhicule(s) déclarés, ${partnerSummary.installations_requested ?? 0} installation(s) à prévoir.`
+          : `Résumé : ${partnerSummary.chauffeurs_confirmes ?? '—'} chauffeur(s) confirmés pour le traitement mensuel.`,
+      icon: 'send',
+      color: 'blue'
     });
 
     // Notification expert
@@ -196,14 +398,22 @@ router.post('/:dossierId/initial-checks', enhancedAuthMiddleware, async (req: Re
       user_id: distributorExpert.id,
       user_type: 'expert',
       title: 'Nouveau dossier - Vérifications complétées',
-      message: `Le client a complété les vérifications initiales pour ${productName}`,
+      message: expertMessage || `Le client a complété les vérifications initiales pour ${productName}`,
       notification_type: 'dossier_update',
       priority: 'high',
       action_url: `/expert/dossier/${dossierId}`,
-      metadata: { dossier_id: dossierId, product_key: productKey }
+      metadata: { dossier_id: dossierId, product_key: productKey, summary: partnerSummary }
     });
 
-    return res.json({ success: true, data: { dossier_id: dossierId, expert_id: distributorExpert.id } });
+    return res.json({
+      success: true,
+      data: {
+        dossier_id: dossierId,
+        expert_id: distributorExpert.id,
+        checklist: metadata[checklistKey],
+        partner_request: metadata.partner_request
+      }
+    });
 
   } catch (error: any) {
     console.error('❌ Erreur initial-checks:', error);
@@ -307,7 +517,7 @@ router.post('/:dossierId/partner-request', enhancedAuthMiddleware, async (req: R
 
     const { data: dossier, error: dossierError } = await supabase
       .from('ClientProduitEligible')
-      .select('id, clientId, expert_id, ProduitEligible:produitId(nom), Expert:expert_id(id, name, email)')
+      .select('id, clientId, expert_id, metadata, ProduitEligible:produitId(nom), Expert:expert_id(id, name, email)')
       .eq('id', dossierId)
       .eq('clientId', user.database_id)
       .single();
@@ -319,14 +529,34 @@ router.post('/:dossierId/partner-request', enhancedAuthMiddleware, async (req: R
     const expert = getFirst(dossier.Expert);
     const produitPartner = getFirst(dossier.ProduitEligible);
     const productName = produitPartner?.nom || 'Produit';
+    const existingMetadata = dossier.metadata || {};
+
+    if (existingMetadata.partner_request?.requested_at) {
+      return res.json({ success: true, data: { alreadyRequested: true } });
+    }
 
     if (!expert) {
       return res.status(404).json({ success: false, message: 'Expert non trouvé' });
     }
 
     // Mettre à jour le statut
+    const partnerRequestMetadata = {
+      requested_at: new Date().toISOString(),
+      requested_by: user.database_id,
+      expert_email: expert.email,
+      partner_name: productName
+    };
+
     await supabase.from('ClientProduitEligible')
-      .update({ current_step: 2, progress: 50, updated_at: new Date().toISOString() })
+      .update({
+        current_step: 2,
+        progress: 50,
+        metadata: {
+          ...existingMetadata,
+          partner_request: partnerRequestMetadata
+        },
+        updated_at: new Date().toISOString()
+      })
       .eq('id', dossierId);
 
     // Créer/mettre à jour DossierStep
@@ -381,7 +611,7 @@ router.post('/:dossierId/partner-request', enhancedAuthMiddleware, async (req: R
       metadata: { dossier_id: dossierId }
     });
 
-    return res.json({ success: true });
+    return res.json({ success: true, data: { requested_at: partnerRequestMetadata.requested_at } });
 
   } catch (error: any) {
     console.error('❌ Erreur partner-request:', error);
@@ -397,7 +627,28 @@ router.post('/:dossierId/quote/propose', enhancedAuthMiddleware, async (req: Req
   try {
     const user = (req as AuthenticatedRequest).user;
     const { dossierId } = req.params;
-    const { nombre_camions, prix_unit, total, valid_until, notes, document_id } = req.body;
+    const {
+      type,
+      nombre_camions,
+      nb_camions,
+      installations_souhaitees,
+      prix_installation_unitaire,
+      prix_abonnement_mensuel,
+      prix_abonnement_annuel,
+      total_installation,
+      total_abonnement_mensuel,
+      total_abonnement_annuel,
+      nb_chauffeurs,
+      nb_utilisateurs,
+      prix_par_fiche,
+      cout_mensuel_unitaire,
+      cout_annuel_unitaire,
+      cout_mensuel_total,
+      cout_annuel_total,
+      valid_until,
+      notes,
+      document_id
+    } = req.body;
 
     if (!user || user.type !== 'expert') {
       return res.status(403).json({ success: false, message: 'Accès réservé aux experts' });
@@ -415,9 +666,105 @@ router.post('/:dossierId/quote/propose', enhancedAuthMiddleware, async (req: Req
 
     const produitEligible = getFirst(dossier.ProduitEligible);
     const productName = produitEligible?.nom || 'Produit';
+    const resolvedType: 'chronotachygraphes' | 'logiciel_solid' =
+      productName.toLowerCase().includes('chronotachygraphe') || type === 'chronotachygraphes'
+        ? 'chronotachygraphes'
+        : 'logiciel_solid';
 
     // Calculer la date de validité (1 mois par défaut)
     const validUntilDate = valid_until || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+
+    let formulaire: Record<string, any> = {};
+    let devisTotal = 0;
+
+    if (resolvedType === 'chronotachygraphes') {
+      const camions = typeof nombre_camions === 'number' ? nombre_camions : typeof nb_camions === 'number' ? nb_camions : null;
+      const installations = typeof installations_souhaitees === 'number'
+        ? installations_souhaitees
+        : camions;
+
+      const prixInstallation = typeof prix_installation_unitaire === 'number' ? prix_installation_unitaire : 0;
+      const abonnementMensuel = typeof prix_abonnement_mensuel === 'number' ? prix_abonnement_mensuel : 0;
+      const abonnementAnnuel = typeof prix_abonnement_annuel === 'number'
+        ? prix_abonnement_annuel
+        : abonnementMensuel * 12;
+
+      const totalInstallationValue = typeof total_installation === 'number'
+        ? total_installation
+        : (installations || 0) * prixInstallation;
+      const totalAbonnementMensuelValue = typeof total_abonnement_mensuel === 'number'
+        ? total_abonnement_mensuel
+        : (installations || 0) * abonnementMensuel;
+      const totalAbonnementAnnuelValue = typeof total_abonnement_annuel === 'number'
+        ? total_abonnement_annuel
+        : (installations || 0) * abonnementAnnuel;
+
+      devisTotal = totalInstallationValue + totalAbonnementAnnuelValue;
+
+      formulaire = {
+        type: resolvedType,
+        nombre_camions: camions,
+        installations_souhaitees: installations,
+        prix_installation_unitaire: prixInstallation,
+        prix_abonnement_mensuel: abonnementMensuel,
+        prix_abonnement_annuel: abonnementAnnuel,
+        total_installation: totalInstallationValue,
+        total_abonnement_mensuel: totalAbonnementMensuelValue,
+        total_abonnement_annuel: totalAbonnementAnnuelValue,
+        valid_until: validUntilDate,
+        etapes: [
+          'Prise de rendez-vous et planification',
+          'Installation des chronotachygraphes',
+          'Paramétrage et tests',
+          'Transmission automatique des données'
+        ]
+      };
+    } else {
+      const chauffeurs = typeof nb_chauffeurs === 'number'
+        ? nb_chauffeurs
+        : typeof nb_utilisateurs === 'number'
+          ? nb_utilisateurs
+          : null;
+
+      const prixFiche = typeof prix_par_fiche === 'number' ? prix_par_fiche : 0;
+      const coutMensuelUnitaireValue = typeof cout_mensuel_unitaire === 'number'
+        ? cout_mensuel_unitaire
+        : prixFiche;
+      const coutAnnuelUnitaireValue = typeof cout_annuel_unitaire === 'number'
+        ? cout_annuel_unitaire
+        : coutMensuelUnitaireValue * 12;
+      const coutMensuelTotalValue = typeof cout_mensuel_total === 'number'
+        ? cout_mensuel_total
+        : (chauffeurs || 0) * coutMensuelUnitaireValue;
+      const coutAnnuelTotalValue = typeof cout_annuel_total === 'number'
+        ? cout_annuel_total
+        : (chauffeurs || 0) * coutAnnuelUnitaireValue;
+
+      devisTotal = coutAnnuelTotalValue;
+
+      formulaire = {
+        type: resolvedType,
+        nb_chauffeurs: chauffeurs,
+        prix_par_fiche: prixFiche,
+        cout_mensuel_unitaire: coutMensuelUnitaireValue,
+        cout_annuel_unitaire: coutAnnuelUnitaireValue,
+        cout_mensuel_total: coutMensuelTotalValue,
+        cout_annuel_total: coutAnnuelTotalValue,
+        valid_until: validUntilDate,
+        benefits: [
+          'Conformité garantie lors des contrôles',
+          'Sécurisation des processus RH',
+          'Gain de temps significatif chaque mois',
+          'Optimisation des charges sociales'
+        ],
+        etapes: [
+          'Configuration de l’espace client',
+          'Intégration de vos équipes',
+          'Automatisation des flux comptables',
+          'Suivi et accompagnement continu'
+        ]
+      };
+    }
 
     // Mettre à jour metadata avec le devis
     const metadata = {
@@ -428,18 +775,8 @@ router.post('/:dossierId/quote/propose', enhancedAuthMiddleware, async (req: Req
         updated_at: new Date().toISOString(),
         expert_id: user.database_id,
         document_id: document_id || null,
-        formulaire: {
-          nombre_camions: nombre_camions || null,
-          prix_unit: prix_unit || null,
-          total: total || null,
-          valid_until: validUntilDate,
-          etapes: [
-            'Prenez RDV pour installation',
-            'Installation produit dans véhicule',
-            'Paramétrage',
-            'Transmission automatique des données'
-          ]
-        },
+        formulaire,
+        total: devisTotal,
         commentaire_expert: notes || null
       }
     };
@@ -463,10 +800,13 @@ router.post('/:dossierId/quote/propose', enhancedAuthMiddleware, async (req: Req
       actor_id: user.database_id,
       actor_name: user.email,
       title: 'Devis proposé',
-      description: `Devis de ${total}€ proposé au client`,
+      description:
+        resolvedType === 'chronotachygraphes'
+          ? `Devis transmis : ${installations_souhaitees ?? nombre_camions} installation(s), abonnement annuel ${formatCurrencyForTimeline(devisTotal)}`
+          : `Devis transmis : ${nb_chauffeurs ?? nb_utilisateurs} chauffeur(s), forfait annuel ${formatCurrencyForTimeline(devisTotal)}`,
       icon: 'file-text',
       color: 'blue',
-      metadata: { total, prix_unit, nombre_camions }
+      metadata: { type: resolvedType, devis_total: devisTotal, formulaire }
     });
 
     // Notification client
@@ -474,11 +814,11 @@ router.post('/:dossierId/quote/propose', enhancedAuthMiddleware, async (req: Req
       user_id: dossier.clientId,
       user_type: 'client',
       title: 'Devis disponible',
-      message: `Un devis de ${total}€ vous a été proposé pour ${productName}`,
+      message: `Un devis est disponible pour ${productName}`,
       notification_type: 'quote_proposed',
       priority: 'high',
       action_url: `/produits/${dossierId}`,
-      metadata: { dossier_id: dossierId }
+      metadata: { dossier_id: dossierId, devis_total: devisTotal, type: resolvedType }
     });
 
     return res.json({ success: true, data: { devis: metadata.devis } });

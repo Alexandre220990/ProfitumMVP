@@ -46,17 +46,27 @@ interface ClientProduitEligible {
   simulationId: number;
   created_at: string;
   updated_at: string;
-  produit: {
+  produit?: {
     id: string;
     nom: string;
-    description: string;
-    categorie: string;
-    type: string;
-    conditions: any;
-    avantages: string[];
-    documents_requis: string[];
+    description?: string;
+    categorie?: string;
+    type?: string;
+    conditions?: any;
+    avantages?: string[];
+    documents_requis?: string[];
   };
-  client: {
+  ProduitEligible?: {
+    id?: string;
+    nom?: string;
+    description?: string;
+    categorie?: string;
+    type?: string;
+    conditions?: any;
+    avantages?: string[];
+    documents_requis?: string[];
+  };
+  client?: {
     id: string;
     email: string;
     name: string;
@@ -64,6 +74,17 @@ interface ClientProduitEligible {
     phone: string;
     city: string;
     siren: string;
+  };
+  Client?: {
+    id?: string;
+    email?: string;
+    name?: string;
+    company_name?: string;
+    first_name?: string;
+    last_name?: string;
+    phone?: string;
+    city?: string;
+    siren?: string;
   };
   audit?: {
     id: string;
@@ -132,6 +153,10 @@ export default function DossierClientProduit() {
         }
 
         const dossierData = response.data as ClientProduitEligible;
+        const produitRelation = dossierData.ProduitEligible || dossierData.produit;
+        if (!dossierData.ProduitEligible && produitRelation) {
+          dossierData.ProduitEligible = produitRelation;
+        }
         
         // La vérification des permissions est déjà faite côté serveur
         // Le middleware auth garantit que seul le client propriétaire peut accéder
@@ -309,6 +334,9 @@ export default function DossierClientProduit() {
     return null;
   }
 
+const produitInfo = clientProduit.ProduitEligible || clientProduit.produit;
+const clientInfo = clientProduit.Client || clientProduit.client;
+
   return (
     <div>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -326,7 +354,7 @@ export default function DossierClientProduit() {
               </Button>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">
-                  Dossier {clientProduit.produit.nom}
+                  Dossier {produitInfo?.nom || 'Produit'}
                 </h1>
                 <p className="text-gray-600">
                   ID: {clientProduit.id} • Créé le {formatDate(clientProduit.created_at)}
@@ -425,26 +453,28 @@ export default function DossierClientProduit() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
-                    <h3 className="font-semibold text-lg">{clientProduit.produit.nom}</h3>
-                    <p className="text-gray-600">{clientProduit.produit.description}</p>
+                    <h3 className="font-semibold text-lg">{produitInfo?.nom || 'Produit simplifié'}</h3>
+                    {produitInfo?.description && (
+                      <p className="text-gray-600">{produitInfo.description}</p>
+                    )}
                   </div>
                   
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-sm font-medium text-gray-500">Catégorie</label>
-                      <p className="text-gray-900">{clientProduit.produit.categorie}</p>
+                      <p className="text-gray-900">{produitInfo?.categorie || '—'}</p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-500">Type</label>
-                      <p className="text-gray-900">{clientProduit.produit.type}</p>
+                      <p className="text-gray-900">{produitInfo?.type || '—'}</p>
                     </div>
                   </div>
 
-                  {clientProduit.produit.avantages && (
+                  {produitInfo?.avantages && produitInfo.avantages.length > 0 && (
                     <div>
                       <label className="text-sm font-medium text-gray-500">Avantages</label>
                       <ul className="mt-2 space-y-1">
-                        {clientProduit.produit.avantages.map((avantage, index) => (
+                        {produitInfo.avantages.map((avantage, index) => (
                           <li key={index} className="flex items-center text-sm">
                             <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
                             {avantage}
@@ -499,7 +529,7 @@ export default function DossierClientProduit() {
             {/* Progression de l'audit */}
             <DossierStepsDisplay
               dossierId={clientProduit.id}
-              dossierName={`${clientProduit.produit.nom} - ${clientProduit.client.company_name}`}
+              dossierName={`${produitInfo?.nom || 'Produit'}${clientInfo?.company_name ? ` - ${clientInfo.company_name}` : ''}`}
               showGenerateButton={true}
               compact={false}
               onStepUpdate={(stepId, updates) => {
@@ -579,8 +609,8 @@ export default function DossierClientProduit() {
                   {/* ✅ Composant d'upload intégré GED unifiée */}
                   <WorkflowDocumentUpload
                     clientProduitId={clientProduitId as string}
-                    produitId={clientProduit.produit?.id}
-                    clientId={clientProduit.client?.id}
+                    produitId={produitInfo?.id}
+                    clientId={clientInfo?.id}
                     onUploadSuccess={() => {
                       toast.success('Document ajouté au dossier');
                       fetchDossierData();

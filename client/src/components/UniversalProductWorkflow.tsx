@@ -14,7 +14,8 @@ import {
   FileSignature,
   Loader2,
   FileText,
-  CalendarDays
+  CalendarDays,
+  Handshake
 } from 'lucide-react';
 
 import ProductUploadInline from './ProductUploadInline';
@@ -154,6 +155,7 @@ export default function UniversalProductWorkflow({
   const allCharterAgreementsAccepted = charterAgreements.cgu && charterAgreements.cgv && charterAgreements.contract;
 const isSimplifiedProductKey = productKey === 'chronotachygraphes' || productKey === 'logiciel_solid';
 const autoAssignAttemptedRef = useRef(false);
+const partnerRequestAttemptedRef = useRef(false);
 
   // Hook pour les étapes du dossier
   const {
@@ -355,7 +357,7 @@ const autoAssignAttemptedRef = useRef(false);
               expertRelation.email ||
               'Expert';
             console.log('👨‍💼 DIAGNOSTIC: Expert déjà assigné:', expertName);
-            setSelectedExpert({
+          setSelectedExpert({
               ...expertRelation,
               name: expertName,
               specialites: expertRelation.specialites || expertRelation.specializations || [],
@@ -432,6 +434,58 @@ const autoAssignAttemptedRef = useRef(false);
       autoAssignAttemptedRef.current = false;
     }
   }, [clientProduitId, loadClientProduit]);
+
+  const ensurePartnerRequest = useCallback(async () => {
+    if (partnerRequestAttemptedRef.current) {
+      return;
+    }
+    partnerRequestAttemptedRef.current = true;
+
+    try {
+      const response = await post<{ alreadyRequested?: boolean; requested_at?: string }>(
+        `/api/simplified-products/${clientProduitId}/partner-request`,
+        {}
+      );
+
+      if (response.success) {
+        const alreadyRequested = response.data?.alreadyRequested;
+        if (alreadyRequested) {
+          console.log('ℹ️ Demande de devis déjà enregistrée auprès du partenaire');
+        } else {
+          toast.success('✅ Demande de devis transmise à l’expert distributeur');
+        }
+        await loadClientProduit();
+      } else {
+        partnerRequestAttemptedRef.current = false;
+        toast.error(response.message || 'Erreur lors de la demande de devis');
+      }
+    } catch (error) {
+      partnerRequestAttemptedRef.current = false;
+      console.error('❌ Erreur envoi demande devis:', error);
+      toast.error('Impossible d’envoyer la demande de devis pour le moment.');
+    }
+  }, [clientProduitId, loadClientProduit]);
+
+  const handleSimplifiedInitialChecksComplete = useCallback(async (_payload: Record<string, any>) => {
+    partnerRequestAttemptedRef.current = false;
+    await loadClientProduit();
+    setCurrentStep(2);
+    await ensurePartnerRequest();
+  }, [loadClientProduit, ensurePartnerRequest]);
+
+  useEffect(() => {
+    if (!isSimplifiedProductKey || !clientProduit) {
+      return;
+    }
+    const metadata: any = clientProduit.metadata || {};
+    const checklistData = metadata[`${productKey}_checklist`] || {};
+    const partnerData = metadata.partner_request || {};
+
+    if (checklistData.validated_at && !(partnerData.sent_at || partnerData.requested_at)) {
+      partnerRequestAttemptedRef.current = false;
+      ensurePartnerRequest();
+    }
+  }, [clientProduit, ensurePartnerRequest, isSimplifiedProductKey, productKey]);
 
   useEffect(() => {
     if (!isSimplifiedProductKey || !clientProduit) {
@@ -919,9 +973,9 @@ const autoAssignAttemptedRef = useRef(false);
                 <p className="text-xs uppercase text-gray-500 tracking-wide mb-1">Commission expert TTC</p>
                 <p className="text-2xl font-bold text-amber-700">{formatCurrency(expertFee)}</p>
                 {clientFeePercentage != null && !Number.isNaN(clientFeePercentage) && (
-                  <p className="mt-2 text-xs text-gray-500">
+                <p className="mt-2 text-xs text-gray-500">
                     Taux appliqué&nbsp;: {(clientFeePercentage * 100).toFixed(0)}%
-                  </p>
+                </p>
                 )}
               </div>
               <div className="rounded-xl border border-blue-200 bg-white/80 p-4">
@@ -1099,60 +1153,223 @@ const autoAssignAttemptedRef = useRef(false);
     const checklist = metadata[`${productKey}_checklist`] || {};
     const devis = metadata.devis || {};
     const facture = metadata.facture || {};
-    const partnerName = productKey === 'chronotachygraphes' ? 'O\'clock' : 'SDEI';
+    const partnerRequest = metadata.partner_request || {};
+    const partnerName = productKey === 'chronotachygraphes' ? 'SDEI' : 'Solid';
 
-    // Étape 1 : Vérifications initiales
-    if (currentStep === 1 || !checklist.validated_at) {
+    const checklistCompleted = Boolean(checklist.validated_at);
+    const partnerRequestSent = Boolean(partnerRequest.sent_at || partnerRequest.requested_at);
+
+    const simulationSnapshot =
+      metadata.simulation_answers ||
+      metadata.simulation ||
+      metadata.simulation_summary ||
+      metadata.simulation_result ||
+      metadata.simulation_resume ||
+      {};
+
+    const nbChauffeursFromSimulation =
+      simulationSnapshot.nb_chauffeurs ??
+      simulationSnapshot.nbChauffeurs ??
+      simulationSnapshot.answers?.nb_chauffeurs ??
+      simulationSnapshot.answers?.CALCUL_DFS_CHAUFFEURS ??
+      null;
+
+    const renderSummary = () => {
+      const blocks: React.ReactNode[] = [];
+
+      if (checklistCompleted) {
+        if (productKey === 'logiciel_solid') {
+          const chauffeursConfirmes =
+            checklist.chauffeurs_confirmes ??
+            checklist.nb_chauffeurs ??
+            checklist.nb_utilisateurs ??
+            '—';
+          const chauffeursEstimes =
+            checklist.chauffeurs_estimes ??
+            checklist.nb_chauffeurs ??
+            checklist.nb_utilisateurs ??
+            chauffeursConfirmes;
+          const benefits = [
+            'Conformité et sécurité lors des contrôles',
+            'Gain de temps sur la préparation des fiches de paie',
+            'Optimisation des charges : le service s’auto-finance',
+            'Logiciel reconnu par l’inspection du travail'
+          ];
+
+          blocks.push(
+            <div
+              key="solid-summary"
+              className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 space-y-3 text-sm text-emerald-900"
+            >
+              <div className="flex items-start gap-3">
+                <CheckCircle className="w-4 h-4 text-emerald-600 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-emerald-900">
+                    {chauffeursConfirmes} chauffeur(s) confirmé(s) • estimation initiale {chauffeursEstimes}.
+                  </p>
+                  <p>
+                    Ces informations ont été transmises à Solid pour préparer un devis sur mesure.
+                  </p>
+                </div>
+              </div>
+              <div>
+                <p className="font-semibold text-emerald-900 mb-1">Bénéfices inclus :</p>
+                <ul className="list-disc list-inside space-y-1">
+                  {benefits.map((benefit) => (
+                    <li key={benefit}>{benefit}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          );
+        } else {
+          const totalVehicles = checklist.total_vehicles ?? checklist.nb_camions ?? '—';
+          const equippedVehicles = checklist.equipped_vehicles ?? checklist.camions_equipes ?? 0;
+          const installationsRequests =
+            checklist.installations_requested ??
+            checklist.installations_souhaitees ??
+            Math.max(
+              (checklist.total_vehicles ?? checklist.nb_camions ?? 0) -
+                (checklist.equipped_vehicles ?? checklist.camions_equipes ?? 0),
+              0
+            );
+
+          blocks.push(
+            <div
+              key="chrono-summary"
+              className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 space-y-2 text-sm text-emerald-900"
+            >
+              <p className="font-semibold text-emerald-900">
+                {totalVehicles} véhicule(s) poids-lourd déclarés • {equippedVehicles} déjà équipés • {installationsRequests} installation(s) à prévoir.
+              </p>
+              <p>
+                L’expert SDEI prépare actuellement une proposition adaptée à votre flotte.
+              </p>
+            </div>
+          );
+        }
+      }
+
+      if (partnerRequestSent) {
+        blocks.push(
+          <div
+            key="partner-request"
+            className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900"
+          >
+            <p className="font-semibold text-blue-900">
+              Demande de devis envoyée à l’expert distributeur ({partnerRequest.expert_email || (productKey === 'chronotachygraphes' ? 'sdei@profitum.fr' : 'solid@profitum.fr')}).
+            </p>
+            <p>
+              Vous serez notifié dès que le devis sera disponible. En attendant, vous pouvez préparer vos documents complémentaires.
+            </p>
+          </div>
+        );
+      }
+
+      if (blocks.length === 0) {
+        return null;
+      }
+
+      return <div className="space-y-4">{blocks}</div>;
+    };
+
+    const summaryNode = renderSummary();
+
+    if (currentStep === 1 || !checklistCompleted) {
       return (
         <InitialChecksWizard
           dossierId={clientProduitId}
           productKey={productKey as 'chronotachygraphes' | 'logiciel_solid'}
           initialData={checklist}
-          onComplete={() => {
-            loadClientProduit();
-            setCurrentStep(2);
-          }}
+          simulationData={{ nb_chauffeurs: nbChauffeursFromSimulation }}
+          onComplete={handleSimplifiedInitialChecksComplete}
         />
       );
     }
 
-    // Étape 2 : Demande de devis au partenaire
     if (currentStep === 2 && !devis.proposed_at) {
+      if (partnerRequestSent) {
       return (
+          <div className="space-y-6">
+            {summaryNode}
+            <Card className="max-w-2xl mx-auto border-blue-200 bg-blue-50">
+              <CardContent className="p-6 space-y-4 text-sm text-gray-700">
+                <div className="text-center space-y-2">
+                  <Handshake className="w-10 h-10 text-blue-600 mx-auto" />
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Demande de devis en cours
+                  </h3>
+                  <p>
+                    Notre partenaire {partnerName} prépare actuellement votre proposition. Vous recevrez une notification dès qu’elle sera disponible.
+                  </p>
+                </div>
+                {partnerRequest.summary && (
+                  <div className="rounded-lg border border-blue-200 bg-white/70 p-4 space-y-1">
+                    <p className="font-semibold text-blue-900">Récapitulatif transmis à l’expert :</p>
+                    {productKey === 'logiciel_solid' ? (
+                      <ul className="list-disc list-inside space-y-1">
+                        <li>
+                          Chauffeurs confirmés : {partnerRequest.summary.chauffeurs_confirmes ?? '—'}
+                        </li>
+                        {partnerRequest.summary.chauffeurs_estimes !== undefined && (
+                          <li>Estimation initiale : {partnerRequest.summary.chauffeurs_estimes}</li>
+                        )}
+                        <li>Service : traitement mensuel des fiches de paie</li>
+                      </ul>
+                    ) : (
+                      <ul className="list-disc list-inside space-y-1">
+                        <li>Total véhicules déclarés : {partnerRequest.summary.total_vehicles ?? '—'}</li>
+                        <li>Véhicules déjà équipés : {partnerRequest.summary.equipped_vehicles ?? 0}</li>
+                        <li>Installations souhaitées : {partnerRequest.summary.installations_requested ?? 0}</li>
+                      </ul>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        );
+      }
+
+      return (
+        <div className="space-y-6">
+          {summaryNode}
         <PartnerRequestCard
           dossierId={clientProduitId}
           productName={productConfig.productName}
           partnerName={partnerName}
           onRequestSent={() => {
+              partnerRequestAttemptedRef.current = false;
             loadClientProduit();
-            setCurrentStep(3);
+              setCurrentStep(2);
           }}
         />
+        </div>
       );
     }
 
-    // Étape 3 : Devis & validation
-    if (currentStep === 3 && devis.status !== 'accepted' && !facture.status) {
+    if (currentStep >= 2 && currentStep <= 3 && devis.status !== 'accepted' && !facture.status) {
       return (
+        <div className="space-y-6">
+          {summaryNode}
         <QuotePanel
           dossierId={clientProduitId}
           devis={devis}
           userType="client"
           onUpdate={() => {
             loadClientProduit();
-            if (devis.status === 'accepted') {
               setCurrentStep(4);
-            }
           }}
         />
+        </div>
       );
     }
 
-    // Étape 4 : Facturation & installation
-    if (currentStep === 4 || facture.status) {
+    if (currentStep >= 4 || facture.status) {
       if (facture.status === 'issued' && invoice) {
         return (
           <div className="space-y-6">
+            {summaryNode}
             <QuotePanel
               dossierId={clientProduitId}
               devis={devis}

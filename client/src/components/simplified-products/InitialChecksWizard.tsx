@@ -3,83 +3,160 @@
  * Utilisé pour Chronotachygraphes et Logiciel Solid
  */
 
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { Loader2, CheckCircle } from 'lucide-react';
+import { Loader2, CheckCircle, Info } from 'lucide-react';
 import { post } from '@/lib/api';
+import { WorkflowDocumentUpload } from '@/components/documents/WorkflowDocumentUpload';
 
 interface InitialChecksWizardProps {
   dossierId: string;
   productKey: 'chronotachygraphes' | 'logiciel_solid';
   initialData?: {
+    total_vehicles?: number;
+    equipped_vehicles?: number;
+    installations_requested?: number;
+    chauffeurs_estimes?: number;
+    chauffeurs_confirmes?: number;
     nb_camions?: number;
-    equipement_chrono?: boolean;
+    camions_equipes?: number;
+    installations_souhaitees?: number;
+    nb_chauffeurs?: number;
     nb_utilisateurs?: number;
-    besoins?: string;
+    source?: 'simulation' | 'manual';
   };
-  onComplete: () => void;
+  simulationData?: {
+    nb_chauffeurs?: number | null;
+  };
+  onComplete: (payload: Record<string, any>) => void;
 }
 
 export default function InitialChecksWizard({
   dossierId,
   productKey,
   initialData,
+  simulationData,
   onComplete
 }: InitialChecksWizardProps) {
-  const [loading, setLoading] = useState(false);
-  const [nbCamions, setNbCamions] = useState<number>(initialData?.nb_camions || 0);
-  const [equipementChrono, setEquipementChrono] = useState<boolean | null>(
-    initialData?.equipement_chrono !== undefined ? initialData.equipement_chrono : null
-  );
-  const [nbUtilisateurs, setNbUtilisateurs] = useState<number>(initialData?.nb_utilisateurs || 0);
-  const [besoins, setBesoins] = useState<string>(initialData?.besoins || '');
-
   const isChrono = productKey === 'chronotachygraphes';
+
+  const simulationChauffeurs = useMemo(() => {
+    if (!simulationData) return null;
+    if (typeof simulationData.nb_chauffeurs === 'number') {
+      return simulationData.nb_chauffeurs;
+    }
+    return null;
+  }, [simulationData]);
+
+  const [loading, setLoading] = useState(false);
+
+  const [totalVehicles, setTotalVehicles] = useState<number>(
+    initialData?.total_vehicles ??
+      initialData?.nb_camions ??
+      0
+  );
+  const [equippedVehicles, setEquippedVehicles] = useState<number>(
+    initialData?.equipped_vehicles ??
+      initialData?.camions_equipes ??
+      0
+  );
+  const [installationsRequested, setInstallationsRequested] = useState<number>(
+    initialData?.installations_requested ??
+      initialData?.installations_souhaitees ??
+      Math.max(
+        (initialData?.total_vehicles ?? initialData?.nb_camions ?? 0) -
+          (initialData?.equipped_vehicles ?? initialData?.camions_equipes ?? 0),
+        0
+      )
+  );
+
+  const [chauffeursEstimes, setChauffeursEstimes] = useState<number>(
+    initialData?.chauffeurs_estimes ??
+      initialData?.nb_chauffeurs ??
+      initialData?.nb_utilisateurs ??
+      simulationChauffeurs ??
+      0
+  );
+  const [chauffeursConfirmes, setChauffeursConfirmes] = useState<number>(
+    initialData?.chauffeurs_confirmes ??
+      initialData?.nb_chauffeurs ??
+      initialData?.nb_utilisateurs ??
+      simulationChauffeurs ??
+      0
+  );
+  const [source, setSource] = useState<'simulation' | 'manual'>(
+    initialData?.source === 'manual' ? 'manual' : 'simulation'
+  );
+
+  const installationsSuggestion = useMemo(() => {
+    return Math.max(totalVehicles - equippedVehicles, 0);
+  }, [totalVehicles, equippedVehicles]);
+
+  useEffect(() => {
+    if (!isChrono && simulationChauffeurs !== null) {
+      if (
+        (initialData?.chauffeurs_confirmes === undefined && chauffeursConfirmes === 0) ||
+        (initialData && initialData.chauffeurs_confirmes === 0 && chauffeursConfirmes === 0)
+      ) {
+        setChauffeursEstimes(simulationChauffeurs);
+        setChauffeursConfirmes(simulationChauffeurs);
+        setSource('simulation');
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [simulationChauffeurs, isChrono]);
 
   const handleSubmit = async () => {
     if (isChrono) {
-      if (!nbCamions || nbCamions <= 0) {
-        toast.error('Veuillez indiquer le nombre de véhicules');
+      if (!totalVehicles || totalVehicles <= 0) {
+        toast.error('Indiquez le nombre de véhicules > 7,5 tonnes.');
         return;
       }
-      if (equipementChrono === null) {
-        toast.error('Veuillez répondre à la question sur l\'équipement');
+      if (equippedVehicles < 0 || equippedVehicles > totalVehicles) {
+        toast.error('Le nombre de véhicules déjà équipés doit être compris entre 0 et le total de véhicules.');
+        return;
+      }
+      if (installationsRequested < 0 || installationsRequested > totalVehicles) {
+        toast.error('Le nombre d’installations souhaitées doit être compris entre 0 et le total de véhicules.');
         return;
       }
     } else {
-      if (!nbUtilisateurs || nbUtilisateurs <= 0) {
-        toast.error('Veuillez indiquer le nombre d\'utilisateurs');
-        return;
-      }
-      if (!besoins.trim()) {
-        toast.error('Veuillez décrire vos besoins');
+      if (!chauffeursConfirmes || chauffeursConfirmes <= 0) {
+        toast.error('Indiquez le nombre de chauffeurs concernés.');
         return;
       }
     }
 
     try {
       setLoading(true);
+
       const payload = isChrono
-        ? { nb_camions: nbCamions, equipement_chrono: equipementChrono }
-        : { nb_utilisateurs: nbUtilisateurs, besoins };
+        ? {
+            total_camions: totalVehicles,
+            camions_equipes: equippedVehicles,
+            installations_souhaitees: installationsRequested
+          }
+        : {
+            chauffeurs_estimes: chauffeursEstimes || chauffeursConfirmes,
+            chauffeurs_confirmes: chauffeursConfirmes,
+            source
+          };
 
       const response = await post(`/api/simplified-products/${dossierId}/initial-checks`, payload);
 
       if (response.success) {
-        toast.success('✅ Vérifications enregistrées avec succès');
-        onComplete();
+        toast.success('✅ Informations enregistrées et transmises à l’expert');
+        onComplete(payload);
       } else {
-        toast.error(response.message || 'Erreur lors de l\'enregistrement');
+        toast.error(response.message || 'Erreur lors de l’enregistrement');
       }
     } catch (error: any) {
       console.error('Erreur initial-checks:', error);
-      toast.error('Erreur lors de l\'enregistrement');
+      toast.error('Erreur lors de l’enregistrement');
     } finally {
       setLoading(false);
     }
@@ -90,72 +167,161 @@ export default function InitialChecksWizard({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <CheckCircle className="w-5 h-5 text-green-600" />
-          {isChrono ? 'Vérifications initiales - Chronotachygraphes' : 'Vérifications initiales - Logiciel Solid'}
+          {isChrono
+            ? 'Vérifications initiales - Chronotachygraphes'
+            : 'Vérifications initiales - Logiciel Solid'}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         {isChrono ? (
           <>
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
+              Ces informations permettent à notre expert d’établir un devis précis pour l’équipement de vos véhicules.
+            </div>
+
             <div className="space-y-2">
-              <Label htmlFor="nb_camions">
-                Confirmez-vous le nombre de véhicules de +7,5T que votre entreprise possède ?
-              </Label>
+              <Label htmlFor="nb_camions">Nombre total de véhicules &gt; 7,5 tonnes</Label>
               <Input
                 id="nb_camions"
                 type="number"
-                min="1"
-                value={nbCamions || ''}
-                onChange={(e) => setNbCamions(parseInt(e.target.value) || 0)}
-                placeholder="Ex: 12"
+                min={1}
+                value={Number.isNaN(totalVehicles) ? '' : totalVehicles}
+                onChange={(e) => setTotalVehicles(Math.max(parseInt(e.target.value, 10) || 0, 0))}
+                placeholder="Ex : 12"
               />
-              <p className="text-sm text-gray-500">
-                Ce nombre provient de votre dernière simulation. Vous pouvez le modifier si nécessaire.
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="camions_equipes">Véhicules déjà équipés de chronotachygraphes digitaux</Label>
+              <Input
+                id="camions_equipes"
+                type="number"
+                min={0}
+                value={Number.isNaN(equippedVehicles) ? '' : equippedVehicles}
+                onChange={(e) => setEquippedVehicles(Math.max(parseInt(e.target.value, 10) || 0, 0))}
+                placeholder="Ex : 4"
+              />
+              <p className="text-xs text-gray-500">
+                Indiquez 0 si aucun véhicule n’est équipé.
               </p>
             </div>
 
-            <div className="space-y-3">
-              <Label>Vos véhicules sont-ils équipés de chronotachygraphes digitaux ?</Label>
-              <RadioGroup
-                value={equipementChrono === null ? '' : equipementChrono ? 'oui' : 'non'}
-                onValueChange={(value) => setEquipementChrono(value === 'oui')}
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="oui" id="equipement-oui" />
-                  <Label htmlFor="equipement-oui" className="cursor-pointer">Oui</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="non" id="equipement-non" />
-                  <Label htmlFor="equipement-non" className="cursor-pointer">Non</Label>
-                </div>
-              </RadioGroup>
+            <div className="space-y-2">
+              <Label htmlFor="installations_souhaitees">Nombre de nouvelles installations souhaitées</Label>
+              <Input
+                id="installations_souhaitees"
+                type="number"
+                min={0}
+                value={Number.isNaN(installationsRequested) ? '' : installationsRequested}
+                onChange={(e) => setInstallationsRequested(Math.max(parseInt(e.target.value, 10) || 0, 0))}
+                placeholder={`Suggestion : ${installationsSuggestion}`}
+              />
+              <p className="text-xs text-gray-500">
+                Suggestion automatique : {installationsSuggestion} installation(s) à prévoir.
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 space-y-2">
+              <p className="font-medium">Document requis : carte grise d’un véhicule &gt; 7,5 tonnes</p>
+              <p>
+                Ajoutez au moins une carte grise pour accélérer la validation administrative.
+              </p>
+              <WorkflowDocumentUpload
+                clientProduitId={dossierId}
+                onUploadSuccess={() => toast.success('Carte grise ajoutée au dossier')}
+                className="mt-2"
+              />
             </div>
           </>
         ) : (
           <>
-            <div className="space-y-2">
-              <Label htmlFor="nb_utilisateurs">
-                Nombre d'utilisateurs prévus
-              </Label>
-              <Input
-                id="nb_utilisateurs"
-                type="number"
-                min="1"
-                value={nbUtilisateurs || ''}
-                onChange={(e) => setNbUtilisateurs(parseInt(e.target.value) || 0)}
-                placeholder="Ex: 10"
-              />
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800 space-y-2">
+              <p className="font-medium">Nombre de chauffeurs déclarés lors de votre simulation :</p>
+              <p className="text-lg font-semibold">
+                {simulationChauffeurs !== null ? `${simulationChauffeurs} chauffeur(s)` : 'Non renseigné'}
+              </p>
+              <div className="flex items-center gap-2 text-blue-900">
+                <Info className="w-4 h-4" />
+                Confirmez ce volume ou mettez-le à jour si votre équipe a évolué.
+              </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="besoins">
-                Décrivez vos besoins et attentes
-              </Label>
-              <Textarea
-                id="besoins"
-                value={besoins}
-                onChange={(e) => setBesoins(e.target.value)}
-                placeholder="Ex: Automatisation de la gestion comptable, intégration ERP, formation des équipes..."
-                rows={4}
+              <Label htmlFor="chauffeurs_estimes">Estimation (facultatif)</Label>
+              <Input
+                id="chauffeurs_estimes"
+                type="number"
+                min={0}
+                value={Number.isNaN(chauffeursEstimes) ? '' : chauffeursEstimes}
+                onChange={(e) => {
+                  const value = Math.max(parseInt(e.target.value, 10) || 0, 0);
+                  setChauffeursEstimes(value);
+                  if (value !== chauffeursConfirmes) {
+                    setSource('manual');
+                  }
+                }}
+                placeholder="Ex : 12"
+              />
+              <p className="text-xs text-gray-500">
+                L’estimation peut être différente si vous souhaitez conserver un scénario cible.
+              </p>
+            </div>
+
+            {simulationChauffeurs !== null && (
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setChauffeursEstimes(simulationChauffeurs);
+                    setChauffeursConfirmes(simulationChauffeurs);
+                    setSource('simulation');
+                    toast.success('Valeur simulation confirmée');
+                  }}
+                >
+                  Confirmer la valeur simulation ({simulationChauffeurs})
+                </Button>
+                <span className="text-xs text-gray-500">
+                  ou ajustez le nombre exact dans le champ ci-dessous.
+                </span>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="nb_chauffeurs">Nombre de chauffeurs à équiper (confirmé)</Label>
+              <Input
+                id="nb_chauffeurs"
+                type="number"
+                min={1}
+                value={Number.isNaN(chauffeursConfirmes) ? '' : chauffeursConfirmes}
+                onChange={(e) => {
+                  const value = Math.max(parseInt(e.target.value, 10) || 0, 0);
+                  setChauffeursConfirmes(value);
+                  if (simulationChauffeurs !== null && value === simulationChauffeurs) {
+                    setSource('simulation');
+                  } else {
+                    setSource('manual');
+                  }
+                }}
+                placeholder="Ex : 15"
+              />
+              <p className="text-xs text-gray-500">
+                Cette valeur est utilisée pour calculer le coût par fiche de paie et le forfait mensuel.
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+              Dès validation, nous transmettons ces données à l’expert Logiciel Solid afin qu’il prépare votre devis sur mesure.
+            </div>
+
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 space-y-2">
+              <p className="font-medium">Document requis : fiche de paie récente</p>
+              <p>
+                Téléversez une fiche de paie (moins de 3 mois) pour valider l’étape et accélérer l’émission du devis.
+              </p>
+              <WorkflowDocumentUpload
+                clientProduitId={dossierId}
+                onUploadSuccess={() => toast.success('Fiche de paie ajoutée au dossier')}
+                className="mt-2"
               />
             </div>
           </>
@@ -165,7 +331,7 @@ export default function InitialChecksWizard({
           <Button
             onClick={handleSubmit}
             disabled={loading}
-            className="min-w-[120px]"
+            className="min-w-[140px]"
           >
             {loading ? (
               <>
@@ -173,7 +339,7 @@ export default function InitialChecksWizard({
                 Enregistrement...
               </>
             ) : (
-              'Valider'
+              'Valider les informations'
             )}
           </Button>
         </div>
