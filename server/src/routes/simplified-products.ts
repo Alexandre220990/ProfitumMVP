@@ -60,7 +60,7 @@ function getFirst<T>(value: T | T[] | null | undefined): T | undefined {
 // ============================================================================
 async function getDistributorExpert(productKey: 'chronotachygraphes' | 'logiciel_solid') {
   const email = productKey === 'chronotachygraphes' 
-    ? 'oclock@profitum.fr' 
+    ? 'sdei@profitum.fr' 
     : 'solid@profitum.fr';
   
   const { data: expert, error } = await supabase
@@ -207,6 +207,87 @@ router.post('/:dossierId/initial-checks', enhancedAuthMiddleware, async (req: Re
 
   } catch (error: any) {
     console.error('❌ Erreur initial-checks:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ============================================================================
+// POST /api/simplified-products/:dossierId/assign-expert
+// Affecte automatiquement l'expert distributeur si aucun expert n'est encore assigné
+// ============================================================================
+router.post('/:dossierId/assign-expert', enhancedAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const user = (req as AuthenticatedRequest).user;
+    const { dossierId } = req.params;
+
+    if (!user || user.type !== 'client') {
+      return res.status(403).json({ success: false, message: 'Accès réservé aux clients' });
+    }
+
+    const { data: dossier, error: dossierError } = await supabase
+      .from('ClientProduitEligible')
+      .select('id, clientId, produitId, expert_id, expert_pending_id, statut, current_step, progress, metadata, ProduitEligible:produitId(nom)')
+      .eq('id', dossierId)
+      .eq('clientId', user.database_id)
+      .single();
+
+    if (dossierError || !dossier) {
+      return res.status(404).json({ success: false, message: 'Dossier non trouvé' });
+    }
+
+    if (dossier.expert_id) {
+      return res.json({ success: true, data: { alreadyAssigned: true, expert_id: dossier.expert_id } });
+    }
+
+    const produitEligible = getFirst(dossier.ProduitEligible);
+    const productName = produitEligible?.nom?.toLowerCase() || '';
+    const productKey: 'chronotachygraphes' | 'logiciel_solid' =
+      productName.includes('chronotachygraphe') ? 'chronotachygraphes' : 'logiciel_solid';
+
+    const distributorExpert = await getDistributorExpert(productKey);
+    if (!distributorExpert) {
+      return res.status(500).json({ success: false, message: 'Expert distributeur non disponible' });
+    }
+
+    const updates: Record<string, any> = {
+      expert_id: distributorExpert.id,
+      updated_at: new Date().toISOString()
+    };
+
+    if (!dossier.statut || ['eligible', 'opportunité', 'pending_admin_validation', 'expert_selection'].includes(dossier.statut)) {
+      updates.statut = 'expert_assigned';
+    }
+
+    if (!dossier.current_step || dossier.current_step < 2) {
+      updates.current_step = 2;
+    }
+
+    updates.progress = Math.max(dossier.progress || 0, 40);
+
+    const { error: updateError } = await supabase
+      .from('ClientProduitEligible')
+      .update(updates)
+      .eq('id', dossierId);
+
+    if (updateError) {
+      console.error('❌ Erreur assignation expert simplifié:', updateError);
+      return res.status(500).json({ success: false, message: 'Erreur lors de l’assignation de l’expert' });
+    }
+
+    await DossierTimelineService.addEvent({
+      dossier_id: dossierId,
+      type: 'system_action',
+      actor_type: 'system',
+      actor_name: 'Profitum',
+      title: 'Expert distributeur assigné automatiquement',
+      description: `Expert ${distributorExpert.email} affecté au dossier`,
+      icon: 'user-check',
+      color: 'blue'
+    });
+
+    return res.json({ success: true, data: { expert_id: distributorExpert.id } });
+  } catch (error: any) {
+    console.error('❌ Erreur assign-expert simplifié:', error);
     return res.status(500).json({ success: false, message: error.message });
   }
 });

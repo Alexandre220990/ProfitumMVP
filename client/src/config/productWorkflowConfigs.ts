@@ -87,6 +87,15 @@ export const COMMON_DOCUMENTS = {
     acceptedFormats: ['application/pdf'],
     maxSize: 20,
     canReuseFromOtherProduct: true
+  },
+  fiche_paie: {
+    type: 'fiche_paie',
+    label: 'Fiche de paie récente',
+    description: 'Fiche de paie d’un salarié sur les 3 derniers mois (PDF ou image)',
+    required: true,
+    acceptedFormats: ['application/pdf', 'image/jpeg', 'image/png'],
+    maxSize: 10,
+    canReuseFromOtherProduct: false
   }
 };
 
@@ -428,8 +437,8 @@ export const PRODUCT_CONFIGS: Record<string, ProductWorkflowConfig> = {
       COMMON_DOCUMENTS.kbis,
       {
         type: 'immatriculation_vehicules',
-        label: 'Cartes grises des véhicules',
-        description: 'Certificats d\'immatriculation des véhicules de +7,5T',
+        label: 'Carte grise (1 véhicule de +7,5T)',
+        description: 'Téléversez la carte grise d’un véhicule poids lourd (+7,5T) utilisé pour l’activité',
         required: true,
         acceptedFormats: ['application/pdf', 'image/jpeg', 'image/png'],
         maxSize: 10,
@@ -479,7 +488,7 @@ export const PRODUCT_CONFIGS: Record<string, ProductWorkflowConfig> = {
     category: 'Logiciel de gestion',
     estimatedDuration: '1-2 mois',
     requiredDocuments: [
-      COMMON_DOCUMENTS.kbis
+      COMMON_DOCUMENTS.fiche_paie
     ],
     workflowSteps: [
       {

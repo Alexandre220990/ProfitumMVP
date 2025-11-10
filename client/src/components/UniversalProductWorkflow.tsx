@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -13,7 +13,6 @@ import {
   CreditCard,
   FileSignature,
   Loader2,
-  Download,
   FileText,
   CalendarDays
 } from 'lucide-react';
@@ -71,6 +70,7 @@ interface ClientProduit {
   statut: string;
   current_step: number;
   progress: number;
+  montantFinal?: number;
   metadata?: any;
   expert_id?: string;
   expert_pending_id?: string; // ✅ Expert en attente d'acceptation
@@ -152,6 +152,8 @@ export default function UniversalProductWorkflow({
     contract: false
   });
   const allCharterAgreementsAccepted = charterAgreements.cgu && charterAgreements.cgv && charterAgreements.contract;
+const isSimplifiedProductKey = productKey === 'chronotachygraphes' || productKey === 'logiciel_solid';
+const autoAssignAttemptedRef = useRef(false);
 
   // Hook pour les étapes du dossier
   const {
@@ -342,16 +344,31 @@ export default function UniversalProductWorkflow({
 
         // Si un expert est déjà assigné ou en attente d'acceptation, le définir
         if ((produitData.expert_id || produitData.expert_pending_id) && produitData.Expert) {
-          console.log('👨‍💼 DIAGNOSTIC: Expert déjà assigné:', produitData.Expert.name);
-          setSelectedExpert({
-            ...produitData.Expert,
-            specialites: produitData.Expert.specialites || [],
-            experience_years: produitData.Expert.experience_years || 0,
-            rating: produitData.Expert.rating || 0
-          });
+          const expertRelation: any = Array.isArray(produitData.Expert)
+            ? produitData.Expert[0]
+            : produitData.Expert;
+
+          if (expertRelation) {
+            const expertName =
+              expertRelation.name ||
+              [expertRelation.first_name, expertRelation.last_name].filter(Boolean).join(' ') ||
+              expertRelation.email ||
+              'Expert';
+            console.log('👨‍💼 DIAGNOSTIC: Expert déjà assigné:', expertName);
+            setSelectedExpert({
+              ...expertRelation,
+              name: expertName,
+              specialites: expertRelation.specialites || expertRelation.specializations || [],
+              experience_years: expertRelation.experience_years || expertRelation.experienceYears || 0,
+              rating: expertRelation.rating || 0
+            });
+          }
           // ✅ Marquer comme confirmé si expert assigné
           setExpertConfirmed(true);
           setTempSelectedExpert(null); // Pas d'expert temporaire
+          autoAssignAttemptedRef.current = true;
+        } else if (!produitData.expert_id) {
+          autoAssignAttemptedRef.current = false;
         }
       }
     } catch (error) {
@@ -394,6 +411,47 @@ export default function UniversalProductWorkflow({
       generateSteps(clientProduitId);
     }
   }, [clientProduitId, stepsLoading, steps.length, generateSteps]);
+
+  const autoAssignDistributorExpert = useCallback(async () => {
+    if (autoAssignAttemptedRef.current) {
+      return;
+    }
+
+    autoAssignAttemptedRef.current = true;
+    try {
+      const response = await post(`/api/simplified-products/${clientProduitId}/assign-expert`);
+      if (response.success) {
+        console.log('🤖 Expert distributeur assigné automatiquement');
+        loadClientProduit();
+      } else {
+        console.warn('⚠️ Impossible d\'assigner automatiquement l\'expert:', response.message);
+        autoAssignAttemptedRef.current = false;
+      }
+    } catch (error) {
+      console.error('❌ Erreur assignation auto expert:', error);
+      autoAssignAttemptedRef.current = false;
+    }
+  }, [clientProduitId, loadClientProduit]);
+
+  useEffect(() => {
+    if (!isSimplifiedProductKey || !clientProduit) {
+      return;
+    }
+
+    const hasExpert = Boolean(clientProduit.expert_id || clientProduit.expert_pending_id);
+    if (hasExpert) {
+      return;
+    }
+
+    const metadata: any = clientProduit.metadata || {};
+    const checklistKey = `${productKey}_checklist`;
+    const checklistData = metadata[checklistKey];
+    const checklistCompleted = Boolean(checklistData?.validated_at);
+
+    if (checklistCompleted) {
+      autoAssignDistributorExpert();
+    }
+  }, [clientProduit, productKey, isSimplifiedProductKey, autoAssignDistributorExpert]);
 
   // Mettre à jour le statut des étapes basé sur les données
   useEffect(() => {
@@ -1140,7 +1198,7 @@ export default function UniversalProductWorkflow({
 
   const renderStepContent = () => {
     // Détecter les produits simplifiés
-    const isSimplifiedProduct = productKey === 'chronotachygraphes' || productKey === 'logiciel_solid';
+    const isSimplifiedProduct = isSimplifiedProductKey;
     
     if (isSimplifiedProduct) {
       return renderSimplifiedWorkflow();
