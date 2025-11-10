@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 import ExpertSelectionModal from '@/components/ExpertSelectionModal';
 import { 
@@ -32,7 +33,9 @@ import {
   UserCheck,
   Bell,
   Sparkles,
-  Upload
+  Upload,
+  Calculator,
+  Flame
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useClientProducts } from '@/hooks/use-client-products';
@@ -218,6 +221,8 @@ interface ProductCardProps {
   };
 }
 
+type SortOption = 'progress_desc' | 'progress_asc' | 'amount_desc' | 'amount_asc';
+
 const ProductCard = ({ produit, onClick, onExpertSelection, notificationData }: ProductCardProps) => {
   const getProductIcon = (nom?: string) => {
     if (!nom) return <FolderOpen className="w-6 h-6" />;
@@ -227,6 +232,8 @@ const ProductCard = ({ produit, onClick, onExpertSelection, notificationData }: 
     if (nomLower.includes('foncier')) return <Calendar className="w-6 h-6" />;
     if (nomLower.includes('dfs') || nomLower.includes('dsf')) return <Euro className="w-6 h-6" />;
     if (nomLower.includes('msa')) return <Percent className="w-6 h-6" />;
+    if (nomLower.includes('énergie') || nomLower.includes('energie')) return <Flame className="w-6 h-6" />;
+    if (nomLower.includes('logiciel') || nomLower.includes('solid')) return <Calculator className="w-6 h-6" />;
     return <FolderOpen className="w-6 h-6" />;
   };
 
@@ -257,6 +264,8 @@ const ProductCard = ({ produit, onClick, onExpertSelection, notificationData }: 
           icon: <FileText className="w-4 h-4" />,
           label: '📄 Docs reçus'
         };
+      case 'pending_upload':
+        return null;
       case 'en_attente':
         return { 
           color: 'bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-800 border border-yellow-300', 
@@ -273,7 +282,7 @@ const ProductCard = ({ produit, onClick, onExpertSelection, notificationData }: 
         return { 
           color: 'bg-gradient-to-r from-gray-100 to-slate-100 text-gray-800 border border-gray-300', 
           icon: <AlertTriangle className="w-4 h-4" />,
-          label: statut
+          label: statut ? statut.replace(/_/g, ' ') : 'Statut à confirmer'
         };
     }
   };
@@ -293,12 +302,14 @@ const ProductCard = ({ produit, onClick, onExpertSelection, notificationData }: 
     if (nomLower.includes('foncier')) return 'Optimisation de la Taxe Foncière';
     if (nomLower.includes('dfs') || nomLower.includes('dsf')) return 'Optimisation de la Taxe sur les Salaires';
     if (nomLower.includes('msa')) return 'Optimisation des Cotisations MSA';
+    if (nomLower.includes('énergie') || nomLower.includes('energie')) return 'Réduisez vos dépenses énergétiques et améliorez votre efficacité';
+    if (nomLower.includes('logiciel') || nomLower.includes('solid')) return 'Déploiement du logiciel Solid clé en main';
     return 'Optimisation fiscale et sociale';
   };
 
   return (
-    <Card className={`h-full flex flex-col hover:shadow-xl transition-all duration-300 cursor-pointer group border-2 relative ${
-      isFromApporteur ? 'border-blue-300 bg-gradient-to-br from-blue-50/30 to-indigo-50/30' : 'hover:border-blue-300'
+    <Card className={`h-full flex flex-col transition-all duration-300 cursor-pointer group relative rounded-2xl border border-slate-200/80 bg-white/95 hover:shadow-xl ${
+      isFromApporteur ? 'ring-1 ring-blue-200 bg-blue-50/40' : 'hover:border-blue-300'
     } ${notificationData?.isNewStatus ? 'ring-2 ring-green-400 animate-pulse' : ''}`}>
       {/* Pastille de notification en haut à droite */}
       {notificationData && notificationData.unreadCount > 0 && (
@@ -312,7 +323,7 @@ const ProductCard = ({ produit, onClick, onExpertSelection, notificationData }: 
         </div>
       )}
 
-      <CardContent className="p-4 flex flex-col h-full">
+      <CardContent className="p-5 flex flex-col h-full gap-4">
         {/* Badge "Action requise" */}
         {notificationData?.hasActionRequired && (
           <div className="mb-3 p-2 bg-gradient-to-r from-red-100 to-pink-100 rounded-lg border-2 border-red-300 animate-pulse">
@@ -370,36 +381,38 @@ const ProductCard = ({ produit, onClick, onExpertSelection, notificationData }: 
         )}
 
         {/* En-tête avec titre centré et icône */}
-        <div className="text-center mb-3">
-          <div className="inline-flex items-center justify-center w-10 h-10 bg-blue-50 rounded-xl mb-2 text-blue-600">
+        <div className="text-center mb-1">
+          <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-50 rounded-xl mb-3 text-blue-600 shadow-sm">
             {getProductIcon(produit.ProduitEligible?.nom)}
           </div>
-          <h3 className="font-bold text-lg text-gray-900 group-hover:text-blue-600 transition-colors mb-1">
+          <h3 className="font-semibold text-lg text-gray-900 group-hover:text-blue-600 transition-colors mb-1 tracking-tight">
             {produit.ProduitEligible?.nom || 'Produit non défini'}
           </h3>
-          <p className="text-xs text-gray-600 leading-relaxed line-clamp-2 min-h-[2rem]">
+          <p className="text-sm text-gray-600 leading-relaxed line-clamp-2 min-h-[2.5rem]">
             {getProductDescription(produit.ProduitEligible?.nom)}
           </p>
         </div>
 
         {/* Badge de statut amélioré */}
-        <div className="flex justify-center mb-3">
-          <Badge className={`${statusConfig.color} flex items-center gap-1.5 px-3 py-1 text-xs font-semibold`}>
-            {statusConfig.icon}
-            {statusConfig.label}
-          </Badge>
-        </div>
+        {statusConfig && (
+          <div className="flex justify-center">
+            <Badge className={`${statusConfig.color} flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full`}>
+              {statusConfig.icon}
+              {statusConfig.label}
+            </Badge>
+          </div>
+        )}
 
         {/* Montant estimé */}
-        <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-3 rounded-lg mb-4 text-center border border-green-100">
-          <p className="text-xs text-gray-600 mb-1 font-medium">Montant estimé</p>
-          <p className="font-bold text-2xl text-green-600">
+        <div className="p-4 rounded-xl border border-emerald-100 bg-emerald-50/70 text-center shadow-sm">
+          <p className="text-xs text-emerald-700 mb-2 font-medium uppercase tracking-wide">Montant estimé</p>
+          <p className="font-bold text-2xl text-emerald-700">
             {produit.montantFinal ? produit.montantFinal.toLocaleString('fr-FR') + ' €' : 'Prix sur demande'}
           </p>
         </div>
 
         {/* Barre de progression haute couture */}
-        <div className="mb-4">
+        <div>
           <ProgressBar 
             progress={calculateProgress(produit)}
             status={produit.statut}
@@ -498,14 +511,14 @@ const ProductCard = ({ produit, onClick, onExpertSelection, notificationData }: 
                   }`}>
                     {produit.statut === 'documents_uploaded' 
                       ? '⏳ Validation en cours' 
-                      : '📄 Documents requis'}
+                      : '📄 Informations requises'}
                   </p>
                   <p className={`text-xs text-center leading-relaxed ${
                     produit.statut === 'documents_uploaded' ? 'text-purple-600' : 'text-orange-600'
                   }`}>
                     {produit.statut === 'documents_uploaded' 
-                      ? 'Notre équipe vérifie vos documents' 
-                      : 'Uploadez vos documents d\'éligibilité'}
+                      ? 'Notre équipe vérifie vos envois' 
+                      : 'Complétez les réponses demandées'}
                   </p>
                 </div>
               )}
@@ -537,6 +550,7 @@ export default function DashboardClient() {
   const [selectedProduitId, setSelectedProduitId] = useState<string | null>(null);
   const [selectedProduit, setSelectedProduit] = useState<any>(null);
   const [isExpertModalOpen, setIsExpertModalOpen] = useState(false);
+  const [sortOption, setSortOption] = useState<SortOption>('progress_desc');
   
   // Hook pour les produits éligibles du client
   const { 
@@ -607,6 +621,16 @@ export default function DashboardClient() {
     navigate(0);
   }, [navigate]);
 
+  const buildProduitSlug = useCallback((nom?: string) => {
+    if (!nom) return 'produit';
+    const normalized = nom
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+    const slug = normalized.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    return slug || 'produit';
+  }, []);
+
   // Fonction pour rediriger vers le workflow approprié
   const handleProductClick = useCallback((produit: any) => {
     const nomProduit = produit.ProduitEligible?.nom?.toLowerCase() || '';
@@ -628,11 +652,14 @@ export default function DashboardClient() {
       navigate(`/produits/social/${produit.id}`);
     } else if (nomProduit.includes('audit_energetique') || nomProduit.includes('audit énergétique')) {
       navigate(`/produits/audit_energetique/${produit.id}`);
+    } else if (nomProduit.includes('logiciel') || nomProduit.includes('solid')) {
+      navigate(`/produits/logiciel-solid/${produit.id}`);
     } else {
-      // Fallback vers une page générique
-      navigate(`/dossier-client/${produit.id}`);
+      // Fallback vers une page générique avec slug produit
+      const slug = buildProduitSlug(produit.ProduitEligible?.nom);
+      navigate(`/dossier-client/${slug}/${produit.id}`);
     }
-  }, [navigate]);
+  }, [navigate, buildProduitSlug]);
 
   // Fonction pour ouvrir le modal de sélection d'expert
   const handleExpertSelection = useCallback((produitId: string, produit: any) => {
@@ -674,6 +701,29 @@ export default function DashboardClient() {
       navigate('/dashboard/client', { replace: true });
     }, 500);
   }, [handleCloseExpertModal, navigate]);
+
+  const sortedProduits = useMemo(() => {
+    if (!produits || produits.length === 0) {
+      return [];
+    }
+
+    const copy = [...produits];
+
+    return copy.sort((a, b) => {
+      switch (sortOption) {
+        case 'progress_desc':
+          return calculateProgress(b) - calculateProgress(a);
+        case 'progress_asc':
+          return calculateProgress(a) - calculateProgress(b);
+        case 'amount_desc':
+          return (b.montantFinal ?? 0) - (a.montantFinal ?? 0);
+        case 'amount_asc':
+          return (a.montantFinal ?? 0) - (b.montantFinal ?? 0);
+        default:
+          return 0;
+      }
+    });
+  }, [produits, sortOption]);
 
   // Calcul des vraies données KPI depuis ClientProduitEligible
   const kpiData = {
@@ -883,34 +933,33 @@ export default function DashboardClient() {
         {/* Section des produits éligibles */}
         {produits.length > 0 && (
           <div className="mb-8">
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
               <div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-2">Vos optimisations en cours</h2>
                 <p className="text-gray-600">
                   {produits.length} produit(s) éligible(s) trouvé(s) • Cliquez pour continuer
                 </p>
               </div>
-              <Badge variant="secondary" className="text-sm">
-                {produits.filter(p => p.statut === 'en_cours').length} en cours
-              </Badge>
+              <div className="flex items-center gap-3">
+                <Badge variant="secondary" className="text-sm">
+                  {produits.filter(p => p.statut === 'en_cours').length} en cours
+                </Badge>
+                <Select value={sortOption} onValueChange={(value) => setSortOption(value as SortOption)}>
+                  <SelectTrigger className="w-56">
+                    <SelectValue placeholder="Trier les dossiers" />
+                  </SelectTrigger>
+                  <SelectContent align="end">
+                    <SelectItem value="progress_desc">Progression décroissante</SelectItem>
+                    <SelectItem value="progress_asc">Progression croissante</SelectItem>
+                    <SelectItem value="amount_desc">Montant décroissant</SelectItem>
+                    <SelectItem value="amount_asc">Montant croissant</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {produits
-                .sort((a, b) => {
-                  // Tri: Produits financiers (avec montant) d'abord, puis qualitatifs (sans montant)
-                  const aHasMontant = (a.montantFinal || 0) > 0;
-                  const bHasMontant = (b.montantFinal || 0) > 0;
-                  
-                  if (aHasMontant === bHasMontant) {
-                    // Si même type, trier par montant décroissant
-                    return (b.montantFinal || 0) - (a.montantFinal || 0);
-                  }
-                  
-                  // Produits avec montant avant ceux sans montant
-                  return bHasMontant ? 1 : -1;
-                })
-                .map((produit) => (
+              {sortedProduits.map((produit) => (
                   <ProductCard
                     key={produit.id}
                     produit={produit}
