@@ -779,15 +779,14 @@ export default function UniversalProductWorkflow({
       ? 'Votre remboursement et la facture Profitum sont réglés. Le dossier est clôturé.'
       : 'Le remboursement est confirmé. La validation comptable du paiement Profitum reste en cours.';
 
-    const commissionHT = commissionInfo.estimation_ht ?? commissionInfo.profitum_total_fee ?? paymentInfo.invoice?.montant_ht ?? paymentInfo.requested_amount ?? invoice?.amount;
-    const commissionTTC =
-      commissionInfo.estimation_ttc ??
-      paymentInfo.invoice?.montant_ttc ??
-      paymentInfo.requested_amount ??
-      invoice?.metadata?.montant_ttc ??
-      (commissionHT ? commissionHT * 1.2 : null);
+    const clientFeePercentage =
+      commissionInfo.client_fee_percentage !== undefined && commissionInfo.client_fee_percentage !== null
+        ? Number(commissionInfo.client_fee_percentage)
+        : null;
 
-    const expertFee = commissionInfo.expert_total_fee ?? null;
+    const expertFee =
+      commissionInfo.expert_total_fee ??
+      (clientFeePercentage != null && refundAmount != null ? refundAmount * clientFeePercentage : null);
     const expertName = clientProduit.Expert?.name || commissionInfo.expert_name || expertAcceptance.expert_name;
 
     const timelineEntries = [
@@ -859,11 +858,13 @@ export default function UniversalProductWorkflow({
                 </p>
               </div>
               <div className="rounded-xl border border-amber-200 bg-white/80 p-4">
-                <p className="text-xs uppercase text-gray-500 tracking-wide mb-1">Commission Profitum TTC</p>
-                <p className="text-2xl font-bold text-amber-700">{formatCurrency(commissionTTC)}</p>
-                <p className="mt-2 text-xs text-gray-500">
-                  Commission expert : {formatCurrency(expertFee)}
-                </p>
+                <p className="text-xs uppercase text-gray-500 tracking-wide mb-1">Commission expert TTC</p>
+                <p className="text-2xl font-bold text-amber-700">{formatCurrency(expertFee)}</p>
+                {clientFeePercentage != null && !Number.isNaN(clientFeePercentage) && (
+                  <p className="mt-2 text-xs text-gray-500">
+                    Taux appliqué&nbsp;: {(clientFeePercentage * 100).toFixed(0)}%
+                  </p>
+                )}
               </div>
               <div className="rounded-xl border border-blue-200 bg-white/80 p-4">
                 <p className="text-xs uppercase text-gray-500 tracking-wide mb-1">Référence dossier</p>
@@ -921,17 +922,17 @@ export default function UniversalProductWorkflow({
                     </dd>
                   </div>
                   <div className="flex justify-between">
-                    <dt className="text-gray-500">Commission client (%)</dt>
+                    <dt className="text-gray-500">Commission expert (%)</dt>
                     <dd className="font-medium text-gray-900">
-                      {commissionInfo.client_fee_percentage
-                        ? `${(commissionInfo.client_fee_percentage * 100).toFixed(0)}%`
+                      {clientFeePercentage != null && !Number.isNaN(clientFeePercentage)
+                        ? `${(clientFeePercentage * 100).toFixed(0)}%`
                         : '—'}
                     </dd>
                   </div>
                   <div className="flex justify-between">
-                    <dt className="text-gray-500">Commission Profitum HT</dt>
+                    <dt className="text-gray-500">Commission expert</dt>
                     <dd className="font-medium text-gray-900">
-                      {formatCurrency(commissionHT)}
+                      {formatCurrency(expertFee)}
                     </dd>
                   </div>
                 </dl>
