@@ -140,6 +140,134 @@ async function addTimelineEvent(event) {
   }
 }
 
+const DOSSIER_STEP_DEFINITIONS = [
+  { name: "Confirmer l'éligibilité", type: 'validation', priority: 'critical', duration: 60, assignee: 'client' },
+  { name: "Sélection de l'expert", type: 'expertise', priority: 'high', duration: 120 },
+  { name: 'Collecte des documents', type: 'documentation', priority: 'high', duration: 120 },
+  { name: 'Audit technique', type: 'expertise', priority: 'critical', duration: 240 },
+  { name: 'Validation finale', type: 'approval', priority: 'high', duration: 60 },
+  { name: 'Demande de remboursement', type: 'payment', priority: 'medium', duration: 120 }
+];
+
+const STEP_STATUS_WEIGHT = {
+  pending: 0,
+  in_progress: 1,
+  overdue: 1,
+  completed: 2
+};
+
+async function fetchDossierStepsMap(dossierId) {
+  const { data, error } = await supabase
+    .from('DossierStep')
+    .select('id, step_name, status, progress')
+    .eq('dossier_id', dossierId);
+
+  if (error) {
+    console.error('⚠️  Impossible de récupérer les étapes du dossier:', error);
+    return new Map();
+  }
+
+  return new Map((data || []).map((item) => [item.step_name, item]));
+}
+
+async function ensureDossierSteps({ dossier, productName, clientName, montantFinal }) {
+  let stepsMap = await fetchDossierStepsMap(dossier.id);
+
+  if (stepsMap.size === 0) {
+    const now = new Date();
+    const metadataBase = {
+      product_type: productName,
+      montant_final: montantFinal || null,
+      generated_at: now.toISOString()
+    };
+
+    const payload = DOSSIER_STEP_DEFINITIONS.map((definition, index) => {
+      const dueDate = new Date(now);
+      dueDate.setDate(dueDate.getDate() + index * 2);
+
+      return {
+        dossier_id: dossier.id,
+        dossier_name: `${productName} - ${clientName}`,
+        step_name: definition.name,
+        step_type: definition.type,
+        due_date: dueDate.toISOString(),
+        status: index === 0 ? 'in_progress' : 'pending',
+        priority: definition.priority,
+        progress: index === 0 ? 25 : 0,
+        estimated_duration_minutes: definition.duration,
+        assignee_type: definition.assignee || null,
+        metadata: { ...metadataBase }
+      };
+    });
+
+    const { data, error } = await supabase
+      .from('DossierStep')
+      .insert(payload)
+      .select('id, step_name, status, progress');
+
+    if (error) {
+      console.error('❌ Impossible de créer les étapes du dossier:', error);
+      return stepsMap;
+    }
+
+    stepsMap = new Map(data.map((item) => [item.step_name, item]));
+  }
+
+  return stepsMap;
+}
+
+async function applyStepStatus(stepsMap, stepName, status, progress) {
+  const target = stepsMap.get(stepName);
+  if (!target) {
+    console.warn(`⚠️  Étape "${stepName}" introuvable, mise à jour ignorée.`);
+    return;
+  }
+
+  const currentWeight = STEP_STATUS_WEIGHT[target.status] ?? 0;
+  const targetWeight = STEP_STATUS_WEIGHT[status] ?? 0;
+
+  if (targetWeight < currentWeight) {
+    return;
+  }
+
+  const now = new Date().toISOString();
+  const updatePayload = {
+    status,
+    updated_at: now
+  };
+
+  if (typeof progress === 'number') {
+    updatePayload.progress = Math.max(0, Math.min(100, Math.round(progress)));
+  } else if (status === 'completed') {
+    updatePayload.progress = 100;
+  } else if (status === 'in_progress') {
+    updatePayload.progress = Math.max(target.progress || 0, 25);
+  } else if (status === 'pending') {
+    updatePayload.progress = 0;
+  }
+
+  const { data, error } = await supabase
+    .from('DossierStep')
+    .update(updatePayload)
+    .eq('id', target.id)
+    .select('id, status, progress')
+    .single();
+
+  if (error) {
+    console.error(`❌ Mise à jour de l'étape "${stepName}" échouée:`, error);
+    return;
+  }
+
+  stepsMap.set(stepName, data);
+  console.log(`🧭 Étape "${stepName}" → ${data.status} (${data.progress}%)`);
+}
+
+async function applyMultipleStepStatuses(stepsMap, updates) {
+  for (const update of updates) {
+    await applyStepStatus(stepsMap, update.name, update.status, update.progress);
+  }
+}
+
 async function fetchContext(email) {
   const { data: client, error: clientError } = await supabase
     .from('Client')
@@ -328,6 +456,17 @@ async function main() {
   const fallbackAmount = dossier.montantFinal || rawEstimated || 48000;
   const finalAmount = Number(fallbackAmount) > 0 ? Number(fallbackAmount) : 48000;
 
+  let dossierSteps = await ensureDossierSteps({
+    dossier,
+    productName,
+    clientName,
+    montantFinal: finalAmount
+  });
+
+  const applySteps = async (updates) => {
+    await applyMultipleStepStatuses(dossierSteps, updates);
+  };
+
   const clientFeePct = normalizePercentage(expertInfo?.client_fee_percentage, 0.3);
   const profitumFeePct = normalizePercentage(expertInfo?.profitum_fee_percentage, 0.3);
 
@@ -429,6 +568,12 @@ async function main() {
       });
     }
 
+    await applySteps([
+      { name: "Confirmer l'éligibilité", status: 'completed' },
+      { name: "Sélection de l'expert", status: 'completed' },
+      { name: 'Collecte des documents', status: 'in_progress', progress: 25 }
+    ]);
+
     return updated;
   });
 
@@ -494,6 +639,11 @@ async function main() {
         action_url: `/admin/dossiers/${updated.id}`,
       });
     }
+
+    await applySteps([
+      { name: 'Collecte des documents', status: 'completed' },
+      { name: 'Audit technique', status: 'in_progress', progress: 45 }
+    ]);
 
     return updated;
   });
@@ -577,6 +727,11 @@ async function main() {
       });
     }
 
+    await applySteps([
+      { name: 'Audit technique', status: 'completed' },
+      { name: 'Validation finale', status: 'in_progress', progress: 40 }
+    ]);
+
     return updated;
   });
 
@@ -652,6 +807,11 @@ async function main() {
         action_url: `/admin/dossiers/${updated.id}`,
       });
     }
+
+    await applySteps([
+      { name: 'Validation finale', status: 'completed' },
+      { name: 'Demande de remboursement', status: 'in_progress', progress: 30 }
+    ]);
 
     return updated;
   });
@@ -738,6 +898,10 @@ async function main() {
         action_url: `/apporteur/dossiers/${updated.id}`,
       });
     }
+
+    await applySteps([
+      { name: 'Demande de remboursement', status: 'in_progress', progress: 55 }
+    ]);
 
     return updated;
   });
@@ -833,6 +997,10 @@ async function main() {
         action_url: `/admin/dossiers/${updated.id}`,
       });
     }
+
+    await applySteps([
+      { name: 'Demande de remboursement', status: 'in_progress', progress: 70 }
+    ]);
 
     return updated;
   });
@@ -944,6 +1112,10 @@ async function main() {
         action_url: `/apporteur/dossiers/${updated.id}`,
       });
     }
+
+    await applySteps([
+      { name: 'Demande de remboursement', status: 'completed' }
+    ]);
 
     return updated;
   });

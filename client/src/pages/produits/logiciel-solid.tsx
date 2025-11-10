@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { 
-  Truck,
+  Calculator,
   FileText, 
   Users, 
   CheckCircle, 
@@ -14,12 +14,12 @@ import {
   AlertCircle,
   Info,
   Award,
-  Calculator,
   Handshake,
   Target,
   UserCheck,
   Gauge,
-  TrendingUp
+  TrendingUp,
+  Database
 } from "lucide-react";
 import { get } from "@/lib/api";
 import UniversalProductWorkflow from "@/components/UniversalProductWorkflow";
@@ -50,9 +50,13 @@ interface ClientProduitEligible {
     description?: string;
     category?: string;
   };
+  Client?: {
+    company_name?: string;
+    email?: string;
+  };
 }
 
-const ChronoProductPage = () => {
+const LogicielSolidPage = () => {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -95,7 +99,7 @@ const ChronoProductPage = () => {
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Chargement du dossier Chronotachygraphes...</p>
+              <p className="text-gray-600">Chargement du dossier Logiciel Solid...</p>
             </div>
           </div>
         </div>
@@ -149,15 +153,15 @@ const ChronoProductPage = () => {
           <CardHeader>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="p-3 bg-orange-100 rounded-lg">
-                  <Truck className="w-8 h-8 text-orange-600" />
+                <div className="p-3 bg-indigo-100 rounded-lg">
+                  <Database className="w-8 h-8 text-indigo-600" />
                 </div>
                 <div>
                   <CardTitle className="text-2xl font-bold text-gray-900">
-                    Chronotachygraphes Digitaux
+                    Logiciel Solid
                   </CardTitle>
                   <p className="text-gray-600">
-                    Pilotage temps réel et démarches TICPE simplifiées
+                    Automatisation de la gestion comptable et RH pour PME
                   </p>
                 </div>
               </div>
@@ -169,16 +173,16 @@ const ChronoProductPage = () => {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="text-center">
-                <div className="text-3xl font-bold text-orange-600 mb-2">
+                <div className="text-3xl font-bold text-indigo-600 mb-2">
                   {clientProduit.montantFinal?.toLocaleString('fr-FR') || 'N/A'}€
                 </div>
-                <div className="text-sm text-gray-600">Coût d'installation</div>
+                <div className="text-sm text-gray-600">Coût d'abonnement</div>
               </div>
               <div className="text-center">
                 <div className="text-3xl font-bold text-indigo-600 mb-2">
-                  {clientProduit.dureeFinale || '2'} mois
+                  {clientProduit.dureeFinale || '1'} mois
                 </div>
-                <div className="text-sm text-gray-600">Délai installation</div>
+                <div className="text-sm text-gray-600">Délai de déploiement</div>
               </div>
             </div>
           </CardContent>
@@ -189,7 +193,7 @@ const ChronoProductPage = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Info className="w-5 h-5" />
-              Service Chronotachygraphes Digitaux
+              Service Logiciel Solid
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -197,8 +201,9 @@ const ChronoProductPage = () => {
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-3">Qu'est-ce que c'est ?</h3>
               <p className="text-gray-700 leading-relaxed">
-                Les <strong>chronotachygraphes digitaux</strong> permettent un pilotage en temps réel 
-                de votre flotte et simplifient vos démarches administratives liées au remboursement TICPE.
+                <strong>Logiciel Solid</strong> est une solution complète d'automatisation de la gestion comptable 
+                et RH pour les PME industrielles et de services. Intégration ERP, gestion des paies, 
+                et transmission automatique des données comptables.
               </p>
             </div>
 
@@ -214,15 +219,15 @@ const ChronoProductPage = () => {
                   <div className="flex items-start gap-3">
                     <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
                     <div>
-                      <h4 className="font-medium text-gray-800">Suivi temps réel</h4>
-                      <p className="text-sm text-gray-600">Monitoring complet de votre flotte</p>
+                      <h4 className="font-medium text-gray-800">Automatisation complète</h4>
+                      <p className="text-sm text-gray-600">Gestion comptable et RH automatisée</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
                     <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
                     <div>
-                      <h4 className="font-medium text-gray-800">Conformité réglementaire</h4>
-                      <p className="text-sm text-gray-600">Respect obligations légales</p>
+                      <h4 className="font-medium text-gray-800">Intégration ERP</h4>
+                      <p className="text-sm text-gray-600">Connexion avec vos systèmes existants</p>
                     </div>
                   </div>
                 </div>
@@ -230,15 +235,15 @@ const ChronoProductPage = () => {
                   <div className="flex items-start gap-3">
                     <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
                     <div>
-                      <h4 className="font-medium text-gray-800">Démarches TICPE simplifiées</h4>
-                      <p className="text-sm text-gray-600">Données automatisées pour remboursement</p>
+                      <h4 className="font-medium text-gray-800">Formation incluse</h4>
+                      <p className="text-sm text-gray-600">Accompagnement et formation des équipes</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
                     <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
                     <div>
                       <h4 className="font-medium text-gray-800">Support technique</h4>
-                      <p className="text-sm text-gray-600">Installation et formation incluses</p>
+                      <p className="text-sm text-gray-600">Assistance continue et mises à jour</p>
                     </div>
                   </div>
                 </div>
@@ -253,7 +258,7 @@ const ChronoProductPage = () => {
           <div className="mt-8">
             <UniversalProductWorkflow
               clientProduitId={clientProduit.id}
-              productKey="chronotachygraphes"
+              productKey="logiciel_solid"
               companyName={clientProduit.Client?.company_name}
               estimatedAmount={clientProduit.montantFinal}
             />
@@ -265,5 +270,5 @@ const ChronoProductPage = () => {
   );
 };
 
-export default ChronoProductPage;
+export default LogicielSolidPage;
 

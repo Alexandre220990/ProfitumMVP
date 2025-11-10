@@ -18,7 +18,9 @@ import {
   Home,
   Leaf,
   TrendingUp,
-  Euro
+  Euro,
+  Truck,
+  Handshake
 } from 'lucide-react';
 
 // ============================================================================
@@ -411,6 +413,105 @@ export const PRODUCT_CONFIGS: Record<string, ProductWorkflowConfig> = {
     ],
     workflowSteps: STANDARD_WORKFLOW_STEPS,
     specificInstructions: 'Uploadez vos factures d\'énergie (EDF, GDF/Engie, Enedis) pour évaluer vos opportunités d\'économies d\'énergie et de récupération de CEE.'
+  },
+
+  // ===========================
+  // CHRONOTACHYGRAPHES DIGITAUX
+  // ===========================
+  chronotachygraphes: {
+    productKey: 'chronotachygraphes',
+    productName: 'Chronotachygraphes Digitaux',
+    productIcon: Truck,
+    category: 'Équipement transport',
+    estimatedDuration: '1-2 mois',
+    requiredDocuments: [
+      COMMON_DOCUMENTS.kbis,
+      {
+        type: 'immatriculation_vehicules',
+        label: 'Cartes grises des véhicules',
+        description: 'Certificats d\'immatriculation des véhicules de +7,5T',
+        required: true,
+        acceptedFormats: ['application/pdf', 'image/jpeg', 'image/png'],
+        maxSize: 10,
+        canReuseFromOtherProduct: false
+      }
+    ],
+    workflowSteps: [
+      {
+        id: 1,
+        name: 'Vérifications initiales',
+        description: 'Confirmer le nombre de véhicules et l\'équipement',
+        icon: Shield,
+        component: 'initial_checks'
+      },
+      {
+        id: 2,
+        name: 'Proposition partenaire',
+        description: 'Demande de devis au distributeur',
+        icon: Handshake,
+        component: 'partner_quote'
+      },
+      {
+        id: 3,
+        name: 'Devis & validation',
+        description: 'Validation du devis et des conditions',
+        icon: FileText,
+        component: 'quote_validation'
+      },
+      {
+        id: 4,
+        name: 'Facturation & installation',
+        description: 'Émission facture et suivi installation',
+        icon: Euro,
+        component: 'invoice_installation'
+      }
+    ],
+    specificInstructions: 'Processus simplifié : confirmation des informations, devis partenaire, validation et facturation.'
+  },
+
+  // ===========================
+  // LOGICIEL SOLID
+  // ===========================
+  logiciel_solid: {
+    productKey: 'logiciel_solid',
+    productName: 'Logiciel Solid',
+    productIcon: Calculator,
+    category: 'Logiciel de gestion',
+    estimatedDuration: '1-2 mois',
+    requiredDocuments: [
+      COMMON_DOCUMENTS.kbis
+    ],
+    workflowSteps: [
+      {
+        id: 1,
+        name: 'Vérifications initiales',
+        description: 'Confirmer les besoins et informations',
+        icon: Shield,
+        component: 'initial_checks'
+      },
+      {
+        id: 2,
+        name: 'Proposition partenaire',
+        description: 'Demande de devis au distributeur',
+        icon: Handshake,
+        component: 'partner_quote'
+      },
+      {
+        id: 3,
+        name: 'Devis & validation',
+        description: 'Validation du devis et des conditions',
+        icon: FileText,
+        component: 'quote_validation'
+      },
+      {
+        id: 4,
+        name: 'Facturation & déploiement',
+        description: 'Émission facture et suivi déploiement',
+        icon: Euro,
+        component: 'invoice_deployment'
+      }
+    ],
+    specificInstructions: 'Processus simplifié : confirmation des besoins, devis partenaire, validation et facturation.'
   }
 };
 

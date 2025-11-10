@@ -42,6 +42,8 @@ const FoncierProduct = React.lazy(() => import('./pages/produits/foncier-product
 const MsaProduct = React.lazy(() => import('./pages/produits/msa-product'));
 const CirProduct = React.lazy(() => import('./pages/produits/cir-product'));
 const SocialProduct = React.lazy(() => import('./pages/produits/social-product'));
+const ChronoProduct = React.lazy(() => import('./pages/produits/chrono-product'));
+const LogicielSolidProduct = React.lazy(() => import('./pages/produits/logiciel-solid'));
 
 // Pages d'authentification
 const ConnexionClient = React.lazy(() => import('./pages/connexion-client'));
@@ -255,6 +257,8 @@ function App() {
                         <Route path="/produits/msa/:id" element={<MsaProduct />} />
                         <Route path="/produits/cir/:id" element={<CirProduct />} />
                         <Route path="/produits/social/:id" element={<SocialProduct />} />
+                        <Route path="/produits/chronotachygraphes/:id" element={<ChronoProduct />} />
+                        <Route path="/produits/logiciel-solid/:id" element={<LogicielSolidProduct />} />
                         
                         {/* Experts & Marketplace */}
                         <Route path="/experts" element={<Experts />} />

@@ -12,7 +12,10 @@ import {
   Clock,
   CreditCard,
   FileSignature,
-  Loader2
+  Loader2,
+  Download,
+  FileText,
+  CalendarDays
 } from 'lucide-react';
 
 import ProductUploadInline from './ProductUploadInline';
@@ -29,6 +32,9 @@ import { getProductConfig} from '@/config/productWorkflowConfigs';
 import { config } from '@/config/env';
 import CharterDialog from '@/components/CharterDialog';
 import { Checkbox } from '@/components/ui/checkbox';
+import InitialChecksWizard from '@/components/simplified-products/InitialChecksWizard';
+import PartnerRequestCard from '@/components/simplified-products/PartnerRequestCard';
+import QuotePanel from '@/components/simplified-products/QuotePanel';
 
 interface UniversalProductWorkflowProps {
   clientProduitId: string;
@@ -157,6 +163,31 @@ export default function UniversalProductWorkflow({
 
   // Hook pour les notifications en temps réel
   const { getDossierNotifications } = useDossierNotifications();
+
+  const formatCurrency = (value?: number | null) => {
+    if (value === undefined || value === null || Number.isNaN(value)) {
+      return '—';
+    }
+    return value.toLocaleString('fr-FR', {
+      style: 'currency',
+      currency: 'EUR',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  };
+
+  const formatDate = (value?: string | null) => {
+    if (!value) return '—';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return '—';
+    }
+    return date.toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric'
+    });
+  };
 
   // Définir les étapes du workflow depuis la config
   const workflowSteps = productConfig.workflowSteps;
@@ -435,14 +466,24 @@ export default function UniversalProductWorkflow({
             console.log(`📊 DIAGNOSTIC Étape 2: eligibilityValidated=${eligibilityValidated}, RESTE PENDING`);
           }
           break;
-        case 3: // Collecte des documents
-          if (clientProduit?.statut === 'documents_manquants' || 
-              clientProduit?.metadata?.documents_missing) {
-            status = 'in_progress'; // Documents manquants - Étape en cours
-          } else if (selectedExpert || currentStep >= 3) {
+        case 3: { // Collecte des documents
+          const stepRecord = steps.find(s => s.step_name === 'Collecte des documents');
+
+          if (stepRecord) {
+            if (stepRecord.status === 'completed') {
+              status = 'completed';
+            } else if (stepRecord.status === 'in_progress' || stepRecord.status === 'overdue') {
+              status = 'in_progress';
+            } else {
+              status = 'pending';
+            }
+          } else if (clientProduit?.statut === 'documents_manquants' || clientProduit?.metadata?.documents_missing) {
             status = 'in_progress';
+          } else if (selectedExpert || currentStep >= 3) {
+            status = 'completed';
           }
           break;
+        }
         case 4: // Audit technique
           if (steps.some(s => s.step_name === 'Audit technique' && s.status === 'completed')) {
             status = 'completed';
@@ -700,6 +741,273 @@ export default function UniversalProductWorkflow({
     </Card>
   );
 
+  const renderFinalRecapCard = () => {
+    if (!clientProduit) return null;
+
+    const metadata: any = clientProduit.metadata || {};
+    const implementationInfo = metadata.implementation || {};
+    const paymentInfo = metadata.payment || {};
+    const auditInfo = metadata.audit_result || {};
+    const commissionInfo = metadata.commission_conditions_accepted || {};
+    const expertAcceptance = metadata.expert_acceptance || {};
+    const administrationResult = metadata.administration_result || {};
+    const clientValidation = metadata.client_validation || {};
+
+    const refundAmount: number | null =
+      implementationInfo.refund_amount ??
+      metadata.montant_reel_recu ??
+      clientProduit.montantFinal ??
+      estimatedAmount ??
+      null;
+
+    const refundDate: string | undefined =
+      implementationInfo.refund_date ||
+      paymentInfo.refund_date ||
+      implementationInfo.validated_at;
+
+    const paymentStatusRaw: string =
+      paymentInfo.status ||
+      (clientProduit.statut === 'refund_completed' ? 'completed' : clientProduit.statut || '');
+    const normalizedPaymentStatus = paymentStatusRaw.toLowerCase();
+    const isPaymentCompleted = normalizedPaymentStatus === 'completed' || clientProduit.statut === 'refund_completed';
+
+    const paymentStatusLabel = isPaymentCompleted ? 'Paiement confirmé' : 'Paiement en cours';
+    const paymentBadgeClass = isPaymentCompleted
+      ? 'bg-green-100 text-green-700 border-green-200'
+      : 'bg-blue-100 text-blue-700 border-blue-200';
+    const paymentDescription = isPaymentCompleted
+      ? 'Votre remboursement et la facture Profitum sont réglés. Le dossier est clôturé.'
+      : 'Le remboursement est confirmé. La validation comptable du paiement Profitum reste en cours.';
+
+    const commissionHT = commissionInfo.estimation_ht ?? commissionInfo.profitum_total_fee ?? paymentInfo.invoice?.montant_ht ?? paymentInfo.requested_amount ?? invoice?.amount;
+    const commissionTTC =
+      commissionInfo.estimation_ttc ??
+      paymentInfo.invoice?.montant_ttc ??
+      paymentInfo.requested_amount ??
+      invoice?.metadata?.montant_ttc ??
+      (commissionHT ? commissionHT * 1.2 : null);
+
+    const expertFee = commissionInfo.expert_total_fee ?? null;
+    const expertName = clientProduit.Expert?.name || commissionInfo.expert_name || expertAcceptance.expert_name;
+
+    const timelineEntries = [
+      expertAcceptance.accepted_at && {
+        label: 'Expert confirmé',
+        date: expertAcceptance.accepted_at,
+        detail: expertName
+      },
+      auditInfo.completed_at && {
+        label: 'Audit finalisé',
+        date: auditInfo.completed_at,
+        detail: auditInfo.montant_final ? `Montant final ${formatCurrency(auditInfo.montant_final)}` : undefined
+      },
+      clientValidation.validated_at && {
+        label: 'Validation client',
+        date: clientValidation.validated_at,
+        detail: 'Conditions commission acceptées'
+      },
+      (implementationInfo.validated_at || administrationResult.date_retour) && {
+        label: 'Décision administration',
+        date: implementationInfo.validated_at || administrationResult.date_retour,
+        detail: administrationResult.decision ? `Décision : ${administrationResult.decision}` : undefined
+      },
+      refundDate && {
+        label: 'Remboursement reçu',
+        date: refundDate,
+        detail: implementationInfo.refund_reference ? `Réf. ${implementationInfo.refund_reference}` : undefined
+      },
+      (paymentInfo.completed_at || paymentInfo.paiement_date) && {
+        label: 'Paiement Profitum',
+        date: paymentInfo.completed_at || paymentInfo.paiement_date,
+        detail: paymentInfo.payment_reference || paymentInfo.invoice?.number || invoice?.invoice_number
+      }
+    ].filter(Boolean) as Array<{ label: string; date: string; detail?: string }>;
+
+    return (
+      <div className="space-y-6">
+        <Card className="max-w-4xl mx-auto border-green-200 bg-gradient-to-br from-green-50 via-white to-green-50 shadow-sm">
+          <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center ${isPaymentCompleted ? 'bg-green-100' : 'bg-blue-100'}`}>
+                {isPaymentCompleted ? (
+                  <CheckCircle className="w-6 h-6 text-green-600" />
+                ) : (
+                  <Clock className="w-6 h-6 text-blue-600" />
+                )}
+              </div>
+              <div>
+                <CardTitle className="text-2xl font-bold text-gray-900">
+                  Synthèse finale du dossier
+                </CardTitle>
+                <p className="text-sm text-gray-600">
+                  {paymentDescription}
+                </p>
+              </div>
+            </div>
+            <Badge variant="outline" className={`text-xs font-semibold tracking-wide ${paymentBadgeClass}`}>
+              {paymentStatusLabel}
+            </Badge>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="rounded-xl border border-green-200 bg-white/80 p-4">
+                <p className="text-xs uppercase text-gray-500 tracking-wide mb-1">Montant remboursé</p>
+                <p className="text-2xl font-bold text-green-700">{formatCurrency(refundAmount)}</p>
+                <p className="mt-2 flex items-center gap-2 text-xs text-gray-500">
+                  <CalendarDays className="w-4 h-4 text-gray-400" />
+                  {formatDate(refundDate)}
+                </p>
+              </div>
+              <div className="rounded-xl border border-amber-200 bg-white/80 p-4">
+                <p className="text-xs uppercase text-gray-500 tracking-wide mb-1">Commission Profitum TTC</p>
+                <p className="text-2xl font-bold text-amber-700">{formatCurrency(commissionTTC)}</p>
+                <p className="mt-2 text-xs text-gray-500">
+                  Commission expert : {formatCurrency(expertFee)}
+                </p>
+              </div>
+              <div className="rounded-xl border border-blue-200 bg-white/80 p-4">
+                <p className="text-xs uppercase text-gray-500 tracking-wide mb-1">Référence dossier</p>
+                <p className="text-sm font-semibold text-blue-800 break-all">{implementationInfo.reference || paymentInfo.payment_reference || '—'}</p>
+                {paymentInfo.completed_at && (
+                  <p className="mt-2 text-xs text-gray-500">
+                    Dernière mise à jour : {formatDate(paymentInfo.completed_at)}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-3">
+                <h4 className="text-sm font-semibold text-gray-800">Informations remboursement</h4>
+                <dl className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <dt className="text-gray-500">Organisme</dt>
+                    <dd className="font-medium text-gray-900">
+                      {implementationInfo.organisme || 'Administration compétente'}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-gray-500">Décision</dt>
+                    <dd className="font-medium text-gray-900">
+                      {administrationResult.decision ? administrationResult.decision.toUpperCase() : 'Validé'}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-gray-500">Référence remboursement</dt>
+                    <dd className="font-medium text-gray-900 break-all">
+                      {implementationInfo.refund_reference || '—'}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-gray-500">Date de validation</dt>
+                    <dd className="font-medium text-gray-900">
+                      {formatDate(implementationInfo.validated_at || administrationResult.date_retour)}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+
+              <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-3">
+                <h4 className="text-sm font-semibold text-gray-800">Audit & conditions</h4>
+                <dl className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <dt className="text-gray-500">Expert référent</dt>
+                    <dd className="font-medium text-gray-900">{expertName || '—'}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-gray-500">Montant audit validé</dt>
+                    <dd className="font-medium text-gray-900">
+                      {formatCurrency(auditInfo.montant_final)}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-gray-500">Commission client (%)</dt>
+                    <dd className="font-medium text-gray-900">
+                      {commissionInfo.client_fee_percentage
+                        ? `${(commissionInfo.client_fee_percentage * 100).toFixed(0)}%`
+                        : '—'}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-gray-500">Commission Profitum HT</dt>
+                    <dd className="font-medium text-gray-900">
+                      {formatCurrency(commissionHT)}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+            </div>
+
+            {timelineEntries.length > 0 && (
+              <div className="rounded-xl border border-gray-200 bg-white p-4">
+                <h4 className="text-sm font-semibold text-gray-800 mb-3">Moments clés</h4>
+                <div className="space-y-3">
+                  {timelineEntries.map((entry, index) => (
+                    <div key={`${entry.label}-${index}`} className="flex items-start gap-3">
+                      <div className="mt-0.5">
+                        <CheckCircle className="w-4 h-4 text-green-600" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{entry.label}</p>
+                        <p className="text-xs text-gray-500">
+                          {formatDate(entry.date)}
+                          {entry.detail && ` • ${entry.detail}`}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-wrap gap-3">
+              {auditInfo.rapport_url && (
+                <Button
+                  variant="outline"
+                  className="border-green-200 text-green-700 hover:bg-green-100"
+                  asChild
+                >
+                  <a href={auditInfo.rapport_url} target="_blank" rel="noopener noreferrer">
+                    <FileText className="w-4 h-4 mr-2" />
+                    Consulter le rapport d'audit
+                  </a>
+                </Button>
+              )}
+
+              {implementationInfo.reference && (
+                <Badge className="border-blue-200 bg-blue-50 text-blue-700">
+                  Réf. DGDDI&nbsp;: {implementationInfo.reference}
+                </Badge>
+              )}
+
+              {paymentInfo.payment_reference && (
+                <Badge className="border-purple-200 bg-purple-50 text-purple-700">
+                  Facture Profitum&nbsp;: {paymentInfo.payment_reference}
+                </Badge>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {invoice && (
+          <div className="max-w-4xl mx-auto">
+            <InvoiceDisplay
+              invoice={invoice}
+              dossierId={clientProduitId}
+              showConfirmPayment={!isPaymentCompleted}
+              showPaymentOptions={!isPaymentCompleted}
+              onPaymentConfirmed={() => {
+                loadClientProduit();
+                loadInvoice();
+                toast.success('🎉 Paiement confirmé ! Merci pour votre règlement.');
+              }}
+            />
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const getStepIcon = (step: any) => {
     const Icon = step.icon;
     switch (step.status) {
@@ -727,11 +1035,128 @@ export default function UniversalProductWorkflow({
     }
   };
 
+  const renderSimplifiedWorkflow = () => {
+    const metadata = clientProduit?.metadata || {};
+    const checklist = metadata[`${productKey}_checklist`] || {};
+    const devis = metadata.devis || {};
+    const facture = metadata.facture || {};
+    const partnerName = productKey === 'chronotachygraphes' ? 'O\'clock' : 'SDEI';
+
+    // Étape 1 : Vérifications initiales
+    if (currentStep === 1 || !checklist.validated_at) {
+      return (
+        <InitialChecksWizard
+          dossierId={clientProduitId}
+          productKey={productKey as 'chronotachygraphes' | 'logiciel_solid'}
+          initialData={checklist}
+          onComplete={() => {
+            loadClientProduit();
+            setCurrentStep(2);
+          }}
+        />
+      );
+    }
+
+    // Étape 2 : Demande de devis au partenaire
+    if (currentStep === 2 && !devis.proposed_at) {
+      return (
+        <PartnerRequestCard
+          dossierId={clientProduitId}
+          productName={productConfig.productName}
+          partnerName={partnerName}
+          onRequestSent={() => {
+            loadClientProduit();
+            setCurrentStep(3);
+          }}
+        />
+      );
+    }
+
+    // Étape 3 : Devis & validation
+    if (currentStep === 3 && devis.status !== 'accepted' && !facture.status) {
+      return (
+        <QuotePanel
+          dossierId={clientProduitId}
+          devis={devis}
+          userType="client"
+          onUpdate={() => {
+            loadClientProduit();
+            if (devis.status === 'accepted') {
+              setCurrentStep(4);
+            }
+          }}
+        />
+      );
+    }
+
+    // Étape 4 : Facturation & installation
+    if (currentStep === 4 || facture.status) {
+      if (facture.status === 'issued' && invoice) {
+        return (
+          <div className="space-y-6">
+            <QuotePanel
+              dossierId={clientProduitId}
+              devis={devis}
+              userType="client"
+              onUpdate={loadClientProduit}
+            />
+            <InvoiceDisplay
+              invoice={invoice}
+              dossierId={clientProduitId}
+              showConfirmPayment={facture.status !== 'paid'}
+              showPaymentOptions={facture.status !== 'paid'}
+              onPaymentConfirmed={() => {
+                loadClientProduit();
+                loadInvoice();
+                toast.success('🎉 Paiement confirmé ! Merci pour votre règlement.');
+              }}
+            />
+          </div>
+        );
+      }
+
+      if (facture.status === 'paid' || clientProduit?.statut === 'refund_completed') {
+        return renderFinalRecapCard();
+      }
+
+      return (
+        <Card className="max-w-2xl mx-auto">
+          <CardContent className="p-6 text-center">
+            <Clock className="w-12 h-12 text-blue-600 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">
+              En attente de facture
+            </h3>
+            <p className="text-sm text-gray-600">
+              Votre expert va émettre la facture prochainement.
+            </p>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    return null;
+  };
+
   const renderStepContent = () => {
-    const steps = calculatedSteps.length > 0 ? calculatedSteps : workflowSteps;
-    const currentWorkflowStep = steps.find(step => step.id === currentStep);
+    // Détecter les produits simplifiés
+    const isSimplifiedProduct = productKey === 'chronotachygraphes' || productKey === 'logiciel_solid';
     
-    if (!currentWorkflowStep) return null;
+    if (isSimplifiedProduct) {
+      return renderSimplifiedWorkflow();
+    }
+
+    const steps = calculatedSteps.length > 0 ? calculatedSteps : workflowSteps;
+    const lastStepId = steps.length > 0 ? steps[steps.length - 1].id : 0;
+    const effectiveStepId = lastStepId ? Math.min(currentStep, lastStepId) : currentStep;
+    const currentWorkflowStep = steps.find(step => step.id === effectiveStepId);
+    const finalStatuses = ['payment_in_progress', 'refund_completed'];
+    
+    if (!currentWorkflowStep) {
+      if (clientProduit && finalStatuses.includes(clientProduit.statut || '')) {
+        return renderFinalRecapCard();
+      }
+      return null;
+    }
 
     switch (currentWorkflowStep.component) {
       case 'expert':
@@ -1021,50 +1446,9 @@ export default function UniversalProductWorkflow({
               </div>
             )}
 
-            {clientProduit?.statut === 'payment_in_progress' && (
-              <div className="space-y-4">
-                <Card className="max-w-2xl mx-auto border-blue-200 bg-blue-50">
-                  <CardContent className="p-6 text-center">
-                    <CreditCard className="w-12 h-12 text-blue-600 mx-auto mb-4" />
-                    <h4 className="text-lg font-semibold text-blue-900 mb-2">
-                      💳 Paiement en cours de traitement
-                    </h4>
-                    <p className="text-sm text-blue-800">
-                      Votre paiement est initié. Dès confirmation de la réception, validez ci-dessous pour clôturer le dossier.
-                    </p>
-                  </CardContent>
-                </Card>
+            {clientProduit?.statut === 'payment_in_progress' && renderFinalRecapCard()}
 
-                {invoice && (
-                  <div className="max-w-2xl mx-auto">
-                    <InvoiceDisplay
-                      invoice={invoice}
-                      dossierId={clientProduitId}
-                      showPaymentOptions={false}
-                      onPaymentConfirmed={() => {
-                        loadClientProduit();
-                        loadInvoice();
-                        toast.success('🎉 Paiement confirmé !');
-                      }}
-                    />
-                  </div>
-                )}
-              </div>
-            )}
-
-            {clientProduit?.statut === 'refund_completed' && (
-              <Card className="max-w-2xl mx-auto border-green-200 bg-green-50">
-                <CardContent className="p-6 text-center">
-                  <CheckCircle className="w-12 h-12 text-green-600 mx-auto mb-4" />
-                  <h4 className="text-lg font-semibold text-green-900 mb-2">
-                    🎉 Dossier clôturé
-                  </h4>
-                  <p className="text-sm text-green-800">
-                    Félicitations, votre remboursement est confirmé et le dossier est terminé.
-                  </p>
-                </CardContent>
-              </Card>
-            )}
+            {clientProduit?.statut === 'refund_completed' && renderFinalRecapCard()}
 
             {!['implementation_in_progress', 'implementation_validated', 'payment_requested', 'payment_in_progress', 'refund_completed'].includes(clientProduit?.statut || '') && (
               <Card className="max-w-2xl mx-auto border-gray-200">

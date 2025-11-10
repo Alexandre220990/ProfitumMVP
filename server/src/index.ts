@@ -28,6 +28,7 @@ import simulationRoutes from './routes/simulationRoutes';
 import clientRoutes from './routes/client';
 import clientSimulationRoutes from './routes/client-simulation';
 import clientReactivationRoutes from './routes/client-reactivation';
+import simplifiedProductsRoutes from './routes/simplified-products';
 import expertRoutes from './routes/expert';
 import adminRoutes from './routes/admin';
 import auditRoutes from './routes/audit';
@@ -278,6 +279,9 @@ app.use('/api/client/simulation', enhancedAuthMiddleware, requireUserType('clien
 
 // Routes réactivation client - PROTÉGÉES
 app.use('/api/client', enhancedAuthMiddleware, requireUserType('client'), clientReactivationRoutes);
+
+// Routes produits simplifiés (Chronotachygraphes, Logiciel Solid) - PROTÉGÉES
+app.use('/api/simplified-products', enhancedAuthMiddleware, simplifiedProductsRoutes);
 
 // Routes documents unifiées pour tous les users - PROTÉGÉES
 // Utilisation de simpleAuthMiddleware pour meilleure compatibilité avec tokens JWT clients
