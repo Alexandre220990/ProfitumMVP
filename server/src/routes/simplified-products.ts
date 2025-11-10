@@ -7,9 +7,53 @@ import express, { Request, Response } from 'express';
 import { supabase } from '../lib/supabase';
 import { enhancedAuthMiddleware, AuthenticatedRequest } from '../middleware/auth-enhanced';
 import { DossierTimelineService } from '../services/dossier-timeline-service';
-import { NotificationService } from '../services/NotificationService';
+import { createClient } from '@supabase/supabase-js';
 
 const router = express.Router();
+
+const supabaseAdmin = createClient(
+  process.env.SUPABASE_URL || '',
+  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+);
+
+interface NotificationPayload {
+  user_id: string;
+  user_type: 'client' | 'expert' | 'admin' | 'apporteur';
+  title: string;
+  message: string;
+  notification_type: string;
+  priority?: 'low' | 'medium' | 'high';
+  action_url?: string;
+  metadata?: Record<string, any>;
+}
+
+async function createNotification(payload: NotificationPayload) {
+  const now = new Date().toISOString();
+  const { error } = await supabaseAdmin.from('notification').insert({
+    user_id: payload.user_id,
+    user_type: payload.user_type,
+    title: payload.title,
+    message: payload.message,
+    notification_type: payload.notification_type,
+    priority: payload.priority ?? 'medium',
+    is_read: false,
+    created_at: now,
+    updated_at: now,
+    action_url: payload.action_url ?? null,
+    metadata: payload.metadata ?? null,
+  });
+
+  if (error) {
+    console.error('❌ Erreur création notification:', error);
+  }
+}
+
+function getFirst<T>(value: T | T[] | null | undefined): T | undefined {
+  if (Array.isArray(value)) {
+    return value[0];
+  }
+  return value ?? undefined;
+}
 
 // ============================================================================
 // HELPER: Récupérer l'expert distributeur par produit
@@ -61,7 +105,8 @@ router.post('/:dossierId/initial-checks', enhancedAuthMiddleware, async (req: Re
     }
 
     // Déterminer le productKey
-    const productName = dossier.ProduitEligible?.nom || '';
+    const produitEligible = getFirst(dossier.ProduitEligible);
+    const productName = produitEligible?.nom || '';
     const productKey = productName.toLowerCase().includes('chronotachygraphe') 
       ? 'chronotachygraphes' 
       : 'logiciel_solid';
@@ -107,7 +152,7 @@ router.post('/:dossierId/initial-checks', enhancedAuthMiddleware, async (req: Re
       .select('id')
       .eq('dossier_id', dossierId)
       .eq('step_name', stepName)
-      .single();
+      .maybeSingle();
 
     if (!existingStep) {
       await supabase.from('DossierStep').insert({
@@ -147,7 +192,7 @@ router.post('/:dossierId/initial-checks', enhancedAuthMiddleware, async (req: Re
     });
 
     // Notification expert
-    await NotificationService.createNotification({
+    await createNotification({
       user_id: distributorExpert.id,
       user_type: 'expert',
       title: 'Nouveau dossier - Vérifications complétées',
@@ -190,8 +235,13 @@ router.post('/:dossierId/partner-request', enhancedAuthMiddleware, async (req: R
       return res.status(404).json({ success: false, message: 'Dossier ou expert non trouvé' });
     }
 
-    const expert = dossier.Expert as any;
-    const productName = dossier.ProduitEligible?.nom || 'Produit';
+    const expert = getFirst(dossier.Expert);
+    const produitPartner = getFirst(dossier.ProduitEligible);
+    const productName = produitPartner?.nom || 'Produit';
+
+    if (!expert) {
+      return res.status(404).json({ success: false, message: 'Expert non trouvé' });
+    }
 
     // Mettre à jour le statut
     await supabase.from('ClientProduitEligible')
@@ -205,7 +255,7 @@ router.post('/:dossierId/partner-request', enhancedAuthMiddleware, async (req: R
       .select('id')
       .eq('dossier_id', dossierId)
       .eq('step_name', stepName)
-      .single();
+      .maybeSingle();
 
     if (!existingStep) {
       await supabase.from('DossierStep').insert({
@@ -239,7 +289,7 @@ router.post('/:dossierId/partner-request', enhancedAuthMiddleware, async (req: R
     });
 
     // Notification expert
-    await NotificationService.createNotification({
+    await createNotification({
       user_id: expert.id,
       user_type: 'expert',
       title: 'Demande de devis reçue',
@@ -274,7 +324,7 @@ router.post('/:dossierId/quote/propose', enhancedAuthMiddleware, async (req: Req
 
     const { data: dossier, error: dossierError } = await supabase
       .from('ClientProduitEligible')
-      .select('id, clientId, expert_id, ProduitEligible:produitId(nom), Client:clientId(company_name, email)')
+      .select('id, clientId, expert_id, metadata, ProduitEligible:produitId(nom), Client:clientId(company_name, email)')
       .eq('id', dossierId)
       .single();
 
@@ -282,8 +332,8 @@ router.post('/:dossierId/quote/propose', enhancedAuthMiddleware, async (req: Req
       return res.status(404).json({ success: false, message: 'Dossier non trouvé ou non assigné' });
     }
 
-    const client = dossier.Client as any;
-    const productName = dossier.ProduitEligible?.nom || 'Produit';
+    const produitEligible = getFirst(dossier.ProduitEligible);
+    const productName = produitEligible?.nom || 'Produit';
 
     // Calculer la date de validité (1 mois par défaut)
     const validUntilDate = valid_until || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
@@ -339,7 +389,7 @@ router.post('/:dossierId/quote/propose', enhancedAuthMiddleware, async (req: Req
     });
 
     // Notification client
-    await NotificationService.createNotification({
+    await createNotification({
       user_id: dossier.clientId,
       user_type: 'client',
       title: 'Devis disponible',
@@ -383,9 +433,13 @@ router.post('/:dossierId/quote/accept', enhancedAuthMiddleware, async (req: Requ
       return res.status(404).json({ success: false, message: 'Dossier non trouvé' });
     }
 
-    const expert = dossier.Expert as any;
+    const expert = getFirst(dossier.Expert);
     const metadata = dossier.metadata || {};
     const devis = metadata.devis || {};
+
+    if (!expert) {
+      return res.status(404).json({ success: false, message: 'Expert non trouvé' });
+    }
 
     // Mettre à jour le statut du devis
     metadata.devis = {
@@ -406,7 +460,8 @@ router.post('/:dossierId/quote/accept', enhancedAuthMiddleware, async (req: Requ
       .eq('step_name', 'Devis & validation');
 
     // Créer l'étape facturation
-    const productName = dossier.ProduitEligible?.nom || 'Produit';
+    const produitEligible = getFirst(dossier.ProduitEligible);
+    const productName = produitEligible?.nom || 'Produit';
     await supabase.from('DossierStep').upsert({
       dossier_id: dossierId,
       dossier_name: productName,
@@ -437,7 +492,7 @@ router.post('/:dossierId/quote/accept', enhancedAuthMiddleware, async (req: Requ
     });
 
     // Notification expert
-    await NotificationService.createNotification({
+    await createNotification({
       user_id: expert.id,
       user_type: 'expert',
       title: 'Devis accepté',
@@ -481,9 +536,13 @@ router.post('/:dossierId/quote/reject', enhancedAuthMiddleware, async (req: Requ
       return res.status(404).json({ success: false, message: 'Dossier non trouvé' });
     }
 
-    const expert = dossier.Expert as any;
+    const expert = getFirst(dossier.Expert);
     const metadata = dossier.metadata || {};
     const devis = metadata.devis || {};
+
+    if (!expert) {
+      return res.status(404).json({ success: false, message: 'Expert non trouvé' });
+    }
 
     metadata.devis = {
       ...devis,
@@ -510,7 +569,7 @@ router.post('/:dossierId/quote/reject', enhancedAuthMiddleware, async (req: Requ
     });
 
     // Notification expert
-    await NotificationService.createNotification({
+    await createNotification({
       user_id: expert.id,
       user_type: 'expert',
       title: 'Devis refusé',
@@ -561,9 +620,13 @@ router.post('/:dossierId/quote/comment', enhancedAuthMiddleware, async (req: Req
       return res.status(403).json({ success: false, message: 'Accès non autorisé' });
     }
 
-    const expert = dossier.Expert as any;
+    const expert = getFirst(dossier.Expert);
     const metadata = dossier.metadata || {};
     const devis = metadata.devis || {};
+
+    if (!expert) {
+      return res.status(404).json({ success: false, message: 'Expert non trouvé' });
+    }
 
     if (user.type === 'client') {
       metadata.devis = {
@@ -574,7 +637,7 @@ router.post('/:dossierId/quote/comment', enhancedAuthMiddleware, async (req: Req
       };
 
       // Notification expert
-      await NotificationService.createNotification({
+      await createNotification({
         user_id: expert.id,
         user_type: 'expert',
         title: 'Demande d\'informations complémentaires',
@@ -592,7 +655,7 @@ router.post('/:dossierId/quote/comment', enhancedAuthMiddleware, async (req: Req
       };
 
       // Notification client
-      await NotificationService.createNotification({
+      await createNotification({
         user_id: dossier.clientId,
         user_type: 'client',
         title: 'Réponse de l\'expert',
@@ -653,8 +716,8 @@ router.post('/:dossierId/invoice/emit', enhancedAuthMiddleware, async (req: Requ
       return res.status(404).json({ success: false, message: 'Dossier non trouvé ou non assigné' });
     }
 
-    const client = dossier.Client as any;
-    const productName = dossier.ProduitEligible?.nom || 'Produit';
+    const produitEligible = getFirst(dossier.ProduitEligible);
+    const productName = produitEligible?.nom || 'Produit';
     const metadata = dossier.metadata || {};
     const devis = metadata.devis || {};
 
@@ -713,7 +776,7 @@ router.post('/:dossierId/invoice/emit', enhancedAuthMiddleware, async (req: Requ
     });
 
     // Notification client
-    await NotificationService.createNotification({
+    await createNotification({
       user_id: dossier.clientId,
       user_type: 'client',
       title: 'Facture disponible',
