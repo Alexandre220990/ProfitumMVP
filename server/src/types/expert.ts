@@ -10,6 +10,12 @@ export interface PublicExpert {
   company_name: string;
   siren: string;
   specializations: string[];
+  expertProduitEligibles: Array<{
+    produit_id: string;
+    produit_nom: string | null;
+    niveauExpertise: string | null;
+    statut: string;
+  }>;
   experience: string;
   location: string;
   rating: number;

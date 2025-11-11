@@ -5,6 +5,7 @@ import { Audit, Client, Expert } from '../types/database';
 import { ApiResponse } from '../types/api';
 import { PublicExpert } from '../types/expert';
 import { createClient } from "@supabase/supabase-js";
+import { ExpertProduitEligibleSyncService } from '../services/ExpertProduitEligibleSyncService';
 
 /**
  * Interface pour la réponse formatée des audits
@@ -127,7 +128,22 @@ router.post('/register', async (req, res) => {
 
     console.log('✅ Expert créé en base:', expert.id);
 
-    // 3. Gérer l'abonnement si fourni
+    // 3. Synchroniser les spécialisations vers ExpertProduitEligible
+    if (specializations && specializations.length > 0) {
+      try {
+        const syncService = new ExpertProduitEligibleSyncService(supabaseService);
+        const syncResult = await syncService.syncSpecializationsToExpertProduitEligible(
+          expert.id,
+          specializations
+        );
+        console.log(`✅ Synchronisation ExpertProduitEligible: ${syncResult.created} créé(s), ${syncResult.updated} mis à jour`);
+      } catch (syncError) {
+        console.error('⚠️ Erreur synchronisation ExpertProduitEligible (non bloquant):', syncError);
+        // Ne pas faire échouer l'inscription si la synchronisation échoue
+      }
+    }
+
+    // 4. Gérer l'abonnement si fourni
     if (abonnement && card_number && card_expiry && card_cvc) {
       try {
         // Ici vous pouvez intégrer votre logique de paiement
@@ -180,45 +196,67 @@ router.get('/', async (req, res) => {
         disponibilites,
         certifications,
         created_at,
-        updated_at
+        updated_at,
+        expertProduitEligibles:ExpertProduitEligible!inner (
+          produit_id,
+          niveauExpertise,
+          statut,
+          ProduitEligible:produit_id (
+            id,
+            nom
+          )
+        )
       `)
       .eq('status', 'active')
+      .eq('expertProduitEligibles.statut', 'actif')
       .order('rating', { ascending: false });
 
     if (error) throw error;
 
-    // Conversion sûre des données en PublicExpert[]
-    const experts: PublicExpert[] = expertsData.map(expert => ({
-      id: expert.id,
-      name: `${expert.first_name || ''} ${expert.last_name || ''}`.trim() || expert.company_name,
-      email: expert.email,
-      company_name: expert.company_name,
-      siren: expert.siren,
-      specializations: expert.specializations || [],
-      experience: expert.experience,
-      location: expert.location,
-      rating: expert.rating,
-      compensation: expert.compensation,
-      description: expert.description,
-      status: expert.status,
-      disponibilites: expert.disponibilites,
-      certifications: expert.certifications,
-      website: null,
-      linkedin: null,
-      languages: null,
-      availability: null,
-      max_clients: null,
-      hourly_rate: null,
-      phone: null,
-      approval_status: null,
-      // Champs calculés avec valeurs par défaut
-      total_assignments: 0,
-      completed_assignments: 0,
-      total_earnings: 0,
-      monthly_earnings: 0,
-      created_at: expert.created_at,
-      updated_at: expert.updated_at
-    }));
+    const experts: PublicExpert[] = (expertsData || []).map((expert: any) => {
+      if (!expert.expertProduitEligibles || expert.expertProduitEligibles.length === 0) {
+        throw new Error(`Expert ${expert.id} sans entrée ExpertProduitEligible active`);
+      }
+
+      const expertProduitEligibles = expert.expertProduitEligibles.map((eligibility: any) => ({
+        produit_id: eligibility.produit_id,
+        produit_nom: eligibility.ProduitEligible?.nom ?? null,
+        niveauExpertise: eligibility.niveauExpertise ?? eligibility.niveau_expertise ?? null,
+        statut: eligibility.statut
+      }));
+
+      return {
+        id: expert.id,
+        name: `${expert.first_name || ''} ${expert.last_name || ''}`.trim() || expert.company_name,
+        email: expert.email,
+        company_name: expert.company_name,
+        siren: expert.siren,
+        specializations: expert.specializations || [],
+        expertProduitEligibles,
+        experience: expert.experience,
+        location: expert.location,
+        rating: expert.rating,
+        compensation: expert.compensation,
+        description: expert.description,
+        status: expert.status,
+        disponibilites: expert.disponibilites,
+        certifications: expert.certifications,
+        website: null,
+        linkedin: null,
+        languages: null,
+        availability: null,
+        max_clients: null,
+        hourly_rate: null,
+        phone: null,
+        approval_status: null,
+        total_assignments: 0,
+        completed_assignments: 0,
+        total_earnings: 0,
+        monthly_earnings: 0,
+        created_at: expert.created_at,
+        updated_at: expert.updated_at
+      };
+    });
 
     const response: ApiResponse<PublicExpert[]> = {
       success: true,
@@ -259,9 +297,19 @@ router.get('/:id', async (req, res) => {
         disponibilites,
         certifications,
         created_at,
-        updated_at
+        updated_at,
+        expertProduitEligibles:ExpertProduitEligible!inner (
+          produit_id,
+          niveauExpertise,
+          statut,
+          ProduitEligible:produit_id (
+            id,
+            nom
+          )
+        )
       `)
       .eq('id', id)
+      .eq('expertProduitEligibles.statut', 'actif')
       .single();
 
     if (error) throw error;
@@ -273,7 +321,17 @@ router.get('/:id', async (req, res) => {
       });
     }
 
-    // Conversion sûre des données en PublicExpert
+    if (!expertData.expertProduitEligibles || expertData.expertProduitEligibles.length === 0) {
+      throw new Error(`Expert ${id} sans entrée ExpertProduitEligible active`);
+    }
+
+    const expertProduitEligibles = expertData.expertProduitEligibles.map((eligibility: any) => ({
+      produit_id: eligibility.produit_id,
+      produit_nom: eligibility.ProduitEligible?.nom ?? null,
+      niveauExpertise: eligibility.niveauExpertise ?? eligibility.niveau_expertise ?? null,
+      statut: eligibility.statut
+    }));
+
     const expert: PublicExpert = {
       id: expertData.id,
       name: `${expertData.first_name || ''} ${expertData.last_name || ''}`.trim() || expertData.company_name,
@@ -281,6 +339,7 @@ router.get('/:id', async (req, res) => {
       company_name: expertData.company_name,
       siren: expertData.siren,
       specializations: expertData.specializations || [],
+      expertProduitEligibles,
       experience: expertData.experience,
       location: expertData.location,
       rating: expertData.rating,
@@ -297,7 +356,6 @@ router.get('/:id', async (req, res) => {
       hourly_rate: null,
       phone: null,
       approval_status: null,
-      // Champs calculés avec valeurs par défaut
       total_assignments: 0,
       completed_assignments: 0,
       total_earnings: 0,
