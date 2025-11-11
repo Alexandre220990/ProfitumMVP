@@ -1,26 +1,14 @@
-/**
- * SIMULATEUR CLIENT - Version pour clients CONNECTÉS uniquement
- * 
- * Différences avec /simulateur:
- * - Authentification REQUISE
- * - Token JWT envoyé automatiquement
- * - Simulation liée au client_id existant
- * - PAS de client temporaire
- * - PAS de formulaire d'inscription à la fin
- * - Retour au dashboard
- * - Mise à jour intelligente des produits existants
- */
-
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, Calculator, Check, ArrowRight, CheckCircle, User } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Loader2, Edit3, CheckCircle2, Save, AlertCircle, ArrowLeft } from "lucide-react";
 import { config } from "@/config/env";
-import { useAuth } from '@/hooks/use-auth';
+import { useAuth } from "@/hooks/use-auth";
 
 interface QuestionOptions {
   choix?: string[];
@@ -40,14 +28,14 @@ interface ValidationRules {
 interface QuestionConditions {
   depends_on?: string;
   value?: any;
-  operator?: 'equals' | 'not_equals' | 'greater_than' | 'less_than';
+  operator?: "equals" | "not_equals" | "greater_than" | "less_than";
 }
 
-interface Question { 
+interface Question {
   id: string;
   question_order: number;
   question_text: string;
-  question_type: 'choix_unique' | 'choix_multiple' | 'nombre' | 'texte';
+  question_type: "choix_unique" | "choix_multiple" | "nombre" | "texte";
   description?: string;
   options: QuestionOptions;
   validation_rules: ValidationRules;
@@ -57,812 +45,838 @@ interface Question {
   phase: number;
 }
 
-const SimulateurClient = () => { 
+interface SimulatorSessionResponse {
+  success: boolean;
+  simulation_id: string | null;
+  answers: Record<string, any>;
+  last_completed_simulation: any;
+  message?: string;
+  expires_at?: string | null;
+}
+
+const SimulateurClient = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  
-  // ✅ VÉRIFICATION AUTHENTIFICATION OBLIGATOIRE
+
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [completedSimulation, setCompletedSimulation] = useState<any | null>(null);
+  const [draftSimulation, setDraftSimulation] = useState<{
+    id: string;
+    answers: Record<string, any>;
+    expires_at?: string | null;
+  } | null>(null);
+  const [draftAnswers, setDraftAnswers] = useState<Record<string, any>>({});
+  const [loading, setLoading] = useState(true);
+  const [sessionLoading, setSessionLoading] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [finalizing, setFinalizing] = useState(false);
+  const [missingQuestions, setMissingQuestions] = useState<string[]>([]);
+
+  const pendingChangesRef = useRef<Record<string, any>>({});
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const questionRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  const phaseDefinitions = useMemo(() => {
+    const phases = new Map<number, { phase: number; questions: Question[] }>();
+    questions.forEach((question) => {
+      const phaseNumber = question.phase ?? 0;
+      if (!phases.has(phaseNumber)) {
+        phases.set(phaseNumber, { phase: phaseNumber, questions: [] });
+      }
+      phases.get(phaseNumber)!.questions.push(question);
+    });
+
+    return Array.from(phases.values()).sort((a, b) => a.phase - b.phase);
+  }, [questions]);
+
   useEffect(() => {
     if (!user) {
       toast.error("Vous devez être connecté pour accéder au simulateur client");
-      navigate('/connexion-client');
+      navigate("/connexion-client");
     }
   }, [user, navigate]);
-  
-  // États du simulateur
-  const [currentStep, setCurrentStep] = useState(1);
-  const [totalSteps, setTotalSteps] = useState(0);
-  const [questions, setQuestions] = useState<Question[]>([]);
-  const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
-  const [responses, setResponses] = useState<Record<string, any>>({});
-  const [showWelcomeScreen, setShowWelcomeScreen] = useState(true);
-  const [sessionToken, setSessionToken] = useState<string>('');
-  const [showResults, setShowResults] = useState(false);
-  const [sessionStartTime, setSessionStartTime] = useState<number>(Date.now());
-  
-  // Nouveaux états pour la validation
-  const [currentResponse, setCurrentResponse] = useState<any>(null);
-  const [isValidating, setIsValidating] = useState(false);
-  
-  // États pour la mise à jour des produits
-  const [isUpdatingExisting, setIsUpdatingExisting] = useState(false);
-  const [updateProgress, setUpdateProgress] = useState<{
-    productsUpdated: number;
-    productsCreated: number;
-    productsProtected: number;
-    totalSavings: number;
-  } | null>(null);
 
-  // Helper pour obtenir les headers avec token (TOUJOURS avec token)
-  const getHeadersWithAuth = (): HeadersInit => {
+  const getHeadersWithAuth = useCallback((): HeadersInit => {
     const headers: HeadersInit = {
-      'Content-Type': 'application/json'
+      "Content-Type": "application/json"
     };
-    
-    const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    } else {
-      console.error('❌ Token JWT manquant!');
-      toast.error("Token d'authentification manquant. Reconnectez-vous.");
-      navigate('/connexion-client');
-    }
-    
-    return headers;
-  };
 
-  // Tracking analytics
-  const trackEvent = (eventName: string, data: Record<string, unknown> = {}) => { 
+    const token =
+      localStorage.getItem("token") || localStorage.getItem("supabase_token");
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    return headers;
+  }, []);
+
+  const loadQuestions = useCallback(async () => {
     try {
-      if (!sessionToken) {
-        console.log('⚠️ Tracking ignoré: sessionToken non disponible');
+      const response = await fetch(`${config.API_URL}/api/simulator/questions`);
+      if (response.ok) {
+        const questionsData = await response.json();
+        const questionsList = questionsData.questions || questionsData;
+        setQuestions(questionsList);
+      } else {
+        console.error("❌ Erreur chargement questions simulateur");
+        toast.error("Impossible de charger les questions du simulateur");
+      }
+    } catch (error) {
+      console.error("Erreur lors du chargement des questions: ", error);
+      toast.error("Erreur lors du chargement des questions");
+    }
+  }, []);
+
+  const shouldDisplayQuestion = useCallback(
+    (question: Question, answersSource: Record<string, any>) => {
+      const condition = question.conditions;
+      if (!condition || !condition.depends_on) {
+        return true;
+      }
+
+      const dependentValue = answersSource[condition.depends_on];
+      if (dependentValue === undefined || dependentValue === null) {
+        return false;
+      }
+
+      switch (condition.operator) {
+        case "not_equals":
+          return dependentValue !== condition.value;
+        case "greater_than":
+          return Number(dependentValue) > Number(condition.value);
+        case "less_than":
+          return Number(dependentValue) < Number(condition.value);
+        case "equals":
+        default:
+          return dependentValue === condition.value;
+      }
+    },
+    []
+  );
+
+  const fetchSession = useCallback(
+    async (options: { autoCreateDraft?: boolean } = {}) => {
+      if (!user) {
+        return null;
+      }
+
+      setSessionLoading(true);
+      try {
+        const response = await fetch(`${config.API_URL}/api/simulator/session`, {
+          method: "POST",
+          credentials: "include",
+          headers: getHeadersWithAuth(),
+          body: JSON.stringify({
+            client_data: {
+              client_mode: true,
+              created_at: new Date().toISOString(),
+              auto_create_draft: options.autoCreateDraft === true
+            }
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error("Réponse invalide de l'API session");
+        }
+
+        const data: SimulatorSessionResponse = await response.json();
+
+        if (!data.success) {
+          toast.error(
+            data.message ||
+              "Impossible de récupérer les informations de votre simulation"
+          );
+          return data;
+        }
+
+        setCompletedSimulation(data.last_completed_simulation || null);
+
+        if (data.simulation_id) {
+          const answers = data.answers || {};
+          setDraftSimulation({
+            id: data.simulation_id,
+            answers,
+            expires_at: data.expires_at ?? null
+          });
+
+          if (options.autoCreateDraft || !isEditing) {
+            setDraftAnswers(answers);
+          }
+
+          if (options.autoCreateDraft) {
+            setIsEditing(true);
+            setMissingQuestions([]);
+            toast.success("Brouillon de simulation prêt à être modifié");
+          }
+        } else {
+          setDraftSimulation(null);
+          if (!options.autoCreateDraft) {
+            setIsEditing(false);
+          }
+        }
+
+        pendingChangesRef.current = {};
+        setSaveStatus("idle");
+        return data;
+      } catch (error) {
+        console.error("Erreur session simulateur:", error);
+        toast.error("Impossible de récupérer votre simulation");
+        return null;
+      } finally {
+        setSessionLoading(false);
+        setLoading(false);
+      }
+    },
+    [getHeadersWithAuth, isEditing, user]
+  );
+
+  useEffect(() => {
+    loadQuestions();
+  }, [loadQuestions]);
+
+  useEffect(() => {
+    if (user) {
+      fetchSession({ autoCreateDraft: false });
+    }
+  }, [user, fetchSession]);
+
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const persistDraft = useCallback(async () => {
+    if (!draftSimulation) {
+      return false;
+    }
+
+    const changes = pendingChangesRef.current;
+    if (!changes || Object.keys(changes).length === 0) {
+      return true;
+    }
+
+    setSaveStatus("saving");
+
+    try {
+      const response = await fetch(
+        `${config.API_URL}/api/client/simulation/draft/${draftSimulation.id}/answers`,
+        {
+          method: "PATCH",
+          credentials: "include",
+          headers: getHeadersWithAuth(),
+          body: JSON.stringify({ responses: changes })
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Erreur sauvegarde brouillon");
+      }
+
+      const payload = await response.json();
+      const updated = payload?.data?.simulation;
+      setDraftSimulation((prev) =>
+        prev
+          ? {
+              ...prev,
+              answers: updated?.answers || prev.answers,
+              expires_at: updated?.expires_at ?? prev.expires_at
+            }
+          : prev
+      );
+
+      pendingChangesRef.current = {};
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus("idle"), 1200);
+      return true;
+    } catch (error) {
+      console.error("Erreur de sauvegarde brouillon:", error);
+      setSaveStatus("error");
+      return false;
+    }
+  }, [draftSimulation, getHeadersWithAuth]);
+
+  const handleAnswerChange = useCallback(
+    (questionId: string, value: any) => {
+      setDraftAnswers((prev) => ({
+        ...prev,
+        [questionId]: value
+      }));
+
+      pendingChangesRef.current = {
+        ...pendingChangesRef.current,
+        [questionId]: value
+      };
+
+      setSaveStatus("saving");
+
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+
+      saveTimeoutRef.current = setTimeout(() => {
+        persistDraft();
+      }, 600);
+    },
+    [persistDraft]
+  );
+
+  const handleStartEditing = useCallback(async () => {
+    const session = await fetchSession({ autoCreateDraft: true });
+    if (session?.simulation_id) {
+      setIsEditing(true);
+    }
+  }, [fetchSession]);
+
+  const handleCancelEditing = useCallback(() => {
+    setIsEditing(false);
+    pendingChangesRef.current = {};
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+  }, []);
+
+  const handleFinalize = useCallback(async () => {
+    if (!draftSimulation) {
+      toast.error("Aucun brouillon à valider");
+      return;
+    }
+
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+
+    await persistDraft();
+
+    setFinalizing(true);
+    setMissingQuestions([]);
+
+    try {
+      const response = await fetch(`${config.API_URL}/api/client/simulation/update`, {
+        method: "POST",
+        credentials: "include",
+        headers: getHeadersWithAuth(),
+        body: JSON.stringify({
+          simulationId: draftSimulation.id,
+          responses: draftAnswers,
+          simulationType: "update"
+        })
+      });
+
+      if (response.status === 422) {
+        const data = await response.json();
+        setMissingQuestions(data?.missing_questions || []);
+        toast.error("Merci de compléter les questions manquantes");
         return;
       }
 
-      // Google Analytics 4
-      if (typeof window !== 'undefined' && (window as any).gtag) {
-        (window as any).gtag('event', eventName, {
-          event_category: 'simulator_client', 
-          event_label: 'client_eligibility_update', 
-          value: (data.eligibility_score as number) || 0, 
-          custom_parameters: {
-            session_token: sessionToken,
-            client_id: user?.id,
-            products_count: (data.products_count as number) || 0, 
-            total_savings: (data.total_savings as number) || 0 
-          }
-        });
+      if (!response.ok) {
+        throw new Error("Erreur finalisation simulation");
       }
 
-      // Mixpanel
-      if (typeof window !== 'undefined' && (window as any).mixpanel) { 
-        (window as any).mixpanel.track(eventName, {
-          ...data, 
-          session_token: sessionToken,
-          client_id: user?.id,
-          authenticated: true,
-          timestamp: new Date().toISOString() 
-        });
-      }
+      const payload = await response.json();
 
-      // Tracking interne
-      fetch(`${config.API_URL}/api/simulator/track`, { 
-        method: 'POST', 
-        headers: {
-          'Content-Type': 'application/json' 
-        },
-        body: JSON.stringify({ 
-          session_token: sessionToken, 
-          event_type: eventName, 
-          event_data: {...data, client_id: user?.id}
-        })
-      }).catch(console.error);
+      toast.success(
+        "Les nouveaux paramètres sont bien pris en compte. Montants mis à jour !"
+      );
 
-    } catch (error) { 
-      console.error('Erreur tracking: ', error); 
-    }
-  };
+      pendingChangesRef.current = {};
+      setSaveStatus("idle");
+      setDraftSimulation(null);
+      setIsEditing(false);
+      setDraftAnswers({});
 
-  // Gestion de la session et nettoyage
-  useEffect(() => { 
-    const handleBeforeUnload = () => {
-      if (sessionToken) {
-        fetch(`${config.API_URL}/api/simulator/abandon`, { 
-          method: 'POST', 
-          headers: {
-            'Content-Type': 'application/json' 
-          },
-          body: JSON.stringify({ 
-            session_token: sessionToken, 
-            reason: 'page_unload' 
-          })
-        }).catch(console.error);
-      }
-    };
-
-    const handleVisibilityChange = () => { 
-      if (document.visibilityState === 'hidden' && sessionToken) {
-        trackEvent('simulator_client_session_pause', {
-          current_step: currentStep, 
-          total_steps: totalSteps, 
-          progress: Math.round((currentStep / totalSteps) * 100) 
-        });
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => { 
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      document.removeEventListener('visibilitychange', handleVisibilityChange); 
-    };
-  }, [sessionToken, currentStep, totalSteps]);
-
-  // Initialisation du simulateur
-  useEffect(() => { 
-    if (user) {
-      initializeSimulator(); 
-    }
-  }, [user]);
-
-  const initializeSimulator = async () => { 
-    try {
-      console.log('🚀 Initialisation du simulateur CLIENT...', { user: user?.email });
-      setSessionStartTime(Date.now());
-      
-      // Créer une session AVEC token (utilisateur authentifié)
-      // Le serveur vérifiera automatiquement s'il y a une simulation en cours
-      const sessionResponse = await fetch(`${config.API_URL}/api/simulator/session`, { 
-        method: 'POST', 
-        headers: getHeadersWithAuth(),
-        body: JSON.stringify({
-          client_data: {
-            client_mode: true,
-            created_at: new Date().toISOString()
-          }
-        })
-      });
-      
-      if (sessionResponse.ok) { 
-        const sessionData = await sessionResponse.json();
-        setSessionToken(sessionData.session_token);
-        
-        console.log('✅ Session client:', {
-          session_token: sessionData.session_token,
-          authenticated: sessionData.authenticated,
-          client_id: sessionData.client_id,
-          in_progress: sessionData.in_progress,
-          current_step: sessionData.current_step
-        });
-        
-        if (!sessionData.authenticated) {
-          console.error('❌ Session non authentifiée alors que le token a été envoyé!');
-          toast.error("Erreur d'authentification. Reconnectez-vous.");
-          navigate('/connexion-client');
-          return;
-        }
-        
-        // Charger les questions d'abord
-        console.log('📋 Chargement des questions...');
-        await loadQuestions();
-        
-        // Si simulation en cours, reprendre où on était
-        if (sessionData.in_progress && sessionData.answers) {
-          console.log('🔄 Reprise de la simulation en cours...');
-          const answersObj = sessionData.answers || {};
-          const answersCount = Object.keys(answersObj).length;
-          
-          // Restaurer les réponses
-          setResponses(answersObj);
-          
-          // Aller à la prochaine question non répondue
-          if (answersCount > 0) {
-            setCurrentStep(answersCount + 1);
-            toast.info(`Reprise de votre simulation à l'étape ${answersCount + 1}`);
-          }
-        } else {
-          // Nouvelle simulation
-          console.log('✨ Nouvelle simulation créée');
-          toast.success("Simulation démarrée !");
-        }
-        
-        // Tracking début de session client
-        setTimeout(() => {
-          trackEvent('simulator_client_session_start', {
-            timestamp: new Date().toISOString(),
-            client_id: sessionData.client_id,
-            authenticated: true,
-            in_progress: sessionData.in_progress || false
-          });
-        }, 100);
-        
-      } else {
-        const errorData = await sessionResponse.json().catch(() => ({}));
-        console.error('❌ Erreur création session:', sessionResponse.status, errorData);
-        toast.error(errorData.error || "Impossible de créer la session");
-      }
-    } catch (error) { 
-      console.error('Erreur lors de l\'initialisation: ', error);
-      toast.error("Impossible d'initialiser le simulateur");
-    }
-  };
-
-  const loadQuestions = async () => { 
-    try {
-      const response = await fetch(`${config.API_URL}/api/simulator/questions`);
-      if (response.ok) { 
-        const questionsData = await response.json();
-        const questions = questionsData.questions || questionsData;
-        
-        setQuestions(questions);
-        setTotalSteps(questions.length);
-        setCurrentQuestion(questions[0] || null);
-        
-        console.log(`📋 ${questions.length} questions chargées`);
-      } else {
-        console.error('❌ Erreur API:', response.status, response.statusText);
-      }
-    } catch (error) { 
-      console.error('Erreur lors du chargement des questions: ', error); 
-    }
-  };
-
-  const handleResponse = async (response: string | number | string[] | null) => { 
-    try {
-      setCurrentResponse(response);
-      
-      // Auto-validation pour choix unique
-      if (currentQuestion?.question_type === 'choix_unique') {
-        await validateAndProceed(response); 
-      }
-    } catch (error) { 
-      console.error('Erreur lors de la sauvegarde de la réponse: ', error);
-      toast.error("Impossible de sauvegarder votre réponse");
-    }
-  };
-
-  const validateAndProceed = async (response: string | number | string[] | null) => { 
-    if (!currentQuestion) return;
-    
-    if (response === null || response === undefined || response === '') {
-      toast.error("Veuillez répondre à la question avant de continuer");
-      return;
-    }
-    
-    try {
-      setIsValidating(true);
-      
-      // Sauvegarder la réponse
-      const saveResponse = await fetch(`${config.API_URL}/api/simulator/response`, { 
-        method: 'POST', 
-        headers: {
-          'Content-Type': 'application/json' 
-        },
-        body: JSON.stringify({ 
-          session_token: sessionToken, 
-          responses: {
-            [currentQuestion.id]: response
-          }
-        })
-      });
-
-      if (saveResponse.ok) { 
-        setResponses(prev => ({
-          ...prev, 
-          [currentQuestion.id]: response 
+      if (payload?.data?.results) {
+        setCompletedSimulation((prev: any) => ({
+          ...(prev || {}),
+          id: payload.data?.simulationId,
+          answers: payload.data?.answers || draftAnswers,
+          results: payload.data?.results
         }));
-
-        // Tracking
-        trackEvent('question_validated', { 
-          question_id: currentQuestion.id, 
-          question_order: currentQuestion.question_order, 
-          response_type: currentQuestion.question_type, 
-          response_value: response 
-        });
-
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        // Passer à la question suivante
-        if (currentStep < totalSteps) { 
-          const nextStep = currentStep + 1;
-          setCurrentStep(nextStep);
-          setCurrentQuestion(questions[nextStep - 1]);
-          setCurrentResponse(null);
-        } else { 
-          // Dernière question, calculer les résultats
-          await calculateResults(); 
-        }
-      } else { 
-        throw new Error('Erreur lors de la sauvegarde'); 
       }
-    } catch (error) { 
-      console.error('Erreur lors de la validation: ', error);
-      toast.error("Impossible de valider votre réponse");
-    } finally { 
-      setIsValidating(false); 
-    }
-  };
 
-  const handleValidate = () => { 
-    if (currentResponse !== null && currentResponse !== undefined && currentResponse !== '') {
-      validateAndProceed(currentResponse); 
-    } else { 
-      toast.error("Veuillez répondre à la question avant de valider");
-    }
-  };
-
-  const [clientProduits, setClientProduits] = useState<any[]>([]);
-
-  const calculateResults = async () => { 
-    try {
-      // MODE CLIENT - Mise à jour intelligente des produits
-      console.log('👤 Calcul des résultats en mode client connecté...');
-      setIsUpdatingExisting(true);
-      
-      const response = await fetch(`${config.API_URL}/api/client/simulation/update`, { 
-        method: 'POST', 
-        headers: getHeadersWithAuth(),
-        credentials: 'include',
-        body: JSON.stringify({ 
-          responses: responses,
-          simulationType: 'update'
-        })
-      });
-
-      if (response.ok) { 
-        const results = await response.json();
-        console.log('🔍 Résultats client reçus:', results);
-        
-        if (results.success) {
-          // Afficher les résultats de fusion
-          setUpdateProgress({
-            productsUpdated: results.data.productsUpdated,
-            productsCreated: results.data.productsCreated,
-            productsProtected: results.data.productsProtected,
-            totalSavings: results.data.totalSavings
-          });
-
-          // Récupérer les ClientProduitEligible créés/mis à jour
-          const produitsResponse = await fetch(
-            `${config.API_URL}/api/client/produits-eligibles`,
-            { 
-              headers: getHeadersWithAuth(),
-              credentials: 'include'
-            }
-          );
-
-          if (produitsResponse.ok) {
-            const produitsData = await produitsResponse.json();
-            if (produitsData.success && produitsData.data) {
-              setClientProduits(produitsData.data);
-              console.log(`📦 ${produitsData.data.length} produits récupérés`);
-            }
-          }
-          
-          // Afficher les résultats
-          setShowResults(true);
-          
-          // Tracking résultats client
-          trackEvent('simulator_client_completed', {
-            total_questions: totalSteps,
-            session_duration: Date.now() - sessionStartTime,
-            products_updated: results.data.productsUpdated,
-            products_created: results.data.productsCreated,
-            products_protected: results.data.productsProtected,
-            total_savings: results.data.totalSavings
-          });
-          
-          toast.success(`Simulation mise à jour ! ${results.data.productsCreated} nouveaux produits, ${results.data.productsUpdated} mis à jour, ${results.data.productsProtected} protégés`);
-        } else {
-          throw new Error(results.message || 'Erreur lors de la mise à jour');
-        }
-      } else {
-        console.error('❌ Erreur mise à jour client:', response.status);
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Erreur lors de la mise à jour');
-      }
-    } catch (error) { 
-      console.error('Erreur lors du calcul des résultats: ', error);
-      toast.error("Impossible de calculer vos résultats");
+      await fetchSession({ autoCreateDraft: false });
+    } catch (error) {
+      console.error("Erreur validation simulation:", error);
+      toast.error("Impossible de finaliser la simulation");
     } finally {
-      setIsUpdatingExisting(false);
+      setFinalizing(false);
     }
-  };
+  }, [draftAnswers, draftSimulation, fetchSession, getHeadersWithAuth, persistDraft]);
 
-  const handlePrevious = () => { 
-    if (currentStep > 1) {
-      const prevStep = currentStep - 1;
-      setCurrentStep(prevStep);
-      setCurrentQuestion(questions[prevStep - 1]);
-      setCurrentResponse(responses[questions[prevStep - 1]?.id] || null);
-    }
-  };
+  const formatAnswer = useCallback(
+    (question: Question, value: any) => {
+      if (value === undefined || value === null) {
+        return "Non renseigné";
+      }
 
-  // Écran de bienvenue
-  if (showWelcomeScreen) {
-    return (
-      <div className="bg-gradient-to-br from-slate-50 via-white to-slate-100 -mx-4 sm:-mx-6 md:-mx-8 -my-6 py-16 px-4">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center space-y-8">
-            <div className="space-y-6">
-              <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-4 rounded-full w-24 h-24 mx-auto flex items-center justify-center">
-                <Calculator className="w-12 h-12 text-white" />
-              </div>
-              <h1 className="text-4xl md:text-6xl font-bold text-slate-800">
-                Mise à jour de votre simulation
-              </h1>
-              <p className="text-xl text-slate-600 max-w-2xl mx-auto">
-                Actualisez vos opportunités d'optimisation avec vos nouvelles données
-              </p>
-              
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-md mx-auto">
-                <div className="flex items-center gap-2 text-blue-700">
-                  <User className="w-5 h-5" />
-                  <span className="font-medium">Mode client connecté</span>
-                </div>
-                <p className="text-sm text-blue-600 mt-1">
-                  Vos produits existants seront mis à jour intelligemment
+      if (Array.isArray(value)) {
+        return value.length ? value.join(", ") : "Non renseigné";
+      }
+
+      if (typeof value === "number") {
+        if (question.options?.unite) {
+          return `${value} ${question.options.unite}`;
+        }
+        return value.toString();
+      }
+
+      if (typeof value === "boolean") {
+        return value ? "Oui" : "Non";
+      }
+
+      return String(value);
+    },
+    []
+  );
+
+  const renderAnswerSummary = useCallback(
+    (answers: Record<string, any>) => {
+      if (!answers || Object.keys(answers).length === 0) {
+        return (
+          <p className="text-sm text-muted-foreground">
+            Aucune réponse enregistrée pour le moment.
+          </p>
+        );
+      }
+
+      return (
+        <div className="space-y-4">
+          {questions
+            .filter((question) => answers[question.id] !== undefined)
+            .map((question) => (
+              <div
+                key={question.id}
+                className="rounded-xl border border-slate-200 bg-white/70 p-4 shadow-sm"
+              >
+                <p className="text-sm font-semibold text-slate-900">
+                  {question.question_text}
+                </p>
+                <p className="text-sm text-slate-600">
+                  {formatAnswer(question, answers[question.id])}
                 </p>
               </div>
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-              <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-white/60">
-                <div className="text-3xl font-bold text-green-600 mb-2">2 min</div>
-                <div className="text-slate-600">Temps de simulation</div>
-              </div>
-              <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-white/60">
-                <div className="text-3xl font-bold text-green-600 mb-2">Intelligent</div>
-                <div className="text-slate-600">Mise à jour sélective</div>
-              </div>
-              <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-white/60">
-                <div className="text-3xl font-bold text-green-600 mb-2">Sécurisé</div>
-                <div className="text-slate-600">Produits en cours protégés</div>
-              </div>
-            </div>
-
-            <Button 
-              onClick={() => setShowWelcomeScreen(false)}
-              className="group relative bg-gradient-to-r from-blue-500 to-purple-600 text-white font-bold px-10 py-4 text-lg rounded-full hover:from-blue-600 hover:to-purple-700 transform hover:scale-105 transition-all duration-300 shadow-2xl hover:shadow-blue-500/25"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full opacity-0 group-hover:opacity-20 transition-opacity duration-300 blur-xl"></div>
-              <span className="relative flex items-center">
-                <Calculator className="w-5 h-5 mr-3" />
-                Commencer la mise à jour
-                <ArrowRight className="w-5 h-5 ml-3 group-hover:translate-x-1 transition-transform duration-300" />
-              </span>
-            </Button>
-
-            <Button
-              onClick={() => navigate('/dashboard/client')}
-              variant="outline"
-              className="ml-4"
-            >
-              <ChevronLeft className="w-4 h-4 mr-2" />
-              Retour au dashboard
-            </Button>
-          </div>
+            ))}
         </div>
+      );
+    },
+    [formatAnswer, questions]
+  );
+
+  const renderQuestionInput = useCallback(
+    (question: Question) => {
+      const value = draftAnswers[question.id];
+      const isMissing = missingQuestions.includes(question.id);
+
+      if (!shouldDisplayQuestion(question, draftAnswers)) {
+        return null;
+      }
+
+      switch (question.question_type) {
+        case "choix_unique": {
+          return (
+            <div className="grid gap-3">
+              {(question.options?.choix || []).map((option) => {
+                const selected = value === option;
+                return (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => handleAnswerChange(question.id, option)}
+                    className={`text-left rounded-xl border p-4 transition-all ${
+                      selected
+                        ? "border-blue-500 bg-blue-50 text-blue-700 shadow"
+                        : "border-slate-200 hover:border-blue-300 hover:bg-blue-50/40"
+                    } ${isMissing ? "border-red-400" : ""}`}
+                  >
+                    <span className="text-sm font-medium">{option}</span>
+                  </button>
+                );
+              })}
+            </div>
+          );
+        }
+        case "choix_multiple": {
+          const selectedValues = Array.isArray(value) ? value : [];
+          return (
+            <div className="space-y-3">
+              {(question.options?.choix || []).map((option) => {
+                const checked = selectedValues.includes(option);
+                return (
+                  <label
+                    key={option}
+                    className={`flex cursor-pointer items-center justify-between rounded-xl border p-4 transition-all ${
+                      checked
+                        ? "border-blue-500 bg-blue-50 text-blue-700"
+                        : "border-slate-200 hover:border-blue-300 hover:bg-blue-50/40"
+                    } ${isMissing ? "border-red-400" : ""}`}
+                  >
+                    <span className="text-sm font-medium">{option}</span>
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={(event) => {
+                        const current = Array.isArray(value) ? [...value] : [];
+                        if (event.target.checked) {
+                          if (!current.includes(option)) {
+                            current.push(option);
+                          }
+                        } else {
+                          const index = current.indexOf(option);
+                          if (index >= 0) {
+                            current.splice(index, 1);
+                          }
+                        }
+                        handleAnswerChange(question.id, current);
+                      }}
+                      className="h-4 w-4"
+                    />
+                  </label>
+                );
+              })}
+            </div>
+          );
+        }
+        case "nombre": {
+          return (
+            <div className="space-y-2">
+              <Input
+                type="number"
+                value={value ?? ""}
+                onChange={(event) => {
+                  handleAnswerChange(
+                    question.id,
+                    event.target.value === "" ? null : Number(event.target.value)
+                  );
+                }}
+                placeholder={question.options?.placeholder || "Entrez votre réponse"}
+                className={isMissing ? "border-red-400 focus-visible:ring-red-400" : ""}
+              />
+              {question.options?.unite && (
+                <p className="text-xs text-slate-500">
+                  Unité : {question.options.unite}
+                </p>
+              )}
+            </div>
+          );
+        }
+        case "texte":
+        default: {
+          return (
+            <Textarea
+              value={value ?? ""}
+              onChange={(event) => handleAnswerChange(question.id, event.target.value)}
+              placeholder={question.options?.placeholder || "Entrez votre réponse"}
+              className={`min-h-[120px] ${
+                isMissing ? "border-red-400 focus-visible:ring-red-400" : ""
+              }`}
+            />
+          );
+        }
+      }
+    },
+    [draftAnswers, handleAnswerChange, missingQuestions, shouldDisplayQuestion]
+  );
+
+  const handleScrollToQuestion = useCallback((questionId: string) => {
+    const element = questionRefs.current[questionId];
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "start" });
+      element.classList.add("ring", "ring-blue-300", "ring-offset-2");
+      setTimeout(() => {
+        element.classList.remove("ring", "ring-blue-300", "ring-offset-2");
+      }, 1200);
+    }
+  }, []);
+
+  if (loading || sessionLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 via-white to-slate-100">
+        <Card className="w-full max-w-md">
+          <CardContent className="flex flex-col items-center gap-4 py-12">
+            <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
+            <p className="text-sm text-slate-600">
+              Préparation de votre simulation personnalisée...
+            </p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
-  // Affichage des résultats
-  if (showResults && updateProgress) {
-    return (
-      <div className="bg-gradient-to-br from-slate-50 via-white to-slate-100 -mx-4 sm:-mx-6 md:-mx-8 -my-6 py-12 px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center space-y-4 mb-12">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl shadow-lg mb-6">
-              <CheckCircle className="w-8 h-8 text-white" />
-            </div>
-            <h1 className="text-3xl font-bold text-slate-800 tracking-tight">
-              Simulation mise à jour !
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 py-10">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900">
+              Synthèse de votre simulation
             </h1>
-            <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-              Vos opportunités d'optimisation ont été actualisées intelligemment
+            <p className="text-sm text-slate-600">
+              Consultez vos réponses, ajustez-les et mettez à jour vos montants d'éligibilité.
             </p>
           </div>
-
-          {/* Résultats de mise à jour */}
-          <div className="bg-gradient-to-r from-blue-50/80 to-indigo-50/80 backdrop-blur-sm rounded-3xl p-10 border border-blue-200/60">
-            <div className="text-center space-y-8 max-w-4xl mx-auto">
-              {/* Statistiques */}
-              <div className="grid md:grid-cols-3 gap-8">
-                <div className="text-center group">
-                  <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                    <span className="text-2xl font-bold text-white">{updateProgress.productsCreated}</span>
-                  </div>
-                  <div className="text-sm font-medium text-blue-700">Nouveaux produits</div>
-                </div>
-                <div className="text-center group">
-                  <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-2xl mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                    <span className="text-2xl font-bold text-white">{updateProgress.productsUpdated}</span>
-                  </div>
-                  <div className="text-sm font-medium text-blue-700">Produits mis à jour</div>
-                </div>
-                <div className="text-center group">
-                  <div className="w-16 h-16 bg-gradient-to-r from-orange-500 to-amber-600 rounded-2xl mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                    <span className="text-2xl font-bold text-white">{updateProgress.productsProtected}</span>
-                  </div>
-                  <div className="text-sm font-medium text-blue-700">Produits protégés</div>
-                </div>
-              </div>
-
-              {/* Économies totales */}
-              <div className="bg-white/50 rounded-2xl p-6">
-                <div className="text-4xl font-bold text-emerald-600 mb-2">
-                  {updateProgress.totalSavings.toLocaleString('fr-FR')}€
-                </div>
-                <div className="text-slate-600">Économies potentielles totales</div>
-              </div>
-
-              {/* CTA */}
-              <button
-                onClick={() => navigate('/dashboard/client')}
-                className="group relative bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-4 px-8 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
-              >
-                <span className="relative flex items-center justify-center">
-                  Voir mon tableau de bord
-                  <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
-                </span>
-              </button>
-            </div>
-          </div>
-
-          {/* Liste des produits éligibles */}
-          {clientProduits.length > 0 && (
-            <div className="mt-12">
-              <h2 className="text-2xl font-bold text-slate-800 mb-6 text-center">
-                Vos produits éligibles
-              </h2>
-              
-              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 max-h-[600px] overflow-y-auto">
-                {clientProduits.map((produit) => (
-                  <Card 
-                    key={produit.id}
-                    className="h-[280px] flex flex-col bg-white/80 backdrop-blur-sm hover:shadow-lg transition-all duration-300"
-                  >
-                    <CardHeader className="pb-3">
-                      <h3 className="font-semibold text-slate-800 text-sm line-clamp-2">
-                        {produit.ProduitEligible?.nom || 'Produit'}
-                      </h3>
-                      <Badge 
-                        variant={produit.statut === 'eligible' ? 'default' : 'secondary'}
-                        className="w-fit"
-                      >
-                        {produit.statut}
-                      </Badge>
-                    </CardHeader>
-                    <CardContent className="flex-1 flex flex-col justify-between overflow-y-auto">
-                      <div className="space-y-2">
-                        <div className="text-2xl font-bold text-emerald-600">
-                          {(produit.montantFinal || 0).toLocaleString('fr-FR')}€
-                        </div>
-                        <p className="text-xs text-slate-600 line-clamp-3">
-                          {produit.notes || produit.ProduitEligible?.notes_affichage}
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // Affichage des questions
-  return (
-    <div className="bg-gradient-to-br from-slate-50 via-white to-slate-100 -mx-4 sm:-mx-6 md:-mx-8 -my-6">
-      {/* Bandeau */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-6 px-8 shadow-lg">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between">
-          <div className="flex items-center space-x-4 mb-4 md:mb-0">
-            <div className="bg-yellow-400/20 p-2 rounded-2xl">
-              <Calculator className="w-8 h-8 text-yellow-300" />
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold">🔄 Mise à jour de votre simulation</h2>
-              <p className="text-blue-100 text-sm font-light">
-                Actualisez vos opportunités • Mode client connecté
-              </p>
-            </div>
-          </div>
-          
-          <div className="flex items-center space-x-8 text-sm">
-            <div className="flex items-center space-x-2">
-              <CheckCircle className="w-4 h-4 text-green-300" />
-              <span>Étape {currentStep} sur {totalSteps}</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <User className="w-4 h-4 text-blue-300" />
-              <span>{user?.email}</span>
-            </div>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              className="flex items-center gap-2"
+              onClick={() => navigate("/dashboard/client")}
+            >
+              <ArrowLeft className="h-4 w-4" /> Retour au tableau de bord
+            </Button>
           </div>
         </div>
-      </div>
 
-      {/* Questions */}
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        {currentQuestion ? (
-          <Card className="bg-white/80 backdrop-blur-sm border border-white/60 rounded-3xl shadow-lg overflow-hidden">
-            <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50/50 border-b border-slate-100">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center space-x-4">
-                  <div className="bg-gradient-to-r from-blue-500 to-purple-500 p-3 rounded-2xl">
-                    <Calculator className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-semibold text-slate-800">
-                      Question {currentStep} sur {totalSteps}
-                    </h2>
-                    <p className="text-slate-600 font-light">Mise à jour en cours</p>
-                  </div>
-                </div>
-                <Badge variant="outline" className="text-sm font-semibold px-4 py-2">
-                  {Math.round((currentStep / totalSteps) * 100)}% complété
-                </Badge>
-              </div>
-              
-              <Progress value={(currentStep / totalSteps) * 100} className="h-3" />
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Card className="border border-slate-200 shadow-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                Simulation validée
+              </CardTitle>
+              <CardDescription>
+                Résumé de la dernière simulation confirmée. Les montants affichés dans vos tuiles produits sont basés sur ces réponses.
+              </CardDescription>
             </CardHeader>
-            
-            <CardContent className="p-8 space-y-8">
-              {/* Question */}
-              <div className="bg-gradient-to-r from-slate-50 to-blue-50/30 rounded-2xl p-6">
-                <h3 className="text-xl font-semibold text-slate-800 mb-4">
-                  {currentQuestion.question_text}
-                </h3>
-                
-                {currentQuestion.description && (
-                  <p className="text-slate-600 mb-4 italic font-light">
-                    {currentQuestion.description}
-                  </p>
-                )}
-              </div>
+            <CardContent className="space-y-4">
+              {completedSimulation ? (
+                <>
+                  {completedSimulation?.results?.total_savings && (
+                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                      Gains potentiels estimés :
+                      <span className="ml-2 font-semibold">
+                        {completedSimulation.results.total_savings.toLocaleString("fr-FR")} €
+                      </span>
+                    </div>
+                  )}
+                  {renderAnswerSummary(completedSimulation.answers || {})}
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Vous n'avez pas encore de simulation validée. Cliquez sur "Modifier mes réponses" pour démarrer.
+                </p>
+              )}
+            </CardContent>
+          </Card>
 
-              {/* Options de réponse */}
-              <div className="space-y-4">
-                {currentQuestion.question_type === 'choix_unique' && currentQuestion.options?.choix && (
-                  currentQuestion.options.choix.map((option: string, index: number) => (
-                    <button
-                      key={index}
-                      onClick={() => handleResponse(option)}
-                      className={`w-full text-left p-6 border-2 rounded-2xl transition-all duration-300 group ${
-                        currentResponse === option 
-                          ? 'border-blue-500 bg-gradient-to-r from-blue-50 to-indigo-50 shadow-lg' 
-                          : 'border-slate-200 hover:border-blue-300 hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-indigo-50/50'}`}
+          <Card className="border border-slate-200 shadow-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Edit3 className="h-5 w-5 text-blue-500" />
+                Brouillon en cours
+              </CardTitle>
+              <CardDescription>
+                Vos modifications sont enregistrées automatiquement. Validez dès que toutes les réponses obligatoires sont renseignées.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {draftSimulation ? (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Badge
+                      variant="secondary"
+                      className="bg-blue-100 text-blue-700 hover:bg-blue-100"
                     >
-                      <div className="flex items-center space-x-4">
-                        <div className={`w-6 h-6 border-2 rounded-full flex items-center justify-center transition-all duration-300 ${
-                          currentResponse === option ? 'border-blue-500 bg-blue-500 scale-110' : 'border-slate-300 group-hover:border-blue-400'}`}>
-                          {currentResponse === option && (
-                            <Check className="w-4 h-4 text-white" />
-                          )}
-                        </div>
-                        <span className="font-medium text-slate-800 text-lg">{option}</span>
-                      </div>
-                    </button>
-                  ))
-                )}
-
-                {currentQuestion.question_type === 'choix_multiple' && currentQuestion.options?.choix && (
-                  <div className="space-y-4">
-                    {currentQuestion.options.choix.map((option: string, index: number) => (
-                      <label key={index} className="flex items-center space-x-4 p-6 border-2 border-slate-200 rounded-2xl hover:border-blue-300 hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-indigo-50/50 transition-all duration-300 cursor-pointer group">
-                        <input
-                          type="checkbox"
-                          className="w-6 h-6 text-blue-600 border-slate-300 rounded focus:ring-blue-500 focus:ring-2"
-                          checked={Array.isArray(currentResponse) && currentResponse.includes(option)}
-                          onChange={(e) => {
-                            const currentResponses = Array.isArray(currentResponse) ? currentResponse : [];
-                            if (e.target.checked) {
-                              handleResponse([...currentResponses, option]); 
-                            } else { 
-                              handleResponse(currentResponses.filter((r: string) => r !== option)); 
-                            }
-                          }}
-                        />
-                        <span className="font-medium text-slate-800 text-lg">{option}</span>
-                      </label>
-                    ))}
-                  </div>
-                )}
-
-                {currentQuestion.question_type === 'nombre' && (
-                  <div className="space-y-4">
-                    <input
-                      type="number"
-                      placeholder={currentQuestion.options?.placeholder || "Entrez votre réponse"}
-                      min={currentQuestion.options?.min}
-                      max={currentQuestion.options?.max}
-                      value={currentResponse || ''}
-                      className="w-full p-6 border-2 border-slate-200 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-lg transition-all duration-300"
-                      onChange={(e) => handleResponse(e.target.value ? parseInt(e.target.value) : null)}
-                    />
-                    {currentQuestion.options?.unite && (
-                      <p className="text-sm text-slate-500 font-light">Unité : {currentQuestion.options.unite}</p>
+                      Brouillon • {Object.keys(draftSimulation.answers || {}).length} réponse(s)
+                    </Badge>
+                    {saveStatus === "saving" && (
+                      <Badge className="gap-1 bg-amber-100 text-amber-700">
+                        <Loader2 className="h-3 w-3 animate-spin" /> Sauvegarde...
+                      </Badge>
+                    )}
+                    {saveStatus === "saved" && (
+                      <Badge className="gap-1 bg-emerald-100 text-emerald-700">
+                        <Save className="h-3 w-3" /> Enregistré
+                      </Badge>
+                    )}
+                    {saveStatus === "error" && (
+                      <Badge className="gap-1 bg-red-100 text-red-700">
+                        <AlertCircle className="h-3 w-3" /> Erreur d'enregistrement
+                      </Badge>
                     )}
                   </div>
-                )}
 
-                {currentQuestion.question_type === 'texte' && (
-                  <textarea
-                    placeholder={currentQuestion.options?.placeholder || "Entrez votre réponse"}
-                    value={currentResponse || ''}
-                    className="w-full p-6 border-2 border-slate-200 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 min-h-[120px] text-lg transition-all duration-300"
-                    onChange={(e) => handleResponse(e.target.value)}
-                  />
-                )}
-              </div>
-
-              {/* Bouton Valider */}
-              {currentQuestion.question_type !== 'choix_unique' && (
-                <div className="flex justify-center pt-8">
-                  <Button
-                    onClick={handleValidate}
-                    disabled={!currentResponse || isValidating || isUpdatingExisting}
-                    className={`group relative px-10 py-4 text-lg font-semibold rounded-full transition-all duration-300 ${
-                      isValidating 
-                        ? 'bg-slate-400 cursor-not-allowed' 
-                        : 'bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 transform hover:scale-105 shadow-lg hover:shadow-blue-500/25'}`}
-                  >
-                    <span className="relative flex items-center">
-                      {isValidating || isUpdatingExisting ? (
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Button onClick={() => setIsEditing(true)} variant="default">
+                      Continuer la modification
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      onClick={handleFinalize}
+                      disabled={finalizing}
+                      className="flex items-center gap-2"
+                    >
+                      {finalizing ? (
                         <>
-                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
-                          Mise à jour...
+                          <Loader2 className="h-4 w-4 animate-spin" /> Validation...
                         </>
                       ) : (
-                        <>
-                          <Check className="w-5 h-5 mr-3" />
-                          Mettre à jour ma simulation
-                          <ArrowRight className="w-5 h-5 ml-3 group-hover:translate-x-1 transition-transform duration-300" />
-                        </>
+                        "Valider ma simulation"
                       )}
-                    </span>
+                    </Button>
+                  </div>
+
+                  {!isEditing && renderAnswerSummary(draftSimulation.answers || {})}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Aucune modification en cours. Lancez une nouvelle simulation pour actualiser vos montants.
+                  </p>
+                  <Button onClick={handleStartEditing} className="w-fit">
+                    Modifier mes réponses
                   </Button>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </div>
 
-              {/* Navigation */}
-              <div className="flex justify-between items-center pt-8">
-                <Button
-                  onClick={handlePrevious}
-                  disabled={currentStep === 1}
-                  variant="outline"
-                  className="flex items-center space-x-2"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                  Précédent
-                </Button>
-                
-                <div className="text-sm text-slate-500">
-                  Question {currentStep} sur {totalSteps}
+        {isEditing && (
+          <Card className="border border-blue-200 shadow-sm">
+            <CardHeader>
+              <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2 text-lg text-blue-700">
+                    <Edit3 className="h-5 w-5" /> Modifier mes réponses
+                  </CardTitle>
+                  <CardDescription>
+                    Toute modification est enregistrée automatiquement. Vous pouvez quitter la page et revenir plus tard.
+                  </CardDescription>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {saveStatus === "saving" && (
+                    <Badge className="gap-1 bg-amber-100 text-amber-700">
+                      <Loader2 className="h-3 w-3 animate-spin" /> Sauvegarde...
+                    </Badge>
+                  )}
+                  {saveStatus === "saved" && (
+                    <Badge className="gap-1 bg-emerald-100 text-emerald-700">
+                      <Save className="h-3 w-3" /> Enregistré
+                    </Badge>
+                  )}
+                  {saveStatus === "error" && (
+                    <Badge className="gap-1 bg-red-100 text-red-700">
+                      <AlertCircle className="h-3 w-3" /> Erreur d'enregistrement
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-8">
+              {missingQuestions.length > 0 && (
+                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  Certaines réponses obligatoires sont manquantes. Complétez-les avant de valider.
+                </div>
+              )}
+
+              <div className="grid gap-6 lg:grid-cols-[220px_1fr]">
+                <div className="space-y-2">
+                  {phaseDefinitions.map((phase) => {
+                    const unansweredInPhase = phase.questions.some((question) =>
+                      missingQuestions.includes(question.id)
+                    );
+                    const label = phase.phase > 0 ? `Phase ${phase.phase}` : "Phase";
+                    return (
+                      <button
+                        key={phase.phase}
+                        type="button"
+                        onClick={() =>
+                          phase.questions.length > 0 &&
+                          handleScrollToQuestion(phase.questions[0].id)
+                        }
+                        className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-sm transition-all ${
+                          unansweredInPhase
+                            ? "border-red-200 bg-red-50 text-red-700"
+                            : "border-slate-200 bg-white/80 text-slate-700 hover:border-blue-300 hover:text-blue-600"
+                        }`}
+                      >
+                        <span>{label}</span>
+                        <Badge
+                          variant="outline"
+                          className="text-xs"
+                        >
+                          {phase.questions.length}
+                        </Badge>
+                      </button>
+                    );
+                  })}
                 </div>
 
+                <div className="grid gap-6 md:grid-cols-2">
+                  {questions.map((question) => {
+                    const shouldShow = shouldDisplayQuestion(question, draftAnswers);
+                    if (!shouldShow) {
+                      return null;
+                    }
+
+                    const isRequired = question.validation_rules?.required;
+                    const isMissing = missingQuestions.includes(question.id);
+
+                    return (
+                      <div
+                        key={question.id}
+                        ref={(element) => {
+                          questionRefs.current[question.id] = element;
+                        }}
+                        className={`rounded-xl border bg-white/80 p-5 shadow-sm transition-all ${
+                          isMissing ? "border-red-300" : "border-slate-200"
+                        }`}
+                      >
+                        <div className="mb-3 flex items-start justify-between gap-2">
+                          <div>
+                            <p className="text-sm font-semibold text-slate-900">
+                              {question.question_text}
+                            </p>
+                            {question.description && (
+                              <p className="text-xs text-slate-500">
+                                {question.description}
+                              </p>
+                            )}
+                          </div>
+                          {isRequired && (
+                            <Badge variant="outline" className="text-xs uppercase">
+                              Obligatoire
+                            </Badge>
+                          )}
+                        </div>
+                        {renderQuestionInput(question)}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-end gap-3">
                 <Button
-                  onClick={() => navigate('/dashboard/client')}
-                  variant="ghost"
-                  className="flex items-center space-x-2"
+                  variant="outline"
+                  onClick={handleCancelEditing}
+                  className="flex items-center gap-2"
+                  disabled={finalizing}
                 >
                   Annuler
+                </Button>
+                <Button
+                  onClick={handleFinalize}
+                  className="flex items-center gap-2"
+                  disabled={finalizing}
+                >
+                  {finalizing ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" /> Validation...
+                    </>
+                  ) : (
+                    "Valider la simulation"
+                  )}
                 </Button>
               </div>
             </CardContent>
           </Card>
-        ) : (
-          <div className="text-center py-16">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-            <p className="text-slate-600">Chargement de votre simulation...</p>
-            <p className="text-sm text-slate-500 mt-2">
-              Préparation de la mise à jour de vos produits éligibles
-            </p>
-          </div>
         )}
       </div>
     </div>

@@ -373,7 +373,7 @@ router.post('/session', async (req, res) => {
   try {
     const ipAddress = req.ip || req.connection.remoteAddress || 'unknown';
     const userAgent = req.get('User-Agent') || 'unknown';
-    const clientData: ClientData = req.body.client_data || {};
+    const clientData: ClientData & { auto_create_draft?: boolean } = req.body.client_data || {};
     
     // Vérifier si l'utilisateur est authentifié (via optionalAuthMiddleware)
     const authenticatedUser = (req as any).user;
@@ -402,6 +402,24 @@ router.post('/session', async (req, res) => {
       }
 
       const pendingSimulation = pendingSimulations && pendingSimulations.length > 0 ? pendingSimulations[0] : null;
+      const autoCreateDraft = clientData?.auto_create_draft === true;
+
+      const { data: lastCompletedList, error: lastCompletedError } = await supabaseClient
+        .from('simulations')
+        .select('id, answers, results, metadata, created_at, updated_at, session_token')
+        .eq('client_id', clientId)
+        .eq('status', 'completed')
+        .order('updated_at', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (lastCompletedError) {
+        console.error('⚠️ Erreur récupération simulation completed:', lastCompletedError);
+      }
+
+      const lastCompletedSimulation = Array.isArray(lastCompletedList) && lastCompletedList.length > 0
+        ? lastCompletedList[0]
+        : null;
 
       if (pendingSimulation) {
         // ✅ SIMULATION EN COURS TROUVÉE → On reprend où on était
@@ -424,69 +442,116 @@ router.post('/session', async (req, res) => {
           in_progress: true,
           current_step: answersCount + 1, // Prochaine question à répondre
           answers: pendingSimulation.answers || {},
+          last_completed_simulation: lastCompletedSimulation,
           message: 'Reprise de la simulation en cours'
         });
       }
 
-      // 2️⃣ PAS DE SIMULATION EN COURS → Créer une nouvelle session
-      const sessionTokenAuth = uuidv4();
-      
-      console.log(`📝 Création nouvelle session authentifiée:`, {
-        sessionToken: sessionTokenAuth.substring(0, 8) + '...',
-        clientId,
-        email: authenticatedUser.email,
-        ipAddress,
-        authenticated: true
-      });
-      
-      // Créer la simulation directement liée au client authentifié
-      const { data: newSimulation, error: simError } = await supabaseClient
-        .from('simulations')
-        .insert({
-          session_token: sessionTokenAuth,
+      if (!autoCreateDraft) {
+        return res.json({
+          success: true,
+          session_token: null,
           client_id: clientId,
-          status: 'en_cours',
-          type: 'authentifiee', // ✅ Champ obligatoire pour session authentifiée
+          simulation_id: null,
+          expires_at: null,
+          authenticated: true,
+          in_progress: false,
+          current_step: 1,
           answers: {},
-          metadata: {
-            ip_address: ipAddress,
-            user_agent: userAgent,
-            authenticated: true,
-            client_email: authenticatedUser.email,
-            created_via: 'simulateur-client'
-          },
-          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24h
-        })
-        .select()
-        .single();
-      
-      if (simError || !newSimulation) {
-        console.error('❌ Erreur création simulation authentifiée:', simError);
-        return res.status(500).json({
-          success: false,
-          error: 'Erreur lors de la création de session',
-          details: simError?.message
+          last_completed_simulation: lastCompletedSimulation,
+          message: 'Aucune simulation en cours - création de brouillon non demandée'
         });
       }
-      
-      console.log('✅ Nouvelle session authentifiée créée:', {
-        sessionToken: sessionTokenAuth.substring(0, 8) + '...',
+
+      // 2️⃣ PAS DE SIMULATION EN COURS → Créer une nouvelle session
+      let createdDraftSimulation: any = null;
+
+      if (lastCompletedSimulation) {
+        const { data: duplicatedId, error: duplicateError } = await supabaseClient.rpc('duplicate_completed_simulation', {
+          p_client_id: clientId
+        });
+
+        if (duplicateError) {
+          console.error('❌ Erreur duplication simulation:', duplicateError);
+        } else if (duplicatedId) {
+          const { data: duplicatedSimulation, error: duplicatedFetchError } = await supabaseClient
+            .from('simulations')
+            .select('*')
+            .eq('id', duplicatedId)
+            .single();
+
+          if (duplicatedFetchError) {
+            console.error('⚠️ Erreur récupération simulation dupliquée:', duplicatedFetchError);
+          } else {
+            createdDraftSimulation = duplicatedSimulation;
+          }
+        }
+      }
+
+      if (!createdDraftSimulation) {
+        console.log('ℹ️ Création d\'un brouillon vierge faute de simulation complétée précédente');
+        console.log(`📝 Création nouvelle session authentifiée:`, {
+          clientId,
+          email: authenticatedUser.email,
+          ipAddress,
+          authenticated: true
+        });
+
+        const sessionTokenAuth = uuidv4();
+
+        // Créer la simulation directement liée au client authentifié
+        const { data: newSimulation, error: simError } = await supabaseClient
+          .from('simulations')
+          .insert({
+            session_token: sessionTokenAuth,
+            client_id: clientId,
+            status: 'en_cours',
+            type: 'authentifiee', // ✅ Champ obligatoire pour session authentifiée
+            answers: {},
+            metadata: {
+              ip_address: ipAddress,
+              user_agent: userAgent,
+              authenticated: true,
+              client_email: authenticatedUser.email,
+              created_via: 'simulateur-client'
+            },
+            expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24h
+          })
+          .select()
+          .single();
+
+        if (simError || !newSimulation) {
+          console.error('❌ Erreur création simulation authentifiée:', simError);
+          return res.status(500).json({
+            success: false,
+            error: 'Erreur lors de la création de session',
+            details: simError?.message
+          });
+        }
+
+        createdDraftSimulation = newSimulation;
+      }
+
+      console.log('✅ Brouillon de simulation prêt:', {
         clientId,
-        simulationId: newSimulation.id,
-        authenticated: true
+        simulationId: createdDraftSimulation.id,
+        duplicatedFrom: createdDraftSimulation?.metadata?.duplicated_from || null
       });
       
       return res.json({
         success: true,
-        session_token: sessionTokenAuth,
+        session_token: createdDraftSimulation.session_token,
         client_id: clientId,
-        simulation_id: newSimulation.id,
-        expires_at: newSimulation.expires_at,
+        simulation_id: createdDraftSimulation.id,
+        expires_at: createdDraftSimulation.expires_at,
         authenticated: true,
         in_progress: false,
         current_step: 1,
-        answers: {},
-        message: 'Nouvelle session créée pour client authentifié'
+        answers: createdDraftSimulation.answers || {},
+        last_completed_simulation: lastCompletedSimulation,
+        message: lastCompletedSimulation
+          ? 'Brouillon créé à partir de votre dernière simulation'
+          : 'Nouvelle session créée pour client authentifié'
       });
       
     } else {

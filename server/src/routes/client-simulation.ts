@@ -13,6 +13,7 @@ const router = express.Router();
 interface ClientSimulationRequest {
   responses: Record<string, any>;
   simulationType?: 'update' | 'new';
+  simulationId?: string;
 }
 
 interface ClientSimulationResponse {
@@ -25,6 +26,8 @@ interface ClientSimulationResponse {
     totalSavings: number;
     conflicts: any[];
     historyId: string;
+    results?: any;
+    answers?: Record<string, any>;
   };
   message?: string;
 }
@@ -34,14 +37,149 @@ interface ClientSimulationResponse {
 // ============================================================================
 
 /**
+ * PATCH /api/client/simulation/draft/:simulationId/answers
+ * Sauvegarde partielle des réponses d'un brouillon de simulation
+ */
+router.patch('/draft/:simulationId/answers', optionalAuthMiddleware, asyncHandler(async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+
+    if (!user || user.type !== 'client') {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentification requise'
+      });
+    }
+
+    const { simulationId } = req.params;
+    const { responses } = req.body as { responses?: Record<string, any> };
+
+    if (!responses || typeof responses !== 'object' || Array.isArray(responses)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Le corps de la requête doit contenir un objet responses'
+      });
+    }
+
+    const { data: draftSimulation, error: draftError } = await supabaseClient
+      .from('simulations')
+      .select('*')
+      .eq('id', simulationId)
+      .eq('client_id', user.database_id)
+      .single();
+
+    if (draftError || !draftSimulation) {
+      console.error('❌ Simulation introuvable ou inaccessible:', draftError);
+      return res.status(404).json({
+        success: false,
+        message: 'Simulation introuvable'
+      });
+    }
+
+    if (draftSimulation.status !== 'en_cours') {
+      return res.status(409).json({
+        success: false,
+        message: 'Seules les simulations en cours peuvent être modifiées'
+      });
+    }
+
+    const mergedAnswers: Record<string, any> = {
+      ...(draftSimulation.answers || {})
+    };
+
+    Object.entries(responses).forEach(([key, value]) => {
+      if (value === undefined) {
+        return;
+      }
+      mergedAnswers[key] = value;
+    });
+
+    const patchNow = new Date();
+    const patchExpiresAt = new Date(patchNow.getTime() + 24 * 60 * 60 * 1000).toISOString();
+
+    const { data: updatedSimulation, error: updateError } = await supabaseClient
+      .from('simulations')
+      .update({
+        answers: mergedAnswers,
+        updated_at: patchNow.toISOString(),
+        expires_at: patchExpiresAt
+      })
+      .eq('id', simulationId)
+      .select()
+      .single();
+
+    if (updateError || !updatedSimulation) {
+      console.error('❌ Erreur sauvegarde brouillon:', updateError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la sauvegarde du brouillon'
+      });
+    }
+
+    const { data: lastHistory, error: historyError } = await supabaseClient
+      .from('simulationhistory')
+      .select('version_number')
+      .eq('simulation_id', simulationId)
+      .order('version_number', { ascending: false })
+      .limit(1);
+
+    if (historyError) {
+      console.error('⚠️ Erreur récupération historique pour versioning:', historyError);
+    }
+
+    const nextVersionNumber =
+      Array.isArray(lastHistory) && lastHistory.length > 0 && lastHistory[0]?.version_number
+        ? Number(lastHistory[0].version_number) + 1
+        : 1;
+
+    await supabaseClient
+      .from('simulationhistory')
+      .insert({
+        client_id: user.database_id,
+        simulation_id: simulationId,
+        session_token: updatedSimulation.session_token,
+        simulation_date: new Date().toISOString(),
+        responses,
+        results: updatedSimulation.results || {},
+        products_updated: 0,
+        products_created: 0,
+        products_protected: 0,
+        total_potential_savings: 0,
+        simulation_type: 'client_draft',
+        fusion_rules_applied: {},
+        conflicts_resolved: [],
+        answers_snapshot: mergedAnswers,
+        answers_diff: responses,
+        status_before: 'en_cours',
+        status_after: 'en_cours',
+        updated_by: user.database_id,
+        version_number: nextVersionNumber
+      });
+
+    return res.json({
+      success: true,
+      data: {
+        simulation: updatedSimulation
+      },
+      message: 'Brouillon enregistré'
+    });
+  } catch (error) {
+    console.error('❌ Erreur sauvegarde brouillon:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur lors de la sauvegarde du brouillon'
+    });
+  }
+}));
+
+/**
  * POST /api/client/simulation/update
  * Met à jour la simulation d'un client connecté avec fusion intelligente
  */
 router.post('/update', optionalAuthMiddleware, asyncHandler(async (req: Request, res: Response) => {
   try {
-    // Vérifier l'authentification
     const user = (req as any).user;
-    
+
     if (!user || user.type !== 'client') {
       console.error('❌ Accès non autorisé:', { hasUser: !!user, userType: user?.type });
       return res.status(401).json({
@@ -50,53 +188,149 @@ router.post('/update', optionalAuthMiddleware, asyncHandler(async (req: Request,
       });
     }
 
-    const { responses, simulationType = 'update' }: ClientSimulationRequest = req.body;
+    const {
+      responses = {},
+      simulationType = 'update',
+      simulationId
+    }: ClientSimulationRequest & { simulationId?: string } = req.body;
 
-    console.log('🚀 Simulation client connecté:', {
-      clientId: user.database_id,
-      email: user.email,
-      simulationType,
-      responsesCount: Object.keys(responses || {}).length
-    });
-
-    // 1. Créer une nouvelle simulation avec les réponses
-    const { data: simulation, error: simulationError } = await supabaseClient
-      .from('simulations')
-      .insert({
-        client_id: user.database_id,
-        session_token: `client-sim-${Date.now()}-${user.database_id.substring(0, 8)}`,
-        type: 'authentifiee', // ✅ Champ obligatoire
-        status: 'en_cours', // ✅ Cohérent avec le reste du code
-        answers: responses, // Déjà avec les codes questions
-        created_at: new Date().toISOString()
-      })
-      .select()
-      .single();
-
-    if (simulationError) {
-      console.error('❌ Erreur création simulation:', simulationError);
-      return res.status(500).json({
+    if (!simulationId) {
+      return res.status(400).json({
         success: false,
-        message: 'Erreur lors de la création de la simulation'
+        message: 'simulationId manquant pour la mise à jour'
       });
     }
 
-    console.log(`📋 Simulation créée: ${simulation.id}`);
+    console.log('🚀 Finalisation simulation client:', {
+      clientId: user.database_id,
+      email: user.email,
+      simulationType,
+      simulationId,
+      responsesCount: Object.keys(responses || {}).length
+    });
 
-    // 2. Calculer l'éligibilité avec les fonctions SQL
+    const { data: draftSimulation, error: draftError } = await supabaseClient
+      .from('simulations')
+      .select('*')
+      .eq('id', simulationId)
+      .eq('client_id', user.database_id)
+      .single();
+
+    if (draftError || !draftSimulation) {
+      console.error('❌ Simulation introuvable ou inaccessible:', draftError);
+      return res.status(404).json({
+        success: false,
+        message: 'Simulation introuvable'
+      });
+    }
+
+    if (draftSimulation.status !== 'en_cours') {
+      return res.status(409).json({
+        success: false,
+        message: 'Cette simulation est déjà finalisée'
+      });
+    }
+
+    const mergedAnswers: Record<string, any> = {
+      ...(draftSimulation.answers || {})
+    };
+
+    Object.entries(responses || {}).forEach(([key, value]) => {
+      if (value === undefined) {
+        return;
+      }
+      mergedAnswers[key] = value;
+    });
+
+    const { data: questionnaireQuestions, error: questionnaireError } = await supabaseClient
+      .from('QuestionnaireQuestion')
+      .select('id, validation_rules, conditions');
+
+    if (questionnaireError) {
+      console.error('❌ Erreur récupération questions questionnaire:', questionnaireError);
+      return res.status(500).json({
+        success: false,
+        message: 'Impossible de valider les réponses'
+      });
+    }
+
+    const missingRequiredQuestions = (questionnaireQuestions || []).filter((question: any) => {
+      const rules = question.validation_rules || {};
+      const isRequired = rules.required === true;
+      if (!isRequired) return false;
+
+      const conditions = question.conditions || null;
+      if (conditions && conditions.depends_on) {
+        const dependentValue = mergedAnswers[conditions.depends_on];
+        if (dependentValue === undefined || dependentValue === null) {
+          return false;
+        }
+
+        switch (conditions.operator) {
+          case 'not_equals':
+            if (dependentValue === conditions.value) return false;
+            break;
+          case 'greater_than':
+            if (!(Number(dependentValue) > Number(conditions.value))) return false;
+            break;
+          case 'less_than':
+            if (!(Number(dependentValue) < Number(conditions.value))) return false;
+            break;
+          case 'equals':
+          default:
+            if (dependentValue !== conditions.value) return false;
+            break;
+        }
+      }
+
+      const answer = mergedAnswers[question.id];
+      if (answer === undefined || answer === null) return true;
+      if (typeof answer === 'string' && answer.trim() === '') return true;
+      if (Array.isArray(answer) && answer.length === 0) return true;
+      return false;
+    }).map((question: any) => question.id);
+
+    if (missingRequiredQuestions.length > 0) {
+      return res.status(422).json({
+        success: false,
+        message: 'Merci de compléter toutes les réponses obligatoires',
+        missing_questions: missingRequiredQuestions
+      });
+    }
+
+    const nowIso = new Date().toISOString();
+
+    const { data: updatedDraft, error: draftUpdateError } = await supabaseClient
+      .from('simulations')
+      .update({
+        answers: mergedAnswers,
+        updated_at: nowIso
+      })
+      .eq('id', simulationId)
+      .select()
+      .single();
+
+    if (draftUpdateError || !updatedDraft) {
+      console.error('❌ Erreur mise à jour brouillon:', draftUpdateError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la mise à jour de la simulation'
+      });
+    }
+
     const { data: resultatsSQL, error: calculError } = await supabaseClient
       .rpc('evaluer_eligibilite_avec_calcul', {
-        p_simulation_id: simulation.id
+        p_simulation_id: simulationId
       });
 
     if (calculError || !resultatsSQL || !resultatsSQL.success) {
       console.error('❌ Erreur calcul SQL:', calculError);
-      
+
       await supabaseClient
         .from('simulations')
-        .update({ status: 'failed' })
-        .eq('id', simulation.id);
-        
+        .update({ status: 'failed', updated_at: new Date().toISOString() })
+        .eq('id', simulationId);
+
       return res.status(500).json({
         success: false,
         message: 'Erreur lors du calcul d\'éligibilité'
@@ -105,32 +339,49 @@ router.post('/update', optionalAuthMiddleware, asyncHandler(async (req: Request,
 
     console.log(`✅ Calcul SQL réussi: ${resultatsSQL.total_eligible} produits éligibles`);
 
-    // 3. Fusionner intelligemment avec les produits existants
     const mergeResult = await mergeClientProductsSQL(
       user.database_id,
-      simulation.id,
+      simulationId,
       resultatsSQL.produits || []
     );
 
-    // 4. Mettre à jour la simulation avec les résultats
-    await supabaseClient
+    const metadataFinale = {
+      ...(updatedDraft.metadata || {}),
+      finalized_at: new Date().toISOString(),
+      finalized_by: user.database_id,
+      simulation_type: simulationType
+    };
+
+    const { error: finalizeError } = await supabaseClient
       .from('simulations')
       .update({
         status: 'completed',
         results: resultatsSQL,
+        metadata: metadataFinale,
+        expires_at: null,
         updated_at: new Date().toISOString()
       })
-      .eq('id', simulation.id);
+      .eq('id', simulationId);
 
-    // 5. Vérifier si c'est la première simulation réussie et changer le statut prospect → client
+    if (finalizeError) {
+      console.error('❌ Erreur finalisation simulation:', finalizeError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la finalisation de la simulation'
+      });
+    }
+
     const { data: clientData, error: clientError } = await supabaseClient
       .from('Client')
       .select('status, first_simulation_at')
       .eq('id', user.database_id)
       .single();
 
+    if (clientError) {
+      console.error('⚠️ Erreur récupération client:', clientError);
+    }
+
     if (clientData && clientData.status === 'prospect') {
-      // Vérifier si c'est vraiment la première simulation
       const { count: simulationCount } = await supabaseClient
         .from('simulations')
         .select('*', { count: 'exact', head: true })
@@ -138,10 +389,9 @@ router.post('/update', optionalAuthMiddleware, asyncHandler(async (req: Request,
         .eq('status', 'completed');
 
       if (simulationCount === 1) {
-        // Première simulation réussie : changer prospect → client
         await supabaseClient
           .from('Client')
-          .update({ 
+          .update({
             status: 'client',
             first_simulation_at: new Date().toISOString(),
             last_activity_at: new Date().toISOString()
@@ -154,17 +404,56 @@ router.post('/update', optionalAuthMiddleware, asyncHandler(async (req: Request,
         });
       }
     } else if (clientData && clientData.status === 'client') {
-      // Client déjà converti, juste mettre à jour last_activity_at
       await supabaseClient
         .from('Client')
-        .update({ 
+        .update({
           last_activity_at: new Date().toISOString()
         })
         .eq('id', user.database_id);
     }
 
+    const { data: lastHistory, error: historyFetchError } = await supabaseClient
+      .from('simulationhistory')
+      .select('version_number')
+      .eq('simulation_id', simulationId)
+      .order('version_number', { ascending: false })
+      .limit(1);
+
+    if (historyFetchError) {
+      console.error('⚠️ Erreur récupération historique simulation:', historyFetchError);
+    }
+
+    const nextVersionNumber =
+      Array.isArray(lastHistory) && lastHistory.length > 0 && lastHistory[0]?.version_number
+        ? Number(lastHistory[0].version_number) + 1
+        : 1;
+
+    await supabaseClient
+      .from('simulationhistory')
+      .insert({
+        client_id: user.database_id,
+        simulation_id: simulationId,
+        session_token: updatedDraft.session_token,
+        simulation_date: new Date().toISOString(),
+        responses: mergedAnswers,
+        results: resultatsSQL,
+        products_updated: mergeResult.products_updated,
+        products_created: mergeResult.products_created,
+        products_protected: mergeResult.products_protected,
+        total_potential_savings: mergeResult.total_savings,
+        simulation_type: simulationType === 'update' ? 'client_update' : simulationType,
+        fusion_rules_applied: {},
+        conflicts_resolved: mergeResult.conflicts || [],
+        answers_snapshot: mergedAnswers,
+        answers_diff: responses || {},
+        status_before: 'en_cours',
+        status_after: 'completed',
+        updated_by: user.database_id,
+        version_number: nextVersionNumber
+      });
+
     console.log('✅ Simulation client terminée:', {
-      simulationId: simulation.id,
+      simulationId,
       productsUpdated: mergeResult.products_updated,
       productsCreated: mergeResult.products_created,
       productsProtected: mergeResult.products_protected
@@ -173,19 +462,20 @@ router.post('/update', optionalAuthMiddleware, asyncHandler(async (req: Request,
     const response: ClientSimulationResponse = {
       success: true,
       data: {
-        simulationId: simulation.id,
+        simulationId,
         productsUpdated: mergeResult.products_updated,
         productsCreated: mergeResult.products_created,
         productsProtected: mergeResult.products_protected,
         totalSavings: mergeResult.total_savings,
         conflicts: mergeResult.conflicts || [],
-        historyId: mergeResult.history_id
+        historyId: mergeResult.history_id,
+        results: resultatsSQL,
+        answers: mergedAnswers
       },
       message: 'Simulation mise à jour avec succès'
     };
 
     return res.json(response);
-
   } catch (error) {
     console.error('❌ Erreur simulation client:', error);
     return res.status(500).json({
@@ -450,32 +740,15 @@ async function mergeClientProductsSQL(clientId: string, simulationId: string, pr
           }
         }
       } else {
-        // Nouveau produit → CRÉER
-        const { error: insertError } = await supabaseClient
-          .from('ClientProduitEligible')
-          .insert({
-            clientId: clientId,
-            produitId: produit.produit_id,
-            simulationId: simulationId,
-            statut: 'pending_upload',
-            montantFinal: produit.montant_estime,
-            tauxFinal: null,
-            dureeFinale: null,
-            notes: produit.notes,
-            calcul_details: produit.calcul_details,
-            metadata: {
-              source: 'simulation_client_sql',
-              type_produit: produit.type_produit,
-              calculated_at: new Date().toISOString()
-            }
-          });
-
-        if (!insertError) {
-          console.log(`✅ Nouveau produit créé: ${produit.produit_nom} - ${produit.montant_estime}€`);
-          productsCreated++;
-        } else {
-          console.error(`❌ Erreur création produit ${produit.produit_nom}:`, insertError);
-        }
+        // Nouveau produit calculé : en mode mise à jour client, on ne le crée pas automatiquement
+        console.log(`ℹ️ Produit éligible supplémentaire ignoré en mode mise à jour: ${produit.produit_nom}`);
+        productsProtected++;
+        conflicts.push({
+          produitId: produit.produit_id,
+          produitNom: produit.produit_nom,
+          reason: 'Produit éligible supplémentaire - non créé en mode mise à jour client',
+          montant_estime: produit.montant_estime
+        });
       }
     }
 
