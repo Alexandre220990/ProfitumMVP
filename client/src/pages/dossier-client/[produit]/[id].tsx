@@ -7,7 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import DossierStepsDisplay from '@/components/DossierStepsDisplay';
 import { WorkflowDocumentUpload } from '@/components/documents/WorkflowDocumentUpload';
+import UniversalProductWorkflow from "@/components/UniversalProductWorkflow";
+import { Separator } from "@/components/ui/separator";
 import { toast } from 'sonner';
+import { getProductConfig } from "@/config/productWorkflowConfigs";
 
 import { 
   ArrowLeft, 
@@ -32,7 +35,11 @@ import {
   Activity,
   MessageSquare,
   HelpCircle,
+  Info,
+  Truck,
+  Database
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { get, post } from "@/lib/api";
 
 interface ClientProduitEligible {
@@ -43,6 +50,9 @@ interface ClientProduitEligible {
   taux_final: number;
   montant_final: number;
   duree_finale: number;
+  tauxFinal?: number;
+  montantFinal?: number;
+  dureeFinale?: number;
   simulationId: number;
   created_at: string;
   updated_at: string;
@@ -120,7 +130,471 @@ interface ClientProduitEligible {
       phone: string;
     };
   };
+  metadata?: {
+    source?: 'simulation' | 'apporteur';
+    created_by_apporteur?: string;
+    apporteur_notes?: string;
+  };
+  notes?: string;
+  priorite?: number;
+  progress?: number;
+  current_step?: number;
 }
+
+
+type SimplifiedProductKey = 'chronotachygraphes' | 'logiciel_solid';
+
+interface SimplifiedProductContent {
+  productKey: SimplifiedProductKey;
+  title: string;
+  subtitle: string;
+  description: string;
+  icon: LucideIcon;
+  iconBackground: string;
+  iconColor: string;
+  amountLabel: string;
+  amountColor: string;
+  amountFallback: string;
+  durationLabel: string;
+  durationColor: string;
+  durationFallback: string;
+  advantages: Array<{ title: string; description: string }>;
+  expertRole: string;
+  documentsIntro?: string;
+}
+
+const SIMPLIFIED_PRODUCT_CONTENT: Record<string, SimplifiedProductContent> = {
+  'chronotachygraphes-digitaux': {
+    productKey: 'chronotachygraphes',
+    title: 'Chronotachygraphes Digitaux',
+    subtitle: 'Pilotage temps réel et démarches TICPE simplifiées',
+    description: 'Les chronotachygraphes digitaux permettent un pilotage en temps réel de votre flotte et simplifient vos démarches administratives liées au remboursement TICPE.',
+    icon: Truck,
+    iconBackground: 'bg-orange-100',
+    iconColor: 'text-orange-600',
+    amountLabel: "Coût d'installation",
+    amountColor: 'text-orange-600',
+    amountFallback: 'N/A',
+    durationLabel: "Délai d'installation",
+    durationColor: 'text-indigo-600',
+    durationFallback: '2 mois',
+    advantages: [
+      {
+        title: 'Suivi temps réel',
+        description: 'Monitoring complet de votre flotte et des temps de conduite.'
+      },
+      {
+        title: 'Conformité réglementaire',
+        description: 'Respect des obligations légales transport & TICPE.'
+      },
+      {
+        title: 'Démarches TICPE simplifiées',
+        description: 'Automatisation des données pour le remboursement Ticpe.'
+      },
+      {
+        title: 'Support technique national',
+        description: 'Installation, formation et support continu inclus.'
+      }
+    ],
+    expertRole: 'Expert distributeur chronotachygraphes',
+    documentsIntro: "Téléversez les documents de votre flotte pour lancer l'installation."
+  },
+  'logiciel-solid': {
+    productKey: 'logiciel_solid',
+    title: 'Logiciel Solid',
+    subtitle: 'Automatisation de la gestion comptable et RH pour PME',
+    description: "Logiciel Solid est une solution complète d'automatisation de la gestion comptable et RH pour les PME industrielles et de services. Intégration ERP, gestion des paies et transmission automatique des données.",
+    icon: Database,
+    iconBackground: 'bg-indigo-100',
+    iconColor: 'text-indigo-600',
+    amountLabel: "Coût d'abonnement",
+    amountColor: 'text-indigo-600',
+    amountFallback: 'N/A',
+    durationLabel: 'Délai de déploiement',
+    durationColor: 'text-indigo-600',
+    durationFallback: '1 mois',
+    advantages: [
+      {
+        title: 'Automatisation complète',
+        description: 'Gestion comptable et RH intégrée de bout en bout.'
+      },
+      {
+        title: 'Intégration ERP',
+        description: 'Connexion transparente avec vos systèmes existants.'
+      },
+      {
+        title: 'Formation incluse',
+        description: 'Accompagnement et formation des équipes utilisateurs.'
+      },
+      {
+        title: 'Support technique',
+        description: 'Assistance continue et mises à jour garanties.'
+      }
+    ],
+    expertRole: 'Expert intégrateur Logiciel Solid',
+    documentsIntro: "Déposez vos documents salariaux pour démarrer l'intégration."
+  }
+};
+
+interface SimplifiedProductDossierViewProps {
+  clientProduit: ClientProduitEligible;
+  produitInfo?: ClientProduitEligible['ProduitEligible'];
+  clientInfo?: ClientProduitEligible['Client'];
+  clientProduitId: string;
+  content: SimplifiedProductContent;
+  getStatusBadge: (status: string) => JSX.Element;
+  onBack: () => void;
+  onContactExpert: () => void;
+  onDownloadDocument: (documentId: string, documentName: string) => Promise<void>;
+  onUploadSuccess: () => void;
+}
+
+const SimplifiedProductDossierView = ({
+  clientProduit,
+  produitInfo,
+  clientInfo,
+  clientProduitId,
+  content,
+  getStatusBadge,
+  onBack,
+  onContactExpert,
+  onDownloadDocument,
+  onUploadSuccess
+}: SimplifiedProductDossierViewProps) => {
+  const montant = clientProduit.montant_final ?? clientProduit.montantFinal;
+  const duree = clientProduit.duree_finale ?? clientProduit.dureeFinale;
+  const progressValue = clientProduit.progress ?? clientProduit.audit?.progress ?? 0;
+  const productConfig = getProductConfig(content.productKey);
+  const requiredDocuments = productConfig?.requiredDocuments.filter(doc => doc.required) ?? [];
+  const optionalDocuments = productConfig?.requiredDocuments.filter(doc => !doc.required) ?? [];
+  const isFromApporteur = clientProduit.metadata?.source === 'apporteur';
+  const isHighPriority = clientProduit.priorite === 1;
+
+  const formatCurrency = (value?: number | null) => {
+    if (value === undefined || value === null || Number.isNaN(value)) {
+      return null;
+    }
+    return value.toLocaleString('fr-FR', {
+      style: 'currency',
+      currency: 'EUR'
+    });
+  };
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <Button variant="outline" onClick={onBack} className="flex items-center">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Retour
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Dossier {content.title}</h1>
+            <p className="text-gray-600">
+              ID dossier : {clientProduit.id} • Créé le{' '}
+              {clientProduit.created_at
+                ? new Date(clientProduit.created_at).toLocaleDateString('fr-FR')
+                : '—'}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center space-x-2">
+          {clientProduit.statut ? getStatusBadge(clientProduit.statut) : null}
+        </div>
+      </div>
+
+      {isFromApporteur && (
+        <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-300 rounded-lg shadow-sm">
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            <Badge className="bg-blue-600 text-white flex items-center gap-1">
+              <User className="w-3 h-3" />
+              Recommandé par votre conseiller
+            </Badge>
+            {isHighPriority && (
+              <Badge className="bg-amber-500 text-white">⭐ Priorité haute</Badge>
+            )}
+          </div>
+          {clientProduit.notes && (
+            <p className="text-sm text-blue-800">
+              💬 <strong>Note :</strong> {clientProduit.notes}
+            </p>
+          )}
+          {clientProduit.metadata?.apporteur_notes && (
+            <p className="text-sm text-blue-800 mt-1">
+              📝 <strong>Conseiller :</strong> {clientProduit.metadata.apporteur_notes}
+            </p>
+          )}
+        </div>
+      )}
+
+      <Card>
+        <CardHeader>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className={`p-3 rounded-lg ${content.iconBackground}`}>
+                <content.icon className={`w-8 h-8 ${content.iconColor}`} />
+              </div>
+              <div>
+                <CardTitle className="text-2xl font-bold text-gray-900">
+                  {content.title}
+                </CardTitle>
+                <p className="text-gray-600">{content.subtitle}</p>
+              </div>
+            </div>
+            {progressValue ? (
+              <div className="text-right">
+                <p className="text-sm text-gray-500">Progression</p>
+                <p className="text-lg font-semibold text-gray-900">
+                  {progressValue}%
+                </p>
+              </div>
+            ) : null}
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="text-center">
+              <div className={`text-3xl font-bold mb-2 ${content.amountColor}`}>
+                {formatCurrency(montant) ?? content.amountFallback}
+              </div>
+              <div className="text-sm text-gray-600">{content.amountLabel}</div>
+            </div>
+            <div className="text-center">
+              <div className={`text-3xl font-bold mb-2 ${content.durationColor}`}>
+                {duree ? `${duree} mois` : content.durationFallback}
+              </div>
+              <div className="text-sm text-gray-600">{content.durationLabel}</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Info className="w-5 h-5 text-blue-600" />
+            À propos du service
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">Présentation</h3>
+            <p className="text-gray-700 leading-relaxed">{content.description}</p>
+          </div>
+
+          <Separator />
+
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-green-600" />
+              Les bénéfices
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {content.advantages.map((advantage, index) => (
+                <div key={index} className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
+                  <div>
+                    <h4 className="font-medium text-gray-800">{advantage.title}</h4>
+                    <p className="text-sm text-gray-600">{advantage.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Documents requis</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {content.documentsIntro && (
+              <p className="text-sm text-gray-600">{content.documentsIntro}</p>
+            )}
+            {requiredDocuments.length > 0 && (
+              <div>
+                <h4 className="text-sm font-semibold text-gray-700 mb-2">Obligatoires</h4>
+                <ul className="space-y-3">
+                  {requiredDocuments.map(doc => (
+                    <li key={doc.type} className="flex items-start gap-3">
+                      <FileText className="w-4 h-4 text-blue-600 mt-1" />
+                      <div>
+                        <p className="text-sm font-medium text-gray-800">{doc.label}</p>
+                        <p className="text-xs text-gray-500">{doc.description}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {optionalDocuments.length > 0 && (
+              <div>
+                <h4 className="text-sm font-semibold text-gray-700 mb-2">Optionnels</h4>
+                <ul className="space-y-3">
+                  {optionalDocuments.map(doc => (
+                    <li key={doc.type} className="flex items-start gap-3">
+                      <FileText className="w-4 h-4 text-gray-500 mt-1" />
+                      <div>
+                        <p className="text-sm font-medium text-gray-800">{doc.label}</p>
+                        <p className="text-xs text-gray-500">{doc.description}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <div className="pt-2">
+              <WorkflowDocumentUpload
+                clientProduitId={clientProduitId}
+                produitId={produitInfo?.id}
+                clientId={clientInfo?.id}
+                onUploadSuccess={onUploadSuccess}
+              />
+            </div>
+            <Separator />
+            <div>
+              <h4 className="text-sm font-semibold text-gray-700 mb-2">Documents déjà transmis</h4>
+              {clientProduit.documents && clientProduit.documents.length > 0 ? (
+                <div className="space-y-3">
+                  {clientProduit.documents.map(document => (
+                    <div
+                      key={document.id}
+                      className="flex items-center justify-between p-3 border rounded-lg"
+                    >
+                      <div>
+                        <p className="text-sm font-medium text-gray-800">{document.nom}</p>
+                        <p className="text-xs text-gray-500">
+                          {document.type} •{' '}
+                          {new Date(document.uploaded_at).toLocaleDateString('fr-FR')}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={document.statut === 'valide' ? 'default' : 'secondary'}>
+                          {document.statut}
+                        </Badge>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onDownloadDocument(document.id, document.nom)}
+                        >
+                          <Download className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">Aucun document transmis pour le moment.</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Informations client</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm text-gray-600">
+              <div>
+                <span className="font-medium text-gray-800">Entreprise :</span>{' '}
+                {clientInfo?.company_name || clientInfo?.name || '—'}
+              </div>
+              <div>
+                <span className="font-medium text-gray-800">Email :</span>{' '}
+                {clientInfo?.email || '—'}
+              </div>
+              <div>
+                <span className="font-medium text-gray-800">Téléphone :</span>{' '}
+                {clientInfo?.phone || '—'}
+              </div>
+              <div>
+                <span className="font-medium text-gray-800">Ville :</span>{' '}
+                {clientInfo?.city || '—'}
+              </div>
+              <div>
+                <span className="font-medium text-gray-800">SIREN :</span>{' '}
+                {clientInfo?.siren || '—'}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Expert accompagnateur</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {clientProduit.expert_assignment ? (
+                <div className="space-y-4">
+                  <div className="flex items-start gap-4">
+                    <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+                      <User className="w-8 h-8 text-blue-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        {clientProduit.expert_assignment.expert.name}
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        {clientProduit.expert_assignment.expert.company_name}
+                      </p>
+                      <div className="flex items-center gap-3 mt-2">
+                        <Badge variant="secondary">
+                          {clientProduit.expert_assignment.statut}
+                        </Badge>
+                        <div className="flex items-center gap-1 text-sm text-gray-600">
+                          <Star className="w-4 h-4 text-yellow-500" />
+                          {clientProduit.expert_assignment.expert.rating}/5
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-2 text-sm text-gray-600">
+                    <div className="flex items-center gap-2">
+                      <Mail className="w-4 h-4" />
+                      {clientProduit.expert_assignment.expert.email}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Phone className="w-4 h-4" />
+                      {clientProduit.expert_assignment.expert.phone}
+                    </div>
+                  </div>
+                  <Button onClick={onContactExpert} className="w-full">
+                    <MessageSquare className="w-4 h-4 mr-2" />
+                    Contacter l'expert
+                  </Button>
+                </div>
+              ) : (
+                <div className="text-center py-6 text-gray-600 space-y-3">
+                  <User className="w-12 h-12 text-gray-400 mx-auto" />
+                  <p>
+                    Aucun expert assigné pour le moment. Un {content.expertRole} sera affecté une
+                    fois les documents validés.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Suivi du dossier</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <UniversalProductWorkflow
+            clientProduitId={clientProduitId}
+            productKey={content.productKey}
+            companyName={clientInfo?.company_name || clientInfo?.name}
+            estimatedAmount={typeof montant === 'number' ? montant : undefined}
+          />
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
 
 
 export default function DossierClientProduit() {
@@ -334,8 +808,29 @@ export default function DossierClientProduit() {
     return null;
   }
 
-const produitInfo = clientProduit.ProduitEligible || clientProduit.produit;
-const clientInfo = clientProduit.Client || clientProduit.client;
+  const produitInfo = clientProduit.ProduitEligible || clientProduit.produit;
+  const clientInfo = clientProduit.Client || clientProduit.client;
+  const simplifiedContent = produitNom ? SIMPLIFIED_PRODUCT_CONTENT[produitNom] : undefined;
+
+  if (simplifiedContent) {
+    return (
+      <SimplifiedProductDossierView
+        clientProduit={clientProduit}
+        produitInfo={produitInfo}
+        clientInfo={clientInfo}
+        clientProduitId={clientProduit.id}
+        content={simplifiedContent}
+        getStatusBadge={(status) => getStatusBadge(status)}
+        onBack={() => navigate('/dashboard/client')}
+        onContactExpert={handleContactExpert}
+        onDownloadDocument={handleDownloadDocument}
+        onUploadSuccess={() => {
+          toast.success('Document ajouté au dossier');
+          fetchDossierData();
+        }}
+      />
+    );
+  }
 
   return (
     <div>
