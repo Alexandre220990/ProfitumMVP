@@ -1570,6 +1570,17 @@ const partnerRequestAttemptedRef = useRef(false);
     );
   };
 
+  useEffect(() => {
+    if (
+      isSimplifiedProductKey &&
+      simplifiedState &&
+      simplifiedState.activeStep !== currentStep &&
+      !editingInitialChecks
+    ) {
+      setCurrentStep(simplifiedState.activeStep);
+    }
+  }, [isSimplifiedProductKey, simplifiedState, currentStep, editingInitialChecks]);
+
   const renderStepContent = () => {
     // Détecter les produits simplifiés
     const isSimplifiedProduct = isSimplifiedProductKey;
@@ -1919,17 +1930,6 @@ const partnerRequestAttemptedRef = useRef(false);
   const effectiveCurrentStep = isSimplifiedProductKey && simplifiedState
     ? simplifiedState.activeStep
     : currentStep;
-
-  useEffect(() => {
-    if (
-      isSimplifiedProductKey &&
-      simplifiedState &&
-      simplifiedState.activeStep !== currentStep &&
-      !editingInitialChecks
-    ) {
-      setCurrentStep(simplifiedState.activeStep);
-    }
-  }, [isSimplifiedProductKey, simplifiedState, currentStep, editingInitialChecks]);
 
   return (
     <div className={`space-y-6 ${className}`}>
