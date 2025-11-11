@@ -308,25 +308,27 @@ const ProductCard = ({ produit, onClick, onExpertSelection, notificationData }: 
   };
 
   return (
-    <Card className={`h-full flex flex-col transition-all duration-300 cursor-pointer group relative rounded-xl border border-slate-200/80 bg-white/95 hover:shadow-xl ${
-      isFromApporteur ? 'ring-1 ring-blue-200 bg-blue-50/40' : 'hover:border-blue-300'
-    } ${notificationData?.isNewStatus ? 'ring-2 ring-green-400 animate-pulse' : ''}`}>
-      {/* Pastille de notification en haut à droite */}
+    <Card
+      className={`relative h-full flex flex-col transition-all duration-300 cursor-pointer group rounded-2xl border border-slate-200/70 bg-white shadow-sm hover:shadow-2xl hover:-translate-y-1 ${
+        isFromApporteur ? 'ring-1 ring-blue-200 bg-blue-50/50' : 'hover:border-blue-300'
+      }`}
+    >
+      {/* Pastille notification (intégrée dans la tuile) */}
       {notificationData && notificationData.unreadCount > 0 && (
-        <div className="absolute -top-2 -right-2 z-10">
+        <div className="absolute top-3 right-3 z-10">
           <div className="relative">
-            <Bell className="h-5 w-5 text-white bg-red-500 rounded-full p-1 animate-bounce" />
-            <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center font-bold">
+            <Bell className="h-5 w-5 text-white bg-red-500 rounded-full p-1 shadow-md" />
+            <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] rounded-full h-4 w-4 flex items-center justify-center font-bold">
               {notificationData.unreadCount}
             </span>
           </div>
         </div>
       )}
 
-      <CardContent className="p-4 flex flex-col h-full gap-3">
+      <CardContent className="p-5 flex flex-col h-full gap-4">
         {/* Badge "Action requise" */}
         {notificationData?.hasActionRequired && (
-          <div className="mb-3 p-2 bg-gradient-to-r from-red-100 to-pink-100 rounded-lg border-2 border-red-300 animate-pulse">
+          <div className="p-2 bg-gradient-to-r from-red-50 to-pink-100 rounded-xl border border-red-200 shadow-sm">
             <div className="flex items-center justify-center gap-2">
               <Badge className="bg-red-600 text-white flex items-center gap-1 font-semibold">
                 <AlertCircle className="h-3 w-3" />
@@ -338,7 +340,7 @@ const ProductCard = ({ produit, onClick, onExpertSelection, notificationData }: 
 
         {/* Badge "Nouveau statut" */}
         {notificationData?.isNewStatus && !notificationData?.hasActionRequired && (
-          <div className="mb-3 p-2 bg-gradient-to-r from-green-100 to-emerald-100 rounded-lg border border-green-300">
+          <div className="p-2 bg-gradient-to-r from-green-50 to-emerald-100 rounded-xl border border-green-200 shadow-sm">
             <div className="flex items-center justify-center gap-2">
               <Badge className="bg-green-600 text-white flex items-center gap-1">
                 <Sparkles className="h-3 w-3" />
@@ -350,7 +352,7 @@ const ProductCard = ({ produit, onClick, onExpertSelection, notificationData }: 
 
         {/* Badge "Via Apporteur" si applicable */}
         {isFromApporteur && (
-          <div className="mb-3 p-2 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-lg border border-blue-200">
+          <div className="p-2 bg-gradient-to-r from-blue-50 to-indigo-100 rounded-xl border border-blue-200 shadow-sm">
             <div className="flex items-center justify-center gap-2">
               <Badge className="bg-blue-600 text-white flex items-center gap-1">
                 <UserCheck className="h-3 w-3" />
@@ -367,7 +369,7 @@ const ProductCard = ({ produit, onClick, onExpertSelection, notificationData }: 
 
         {/* Badge "Documents manquants" si demande active */}
         {produit.has_pending_document_request && (
-          <div className="mb-3 p-2 bg-gradient-to-r from-orange-100 to-amber-100 rounded-lg border-2 border-orange-300 animate-pulse">
+          <div className="p-2 bg-gradient-to-r from-orange-50 to-amber-100 rounded-xl border border-orange-200 shadow-sm">
             <div className="flex items-center justify-center gap-2">
               <Badge className="bg-orange-600 text-white flex items-center gap-1 font-semibold">
                 <FileText className="h-3 w-3" />
@@ -396,7 +398,7 @@ const ProductCard = ({ produit, onClick, onExpertSelection, notificationData }: 
             </div>
           </div>
           {statusConfig && (
-            <Badge className={`${statusConfig.color} flex items-center gap-1 px-2 py-1 text-[11px] font-semibold rounded-full whitespace-nowrap`}>
+            <Badge className={`${statusConfig.color} flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold rounded-full whitespace-nowrap shadow-sm`}>
               {statusConfig.icon}
               {statusConfig.label}
             </Badge>
@@ -404,16 +406,18 @@ const ProductCard = ({ produit, onClick, onExpertSelection, notificationData }: 
         </div>
 
         {/* Montant estimé */}
-        <div className="p-3 rounded-lg border border-emerald-100 bg-emerald-50/70 text-center shadow-sm">
-          <p className="text-[11px] text-emerald-700 mb-1 font-medium uppercase tracking-wide">Montant estimé</p>
-          <p className="font-bold text-xl text-emerald-700">
+        <div className="p-4 rounded-xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white text-center shadow-sm">
+          <p className="text-[11px] text-emerald-700 mb-1 font-semibold uppercase tracking-[0.2em]">
+            Montant estimé
+          </p>
+          <p className="font-bold text-[22px] text-emerald-700">
             {produit.montantFinal ? produit.montantFinal.toLocaleString('fr-FR') + ' €' : 'Prix sur demande'}
           </p>
         </div>
 
         {/* Barre de progression haute couture */}
         <div>
-          <ProgressBar 
+          <ProgressBar
             progress={calculateProgress(produit)}
             status={produit.statut}
             expert_id={produit.expert_id}
@@ -422,7 +426,7 @@ const ProductCard = ({ produit, onClick, onExpertSelection, notificationData }: 
         </div>
 
         {/* Section Expert - hauteur fixe pour alignement - Affichage conditionnel */}
-        <div className="mb-3 min-h-[2.75rem] flex flex-col justify-center">
+        <div className="mb-2 min-h-[3rem] flex flex-col justify-center">
           {produit.expert_id || produit.expert_pending_id ? (
             <div 
               className="bg-green-50 p-3 rounded-lg border border-green-200"
@@ -460,8 +464,8 @@ const ProductCard = ({ produit, onClick, onExpertSelection, notificationData }: 
                     </div>
                   )}
                 </div>
-                <div className="text-right">
-                  <UserCheck className="w-5 h-5 text-green-600" />
+                <div className="text-right flex items-center gap-1 text-green-600">
+                  <UserCheck className="w-5 h-5" />
                 </div>
               </div>
             </div>
@@ -506,7 +510,7 @@ const ProductCard = ({ produit, onClick, onExpertSelection, notificationData }: 
                       </div>
                     )}
                   </div>
-                  <p className={`text-xs font-semibold text-center mb-0.5 ${
+                  <p className={`text-xs font-semibold text-center mb-1 ${
                     produit.statut === 'documents_uploaded' ? 'text-purple-800' : 'text-orange-800'
                   }`}>
                     {produit.statut === 'documents_uploaded' 
@@ -527,7 +531,7 @@ const ProductCard = ({ produit, onClick, onExpertSelection, notificationData }: 
         </div>
 
         {/* Bouton Continuer - toujours aligné en bas */}
-        <div className="mt-auto pt-3">
+        <div className="mt-auto pt-4">
           <Button 
             size="sm"
             className="w-full group-hover:bg-blue-600 transition-colors"
