@@ -107,6 +107,79 @@ export class NotificationTriggers {
     };
   }
 
+  private static getProductTagFromValue(value?: string | null): string | null {
+    if (!value) {
+      return null;
+    }
+
+    const cleaned = value.toString().trim();
+    if (!cleaned) {
+      return null;
+    }
+
+    // Retirer d'éventuels badges déjà présents et caractères spéciaux
+    const withoutBadge = cleaned.replace(/^\[[^\]]+\]\s*/, '');
+    const alphanumericMatch = withoutBadge.match(/[A-Za-z0-9]{2,}/);
+
+    if (!alphanumericMatch) {
+      return null;
+    }
+
+    return alphanumericMatch[0].toUpperCase();
+  }
+
+  private static computeProductTag(
+    originalTitle: string,
+    metadata: Record<string, any>,
+    eventTitle?: string | null
+  ): string | null {
+    // Si le titre possède déjà un badge, ne rien faire
+    if (/^\[[^\]]+\]/.test(originalTitle)) {
+      return null;
+    }
+
+    const candidateKeys = [
+      'product_tag',
+      'produit',
+      'product',
+      'product_name',
+      'product_key',
+      'produit_slug',
+      'dossier_code',
+      'dossier',
+      'dossier_nom'
+    ];
+
+    for (const key of candidateKeys) {
+      if (metadata && typeof metadata[key] === 'string') {
+        const tag = this.getProductTagFromValue(metadata[key]);
+        if (tag) {
+          return tag;
+        }
+      }
+    }
+
+    if (eventTitle) {
+      const tag = this.getProductTagFromValue(eventTitle);
+      if (tag) {
+        return tag;
+      }
+    }
+
+    return null;
+  }
+
+  private static decorateTitleWithProductTag(
+    title: string,
+    tag: string | null
+  ): string {
+    if (!tag || /^\[[^\]]+\]/.test(title)) {
+      return title;
+    }
+
+    return `[${tag}] ${title}`;
+  }
+
   /**
    * Créer une notification standard (client/expert/apporteur)
    */
@@ -116,12 +189,15 @@ export class NotificationTriggers {
       const actionData =
         data.action_data && typeof data.action_data === 'object' ? data.action_data : {};
 
+      const productTag = this.computeProductTag(data.title, metadata, data.event_title);
+      const decoratedTitle = this.decorateTitleWithProductTag(data.title, productTag);
+
       const { error } = await supabase
         .from('notification')
         .insert({
           user_id: data.user_id,
           user_type: data.user_type,
-          title: data.title,
+          title: decoratedTitle,
           message: data.message,
           notification_type: data.notification_type,
           priority: data.priority,
@@ -457,13 +533,13 @@ export class NotificationTriggers {
         decision: data.decision,
         next_step_label: data.decision === 'refuse'
           ? 'Contacter votre expert'
-          : 'Régler la commission Profitum',
+          : 'Régler la commission expert',
         next_step_description: data.decision === 'refuse'
           ? 'Votre expert vous contactera afin de préparer les suites possibles.'
-          : 'Procédez au paiement pour finaliser le dossier et déclencher l’émission de la facture expert.',
+          : 'Procédez au règlement de la commission due à votre expert pour finaliser le dossier.',
         recommended_action: data.decision === 'refuse'
           ? 'Consulter le détail dans votre espace dossier et préparer les éléments de contestation.'
-          : 'Régler la facture Profitum depuis votre espace client.',
+          : 'Régler la commission expert depuis votre espace client.',
         support_email: NotificationTriggers.SUPPORT_EMAIL
       }
     });
@@ -479,8 +555,8 @@ export class NotificationTriggers {
       user_id: clientAuthId,
       user_type: 'client',
       title: '💶 Paiement requis',
-      message: `Votre remboursement est disponible pour ${data.produit}. Merci de régler ${data.montant.toLocaleString('fr-FR')} €.${data.facture_reference ? `
-Facture : ${data.facture_reference}` : ''}`,
+      message: `Votre remboursement est disponible pour ${data.produit}. Merci de régler ${data.montant.toLocaleString('fr-FR')} € à votre expert.${data.facture_reference ? `
+Référence : ${data.facture_reference}` : ''}`,
       notification_type: 'payment_requested',
       priority: 'high',
       event_id: data.dossier_id,
@@ -491,9 +567,10 @@ Facture : ${data.facture_reference}` : ''}`,
         produit_slug: produitSlug || undefined,
         montant: data.montant,
         facture_reference: data.facture_reference || null,
-        next_step_label: 'Régler la commission Profitum',
-        next_step_description: 'Ce paiement permet de clôturer définitivement votre dossier et de rémunérer l’expert qui vous a accompagné.',
-        recommended_action: 'Effectuer le règlement depuis votre espace client. En cas de question, contactez notre support.',
+        commission_type: 'expert',
+        next_step_label: 'Régler la commission expert',
+        next_step_description: 'Ce paiement rémunère votre expert et permet de clôturer définitivement votre dossier.',
+        recommended_action: 'Effectuer le règlement de la commission expert depuis votre espace client. En cas de question, contactez notre support.',
         support_email: NotificationTriggers.SUPPORT_EMAIL
       }
     });
@@ -509,7 +586,7 @@ Facture : ${data.facture_reference}` : ''}`,
       user_id: clientAuthId,
       user_type: 'client',
       title: '✅ Paiement confirmé',
-      message: `Nous avons bien reçu le paiement de ${data.montant.toLocaleString('fr-FR')} € pour ${data.produit}. Le dossier est désormais clôturé.${data.paiement_date ? `
+      message: `Nous avons bien reçu le paiement de ${data.montant.toLocaleString('fr-FR')} € pour rémunérer votre expert sur ${data.produit}. Le dossier est désormais clôturé.${data.paiement_date ? `
 Date : ${data.paiement_date}` : ''}`,
       notification_type: 'payment_confirmed',
       priority: 'medium',
@@ -522,7 +599,7 @@ Date : ${data.paiement_date}` : ''}`,
         produit_slug: produitSlug || undefined,
         paiement_date: data.paiement_date || null,
         next_step_label: 'Télécharger vos reçus',
-        next_step_description: 'Vos justificatifs (facture Profitum et synthèse dossier) sont disponibles dans votre espace.',
+        next_step_description: 'Vos justificatifs (facture et synthèse dossier) sont disponibles dans votre espace.',
         recommended_action: 'Archiver les pièces justificatives et informer votre comptabilité si nécessaire.',
         support_email: NotificationTriggers.SUPPORT_EMAIL
       }

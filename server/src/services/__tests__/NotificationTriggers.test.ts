@@ -42,9 +42,10 @@ describe('NotificationTriggers metadata enrichment', () => {
       produit_slug: 'ticpe',
       montant: 5200,
       facture_reference: 'FACT-001',
-      next_step_label: expect.any(String),
-      next_step_description: expect.any(String),
-      recommended_action: expect.any(String),
+    commission_type: 'expert',
+    next_step_label: 'Régler la commission expert',
+    next_step_description: expect.stringContaining('rémunère votre expert'),
+    recommended_action: expect.stringContaining('commission expert'),
       support_email: expect.any(String),
       sla_hours: 48,
       escalation_level: 0

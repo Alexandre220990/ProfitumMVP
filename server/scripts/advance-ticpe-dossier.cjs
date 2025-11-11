@@ -479,6 +479,15 @@ async function main() {
   const refundReference = `REMBOURSEMENT-${dossier.id.slice(0, 8).toUpperCase()}`;
   const invoiceReference = `FACT-${dossier.id.slice(0, 6).toUpperCase()}-${baseDate.getFullYear()}`;
 
+  const rawProductLabel = (productName || PRODUCT_KEYWORD || 'DOSSIER').toString().trim();
+  const productLabel = rawProductLabel
+    ? rawProductLabel
+        .split(/[\s-]+/)[0]
+        .replace(/[^A-Za-z0-9]/g, '')
+        .toUpperCase() || 'DOSSIER'
+    : 'DOSSIER';
+  const formatTitle = (baseTitle) => `[${productLabel}] ${baseTitle}`;
+
   async function runStage(targetStatus, label, action) {
     const shouldRun = statusIndex(dossier.statut) < statusIndex(targetStatus);
     if (!shouldRun) {
@@ -531,7 +540,7 @@ async function main() {
     await createNotification({
       user_id: clientAuthId,
       user_type: 'client',
-      title: `✅ Expert assigné - ${productName}`,
+      title: formatTitle('✅ Expert assigné'),
       message: `${expertName} a confirmé la prise en charge de votre dossier ${productName}.`,
       notification_type: 'expert_accepted',
       priority: 'high',
@@ -548,7 +557,7 @@ async function main() {
       await createNotification({
         user_id: adminId,
         user_type: 'admin',
-        title: `ℹ️ Expert validé - ${clientName}`,
+        title: formatTitle(`ℹ️ Expert validé (${clientName})`),
         message: `${expertName} accepte le dossier ${productName} de ${clientName}.`,
         notification_type: 'admin_info',
         priority: 'medium',
@@ -560,7 +569,7 @@ async function main() {
       await createNotification({
         user_id: apporteurAuthId,
         user_type: 'apporteur',
-        title: `✅ Expert confirmé pour ${clientName}`,
+        title: formatTitle(`✅ Expert confirmé (${clientName})`),
         message: `${expertName} est désormais en charge du dossier ${productName}.`,
         notification_type: 'apporteur_info',
         priority: 'medium',
@@ -621,7 +630,7 @@ async function main() {
     await createNotification({
       user_id: clientAuthId,
       user_type: 'client',
-      title: `ℹ️ Audit démarré - ${productName}`,
+      title: formatTitle('ℹ️ Audit démarré'),
       message: `${expertName} analyse actuellement votre dossier.`,
       notification_type: 'audit_started',
       priority: 'medium',
@@ -632,7 +641,7 @@ async function main() {
       await createNotification({
         user_id: adminId,
         user_type: 'admin',
-        title: `ℹ️ Audit lancé - ${clientName}`,
+        title: formatTitle(`ℹ️ Audit lancé (${clientName})`),
         message: `${expertName} a démarré l'audit pour ${clientName} (${productName}).`,
         notification_type: 'admin_info',
         priority: 'medium',
@@ -692,7 +701,7 @@ async function main() {
     await createNotification({
       user_id: clientAuthId,
       user_type: 'client',
-      title: `✅ Audit terminé - ${productName}`,
+      title: formatTitle('✅ Audit terminé'),
       message: `Montant estimé : ${finalAmount.toLocaleString('fr-FR')} €. Merci de valider pour lancer la production.`,
       notification_type: 'audit_completed',
       priority: 'high',
@@ -707,7 +716,7 @@ async function main() {
       await createNotification({
         user_id: adminId,
         user_type: 'admin',
-        title: `📋 Audit terminé - ${clientName}`,
+        title: formatTitle(`📋 Audit terminé (${clientName})`),
         message: `${expertName} a finalisé l'audit (${finalAmount.toLocaleString('fr-FR')} €).`,
         notification_type: 'admin_info',
         priority: 'medium',
@@ -719,7 +728,7 @@ async function main() {
       await createNotification({
         user_id: apporteurAuthId,
         user_type: 'apporteur',
-        title: `ℹ️ Audit terminé - ${clientName}`,
+        title: formatTitle(`ℹ️ Audit terminé (${clientName})`),
         message: `Montant estimé : ${finalAmount.toLocaleString('fr-FR')} € sur ${productName}.`,
         notification_type: 'apporteur_info',
         priority: 'medium',
@@ -789,7 +798,7 @@ async function main() {
     await createNotification({
       user_id: expertAuthId,
       user_type: 'expert',
-      title: '🎉 Audit accepté par le client',
+      title: formatTitle('🎉 Audit accepté par le client'),
       message: `${clientName} a validé l'audit. Lancement de la production.`,
       notification_type: 'audit_validated',
       priority: 'high',
@@ -800,7 +809,7 @@ async function main() {
       await createNotification({
         user_id: adminId,
         user_type: 'admin',
-        title: '🎉 Audit validé - Production à lancer',
+        title: formatTitle('🎉 Audit validé - Production à lancer'),
         message: `${clientName} confirme l'audit (${finalAmount.toLocaleString('fr-FR')} €).`,
         notification_type: 'admin_info',
         priority: 'high',
@@ -864,7 +873,7 @@ async function main() {
     await createNotification({
       user_id: clientAuthId,
       user_type: 'client',
-      title: '🛠️ Dossier en mise en œuvre',
+      title: formatTitle('🛠️ Dossier en mise en œuvre'),
       message: `${expertName} suit votre remboursement auprès de la DGDDI (réf: ${implementationReference}).`,
       notification_type: 'implementation_in_progress',
       priority: 'medium',
@@ -879,7 +888,7 @@ async function main() {
       await createNotification({
         user_id: adminId,
         user_type: 'admin',
-        title: '🛠️ Mise en œuvre en cours',
+        title: formatTitle('🛠️ Mise en œuvre en cours'),
         message: `${expertName} suit le dossier ${productName} (${clientName}). Référence ${implementationReference}.`,
         notification_type: 'implementation_in_progress',
         priority: 'low',
@@ -891,7 +900,7 @@ async function main() {
       await createNotification({
         user_id: apporteurAuthId,
         user_type: 'apporteur',
-        title: `🛠️ ${clientName} en mise en œuvre`,
+        title: formatTitle(`🛠️ ${clientName} en mise en œuvre`),
         message: `${expertName} suit la demande auprès de la DGDDI (réf: ${implementationReference}).`,
         notification_type: 'implementation_in_progress',
         priority: 'medium',
@@ -963,7 +972,7 @@ async function main() {
     await createNotification({
       user_id: clientAuthId,
       user_type: 'client',
-      title: '🎉 Administration : accord obtenu',
+      title: formatTitle('🎉 Administration : accord obtenu'),
       message: `La DGDDI a validé votre dossier pour ${finalAmount.toLocaleString('fr-FR')} €. Le remboursement arrive.`,
       notification_type: 'implementation_validated',
       priority: 'high',
@@ -978,7 +987,7 @@ async function main() {
       await createNotification({
         user_id: apporteurAuthId,
         user_type: 'apporteur',
-        title: `🎉 ${clientName} accordé`,
+        title: formatTitle(`🎉 ${clientName} accordé`),
         message: `Montant accordé : ${finalAmount.toLocaleString('fr-FR')} €`,
         notification_type: 'implementation_validated',
         priority: 'high',
@@ -990,7 +999,7 @@ async function main() {
       await createNotification({
         user_id: adminId,
         user_type: 'admin',
-        title: '🎉 Accord administration',
+        title: formatTitle('🎉 Accord administration'),
         message: `${clientName} obtient ${finalAmount.toLocaleString('fr-FR')} € (dossier ${productName}).`,
         notification_type: 'admin_info',
         priority: 'high',
@@ -1022,7 +1031,10 @@ async function main() {
         status: 'requested',
         requested_by: expertInfo?.id || current.expert_id,
         requested_at: now,
-        requested_amount: profitumFeeTTC,
+        requested_amount: expertFee,
+        requested_amount_profitum: profitumFeeTTC,
+        expert_commission_amount: expertFee,
+        profitum_invoice_amount: profitumFeeTTC,
         refund_amount: finalAmount,
         refund_date: now,
         payment_reference: invoiceReference,
@@ -1030,6 +1042,7 @@ async function main() {
           number: invoiceReference,
           montant_ht: profitumFeeHT,
           montant_ttc: profitumFeeTTC,
+          commission_expert: expertFee,
         },
       },
     });
@@ -1053,9 +1066,10 @@ async function main() {
       actor_type: 'expert',
       actor_name: expertName,
       title: '💶 Remboursement obtenu – facture émise',
-      description: `${expertName} confirme le remboursement (${finalAmount.toLocaleString('fr-FR')} €).\nFacture: ${invoiceReference}`,
+      description: `${expertName} confirme le remboursement (${finalAmount.toLocaleString('fr-FR')} €).\nCommission expert due : ${expertFee.toLocaleString('fr-FR')} €.\nFacture Profitum : ${invoiceReference}`,
       metadata: {
-        montant: profitumFeeTTC,
+        commission_expert: expertFee,
+        profitum_invoice_ttc: profitumFeeTTC,
         facture_reference: invoiceReference,
         notes: `Remboursement confirmé le ${refundConfirmationDate.toLocaleDateString('fr-FR')}.`,
       },
@@ -1066,14 +1080,16 @@ async function main() {
     await createNotification({
       user_id: clientAuthId,
       user_type: 'client',
-      title: '💶 Remboursement confirmé',
-      message: `Votre remboursement de ${finalAmount.toLocaleString('fr-FR')} € est validé. Facture Profitum: ${profitumFeeTTC.toLocaleString('fr-FR')} € (réf: ${invoiceReference}).`,
+      title: formatTitle('💶 Remboursement confirmé'),
+      message: `Votre remboursement de ${finalAmount.toLocaleString('fr-FR')} € est validé. Commission expert à régler : ${expertFee.toLocaleString('fr-FR')} € (réf: ${invoiceReference}).`,
       notification_type: 'payment_requested',
       priority: 'high',
       action_url: `/produits/${productSlug}/${updated.id}`,
       metadata: {
+        produit: productName,
         facture_reference: invoiceReference,
-        montant_ttc: profitumFeeTTC,
+        commission_expert: expertFee,
+        profitum_invoice_ttc: profitumFeeTTC,
       },
     });
 
@@ -1081,8 +1097,8 @@ async function main() {
       await createNotification({
         user_id: adminId,
         user_type: 'admin',
-        title: '💶 Facturation requise',
-        message: `${clientName} - ${productName}. Remboursement confirmé : ${finalAmount.toLocaleString('fr-FR')} €.`,
+        title: formatTitle('💶 Facturation requise'),
+        message: `${clientName} - ${productName}. Remboursement confirmé : ${finalAmount.toLocaleString('fr-FR')} €. Commission expert à encaisser : ${expertFee.toLocaleString('fr-FR')} € (facture Profitum ${invoiceReference}).`,
         notification_type: 'payment_requested',
         priority: 'medium',
         action_url: `/admin/dossiers/${updated.id}`,
@@ -1093,8 +1109,8 @@ async function main() {
       await createNotification({
         user_id: expertAuthId,
         user_type: 'expert',
-        title: '💶 Paiement client attendu',
-        message: `Facture ${invoiceReference} envoyée (${profitumFeeTTC.toLocaleString('fr-FR')} € TTC).`,
+        title: formatTitle('💶 Paiement client attendu'),
+        message: `Commission expert attendue : ${expertFee.toLocaleString('fr-FR')} €.\nFacture Profitum ${invoiceReference} : ${profitumFeeTTC.toLocaleString('fr-FR')} € TTC.`,
         notification_type: 'payment_requested',
         priority: 'medium',
         action_url: `/expert/dossier/${updated.id}`,
@@ -1105,8 +1121,8 @@ async function main() {
       await createNotification({
         user_id: apporteurAuthId,
         user_type: 'apporteur',
-        title: `💶 ${clientName} remboursé`,
-        message: `Montant accordé : ${finalAmount.toLocaleString('fr-FR')} €. Commission Profitum en attente (${profitumFeeTTC.toLocaleString('fr-FR')} €).`,
+        title: formatTitle(`💶 ${clientName} remboursé`),
+        message: `Montant accordé : ${finalAmount.toLocaleString('fr-FR')} €. Commission expert en attente (${expertFee.toLocaleString('fr-FR')} €).`,
         notification_type: 'payment_requested',
         priority: 'medium',
         action_url: `/apporteur/dossiers/${updated.id}`,
@@ -1130,7 +1146,9 @@ async function main() {
         initiated_by: clientInfo?.id,
         initiated_at: now,
         mode: 'virement',
-        initiated_amount: profitumFeeTTC,
+        initiated_amount: expertFee,
+        commission_expert_amount: expertFee,
+        profitum_invoice_amount: profitumFeeTTC,
         last_update: now,
       },
     });
@@ -1153,8 +1171,13 @@ async function main() {
       actor_type: 'client',
       actor_name: clientName,
       title: '💳 Paiement en cours',
-      description: `Paiement de ${profitumFeeTTC.toLocaleString('fr-FR')} € (mode: virement).`,
-      metadata: { montant: profitumFeeTTC, mode: 'virement' },
+      description: `Paiement de la commission expert (${expertFee.toLocaleString('fr-FR')} €) en cours (mode: virement).\nFacture Profitum : ${invoiceReference} (${profitumFeeTTC.toLocaleString('fr-FR')} € TTC).`,
+      metadata: {
+        commission_expert: expertFee,
+        profitum_invoice_ttc: profitumFeeTTC,
+        mode: 'virement',
+        facture_reference: invoiceReference,
+      },
       icon: '💳',
       color: 'blue',
     });
@@ -1163,8 +1186,8 @@ async function main() {
       await createNotification({
         user_id: expertAuthId,
         user_type: 'expert',
-        title: '💳 Paiement client en cours',
-        message: `${clientName} a initié un paiement de ${profitumFeeTTC.toLocaleString('fr-FR')} € (virement).`,
+        title: formatTitle('💳 Paiement client en cours'),
+        message: `${clientName} a initié le virement de ${expertFee.toLocaleString('fr-FR')} € pour votre commission.\nFacture Profitum ${invoiceReference} : ${profitumFeeTTC.toLocaleString('fr-FR')} € TTC.`,
         notification_type: 'payment_in_progress',
         priority: 'medium',
         action_url: `/expert/dossier/${updated.id}`,
@@ -1183,7 +1206,9 @@ async function main() {
         status: 'completed',
         completed_by: clientInfo?.id,
         completed_at: now,
-        paid_amount: profitumFeeTTC,
+        paid_amount: expertFee,
+        commission_expert_amount: expertFee,
+        profitum_invoice_amount: profitumFeeTTC,
         paiement_date: now,
         last_update: now,
       },
@@ -1212,9 +1237,11 @@ async function main() {
       actor_type: 'system',
       actor_name: 'Système',
       title: '✅ Paiement confirmé – dossier clôturé',
-      description: `Paiement final de ${profitumFeeTTC.toLocaleString('fr-FR')} € confirmé.\nRemboursement client : ${finalAmount.toLocaleString('fr-FR')} €`,
+      description: `Paiement final de la commission expert (${expertFee.toLocaleString('fr-FR')} €) confirmé.\nRemboursement client : ${finalAmount.toLocaleString('fr-FR')} €.\nFacture Profitum : ${invoiceReference} (${profitumFeeTTC.toLocaleString('fr-FR')} € TTC).`,
       metadata: {
-        montant: profitumFeeTTC,
+        commission_expert: expertFee,
+        profitum_invoice_ttc: profitumFeeTTC,
+        facture_reference: invoiceReference,
         paiement_date: now,
       },
       icon: '✅',
@@ -1225,8 +1252,8 @@ async function main() {
       await createNotification({
         user_id: expertAuthId,
         user_type: 'expert',
-        title: '✅ Paiement client confirmé',
-        message: `${clientName} a confirmé le règlement de ${profitumFeeTTC.toLocaleString('fr-FR')} € (réf: ${invoiceReference}).`,
+        title: formatTitle('✅ Paiement client confirmé'),
+        message: `${clientName} a confirmé le règlement de ${expertFee.toLocaleString('fr-FR')} € pour votre commission.\nFacture Profitum ${invoiceReference} : ${profitumFeeTTC.toLocaleString('fr-FR')} € TTC.`,
         notification_type: 'payment_confirmed',
         priority: 'medium',
         action_url: `/expert/dossier/${updated.id}`,
@@ -1237,8 +1264,8 @@ async function main() {
       await createNotification({
         user_id: apporteurAuthId,
         user_type: 'apporteur',
-        title: `✅ Paiement confirmé pour ${clientName}`,
-        message: `Montant réglé : ${profitumFeeTTC.toLocaleString('fr-FR')} €. Dossier clôturé.`,
+        title: formatTitle(`✅ Paiement confirmé pour ${clientName}`),
+        message: `Commission expert réglée : ${expertFee.toLocaleString('fr-FR')} €. Dossier clôturé.`,
         notification_type: 'payment_confirmed',
         priority: 'medium',
         action_url: `/apporteur/dossiers/${updated.id}`,
@@ -1248,13 +1275,15 @@ async function main() {
     await createNotification({
       user_id: clientAuthId,
       user_type: 'client',
-      title: '✅ Paiement confirmé',
-      message: `Merci ! Nous avons enregistré la confirmation du paiement Profitum (${profitumFeeTTC.toLocaleString('fr-FR')} €).`,
+      title: formatTitle('✅ Paiement confirmé'),
+      message: `Merci ! Nous avons enregistré la confirmation du paiement de la commission expert (${expertFee.toLocaleString('fr-FR')} €).`,
       notification_type: 'payment_confirmed',
       priority: 'medium',
       action_url: `/produits/${productSlug}/${updated.id}`,
       metadata: {
-        montant: profitumFeeTTC,
+        produit: productName,
+        commission_expert: expertFee,
+        profitum_invoice_ttc: profitumFeeTTC,
         paiement_date: now,
       },
     });

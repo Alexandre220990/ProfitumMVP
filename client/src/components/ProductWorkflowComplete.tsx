@@ -44,7 +44,10 @@ export default function ProductWorkflowComplete({
   }, [onStepUpdate]);
 
   // Mapper le nom du produit vers la clé productKey
-  const productType = productName.toLowerCase();
+  const productType = productName
+    .normalize('NFD')
+    .toLowerCase()
+    .replace(/[\u0300-\u036f]/g, '');
   let productKey = 'generic';
   
   if (productType.includes('ticpe')) productKey = 'ticpe';
@@ -52,7 +55,16 @@ export default function ProductWorkflowComplete({
   else if (productType.includes('foncier')) productKey = 'foncier';
   else if (productType.includes('msa')) productKey = 'msa';
   else if (productType.includes('dfs') || productType.includes('dsf')) productKey = 'dfs';
-  else if (productType.includes('énergie') || productType.includes('energie')) productKey = 'energie';
+  else if (productType.includes('fournisseur') && productType.includes('gaz')) {
+    productKey = 'optimisation_fournisseur_gaz';
+  } else if (
+    productType.includes('fournisseur') &&
+    (productType.includes('electricite') || productType.includes('elec'))
+  ) {
+    productKey = 'optimisation_fournisseur_electricite';
+  } else if (productType.includes('energie')) {
+    productKey = 'energie';
+  }
 
   if (stepsLoading) {
     return (

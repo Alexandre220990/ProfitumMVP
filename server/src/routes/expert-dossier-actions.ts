@@ -1827,6 +1827,15 @@ router.post('/dossier/:id/confirm-refund', enhancedAuthMiddleware, async (req: R
     const produitInfo = Array.isArray(dossier.ProduitEligible) ? dossier.ProduitEligible[0] : dossier.ProduitEligible;
     const produitNom = produitInfo?.nom || 'Produit';
 
+    const rawProductLabel = produitNom.toString().trim();
+    const productLabel = rawProductLabel
+      ? rawProductLabel
+          .split(/[\s-]+/)[0]
+          .replace(/[^A-Za-z0-9]/g, '')
+          .toUpperCase() || 'DOSSIER'
+      : 'DOSSIER';
+    const formatTitle = (baseTitle: string) => `[${productLabel}] ${baseTitle}`;
+
     // 🧾 Génération (ou récupération) de la facture Profitum
     let factureData: any = null;
     try {
@@ -1848,6 +1857,12 @@ router.post('/dossier/:id/confirm-refund', enhancedAuthMiddleware, async (req: R
     }
 
     const now = new Date().toISOString();
+    const expertCommission =
+      (factureData?.expert_total_fee as number | undefined) ??
+      (factureData?.montant_ttc as number | undefined) ??
+      refund_amount;
+    const profitumInvoiceTtc =
+      (factureData?.montant_ttc as number | undefined) ?? null;
 
     // Mettre à jour le dossier
     const { data: updatedDossier, error: updateError } = await supabase
@@ -1872,7 +1887,10 @@ router.post('/dossier/:id/confirm-refund', enhancedAuthMiddleware, async (req: R
             status: 'requested',
             requested_by: user.database_id,
             requested_at: now,
-            requested_amount: factureData?.montant_ttc || refund_amount,
+            requested_amount: expertCommission,
+            commission_expert_amount: expertCommission,
+            requested_amount_profitum: profitumInvoiceTtc,
+            profitum_invoice_amount: profitumInvoiceTtc,
             refund_amount,
             refund_date,
             payment_reference,
@@ -1881,7 +1899,8 @@ router.post('/dossier/:id/confirm-refund', enhancedAuthMiddleware, async (req: R
                   id: factureData.id,
                   number: factureData.invoice_number,
                   montant_ht: factureData.montant_ht,
-                  montant_ttc: factureData.montant_ttc
+                  montant_ttc: factureData.montant_ttc,
+                  commission_expert: expertCommission
                 }
               : null
           }
@@ -1903,9 +1922,9 @@ router.post('/dossier/:id/confirm-refund', enhancedAuthMiddleware, async (req: R
       await DossierTimelineService.paiementDemande({
         dossier_id: client_produit_id,
         expert_name: expertName,
-        montant: factureData?.montant_ttc || refund_amount,
+        montant: expertCommission,
         facture_reference: factureData?.invoice_number || payment_reference,
-        notes: `Remboursement confirmé le ${refund_date}. Référence: ${payment_reference}`
+        notes: `Remboursement confirmé le ${refund_date}. Référence: ${payment_reference}. Commission expert attendue : ${expertCommission.toLocaleString('fr-FR')} €.${profitumInvoiceTtc ? ` Facture Profitum (TTC): ${profitumInvoiceTtc.toLocaleString('fr-FR')} €.` : ''}`
       });
     } catch (timelineError) {
       console.error('⚠️ Erreur timeline (paiement demandé):', timelineError);
@@ -1916,7 +1935,7 @@ router.post('/dossier/:id/confirm-refund', enhancedAuthMiddleware, async (req: R
       await NotificationTriggers.onPaymentRequested(clientInfo.auth_user_id, {
         dossier_id: client_produit_id,
         produit: produitNom,
-        montant: factureData?.montant_ttc || refund_amount,
+        montant: expertCommission,
         facture_reference: factureData?.invoice_number || payment_reference
       });
     }
@@ -1933,12 +1952,19 @@ router.post('/dossier/:id/confirm-refund', enhancedAuthMiddleware, async (req: R
           await supabase.from('notification').insert({
             user_id: admin.auth_user_id,
             user_type: 'admin',
-            title: '💶 Facturation client requise',
-            message: `${clientName} - ${produitNom} - ${refund_amount.toLocaleString('fr-FR')} € remboursés`,
+            title: formatTitle('💶 Facturation client requise'),
+            message: `${clientName} - ${produitNom}.\nRemboursement confirmé : ${refund_amount.toLocaleString('fr-FR')} €.\nCommission expert à percevoir : ${expertCommission.toLocaleString('fr-FR')} €.${profitumInvoiceTtc ? ` Facture Profitum TTC : ${profitumInvoiceTtc.toLocaleString('fr-FR')} € (réf. ${factureData?.invoice_number || payment_reference}).` : ''}`,
             notification_type: 'payment_requested',
             priority: 'medium',
             is_read: false,
             action_url: `/admin/dossiers/${client_produit_id}`,
+            metadata: {
+              produit: produitNom,
+              dossier_id: client_produit_id,
+              commission_expert: expertCommission,
+              profitum_invoice_ttc: profitumInvoiceTtc,
+              facture_reference: factureData?.invoice_number || payment_reference
+            },
             created_at: now,
             updated_at: now
           });
@@ -1950,12 +1976,19 @@ router.post('/dossier/:id/confirm-refund', enhancedAuthMiddleware, async (req: R
     await supabase.from('notification').insert({
       user_id: user.auth_user_id,
       user_type: 'expert',
-      title: '💶 Paiement client demandé',
-      message: `Facture ${factureData?.invoice_number || payment_reference} envoyée au client (${(factureData?.montant_ttc || refund_amount).toLocaleString('fr-FR')} €).`,
+      title: formatTitle('💶 Paiement client demandé'),
+      message: `Commission expert attendue : ${expertCommission.toLocaleString('fr-FR')} €.\nFacture Profitum ${factureData?.invoice_number || payment_reference} : ${(profitumInvoiceTtc ?? expertCommission).toLocaleString('fr-FR')} € TTC.`,
       notification_type: 'payment_requested',
       priority: 'medium',
       is_read: false,
       action_url: `/expert/dossier/${client_produit_id}`,
+      metadata: {
+        produit: produitNom,
+        dossier_id: client_produit_id,
+        commission_expert: expertCommission,
+        profitum_invoice_ttc: profitumInvoiceTtc,
+        facture_reference: factureData?.invoice_number || payment_reference
+      },
       created_at: now,
       updated_at: now
     });
@@ -1972,12 +2005,19 @@ router.post('/dossier/:id/confirm-refund', enhancedAuthMiddleware, async (req: R
         await supabase.from('notification').insert({
           user_id: apporteurData.auth_user_id,
           user_type: 'apporteur',
-          title: `💶 Paiement en attente pour ${clientName}`,
-          message: `Montant attendu : ${(factureData?.montant_ttc || refund_amount).toLocaleString('fr-FR')} €.` ,
+          title: formatTitle(`💶 Paiement en attente pour ${clientName}`),
+          message: `Commission expert attendue : ${expertCommission.toLocaleString('fr-FR')} €.${profitumInvoiceTtc ? ` Facture Profitum TTC : ${profitumInvoiceTtc.toLocaleString('fr-FR')} €.` : ''}` ,
           notification_type: 'payment_requested',
           priority: 'medium',
           is_read: false,
           action_url: `/apporteur/dossiers/${client_produit_id}`,
+          metadata: {
+            produit: produitNom,
+            dossier_id: client_produit_id,
+            commission_expert: expertCommission,
+            profitum_invoice_ttc: profitumInvoiceTtc,
+            facture_reference: factureData?.invoice_number || payment_reference
+          },
           created_at: now,
           updated_at: now
         });

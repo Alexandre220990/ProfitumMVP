@@ -20,7 +20,8 @@ import {
   TrendingUp,
   Euro,
   Truck,
-  Handshake
+  Handshake,
+  Flame
 } from 'lucide-react';
 
 // ============================================================================
@@ -434,7 +435,6 @@ export const PRODUCT_CONFIGS: Record<string, ProductWorkflowConfig> = {
     category: 'Équipement transport',
     estimatedDuration: '1-2 mois',
     requiredDocuments: [
-      COMMON_DOCUMENTS.kbis,
       {
         type: 'immatriculation_vehicules',
         label: 'Carte grise (1 véhicule de +7,5T)',
@@ -449,26 +449,33 @@ export const PRODUCT_CONFIGS: Record<string, ProductWorkflowConfig> = {
       {
         id: 1,
         name: 'Vérifications initiales',
-        description: 'Confirmer le nombre de véhicules et l\'équipement',
+        description: 'Collecter la carte grise et vérifier les informations clés',
         icon: Shield,
         component: 'initial_checks'
       },
       {
         id: 2,
+        name: 'Questions spécifiques',
+        description: 'Répondez aux questions sur votre flotte poids lourds',
+        icon: FileText,
+        component: 'specific_questions'
+      },
+      {
+        id: 3,
         name: 'Proposition partenaire',
         description: 'Demande de devis au distributeur',
         icon: Handshake,
         component: 'partner_quote'
       },
       {
-        id: 3,
+        id: 4,
         name: 'Devis & validation',
         description: 'Validation du devis et des conditions',
         icon: FileText,
         component: 'quote_validation'
       },
       {
-        id: 4,
+        id: 5,
         name: 'Facturation & installation',
         description: 'Émission facture et suivi installation',
         icon: Euro,
@@ -500,20 +507,27 @@ export const PRODUCT_CONFIGS: Record<string, ProductWorkflowConfig> = {
       },
       {
         id: 2,
+        name: 'Questions spécifiques',
+        description: 'Répondez au questionnaire Solid avant le devis',
+        icon: FileText,
+        component: 'specific_questions'
+      },
+      {
+        id: 3,
         name: 'Proposition partenaire',
         description: 'Demande de devis au distributeur',
         icon: Handshake,
         component: 'partner_quote'
       },
       {
-        id: 3,
+        id: 4,
         name: 'Devis & validation',
         description: 'Validation du devis et des conditions',
         icon: FileText,
         component: 'quote_validation'
       },
       {
-        id: 4,
+        id: 5,
         name: 'Facturation & déploiement',
         description: 'Émission facture et suivi déploiement',
         icon: Euro,
@@ -521,6 +535,126 @@ export const PRODUCT_CONFIGS: Record<string, ProductWorkflowConfig> = {
       }
     ],
     specificInstructions: 'Processus simplifié : confirmation des besoins, devis partenaire, validation et facturation.'
+  },
+
+  // ===========================
+  // OPTIMISATION FOURNISSEUR ÉLECTRICITÉ
+  // ===========================
+  optimisation_fournisseur_electricite: {
+    productKey: 'optimisation_fournisseur_electricite',
+    productName: 'Optimisation fournisseur électricité',
+    productIcon: Zap,
+    category: 'Transition énergétique',
+    estimatedDuration: '1-2 mois',
+    requiredDocuments: [
+      {
+        type: 'facture_electricite',
+        label: 'Facture électricité récente',
+        description: 'Téléversez votre dernière facture d’électricité pour lancer l’optimisation.',
+        required: true,
+        acceptedFormats: ['application/pdf', 'image/jpeg', 'image/png'],
+        maxSize: 20,
+        canReuseFromOtherProduct: false
+      }
+    ],
+    workflowSteps: [
+      {
+        id: 1,
+        name: 'Vérifications initiales',
+        description: 'Collecter vos factures d’électricité récentes',
+        icon: Shield,
+        component: 'initial_checks'
+      },
+      {
+        id: 2,
+        name: 'Questions spécifiques',
+        description: 'Précisez vos sites et consommations électriques',
+        icon: FileText,
+        component: 'specific_questions'
+      },
+      {
+        id: 3,
+        name: 'Proposition partenaire',
+        description: 'Demande de devis à l’expert électricité',
+        icon: Handshake,
+        component: 'partner_quote'
+      },
+      {
+        id: 4,
+        name: 'Devis & validation',
+        description: 'Analyse du devis et validation des conditions',
+        icon: FileText,
+        component: 'quote_validation'
+      },
+      {
+        id: 5,
+        name: 'Facturation & déploiement',
+        description: 'Émission facture et mise en œuvre des actions',
+        icon: Euro,
+        component: 'invoice_deployment'
+      }
+    ],
+    specificInstructions: 'Réduisez vos coûts d’électricité avec une mise en concurrence complète et un suivi des économies.'
+  },
+
+  // ===========================
+  // OPTIMISATION FOURNISSEUR GAZ
+  // ===========================
+  optimisation_fournisseur_gaz: {
+    productKey: 'optimisation_fournisseur_gaz',
+    productName: 'Optimisation fournisseur gaz',
+    productIcon: Flame,
+    category: 'Transition énergétique',
+    estimatedDuration: '1-2 mois',
+    requiredDocuments: [
+      {
+        type: 'facture_gaz',
+        label: 'Facture gaz récente',
+        description: 'Téléversez votre dernière facture de gaz naturel pour lancer l’optimisation.',
+        required: true,
+        acceptedFormats: ['application/pdf', 'image/jpeg', 'image/png'],
+        maxSize: 20,
+        canReuseFromOtherProduct: false
+      }
+    ],
+    workflowSteps: [
+      {
+        id: 1,
+        name: 'Vérifications initiales',
+        description: 'Collecter vos factures de gaz récentes',
+        icon: Shield,
+        component: 'initial_checks'
+      },
+      {
+        id: 2,
+        name: 'Questions spécifiques',
+        description: 'Précisez vos sites et consommations de gaz',
+        icon: FileText,
+        component: 'specific_questions'
+      },
+      {
+        id: 3,
+        name: 'Proposition partenaire',
+        description: 'Demande de devis à l’expert gaz',
+        icon: Handshake,
+        component: 'partner_quote'
+      },
+      {
+        id: 4,
+        name: 'Devis & validation',
+        description: 'Analyse du devis et validation des conditions',
+        icon: FileText,
+        component: 'quote_validation'
+      },
+      {
+        id: 5,
+        name: 'Facturation & déploiement',
+        description: 'Émission facture et mise en œuvre des actions',
+        icon: Euro,
+        component: 'invoice_deployment'
+      }
+    ],
+    specificInstructions: 'Optimisez vos contrats de gaz naturel grâce à une renégociation experte et un suivi des consommations.'
   }
 };
 

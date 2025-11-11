@@ -142,47 +142,130 @@ export class ProspectSimulationService {
       
       // 4. Créer les ClientProduitEligible UNIQUEMENT pour les produits éligibles
       const clientProduitsToCreate = [];
-      
-      for (const produitSQL of resultatsSQL.produits) {
-        // Ne créer que les produits éligibles
-        if (!produitSQL.is_eligible) {
-          console.log(`⏭️ Produit non éligible ignoré: ${produitSQL.produit_nom}`);
-          continue;
+
+      const energySplitTargets = [
+        {
+          nom: 'Optimisation fournisseur électricité',
+          variant: 'electricite',
+          label: 'électricité'
+        },
+        {
+          nom: 'Optimisation fournisseur gaz',
+          variant: 'gaz',
+          label: 'gaz naturel'
         }
-        
-        const produitInfo = allProducts.find(p => p.id === produitSQL.produit_id);
-        const montant = produitSQL.montant_estime || 0;
-        
-        // Déterminer le statut selon le montant
+      ];
+
+      let energyProductsMap: Record<string, { id: string }> = {};
+      const requiresEnergySplit = resultatsSQL.produits.some(
+        (produit: any) => produit.produit_nom === 'Optimisation Énergie'
+      );
+
+      if (requiresEnergySplit) {
+        const { data: energyProducts, error: energyProductsError } = await supabase
+          .from('ProduitEligible')
+          .select('id, nom')
+          .in(
+            'nom',
+            energySplitTargets.map((item) => item.nom)
+          );
+
+        if (energyProductsError) {
+          console.error('⚠️ Erreur récupération des produits énergie scindés (apporteur):', energyProductsError.message);
+        } else if (energyProducts) {
+          energyProductsMap = energyProducts.reduce((acc: Record<string, { id: string }>, item) => {
+            acc[item.nom] = { id: item.id };
+            return acc;
+          }, {});
+        }
+      }
+
+      const appendClientProduit = ({
+        produitId,
+        produit,
+        montant,
+        label,
+        metadataOverrides
+      }: {
+        produitId: string;
+        produit: any;
+        montant: number;
+        label?: string;
+        metadataOverrides?: Record<string, any>;
+      }) => {
         let statut: 'eligible' | 'non_eligible' | 'to_confirm';
         if (montant >= 1000) statut = 'eligible';
         else if (montant > 0) statut = 'to_confirm';
         else statut = 'non_eligible';
-        
+
         clientProduitsToCreate.push({
           clientId: request.prospect_id,
-          produitId: produitSQL.produit_id,
+          produitId,
           simulationId: simulation.id,
-          statut: statut,
+          statut,
           tauxFinal: null, // SQL ne retourne pas de taux
           montantFinal: montant,
           dureeFinale: 12,
           priorite: montant >= 10000 ? 1 : montant >= 5000 ? 2 : 3,
-          notes: `${produitSQL.notes || 'Produit éligible'} - Montant: ${montant.toLocaleString()}€`,
+          notes: [
+            `${produit.notes || 'Produit éligible'} - Montant: ${montant.toLocaleString()}€`,
+            label ? `Variante ${label}` : null
+          ]
+            .filter(Boolean)
+            .join(' • '),
           metadata: {
             source: 'simulation_apporteur_sql',
             simulation_id: simulation.id,
             apporteur_id: request.apporteur_id,
             detected_at: new Date().toISOString(),
-            type_produit: produitSQL.type_produit,
-            calcul_details: produitSQL.calcul_details
+            type_produit: produit.type_produit,
+            calcul_details: produit.calcul_details,
+            ...(metadataOverrides || {})
           },
-          calcul_details: produitSQL.calcul_details,
+          calcul_details: produit.calcul_details,
           dateEligibilite: new Date().toISOString(),
           current_step: 0,
           progress: 0,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
+        });
+      };
+
+      for (const produitSQL of resultatsSQL.produits) {
+        if (!produitSQL.is_eligible) {
+          console.log(`⏭️ Produit non éligible ignoré: ${produitSQL.produit_nom}`);
+          continue;
+        }
+
+        const montant = produitSQL.montant_estime || 0;
+
+        if (produitSQL.produit_nom === 'Optimisation Énergie' && Object.keys(energyProductsMap).length > 0) {
+          for (const target of energySplitTargets) {
+            const targetProduit = energyProductsMap[target.nom];
+            if (!targetProduit) {
+              console.warn(`⚠️ Produit scindé non trouvé (apporteur): ${target.nom}`);
+              continue;
+            }
+
+            appendClientProduit({
+              produitId: targetProduit.id,
+              produit: produitSQL,
+              montant,
+              label: target.label,
+              metadataOverrides: {
+                energy_variant: target.variant,
+                split_from: 'Optimisation Énergie',
+                original_produit_id: produitSQL.produit_id
+              }
+            });
+          }
+          continue;
+        }
+
+        appendClientProduit({
+          produitId: produitSQL.produit_id,
+          produit: produitSQL,
+          montant
         });
       }
       
@@ -202,15 +285,22 @@ export class ProspectSimulationService {
       console.log(`✅ ${createdCPE?.length || 0} ClientProduitEligible créés`);
       
       // 5. Préparer les produits pour l'optimisation des experts
-      const eligibleForOptimization: ProductEligibility[] = resultatsSQL.produits
-        .filter((p: any) => p.is_eligible && p.montant_estime > 0)
-        .map((p: any, index: number) => ({
-          productId: p.produit_id,
-          productName: p.produit_nom,
-          score: p.montant_estime >= 10000 ? 90 : p.montant_estime >= 5000 ? 75 : 60,
-          estimatedSavings: p.montant_estime,
-          priority: index + 1
-        }));
+      const eligibleForOptimization: ProductEligibility[] = clientProduitsToCreate
+        .filter((entry: any) => entry.montantFinal && entry.montantFinal > 0)
+        .map((entry: any, index: number) => {
+          const produit = allProducts.find((p) => p.id === entry.produitId);
+          const fallbackNom =
+            resultatsSQL.produits.find((p: any) => p.produit_id === entry.produitId)?.produit_nom ||
+            (entry.metadata?.split_from === 'Optimisation Énergie' ? entry.metadata.split_from : 'Produit');
+
+          return {
+            productId: entry.produitId,
+            productName: produit?.nom || fallbackNom,
+            score: entry.montantFinal >= 10000 ? 90 : entry.montantFinal >= 5000 ? 75 : 60,
+            estimatedSavings: entry.montantFinal,
+            priority: index + 1
+          };
+        });
       
       console.log(`🎯 Optimisation experts pour ${eligibleForOptimization.length} produits...`);
       
@@ -225,7 +315,11 @@ export class ProspectSimulationService {
       // ⚠️ NE PAS assigner automatiquement - L'apporteur choisira manuellement
       const enrichedProducts: ClientProduitEligibleWithScore[] = (createdCPE || []).map(cpe => {
         const produit = allProducts.find(p => p.id === cpe.produitId);
-        const produitSQL = resultatsSQL.produits.find((p: any) => p.produit_id === cpe.produitId);
+        const produitSQL =
+          resultatsSQL.produits.find((p: any) => p.produit_id === cpe.produitId) ||
+          (cpe.metadata?.split_from === 'Optimisation Énergie'
+            ? resultatsSQL.produits.find((p: any) => p.produit_nom === 'Optimisation Énergie')
+            : undefined);
         
         // Trouver l'expert recommandé pour ce produit (pour suggestion à l'apporteur)
         let recommendedExpert;

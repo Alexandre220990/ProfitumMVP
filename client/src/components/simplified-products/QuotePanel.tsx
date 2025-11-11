@@ -32,9 +32,13 @@ export default function QuotePanel({ dossierId, devis, userType, onUpdate }: Quo
   const isClient = userType === 'client';
   const isExpert = userType === 'expert';
 
-  const quoteType: 'chronotachygraphes' | 'logiciel_solid' =
+  const quoteType: 'chronotachygraphes' | 'logiciel_solid' | 'optimisation_fournisseur_electricite' | 'optimisation_fournisseur_gaz' =
     formulaire.type ||
-    (formulaire.nb_chauffeurs || formulaire.prix_par_fiche ? 'logiciel_solid' : 'chronotachygraphes');
+    (formulaire.nb_chauffeurs || formulaire.prix_par_fiche
+      ? 'logiciel_solid'
+      : formulaire.energy_sources
+        ? (formulaire.energy_sources.includes('gaz') ? 'optimisation_fournisseur_gaz' : 'optimisation_fournisseur_electricite')
+        : 'chronotachygraphes');
 
   const formatAmount = (value?: number | null, suffix: string = '€') => {
     if (value === undefined || value === null || Number.isNaN(value)) {
@@ -98,6 +102,68 @@ export default function QuotePanel({ dossierId, devis, userType, onUpdate }: Quo
             <ul className="list-disc list-inside space-y-1 text-sm text-emerald-900">
               {benefits.map((benefit: string) => (
                 <li key={benefit}>{benefit}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      );
+    }
+
+    if (quoteType === 'optimisation_fournisseur_electricite' || quoteType === 'optimisation_fournisseur_gaz') {
+      const investissementEstime = formatAmount(formulaire.investissement_estime);
+      const economiesAnnueles = formatAmount(formulaire.economies_annuelles);
+      const dureeRetour =
+        formulaire.duree_retour !== undefined && formulaire.duree_retour !== null
+          ? `${formulaire.duree_retour} mois`
+          : '—';
+      const recommandations: string[] =
+        formulaire.recommandations || [
+          'Audit détaillé des sites et contrats',
+          'Mise en concurrence des fournisseurs',
+          'Plan d’actions priorisées',
+          'Suivi trimestriel des économies réalisées'
+        ];
+      const energieLabel = quoteType === 'optimisation_fournisseur_electricite' ? 'Électricité' : 'Gaz naturel';
+      const siteCount = formulaire.site_count ?? '—';
+      const consumptionRef = formatAmount(formulaire.consumption_reference, 'kWh');
+
+      return (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
+            <div>
+              <p className="text-sm text-gray-600">Investissement estimé</p>
+              <p className="text-2xl font-bold text-gray-900">{investissementEstime}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Économies annuelles attendues</p>
+              <p className="text-2xl font-bold text-emerald-600">{economiesAnnueles}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Retour sur investissement</p>
+              <p className="text-xl font-semibold text-gray-900">{dureeRetour}</p>
+              <p className="text-xs text-gray-500">Retour sur investissement estimé</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+              <p className="font-semibold text-blue-900 mb-1">Énergie concernée</p>
+              <p>{energieLabel}</p>
+            </div>
+            <div className="rounded-lg border border-purple-200 bg-purple-50 p-4 text-sm text-purple-900">
+              <p className="font-semibold text-purple-900 mb-1">Sites analysés</p>
+              <p>{siteCount}</p>
+              <p className="text-xs text-purple-700">Consommation de référence : {consumptionRef}</p>
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+            <p className="font-semibold text-sm text-emerald-900 mb-2">
+              Accompagnement proposé :
+            </p>
+            <ul className="list-disc list-inside space-y-1 text-sm text-emerald-900">
+              {recommandations.map((item: string) => (
+                <li key={item}>{item}</li>
               ))}
             </ul>
           </div>

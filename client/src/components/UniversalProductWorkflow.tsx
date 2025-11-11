@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -33,7 +33,6 @@ import { config } from '@/config/env';
 import CharterDialog from '@/components/CharterDialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import InitialChecksWizard from '@/components/simplified-products/InitialChecksWizard';
-import PartnerRequestCard from '@/components/simplified-products/PartnerRequestCard';
 import QuotePanel from '@/components/simplified-products/QuotePanel';
 
 interface UniversalProductWorkflowProps {
@@ -136,6 +135,7 @@ export default function UniversalProductWorkflow({
   const [eligibilityValidated, setEligibilityValidated] = useState(false);
   const [calculatedSteps, setCalculatedSteps] = useState<any[]>([]);
   const [documentRequest, setDocumentRequest] = useState<any>(null); // ✅ Demande de documents complémentaires
+  const [editingInitialChecks, setEditingInitialChecks] = useState(false);
   
   // États modal validation audit
   const [showAuditValidationModal, setShowAuditValidationModal] = useState(false);
@@ -153,7 +153,11 @@ export default function UniversalProductWorkflow({
     contract: false
   });
   const allCharterAgreementsAccepted = charterAgreements.cgu && charterAgreements.cgv && charterAgreements.contract;
-const isSimplifiedProductKey = productKey === 'chronotachygraphes' || productKey === 'logiciel_solid';
+const isSimplifiedProductKey =
+  productKey === 'chronotachygraphes' ||
+  productKey === 'logiciel_solid' ||
+  productKey === 'optimisation_fournisseur_electricite' ||
+  productKey === 'optimisation_fournisseur_gaz';
 const autoAssignAttemptedRef = useRef(false);
 const partnerRequestAttemptedRef = useRef(false);
 
@@ -414,9 +418,9 @@ const partnerRequestAttemptedRef = useRef(false);
     }
   }, [clientProduitId, stepsLoading, steps.length, generateSteps]);
 
-  const autoAssignDistributorExpert = useCallback(async () => {
+  const autoAssignDistributorExpert = useCallback(async (): Promise<boolean> => {
     if (autoAssignAttemptedRef.current) {
-      return;
+      return Boolean(clientProduit?.expert_id);
     }
 
     autoAssignAttemptedRef.current = true;
@@ -424,16 +428,18 @@ const partnerRequestAttemptedRef = useRef(false);
       const response = await post(`/api/simplified-products/${clientProduitId}/assign-expert`);
       if (response.success) {
         console.log('🤖 Expert distributeur assigné automatiquement');
-        loadClientProduit();
-      } else {
-        console.warn('⚠️ Impossible d\'assigner automatiquement l\'expert:', response.message);
-        autoAssignAttemptedRef.current = false;
+        await loadClientProduit();
+        return true;
       }
+      console.warn('⚠️ Impossible d'assigner automatiquement l'expert:', response.message);
+      autoAssignAttemptedRef.current = false;
+      return false;
     } catch (error) {
       console.error('❌ Erreur assignation auto expert:', error);
       autoAssignAttemptedRef.current = false;
+      return false;
     }
-  }, [clientProduitId, loadClientProduit]);
+  }, [clientProduit?.expert_id, clientProduitId, loadClientProduit]);
 
   const ensurePartnerRequest = useCallback(async () => {
     if (partnerRequestAttemptedRef.current) {
@@ -452,17 +458,19 @@ const partnerRequestAttemptedRef = useRef(false);
         if (alreadyRequested) {
           console.log('ℹ️ Demande de devis déjà enregistrée auprès du partenaire');
         } else {
-          toast.success('✅ Demande de devis transmise à l’expert distributeur');
+          toast.success('✅ Demande de devis transmise à l'expert distributeur');
         }
         await loadClientProduit();
+        setCurrentStep(3);
       } else {
-        partnerRequestAttemptedRef.current = false;
         toast.error(response.message || 'Erreur lors de la demande de devis');
+        partnerRequestAttemptedRef.current = false;
       }
     } catch (error) {
-      partnerRequestAttemptedRef.current = false;
       console.error('❌ Erreur envoi demande devis:', error);
-      toast.error('Impossible d’envoyer la demande de devis pour le moment.');
+      toast.error('Impossible d'envoyer la demande de devis pour le moment.');
+    } finally {
+      partnerRequestAttemptedRef.current = false;
     }
   }, [clientProduitId, loadClientProduit]);
 
@@ -470,30 +478,21 @@ const partnerRequestAttemptedRef = useRef(false);
     partnerRequestAttemptedRef.current = false;
     await loadClientProduit();
     setCurrentStep(2);
+    setEditingInitialChecks(false);
+  }, [loadClientProduit]);
+
+  const handleSubmitQuoteRequest = useCallback(async () => {
+    const assigned = await autoAssignDistributorExpert();
+    if (!assigned) {
+      toast.error("Impossible d'assigner l'expert distributeur pour le moment. Réessayez plus tard.");
+      return;
+    }
+
     await ensurePartnerRequest();
-  }, [loadClientProduit, ensurePartnerRequest]);
+  }, [autoAssignDistributorExpert, ensurePartnerRequest]);
 
   useEffect(() => {
     if (!isSimplifiedProductKey || !clientProduit) {
-      return;
-    }
-    const metadata: any = clientProduit.metadata || {};
-    const checklistData = metadata[`${productKey}_checklist`] || {};
-    const partnerData = metadata.partner_request || {};
-
-    if (checklistData.validated_at && !(partnerData.sent_at || partnerData.requested_at)) {
-      partnerRequestAttemptedRef.current = false;
-      ensurePartnerRequest();
-    }
-  }, [clientProduit, ensurePartnerRequest, isSimplifiedProductKey, productKey]);
-
-  useEffect(() => {
-    if (!isSimplifiedProductKey || !clientProduit) {
-      return;
-    }
-
-    const hasExpert = Boolean(clientProduit.expert_id || clientProduit.expert_pending_id);
-    if (hasExpert) {
       return;
     }
 
@@ -503,9 +502,9 @@ const partnerRequestAttemptedRef = useRef(false);
     const checklistCompleted = Boolean(checklistData?.validated_at);
 
     if (checklistCompleted) {
-      autoAssignDistributorExpert();
+      setCurrentStep((prev) => Math.max(prev, 2));
     }
-  }, [clientProduit, productKey, isSimplifiedProductKey, autoAssignDistributorExpert]);
+  }, [clientProduit, productKey, isSimplifiedProductKey]);
 
   // Mettre à jour le statut des étapes basé sur les données
   useEffect(() => {
@@ -545,7 +544,96 @@ const partnerRequestAttemptedRef = useRef(false);
     }
   }, [clientProduit]);
 
+  const simplifiedState = useMemo(() => {
+    if (!isSimplifiedProductKey || !clientProduit) {
+      return null;
+    }
+
+    const metadata: any = clientProduit.metadata || {};
+    const checklistKey = `${productKey}_checklist`;
+    const checklist = metadata[checklistKey] || {};
+    const partnerRequest = metadata.partner_request || {};
+    const devis = metadata.devis || {};
+    const facture = metadata.facture || {};
+
+    const checklistCompleted = Boolean(checklist.validated_at);
+    const quoteRequested = Boolean(partnerRequest.requested_at);
+    const quoteAvailable = Boolean(devis.proposed_at || devis.status);
+    const quoteAccepted = devis.status === 'accepted';
+    const invoiceStatus = facture.status || '';
+    const invoiceIssued = invoiceStatus === 'issued';
+    const invoicePaid = invoiceStatus === 'paid';
+
+    let activeStep = 1;
+    if (invoicePaid) {
+      activeStep = 5;
+    } else if (quoteAccepted || invoiceIssued) {
+      activeStep = 5;
+    } else if (quoteAvailable) {
+      activeStep = 4;
+    } else if (quoteRequested) {
+      activeStep = 3;
+    } else if (checklistCompleted) {
+      activeStep = 2;
+    }
+
+    const steps = (productConfig.workflowSteps || []).map((step) => {
+      let status: 'pending' | 'in_progress' | 'completed' | 'overdue' = 'pending';
+
+      switch (step.id) {
+        case 1:
+          status = checklistCompleted ? 'completed' : 'in_progress';
+          break;
+        case 2:
+          status = quoteRequested ? 'completed' : checklistCompleted ? 'in_progress' : 'pending';
+          break;
+        case 3:
+          status = quoteAvailable ? 'completed' : quoteRequested ? 'in_progress' : 'pending';
+          break;
+        case 4:
+          status = quoteAccepted ? 'completed' : quoteAvailable ? 'in_progress' : 'pending';
+          break;
+        case 5: {
+          const isChrono = productKey === 'chronotachygraphes';
+          status = invoicePaid ? 'completed' : (quoteAccepted || invoiceIssued) ? 'in_progress' : 'pending';
+
+          return {
+            ...step,
+            name: isChrono ? 'Facturation & installation' : 'Facturation & déploiement',
+            status
+          };
+        }
+        default:
+          break;
+      }
+
+      return { ...step, status };
+    });
+
+    return {
+      steps,
+      activeStep,
+      checklist,
+      partnerRequest,
+      devis,
+      facture,
+      checklistCompleted,
+      quoteRequested,
+      quoteAvailable,
+      quoteAccepted,
+      invoiceIssued,
+      invoicePaid
+    };
+  }, [clientProduit, isSimplifiedProductKey, productKey, productConfig]);
+
   const updateWorkflowSteps = useCallback(() => {
+    if (isSimplifiedProductKey) {
+      if (simplifiedState) {
+        setCalculatedSteps(simplifiedState.steps);
+      }
+      return;
+    }
+
     console.log('🔧 DIAGNOSTIC updateWorkflowSteps:', {
       eligibilityValidated,
       selectedExpert: selectedExpert?.name,
@@ -629,7 +717,7 @@ const partnerRequestAttemptedRef = useRef(false);
       currentStep,
       steps: updatedSteps.map(s => ({ id: s.id, name: s.name, status: s.status }))
     });
-  }, [steps, documents, selectedExpert, eligibilityValidated, workflowSteps, clientProduit]);
+  }, [steps, documents, selectedExpert, eligibilityValidated, workflowSteps, clientProduit, simplifiedState, isSimplifiedProductKey]);
 
   const handleDocumentsComplete = useCallback((uploadedDocuments: DocumentFile[]) => {
     setDocuments(uploadedDocuments);
@@ -888,8 +976,8 @@ const partnerRequestAttemptedRef = useRef(false);
       ? 'bg-green-100 text-green-700 border-green-200'
       : 'bg-blue-100 text-blue-700 border-blue-200';
     const paymentDescription = isPaymentCompleted
-      ? 'Votre remboursement et la facture Profitum sont réglés. Le dossier est clôturé.'
-      : 'Le remboursement est confirmé. La validation comptable du paiement Profitum reste en cours.';
+      ? 'Votre remboursement et la commission expert sont réglés. Le dossier est clôturé.'
+      : 'Le remboursement est confirmé. La validation comptable du paiement de la commission expert reste en cours.';
 
     const clientFeePercentage =
       commissionInfo.client_fee_percentage !== undefined && commissionInfo.client_fee_percentage !== null
@@ -928,7 +1016,7 @@ const partnerRequestAttemptedRef = useRef(false);
         detail: implementationInfo.refund_reference ? `Réf. ${implementationInfo.refund_reference}` : undefined
       },
       (paymentInfo.completed_at || paymentInfo.paiement_date) && {
-        label: 'Paiement Profitum',
+        label: 'Paiement commission expert',
         date: paymentInfo.completed_at || paymentInfo.paiement_date,
         detail: paymentInfo.payment_reference || paymentInfo.invoice?.number || invoice?.invoice_number
       }
@@ -1095,7 +1183,7 @@ const partnerRequestAttemptedRef = useRef(false);
 
               {paymentInfo.payment_reference && (
                 <Badge className="border-purple-200 bg-purple-50 text-purple-700">
-                  Facture Profitum&nbsp;: {paymentInfo.payment_reference}
+                  Commission expert&nbsp;: {paymentInfo.payment_reference}
                 </Badge>
               )}
             </div>
@@ -1149,15 +1237,23 @@ const partnerRequestAttemptedRef = useRef(false);
   };
 
   const renderSimplifiedWorkflow = () => {
-    const metadata = clientProduit?.metadata || {};
-    const checklist = metadata[`${productKey}_checklist`] || {};
-    const devis = metadata.devis || {};
-    const facture = metadata.facture || {};
-    const partnerRequest = metadata.partner_request || {};
-    const partnerName = productKey === 'chronotachygraphes' ? 'SDEI' : 'Solid';
+    if (!simplifiedState) {
+      return null;
+    }
 
-    const checklistCompleted = Boolean(checklist.validated_at);
-    const partnerRequestSent = Boolean(partnerRequest.sent_at || partnerRequest.requested_at);
+    const metadata = clientProduit?.metadata || {};
+    const {
+      checklist,
+      devis,
+      facture,
+      partnerRequest,
+      checklistCompleted,
+      quoteRequested,
+      quoteAvailable,
+      quoteAccepted,
+      invoiceIssued,
+      invoicePaid
+    } = simplifiedState;
 
     const simulationSnapshot =
       metadata.simulation_answers ||
@@ -1173,6 +1269,15 @@ const partnerRequestAttemptedRef = useRef(false);
       simulationSnapshot.answers?.nb_chauffeurs ??
       simulationSnapshot.answers?.CALCUL_DFS_CHAUFFEURS ??
       null;
+
+    const partnerName =
+      productKey === 'chronotachygraphes'
+        ? 'SDEI'
+        : productKey === 'logiciel_solid'
+          ? 'Solid'
+          : productKey === 'optimisation_fournisseur_electricite'
+            ? 'Expert électricité'
+            : 'Expert gaz';
 
     const renderSummary = () => {
       const blocks: React.ReactNode[] = [];
@@ -1192,8 +1297,8 @@ const partnerRequestAttemptedRef = useRef(false);
           const benefits = [
             'Conformité et sécurité lors des contrôles',
             'Gain de temps sur la préparation des fiches de paie',
-            'Optimisation des charges : le service s’auto-finance',
-            'Logiciel reconnu par l’inspection du travail'
+            'Optimisation des charges : le service s'auto-finance',
+            'Logiciel reconnu par l'inspection du travail'
           ];
 
           blocks.push(
@@ -1222,7 +1327,7 @@ const partnerRequestAttemptedRef = useRef(false);
               </div>
             </div>
           );
-        } else {
+        } else if (productKey === 'chronotachygraphes') {
           const totalVehicles = checklist.total_vehicles ?? checklist.nb_camions ?? '—';
           const equippedVehicles = checklist.equipped_vehicles ?? checklist.camions_equipes ?? 0;
           const installationsRequests =
@@ -1243,21 +1348,47 @@ const partnerRequestAttemptedRef = useRef(false);
                 {totalVehicles} véhicule(s) poids-lourd déclarés • {equippedVehicles} déjà équipés • {installationsRequests} installation(s) à prévoir.
               </p>
               <p>
-                L’expert SDEI prépare actuellement une proposition adaptée à votre flotte.
+                L'expert SDEI prépare actuellement une proposition adaptée à votre flotte.
+              </p>
+            </div>
+          );
+        } else {
+          const energySources = Array.isArray(checklist.energy_sources)
+            ? checklist.energy_sources
+            : [];
+          blocks.push(
+            <div
+              key="energy-summary"
+              className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 space-y-2 text-sm text-emerald-900"
+            >
+              <p className="font-semibold text-emerald-900">
+                Analyse demandée : {energySources.length > 0 ? energySources.map((src: string) => src.toUpperCase()).join(', ') : '—'}
+              </p>
+              <p>
+                {checklist.site_count ? `${checklist.site_count} site(s) ciblé(s)` : 'Sites en cours de qualification'} pour optimiser vos dépenses. Consommation de référence :{' '}
+                {checklist.consumption_reference ? `${checklist.consumption_reference.toLocaleString('fr-FR')} kWh` : 'non renseignée'}.
               </p>
             </div>
           );
         }
       }
 
-      if (partnerRequestSent) {
+      if (quoteRequested) {
         blocks.push(
           <div
             key="partner-request"
             className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900"
           >
             <p className="font-semibold text-blue-900">
-              Demande de devis envoyée à l’expert distributeur ({partnerRequest.expert_email || (productKey === 'chronotachygraphes' ? 'sdei@profitum.fr' : 'solid@profitum.fr')}).
+              Demande de devis envoyée à l'expert distributeur ({partnerRequest.expert_email || (productKey === 'chronotachygraphes'
+                ? 'sdei@profitum.fr'
+                : productKey === 'logiciel_solid'
+                  ? 'solid@profitum.fr'
+                  : productKey === 'optimisation_fournisseur_gaz'
+                    ? 'gaz@profitum.fr'
+                    : productKey === 'optimisation_fournisseur_electricite'
+                      ? 'elec@profitum.fr'
+                      : 'energie@profitum.fr')}).
             </p>
             <p>
               Vous serez notifié dès que le devis sera disponible. En attendant, vous pouvez préparer vos documents complémentaires.
@@ -1275,11 +1406,11 @@ const partnerRequestAttemptedRef = useRef(false);
 
     const summaryNode = renderSummary();
 
-    if (currentStep === 1 || !checklistCompleted) {
+    if (currentStep === 1 || !checklistCompleted || editingInitialChecks) {
       return (
         <InitialChecksWizard
           dossierId={clientProduitId}
-          productKey={productKey as 'chronotachygraphes' | 'logiciel_solid'}
+          productKey={productKey as 'chronotachygraphes' | 'logiciel_solid' | 'optimisation_fournisseur_electricite' | 'optimisation_fournisseur_gaz'}
           initialData={checklist}
           simulationData={{ nb_chauffeurs: nbChauffeursFromSimulation }}
           onComplete={handleSimplifiedInitialChecksComplete}
@@ -1287,130 +1418,156 @@ const partnerRequestAttemptedRef = useRef(false);
       );
     }
 
-    if (currentStep === 2 && !devis.proposed_at) {
-      if (partnerRequestSent) {
-      return (
-          <div className="space-y-6">
-            {summaryNode}
-            <Card className="max-w-2xl mx-auto border-blue-200 bg-blue-50">
-              <CardContent className="p-6 space-y-4 text-sm text-gray-700">
-                <div className="text-center space-y-2">
-                  <Handshake className="w-10 h-10 text-blue-600 mx-auto" />
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    Demande de devis en cours
-                  </h3>
-                  <p>
-                    Notre partenaire {partnerName} prépare actuellement votre proposition. Vous recevrez une notification dès qu’elle sera disponible.
-                  </p>
-                </div>
-                {partnerRequest.summary && (
-                  <div className="rounded-lg border border-blue-200 bg-white/70 p-4 space-y-1">
-                    <p className="font-semibold text-blue-900">Récapitulatif transmis à l’expert :</p>
-                    {productKey === 'logiciel_solid' ? (
-                      <ul className="list-disc list-inside space-y-1">
-                        <li>
-                          Chauffeurs confirmés : {partnerRequest.summary.chauffeurs_confirmes ?? '—'}
-                        </li>
-                        {partnerRequest.summary.chauffeurs_estimes !== undefined && (
-                          <li>Estimation initiale : {partnerRequest.summary.chauffeurs_estimes}</li>
-                        )}
-                        <li>Service : traitement mensuel des fiches de paie</li>
-                      </ul>
-                    ) : (
-                      <ul className="list-disc list-inside space-y-1">
-                        <li>Total véhicules déclarés : {partnerRequest.summary.total_vehicles ?? '—'}</li>
-                        <li>Véhicules déjà équipés : {partnerRequest.summary.equipped_vehicles ?? 0}</li>
-                        <li>Installations souhaitées : {partnerRequest.summary.installations_requested ?? 0}</li>
-                      </ul>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        );
-      }
-
+    if (!quoteRequested) {
       return (
         <div className="space-y-6">
           {summaryNode}
-        <PartnerRequestCard
-          dossierId={clientProduitId}
-          productName={productConfig.productName}
-          partnerName={partnerName}
-          onRequestSent={() => {
-              partnerRequestAttemptedRef.current = false;
-            loadClientProduit();
-              setCurrentStep(2);
-          }}
-        />
+          <Card className="max-w-2xl mx-auto border-blue-200 bg-blue-50">
+            <CardContent className="p-6 space-y-4 text-sm text-gray-700">
+              <div className="space-y-2 text-center">
+                <Handshake className="w-10 h-10 text-blue-600 mx-auto" />
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Valider votre demande de devis
+                </h3>
+                <p>
+                  Vérifiez vos informations puis confirmez l'envoi au partenaire {partnerName}. Vous recevrez une notification dès que le devis sera disponible.
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
+                <Button
+                  onClick={handleSubmitQuoteRequest}
+                  className="sm:min-w-[220px]"
+                  disabled={partnerRequestAttemptedRef.current}
+                >
+                  {partnerRequestAttemptedRef.current ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Envoi en cours...
+                    </>
+                  ) : (
+                    'Valider ma demande de devis'
+                  )}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setEditingInitialChecks(true);
+                    setCurrentStep(1);
+                  }}
+                  className="sm:min-w-[200px]"
+                >
+                  Modifier mes réponses
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       );
     }
 
-    if (currentStep >= 2 && currentStep <= 3 && devis.status !== 'accepted' && !facture.status) {
+    if (!quoteAvailable) {
       return (
         <div className="space-y-6">
           {summaryNode}
+          <Card className="max-w-2xl mx-auto border-blue-200 bg-blue-50">
+            <CardContent className="p-6 space-y-4 text-sm text-gray-700">
+              <div className="text-center space-y-2">
+                <Handshake className="w-10 h-10 text-blue-600 mx-auto" />
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Demande de devis en cours
+                </h3>
+                <p>
+                  Notre partenaire {partnerName} prépare actuellement votre proposition. Vous recevrez une notification dès qu'elle sera disponible.
+                </p>
+              </div>
+              {partnerRequest.summary && (
+                <div className="rounded-lg border border-blue-200 bg-white/70 p-4 space-y-1">
+                  <p className="font-semibold text-blue-900">Récapitulatif transmis à l'expert :</p>
+                  {productKey === 'logiciel_solid' ? (
+                    <ul className="list-disc list-inside space-y-1">
+                      <li>
+                        Chauffeurs confirmés : {partnerRequest.summary.chauffeurs_confirmes ?? '—'}
+                      </li>
+                      {partnerRequest.summary.chauffeurs_estimes !== undefined && (
+                        <li>Estimation initiale : {partnerRequest.summary.chauffeurs_estimes}</li>
+                      )}
+                      <li>Service : traitement mensuel des fiches de paie</li>
+                    </ul>
+                  ) : productKey === 'chronotachygraphes' ? (
+                    <ul className="list-disc list-inside space-y-1">
+                      <li>Total véhicules déclarés : {partnerRequest.summary.total_vehicles ?? '—'}</li>
+                      <li>Véhicules déjà équipés : {partnerRequest.summary.equipped_vehicles ?? 0}</li>
+                      <li>Installations souhaitées : {partnerRequest.summary.installations_requested ?? 0}</li>
+                    </ul>
+                  ) : (
+                    <ul className="list-disc list-inside space-y-1">
+                      <li>Sources analysées : {(partnerRequest.summary.energy_sources || []).map((src: string) => src.toUpperCase()).join(', ') || '—'}</li>
+                      <li>Sites concernés : {partnerRequest.summary.site_count ?? '—'}</li>
+                      <li>Consommation de référence : {partnerRequest.summary.consumption_reference ?? '—'} kWh</li>
+                    </ul>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+
+    if (!quoteAccepted && !invoiceIssued && !invoicePaid) {
+      return (
+        <div className="space-y-6">
+          {summaryNode}
+          <QuotePanel
+            dossierId={clientProduitId}
+            devis={devis}
+            userType="client"
+            onUpdate={() => {
+              loadClientProduit();
+              setCurrentStep(4);
+            }}
+          />
+        </div>
+      );
+    }
+
+    if (invoicePaid || clientProduit?.statut === 'refund_completed') {
+      return renderFinalRecapCard();
+    }
+
+    return (
+      <div className="space-y-6">
+        {summaryNode}
         <QuotePanel
           dossierId={clientProduitId}
           devis={devis}
           userType="client"
-          onUpdate={() => {
-            loadClientProduit();
-              setCurrentStep(4);
-          }}
+          onUpdate={loadClientProduit}
         />
-        </div>
-      );
-    }
-
-    if (currentStep >= 4 || facture.status) {
-      if (facture.status === 'issued' && invoice) {
-        return (
-          <div className="space-y-6">
-            {summaryNode}
-            <QuotePanel
-              dossierId={clientProduitId}
-              devis={devis}
-              userType="client"
-              onUpdate={loadClientProduit}
-            />
-            <InvoiceDisplay
-              invoice={invoice}
-              dossierId={clientProduitId}
-              showConfirmPayment={facture.status !== 'paid'}
-              showPaymentOptions={facture.status !== 'paid'}
-              onPaymentConfirmed={() => {
-                loadClientProduit();
-                loadInvoice();
-                toast.success('🎉 Paiement confirmé ! Merci pour votre règlement.');
-              }}
-            />
-          </div>
-        );
-      }
-
-      if (facture.status === 'paid' || clientProduit?.statut === 'refund_completed') {
-        return renderFinalRecapCard();
-      }
-
-      return (
-        <Card className="max-w-2xl mx-auto">
-          <CardContent className="p-6 text-center">
-            <Clock className="w-12 h-12 text-blue-600 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-800 mb-2">
-              En attente de facture
-            </h3>
-            <p className="text-sm text-gray-600">
-              Votre expert va émettre la facture prochainement.
-            </p>
-          </CardContent>
-        </Card>
-      );
-    }
-
-    return null;
+        {invoice ? (
+          <InvoiceDisplay
+            invoice={invoice}
+            dossierId={clientProduitId}
+            showConfirmPayment={facture.status !== 'paid'}
+            showPaymentOptions={facture.status !== 'paid'}
+            onPaymentConfirmed={() => {
+              loadClientProduit();
+              loadInvoice();
+              toast.success('🎉 Paiement confirmé ! Merci pour votre règlement.');
+            }}
+          />
+        ) : (
+          <Card className="max-w-2xl mx-auto border-gray-200">
+            <CardContent className="p-6 text-center">
+              <Clock className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-sm text-gray-600">
+                Votre expert prépare la facture. Vous serez notifié dès son émission.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    );
   };
 
   const renderStepContent = () => {
@@ -1753,6 +1910,27 @@ const partnerRequestAttemptedRef = useRef(false);
     );
   }
 
+  const stepsToDisplay = isSimplifiedProductKey
+    ? simplifiedState?.steps || workflowSteps
+    : calculatedSteps.length > 0
+      ? calculatedSteps
+      : workflowSteps;
+
+  const effectiveCurrentStep = isSimplifiedProductKey && simplifiedState
+    ? simplifiedState.activeStep
+    : currentStep;
+
+  useEffect(() => {
+    if (
+      isSimplifiedProductKey &&
+      simplifiedState &&
+      simplifiedState.activeStep !== currentStep &&
+      !editingInitialChecks
+    ) {
+      setCurrentStep(simplifiedState.activeStep);
+    }
+  }, [isSimplifiedProductKey, simplifiedState, currentStep, editingInitialChecks]);
+
   return (
     <div className={`space-y-6 ${className}`}>
       {/* En-tête avec progression */}
@@ -1780,11 +1958,11 @@ const partnerRequestAttemptedRef = useRef(false);
 
       {/* Étapes du workflow */}
       <div className="grid gap-4">
-        {(calculatedSteps.length > 0 ? calculatedSteps : workflowSteps).map((step: any) => (
+        {stepsToDisplay.map((step: any) => (
           <Card 
             key={step.id}
             className={`transition-all duration-200 ${getStepStatusColor(step.status)} ${
-              step.id === currentStep ? 'ring-2 ring-blue-500' : ''
+              step.id === effectiveCurrentStep ? 'ring-2 ring-blue-500' : ''
             }`}
           >
             <CardContent className="p-4">
@@ -1824,7 +2002,7 @@ const partnerRequestAttemptedRef = useRef(false);
                      'En attente'}
                   </Badge>
                   
-                  {step.id === currentStep && step.status === 'in_progress' && (
+                  {step.id === effectiveCurrentStep && step.status === 'in_progress' && (
                     <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
                   )}
                 </div>

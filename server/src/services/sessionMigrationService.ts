@@ -45,6 +45,47 @@ export interface MigrationResult {
 }
 
 export class SessionMigrationService {
+  private static readonly ENERGY_SPLIT_TARGETS = [
+    {
+      nom: 'Optimisation fournisseur électricité',
+      variant: 'electricite',
+      label: 'électricité'
+    },
+    {
+      nom: 'Optimisation fournisseur gaz',
+      variant: 'gaz',
+      label: 'gaz naturel'
+    }
+  ];
+
+  private static energyProductsCache: Record<string, { id: string }> | null = null;
+
+  private static async getEnergySplitProducts(): Promise<Record<string, { id: string }>> {
+    if (this.energyProductsCache) {
+      return this.energyProductsCache;
+    }
+
+    const { data, error } = await supabase
+      .from('ProduitEligible')
+      .select('id, nom')
+      .in(
+        'nom',
+        this.ENERGY_SPLIT_TARGETS.map((item) => item.nom)
+      );
+
+    if (error) {
+      console.error('⚠️ Erreur récupération des produits énergie scindés (migration):', error.message);
+      return {};
+    }
+
+    this.energyProductsCache =
+      data?.reduce((acc: Record<string, { id: string }>, item) => {
+        acc[item.nom] = { id: item.id };
+        return acc;
+      }, {}) ?? {};
+
+    return this.energyProductsCache;
+  }
   
   /**
    * Migrer une session temporaire vers un compte client
@@ -420,8 +461,74 @@ export class SessionMigrationService {
   ): Promise<any[] | null> {
     try {
       const clientProduitEligibles = [];
+      let energyProductsMap: Record<string, { id: string }> = {};
+      const requiresEnergySplit = eligibilityResults.some(
+        (result) => result.produit_id === 'Optimisation Énergie'
+      );
+
+      if (requiresEnergySplit) {
+        energyProductsMap = await this.getEnergySplitProducts();
+      }
 
       for (const result of eligibilityResults) {
+        if (result.produit_id === 'Optimisation Énergie' && Object.keys(energyProductsMap).length > 0) {
+          for (const target of SessionMigrationService.ENERGY_SPLIT_TARGETS) {
+            const targetProduit = energyProductsMap[target.nom];
+            if (!targetProduit) {
+              console.warn(`⚠️ Produit énergie scindé manquant (migration): ${target.nom}`);
+              continue;
+            }
+
+            const { data: cpe, error: cpeError } = await supabase
+              .from('ClientProduitEligible')
+              .insert({
+                clientId: clientId,
+                produitId: targetProduit.id,
+                statut: result.eligibility_score >= 70 ? 'eligible' : 'en_cours',
+                tauxFinal: result.eligibility_score / 100,
+                montantFinal: result.estimated_savings,
+                dureeFinale: 12,
+                metadata: {
+                  source: 'simulator_migration',
+                  eligibility_score: result.eligibility_score,
+                  confidence_level: result.confidence_level,
+                  recommendations: result.recommendations,
+                  session_responses: responses.length,
+                  calcul_details: result.calcul_details,
+                  product_type: result.type_produit,
+                  energy_variant: target.variant,
+                  split_from: 'Optimisation Énergie'
+                },
+                notes: `Migration depuis simulateur - Score: ${result.eligibility_score}% • Variante ${target.label}`,
+                priorite: result.eligibility_score >= 70 ? 1 : 2,
+                dateEligibilite: new Date().toISOString()
+              })
+              .select('*')
+              .single();
+
+            if (cpeError) {
+              console.error('Erreur création ClientProduitEligible (énergie scindée):', cpeError);
+              continue;
+            }
+
+            clientProduitEligibles.push(cpe);
+
+            try {
+              const { DossierStepGenerator } = require('./dossierStepGenerator');
+              const stepsGenerated = await DossierStepGenerator.generateStepsForDossier(cpe.id);
+
+              if (stepsGenerated) {
+                console.log(`✅ Étapes générées automatiquement pour le dossier migré: ${cpe.id}`);
+              } else {
+                console.warn(`⚠️ Échec de la génération automatique des étapes pour le dossier migré: ${cpe.id}`);
+              }
+            } catch (stepError) {
+              console.error('❌ Erreur génération automatique des étapes:', stepError);
+            }
+          }
+          continue;
+        }
+
         // Récupérer le produit éligible correspondant
         const { data: produit, error: produitError } = await supabase
           .from('ProduitEligible')
@@ -698,8 +805,58 @@ export class SessionMigrationService {
   ): Promise<any[] | null> {
     try {
       const clientProduitEligibles = [];
+      let energyProductsMap: Record<string, { id: string }> = {};
+      const requiresEnergySplit = eligibilityResults.some(
+        (result) => result.produit_id === 'Optimisation Énergie'
+      );
+
+      if (requiresEnergySplit) {
+        energyProductsMap = await this.getEnergySplitProducts();
+      }
 
       for (const result of eligibilityResults) {
+        if (result.produit_id === 'Optimisation Énergie' && Object.keys(energyProductsMap).length > 0) {
+          for (const target of SessionMigrationService.ENERGY_SPLIT_TARGETS) {
+            const targetProduit = energyProductsMap[target.nom];
+            if (!targetProduit) {
+              console.warn(`⚠️ Produit énergie scindé manquant (migration directe): ${target.nom}`);
+              continue;
+            }
+
+            const { data: cpe, error: cpeError } = await supabase
+              .from('ClientProduitEligible')
+              .insert({
+                clientId: clientId,
+                produitId: targetProduit.id,
+                statut: result.eligibility_score >= 70 ? 'eligible' : 'en_cours',
+                tauxFinal: result.eligibility_score / 100,
+                montantFinal: result.estimated_savings,
+                dureeFinale: 12,
+                metadata: {
+                  source: 'direct_migration',
+                  eligibility_score: result.eligibility_score,
+                  confidence_level: result.confidence_level,
+                  recommendations: result.recommendations || [],
+                  energy_variant: target.variant,
+                  split_from: 'Optimisation Énergie'
+                },
+                notes: `Migration directe - Score: ${result.eligibility_score}% • Variante ${target.label}`,
+                priorite: result.eligibility_score >= 70 ? 1 : 2,
+                dateEligibilite: new Date().toISOString()
+              })
+              .select('*')
+              .single();
+
+            if (cpeError) {
+              console.error('Erreur création ClientProduitEligible (énergie scindée):', cpeError);
+              continue;
+            }
+
+            clientProduitEligibles.push(cpe);
+          }
+          continue;
+        }
+
         // Récupérer le produit éligible correspondant
         const { data: produit, error: produitError } = await supabase
           .from('ProduitEligible')

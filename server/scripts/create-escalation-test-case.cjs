@@ -58,9 +58,9 @@ async function main() {
     triggered_at: triggeredAt.toISOString(),
     due_at: dueAt.toISOString(),
     escalation_level: 0,
-    next_step_label: 'Régler la commission Profitum',
-    next_step_description: 'Ce paiement est nécessaire pour clôturer définitivement le dossier.',
-    recommended_action: 'Cliquer sur le bouton “Ouvrir” et procéder au paiement.',
+    next_step_label: 'Régler la commission expert',
+    next_step_description: 'Ce paiement est nécessaire pour clôturer définitivement le dossier et rémunérer votre expert.',
+    recommended_action: 'Cliquer sur le bouton “Ouvrir” et procéder au règlement de la commission expert.',
     support_email: 'support@profitum.fr'
   };
 
@@ -70,8 +70,8 @@ async function main() {
     .insert({
       user_id: testUserId,
       user_type: 'client',
-      title: '💶 Paiement requis (test escalade)',
-      message: 'Notification de test pour vérifier l’escalade automatique.',
+      title: '[TICPE] 💶 Paiement requis (test escalade)',
+      message: 'Notification de test pour vérifier l’escalade automatique sur la commission expert.',
       notification_type: 'payment_requested',
       priority: 'high',
       status: 'unread',

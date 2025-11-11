@@ -87,6 +87,34 @@ const EnergieProductPage = () => {
   const isFromApporteur = clientProduit?.metadata?.source === 'apporteur';
   const isHighPriority = clientProduit?.priorite === 1;
 
+  const workflowProductKey =
+    (() => {
+      const productName = clientProduit?.ProduitEligible?.nom || '';
+      const normalized = productName
+        .normalize('NFD')
+        .toLowerCase()
+        .replace(/[\u0300-\u036f]/g, '');
+
+      if (normalized.includes('fournisseur') && normalized.includes('gaz')) {
+        return 'optimisation_fournisseur_gaz';
+      }
+      if (
+        normalized.includes('fournisseur') &&
+        (normalized.includes('electricite') || normalized.includes('elec'))
+      ) {
+        return 'optimisation_fournisseur_electricite';
+      }
+      return 'energie';
+    })() as 'optimisation_fournisseur_electricite' | 'optimisation_fournisseur_gaz' | 'energie';
+
+  const productDisplayName = clientProduit?.ProduitEligible?.nom || 'Optimisation Contrats Énergie';
+  const productVariantLabel =
+    workflowProductKey === 'optimisation_fournisseur_electricite'
+      ? 'électricité'
+      : workflowProductKey === 'optimisation_fournisseur_gaz'
+        ? 'gaz naturel'
+        : 'énergie';
+
   if (loading) {
     return (
       <div>
@@ -153,10 +181,10 @@ const EnergieProductPage = () => {
                 </div>
                 <div>
                   <CardTitle className="text-2xl font-bold text-gray-900">
-                    Optimisation Contrats Énergie
+                    {productDisplayName}
                   </CardTitle>
                   <p className="text-gray-600">
-                    Optimisez vos contrats électricité et gaz
+                    Optimisez vos contrats {productVariantLabel}
                   </p>
                 </div>
               </div>
@@ -200,7 +228,7 @@ const EnergieProductPage = () => {
           <CardContent>
             <UniversalProductWorkflow
               clientProduitId={clientProduit.id}
-              productKey="energie"
+              productKey={workflowProductKey}
               companyName={clientProduit.ProduitEligible?.nom || 'Votre entreprise'}
               estimatedAmount={clientProduit.montantFinal || 0}
               onWorkflowComplete={() => {

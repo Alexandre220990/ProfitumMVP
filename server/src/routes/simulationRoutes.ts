@@ -186,38 +186,134 @@ router.post('/:id/terminer', async (req: Request, res: Response) => {
     // 3. Créer les ClientProduitEligible pour les produits éligibles
     if (simulation.client_id && resultatsSQL.produits) {
       console.log(`📝 Création des ClientProduitEligible pour client ${simulation.client_id}...`);
-      
+
+      const energySplitTargets = [
+        {
+          nom: 'Optimisation fournisseur électricité',
+          variant: 'electricite',
+          label: 'électricité'
+        },
+        {
+          nom: 'Optimisation fournisseur gaz',
+          variant: 'gaz',
+          label: 'gaz naturel'
+        }
+      ];
+
+      let energyProductsMap: Record<string, { id: string }> = {};
+      const requiresEnergySplit = resultatsSQL.produits.some(
+        (produit: any) => produit.produit_nom === 'Optimisation Énergie'
+      );
+
+      if (requiresEnergySplit) {
+        const { data: energyProducts, error: energyProductsError } = await supabase
+          .from('ProduitEligible')
+          .select('id, nom')
+          .in(
+            'nom',
+            energySplitTargets.map((item) => item.nom)
+          );
+
+        if (energyProductsError) {
+          console.error('⚠️ Erreur récupération des produits énergie scindés:', energyProductsError.message);
+        } else if (energyProducts) {
+          energyProductsMap = energyProducts.reduce((acc: Record<string, { id: string }>, item) => {
+            acc[item.nom] = { id: item.id };
+            return acc;
+          }, {});
+        }
+      }
+
+      const insertClientProduitEligible = async ({
+        produitId,
+        produitNom,
+        produit,
+        variantMetadata
+      }: {
+        produitId: string;
+        produitNom: string;
+        produit: any;
+        variantMetadata?: Record<string, any>;
+      }) => {
+        const statut = produit.montant_estime >= 1000 ? 'eligible' : 'to_confirm';
+        const notes = [
+          produit.notes || `Éligible - Montant estimé: ${produit.montant_estime.toLocaleString()}€`,
+          variantMetadata?.label ? `Variante ${variantMetadata.label}` : null
+        ]
+          .filter(Boolean)
+          .join(' • ');
+
+        const { error: cpeError } = await supabase.from('ClientProduitEligible').insert({
+          clientId: simulation.client_id,
+          produitId,
+          simulationId: simulationId,
+          statut,
+          montantFinal: produit.montant_estime,
+          dureeFinale: 12,
+          notes,
+          calcul_details: produit.calcul_details,
+          metadata: {
+            source: 'simulation_client_sql',
+            simulation_id: simulationId,
+            type_produit: produit.type_produit,
+            calculated_at: new Date().toISOString(),
+            ...(variantMetadata ? variantMetadata.data : {})
+          },
+          priorite: produit.montant_estime >= 10000 ? 1 : produit.montant_estime >= 5000 ? 2 : 3,
+          dateEligibilite: new Date().toISOString(),
+          current_step: 0,
+          progress: 0
+        });
+
+        if (cpeError) {
+          console.error(`⚠️ Erreur création CPE pour ${produitNom}:`, cpeError.message);
+          return false;
+        }
+
+        console.log(`✅ ClientProduitEligible créé: ${produitNom} - ${produit.montant_estime}€`);
+        return true;
+      };
+
       let createdCount = 0;
       for (const produit of resultatsSQL.produits) {
         if (produit.is_eligible && produit.montant_estime > 0) {
-          const { error: cpeError } = await supabase
-            .from('ClientProduitEligible')
-            .insert({
-              clientId: simulation.client_id,
-              produitId: produit.produit_id,
-              simulationId: simulationId,
-              statut: produit.montant_estime >= 1000 ? 'eligible' : 'to_confirm',
-              montantFinal: produit.montant_estime,
-              dureeFinale: 12,
-              notes: produit.notes || `Éligible - Montant estimé: ${produit.montant_estime.toLocaleString()}€`,
-              calcul_details: produit.calcul_details,
-              metadata: {
-                source: 'simulation_client_sql',
-                simulation_id: simulationId,
-                type_produit: produit.type_produit,
-                calculated_at: new Date().toISOString()
-              },
-              priorite: produit.montant_estime >= 10000 ? 1 : produit.montant_estime >= 5000 ? 2 : 3,
-              dateEligibilite: new Date().toISOString(),
-              current_step: 0,
-              progress: 0
-            });
+          if (produit.produit_nom === 'Optimisation Énergie' && Object.keys(energyProductsMap).length > 0) {
+            for (const target of energySplitTargets) {
+              const targetProduit = energyProductsMap[target.nom];
+              if (!targetProduit) {
+                console.warn(`⚠️ Produit scindé non trouvé en base: ${target.nom}`);
+                continue;
+              }
 
-          if (cpeError) {
-            console.error(`⚠️ Erreur création CPE pour ${produit.produit_nom}:`, cpeError.message);
-          } else {
+              const created = await insertClientProduitEligible({
+                produitId: targetProduit.id,
+                produitNom: `${produit.produit_nom} → ${target.label}`,
+                produit,
+                variantMetadata: {
+                  label: target.label,
+                  data: {
+                    energy_variant: target.variant,
+                    split_from: 'Optimisation Énergie',
+                    original_produit_id: produit.produit_id
+                  }
+                }
+              });
+
+              if (created) {
+                createdCount++;
+              }
+            }
+            continue;
+          }
+
+          const created = await insertClientProduitEligible({
+            produitId: produit.produit_id,
+            produitNom: produit.produit_nom,
+            produit
+          });
+
+          if (created) {
             createdCount++;
-            console.log(`✅ ClientProduitEligible créé: ${produit.produit_nom} - ${produit.montant_estime}€`);
           }
         }
       }
