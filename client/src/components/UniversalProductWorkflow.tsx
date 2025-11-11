@@ -458,7 +458,7 @@ const partnerRequestAttemptedRef = useRef(false);
         if (alreadyRequested) {
           console.log('ℹ️ Demande de devis déjà enregistrée auprès du partenaire');
         } else {
-            toast.success("✅ Demande de devis transmise à l'expert distributeur");
+          toast.success("✅ Demande de devis transmise à l'expert distributeur");
         }
         await loadClientProduit();
         setCurrentStep(3);
@@ -468,7 +468,7 @@ const partnerRequestAttemptedRef = useRef(false);
       }
     } catch (error) {
       console.error('❌ Erreur envoi demande devis:', error);
-      toast.error('Impossible d'envoyer la demande de devis pour le moment.');
+      toast.error("Impossible d'envoyer la demande de devis pour le moment.");
     } finally {
       partnerRequestAttemptedRef.current = false;
     }
@@ -1297,8 +1297,8 @@ const partnerRequestAttemptedRef = useRef(false);
           const benefits = [
             'Conformité et sécurité lors des contrôles',
             'Gain de temps sur la préparation des fiches de paie',
-            'Optimisation des charges : le service s'auto-finance',
-            'Logiciel reconnu par l'inspection du travail'
+            "Optimisation des charges : le service s'auto-finance",
+            "Logiciel reconnu par l'inspection du travail"
           ];
 
           blocks.push(
