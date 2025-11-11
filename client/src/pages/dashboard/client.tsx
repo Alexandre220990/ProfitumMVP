@@ -308,7 +308,7 @@ const ProductCard = ({ produit, onClick, onExpertSelection, notificationData }: 
   };
 
   return (
-    <Card className={`h-full flex flex-col transition-all duration-300 cursor-pointer group relative rounded-2xl border border-slate-200/80 bg-white/95 hover:shadow-xl ${
+    <Card className={`h-full flex flex-col transition-all duration-300 cursor-pointer group relative rounded-xl border border-slate-200/80 bg-white/95 hover:shadow-xl ${
       isFromApporteur ? 'ring-1 ring-blue-200 bg-blue-50/40' : 'hover:border-blue-300'
     } ${notificationData?.isNewStatus ? 'ring-2 ring-green-400 animate-pulse' : ''}`}>
       {/* Pastille de notification en haut à droite */}
@@ -323,7 +323,7 @@ const ProductCard = ({ produit, onClick, onExpertSelection, notificationData }: 
         </div>
       )}
 
-      <CardContent className="p-5 flex flex-col h-full gap-4">
+      <CardContent className="p-4 flex flex-col h-full gap-3">
         {/* Badge "Action requise" */}
         {notificationData?.hasActionRequired && (
           <div className="mb-3 p-2 bg-gradient-to-r from-red-100 to-pink-100 rounded-lg border-2 border-red-300 animate-pulse">
@@ -381,32 +381,32 @@ const ProductCard = ({ produit, onClick, onExpertSelection, notificationData }: 
         )}
 
         {/* En-tête avec titre centré et icône */}
-        <div className="text-center mb-1">
-          <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-50 rounded-xl mb-3 text-blue-600 shadow-sm">
-            {getProductIcon(produit.ProduitEligible?.nom)}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div className="inline-flex items-center justify-center w-11 h-11 bg-blue-50 rounded-xl text-blue-600 shadow-sm shrink-0">
+              {getProductIcon(produit.ProduitEligible?.nom)}
+            </div>
+            <div className="space-y-1">
+              <h3 className="font-semibold text-base text-gray-900 group-hover:text-blue-600 transition-colors tracking-tight">
+                {produit.ProduitEligible?.nom || 'Produit non défini'}
+              </h3>
+              <p className="text-xs text-gray-600 leading-snug line-clamp-2">
+                {getProductDescription(produit.ProduitEligible?.nom)}
+              </p>
+            </div>
           </div>
-          <h3 className="font-semibold text-lg text-gray-900 group-hover:text-blue-600 transition-colors mb-1 tracking-tight">
-            {produit.ProduitEligible?.nom || 'Produit non défini'}
-          </h3>
-          <p className="text-sm text-gray-600 leading-relaxed line-clamp-2 min-h-[2.5rem]">
-            {getProductDescription(produit.ProduitEligible?.nom)}
-          </p>
-        </div>
-
-        {/* Badge de statut amélioré */}
-        {statusConfig && (
-          <div className="flex justify-center">
-            <Badge className={`${statusConfig.color} flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full`}>
+          {statusConfig && (
+            <Badge className={`${statusConfig.color} flex items-center gap-1 px-2 py-1 text-[11px] font-semibold rounded-full whitespace-nowrap`}>
               {statusConfig.icon}
               {statusConfig.label}
             </Badge>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Montant estimé */}
-        <div className="p-4 rounded-xl border border-emerald-100 bg-emerald-50/70 text-center shadow-sm">
-          <p className="text-xs text-emerald-700 mb-2 font-medium uppercase tracking-wide">Montant estimé</p>
-          <p className="font-bold text-2xl text-emerald-700">
+        <div className="p-3 rounded-lg border border-emerald-100 bg-emerald-50/70 text-center shadow-sm">
+          <p className="text-[11px] text-emerald-700 mb-1 font-medium uppercase tracking-wide">Montant estimé</p>
+          <p className="font-bold text-xl text-emerald-700">
             {produit.montantFinal ? produit.montantFinal.toLocaleString('fr-FR') + ' €' : 'Prix sur demande'}
           </p>
         </div>
@@ -422,7 +422,7 @@ const ProductCard = ({ produit, onClick, onExpertSelection, notificationData }: 
         </div>
 
         {/* Section Expert - hauteur fixe pour alignement - Affichage conditionnel */}
-        <div className="mb-4 min-h-[3.5rem] flex flex-col justify-center">
+        <div className="mb-3 min-h-[2.75rem] flex flex-col justify-center">
           {produit.expert_id || produit.expert_pending_id ? (
             <div 
               className="bg-green-50 p-3 rounded-lg border border-green-200"
@@ -527,8 +527,9 @@ const ProductCard = ({ produit, onClick, onExpertSelection, notificationData }: 
         </div>
 
         {/* Bouton Continuer - toujours aligné en bas */}
-        <div className="mt-auto pt-4">
+        <div className="mt-auto pt-3">
           <Button 
+            size="sm"
             className="w-full group-hover:bg-blue-600 transition-colors"
             onClick={(e) => {
               e.stopPropagation();
