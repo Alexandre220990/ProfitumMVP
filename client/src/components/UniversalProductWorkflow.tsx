@@ -431,7 +431,7 @@ const partnerRequestAttemptedRef = useRef(false);
         await loadClientProduit();
         return true;
       }
-      console.warn('⚠️ Impossible d'assigner automatiquement l'expert:', response.message);
+      console.warn(`⚠️ Impossible d'assigner automatiquement l'expert: ${response.message}`);
       autoAssignAttemptedRef.current = false;
       return false;
     } catch (error) {

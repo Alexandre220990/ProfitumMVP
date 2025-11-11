@@ -85,6 +85,18 @@ export interface ClientProduitEligible extends BaseEntity {
   montantFinal: DoublePrecision | null;
   dureeFinale: number | null;
   simulationId: number | null;
+  sessionId: UUID | null;
+  priorite: number | null;
+  notes: string | null;
+  dateEligibilite: Timestamp | null;
+  metadata: Json | null;
+  current_step: number | null;
+  progress: number | null;
+  expert_id: UUID | null;
+  expert_pending_id: UUID | null;
+  expert_assigned_at: Timestamp | null;
+  produitKey: string | null;
+  calcul_details: Json | null;
 }
 
 export interface Document extends BaseEntity {
