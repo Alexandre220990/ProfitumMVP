@@ -1,5 +1,6 @@
 import express, { Request, Response } from 'express';
 import { createClient } from '@supabase/supabase-js';
+import { SharedDocumentService } from '../services/shared-document-service';
 
 const router = express.Router();
 
@@ -106,6 +107,22 @@ router.post('/process/upload', async (req: Request, res: Response) => {
       });
     }
 
+    const docMetadata = typeof metadata === 'string' ? JSON.parse(metadata) : (metadata || {});
+
+    const sharedDocument = await SharedDocumentService.resolveSharedDocumentForUpload({
+      clientId: client_id,
+      documentType,
+      filename,
+      storagePath,
+      bucketName: bucket_name,
+      fileSize: file_size || null,
+      mimeType: mime_type || null,
+      metadata: docMetadata
+    });
+
+    docMetadata.shared_document_id = sharedDocument.id;
+    docMetadata.shared_document_version = sharedDocument.version_number;
+
     // Créer l'entrée dans la table
     const { data, error } = await supabase
       .from('ClientProcessDocument')
@@ -122,7 +139,11 @@ router.post('/process/upload', async (req: Request, res: Response) => {
         uploaded_by: user?.database_id,
         uploaded_by_type: user?.type || 'admin',
         status: 'pending',
-        metadata: metadata || {}
+        validation_status: 'pending',
+        shared_document_id: sharedDocument.id,
+        metadata: docMetadata,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       })
       .select()
       .single();
@@ -225,6 +246,7 @@ router.put('/process/:id/validate', async (req: Request, res: Response) => {
       .from('ClientProcessDocument')
       .update({
         status,
+        validation_status: status,
         validated_by: user?.database_id,
         validated_at: new Date().toISOString(),
         validation_notes: validation_notes || null,
@@ -240,6 +262,14 @@ router.put('/process/:id/validate', async (req: Request, res: Response) => {
         success: false,
         message: 'Erreur validation'
       });
+    }
+
+    if (status === 'validated') {
+      try {
+        await SharedDocumentService.propagateValidation(id, user?.database_id);
+      } catch (sharedError) {
+        console.error('⚠️ Erreur propagation document partagé (non bloquant):', sharedError);
+      }
     }
 
     return res.json({

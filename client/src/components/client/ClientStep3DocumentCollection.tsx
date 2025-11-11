@@ -33,6 +33,9 @@ interface Document {
   workflow_step?: string;
   document_type?: string;
   file_size?: number;
+  shared_document_id?: string;
+  shared_document_version?: number;
+  metadata?: Record<string, any> | null;
 }
 
 interface RequestedDocument {
@@ -473,6 +476,11 @@ export default function ClientStep3DocumentCollection({
               const doc = item.data as Document;
               const isValidated = doc.validation_status === 'validated';
               const isRejected = doc.validation_status === 'rejected';
+              const sharedOrigin = doc.metadata?.shared_document_origin as {
+                dossier_id?: string;
+                document_id?: string;
+              } | undefined;
+              const isShared = Boolean(sharedOrigin);
               
               return (
                 <div
@@ -503,6 +511,11 @@ export default function ClientStep3DocumentCollection({
                           ✓ Validé
                         </Badge>
                       )}
+                      {isValidated && isShared && (
+                        <Badge className="text-xs px-2 py-0 bg-blue-100 text-blue-700 border border-blue-200">
+                          Réutilisé automatiquement
+                        </Badge>
+                      )}
                       {isRejected && (
                         <Badge variant="destructive" className="text-xs px-2 py-0">
                           ✗ Rejeté
@@ -525,6 +538,11 @@ export default function ClientStep3DocumentCollection({
                       <div className="mt-2 text-xs text-red-700 bg-white rounded px-2 py-1 border border-red-200">
                         <span className="font-medium">Raison : </span>
                         {doc.rejection_reason}
+                      </div>
+                    )}
+                    {isValidated && isShared && (
+                      <div className="mt-2 text-xs text-blue-700 bg-blue-50 rounded px-2 py-1 border border-blue-200">
+                        Document validé sur un autre dossier et synchronisé automatiquement.
                       </div>
                     )}
                   </div>

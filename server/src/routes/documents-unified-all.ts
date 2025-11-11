@@ -26,6 +26,7 @@ import express, { Request, Response } from 'express';
 import { createClient } from '@supabase/supabase-js';
 import multer from 'multer';
 import { normalizeDossierStatus } from '../utils/dossierStatus';
+import { SharedDocumentService } from '../services/shared-document-service';
 
 const router = express.Router();
 
@@ -503,11 +504,13 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
       docMetadata.client_produit_id = dossier_id;
     }
     
-    // ✅ Vérifier si parent_document_id existe et appartient au même dossier
+    let parentSharedDocumentId: string | null = null;
+
     if (parent_document_id) {
+      // Mise à jour précédente : récupérer également shared_document_id
       const { data: parentDoc, error: parentError } = await supabase
         .from('ClientProcessDocument')
-        .select('id, client_produit_id, document_type')
+        .select('id, client_produit_id, document_type, shared_document_id')
         .eq('id', parent_document_id)
         .single();
       
@@ -518,7 +521,6 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
         });
       }
       
-      // Vérifier que le parent appartient au même dossier
       if (dossier_id && parentDoc.client_produit_id !== dossier_id) {
         return res.status(403).json({
           success: false,
@@ -526,13 +528,30 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
         });
       }
       
+      parentSharedDocumentId = parentDoc.shared_document_id;
+
       console.log('🔄 Remplacement document:', {
         parent_id: parent_document_id,
         parent_type: parentDoc.document_type,
         new_type: document_type
       });
     }
-    
+
+    const sharedDocument = await SharedDocumentService.resolveSharedDocumentForUpload({
+      clientId: client_id || user.database_id,
+      documentType,
+      filename: originalFilename,
+      storagePath,
+      bucketName,
+      fileSize: file.size,
+      mimeType: file.mimetype,
+      metadata: docMetadata,
+      parentSharedDocumentId
+    });
+
+    docMetadata.shared_document_id = sharedDocument.id;
+    docMetadata.shared_document_version = sharedDocument.version_number;
+
     const { data: doc, error: dbError } = await supabase
       .from('ClientProcessDocument')
       .insert({
@@ -551,6 +570,7 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
         status: 'pending',
         validation_status: 'pending', // Réinitialiser le statut de validation
         metadata: docMetadata,
+        shared_document_id: sharedDocument.id,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
@@ -803,6 +823,7 @@ router.put('/:id/validate', async (req: Request, res: Response) => {
       .from('ClientProcessDocument')
       .update({
         status: 'validated',
+        validation_status: 'validated',
         validated_by: user.database_id,
         validated_at: new Date().toISOString(),
         validation_notes: notes || null,
@@ -817,7 +838,11 @@ router.put('/:id/validate', async (req: Request, res: Response) => {
       return res.status(500).json({ success: false, message: 'Erreur validation' });
     }
     
-    // TODO: Envoyer notification au client
+    try {
+      await SharedDocumentService.propagateValidation(id, user.database_id);
+    } catch (sharedError) {
+      console.error('⚠️ Erreur propagation document partagé (non bloquant):', sharedError);
+    }
     
     return res.json({
       success: true,
@@ -853,6 +878,7 @@ router.put('/:id/reject', async (req: Request, res: Response) => {
       .from('ClientProcessDocument')
       .update({
         status: 'rejected',
+        validation_status: 'rejected',
         validated_by: user.database_id,
         validated_at: new Date().toISOString(),
         validation_notes: reason,

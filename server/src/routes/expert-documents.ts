@@ -2,6 +2,7 @@ import express, { Request, Response } from 'express';
 import { supabase } from '../lib/supabase';
 import { AuthUser } from '../types/auth';
 import { enhancedAuthMiddleware, AuthenticatedRequest } from '../middleware/auth-enhanced';
+import { SharedDocumentService } from '../services/shared-document-service';
 
 const router = express.Router();
 
@@ -163,6 +164,12 @@ router.put('/document/:id/validate', enhancedAuthMiddleware, async (req: Request
         success: false,
         message: 'Erreur lors de la validation'
       });
+    }
+
+    try {
+      await SharedDocumentService.propagateValidation(documentId, user.database_id);
+    } catch (sharedError) {
+      console.error('⚠️ Erreur propagation document partagé (non bloquant):', sharedError);
     }
 
     console.log(`✅ Document validé:`, updatedDoc.filename);

@@ -33,6 +33,9 @@ interface Document {
   validated_at: string | null;
   created_at: string;
   validated_by: string | null;
+  shared_document_id?: string | null;
+  shared_document_version?: number | null;
+  metadata?: Record<string, any> | null;
   Expert?: {
     id: string;
     name: string;
@@ -454,6 +457,11 @@ export default function ExpertDocumentsTab({
             {documents.map((doc) => {
               const validation = validations[doc.id];
               const isPending = doc.validation_status === 'pending';
+              const sharedOrigin = doc.metadata?.shared_document_origin as {
+                dossier_id?: string;
+                document_id?: string;
+              } | undefined;
+              const isShared = Boolean(sharedOrigin);
               
               return (
                 <div
@@ -490,6 +498,14 @@ export default function ExpertDocumentsTab({
                             </>
                           )}
                         </div>
+                        {doc.validation_status === 'validated' && isShared && (
+                          <div className="mt-2 inline-flex items-center gap-2 text-xs text-blue-700 bg-blue-50 px-2 py-1 rounded border border-blue-200">
+                            <Badge variant="outline" className="text-[10px] uppercase tracking-wide text-blue-700 border-blue-300">
+                              Réutilisé
+                            </Badge>
+                            <span>Document propagé automatiquement depuis un autre dossier</span>
+                          </div>
+                        )}
                       </div>
                     </div>
 
