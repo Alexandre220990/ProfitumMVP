@@ -185,6 +185,8 @@ router.get('/:dossierId/initial-checks', enhancedAuthMiddleware, async (req: Req
       return res.status(404).json({ success: false, message: 'Dossier non trouvé' });
     }
 
+    const dossierWithSteps = dossier as typeof dossier & { current_step?: number | null; progress?: number | null };
+
     const produitEligible = getFirst(dossier.ProduitEligible);
     const productKey = determineProductKey(produitEligible?.nom || '');
     const checklistKey = `${productKey}_checklist`;
@@ -261,6 +263,8 @@ router.post('/:dossierId/initial-checks', enhancedAuthMiddleware, async (req: Re
     if (dossierError || !dossier) {
       return res.status(404).json({ success: false, message: 'Dossier non trouvé' });
     }
+
+    const dossierWithSteps = dossier as typeof dossier & { current_step?: number | null; progress?: number | null };
 
     // Déterminer le productKey
     const produitEligible = getFirst(dossier.ProduitEligible);
@@ -362,8 +366,8 @@ router.post('/:dossierId/initial-checks', enhancedAuthMiddleware, async (req: Re
       .from('ClientProduitEligible')
       .update({
         metadata,
-        current_step: Math.max(dossier.current_step || 1, 2),
-        progress: Math.max(dossier.progress || 0, 25),
+        current_step: Math.max((dossierWithSteps.current_step ?? 1), 2),
+        progress: Math.max((dossierWithSteps.progress ?? 0), 25),
         statut: 'expert_selection',
         updated_at: now
       })
@@ -532,6 +536,8 @@ router.post('/:dossierId/assign-expert', enhancedAuthMiddleware, async (req: Req
       return res.status(404).json({ success: false, message: 'Dossier non trouvé' });
     }
 
+    const dossierWithSteps = dossier as typeof dossier & { current_step?: number | null; progress?: number | null };
+
     if (dossier.expert_id) {
       return res.json({ success: true, data: { alreadyAssigned: true, expert_id: dossier.expert_id } });
     }
@@ -553,11 +559,12 @@ router.post('/:dossierId/assign-expert', enhancedAuthMiddleware, async (req: Req
       updates.statut = 'expert_assigned';
     }
 
-    if (!dossier.current_step || dossier.current_step < 2) {
+    const currentStep = dossierWithSteps.current_step ?? null;
+    if (!currentStep || currentStep < 2) {
       updates.current_step = 2;
     }
 
-    updates.progress = Math.max(dossier.progress || 0, 40);
+    updates.progress = Math.max((dossierWithSteps.progress ?? 0), 40);
 
     const { error: updateError } = await supabase
       .from('ClientProduitEligible')
@@ -602,7 +609,7 @@ router.post('/:dossierId/partner-request', enhancedAuthMiddleware, async (req: R
 
     const { data: dossier, error: dossierError } = await supabase
       .from('ClientProduitEligible')
-      .select('id, clientId, expert_id, metadata, produitId, ProduitEligible:produitId(nom), Expert:expert_id(id, name, email, company_name)')
+      .select('id, clientId, expert_id, metadata, produitId, current_step, progress, ProduitEligible:produitId(nom), Expert:expert_id(id, name, email, company_name)')
       .eq('id', dossierId)
       .eq('clientId', user.database_id)
       .single();
@@ -610,6 +617,8 @@ router.post('/:dossierId/partner-request', enhancedAuthMiddleware, async (req: R
     if (dossierError || !dossier) {
       return res.status(404).json({ success: false, message: 'Dossier non trouvé' });
     }
+
+    const dossierWithSteps = dossier as typeof dossier & { current_step?: number | null; progress?: number | null };
 
     const produit = getFirst(dossier.ProduitEligible);
     const productName = produit?.nom || 'Produit';
@@ -714,8 +723,8 @@ router.post('/:dossierId/partner-request', enhancedAuthMiddleware, async (req: R
 
     await supabase.from('ClientProduitEligible')
       .update({
-        current_step: Math.max(dossier.current_step || 2, 3),
-        progress: Math.max(dossier.progress || 0, 55),
+        current_step: Math.max((dossierWithSteps.current_step ?? 2), 3),
+        progress: Math.max((dossierWithSteps.progress ?? 0), 55),
         metadata: {
           ...existingMetadata,
           partner_request: partnerRequestMetadata
@@ -837,13 +846,15 @@ router.post('/:dossierId/quote/propose', enhancedAuthMiddleware, async (req: Req
 
     const { data: dossier, error: dossierError } = await supabase
       .from('ClientProduitEligible')
-      .select('id, clientId, expert_id, metadata, ProduitEligible:produitId(nom), Client:clientId(company_name, email)')
+      .select('id, clientId, expert_id, metadata, current_step, ProduitEligible:produitId(nom), Client:clientId(company_name, email)')
       .eq('id', dossierId)
       .single();
 
     if (dossierError || !dossier || dossier.expert_id !== user.database_id) {
       return res.status(404).json({ success: false, message: 'Dossier non trouvé ou non assigné' });
     }
+
+    const dossierWithSteps = dossier as typeof dossier & { current_step?: number | null; progress?: number | null };
 
     const produitEligible = getFirst(dossier.ProduitEligible);
     const productName = produitEligible?.nom || 'Produit';
@@ -985,15 +996,22 @@ router.post('/:dossierId/quote/propose', enhancedAuthMiddleware, async (req: Req
       }
     };
 
-    await supabase.from('ClientProduitEligible')
-      .update({ metadata, current_step: Math.max(dossier.current_step || 3, 4), progress: 80, updated_at: new Date().toISOString() })
+    await supabase
+      .from('ClientProduitEligible')
+      .update({
+        metadata,
+        current_step: Math.max((dossierWithSteps.current_step ?? 3), 4),
+        progress: 80,
+        updated_at: new Date().toISOString()
+      })
       .eq('id', dossierId);
 
     // Mettre à jour DossierStep
     const partnerStepName = 'Proposition partenaire';
     const quoteStepName = 'Devis & validation';
 
-    await supabase.from('DossierStep')
+    await supabase
+      .from('DossierStep')
       .update({ status: 'completed', progress: 100, updated_at: new Date().toISOString() })
       .eq('dossier_id', dossierId)
       .eq('step_name', partnerStepName);
@@ -1081,7 +1099,7 @@ router.post('/:dossierId/quote/accept', enhancedAuthMiddleware, async (req: Requ
 
     const { data: dossier, error: dossierError } = await supabase
       .from('ClientProduitEligible')
-      .select('id, clientId, expert_id, metadata, ProduitEligible:produitId(nom), Expert:expert_id(id, name, email)')
+      .select('id, clientId, expert_id, metadata, current_step, ProduitEligible:produitId(nom), Expert:expert_id(id, name, email)')
       .eq('id', dossierId)
       .eq('clientId', user.database_id)
       .single();
@@ -1089,6 +1107,8 @@ router.post('/:dossierId/quote/accept', enhancedAuthMiddleware, async (req: Requ
     if (dossierError || !dossier) {
       return res.status(404).json({ success: false, message: 'Dossier non trouvé' });
     }
+
+    const dossierWithSteps = dossier as typeof dossier & { current_step?: number | null; progress?: number | null };
 
     const expert = getFirst(dossier.Expert);
     const metadata = dossier.metadata || {};
@@ -1110,8 +1130,14 @@ router.post('/:dossierId/quote/accept', enhancedAuthMiddleware, async (req: Requ
       commentaire_client: commentaire || null
     };
 
-    await supabase.from('ClientProduitEligible')
-      .update({ metadata, current_step: Math.max(dossier.current_step || 4, 5), progress: 90, updated_at: new Date().toISOString() })
+    await supabase
+      .from('ClientProduitEligible')
+      .update({
+        metadata,
+        current_step: Math.max((dossierWithSteps.current_step ?? 4), 5),
+        progress: 90,
+        updated_at: new Date().toISOString()
+      })
       .eq('id', dossierId);
 
     // Mettre à jour DossierStep

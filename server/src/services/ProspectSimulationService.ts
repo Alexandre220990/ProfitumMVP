@@ -141,7 +141,24 @@ export class ProspectSimulationService {
       }
       
       // 4. Créer les ClientProduitEligible UNIQUEMENT pour les produits éligibles
-      const clientProduitsToCreate = [];
+      const clientProduitsToCreate: Array<{
+        clientId: string;
+        produitId: string;
+        simulationId: string;
+        statut: 'eligible' | 'non_eligible' | 'to_confirm';
+        tauxFinal: number | null;
+        montantFinal: number;
+        dureeFinale: number;
+        priorite: number;
+        notes: string;
+        metadata: Record<string, any>;
+        calcul_details: any;
+        dateEligibilite: string;
+        current_step: number;
+        progress: number;
+        created_at: string;
+        updated_at: string;
+      }> = [];
 
       const energySplitTargets = [
         {

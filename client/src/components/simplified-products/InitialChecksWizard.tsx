@@ -160,7 +160,7 @@ export default function InitialChecksWizard({
         toast.error('Le nombre d’installations souhaitées doit être compris entre 0 et le total de véhicules.');
         return;
       }
-    } else {
+    } else if (isSolid) {
       if (!chauffeursConfirmes || chauffeursConfirmes <= 0) {
         toast.error('Indiquez le nombre de chauffeurs concernés.');
         return;

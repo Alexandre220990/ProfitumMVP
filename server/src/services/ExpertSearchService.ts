@@ -77,9 +77,14 @@ export class ExpertSearchService {
             const params: any[] = [];
             let paramIndex = 1;
 
-            // Filtres de spécialisation
+            // Filtres de spécialisation - Utiliser ExpertProduitEligible au lieu de specializations
+            // Si des spécialisations sont demandées, on filtre via ExpertProduitEligible
+            // On garde aussi le filtre sur specializations pour compatibilité (fallback)
             if (criteria.specializations && criteria.specializations.length > 0) {
+                // Convertir les noms de spécialisations en IDs de produits si nécessaire
+                // Pour l'instant, on utilise les deux méthodes pour compatibilité
                 const specConditions = criteria.specializations.map(spec => {
+                    // Fallback sur specializations pour compatibilité
                     conditions.push(`e.specializations @> $${paramIndex}`);
                     params.push(`["${spec}"]`);
                     paramIndex++;

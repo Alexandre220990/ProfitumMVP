@@ -16,12 +16,105 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseServiceKey) {
-  console.error('❌ Variables d’environnement Supabase manquantes (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY)');
+  console.error('❌ Variables d'environnement Supabase manquantes (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY)');
   process.exit(1);
 }
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 const nowIso = () => new Date().toISOString();
+
+/**
+ * Synchronise les specializations d'un expert vers ExpertProduitEligible
+ * Version inline pour le script .mjs
+ */
+async function syncSpecializationsToExpertProduitEligible(expertId, specializations) {
+  if (!specializations || specializations.length === 0) {
+    return { created: 0, updated: 0, errors: 0 };
+  }
+
+  let created = 0;
+  let updated = 0;
+  let errors = 0;
+
+  for (const specName of specializations) {
+    try {
+      // Chercher le produit par nom
+      const { data: produits, error: produitError } = await supabase
+        .from('ProduitEligible')
+        .select('id, nom')
+        .ilike('nom', `%${specName}%`)
+        .limit(1);
+
+      if (produitError || !produits || produits.length === 0) {
+        console.warn(`   ⚠️ Produit non trouvé pour spécialisation: ${specName}`);
+        continue;
+      }
+
+      const produitId = produits[0].id;
+
+      // Vérifier si l'entrée existe déjà
+      const { data: existing, error: checkError } = await supabase
+        .from('ExpertProduitEligible')
+        .select('id, statut')
+        .eq('expert_id', expertId)
+        .eq('produit_id', produitId)
+        .maybeSingle();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        console.error(`   ❌ Erreur vérification:`, checkError.message);
+        errors++;
+        continue;
+      }
+
+      const now = nowIso();
+
+      if (existing) {
+        // Mettre à jour si inactif
+        if (existing.statut !== 'actif') {
+          const { error: updateError } = await supabase
+            .from('ExpertProduitEligible')
+            .update({
+              statut: 'actif',
+              niveauExpertise: 'intermediaire',
+              updated_at: now
+            })
+            .eq('id', existing.id);
+
+          if (updateError) {
+            console.error(`   ❌ Erreur mise à jour:`, updateError.message);
+            errors++;
+          } else {
+            updated++;
+          }
+        }
+      } else {
+        // Créer nouvelle entrée
+        const { error: insertError } = await supabase
+          .from('ExpertProduitEligible')
+          .insert({
+            expert_id: expertId,
+            produit_id: produitId,
+            statut: 'actif',
+            niveauExpertise: 'intermediaire',
+            created_at: now,
+            updated_at: now
+          });
+
+        if (insertError) {
+          console.error(`   ❌ Erreur création:`, insertError.message);
+          errors++;
+        } else {
+          created++;
+        }
+      }
+    } catch (error) {
+      console.error(`   ❌ Erreur traitement ${specName}:`, error.message);
+      errors++;
+    }
+  }
+
+  return { created, updated, errors };
+}
 
 const DISTRIBUTOR_EXPERTS = [
   {
@@ -239,8 +332,18 @@ async function main() {
       console.log(`👤 Traitement : ${expert.name} (${expert.email})`);
 
       const authUser = await ensureAuthUser(expert);
-  console.log(`   ↳ Auth user id : ${authUser.id}`);
+      console.log(`   ↳ Auth user id : ${authUser.id}`);
       await upsertExpert(expert, authUser);
+
+      // Synchroniser les spécialisations vers ExpertProduitEligible
+      if (expert.specializations && expert.specializations.length > 0) {
+        console.log(`   ↳ Synchronisation vers ExpertProduitEligible...`);
+        const syncResult = await syncSpecializationsToExpertProduitEligible(
+          authUser.id,
+          expert.specializations
+        );
+        console.log(`   ↳ Résultat: ${syncResult.created} créé(s), ${syncResult.updated} mis à jour, ${syncResult.errors} erreur(s)`);
+      }
 
       console.log(`📧 Identifiants : ${expert.email} / ${expert.password}`);
     }
