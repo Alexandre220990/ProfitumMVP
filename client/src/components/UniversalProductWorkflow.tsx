@@ -458,7 +458,7 @@ const partnerRequestAttemptedRef = useRef(false);
         if (alreadyRequested) {
           console.log('ℹ️ Demande de devis déjà enregistrée auprès du partenaire');
         } else {
-          toast.success('✅ Demande de devis transmise à l'expert distributeur');
+            toast.success("✅ Demande de devis transmise à l'expert distributeur");
         }
         await loadClientProduit();
         setCurrentStep(3);
