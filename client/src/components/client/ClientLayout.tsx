@@ -287,14 +287,7 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
                       <p className="text-gray-500">{user?.email}</p>
                       <Badge className="mt-1 bg-green-100 text-green-800">Client</Badge>
                     </div>
-                    <button
-                      // Paramètres supprimés : navigation désactivée
-                      className="hidden"
-                      {/* Paramètres supprimés */}
-                    >
-                      <Settings className="w-4 h-4" />
-                      Paramètres
-                    </button>
+                    {/* Paramètres supprimés : navigation désactivée */}
                     <button
                       onClick={handleLogout}
                       className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
