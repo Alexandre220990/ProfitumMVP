@@ -1931,6 +1931,8 @@ const partnerRequestAttemptedRef = useRef(false);
     ? simplifiedState.activeStep
     : currentStep;
 
+  const normalizedProgress = Math.min(100, Math.max(0, Math.round(overallProgress || 0)));
+
   return (
     <div className={`space-y-6 ${className}`}>
       {/* En-tête avec progression */}

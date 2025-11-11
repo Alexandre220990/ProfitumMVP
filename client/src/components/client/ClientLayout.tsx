@@ -12,7 +12,6 @@ import {
   MessageSquare,
   FileText,
   User,
-  Settings,
   HelpCircle,
   Bell,
   LogOut,
@@ -105,12 +104,7 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
       icon: User,
       current: location.pathname === '/profile/client'
     },
-    {
-      name: 'Paramètres',
-      href: '/settings',
-      icon: Settings,
-      current: location.pathname === '/settings'
-    },
+    // Paramètres supprimés : la gestion du profil se fait depuis /profile/client uniquement
     {
       name: 'Aide',
       href: '/aide-client',
@@ -294,10 +288,11 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
                       <Badge className="mt-1 bg-green-100 text-green-800">Client</Badge>
                     </div>
                     <button
-                      onClick={() => navigate('/settings')}
-                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      // Paramètres supprimés : navigation désactivée
+                      className="hidden"
+                      {/* Paramètres supprimés */}
                     >
-                      <Settings className="mr-3 h-4 w-4" />
+                      <Settings className="w-4 h-4" />
                       Paramètres
                     </button>
                     <button

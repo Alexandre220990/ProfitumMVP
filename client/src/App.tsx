@@ -27,7 +27,6 @@ const ExpertDocumentsPage = React.lazy(() => import('./pages/expert/documents'))
 const ApporteurDocumentsPage = React.lazy(() => import('./pages/apporteur/documents'));
 const NotificationCenter = React.lazy(() => import('./pages/notification-center'));
 const NotificationPreferences = React.lazy(() => import('./pages/notification-preferences'));
-const Settings = React.lazy(() => import('./pages/settings'));
 const Experts = React.lazy(() => import('./pages/marketplace-experts'));
 const MarketplaceExperts = React.lazy(() => import('./pages/marketplace-experts'));
 const ExpertsVerifies = React.lazy(() => import('./pages/experts-verifies'));
@@ -266,7 +265,6 @@ function App() {
                         
                         {/* Profil & Paramètres */}
                         <Route path="/profile/client" element={<ProfileClient />} />
-                        <Route path="/settings" element={<Settings />} />
                         <Route path="/aide-client" element={<AideClient />} />
                       </Route>
                     </Route>

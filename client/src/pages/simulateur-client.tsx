@@ -445,23 +445,30 @@ const SimulateurClient = () => {
         );
       }
 
+      const orderedQuestions = [...questions]
+        .filter((question) => answers[question.id] !== undefined)
+        .sort((a, b) => (a.question_order || 0) - (b.question_order || 0));
+
+      if (orderedQuestions.length === 0) {
+        return (
+          <p className="text-sm text-muted-foreground">
+            Aucune réponse enregistrée pour le moment.
+          </p>
+        );
+      }
+
       return (
-        <div className="space-y-4">
-          {questions
-            .filter((question) => answers[question.id] !== undefined)
-            .map((question) => (
-              <div
-                key={question.id}
-                className="rounded-xl border border-slate-200 bg-white/70 p-4 shadow-sm"
-              >
-                <p className="text-sm font-semibold text-slate-900">
-                  {question.question_text}
-                </p>
-                <p className="text-sm text-slate-600">
-                  {formatAnswer(question, answers[question.id])}
-                </p>
-              </div>
-            ))}
+        <div className="space-y-2 text-sm">
+          {orderedQuestions.map((question) => (
+            <div key={question.id} className="flex flex-col gap-1">
+              <span className="font-medium text-slate-800">
+                {question.question_text}
+              </span>
+              <span className="text-slate-600">
+                → {formatAnswer(question, answers[question.id])}
+              </span>
+            </div>
+          ))}
         </div>
       );
     },
@@ -480,43 +487,35 @@ const SimulateurClient = () => {
       switch (question.question_type) {
         case "choix_unique": {
           return (
-            <div className="grid gap-3">
-              {(question.options?.choix || []).map((option) => {
-                const selected = value === option;
-                return (
-                  <button
-                    key={option}
-                    type="button"
-                    onClick={() => handleAnswerChange(question.id, option)}
-                    className={`text-left rounded-xl border p-4 transition-all ${
-                      selected
-                        ? "border-blue-500 bg-blue-50 text-blue-700 shadow"
-                        : "border-slate-200 hover:border-blue-300 hover:bg-blue-50/40"
-                    } ${isMissing ? "border-red-400" : ""}`}
-                  >
-                    <span className="text-sm font-medium">{option}</span>
-                  </button>
-                );
-              })}
-            </div>
+            <select
+              value={value ?? ""}
+              onChange={(event) =>
+                handleAnswerChange(
+                  question.id,
+                  event.target.value === "" ? null : event.target.value
+                )
+              }
+              className={`h-10 rounded border border-slate-300 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                isMissing ? "border-red-400 focus:ring-red-400" : ""
+              }`}
+            >
+              <option value="">Sélectionnez une réponse</option>
+              {(question.options?.choix || []).map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
           );
         }
         case "choix_multiple": {
           const selectedValues = Array.isArray(value) ? value : [];
           return (
-            <div className="space-y-3">
+            <div className="space-y-2">
               {(question.options?.choix || []).map((option) => {
                 const checked = selectedValues.includes(option);
                 return (
-                  <label
-                    key={option}
-                    className={`flex cursor-pointer items-center justify-between rounded-xl border p-4 transition-all ${
-                      checked
-                        ? "border-blue-500 bg-blue-50 text-blue-700"
-                        : "border-slate-200 hover:border-blue-300 hover:bg-blue-50/40"
-                    } ${isMissing ? "border-red-400" : ""}`}
-                  >
-                    <span className="text-sm font-medium">{option}</span>
+                  <label key={option} className="flex items-center gap-2 text-sm">
                     <input
                       type="checkbox"
                       checked={checked}
@@ -536,6 +535,7 @@ const SimulateurClient = () => {
                       }}
                       className="h-4 w-4"
                     />
+                    {option}
                   </label>
                 );
               })}
@@ -544,7 +544,7 @@ const SimulateurClient = () => {
         }
         case "nombre": {
           return (
-            <div className="space-y-2">
+            <div className="space-y-1">
               <Input
                 type="number"
                 value={value ?? ""}
@@ -572,7 +572,7 @@ const SimulateurClient = () => {
               value={value ?? ""}
               onChange={(event) => handleAnswerChange(question.id, event.target.value)}
               placeholder={question.options?.placeholder || "Entrez votre réponse"}
-              className={`min-h-[120px] ${
+              className={`min-h-[100px] ${
                 isMissing ? "border-red-400 focus-visible:ring-red-400" : ""
               }`}
             />
@@ -808,7 +808,7 @@ const SimulateurClient = () => {
                   })}
                 </div>
 
-                <div className="grid gap-6 md:grid-cols-2">
+                <div className="grid gap-4">
                   {questions.map((question) => {
                     const shouldShow = shouldDisplayQuestion(question, draftAnswers);
                     if (!shouldShow) {
@@ -824,7 +824,7 @@ const SimulateurClient = () => {
                         ref={(element) => {
                           questionRefs.current[question.id] = element;
                         }}
-                        className={`rounded-xl border bg-white/80 p-5 shadow-sm transition-all ${
+                        className={`rounded-lg border bg-white/90 p-4 shadow-sm transition-all ${
                           isMissing ? "border-red-300" : "border-slate-200"
                         }`}
                       >

@@ -825,18 +825,10 @@ export default function DashboardClient() {
         <div className="mb-8">
           <div className="relative">
             {/* Titre principal avec bouton à gauche */}
-            <div className="flex items-center justify-between mb-4">
-              <Button
-                onClick={handleSimulation}
-                className="flex items-center justify-center gap-2 text-sm bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg"
-              >
-                <Rocket className="w-5 h-5" />
-                Nouvelle simulation
-              </Button>
+            <div className="flex items-center justify-center mb-4">
               <h1 className="text-3xl md:text-4xl font-black bg-gradient-to-r from-gray-900 via-blue-800 to-purple-800 bg-clip-text text-transparent">
                 Tableau de bord
               </h1>
-              <div className="w-24"></div> {/* Espaceur pour centrer le titre */}
             </div>
             
             {/* Sous-titre avec style moderne */}
