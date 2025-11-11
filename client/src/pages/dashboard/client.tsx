@@ -6,7 +6,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-import ExpertSelectionModal from '@/components/ExpertSelectionModal';
 import { 
   Loader2, 
   RefreshCw, 
@@ -16,7 +15,6 @@ import {
   TrendingUp,
   CheckCircle,
   Clock,
-  ArrowRight,
   Zap,
   Target,
   Calendar,
@@ -212,7 +210,6 @@ const calculateProgress = (produit: any): number => {
 interface ProductCardProps {
   produit: any;
   onClick: () => void;
-  onExpertSelection?: (produitId: string, produit: any) => void;
   notificationData?: {
     unreadCount: number;
     hasActionRequired: boolean;
@@ -223,7 +220,7 @@ interface ProductCardProps {
 
 type SortOption = 'progress_desc' | 'progress_asc' | 'amount_desc' | 'amount_asc';
 
-const ProductCard = ({ produit, onClick, onExpertSelection, notificationData }: ProductCardProps) => {
+const ProductCard = ({ produit, onClick, notificationData }: ProductCardProps) => {
   const getProductIcon = (nom?: string) => {
     if (!nom) return <FolderOpen className="w-6 h-6" />;
     const nomLower = nom.toLowerCase();
@@ -294,24 +291,64 @@ const ProductCard = ({ produit, onClick, onExpertSelection, notificationData }: 
   const isHighPriority = produit.priorite === 1;
 
   // Fonction pour obtenir la description courte du produit
-  const getProductDescription = (nom?: string) => {
+  const getProductSubtitle = (nom?: string) => {
     if (!nom) return 'Optimisation fiscale et sociale';
     const nomLower = nom.toLowerCase();
-    if (nomLower.includes('ticpe')) return 'Remboursement de la Taxe Intérieure de Consommation sur les Produits Énergétiques';
-    if (nomLower.includes('urssaf')) return 'Optimisation de Charges Sociales';
-    if (nomLower.includes('foncier')) return 'Optimisation de la Taxe Foncière';
-    if (nomLower.includes('dfs') || nomLower.includes('dsf')) return 'Optimisation de la Taxe sur les Salaires';
-    if (nomLower.includes('msa')) return 'Optimisation des Cotisations MSA';
-    if (nomLower.includes('énergie') || nomLower.includes('energie')) return 'Réduisez vos dépenses énergétiques et améliorez votre efficacité';
-    if (nomLower.includes('logiciel') || nomLower.includes('solid')) return 'Déploiement du logiciel Solid clé en main';
+    if (nomLower.includes('ticpe')) return 'Remboursement de la TICPE';
+    if (nomLower.includes('urssaf')) return 'Optimisation des charges sociales';
+    if (nomLower.includes('foncier')) return 'Optimisation de la taxe foncière';
+    if (nomLower.includes('dfs') || nomLower.includes('dsf')) return 'Optimisation de la taxe sur les salaires';
+    if (nomLower.includes('msa')) return 'Optimisation des cotisations MSA';
+    if (nomLower.includes('énergie') || nomLower.includes('energie')) return 'Réduisez vos dépenses énergétiques';
+    if (nomLower.includes('logiciel') || nomLower.includes('solid')) return 'Mise à disposition clé en main';
     return 'Optimisation fiscale et sociale';
   };
+
+  const pendingConfig = (() => {
+    if (produit.statut === 'eligibility_validated') {
+      return {
+        container: 'border border-emerald-200 bg-gradient-to-r from-green-50 to-emerald-50',
+        icon: <UserCheck className="w-3.5 h-3.5 text-emerald-700" />,
+        headline: 'Éligibilité validée',
+        headlineClass: 'text-emerald-800',
+        subline: 'Votre expert sera attribué sous 48h.',
+        sublineClass: 'text-emerald-600'
+      };
+    }
+    if (produit.statut === 'documents_uploaded') {
+      return {
+        container: 'border border-purple-200 bg-gradient-to-r from-purple-50 to-violet-50',
+        icon: <FileText className="w-3.5 h-3.5 text-purple-700" />,
+        headline: 'Validation en cours',
+        headlineClass: 'text-purple-800',
+        subline: 'Notre équipe vérifie vos envois.',
+        sublineClass: 'text-purple-600'
+      };
+    }
+    return {
+      container: 'border border-amber-200 bg-gradient-to-r from-orange-50 to-amber-50',
+      icon: <Upload className="w-3.5 h-3.5 text-orange-700" />,
+      headline: 'Informations requises',
+      headlineClass: 'text-orange-800',
+      subline: 'Complétez les réponses demandées.',
+      sublineClass: 'text-orange-600'
+    };
+  })();
 
   return (
     <Card
       className={`relative h-full flex flex-col transition-all duration-300 cursor-pointer group rounded-2xl border border-slate-200/70 bg-white shadow-sm hover:shadow-2xl hover:-translate-y-1 ${
         isFromApporteur ? 'ring-1 ring-blue-200 bg-blue-50/50' : 'hover:border-blue-300'
       }`}
+      onClick={onClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onClick();
+        }
+      }}
     >
       {/* Pastille notification (intégrée dans la tuile) */}
       {notificationData && notificationData.unreadCount > 0 && (
@@ -383,34 +420,32 @@ const ProductCard = ({ produit, onClick, onExpertSelection, notificationData }: 
         )}
 
         {/* En-tête avec titre centré et icône */}
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-start gap-3">
-            <div className="inline-flex items-center justify-center w-11 h-11 bg-blue-50 rounded-xl text-blue-600 shadow-sm shrink-0">
-              {getProductIcon(produit.ProduitEligible?.nom)}
-            </div>
-            <div className="space-y-1">
-              <h3 className="font-semibold text-base text-gray-900 group-hover:text-blue-600 transition-colors tracking-tight">
-                {produit.ProduitEligible?.nom || 'Produit non défini'}
-              </h3>
-              <p className="text-xs text-gray-600 leading-snug line-clamp-2">
-                {getProductDescription(produit.ProduitEligible?.nom)}
-              </p>
-            </div>
+        <div className="flex items-start gap-3 pt-1">
+          <div className="inline-flex items-center justify-center w-11 h-11 bg-blue-50 rounded-xl text-blue-600 shadow-sm shrink-0">
+            {getProductIcon(produit.ProduitEligible?.nom)}
           </div>
-          {statusConfig && (
-            <Badge className={`${statusConfig.color} flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold rounded-full whitespace-nowrap shadow-sm`}>
-              {statusConfig.icon}
-              {statusConfig.label}
-            </Badge>
-          )}
+          <div className="space-y-1">
+            <h3 className="font-semibold text-[15px] leading-tight text-gray-900 group-hover:text-blue-600 transition-colors tracking-tight">
+              {produit.ProduitEligible?.nom || 'Produit non défini'}
+            </h3>
+            <p className="text-[12px] text-gray-600 leading-snug">
+              {getProductSubtitle(produit.ProduitEligible?.nom)}
+            </p>
+          </div>
         </div>
+        {statusConfig && (
+          <Badge className={`${statusConfig.color} flex items-center gap-1 px-3 py-1 text-[11px] font-semibold rounded-full shadow-md absolute -top-3 right-6`}>
+            {statusConfig.icon}
+            {statusConfig.label}
+          </Badge>
+        )}
 
         {/* Montant estimé */}
-        <div className="p-4 rounded-xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white text-center shadow-sm">
-          <p className="text-[11px] text-emerald-700 mb-1 font-semibold uppercase tracking-[0.2em]">
+        <div className="p-3 rounded-xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white text-center shadow-sm">
+          <p className="text-[10px] text-emerald-700 mb-1 font-semibold uppercase tracking-[0.24em]">
             Montant estimé
           </p>
-          <p className="font-bold text-[22px] text-emerald-700">
+          <p className="font-bold text-[19px] text-emerald-700">
             {produit.montantFinal ? produit.montantFinal.toLocaleString('fr-FR') + ' €' : 'Prix sur demande'}
           </p>
         </div>
@@ -470,79 +505,23 @@ const ProductCard = ({ produit, onClick, onExpertSelection, notificationData }: 
               </div>
             </div>
           ) : (
-            /* Affichage conditionnel basé sur le statut */
-            <>
-              {produit.statut === 'eligibility_validated' ? (
-                /* ✅ Éligibilité validée : Bouton pour sélectionner un expert */
-                <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-3 rounded-lg border-2 border-green-300">
-                  <p className="text-xs text-green-800 mb-2 font-semibold text-center">
-                    ✅ Éligibilité validée - Sélectionnez votre expert
-                  </p>
-                  <Button
-                    size="sm"
-                    className="w-full bg-green-600 hover:bg-green-700 text-white"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (onExpertSelection) {
-                        onExpertSelection(produit.id, produit);
-                      }
-                    }}
-                  >
-                    <Users className="h-3 w-3 mr-1" />
-                    Choisir mon expert
-                  </Button>
-                </div>
-              ) : (
-                /* En attente de validation ou de documents */
-                <div className={`p-3 rounded-lg border-2 ${
-                  produit.statut === 'documents_uploaded'
-                    ? 'bg-gradient-to-r from-purple-50 to-violet-50 border-purple-300'
-                    : 'bg-gradient-to-r from-orange-50 to-amber-50 border-orange-300'
-                }`}>
-                  <div className="flex items-center justify-center gap-2 mb-1.5">
-                    {produit.statut === 'documents_uploaded' ? (
-                      <div className="w-6 h-6 rounded-full bg-purple-200 flex items-center justify-center">
-                        <FileText className="w-3.5 h-3.5 text-purple-700" />
-                      </div>
-                    ) : (
-                      <div className="w-6 h-6 rounded-full bg-orange-200 flex items-center justify-center animate-pulse">
-                        <Upload className="w-3.5 h-3.5 text-orange-700" />
-                      </div>
-                    )}
-                  </div>
-                  <p className={`text-xs font-semibold text-center mb-1 ${
-                    produit.statut === 'documents_uploaded' ? 'text-purple-800' : 'text-orange-800'
-                  }`}>
-                    {produit.statut === 'documents_uploaded' 
-                      ? '⏳ Validation en cours' 
-                      : '📄 Informations requises'}
-                  </p>
-                  <p className={`text-xs text-center leading-relaxed ${
-                    produit.statut === 'documents_uploaded' ? 'text-purple-600' : 'text-orange-600'
-                  }`}>
-                    {produit.statut === 'documents_uploaded' 
-                      ? 'Notre équipe vérifie vos envois' 
-                      : 'Complétez les réponses demandées'}
-                  </p>
-                </div>
-              )}
-            </>
+            <div className={`p-3 rounded-lg ${pendingConfig.container}`}>
+              <div className="flex items-center justify-center gap-2 text-xs font-semibold mb-1">
+                {pendingConfig.icon}
+                <span className={`${pendingConfig.headlineClass}`}>
+                  {pendingConfig.headline}
+                </span>
+              </div>
+              <p className={`text-xs text-center leading-snug ${pendingConfig.sublineClass}`}>
+                {pendingConfig.subline}
+              </p>
+            </div>
           )}
         </div>
 
         {/* Bouton Continuer - toujours aligné en bas */}
-        <div className="mt-auto pt-4">
-          <Button 
-            size="sm"
-            className="w-full group-hover:bg-blue-600 transition-colors"
-            onClick={(e) => {
-              e.stopPropagation();
-              onClick();
-            }}
-          >
-            Continuer
-            <ArrowRight className="w-4 h-4 ml-2" />
-          </Button>
+        <div className="mt-auto pt-2 text-center text-[11px] text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity">
+          Cliquez pour voir les informations détaillées
         </div>
       </CardContent>
     </Card>
@@ -552,9 +531,6 @@ const ProductCard = ({ produit, onClick, onExpertSelection, notificationData }: 
 export default function DashboardClient() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [selectedProduitId, setSelectedProduitId] = useState<string | null>(null);
-  const [selectedProduit, setSelectedProduit] = useState<any>(null);
-  const [isExpertModalOpen, setIsExpertModalOpen] = useState(false);
   const [sortOption, setSortOption] = useState<SortOption>('progress_desc');
   
   // Hook pour les produits éligibles du client
@@ -667,19 +643,6 @@ export default function DashboardClient() {
   }, [navigate, buildProduitSlug]);
 
   // Fonction pour ouvrir le modal de sélection d'expert
-  const handleExpertSelection = useCallback((produitId: string, produit: any) => {
-    setSelectedProduitId(produitId);
-    setSelectedProduit(produit);
-    setIsExpertModalOpen(true);
-  }, []);
-
-  // Fonction pour fermer le modal
-  const handleCloseExpertModal = useCallback(() => {
-    setIsExpertModalOpen(false);
-    setSelectedProduitId(null);
-    setSelectedProduit(null);
-  }, []);
-
   // Handler pour les notifications
   const handleNotificationDismiss = useCallback((notificationId: string) => {
     markAsRead(notificationId);
@@ -694,18 +657,6 @@ export default function DashboardClient() {
       markDossierAsRead(dossierId);
     }
   }, [produits, handleProductClick, markDossierAsRead]);
-
-  // Fonction appelée quand un expert est sélectionné
-  const handleExpertSelected = useCallback((expert: any) => {
-    toast.success(`${expert.name} a été assigné à votre dossier.`);
-    handleCloseExpertModal();
-    
-    // ✅ FIX: Rafraîchir les données sans reload complet (évite problèmes d'auth)
-    setTimeout(() => {
-      // Le useClientProducts se rafraîchira automatiquement
-      navigate('/dashboard/client', { replace: true });
-    }, 500);
-  }, [handleCloseExpertModal, navigate]);
 
   const sortedProduits = useMemo(() => {
     if (!produits || produits.length === 0) {
@@ -969,7 +920,6 @@ export default function DashboardClient() {
                     key={produit.id}
                     produit={produit}
                     onClick={() => handleProductClick(produit)}
-                    onExpertSelection={handleExpertSelection}
                     notificationData={getDossierNotifications(produit.id)}
                   />
                 ))}
@@ -987,16 +937,6 @@ export default function DashboardClient() {
             <span>Support disponible 24/7</span>
           </div>
         </footer>
-
-        {/* Modal de sélection d'expert */}
-        <ExpertSelectionModal
-          isOpen={isExpertModalOpen}
-          onClose={handleCloseExpertModal}
-          dossierId={selectedProduitId || ''}
-          onExpertSelected={handleExpertSelected}
-          produitEligible={selectedProduit?.ProduitEligible}
-          currentExpert={selectedProduit?.Expert || null}
-        />
       </div>
     </div>
   );
