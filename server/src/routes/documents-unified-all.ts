@@ -539,7 +539,7 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
 
     const sharedDocument = await SharedDocumentService.resolveSharedDocumentForUpload({
       clientId: client_id || user.database_id,
-      documentType,
+      documentType: document_type,
       filename: originalFilename,
       storagePath,
       bucketName,

@@ -73,8 +73,8 @@ export class SharedDocumentService {
       parentSharedDocumentId = null
     } = params;
 
-    const existing = await supabase
-      .from<SharedDocumentRecord>('SharedClientDocument' as any)
+    const { data: existingData, error: existingError } = await supabase
+      .from('SharedClientDocument')
       .select('*')
       .eq('client_id', clientId)
       .eq('document_type', documentType)
@@ -82,11 +82,16 @@ export class SharedDocumentService {
       .limit(1)
       .maybeSingle();
 
+    if (existingError) {
+      console.error('❌ SharedDocumentService.resolveSharedDocumentForUpload - fetch existing error:', existingError);
+      throw new Error(existingError.message);
+    }
+
     const nextVersion =
-      (existing.data?.version_number ?? 0) + 1;
+      ((existingData as SharedDocumentRecord | null)?.version_number ?? 0) + 1;
 
     const metadataToStore = {
-      ...(existing.data?.metadata || {}),
+      ...((existingData as SharedDocumentRecord | null)?.metadata || {}),
       ...(metadata || {}),
       ...(parentSharedDocumentId
         ? { parent_shared_document_id: parentSharedDocumentId }
@@ -94,7 +99,7 @@ export class SharedDocumentService {
     };
 
     const { data, error } = await supabase
-      .from<SharedDocumentRecord>('SharedClientDocument' as any)
+      .from('SharedClientDocument')
       .insert({
         client_id: clientId,
         document_type: documentType,
@@ -117,7 +122,7 @@ export class SharedDocumentService {
       throw new Error(error?.message || 'Impossible de créer le document partagé');
     }
 
-    return data;
+    return data as SharedDocumentRecord;
   }
 
   /**
@@ -125,7 +130,7 @@ export class SharedDocumentService {
    */
   static async propagateValidation(processDocumentId: string, validatedBy: string): Promise<void> {
     const { data: processDocument, error: processError } = await supabase
-      .from<ClientProcessDocumentRecord>('ClientProcessDocument' as any)
+      .from('ClientProcessDocument')
       .select('*')
       .eq('id', processDocumentId)
       .single();
@@ -192,7 +197,7 @@ export class SharedDocumentService {
     }
 
     const { data: relatedDocuments, error: relatedError } = await supabase
-      .from<ClientProcessDocumentRecord>('ClientProcessDocument' as any)
+      .from('ClientProcessDocument')
       .select('id, metadata')
       .eq('client_id', processDocument.client_id)
       .eq('document_type', processDocument.document_type);

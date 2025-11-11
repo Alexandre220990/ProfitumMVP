@@ -111,9 +111,9 @@ router.post('/process/upload', async (req: Request, res: Response) => {
 
     const sharedDocument = await SharedDocumentService.resolveSharedDocumentForUpload({
       clientId: client_id,
-      documentType,
+      documentType: document_type,
       filename,
-      storagePath,
+      storagePath: storage_path,
       bucketName: bucket_name,
       fileSize: file_size || null,
       mimeType: mime_type || null,
