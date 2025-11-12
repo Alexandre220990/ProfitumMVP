@@ -18,10 +18,19 @@ interface HeaderClientProps {
 export default function HeaderClient({ onLogout }: HeaderClientProps) { 
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const { unreadCount, hasNotifications } = useNotificationBadge();
+  const notificationBadge = useNotificationBadge();
+  const badgeUnreadCount = notificationBadge.unreadCount;
+  const { hasNotifications } = notificationBadge;
   const { badgeText, shouldShowBadge } = useMessagingBadge();
-  const { notifications, loading } = useSupabaseNotifications();
+  const supabaseNotifications = useSupabaseNotifications();
+  const notifications = supabaseNotifications.notifications;
+  const unreadNotifications = supabaseNotifications.unreadNotifications;
+  const supabaseUnreadCount = supabaseNotifications.unreadCount;
+  const loading = supabaseNotifications.loading;
+  const markAsRead = supabaseNotifications.markAsRead;
   const [notifOpen, setNotifOpen] = useState(false);
+
+  const totalUnread = supabaseUnreadCount ?? badgeUnreadCount ?? 0;
 
   const handleLogout = async () => { 
     try {
@@ -38,9 +47,13 @@ export default function HeaderClient({ onLogout }: HeaderClientProps) {
     navigate(path);
   };
 
-  const handleNotificationClick = (notification: any) => {
+  const handleNotificationClick = async (notification: any) => {
     setNotifOpen(false);
     if (!notification) return;
+
+    if (!notification.is_read && notification.id) {
+      await markAsRead(notification.id);
+    }
 
     const actionUrl = notification.action_url || "/notification-center";
     navigate(actionUrl);
@@ -165,9 +178,9 @@ export default function HeaderClient({ onLogout }: HeaderClientProps) {
             aria-label="Ouvrir le centre de notifications"
           >
             <Bell className="h-5 w-5" />
-            {hasNotifications && (
+            {(hasNotifications || totalUnread > 0) && (
               <Badge variant="primary" className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-xs">
-                {unreadCount > 99 ? "99+" : unreadCount}
+                {totalUnread > 99 ? "99+" : totalUnread}
               </Badge>
             )}
           </Button>
@@ -221,7 +234,7 @@ export default function HeaderClient({ onLogout }: HeaderClientProps) {
               <div>
                 <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>
                 <p className="text-xs text-gray-500">
-                  {unreadCount > 0 ? `${unreadCount} notification${unreadCount > 1 ? "s" : ""} non lue${unreadCount > 1 ? "s" : ""}` : "Toutes vos notifications sont lues"}
+                  {totalUnread > 0 ? `${totalUnread} notification${totalUnread > 1 ? "s" : ""} non lue${totalUnread > 1 ? "s" : ""}` : "Toutes vos notifications sont lues"}
                 </p>
               </div>
               <Badge variant="base" className="text-xs">
@@ -234,13 +247,13 @@ export default function HeaderClient({ onLogout }: HeaderClientProps) {
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Chargement des notifications...
                 </div>
-              ) : notifications.length === 0 ? (
+              ) : unreadNotifications.length === 0 ? (
                 <div className="px-4 py-6 text-center text-sm text-gray-500">
                   Pas encore de notification pour le moment, faites progresser vos dossiers pour optimiser vos finances.
                 </div>
               ) : (
                 <div className="py-2">
-                  {notifications.map((notification) => (
+                  {unreadNotifications.map((notification) => (
                     <button
                       key={notification.id}
                       type="button"
