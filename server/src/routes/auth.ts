@@ -940,7 +940,7 @@ router.post("/register", registerRateLimiter, async (req: Request, res: Response
           // 1. Trouver la simulation anonyme
           const { data: anonymousSimulation, error: simError } = await supabaseAdmin
             .from('simulations')
-            .select('id, client_id, answers, status')
+            .select('id, client_id, answers, status, results')
             .eq('session_token', sessionToken)
             .single();
 
@@ -949,17 +949,104 @@ router.post("/register", registerRateLimiter, async (req: Request, res: Response
             
             console.log(`📋 Simulation trouvée - Client temporaire: ${tempClientId}`);
 
-            // 2. Transférer les produits du client temporaire → nouveau client
-            const { data: transferredProducts, error: transferError } = await supabaseAdmin
+            // 2. Récupérer les produits existants liés à cette simulation
+            let transferredCount = 0;
+            const nowIso = new Date().toISOString();
+            const { data: existingProducts, error: existingProductsError } = await supabaseAdmin
               .from('ClientProduitEligible')
-              .update({ clientId: insertedClient.id })
-              .eq('clientId', tempClientId)
-              .select();
+              .select('id, metadata')
+              .eq('simulationId', anonymousSimulation.id);
 
-            if (transferError) {
-              console.error('⚠️ Erreur transfert produits (non bloquant):', transferError);
+            if (existingProductsError) {
+              console.error('⚠️ Erreur récupération produits à transférer:', existingProductsError);
+            }
+
+            if (existingProducts && existingProducts.length > 0) {
+              await Promise.all(
+                existingProducts.map(async (product) => {
+                  const existingMetadata = (product.metadata as Record<string, any> | null | undefined) ?? {};
+                  const mergedMetadata = {
+                    ...existingMetadata,
+                    migrated_from_session: sessionToken,
+                    migrated_at: nowIso,
+                    original_client_id: tempClientId
+                  };
+
+                  const { data: updatedProduct, error: updateError } = await supabaseAdmin
+                    .from('ClientProduitEligible')
+                    .update({
+                      clientId: insertedClient.id,
+                      metadata: mergedMetadata,
+                      updated_at: nowIso
+                    })
+                    .eq('id', product.id)
+                    .select('id')
+                    .single();
+
+                  if (updateError) {
+                    console.error('⚠️ Erreur transfert produit (non bloquant):', product.id, updateError);
+                    return;
+                  }
+
+                  if (updatedProduct) {
+                    transferredCount += 1;
+                  }
+                })
+              );
+
+              console.log(`✅ ${transferredCount} produits transférés vers le nouveau client`);
             } else {
-              console.log(`✅ ${transferredProducts?.length || 0} produits transférés vers le nouveau client`);
+              console.log('ℹ️ Aucun ClientProduitEligible existant à transférer pour cette simulation');
+            }
+
+            // 3. Fallback: recréer les produits à partir des résultats stockés
+            if (transferredCount === 0) {
+              const produits = (anonymousSimulation.results as any)?.produits;
+              if (Array.isArray(produits) && produits.length > 0) {
+                let recreatedCount = 0;
+                for (const produit of produits) {
+                  if (!produit?.is_eligible) {
+                    continue;
+                  }
+
+                  const insertPayload: Record<string, any> = {
+                    clientId: insertedClient.id,
+                    produitId: produit.produit_id,
+                    simulationId: anonymousSimulation.id,
+                    statut: 'eligible',
+                    montantFinal: produit.montant_estime || 0,
+                    notes: produit.notes || null,
+                    calcul_details: produit.calcul_details || null,
+                    metadata: {
+                      ...(produit.metadata ?? {}),
+                      source: 'post_signup_transfer',
+                      migrated_from_session: sessionToken,
+                      migrated_at: nowIso,
+                      original_client_id: tempClientId
+                    },
+                    created_at: nowIso,
+                    updated_at: nowIso
+                  };
+
+                  const { data: insertedProduit, error: insertError } = await supabaseAdmin
+                    .from('ClientProduitEligible')
+                    .insert(insertPayload)
+                    .select('id')
+                    .single();
+
+                  if (insertError) {
+                    console.error('⚠️ Erreur recréation produit (non bloquant):', produit.produit_nom || produit.produit_id, insertError);
+                    continue;
+                  }
+
+                  if (insertedProduit) {
+                    recreatedCount += 1;
+                  }
+                }
+
+                transferredCount = recreatedCount;
+                console.log(`✅ ${recreatedCount} produits recréés pour le nouveau client à partir de la simulation`);
+              }
             }
 
             // 3. Lier la simulation au nouveau client
@@ -967,7 +1054,8 @@ router.post("/register", registerRateLimiter, async (req: Request, res: Response
               .from('simulations')
               .update({ 
                 client_id: insertedClient.id,
-                status: 'terminee'
+                status: 'completed',
+                updated_at: nowIso
               })
               .eq('id', anonymousSimulation.id);
 
@@ -982,7 +1070,7 @@ router.post("/register", registerRateLimiter, async (req: Request, res: Response
               .from('Client')
               .update({ 
                 is_temporary: false,
-                updated_at: new Date().toISOString()
+                updated_at: nowIso
               })
               .eq('id', tempClientId);
 
