@@ -65,9 +65,10 @@ const QUESTION_ORDER_OVERRIDES: Record<string, number> = {
 
 const applyQuestionOrderOverrides = (questionList: Question[]): Question[] => {
   return questionList.map((question) => {
-    const override = question.question_id
-      ? QUESTION_ORDER_OVERRIDES[question.question_id]
+    const lookupKey = question.question_id
+      ? question.question_id.toUpperCase()
       : undefined;
+    const override = lookupKey ? QUESTION_ORDER_OVERRIDES[lookupKey] : undefined;
     if (override !== undefined) {
       return {
         ...question,
@@ -80,27 +81,21 @@ const applyQuestionOrderOverrides = (questionList: Question[]): Question[] => {
 
 const sortQuestionsDeterministically = (questionList: Question[]): Question[] => {
   return [...questionList].sort((a, b) => {
-    const sectionA = (a.section || '').toLowerCase();
-    const sectionB = (b.section || '').toLowerCase();
-    if (sectionA !== sectionB) {
-      return sectionA.localeCompare(sectionB);
-    }
-
-    const phaseA = a.phase ?? 0;
-    const phaseB = b.phase ?? 0;
-    if (phaseA !== phaseB) {
-      return phaseA - phaseB;
-    }
-
-    const orderA = a.question_order ?? 0;
-    const orderB = b.question_order ?? 0;
+    const keyA = (a.question_id || a.id || '').toUpperCase();
+    const keyB = (b.question_id || b.id || '').toUpperCase();
+    const orderA =
+      QUESTION_ORDER_OVERRIDES[keyA] ??
+      a.question_order ??
+      Number.MAX_SAFE_INTEGER;
+    const orderB =
+      QUESTION_ORDER_OVERRIDES[keyB] ??
+      b.question_order ??
+      Number.MAX_SAFE_INTEGER;
     if (orderA !== orderB) {
       return orderA - orderB;
     }
 
-    const idA = a.question_id || a.id;
-    const idB = b.question_id || b.id;
-    return idA.localeCompare(idB);
+    return keyA.localeCompare(keyB);
   });
 };
 
@@ -291,7 +286,24 @@ const SimulateurEligibilite = () => {
         
         setQuestions(sortedQuestions);
         setTotalSteps(sortedQuestions.length);
-        setCurrentQuestion(sortedQuestions[0] || null);
+        const firstQuestion = sortedQuestions[0] || null;
+        setCurrentQuestion(firstQuestion);
+        setCurrentStep(firstQuestion?.question_order || 1);
+        if (process.env.NODE_ENV !== 'production') {
+          console.groupCollapsed('📋 simulateur-public questions');
+          sortedQuestions.forEach((q, index) => {
+            const key = q.question_id || q.id;
+            console.log(
+              `${index + 1}.`,
+              key,
+              'order=',
+              q.question_order,
+              'text=',
+              q.question_text
+            );
+          });
+          console.groupEnd();
+        }
         
         console.log(`📋 ${sortedQuestions.length} questions chargées`);
       } else {
