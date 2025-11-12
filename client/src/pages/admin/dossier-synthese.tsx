@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -123,13 +123,29 @@ const DossierSynthese: React.FC = () => {
   // ACTIONS RAPIDES
   // ========================================
 
+  const getAuthToken = useCallback(async () => {
+    const localToken = localStorage.getItem('token');
+    if (localToken) {
+      return localToken;
+    }
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      return session?.access_token || null;
+    } catch (error) {
+      console.error('Erreur récupération session Supabase:', error);
+      return null;
+    }
+  }, []);
+
   const handleValidateEligibility = async () => {
     if (!dossier?.id) return;
     setIsProcessing(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      const token = await getAuthToken();
+      if (!token) {
         toast.error('Session expirée, veuillez vous reconnecter');
+        navigate('/connexion-admin');
         return;
       }
 
@@ -137,7 +153,7 @@ const DossierSynthese: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
+          'Authorization': `Bearer ${token}`
         },
         credentials: 'include',
         body: JSON.stringify({
@@ -146,14 +162,21 @@ const DossierSynthese: React.FC = () => {
         })
       });
 
-      if (response.ok) {
-        toast.success('✅ Éligibilité validée avec succès !');
-        loadDossierData();
-      } else {
-        const errorData = await response.json();
-        toast.error(errorData.message || 'Erreur lors de la validation');
-        console.error('Erreur validation:', errorData);
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          toast.error('Session expirée, veuillez vous reconnecter');
+          navigate('/connexion-admin');
+          return;
+        }
+
+        const errorData = await response.json().catch(() => null);
+        toast.error(errorData?.message || 'Erreur lors de la validation');
+        console.error('Erreur validation:', errorData || response.statusText);
+        return;
       }
+
+      toast.success('✅ Éligibilité validée avec succès !');
+      loadDossierData();
     } catch (error) {
       console.error('Erreur validation:', error);
       toast.error('Erreur lors de la validation');
@@ -170,9 +193,10 @@ const DossierSynthese: React.FC = () => {
     
     setIsProcessing(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      const token = await getAuthToken();
+      if (!token) {
         toast.error('Session expirée, veuillez vous reconnecter');
+        navigate('/connexion-admin');
         return;
       }
 
@@ -180,7 +204,7 @@ const DossierSynthese: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
+          'Authorization': `Bearer ${token}`
         },
         credentials: 'include',
         body: JSON.stringify({
@@ -189,16 +213,23 @@ const DossierSynthese: React.FC = () => {
         })
       });
 
-      if (response.ok) {
-        toast.success('❌ Éligibilité rejetée');
-        setShowRejectDialog(false);
-        setRejectionReason('');
-        loadDossierData();
-      } else {
-        const errorData = await response.json();
-        toast.error(errorData.message || 'Erreur lors du rejet');
-        console.error('Erreur rejet:', errorData);
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          toast.error('Session expirée, veuillez vous reconnecter');
+          navigate('/connexion-admin');
+          return;
+        }
+
+        const errorData = await response.json().catch(() => null);
+        toast.error(errorData?.message || 'Erreur lors du rejet');
+        console.error('Erreur rejet:', errorData || response.statusText);
+        return;
       }
+
+      toast.success('❌ Éligibilité rejetée');
+      setShowRejectDialog(false);
+      setRejectionReason('');
+      loadDossierData();
     } catch (error) {
       console.error('Erreur rejet:', error);
       toast.error('Erreur lors du rejet');
@@ -216,9 +247,10 @@ const DossierSynthese: React.FC = () => {
     
     setIsProcessing(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      const token = await getAuthToken();
+      if (!token) {
         toast.error('Session expirée, veuillez vous reconnecter');
+        navigate('/connexion-admin');
         return;
       }
 
@@ -226,19 +258,28 @@ const DossierSynthese: React.FC = () => {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
+          'Authorization': `Bearer ${token}`
         },
         credentials: 'include',
         body: JSON.stringify({ expert_id: selectedExpert })
       });
 
-      if (response.ok) {
-        toast.success('✅ Expert assigné avec succès !');
-        setShowExpertDialog(false);
-        loadDossierData();
-      } else {
-        toast.error('Erreur lors de l\'assignation');
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          toast.error('Session expirée, veuillez vous reconnecter');
+          navigate('/connexion-admin');
+          return;
+        }
+
+        const errorData = await response.json().catch(() => null);
+        toast.error(errorData?.message || 'Erreur lors de l\'assignation');
+        console.error('Erreur assignation:', errorData || response.statusText);
+        return;
       }
+
+      toast.success('✅ Expert assigné avec succès !');
+      setShowExpertDialog(false);
+      loadDossierData();
     } catch (error) {
       console.error('Erreur assignation:', error);
       toast.error('Erreur lors de l\'assignation');
