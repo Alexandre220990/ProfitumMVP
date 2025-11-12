@@ -42,7 +42,35 @@ interface Question {
   conditions: QuestionConditions;
   produits_cibles: string[];
   phase: number;
+  question_id?: string;
+  section?: string;
 }
+
+const sortQuestionsDeterministically = (questionList: Question[]): Question[] => {
+  return [...questionList].sort((a, b) => {
+    const sectionA = (a.section || '').toLowerCase();
+    const sectionB = (b.section || '').toLowerCase();
+    if (sectionA !== sectionB) {
+      return sectionA.localeCompare(sectionB);
+    }
+
+    const phaseA = a.phase ?? 0;
+    const phaseB = b.phase ?? 0;
+    if (phaseA !== phaseB) {
+      return phaseA - phaseB;
+    }
+
+    const orderA = a.question_order ?? 0;
+    const orderB = b.question_order ?? 0;
+    if (orderA !== orderB) {
+      return orderA - orderB;
+    }
+
+    const idA = a.question_id || a.id;
+    const idB = b.question_id || b.id;
+    return idA.localeCompare(idB);
+  });
+};
 
 interface EligibilityResult { 
   produit_id: string;
@@ -224,12 +252,13 @@ const SimulateurEligibilite = () => {
         
         // L'API retourne {success: true, questions: [...]}
         const questions = questionsData.questions || questionsData;
+        const sortedQuestions = sortQuestionsDeterministically(questions);
         
-        setQuestions(questions);
-        setTotalSteps(questions.length);
-        setCurrentQuestion(questions[0] || null);
+        setQuestions(sortedQuestions);
+        setTotalSteps(sortedQuestions.length);
+        setCurrentQuestion(sortedQuestions[0] || null);
         
-        console.log(`📋 ${questions.length} questions chargées`);
+        console.log(`📋 ${sortedQuestions.length} questions chargées`);
       } else {
         console.error('❌ Erreur API:', response.status, response.statusText);
       }

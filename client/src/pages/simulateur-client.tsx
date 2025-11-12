@@ -17,6 +17,7 @@ interface QuestionOptions {
   min?: number;
   max?: number;
   unite?: string;
+  step?: number;
 }
 
 interface ValidationRules {
@@ -171,6 +172,32 @@ const normalizeEnergyCompositeAnswer = (raw: any): EnergyCompositeAnswer => {
   return result;
 };
 
+const sortQuestionsDeterministically = (questionsList: Question[]): Question[] => {
+  return [...questionsList].sort((a, b) => {
+    const sectionA = (a.section ?? "").toLowerCase();
+    const sectionB = (b.section ?? "").toLowerCase();
+    if (sectionA !== sectionB) {
+      return sectionA.localeCompare(sectionB);
+    }
+
+    const phaseA = a.phase ?? 0;
+    const phaseB = b.phase ?? 0;
+    if (phaseA !== phaseB) {
+      return phaseA - phaseB;
+    }
+
+    const orderA = a.question_order ?? 0;
+    const orderB = b.question_order ?? 0;
+    if (orderA !== orderB) {
+      return orderA - orderB;
+    }
+
+    const idA = a.question_id ?? a.id;
+    const idB = b.question_id ?? b.id;
+    return idA.localeCompare(idB);
+  });
+};
+
 interface SimulatorSessionResponse {
   success: boolean;
   simulation_id: string | null;
@@ -242,8 +269,9 @@ const SimulateurClient = () => {
       const response = await fetch(`${config.API_URL}/api/simulator/questions`);
       if (response.ok) {
         const questionsData = await response.json();
-        const questionsList = questionsData.questions || questionsData;
-        setQuestions(questionsList);
+        const questionsList: Question[] = questionsData.questions || questionsData;
+        const sortedQuestions = sortQuestionsDeterministically(Array.isArray(questionsList) ? questionsList : []);
+        setQuestions(sortedQuestions);
       } else {
         console.error("❌ Erreur chargement questions simulateur");
         toast.error("Impossible de charger les questions du simulateur");
