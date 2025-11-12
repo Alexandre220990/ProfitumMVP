@@ -1353,20 +1353,36 @@ const partnerRequestAttemptedRef = useRef(false);
             </div>
           );
         } else {
-          const energySources = Array.isArray(checklist.energy_sources)
-            ? checklist.energy_sources
-            : [];
+          const monthlySpend =
+            typeof checklist.monthly_spend === 'number' && !Number.isNaN(checklist.monthly_spend)
+              ? checklist.monthly_spend
+              : null;
+          const monthlyConsumption =
+            typeof checklist.monthly_consumption === 'number' && !Number.isNaN(checklist.monthly_consumption)
+              ? checklist.monthly_consumption
+              : null;
+          const annualConsumption =
+            typeof checklist.consumption_reference === 'number' && !Number.isNaN(checklist.consumption_reference)
+              ? checklist.consumption_reference
+              : null;
+          const energyLabel =
+            productKey === 'optimisation_fournisseur_electricite' ? "d'électricité" : 'de gaz naturel';
           blocks.push(
             <div
               key="energy-summary"
               className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 space-y-2 text-sm text-emerald-900"
             >
               <p className="font-semibold text-emerald-900">
-                Analyse demandée : {energySources.length > 0 ? energySources.map((src: string) => src.toUpperCase()).join(', ') : '—'}
+                Analyse {energyLabel} validée.
               </p>
               <p>
-                {checklist.site_count ? `${checklist.site_count} site(s) ciblé(s)` : 'Sites en cours de qualification'} pour optimiser vos dépenses. Consommation de référence :{' '}
-                {checklist.consumption_reference ? `${checklist.consumption_reference.toLocaleString('fr-FR')} kWh` : 'non renseignée'}.
+                Dépense mensuelle :{' '}
+                {monthlySpend !== null ? formatCurrency(monthlySpend) : 'non renseignée'} • Consommation :{' '}
+                {monthlyConsumption !== null
+                  ? `${monthlyConsumption.toLocaleString('fr-FR')} kWh/mois`
+                  : annualConsumption !== null
+                    ? `${annualConsumption.toLocaleString('fr-FR')} kWh/an`
+                    : 'non renseignée'}.
               </p>
             </div>
           );
@@ -1501,9 +1517,25 @@ const partnerRequestAttemptedRef = useRef(false);
                     </ul>
                   ) : (
                     <ul className="list-disc list-inside space-y-1">
-                      <li>Sources analysées : {(partnerRequest.summary.energy_sources || []).map((src: string) => src.toUpperCase()).join(', ') || '—'}</li>
-                      <li>Sites concernés : {partnerRequest.summary.site_count ?? '—'}</li>
-                      <li>Consommation de référence : {partnerRequest.summary.consumption_reference ?? '—'} kWh</li>
+                      <li>
+                        Dépense mensuelle :{' '}
+                        {typeof partnerRequest.summary.monthly_spend === 'number'
+                          ? formatCurrency(partnerRequest.summary.monthly_spend)
+                          : '—'}
+                      </li>
+                      <li>
+                        Consommation mensuelle :{' '}
+                        {typeof partnerRequest.summary.monthly_consumption === 'number'
+                          ? `${partnerRequest.summary.monthly_consumption.toLocaleString('fr-FR')} kWh/mois`
+                          : '—'}
+                      </li>
+                      {typeof partnerRequest.summary.consumption_reference === 'number' &&
+                        typeof partnerRequest.summary.monthly_consumption !== 'number' && (
+                          <li>
+                            Consommation de référence :{' '}
+                            {`${partnerRequest.summary.consumption_reference.toLocaleString('fr-FR')} kWh/an`}
+                          </li>
+                        )}
                     </ul>
                   )}
                 </div>
@@ -1952,9 +1984,9 @@ const partnerRequestAttemptedRef = useRef(false);
         <div className="mb-6">
           <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
             <span>Progression globale</span>
-            <span>{overallProgress}%</span>
+            <span>{normalizedProgress}%</span>
           </div>
-          <Progress value={overallProgress} className="h-2" />
+          <Progress value={normalizedProgress} className="h-2" />
         </div>
       </div>
 

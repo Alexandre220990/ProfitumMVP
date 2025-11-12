@@ -36,7 +36,8 @@ import {
   HelpCircle,
   Info,
   Truck,
-  Database
+  Database,
+  Flame
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { get, post } from "@/lib/api";
@@ -141,7 +142,11 @@ interface ClientProduitEligible {
 }
 
 
-type SimplifiedProductKey = 'chronotachygraphes' | 'logiciel_solid';
+type SimplifiedProductKey =
+  | 'chronotachygraphes'
+  | 'logiciel_solid'
+  | 'optimisation_fournisseur_electricite'
+  | 'optimisation_fournisseur_gaz';
 
 interface SimplifiedProductContent {
   productKey: SimplifiedProductKey;
@@ -219,6 +224,114 @@ const SIMPLIFIED_PRODUCT_CONTENT: Record<string, SimplifiedProductContent> = {
     ],
     workflowNotice:
       'Important : Processus simplifié — confirmation des informations, devis partenaire, validation et facturation.'
+  },
+  'optimisation-fournisseur-electricite': {
+    productKey: 'optimisation_fournisseur_electricite',
+    title: 'Optimisation Fournisseur Électricité',
+    subtitle: 'Réduisez votre facture grâce à une mise en concurrence sur-mesure',
+    description:
+      "Analysez vos contrats d'électricité pour identifier des économies immédiates. Téléversez une facture récente pour lancer le diagnostic et recevoir une proposition personnalisée.",
+    icon: Zap,
+    iconBackground: 'bg-yellow-100',
+    iconColor: 'text-yellow-600',
+    amountLabel: 'Budget mensuel estimé',
+    amountColor: 'text-yellow-600',
+    amountFallback: 'À estimer',
+    durationLabel: 'Délai moyen',
+    durationColor: 'text-emerald-600',
+    durationFallback: '3-4 semaines',
+    advantages: [
+      {
+        title: 'Mise en concurrence ciblée',
+        description: 'Comparatif des meilleures offres fournisseurs pour votre profil de consommation.'
+      },
+      {
+        title: 'Suivi contractuel',
+        description: 'Accompagnement dans la négociation et la signature du nouveau contrat.'
+      },
+      {
+        title: 'Projection budgétaire',
+        description: 'Simulation des économies mensuelles et annuelles attendues.'
+      },
+      {
+        title: 'Pilotage simplifié',
+        description: 'Tableau de bord pour suivre vos consommations et alertes de renouvellement.'
+      }
+    ],
+    expertRole: 'Consultant énergie électricité',
+    documentsIntro: "Téléversez votre facture d'électricité (mensuelle ou annuelle) pour démarrer l'analyse.",
+    workflowTitle: 'Diagnostic optimisation électricité',
+    workflowDuration: 'Durée estimée : 3-4 semaines',
+    workflowHighlights: [
+      {
+        title: 'Collecte de vos données',
+        description: 'Analyse de vos factures et identification des postes de dépenses.'
+      },
+      {
+        title: 'Benchmark fournisseurs',
+        description: 'Mise en concurrence des fournisseurs d’électricité adaptés à votre profil.'
+      },
+      {
+        title: 'Proposition optimisée',
+        description: 'Présentation du plan d’économies et accompagnement à la signature du nouveau contrat.'
+      }
+    ],
+    workflowNotice:
+      "Important : fournissez des données mensuelles (dépense et kWh) pour obtenir une simulation d'économies immédiate."
+  },
+  'optimisation-fournisseur-gaz': {
+    productKey: 'optimisation_fournisseur_gaz',
+    title: 'Optimisation Fournisseur Gaz',
+    subtitle: 'Sécurisez vos approvisionnements et baissez vos coûts de gaz naturel',
+    description:
+      'Lancez la renégociation de vos contrats de gaz à partir d’une facture récente. Nos experts identifient les meilleures conditions tarifaires et contractuelles.',
+    icon: Flame,
+    iconBackground: 'bg-orange-100',
+    iconColor: 'text-orange-600',
+    amountLabel: 'Budget mensuel estimé',
+    amountColor: 'text-orange-600',
+    amountFallback: 'À estimer',
+    durationLabel: 'Délai moyen',
+    durationColor: 'text-blue-600',
+    durationFallback: '3-4 semaines',
+    advantages: [
+      {
+        title: 'Analyse fine du profil',
+        description: 'Étude de votre consommation mensuelle et des clauses contractuelles actuelles.'
+      },
+      {
+        title: 'Appels d’offres rapides',
+        description: 'Négociation express auprès de fournisseurs certifiés et adaptés à votre secteur.'
+      },
+      {
+        title: 'Sécurisation des volumes',
+        description: 'Recommandations sur la couverture de vos volumes et la gestion de la volatilité.'
+      },
+      {
+        title: 'Accompagnement contractuel',
+        description: 'Support jusqu’à la signature et au suivi des gains réalisés.'
+      }
+    ],
+    expertRole: 'Consultant énergie gaz',
+    documentsIntro: "Téléversez votre facture de gaz (mensuelle ou annuelle) pour initier l'analyse.",
+    workflowTitle: 'Diagnostic optimisation gaz',
+    workflowDuration: 'Durée estimée : 3-4 semaines',
+    workflowHighlights: [
+      {
+        title: 'Collecte et qualification',
+        description: 'Centralisation de vos données de consommation et de prix actuels.'
+      },
+      {
+        title: 'Benchmark fournisseurs',
+        description: 'Consultation d’un panel de fournisseurs de gaz naturel compétitifs.'
+      },
+      {
+        title: 'Proposition optimisée',
+        description: 'Restitution des économies réalisables et accompagnement à la bascule contractuelle.'
+      }
+    ],
+    workflowNotice:
+      'Pensez à indiquer votre dépense mensuelle et votre consommation moyenne pour accélérer la comparaison des offres.'
   },
   'logiciel-solid': {
     productKey: 'logiciel_solid',

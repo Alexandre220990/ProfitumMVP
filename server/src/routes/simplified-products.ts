@@ -222,7 +222,12 @@ router.get('/:dossierId/initial-checks', enhancedAuthMiddleware, async (req: Req
         checklist: currentChecklist,
         partnerRequest,
         defaults,
-        requiredDocument: productKey === 'logiciel_solid' ? 'fiche_paie' : 'carte_grise'
+        requiredDocument:
+          productKey === 'logiciel_solid'
+            ? 'fiche_paie'
+            : productKey === 'chronotachygraphes'
+              ? 'carte_grise'
+              : 'facture'
       }
     });
   } catch (error: any) {
@@ -325,24 +330,24 @@ router.post('/:dossierId/initial-checks', enhancedAuthMiddleware, async (req: Re
       }
       case 'optimisation_fournisseur_electricite':
       case 'optimisation_fournisseur_gaz': {
-        const defaultSource = productKey === 'optimisation_fournisseur_electricite' ? 'electricite' : 'gaz';
-        const selectedEnergies: string[] = Array.isArray(req.body.energy_sources)
-          ? req.body.energy_sources
-          : typeof req.body.energy_source === 'string'
-            ? [req.body.energy_source]
-            : [defaultSource];
-
-        if (!selectedEnergies.includes(defaultSource)) {
-          selectedEnergies.push(defaultSource);
+        const monthlySpend = parseNumber(req.body.monthly_spend ?? req.body.depense_mensuelle);
+        if (!monthlySpend || monthlySpend <= 0) {
+          return res.status(400).json({ success: false, message: 'Dépense mensuelle invalide' });
         }
 
-        const siteCount = ensurePositiveInteger(req.body.site_count || req.body.nombre_sites) || 1;
-        const consumptionAmount = parseNumber(req.body.consumption_reference || req.body.consommation_reference);
+        const monthlyConsumption = parseNumber(
+          req.body.monthly_consumption ??
+            req.body.consommation_mensuelle ??
+            req.body.consumption_reference ??
+            req.body.consommation_reference
+        );
+        if (!monthlyConsumption || monthlyConsumption <= 0) {
+          return res.status(400).json({ success: false, message: 'Consommation mensuelle invalide' });
+        }
 
         metadata[checklistKey] = {
-          energy_sources: selectedEnergies,
-          site_count: siteCount,
-          consumption_reference: consumptionAmount,
+          monthly_spend: monthlySpend,
+          monthly_consumption: monthlyConsumption,
           validated_at: now
         };
 
@@ -350,7 +355,7 @@ router.post('/:dossierId/initial-checks', enhancedAuthMiddleware, async (req: Re
           productKey === 'optimisation_fournisseur_electricite'
             ? 'électricité'
             : 'gaz naturel';
-        timelineDescription = `Facture ${energyLabel} fournie. ${siteCount} site(s) identifié(s) pour l’analyse.`;
+        timelineDescription = `Facture ${energyLabel} fournie. Dépense mensuelle : ${formatCurrencyForTimeline(monthlySpend)} • Consommation : ${monthlyConsumption.toLocaleString('fr-FR')} kWh/mois.`;
         break;
       }
       default:
@@ -695,13 +700,17 @@ router.post('/:dossierId/partner-request', enhancedAuthMiddleware, async (req: R
       case 'optimisation_fournisseur_electricite':
       case 'optimisation_fournisseur_gaz': {
         partnerSummary = {
-          energy_sources: checklist.energy_sources ?? [],
-          site_count: checklist.site_count ?? null,
-          consumption_reference: checklist.consumption_reference ?? null
+          monthly_spend: checklist.monthly_spend ?? null,
+          monthly_consumption: checklist.monthly_consumption ?? null
         };
         const energieLabel =
           productKey === 'optimisation_fournisseur_electricite' ? 'électricité' : 'gaz naturel';
-        summarySentence = `${energieLabel.toUpperCase()} • Sites : ${partnerSummary.site_count ?? '—'} • Consommation de référence : ${partnerSummary.consumption_reference ?? '—'} kWh.`;
+        const spendLabel = partnerSummary.monthly_spend ? formatCurrencyForTimeline(partnerSummary.monthly_spend) : '—';
+        const consoLabel =
+          partnerSummary.monthly_consumption !== null && partnerSummary.monthly_consumption !== undefined
+            ? `${partnerSummary.monthly_consumption.toLocaleString('fr-FR')} kWh/mois`
+            : '—';
+        summarySentence = `${energieLabel.toUpperCase()} • Dépense mensuelle : ${spendLabel} • Consommation : ${consoLabel}.`;
         break;
       }
       default:

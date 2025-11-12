@@ -11,8 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { Loader2, FileText, CheckCircle, XCircle, MessageCircle, Download, Calendar } from 'lucide-react';
-import { post, get } from '@/lib/api';
-import { useAuth } from '@/hooks/use-auth';
+import { post } from '@/lib/api';
 
 interface QuotePanelProps {
   dossierId: string;
@@ -22,7 +21,6 @@ interface QuotePanelProps {
 }
 
 export default function QuotePanel({ dossierId, devis, userType, onUpdate }: QuotePanelProps) {
-  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [commentaire, setCommentaire] = useState('');
   const [showCommentDialog, setShowCommentDialog] = useState(false);
@@ -32,13 +30,34 @@ export default function QuotePanel({ dossierId, devis, userType, onUpdate }: Quo
   const isClient = userType === 'client';
   const isExpert = userType === 'expert';
 
+  const inferredEnergyKey = (() => {
+    if (typeof formulaire.energy_type === 'string') {
+      return formulaire.energy_type.includes('gaz') ? 'optimisation_fournisseur_gaz' : 'optimisation_fournisseur_electricite';
+    }
+    if (typeof formulaire.energie === 'string') {
+      return formulaire.energie.includes('gaz') ? 'optimisation_fournisseur_gaz' : 'optimisation_fournisseur_electricite';
+    }
+    if (Array.isArray(formulaire.energy_sources)) {
+      return formulaire.energy_sources.includes('gaz')
+        ? 'optimisation_fournisseur_gaz'
+        : 'optimisation_fournisseur_electricite';
+    }
+    if (devis?.product_key === 'optimisation_fournisseur_gaz' || devis?.product_key === 'optimisation_fournisseur_electricite') {
+      return devis.product_key;
+    }
+    if (typeof formulaire.monthly_spend === 'number' || typeof formulaire.monthly_consumption === 'number') {
+      return devis?.product_key === 'optimisation_fournisseur_gaz'
+        ? 'optimisation_fournisseur_gaz'
+        : 'optimisation_fournisseur_electricite';
+    }
+    return null;
+  })();
+
   const quoteType: 'chronotachygraphes' | 'logiciel_solid' | 'optimisation_fournisseur_electricite' | 'optimisation_fournisseur_gaz' =
     formulaire.type ||
     (formulaire.nb_chauffeurs || formulaire.prix_par_fiche
       ? 'logiciel_solid'
-      : formulaire.energy_sources
-        ? (formulaire.energy_sources.includes('gaz') ? 'optimisation_fournisseur_gaz' : 'optimisation_fournisseur_electricite')
-        : 'chronotachygraphes');
+      : inferredEnergyKey ?? 'chronotachygraphes');
 
   const formatAmount = (value?: number | null, suffix: string = '€') => {
     if (value === undefined || value === null || Number.isNaN(value)) {
@@ -111,21 +130,26 @@ export default function QuotePanel({ dossierId, devis, userType, onUpdate }: Quo
 
     if (quoteType === 'optimisation_fournisseur_electricite' || quoteType === 'optimisation_fournisseur_gaz') {
       const investissementEstime = formatAmount(formulaire.investissement_estime);
-      const economiesAnnueles = formatAmount(formulaire.economies_annuelles);
+      const economiesMensuelles = formatAmount(formulaire.economies_mensuelles);
+      const economiesAnnuelles = formatAmount(formulaire.economies_annuelles);
       const dureeRetour =
         formulaire.duree_retour !== undefined && formulaire.duree_retour !== null
           ? `${formulaire.duree_retour} mois`
           : '—';
       const recommandations: string[] =
         formulaire.recommandations || [
-          'Audit détaillé des sites et contrats',
-          'Mise en concurrence des fournisseurs',
-          'Plan d’actions priorisées',
-          'Suivi trimestriel des économies réalisées'
+          'Analyse détaillée de vos factures',
+          'Mise en concurrence accélérée des fournisseurs',
+          'Projection des gains mensuels et annuels',
+          'Accompagnement jusqu’à la signature du nouveau contrat'
         ];
       const energieLabel = quoteType === 'optimisation_fournisseur_electricite' ? 'Électricité' : 'Gaz naturel';
+      const depenseMensuelleActuelle = formatAmount(formulaire.monthly_spend);
+      const consommationMensuelle = formatAmount(formulaire.monthly_consumption, 'kWh/mois');
+      const consommationReference = formatAmount(formulaire.consumption_reference, 'kWh/an');
       const siteCount = formulaire.site_count ?? '—';
-      const consumptionRef = formatAmount(formulaire.consumption_reference, 'kWh');
+      const hasMonthlyMetrics =
+        typeof formulaire.monthly_spend === 'number' || typeof formulaire.monthly_consumption === 'number';
 
       return (
         <div className="space-y-4">
@@ -135,13 +159,13 @@ export default function QuotePanel({ dossierId, devis, userType, onUpdate }: Quo
               <p className="text-2xl font-bold text-gray-900">{investissementEstime}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-600">Économies annuelles attendues</p>
-              <p className="text-2xl font-bold text-emerald-600">{economiesAnnueles}</p>
+              <p className="text-sm text-gray-600">Économies mensuelles estimées</p>
+              <p className="text-2xl font-bold text-emerald-600">{economiesMensuelles}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-600">Retour sur investissement</p>
-              <p className="text-xl font-semibold text-gray-900">{dureeRetour}</p>
-              <p className="text-xs text-gray-500">Retour sur investissement estimé</p>
+              <p className="text-sm text-gray-600">Économies annuelles projetées</p>
+              <p className="text-xl font-semibold text-emerald-600">{economiesAnnuelles}</p>
+              <p className="text-xs text-gray-500">Retour sur investissement : {dureeRetour}</p>
             </div>
           </div>
 
@@ -149,12 +173,23 @@ export default function QuotePanel({ dossierId, devis, userType, onUpdate }: Quo
             <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
               <p className="font-semibold text-blue-900 mb-1">Énergie concernée</p>
               <p>{energieLabel}</p>
+              <p className="text-xs text-blue-700">
+                Dépense mensuelle actuelle : {depenseMensuelleActuelle}
+              </p>
             </div>
-            <div className="rounded-lg border border-purple-200 bg-purple-50 p-4 text-sm text-purple-900">
-              <p className="font-semibold text-purple-900 mb-1">Sites analysés</p>
-              <p>{siteCount}</p>
-              <p className="text-xs text-purple-700">Consommation de référence : {consumptionRef}</p>
-            </div>
+            {hasMonthlyMetrics ? (
+              <div className="rounded-lg border border-purple-200 bg-purple-50 p-4 text-sm text-purple-900">
+                <p className="font-semibold text-purple-900 mb-1">Consommation moyenne</p>
+                <p>{consommationMensuelle}</p>
+                <p className="text-xs text-purple-700">Référence annuelle : {consommationReference}</p>
+              </div>
+            ) : (
+              <div className="rounded-lg border border-purple-200 bg-purple-50 p-4 text-sm text-purple-900">
+                <p className="font-semibold text-purple-900 mb-1">Sites analysés</p>
+                <p>{siteCount}</p>
+                <p className="text-xs text-purple-700">Consommation de référence : {consommationReference}</p>
+              </div>
+            )}
           </div>
 
           <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
@@ -175,7 +210,6 @@ export default function QuotePanel({ dossierId, devis, userType, onUpdate }: Quo
     const installations = formulaire.installations_souhaitees ?? formulaire.nb_installations;
     const prixInstallation = formatAmount(formulaire.prix_installation_unitaire);
     const prixAbonnementMensuel = formatAmount(formulaire.prix_abonnement_mensuel);
-    const prixAbonnementAnnuel = formatAmount(formulaire.prix_abonnement_annuel);
     const totalInstallation = formatAmount(formulaire.total_installation);
     const totalAbonnementMensuel = formatAmount(formulaire.total_abonnement_mensuel);
     const totalAbonnementAnnuel = formatAmount(formulaire.total_abonnement_annuel);

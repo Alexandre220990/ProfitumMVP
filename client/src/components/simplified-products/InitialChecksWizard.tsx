@@ -8,7 +8,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { Loader2, CheckCircle, Info } from 'lucide-react';
 import { post } from '@/lib/api';
@@ -32,6 +31,8 @@ interface InitialChecksWizardProps {
     energy_sources?: string[];
     site_count?: number;
     consumption_reference?: number;
+    monthly_spend?: number;
+    monthly_consumption?: number;
   };
   simulationData?: {
     nb_chauffeurs?: number | null;
@@ -100,23 +101,13 @@ export default function InitialChecksWizard({
     initialData?.source === 'manual' ? 'manual' : 'simulation'
   );
 
-  const [energySources, setEnergySources] = useState<string[]>(() => {
-    if (productKey === 'optimisation_fournisseur_electricite') {
-      return ['electricite'];
-    }
-    if (Array.isArray(initialData?.energy_sources) && initialData.energy_sources.length > 0) {
-      return initialData.energy_sources;
-    }
-    if (productKey === 'optimisation_fournisseur_gaz') {
-      return ['gaz'];
-    }
-    return [];
-  });
-  const [siteCount, setSiteCount] = useState<number>(
-    initialData?.site_count ?? 1
+  const [monthlySpend, setMonthlySpend] = useState<number>(
+    initialData?.monthly_spend ?? Number.NaN
   );
-  const [consumptionReference, setConsumptionReference] = useState<number>(
-    initialData?.consumption_reference ?? 0
+  const [monthlyConsumption, setMonthlyConsumption] = useState<number>(
+    initialData?.monthly_consumption ??
+      initialData?.consumption_reference ??
+      Number.NaN
   );
 
   const installationsSuggestion = useMemo(() => {
@@ -136,15 +127,6 @@ export default function InitialChecksWizard({
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [simulationChauffeurs, isChrono]);
-
-  const handleEnergySourceToggle = (value: string) => (checked: boolean | 'indeterminate') => {
-    setEnergySources((prev) => {
-      if (checked === true) {
-        return Array.from(new Set([...prev, value]));
-      }
-      return prev.filter((item) => item !== value);
-    });
-  };
 
   const handleSubmit = async () => {
     if (isChrono) {
@@ -166,24 +148,18 @@ export default function InitialChecksWizard({
         return;
       }
     } else if (isEnergy) {
-      if (isGas && !energySources.length) {
-        toast.error('Sélectionnez au moins une source d’énergie.');
+      if (!monthlySpend || monthlySpend <= 0) {
+        toast.error('Indiquez votre dépense mensuelle.');
         return;
       }
-      if (!siteCount || siteCount <= 0) {
-        toast.error('Indiquez le nombre de sites concernés.');
+      if (!monthlyConsumption || monthlyConsumption <= 0) {
+        toast.error('Indiquez votre consommation mensuelle en kWh.');
         return;
       }
     }
 
     try {
       setLoading(true);
-
-      const normalizedEnergySources = isElectricity
-        ? ['electricite']
-        : energySources.length > 0
-          ? energySources
-          : ['gaz'];
 
       const payload = isChrono
         ? {
@@ -198,9 +174,8 @@ export default function InitialChecksWizard({
               source
             }
           : {
-              energy_sources: normalizedEnergySources,
-              site_count: siteCount,
-              consumption_reference: consumptionReference
+              monthly_spend: monthlySpend,
+              monthly_consumption: monthlyConsumption
             };
 
       const response = await post(`/api/simplified-products/${dossierId}/initial-checks`, payload);
@@ -392,64 +367,58 @@ export default function InitialChecksWizard({
               <p className="font-medium">
                 {isElectricity
                   ? 'Optimisation de vos contrats d’électricité'
-                  : 'Optimisation de vos contrats de gaz'}
+                  : 'Optimisation de vos contrats de gaz naturel'}
               </p>
               <p>
-                Téléversez vos factures récentes et précisez vos sites afin que notre expert prépare le diagnostic et la mise en concurrence des fournisseurs.
-              </p>
-            </div>
-
-            {!isElectricity && (
-              <div className="space-y-2">
-                <Label>Sources d’énergie à analyser</Label>
-                <div className="flex flex-wrap gap-4">
-                  <label className="flex items-center gap-2 text-sm text-gray-700">
-                    <Checkbox
-                      checked={energySources.includes('gaz')}
-                      onCheckedChange={handleEnergySourceToggle('gaz')}
-                    />
-                    Gaz naturel
-                  </label>
-                </div>
-                <p className="text-xs text-gray-500">
-                  Sélectionnez les énergies à optimiser (par défaut : gaz naturel).
-                </p>
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <Label htmlFor="site_count">Nombre de sites concernés</Label>
-              <Input
-                id="site_count"
-                type="number"
-                min={1}
-                value={Number.isNaN(siteCount) ? '' : siteCount}
-                onChange={(e) => setSiteCount(Math.max(parseInt(e.target.value, 10) || 0, 0))}
-                placeholder="Ex : 3"
-              />
-              <p className="text-xs text-gray-500">
-                Incluez les entrepôts, agences ou bureaux pour lesquels vous souhaitez réduire les coûts.
+                Indiquez votre dépense mensuelle et votre consommation moyenne. Cela permet à notre expert de calibrer immédiatement la mise en concurrence des fournisseurs.
               </p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="consumption_reference">Consommation annuelle (optionnel)</Label>
+              <Label htmlFor="monthly_spend">Combien payez-vous par mois ?</Label>
               <Input
-                id="consumption_reference"
+                id="monthly_spend"
                 type="number"
                 min={0}
-                value={Number.isNaN(consumptionReference) ? '' : consumptionReference}
-                onChange={(e) => setConsumptionReference(Math.max(parseInt(e.target.value, 10) || 0, 0))}
-                placeholder={isElectricity ? 'Ex : 125000 (kWh)' : 'Ex : 45000 (kWh PCS)'}
+                value={Number.isNaN(monthlySpend) ? '' : monthlySpend}
+                onChange={(e) => {
+                  const value = Number.parseFloat(e.target.value);
+                  setMonthlySpend(Number.isNaN(value) ? Number.NaN : Math.max(value, 0));
+                }}
+                placeholder="Ex : 3250 (en €)"
               />
               <p className="text-xs text-gray-500">
-                Si vous connaissez votre consommation annuelle, indiquez-la pour affiner l’analyse.
+                Montant moyen TTC payé chaque mois à votre fournisseur actuel.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="monthly_consumption">
+                {isElectricity
+                  ? 'Combien de kWh consommez-vous mensuellement ?'
+                  : 'Quelle est votre consommation mensuelle en kWh (PCS) ?'}
+              </Label>
+              <Input
+                id="monthly_consumption"
+                type="number"
+                min={0}
+                value={Number.isNaN(monthlyConsumption) ? '' : monthlyConsumption}
+                onChange={(e) => {
+                  const value = Number.parseFloat(e.target.value);
+                  setMonthlyConsumption(Number.isNaN(value) ? Number.NaN : Math.max(value, 0));
+                }}
+                placeholder={isElectricity ? 'Ex : 12800 (kWh)' : 'Ex : 9800 (kWh PCS)'}
+              />
+              <p className="text-xs text-gray-500">
+                {isElectricity
+                  ? 'Indiquez la consommation moyenne par mois figurant sur votre facture d’électricité.'
+                  : 'Renseignez la consommation moyenne en kWh PCS figurant sur votre facture de gaz.'}
               </p>
             </div>
 
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 space-y-2">
               <p className="font-medium">
-                Document requis : facture {isElectricity ? 'd’électricité' : 'de gaz'} récente
+                Document requis : facture {isElectricity ? "d’électricité récente (mensuelle ou annuelle)" : 'de gaz récente (mensuelle ou annuelle)'}
               </p>
               <p>
                 Téléversez votre dernière facture {isElectricity ? 'd’électricité' : 'de gaz naturel'} pour lancer l’optimisation.
