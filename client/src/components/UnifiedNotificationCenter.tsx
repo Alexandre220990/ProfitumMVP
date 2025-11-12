@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useSupabaseNotifications } from '@/hooks/useSupabaseNotifications';
+import { toast } from 'sonner';
 
 const UnifiedNotificationCenter: React.FC = () => {
   // Détection du rôle utilisateur
@@ -59,7 +60,16 @@ const UnifiedNotificationCenter: React.FC = () => {
       let endpoint = `/api/notifications/${notificationId}/read`;
       if (userRole === 'expert') endpoint = `/api/expert/notifications/${notificationId}/read`;
       if (userRole === 'admin') endpoint = `/api/admin/notifications/${notificationId}/read`;
-      await fetch(endpoint, { method: 'PUT', headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } });
+      const response = await fetch(endpoint, { method: 'PUT', headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } });
+
+      if (response.status === 404) {
+        toast.info('Notification introuvable ou déjà traitée.');
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(`Erreur ${response.status}`);
+      }
       // Le hook realtime mettra à jour automatiquement l'état
     } catch (error) { console.error('Erreur marquage lu:', error); }
   };

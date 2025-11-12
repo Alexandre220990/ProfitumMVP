@@ -5001,8 +5001,7 @@ router.patch('/notifications/:id/read', async (req, res) => {
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
-      .select()
-      .single();
+      .select();
     
     if (error) {
       console.error('❌ Erreur mise à jour notification:', error);
@@ -5011,10 +5010,19 @@ router.patch('/notifications/:id/read', async (req, res) => {
         message: 'Erreur lors de la mise à jour de la notification'
       });
     }
+
+    if (!data || data.length === 0) {
+      console.warn(`ℹ️ Notification admin ${id} introuvable ou déjà traitée`);
+      return res.status(404).json({
+        success: false,
+        message: 'Notification introuvable ou déjà traitée'
+      });
+    }
     
     return res.json({
       success: true,
-      data: { notification: data }
+      message: 'Notification marquée comme lue',
+      data: { notification: data[0] }
     });
     
   } catch (error) {

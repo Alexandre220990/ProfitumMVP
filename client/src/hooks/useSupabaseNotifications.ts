@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { supabaseNotificationService } from '@/services/supabase-notification-service';
 import { useAuth } from '@/hooks/use-auth';
+import { toast } from 'sonner';
 
 type NotificationStatus = 'unread' | 'read' | 'archived' | string;
 
@@ -215,6 +216,11 @@ export function useSupabaseNotifications(): UseSupabaseNotificationsReturn {
         }
 
         const response = await fetch(request.url, request.options);
+
+        if (response.status === 404) {
+          toast.info('Notification introuvable ou déjà traitée.');
+          return;
+        }
 
         if (!response.ok) {
           throw new Error(`Erreur ${response.status}`);
