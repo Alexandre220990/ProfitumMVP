@@ -215,13 +215,26 @@ const applyQuestionOrderOverrides = (questionsList: Question[]): Question[] => {
       ? question.question_id.toUpperCase()
       : undefined;
     const override = lookupKey ? QUESTION_ORDER_OVERRIDES[lookupKey] : undefined;
+    let updatedQuestion = question;
+
+    if (lookupKey === "GENERAL_004" && question.options?.choix) {
+      updatedQuestion = {
+        ...updatedQuestion,
+        options: {
+          ...question.options,
+          choix: ["Oui", "Non"]
+        }
+      };
+    }
+
     if (override !== undefined) {
-      return {
-        ...question,
+      updatedQuestion = {
+        ...updatedQuestion,
         question_order: override
       };
     }
-    return question;
+
+    return updatedQuestion;
   });
 };
 

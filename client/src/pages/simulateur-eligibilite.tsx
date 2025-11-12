@@ -69,13 +69,26 @@ const applyQuestionOrderOverrides = (questionList: Question[]): Question[] => {
       ? question.question_id.toUpperCase()
       : undefined;
     const override = lookupKey ? QUESTION_ORDER_OVERRIDES[lookupKey] : undefined;
+    let updatedQuestion = question;
+
+    if (lookupKey === 'GENERAL_004' && question.options?.choix) {
+      updatedQuestion = {
+        ...updatedQuestion,
+        options: {
+          ...question.options,
+          choix: ['Oui', 'Non']
+        }
+      };
+    }
+
     if (override !== undefined) {
-      return {
-        ...question,
+      updatedQuestion = {
+        ...updatedQuestion,
         question_order: override
       };
     }
-    return question;
+
+    return updatedQuestion;
   });
 };
 
@@ -317,7 +330,10 @@ const SimulateurEligibilite = () => {
   /**
    * Trouver la prochaine question visible en fonction des conditions
    */
-  const findNextVisibleQuestion = (currentOrder: number): Question | null => {
+  const findNextVisibleQuestion = (
+    currentOrder: number,
+    answersSource: Record<string, any>
+  ): Question | null => {
     // Chercher la prochaine question après currentOrder
     for (let i = 0; i < questions.length; i++) {
       const q = questions[i];
@@ -337,6 +353,11 @@ const SimulateurEligibilite = () => {
       const operator = q.conditions.operator || 'equals';
       
       if (!dependsOn) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.info('ℹ️ Question sans depends_on affichée', {
+          question: q.question_id || q.id
+        });
+      }
         // Pas de depends_on = visible
         return q;
       }
@@ -347,14 +368,26 @@ const SimulateurEligibilite = () => {
       );
       
       if (!dependencyQuestion) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('⚠️ Question conditionnelle ignorée, dépendance introuvable', {
+          question: q.question_id || q.id,
+          depends_on: dependsOn
+        });
+      }
         // Question de dépendance introuvable = ignorer cette question
         continue;
       }
       
       // Vérifier la réponse à la question de dépendance
-      const dependencyAnswer = responses[dependencyQuestion.id];
+      const dependencyAnswer = answersSource[dependencyQuestion.id];
       
       if (!dependencyAnswer) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.info('ℹ️ Question conditionnelle non affichée (réponse manquante)', {
+          question: q.question_id || q.id,
+          depends_on: dependencyQuestion.question_id || dependencyQuestion.id
+        });
+      }
         // Pas encore répondu à la dépendance = question invisible
         continue;
       }
@@ -369,8 +402,24 @@ const SimulateurEligibilite = () => {
       }
       
       if (conditionMet) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.info('✅ Condition satisfaite, question affichée', {
+          question: q.question_id || q.id,
+          depends_on: dependencyQuestion.question_id || dependencyQuestion.id,
+          dependencyAnswer,
+          requiredValue
+        });
+      }
         // Condition satisfaite = question visible
         return q;
+    } else if (process.env.NODE_ENV !== 'production') {
+      console.info('ℹ️ Condition non satisfaite, question ignorée', {
+        question: q.question_id || q.id,
+        depends_on: dependencyQuestion.question_id || dependencyQuestion.id,
+        dependencyAnswer,
+        requiredValue,
+        operator
+      });
       }
       // Sinon, continuer à chercher
     }
@@ -424,11 +473,6 @@ const SimulateurEligibilite = () => {
 
       if (saveResponse.ok) { 
         // Marquer comme validé
-        setResponses(prev => ({
-          ...prev, 
-          [currentQuestion.id]: response 
-        }));
-
         // Tracking
         trackEvent('question_validated', { 
           question_id: currentQuestion.id, 
@@ -441,7 +485,17 @@ const SimulateurEligibilite = () => {
         await new Promise(resolve => setTimeout(resolve, 500));
 
         // Trouver la prochaine question visible (en tenant compte des conditions)
-        const nextVisibleQuestion = findNextVisibleQuestion(currentStep);
+        const updatedResponses = {
+          ...responses,
+          [currentQuestion.id]: response
+        };
+
+        setResponses(updatedResponses);
+
+        const nextVisibleQuestion = findNextVisibleQuestion(
+          currentStep,
+          updatedResponses
+        );
         
         if (nextVisibleQuestion) {
           // Il y a une prochaine question
