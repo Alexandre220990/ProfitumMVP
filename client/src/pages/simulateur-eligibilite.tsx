@@ -760,9 +760,9 @@ const SimulateurEligibilite = () => {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
         <PublicHeader />
         
-        {/* Header Section - Compact et élégant */}
         <div className="max-w-7xl mx-auto px-6 py-12">
-          <div className="text-center space-y-4 mb-12">
+          {/* Header Section - Compact et élégant */}
+          <div className="text-center space-y-4 mb-10">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl shadow-lg mb-6">
               <CheckCircle className="w-8 h-8 text-white" />
             </div>
@@ -774,233 +774,265 @@ const SimulateurEligibilite = () => {
             </p>
           </div>
 
-          {/* Hero Results - Impact visuel modéré */}
-          <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-8 border border-white/60 shadow-xl mb-12">
-            <div className="text-center space-y-6">
-              <div className="space-y-2">
-                <div className="text-5xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
-                  {totalSavings.toLocaleString('fr-FR')}€
-                </div>
-                <div className="text-lg text-slate-600 font-medium">
-                  d'économies potentielles identifiées
-                </div>
-              </div>
-              
-              {/* Métriques clés en grille */}
-              <div className="grid grid-cols-3 gap-6 max-w-2xl mx-auto">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-slate-800">{eligibleProductsCount}</div>
-                  <div className="text-sm text-slate-600">Produits financiers</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-slate-800">{highEligibilityCount}</div>
-                  <div className="text-sm text-slate-600">Très éligibles</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-slate-800">{qualitativeResults.length}</div>
-                  <div className="text-sm text-slate-600">Services qualitatifs</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Products Grid - Layout moderne */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-            {resultsArray.map((result) => {
-              const message = generatePersonalizedMessage(result);
-              const details = generateProductDetails(result);
-              const Icon = getProductIcon(result.produit_id);
-              const isHighEligibility = (result.eligibility_score || 0) >= 70;
-              const hasSavings = (result.estimated_savings || 0) > 0;
-              const isQualitative = result.type === 'qualitatif';
-
-              // 🆕 Affichage spécial pour produits qualitatifs
-              if (isQualitative) {
-                return (
-                  <div 
-                    key={result.produit_id}
-                    className="group relative bg-gradient-to-br from-purple-50/90 to-indigo-50/90 backdrop-blur-sm border-2 border-purple-200 rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-1"
-                  >
-                    {/* Header */}
-                    <div className="p-6 border-b border-purple-100">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center space-x-3">
-                          <div className="p-3 rounded-xl bg-purple-100 text-purple-700">
-                            <Icon className="w-6 h-6" />
-                          </div>
-                          <div>
-                            <h3 className="font-semibold text-slate-800 text-lg">{result.produit_id}</h3>
-                            <p className="text-sm text-purple-600 font-medium">Produit Qualitatif</p>
-                          </div>
-                        </div>
-                        <div className="px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
-                          ⚙️ Service
-                        </div>
-                      </div>
+          <div className="grid gap-10 lg:grid-cols-[2fr,1fr] items-start">
+            {/* Colonne principale : résumé + produits */}
+            <div className="space-y-8">
+              {/* Hero Results - Impact visuel modéré */}
+              <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-8 border border-white/70 shadow-xl">
+                <div className="grid gap-8 lg:grid-cols-2 lg:items-center">
+                  <div className="space-y-4 text-center lg:text-left">
+                    <p className="uppercase tracking-[0.3em] text-xs text-emerald-500 font-semibold">
+                      Synthèse
+                    </p>
+                    <div className="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+                      {totalSavings.toLocaleString('fr-FR')}€
                     </div>
-                    
-                    {/* Bénéfices */}
-                    <div className="p-6 space-y-4">
-                      <p className="text-sm text-slate-600 font-medium">
-                        Bénéfices concrets pour votre activité :
-                      </p>
-                      <div className="space-y-2">
-                        {result.qualitative_benefits?.map((benefit, idx) => (
-                          <div key={idx} className="flex items-start gap-2 text-sm text-slate-700">
-                            <CheckCircle className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0" />
-                            <span>{benefit}</span>
-                          </div>
-                        ))}
-                      </div>
-                      
-                      <Button 
-                        variant="outline" 
-                        className="w-full border-purple-200 hover:bg-purple-50 text-purple-700"
-                      >
-                        Découvrir ce service
-                      </Button>
+                    <p className="text-base text-slate-600 font-medium">
+                      d'économies potentielles identifiées
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="rounded-2xl bg-slate-50 border border-slate-100 p-4 text-center">
+                      <div className="text-2xl font-bold text-slate-800">{eligibleProductsCount}</div>
+                      <div className="text-xs text-slate-600 mt-1">Produits financiers</div>
+                    </div>
+                    <div className="rounded-2xl bg-slate-50 border border-slate-100 p-4 text-center">
+                      <div className="text-2xl font-bold text-slate-800">{highEligibilityCount}</div>
+                      <div className="text-xs text-slate-600 mt-1">Très éligibles</div>
+                    </div>
+                    <div className="rounded-2xl bg-slate-50 border border-slate-100 p-4 text-center">
+                      <div className="text-2xl font-bold text-slate-800">{qualitativeResults.length}</div>
+                      <div className="text-xs text-slate-600 mt-1">Services qualitatifs</div>
                     </div>
                   </div>
-                );
-              }
+                </div>
+              </div>
 
-              // Affichage normal pour produits financiers
-              return (
-                <div 
-                  key={result.produit_id} 
-                  className={`group relative bg-white/90 backdrop-blur-sm border border-white/60 rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 ${
-                    hasSavings ? 'hover:border-emerald-200' : 'hover:border-slate-200'
-                  }`}
-                >
-                  {/* Header de la card */}
-                  <div className="p-6 border-b border-slate-100">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center space-x-3">
-                        <div className={`p-3 rounded-xl transition-colors duration-300 ${
-                          hasSavings 
-                            ? 'bg-emerald-100 text-emerald-700 group-hover:bg-emerald-200' 
-                            : 'bg-slate-100 text-slate-600'
-                        }`}>
-                          <Icon className="w-6 h-6" />
+              {/* Products Grid - Layout moderne */}
+              <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                {resultsArray.map((result) => {
+                  const message = generatePersonalizedMessage(result);
+                  const details = generateProductDetails(result);
+                  const Icon = getProductIcon(result.produit_id);
+                  const isHighEligibility = (result.eligibility_score || 0) >= 70;
+                  const hasSavings = (result.estimated_savings || 0) > 0;
+                  const isQualitative = result.type === 'qualitatif';
+
+                  // 🆕 Affichage spécial pour produits qualitatifs
+                  if (isQualitative) {
+                    return (
+                      <div 
+                        key={result.produit_id}
+                        className="group relative bg-gradient-to-br from-purple-50/90 to-indigo-50/90 backdrop-blur-sm border-2 border-purple-200 rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-1"
+                      >
+                        {/* Header */}
+                        <div className="p-6 border-b border-purple-100">
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center space-x-3">
+                              <div className="p-3 rounded-xl bg-purple-100 text-purple-700">
+                                <Icon className="w-6 h-6" />
+                              </div>
+                              <div>
+                                <h3 className="font-semibold text-slate-800 text-lg">{result.produit_id}</h3>
+                                <p className="text-sm text-purple-600 font-medium">Produit Qualitatif</p>
+                              </div>
+                            </div>
+                            <div className="px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                              ⚙️ Service
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <h3 className="font-semibold text-slate-800 text-lg">{result.produit_id}</h3>
-                          <p className="text-sm text-slate-500">
-                            Score: {result.eligibility_score || 0}%
+                        
+                        {/* Bénéfices */}
+                        <div className="p-6 space-y-4">
+                          <p className="text-sm text-slate-600 font-medium">
+                            Bénéfices concrets pour votre activité :
+                          </p>
+                          <div className="space-y-2">
+                            {result.qualitative_benefits?.map((benefit, idx) => (
+                              <div key={idx} className="flex items-start gap-2 text-sm text-slate-700">
+                                <CheckCircle className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                                <span>{benefit}</span>
+                              </div>
+                            ))}
+                          </div>
+                          
+                          <Button 
+                            variant="outline" 
+                            className="w-full border-purple-200 hover:bg-purple-50 text-purple-700"
+                          >
+                            Découvrir ce service
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // Affichage normal pour produits financiers
+                  return (
+                    <div 
+                      key={result.produit_id} 
+                      className={`group relative bg-white/90 backdrop-blur-sm border border-white/60 rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 ${
+                        hasSavings ? 'hover:border-emerald-200' : 'hover:border-slate-200'
+                      }`}
+                    >
+                      {/* Header de la card */}
+                      <div className="p-6 border-b border-slate-100">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center space-x-3">
+                            <div className={`p-3 rounded-xl transition-colors duration-300 ${
+                              hasSavings 
+                                ? 'bg-emerald-100 text-emerald-700 group-hover:bg-emerald-200' 
+                                : 'bg-slate-100 text-slate-600'
+                            }`}>
+                              <Icon className="w-6 h-6" />
+                            </div>
+                            <div>
+                              <h3 className="font-semibold text-slate-800 text-lg">{result.produit_id}</h3>
+                              <p className="text-sm text-slate-500">
+                                Score: {result.eligibility_score || 0}%
+                              </p>
+                            </div>
+                          </div>
+                          <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+                            isHighEligibility 
+                              ? 'bg-emerald-100 text-emerald-700' 
+                              : 'bg-slate-100 text-slate-600'
+                          }`}>
+                            {isHighEligibility ? 'Très éligible' : 'Éligible'}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Contenu principal */}
+                      <div className="p-6 space-y-6">
+                        {/* Montant principal */}
+                        <div className="text-center">
+                          <div className={`text-3xl font-bold mb-2 ${
+                            hasSavings ? 'text-emerald-600' : 'text-slate-400'
+                          }`}>
+                            {(result.estimated_savings || 0).toLocaleString('fr-FR')}€
+                          </div>
+                          <p className="text-sm text-slate-600">
+                            Économies estimées
+                          </p>
+                        </div>
+
+                        {/* Message personnalisé */}
+                        <div className="bg-gradient-to-r from-slate-50 to-blue-50 rounded-xl p-4">
+                          <h4 className="font-semibold text-slate-800 mb-2 text-sm">
+                            {message.title}
+                          </h4>
+                          <p className="text-sm text-slate-600 leading-relaxed">
+                            {message.subtitle}
+                          </p>
+                        </div>
+
+                        {/* Métriques détaillées */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="text-center p-3 bg-slate-50 rounded-lg">
+                            <div className="font-semibold text-slate-800 text-sm">
+                              {details.savings.average}€
+                            </div>
+                            <div className="text-xs text-slate-600">Gain moyen</div>
+                          </div>
+                          <div className="text-center p-3 bg-slate-50 rounded-lg">
+                            <div className="font-semibold text-slate-800 text-sm">
+                              {details.successRate}
+                            </div>
+                            <div className="text-xs text-slate-600">Taux de succès</div>
+                          </div>
+                        </div>
+
+                        {/* Recommandations */}
+                        {result.recommendations && result.recommendations.length > 0 && (
+                          <div className="space-y-3">
+                            <h4 className="font-semibold text-slate-800 text-sm flex items-center">
+                              <Target className="w-4 h-4 mr-2 text-emerald-600" />
+                              Recommandations
+                            </h4>
+                            <ul className="space-y-2">
+                              {result.recommendations.slice(0, 2).map((rec, index) => (
+                                <li key={index} className="text-sm text-slate-700 flex items-start">
+                                  <CheckCircle className="w-3 h-3 text-emerald-500 mr-2 mt-1 flex-shrink-0" />
+                                  <span className="leading-relaxed">{rec}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {/* Urgence */}
+                        <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-l-3 border-amber-400 p-3 rounded-xl">
+                          <p className="text-xs text-amber-800 font-medium flex items-center">
+                            <Zap className="w-3 h-3 mr-2" />
+                            {message.urgency}
                           </p>
                         </div>
                       </div>
-                      <div className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        isHighEligibility 
-                          ? 'bg-emerald-100 text-emerald-700' 
-                          : 'bg-slate-100 text-slate-600'
-                      }`}>
-                        {isHighEligibility ? 'Très éligible' : 'Éligible'}
-                      </div>
                     </div>
-                  </div>
-                  
-                  {/* Contenu principal */}
-                  <div className="p-6 space-y-6">
-                    {/* Montant principal */}
-                    <div className="text-center">
-                      <div className={`text-3xl font-bold mb-2 ${
-                        hasSavings ? 'text-emerald-600' : 'text-slate-400'
-                      }`}>
-                        {(result.estimated_savings || 0).toLocaleString('fr-FR')}€
-                      </div>
-                      <p className="text-sm text-slate-600">
-                        Économies estimées
-                      </p>
-                    </div>
-
-                    {/* Message personnalisé */}
-                    <div className="bg-gradient-to-r from-slate-50 to-blue-50 rounded-xl p-4">
-                      <h4 className="font-semibold text-slate-800 mb-2 text-sm">
-                        {message.title}
-                      </h4>
-                      <p className="text-sm text-slate-600 leading-relaxed">
-                        {message.subtitle}
-                      </p>
-                    </div>
-
-                    {/* Métriques détaillées */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="text-center p-3 bg-slate-50 rounded-lg">
-                        <div className="font-semibold text-slate-800 text-sm">
-                          {details.savings.average}€
-                        </div>
-                        <div className="text-xs text-slate-600">Gain moyen</div>
-                      </div>
-                      <div className="text-center p-3 bg-slate-50 rounded-lg">
-                        <div className="font-semibold text-slate-800 text-sm">
-                          {details.successRate}
-                        </div>
-                        <div className="text-xs text-slate-600">Taux de succès</div>
-                      </div>
-                    </div>
-
-                    {/* Recommandations */}
-                    {result.recommendations && result.recommendations.length > 0 && (
-                      <div className="space-y-3">
-                        <h4 className="font-semibold text-slate-800 text-sm flex items-center">
-                          <Target className="w-4 h-4 mr-2 text-emerald-600" />
-                          Recommandations
-                        </h4>
-                        <ul className="space-y-2">
-                          {result.recommendations.slice(0, 2).map((rec, index) => (
-                            <li key={index} className="text-sm text-slate-700 flex items-start">
-                              <CheckCircle className="w-3 h-3 text-emerald-500 mr-2 mt-1 flex-shrink-0" />
-                              <span className="leading-relaxed">{rec}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    {/* Urgence */}
-                    <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-l-3 border-amber-400 p-3 rounded-xl">
-                      <p className="text-xs text-amber-800 font-medium flex items-center">
-                        <Zap className="w-3 h-3 mr-2" />
-                        {message.urgency}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* CTA Section - Inscription */}
-          <div className="text-center space-y-6 max-w-2xl mx-auto">
-            {/* CTA Direct - Plus visible et engageant */}
-            <button
-              onClick={handleInscription}
-              className="group relative bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold py-6 px-12 rounded-2xl shadow-2xl hover:shadow-emerald-500/50 transition-all duration-300 transform hover:-translate-y-2 overflow-hidden text-xl"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/30 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
-              <span className="relative flex items-center justify-center">
-                <CheckCircle className="w-6 h-6 mr-3" />
-                Créer mon compte et accéder à mon dashboard
-                <ArrowRight className="ml-3 w-6 h-6 group-hover:translate-x-2 transition-transform duration-300" />
-              </span>
-            </button>
-            
-            {/* Avantages condensés sous le bouton */}
-            <div className="flex items-center justify-center gap-8 text-sm text-slate-600">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                <span>100% Gratuit</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <span>Experts certifiés</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                <span>Mise en relation 24h</span>
+                  );
+                })}
               </div>
             </div>
+
+            {/* Colonne latérale : CTA fixe */}
+            <aside className="space-y-6 sticky top-24 self-start">
+              <div className="bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-500 text-white rounded-3xl p-8 shadow-2xl">
+                <p className="uppercase tracking-[0.3em] text-xs text-white/70 font-semibold">
+                  Étape suivante
+                </p>
+                <h2 className="text-2xl font-bold mt-4 mb-3">
+                  Débloquez vos économies en 24h
+                </h2>
+                <p className="text-sm text-white/80 leading-relaxed mb-6">
+                  Un expert Profitum vous accompagne pour sécuriser vos optimisations fiscales et activer les recommandations prioritaires.
+                </p>
+                <button
+                  onClick={handleInscription}
+                  className="group relative w-full bg-white text-emerald-600 font-semibold py-4 px-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+                >
+                  <span className="relative flex items-center justify-center text-lg">
+                    Créer mon compte et accéder à mon dashboard
+                    <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
+                  </span>
+                </button>
+                <div className="mt-6 space-y-3 text-sm text-white/80">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4 text-white" />
+                    <span>100% gratuit, sans engagement</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-white" />
+                    <span>Mise en relation expert sous 24h</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Target className="w-4 h-4 text-white" />
+                    <span>Pilotage complet jusqu’aux résultats</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-6 border border-white/70 shadow-xl space-y-4">
+                <h3 className="text-lg font-semibold text-slate-800">
+                  Vos points forts
+                </h3>
+                <div className="space-y-3 text-sm text-slate-600">
+                  <div className="flex items-start gap-3">
+                    <div className="h-2 w-2 rounded-full bg-emerald-500 mt-2"></div>
+                    <span>{eligibleProductsCount} optimisations financières disponibles immédiatement</span>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="h-2 w-2 rounded-full bg-blue-500 mt-2"></div>
+                    <span>{highEligibilityCount} dossiers avec un score supérieur à 70%</span>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="h-2 w-2 rounded-full bg-purple-500 mt-2"></div>
+                    <span>{qualitativeResults.length} leviers qualitatifs pour accélérer votre transformation</span>
+                  </div>
+                </div>
+              </div>
+            </aside>
           </div>
         </div>
       </div>
