@@ -6,17 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import DossierStepsDisplay from '@/components/DossierStepsDisplay';
-import { WorkflowDocumentUpload } from '@/components/documents/WorkflowDocumentUpload';
 import UniversalProductWorkflow from "@/components/UniversalProductWorkflow";
+import { WorkflowDocumentUpload } from '@/components/documents/WorkflowDocumentUpload';
 import { Separator } from "@/components/ui/separator";
 import { toast } from 'sonner';
-import { getProductConfig } from "@/config/productWorkflowConfigs";
 
 import { 
   ArrowLeft, 
   AlertTriangle, 
   Loader2, 
-  FileText, 
   Calendar, 
   Euro, 
   TrendingUp, 
@@ -25,7 +23,9 @@ import {
   Phone,
   Mail,
   Download,
+  FileText,
   Share2,
+  MessageSquare,
   Edit,
   Trash2,
   Eye,
@@ -33,7 +33,6 @@ import {
   Target,
   Zap,
   Activity,
-  MessageSquare,
   HelpCircle,
   Info,
   Truck,
@@ -161,6 +160,10 @@ interface SimplifiedProductContent {
   advantages: Array<{ title: string; description: string }>;
   expertRole: string;
   documentsIntro?: string;
+  workflowTitle?: string;
+  workflowDuration?: string;
+  workflowHighlights?: Array<{ title: string; description: string }>;
+  workflowNotice?: string;
 }
 
 const SIMPLIFIED_PRODUCT_CONTENT: Record<string, SimplifiedProductContent> = {
@@ -197,7 +200,25 @@ const SIMPLIFIED_PRODUCT_CONTENT: Record<string, SimplifiedProductContent> = {
       }
     ],
     expertRole: 'Expert distributeur chronotachygraphes',
-    documentsIntro: "Téléversez les documents de votre flotte pour lancer l'installation."
+    documentsIntro: "Téléversez les documents de votre flotte pour lancer l'installation.",
+    workflowTitle: 'Workflow Chronotachygraphes Digitaux',
+    workflowDuration: 'Durée estimée : 1-2 mois',
+    workflowHighlights: [
+      {
+        title: 'Vérifications initiales',
+        description: 'Collecte de la carte grise et vérification des informations clés.'
+      },
+      {
+        title: 'Questions spécifiques',
+        description: 'Répondez sur votre flotte poids lourds pour préparer la proposition.'
+      },
+      {
+        title: 'Proposition partenaire',
+        description: 'Demande de devis au distributeur, validation et facturation.'
+      }
+    ],
+    workflowNotice:
+      'Important : Processus simplifié — confirmation des informations, devis partenaire, validation et facturation.'
   },
   'logiciel-solid': {
     productKey: 'logiciel_solid',
@@ -232,41 +253,48 @@ const SIMPLIFIED_PRODUCT_CONTENT: Record<string, SimplifiedProductContent> = {
       }
     ],
     expertRole: 'Expert intégrateur Logiciel Solid',
-    documentsIntro: "Déposez vos documents salariaux pour démarrer l'intégration."
+    documentsIntro: "Déposez vos documents salariaux pour démarrer l'intégration.",
+    workflowTitle: 'Déploiement Logiciel Solid',
+    workflowDuration: 'Durée estimée : 1 mois',
+    workflowHighlights: [
+      {
+        title: 'Audit des flux',
+        description: 'Analyse de vos processus comptables et RH existants.'
+      },
+      {
+        title: 'Paramétrage & intégration',
+        description: 'Connexion à vos outils, migration des données, paramétrage des automatisations.'
+      },
+      {
+        title: 'Formation & mise en production',
+        description: 'Formation des équipes, validation et lancement des automatisations.'
+      }
+    ],
+    workflowNotice:
+      'Notre équipe vous accompagne de bout en bout : cadrage, paramétrage, formation et support continu.'
   }
 };
 
 interface SimplifiedProductDossierViewProps {
   clientProduit: ClientProduitEligible;
-  produitInfo?: ClientProduitEligible['ProduitEligible'];
   clientInfo?: ClientProduitEligible['Client'];
   clientProduitId: string;
   content: SimplifiedProductContent;
   getStatusBadge: (status: string) => JSX.Element;
   onBack: () => void;
-  onContactExpert: () => void;
-  onDownloadDocument: (documentId: string, documentName: string) => Promise<void>;
-  onUploadSuccess: () => void;
 }
 
 const SimplifiedProductDossierView = ({
   clientProduit,
-  produitInfo,
   clientInfo,
   clientProduitId,
   content,
   getStatusBadge,
-  onBack,
-  onContactExpert,
-  onDownloadDocument,
-  onUploadSuccess
+  onBack
 }: SimplifiedProductDossierViewProps) => {
   const montant = clientProduit.montant_final ?? clientProduit.montantFinal;
   const duree = clientProduit.duree_finale ?? clientProduit.dureeFinale;
   const progressValue = clientProduit.progress ?? clientProduit.audit?.progress ?? 0;
-  const productConfig = getProductConfig(content.productKey);
-  const requiredDocuments = productConfig?.requiredDocuments.filter(doc => doc.required) ?? [];
-  const optionalDocuments = productConfig?.requiredDocuments.filter(doc => !doc.required) ?? [];
   const isFromApporteur = clientProduit.metadata?.source === 'apporteur';
   const isHighPriority = clientProduit.priorite === 1;
 
@@ -404,186 +432,44 @@ const SimplifiedProductDossierView = ({
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Documents requis</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {content.documentsIntro && (
-              <p className="text-sm text-gray-600">{content.documentsIntro}</p>
-            )}
-            {requiredDocuments.length > 0 && (
-              <div>
-                <h4 className="text-sm font-semibold text-gray-700 mb-2">Obligatoires</h4>
-                <ul className="space-y-3">
-                  {requiredDocuments.map(doc => (
-                    <li key={doc.type} className="flex items-start gap-3">
-                      <FileText className="w-4 h-4 text-blue-600 mt-1" />
-                      <div>
-                        <p className="text-sm font-medium text-gray-800">{doc.label}</p>
-                        <p className="text-xs text-gray-500">{doc.description}</p>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {optionalDocuments.length > 0 && (
-              <div>
-                <h4 className="text-sm font-semibold text-gray-700 mb-2">Optionnels</h4>
-                <ul className="space-y-3">
-                  {optionalDocuments.map(doc => (
-                    <li key={doc.type} className="flex items-start gap-3">
-                      <FileText className="w-4 h-4 text-gray-500 mt-1" />
-                      <div>
-                        <p className="text-sm font-medium text-gray-800">{doc.label}</p>
-                        <p className="text-xs text-gray-500">{doc.description}</p>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            <div className="pt-2">
-              <WorkflowDocumentUpload
-                clientProduitId={clientProduitId}
-                produitId={produitInfo?.id}
-                clientId={clientInfo?.id}
-                onUploadSuccess={onUploadSuccess}
-              />
-            </div>
-            <Separator />
-            <div>
-              <h4 className="text-sm font-semibold text-gray-700 mb-2">Documents déjà transmis</h4>
-              {clientProduit.documents && clientProduit.documents.length > 0 ? (
-                <div className="space-y-3">
-                  {clientProduit.documents.map(document => (
-                    <div
-                      key={document.id}
-                      className="flex items-center justify-between p-3 border rounded-lg"
-                    >
-                      <div>
-                        <p className="text-sm font-medium text-gray-800">{document.nom}</p>
-                        <p className="text-xs text-gray-500">
-                          {document.type} •{' '}
-                          {new Date(document.uploaded_at).toLocaleDateString('fr-FR')}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant={document.statut === 'valide' ? 'default' : 'secondary'}>
-                          {document.statut}
-                        </Badge>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => onDownloadDocument(document.id, document.nom)}
-                        >
-                          <Download className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-gray-500">Aucun document transmis pour le moment.</p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Informations client</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm text-gray-600">
-              <div>
-                <span className="font-medium text-gray-800">Entreprise :</span>{' '}
-                {clientInfo?.company_name || clientInfo?.name || '—'}
-              </div>
-              <div>
-                <span className="font-medium text-gray-800">Email :</span>{' '}
-                {clientInfo?.email || '—'}
-              </div>
-              <div>
-                <span className="font-medium text-gray-800">Téléphone :</span>{' '}
-                {clientInfo?.phone || '—'}
-              </div>
-              <div>
-                <span className="font-medium text-gray-800">Ville :</span>{' '}
-                {clientInfo?.city || '—'}
-              </div>
-              <div>
-                <span className="font-medium text-gray-800">SIREN :</span>{' '}
-                {clientInfo?.siren || '—'}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Expert accompagnateur</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {clientProduit.expert_assignment ? (
-                <div className="space-y-4">
-                  <div className="flex items-start gap-4">
-                    <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
-                      <User className="w-8 h-8 text-blue-600" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900">
-                        {clientProduit.expert_assignment.expert.name}
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        {clientProduit.expert_assignment.expert.company_name}
-                      </p>
-                      <div className="flex items-center gap-3 mt-2">
-                        <Badge variant="secondary">
-                          {clientProduit.expert_assignment.statut}
-                        </Badge>
-                        <div className="flex items-center gap-1 text-sm text-gray-600">
-                          <Star className="w-4 h-4 text-yellow-500" />
-                          {clientProduit.expert_assignment.expert.rating}/5
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="space-y-2 text-sm text-gray-600">
-                    <div className="flex items-center gap-2">
-                      <Mail className="w-4 h-4" />
-                      {clientProduit.expert_assignment.expert.email}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Phone className="w-4 h-4" />
-                      {clientProduit.expert_assignment.expert.phone}
-                    </div>
-                  </div>
-                  <Button onClick={onContactExpert} className="w-full">
-                    <MessageSquare className="w-4 h-4 mr-2" />
-                    Contacter l'expert
-                  </Button>
-                </div>
-              ) : (
-                <div className="text-center py-6 text-gray-600 space-y-3">
-                  <User className="w-12 h-12 text-gray-400 mx-auto" />
-                  <p>
-                    Aucun expert assigné pour le moment. Un {content.expertRole} sera affecté une
-                    fois les documents validés.
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
       <Card>
         <CardHeader>
-          <CardTitle>Suivi du dossier</CardTitle>
+          <div className="flex flex-col gap-1">
+            <CardTitle>{content.workflowTitle || 'Suivi du dossier'}</CardTitle>
+            {content.workflowDuration && (
+              <span className="text-sm text-gray-600">{content.workflowDuration}</span>
+            )}
+          </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-6">
+          <div className="grid gap-4 md:grid-cols-4">
+            <div className="col-span-2 md:col-span-1 rounded-xl border border-gray-200 bg-gray-50 p-4 text-center">
+              <p className="text-xs uppercase tracking-wide text-gray-500">
+                Progression globale
+              </p>
+              <p className="text-3xl font-bold text-gray-900">
+                {typeof progressValue === 'number' ? `${progressValue}%` : '—'}
+              </p>
+            </div>
+            {content.workflowHighlights?.map((highlight, index) => (
+              <div
+                key={index}
+                className="rounded-xl border border-gray-200 bg-white p-4"
+              >
+                <p className="text-sm font-semibold text-gray-800">{highlight.title}</p>
+                <p className="text-xs text-gray-600 leading-relaxed mt-1">
+                  {highlight.description}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {content.workflowNotice && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+              {content.workflowNotice}
+            </div>
+          )}
+
           <UniversalProductWorkflow
             clientProduitId={clientProduitId}
             productKey={content.productKey}
@@ -592,6 +478,7 @@ const SimplifiedProductDossierView = ({
           />
         </CardContent>
       </Card>
+
     </div>
   );
 };
@@ -816,18 +703,11 @@ export default function DossierClientProduit() {
     return (
       <SimplifiedProductDossierView
         clientProduit={clientProduit}
-        produitInfo={produitInfo}
         clientInfo={clientInfo}
         clientProduitId={clientProduit.id}
         content={simplifiedContent}
         getStatusBadge={(status) => getStatusBadge(status)}
         onBack={() => navigate('/dashboard/client')}
-        onContactExpert={handleContactExpert}
-        onDownloadDocument={handleDownloadDocument}
-        onUploadSuccess={() => {
-          toast.success('Document ajouté au dossier');
-          fetchDossierData();
-        }}
       />
     );
   }
