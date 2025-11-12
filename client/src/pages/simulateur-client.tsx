@@ -198,6 +198,38 @@ const sortQuestionsDeterministically = (questionsList: Question[]): Question[] =
   });
 };
 
+const QUESTION_ORDER_OVERRIDES: Record<string, number> = {
+  GENERAL_001: 1,
+  GENERAL_002: 2,
+  GENERAL_003: 3,
+  GENERAL_004: 4,
+  FONCIER_001: 5,
+  RECOUVR_001: 6,
+  ENERGIE_ELEC_FACTURES: 7,
+  ENERGIE_ELEC_MONTANT: 8,
+  ENERGIE_GAZ_FACTURES: 9,
+  ENERGIE_GAZ_MONTANT: 10,
+  TICPE_001: 11,
+  TICPE_003: 12,
+  TICPE_002: 13,
+  DFS_001: 14
+};
+
+const applyQuestionOrderOverrides = (questionsList: Question[]): Question[] => {
+  return questionsList.map((question) => {
+    const override = question.question_id
+      ? QUESTION_ORDER_OVERRIDES[question.question_id]
+      : undefined;
+    if (override !== undefined) {
+      return {
+        ...question,
+        question_order: override
+      };
+    }
+    return question;
+  });
+};
+
 interface SimulatorSessionResponse {
   success: boolean;
   simulation_id: string | null;
@@ -270,7 +302,10 @@ const SimulateurClient = () => {
       if (response.ok) {
         const questionsData = await response.json();
         const questionsList: Question[] = questionsData.questions || questionsData;
-        const sortedQuestions = sortQuestionsDeterministically(Array.isArray(questionsList) ? questionsList : []);
+        const normalizedQuestions = Array.isArray(questionsList)
+          ? applyQuestionOrderOverrides(questionsList)
+          : [];
+        const sortedQuestions = sortQuestionsDeterministically(normalizedQuestions);
         setQuestions(sortedQuestions);
       } else {
         console.error("❌ Erreur chargement questions simulateur");

@@ -46,6 +46,38 @@ interface Question {
   section?: string;
 }
 
+const QUESTION_ORDER_OVERRIDES: Record<string, number> = {
+  GENERAL_001: 1,
+  GENERAL_002: 2,
+  GENERAL_003: 3,
+  GENERAL_004: 4,
+  FONCIER_001: 5,
+  RECOUVR_001: 6,
+  ENERGIE_ELEC_FACTURES: 7,
+  ENERGIE_ELEC_MONTANT: 8,
+  ENERGIE_GAZ_FACTURES: 9,
+  ENERGIE_GAZ_MONTANT: 10,
+  TICPE_001: 11,
+  TICPE_003: 12,
+  TICPE_002: 13,
+  DFS_001: 14
+};
+
+const applyQuestionOrderOverrides = (questionList: Question[]): Question[] => {
+  return questionList.map((question) => {
+    const override = question.question_id
+      ? QUESTION_ORDER_OVERRIDES[question.question_id]
+      : undefined;
+    if (override !== undefined) {
+      return {
+        ...question,
+        question_order: override
+      };
+    }
+    return question;
+  });
+};
+
 const sortQuestionsDeterministically = (questionList: Question[]): Question[] => {
   return [...questionList].sort((a, b) => {
     const sectionA = (a.section || '').toLowerCase();
@@ -252,7 +284,10 @@ const SimulateurEligibilite = () => {
         
         // L'API retourne {success: true, questions: [...]}
         const questions = questionsData.questions || questionsData;
-        const sortedQuestions = sortQuestionsDeterministically(questions);
+        const normalizedQuestions = Array.isArray(questions)
+          ? applyQuestionOrderOverrides(questions)
+          : [];
+        const sortedQuestions = sortQuestionsDeterministically(normalizedQuestions);
         
         setQuestions(sortedQuestions);
         setTotalSteps(sortedQuestions.length);
