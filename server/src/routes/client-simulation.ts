@@ -3,6 +3,7 @@ import { supabaseClient } from '../config/supabase';
 import { optionalAuthMiddleware } from '../middleware/optional-auth';
 import { asyncHandler } from '../utils/asyncHandler';
 import { normalizeDossierStatus } from '../utils/dossierStatus';
+import { mergeEnergyOverrides } from '../utils/energy-products';
 
 const router = express.Router();
 
@@ -244,7 +245,7 @@ router.post('/update', optionalAuthMiddleware, asyncHandler(async (req: Request,
 
     const { data: questionnaireQuestions, error: questionnaireError } = await supabaseClient
       .from('QuestionnaireQuestion')
-      .select('id, validation_rules, conditions');
+      .select('id, question_id, validation_rules, conditions');
 
     if (questionnaireError) {
       console.error('❌ Erreur récupération questions questionnaire:', questionnaireError);
@@ -253,6 +254,10 @@ router.post('/update', optionalAuthMiddleware, asyncHandler(async (req: Request,
         message: 'Impossible de valider les réponses'
       });
     }
+
+    const questionIdLookup = new Map<string, string | null>(
+      (questionnaireQuestions || []).map((question: any) => [question.id, question.question_id])
+    );
 
     const missingRequiredQuestions = (questionnaireQuestions || []).filter((question: any) => {
       const rules = question.validation_rules || {};
@@ -336,6 +341,18 @@ router.post('/update', optionalAuthMiddleware, asyncHandler(async (req: Request,
         message: 'Erreur lors du calcul d\'éligibilité'
       });
     }
+
+    const answersByQuestionId: Record<string, any> = {};
+    Object.entries(mergedAnswers).forEach(([key, value]) => {
+      const code = questionIdLookup.get(key);
+      if (code) {
+        answersByQuestionId[code] = value;
+      } else {
+        answersByQuestionId[key] = value;
+      }
+    });
+
+    await mergeEnergyOverrides(supabaseClient, resultatsSQL, answersByQuestionId);
 
     console.log(`✅ Calcul SQL réussi: ${resultatsSQL.total_eligible} produits éligibles`);
 

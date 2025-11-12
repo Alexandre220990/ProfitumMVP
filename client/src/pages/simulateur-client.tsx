@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { Loader2, Edit3, CheckCircle2, Save, AlertCircle, ArrowLeft } from "lucide-react";
 import { config } from "@/config/env";
 import { useAuth } from "@/hooks/use-auth";
@@ -33,17 +34,142 @@ interface QuestionConditions {
 
 interface Question {
   id: string;
+  question_id?: string;
   question_order: number;
   question_text: string;
-  question_type: "choix_unique" | "choix_multiple" | "nombre" | "texte";
+  question_type: "choix_unique" | "choix_multiple" | "nombre" | "texte" | "composite_energy";
   description?: string;
   options: QuestionOptions;
   validation_rules: ValidationRules;
   importance: number;
   conditions: QuestionConditions;
   produits_cibles: string[];
-  phase: number;
+  phase?: number;
+  placeholder?: string | null;
+  section?: string | null;
 }
+
+type EnergyVariantKey = "electricite" | "gaz";
+
+interface EnergyVariantAnswer {
+  hasInvoices: boolean;
+  monthlyAmount: number | null;
+}
+
+interface EnergyCompositeAnswer {
+  electricite: EnergyVariantAnswer;
+  gaz: EnergyVariantAnswer;
+}
+
+const ENERGY_VARIANTS: Array<{
+  key: EnergyVariantKey;
+  title: string;
+  helper: string;
+  placeholder: string;
+}> = [
+  {
+    key: "electricite",
+    title: "Factures d'électricité",
+    helper: "Montant moyen payé chaque mois pour l'électricité.",
+    placeholder: "Ex: 1200"
+  },
+  {
+    key: "gaz",
+    title: "Factures de gaz",
+    helper: "Montant moyen payé chaque mois pour le gaz naturel.",
+    placeholder: "Ex: 800"
+  }
+];
+
+const DEFAULT_ENERGY_ANSWER: EnergyCompositeAnswer = {
+  electricite: { hasInvoices: false, monthlyAmount: null },
+  gaz: { hasInvoices: false, monthlyAmount: null }
+};
+
+const parseNumericValue = (input: any): number | null => {
+  if (input === undefined || input === null || input === "") {
+    return null;
+  }
+
+  if (typeof input === "number" && Number.isFinite(input)) {
+    return input;
+  }
+
+  if (typeof input === "string") {
+    const sanitized = input.replace(/€/g, "").replace(/\s/g, "").replace(",", ".");
+    const parsed = Number.parseFloat(sanitized);
+    return Number.isNaN(parsed) ? null : parsed;
+  }
+
+  return null;
+};
+
+const toBoolean = (input: any): boolean => {
+  if (typeof input === "boolean") {
+    return input;
+  }
+  if (typeof input === "number") {
+    return input > 0;
+  }
+  if (typeof input === "string") {
+    const normalized = input.trim().toLowerCase();
+    return ["oui", "true", "1", "yes", "y"].includes(normalized);
+  }
+  return false;
+};
+
+const normalizeEnergyCompositeAnswer = (raw: any): EnergyCompositeAnswer => {
+  if (!raw || typeof raw !== "object") {
+    return {
+      electricite: { ...DEFAULT_ENERGY_ANSWER.electricite },
+      gaz: { ...DEFAULT_ENERGY_ANSWER.gaz }
+    };
+  }
+
+  const result: EnergyCompositeAnswer = {
+    electricite: { ...DEFAULT_ENERGY_ANSWER.electricite },
+    gaz: { ...DEFAULT_ENERGY_ANSWER.gaz }
+  };
+
+  (["electricite", "gaz"] as EnergyVariantKey[]).forEach((variant) => {
+    const segment =
+      raw[variant] ||
+      raw[variant.toUpperCase()] || {
+        hasInvoices:
+          raw[`${variant}HasInvoices`] ??
+          raw[`${variant}_hasInvoices`] ??
+          raw[`${variant}Active`] ??
+          raw[`${variant}_active`],
+        monthlyAmount:
+          raw[`${variant}Monthly`] ??
+          raw[`${variant}_monthly`] ??
+          raw[`${variant}Montant`] ??
+          raw[`${variant}_montant`] ??
+          raw[`${variant}Amount`] ??
+          raw[`${variant}_amount`]
+      };
+
+    const hasInvoices =
+      toBoolean(segment?.hasInvoices) ||
+      toBoolean(segment?.has_factures) ||
+      toBoolean(segment?.hasContracts) ||
+      toBoolean(segment?.active) ||
+      toBoolean(segment?.oui);
+
+    const monthlyAmount =
+      parseNumericValue(segment?.monthlyAmount) ??
+      parseNumericValue(segment?.montant) ??
+      parseNumericValue(segment?.amount) ??
+      parseNumericValue(segment?.value);
+
+    result[variant] = {
+      hasInvoices: hasInvoices || (!!monthlyAmount && monthlyAmount > 0),
+      monthlyAmount: monthlyAmount && monthlyAmount > 0 ? monthlyAmount : null
+    };
+  });
+
+  return result;
+};
 
 interface SimulatorSessionResponse {
   success: boolean;
@@ -411,6 +537,48 @@ const SimulateurClient = () => {
 
   const formatAnswer = useCallback(
     (question: Question, value: any) => {
+      const questionCode = question.question_id || question.id;
+
+      if (questionCode === "GENERAL_002") {
+        const numericValue =
+          typeof value === "number" ? value : parseNumericValue(value);
+        if (numericValue === null) {
+          return "Non renseigné";
+        }
+        return `${numericValue.toLocaleString("fr-FR")} €`;
+      }
+
+      if (questionCode === "GENERAL_003") {
+        const numericValue =
+          typeof value === "number" ? value : parseNumericValue(value);
+        if (numericValue === null) {
+          return "Non renseigné";
+        }
+        const suffix = numericValue > 1 ? "employés" : "employé";
+        return `${numericValue} ${suffix}`;
+      }
+
+      if (questionCode === "CALCUL_ENERGIE_FACTURES") {
+        const energyValue = normalizeEnergyCompositeAnswer(value);
+        const hasAnyEnergy =
+          energyValue.electricite.hasInvoices || energyValue.gaz.hasInvoices;
+
+        if (!hasAnyEnergy) {
+          return "Non renseigné";
+        }
+
+        const parts = ENERGY_VARIANTS.map(({ key, title }) => {
+          const variantValue = energyValue[key];
+          if (!variantValue.hasInvoices || !variantValue.monthlyAmount) {
+            return `${title}: non concerné`;
+          }
+          return `${title}: ${variantValue.monthlyAmount.toLocaleString(
+            "fr-FR"
+          )} €/mois`;
+        });
+        return parts.join(" • ");
+      }
+
       if (value === undefined || value === null) {
         return "Non renseigné";
       }
@@ -482,6 +650,182 @@ const SimulateurClient = () => {
 
       if (!shouldDisplayQuestion(question, draftAnswers)) {
         return null;
+      }
+
+      const questionCode = question.question_id || question.id;
+
+      if (questionCode === "GENERAL_002") {
+        const numericValue =
+          typeof value === "number" ? value : parseNumericValue(value);
+        const displayValue = numericValue ?? "";
+
+        return (
+          <div className="space-y-1">
+            <Input
+              type="number"
+              min={question.options?.min ?? 0}
+              step={question.options?.step ?? 1000}
+              value={displayValue}
+              onChange={(event) => {
+                const nextValue = event.target.value;
+                if (nextValue === "") {
+                  handleAnswerChange(question.id, null);
+                  return;
+                }
+                const parsed = parseNumericValue(nextValue);
+                handleAnswerChange(question.id, parsed ?? null);
+              }}
+              placeholder={
+                question.placeholder ||
+                question.options?.placeholder ||
+                "Saisissez votre chiffre d'affaires en €"
+              }
+              className={
+                isMissing ? "border-red-400 focus-visible:ring-red-400" : ""
+              }
+            />
+            <p className="text-xs text-slate-500">
+              Indiquez le montant exact de votre chiffre d'affaires annuel.
+            </p>
+          </div>
+        );
+      }
+
+      if (questionCode === "GENERAL_003") {
+        const numericValue =
+          typeof value === "number" ? value : parseNumericValue(value);
+        const displayValue = numericValue ?? "";
+
+        return (
+          <div className="space-y-1">
+            <Input
+              type="number"
+              min={question.options?.min ?? 0}
+              step={question.options?.step ?? 1}
+              value={displayValue}
+              onChange={(event) => {
+                const nextValue = event.target.value;
+                if (nextValue === "") {
+                  handleAnswerChange(question.id, null);
+                  return;
+                }
+                const parsed = parseNumericValue(nextValue);
+                handleAnswerChange(question.id, parsed ?? null);
+              }}
+              placeholder={
+                question.placeholder ||
+                question.options?.placeholder ||
+                "Nombre exact d'employés"
+              }
+              className={
+                isMissing ? "border-red-400 focus-visible:ring-red-400" : ""
+              }
+            />
+            <p className="text-xs text-slate-500">
+              Comptez tous les salariés équivalents temps plein.
+            </p>
+          </div>
+        );
+      }
+
+      if (questionCode === "CALCUL_ENERGIE_FACTURES") {
+        const energyValue = normalizeEnergyCompositeAnswer(value);
+
+        return (
+          <div
+            className={`space-y-4 rounded-lg border px-4 py-4 ${
+              isMissing ? "border-red-300" : "border-slate-200"
+            }`}
+          >
+            <div>
+              <p className="text-sm font-medium text-slate-800">
+                Factures d'énergie
+              </p>
+              <p className="text-xs text-slate-500">
+                Sélectionnez les énergies concernées et indiquez le montant
+                mensuel moyen de vos factures.
+              </p>
+            </div>
+            {ENERGY_VARIANTS.map((variant) => {
+              const variantValue = energyValue[variant.key];
+              const showVariantError =
+                isMissing &&
+                variantValue.hasInvoices &&
+                !variantValue.monthlyAmount;
+
+              return (
+                <div
+                  key={variant.key}
+                  className="space-y-3 rounded-md border border-slate-200 p-3"
+                >
+                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <p className="font-medium text-slate-800">
+                        {variant.title}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {variant.helper}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-slate-500">Facture ?</span>
+                      <Switch
+                        checked={variantValue.hasInvoices}
+                        onCheckedChange={(checked) => {
+                          const nextValue = {
+                            ...energyValue,
+                            [variant.key]: {
+                              hasInvoices: checked,
+                              monthlyAmount: checked
+                                ? variantValue.monthlyAmount
+                                : null
+                            }
+                          } as EnergyCompositeAnswer;
+                          handleAnswerChange(question.id, nextValue);
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <Input
+                    type="number"
+                    min={0}
+                    step={question.options?.step ?? 50}
+                    value={variantValue.monthlyAmount ?? ""}
+                    disabled={!variantValue.hasInvoices}
+                    placeholder={variant.placeholder}
+                    className={`${variantValue.hasInvoices ? "" : "cursor-not-allowed opacity-60"} ${
+                      showVariantError
+                        ? "border-red-400 focus-visible:ring-red-400"
+                        : ""
+                    }`}
+                    onChange={(event) => {
+                      const parsed = parseNumericValue(event.target.value);
+                      const nextValue = {
+                        ...energyValue,
+                        [variant.key]: {
+                          hasInvoices:
+                            variantValue.hasInvoices ||
+                            (!!parsed && parsed > 0),
+                          monthlyAmount: parsed
+                        }
+                      } as EnergyCompositeAnswer;
+                      handleAnswerChange(question.id, nextValue);
+                    }}
+                  />
+                  <p className="text-xs text-slate-500">
+                    {variantValue.hasInvoices
+                      ? variantValue.monthlyAmount
+                        ? `Montant enregistré : ${variantValue.monthlyAmount.toLocaleString(
+                            "fr-FR"
+                          )} €/mois`
+                        : "Renseignez votre dépense mensuelle moyenne."
+                      : "Aucune facture pour cette énergie."}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        );
       }
 
       switch (question.question_type) {

@@ -2,6 +2,7 @@ import express, { Request, Response } from 'express';
 import { supabaseAdmin as supabaseClient } from '../config/supabase';
 import { v4 as uuidv4 } from 'uuid';
 import { normalizeDossierStatus } from '../utils/dossierStatus';
+import { mergeEnergyOverrides } from '../utils/energy-products';
 // Import traiterSimulation supprimé - utilise maintenant les fonctions SQL
 
 const router = express.Router();
@@ -61,6 +62,99 @@ let questionsCache: any = null;
 let questionsCacheTimestamp: number = 0;
 const CACHE_DURATION = 60 * 60 * 1000; // 1 heure en millisecondes
 
+type QuestionnaireQuestionRecord = {
+  id: string;
+  question_id?: string | null;
+  question_text: string;
+  question_type: string;
+  question_order?: number | null;
+  section?: string | null;
+  options?: any;
+  validation_rules?: any;
+  conditions?: any;
+  importance?: number | null;
+  produits_cibles?: string[];
+  placeholder?: string | null;
+  description?: string | null;
+  phase?: number | null;
+};
+
+function transformQuestionnaireQuestions(
+  rawQuestions: QuestionnaireQuestionRecord[]
+): QuestionnaireQuestionRecord[] {
+  if (!Array.isArray(rawQuestions)) {
+    return rawQuestions;
+  }
+
+  const transformed: QuestionnaireQuestionRecord[] = [];
+
+  rawQuestions.forEach((question) => {
+    const questionId = question.question_id || question.id;
+    if (!questionId) {
+      transformed.push(question);
+      return;
+    }
+
+    if (questionId === 'GENERAL_002') {
+      const baseOptions = { ...(question.options || {}) };
+      delete baseOptions.choix;
+
+      transformed.push({
+        ...question,
+        question_type: 'nombre',
+        question_text: "Quel est votre chiffre d'affaires annuel (en €) ?",
+        options: {
+          ...baseOptions,
+          min: 0,
+          max: typeof baseOptions.max === 'number' ? baseOptions.max : 100_000_000,
+          unite: '€',
+          step: baseOptions.step ?? 1000,
+          placeholder: baseOptions.placeholder ?? 'Ex: 250000'
+        },
+        placeholder: 'Ex: 250000'
+      });
+      return;
+    }
+
+    if (questionId === 'GENERAL_003') {
+      const baseOptions = { ...(question.options || {}) };
+      delete baseOptions.choix;
+
+      transformed.push({
+        ...question,
+        question_type: 'nombre',
+        question_text: "Combien d'employés compte votre entreprise ?",
+        options: {
+          ...baseOptions,
+          min: 0,
+          max: typeof baseOptions.max === 'number' ? baseOptions.max : 10_000,
+          unite: 'employés',
+          step: baseOptions.step ?? 1,
+          placeholder: baseOptions.placeholder ?? 'Ex: 25'
+        },
+        placeholder: 'Ex: 25'
+      });
+      return;
+    }
+
+    if (questionId === 'GENERAL_005') {
+      // Ancienne question "Avez-vous des contrats d'énergie ?" retirée
+      return;
+    }
+
+    transformed.push(question);
+  });
+
+  return transformed.sort((a, b) => {
+    const orderA = a.question_order ?? 0;
+    const orderB = b.question_order ?? 0;
+    if (orderA === orderB) {
+      return 0;
+    }
+    return orderA < orderB ? -1 : 1;
+  });
+}
+
 /**
  * Récupère les questions du questionnaire avec cache
  */
@@ -85,26 +179,32 @@ async function getQuestionsWithCache() {
   }
   
   // Mapper les colonnes de la BDD vers les noms attendus par le frontend
-  const mappedQuestions = data?.map(q => ({
-    id: q.id,
-    question_text: q.question_text,
-    question_type: q.question_type,
-    question_order: q.question_order,
-    section: q.section || 'Général',
-    options: q.options || {},
-    description: q.description || null,
-    validation_rules: q.validation_rules || {},
-    importance: q.importance || 1,
-    conditions: q.conditions || {},
-    produits_cibles: q.produits_cibles || []
-  })) || [];
+  const mappedQuestions =
+    data?.map((q: any) => ({
+      id: q.id,
+      question_id: q.question_id,
+      question_text: q.question_text,
+      question_type: q.question_type,
+      question_order: q.question_order,
+      section: q.section || 'Général',
+      options: q.options || {},
+      description: q.description || null,
+      validation_rules: q.validation_rules || {},
+      importance: q.importance || 1,
+      conditions: q.conditions || {},
+      produits_cibles: q.produits_cibles || [],
+      placeholder: q.placeholder || q.options?.placeholder || null,
+      phase: q.phase ?? null
+    })) || [];
+
+  const normalizedQuestions = transformQuestionnaireQuestions(mappedQuestions);
   
   // Mettre à jour le cache
-  questionsCache = mappedQuestions;
+  questionsCache = normalizedQuestions;
   questionsCacheTimestamp = now;
   
   console.log(`✅ ${mappedQuestions.length} questions mises en cache`);
-  return mappedQuestions;
+  return normalizedQuestions;
 }
 
 /**
@@ -822,6 +922,8 @@ router.post('/calculate-eligibility', async (req, res) => {
       const questionId = uuidToQuestionId[uuid];
       if (questionId) {
         convertedAnswers[questionId] = value;
+      } else {
+        convertedAnswers[uuid] = value;
       }
     });
 
@@ -854,6 +956,8 @@ router.post('/calculate-eligibility', async (req, res) => {
         details: calculError.message
       });
     }
+
+    await mergeEnergyOverrides(supabaseClient, resultatsSQL, convertedAnswers);
 
     console.log(`✅ Calcul SQL réussi: ${resultatsSQL.total_eligible} produits éligibles`);
     console.log(`📊 Produits retournés par SQL:`, JSON.stringify(resultatsSQL.produits, null, 2));
