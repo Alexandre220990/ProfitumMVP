@@ -10,6 +10,8 @@ import { Progress } from '@/components/ui/progress';
 import InfosClientEnrichies from '@/components/dossier/InfosClientEnrichies';
 import ExpertDocumentRequestModal from '@/components/expert/ExpertDocumentRequestModal';
 import ExpertDossierActions from '@/components/expert/ExpertDossierActions';
+import type { ClientProduitStatut } from '@/types/statuts';
+import { STATUT_COLORS, STATUT_LABELS, getProgressFromStatut } from '@/types/statuts';
 import {
   Loader2,
   ArrowLeft,
@@ -49,6 +51,7 @@ interface ClientProduitEligible {
     last_contact?: string;
     blocked?: boolean;
     blocking_reason?: string;
+    client_fee_percentage?: number;
   };
   montantFinal?: number;
   tauxFinal?: number;
@@ -93,6 +96,19 @@ interface Document {
   uploaded_at: string;
   status: 'pending' | 'approved' | 'rejected';
 }
+
+const isKnownStatut = (statut?: string): statut is ClientProduitStatut =>
+  Boolean(statut && (STATUT_LABELS as Record<string, string>)[statut]);
+
+const getStatutLabel = (statut?: string) => {
+  if (!statut) return 'Statut inconnu';
+  return isKnownStatut(statut) ? STATUT_LABELS[statut] : statut;
+};
+
+const getStatutBadgeClass = (statut?: string) => {
+  if (!statut) return 'bg-gray-100 text-gray-700 border-gray-200';
+  return isKnownStatut(statut) ? STATUT_COLORS[statut] : 'bg-gray-100 text-gray-700 border-gray-200';
+};
 
 // ============================================================================
 // COMPOSANT PRINCIPAL
@@ -294,47 +310,59 @@ export default function ExpertDossierSynthese() {
   }
 
   const missingDocsCount = getMissingDocumentsCount();
-  const progress = getProgress();
   const documentsComplets = missingDocsCount === 0 && cpe.documents && cpe.documents.length > 0;
+  const documentsProgress = getProgress();
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(amount || 0);
   };
 
+  const normalizePercentage = (value?: number | null) => {
+    if (value === undefined || value === null || Number.isNaN(Number(value))) return null;
+    const numeric = Number(value);
+    if (numeric === 0) return 0;
+    return numeric > 1 ? numeric / 100 : numeric;
+  };
+
+  const clientFeeRaw =
+    (cpe as any).client_fee_percentage ??
+    (cpe.metadata?.client_fee_percentage as number | undefined) ??
+    null;
+  const hasClientFee = clientFeeRaw !== null;
+  const clientFeeRatio = normalizePercentage(clientFeeRaw) ?? 0;
+  const clientFeePercentDisplay = clientFeeRatio * 100;
+  const clientFeeAmount = (cpe.montantFinal || 0) * clientFeeRatio;
+
+  const progressValue =
+    typeof (cpe as any).progress === 'number'
+      ? Math.round((cpe as any).progress)
+      : getProgressFromStatut((cpe.statut || '') as ClientProduitStatut);
+
+  const statutLabel = getStatutLabel(cpe.statut);
+  const statutBadgeClass = getStatutBadgeClass(cpe.statut);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 pt-16">
         
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
-            <Button variant="outline" onClick={() => navigate('/dashboard/expert')}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Retour
-            </Button>
-            <div>
-              <div className="flex items-center gap-3 mb-1">
-                <h1 className="text-3xl font-bold text-gray-900">
-                  {cpe.ProduitEligible?.nom || 'Produit'}
-                </h1>
-                <Badge className="bg-blue-100 text-blue-800 text-sm">
-                  {cpe.ProduitEligible?.type_produit || cpe.ProduitEligible?.categorie || 'Dossier'}
-                </Badge>
-              </div>
-              <p className="text-gray-600">
-                Client: {cpe.Client?.company_name || cpe.Client?.name || 'Client inconnu'} | 
-                Dossier #{cpe.id?.slice(0, 8) || 'N/A'}
-              </p>
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-3xl font-bold text-gray-900">
+                {cpe.ProduitEligible?.nom || 'Produit'}
+              </h1>
+              <Badge className="bg-blue-100 text-blue-800 text-sm">
+                {cpe.ProduitEligible?.type_produit || cpe.ProduitEligible?.categorie || 'Dossier'}
+              </Badge>
             </div>
+            <p className="text-gray-600">
+              Client: {cpe.Client?.company_name || cpe.Client?.name || 'Client inconnu'} · Dossier #{cpe.id?.slice(0, 8) || 'N/A'}
+            </p>
           </div>
-          <div className="flex items-center gap-2">
-            <Badge className={
-              cpe.statut === 'termine' ? 'bg-green-500' :
-              cpe.statut === 'en_cours' ? 'bg-blue-500' :
-              cpe.statut === 'eligible' ? 'bg-yellow-500' :
-              'bg-gray-500'
-            }>
-              {cpe.statut}
+          <div className="flex items-center gap-3">
+            <Badge className={`border ${statutBadgeClass} capitalize`}>
+              {statutLabel}
             </Badge>
             {cpe.Client?.id && (
               <Button onClick={() => navigate(`/expert/messagerie?client=${cpe.Client.id}`)}>
@@ -346,7 +374,7 @@ export default function ExpertDossierSynthese() {
         </div>
 
         {/* KPIs Rapides */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-1">
@@ -362,18 +390,20 @@ export default function ExpertDossierSynthese() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-blue-200">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-gray-600">
-                📊 Taux
+                Commissions
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-bold text-blue-600">
-                {cpe.tauxFinal?.toFixed(2) || 0}%
+                {formatCurrency(clientFeeAmount)}
               </p>
               <p className="text-xs text-gray-500">
-                {(cpe.tauxFinal || 0) >= 3 ? 'Favorable' : 'Standard'}
+                {hasClientFee
+                  ? `${clientFeePercentDisplay.toFixed(1)}% du montant validé`
+                  : 'Taux non défini'}
               </p>
             </CardContent>
           </Card>
@@ -385,49 +415,18 @@ export default function ExpertDossierSynthese() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold text-purple-600">{progress}%</p>
-              <Progress value={progress} className="h-2 mt-2" />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                ⏱️ Statut
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Badge className={
-                cpe.statut === 'termine' ? 'bg-green-100 text-green-800' :
-                cpe.statut === 'en_cours' ? 'bg-blue-100 text-blue-800' :
-                'bg-yellow-100 text-yellow-800'
-              }>
-                {cpe.statut}
-              </Badge>
-              <p className="text-xs text-gray-500 mt-2">
-                {cpe.Client?.is_active ? '🟢 Client actif' : '⚪ Inactif'}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                🏆 Score
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold text-orange-600">
-                {cpe.Client?.qualification_score || 0}/100
-              </p>
-              <p className={`text-xs font-medium ${
-                (cpe.Client?.qualification_score || 0) >= 80 ? 'text-green-600' :
-                (cpe.Client?.qualification_score || 0) >= 60 ? 'text-blue-600' :
-                'text-yellow-600'
-              }`}>
-                {(cpe.Client?.qualification_score || 0) >= 80 ? 'Excellent' :
-                 (cpe.Client?.qualification_score || 0) >= 60 ? 'Bon' : 'Moyen'}
-              </p>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-3xl font-bold text-purple-600">{progressValue}%</p>
+                <Badge className={`border ${statutBadgeClass} capitalize`}>
+                  {statutLabel}
+                </Badge>
+              </div>
+              <Progress value={progressValue} className="h-2 mt-3" />
+              {cpe.metadata?.workflow_stage && (
+                <p className="mt-3 text-xs uppercase tracking-wide text-gray-500">
+                  Étape : {cpe.metadata.workflow_stage}
+                </p>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -623,9 +622,9 @@ export default function ExpertDossierSynthese() {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium">Progression</span>
-                  <span className="text-sm font-medium">{progress}%</span>
+                  <span className="text-sm font-medium">{documentsProgress}%</span>
                 </div>
-                <Progress value={progress} className="h-2" />
+                <Progress value={documentsProgress} className="h-2" />
               </div>
 
               {/* Liste des documents */}

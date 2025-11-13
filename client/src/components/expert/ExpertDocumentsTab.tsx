@@ -503,18 +503,33 @@ export default function ExpertDocumentsTab({
                 };
               })();
 
+              const validationDate = doc.validated_at ? new Date(doc.validated_at) : null;
+              const statusTimestampParts: string[] = [];
+
+              if (doc.validation_status === 'validated' && validationDate) {
+                const formattedDate = new Intl.DateTimeFormat('fr-FR', {
+                  day: '2-digit',
+                  month: 'short',
+                  year: 'numeric'
+                }).format(validationDate);
+
+                statusTimestampParts.push(formattedDate);
+                statusTimestampParts.push(
+                  formatDistanceToNow(validationDate, { addSuffix: true, locale: fr })
+                );
+              } else {
+                statusTimestampParts.push(
+                  formatDistanceToNow(new Date(doc.created_at), { addSuffix: true, locale: fr })
+                );
+              }
+
+              const displayTitle = referenceName || doc.document_type || 'Document';
+
               const infoItems: JSX.Element[] = [];
 
               if (doc.file_size) {
                 infoItems.push(<span>{formatFileSize(doc.file_size)}</span>);
               }
-
-              infoItems.push(
-                <span className="flex items-center gap-1">
-                  <Calendar className="h-3 w-3" />
-                  {formatDistanceToNow(new Date(doc.created_at), { addSuffix: true, locale: fr })}
-                </span>
-              );
 
               if (doc.workflow_step) {
                 infoItems.push(
@@ -560,14 +575,14 @@ export default function ExpertDocumentsTab({
                             {referenceName}
                           </p>
                         )}
-                        <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-2">
-                          <p className="truncate text-sm font-semibold text-gray-900">
-                            {doc.filename}
-                          </p>
-                          <span className="text-xs text-gray-500">
-                            Nom donné par le client lors de l'upload
+                        <p className="truncate text-sm font-semibold text-gray-900">
+                          {displayTitle}
+                        </p>
+                        {doc.document_type && referenceName !== doc.document_type && (
+                          <span className="text-xs uppercase tracking-wide text-gray-500">
+                            {doc.document_type}
                           </span>
-                        </div>
+                        )}
 
                         {infoItems.length > 0 && (
                           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-600">
@@ -592,7 +607,15 @@ export default function ExpertDocumentsTab({
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2 sm:flex-col sm:items-end sm:justify-start">
-                      <span className={statusInfo.className}>{statusInfo.label}</span>
+                      <div className="flex items-center gap-2">
+                        <span className={statusInfo.className}>{statusInfo.label}</span>
+                        {statusTimestampParts.length > 0 && (
+                          <span className="flex items-center gap-1 text-xs text-gray-500">
+                            <Calendar className="h-3 w-3" />
+                            {statusTimestampParts.join(' • ')}
+                          </span>
+                        )}
+                      </div>
 
                       <div className="flex items-center gap-2">
                         <Button
@@ -621,18 +644,6 @@ export default function ExpertDocumentsTab({
 
                   {/* Zone de validation */}
                   <div className="mt-2 space-y-2 border-l border-dashed border-gray-200 pl-8 sm:pl-10">
-                    {doc.validation_status === 'validated' && (
-                      <div className="flex flex-wrap items-center gap-2 text-xs text-green-700">
-                        <CheckCircle className="h-4 w-4" />
-                        <span>Document validé</span>
-                        {doc.validated_at && (
-                          <span className="text-[11px] text-green-600">
-                            {formatDistanceToNow(new Date(doc.validated_at), { addSuffix: true, locale: fr })}
-                          </span>
-                        )}
-                      </div>
-                    )}
-
                     {doc.validation_status === 'rejected' && (
                       <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2">
                         <div className="flex items-center gap-2 text-sm font-medium text-red-700">
