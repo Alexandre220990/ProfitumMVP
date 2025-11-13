@@ -212,15 +212,37 @@ export function UniversalNotificationCenter({
   const markAsUnread = async (notificationId: string) => {
     try {
       let endpoint = `/api/notifications/${notificationId}/unread`;
-      if (userRole === 'expert') endpoint = `/api/expert/notifications/${notificationId}/unread`;
-      if (userRole === 'admin') endpoint = `/api/admin/notifications/${notificationId}/unread`;
+      let method: 'PUT' | 'POST' | 'PATCH' = 'PUT';
+
+      if (userRole === 'expert') {
+        endpoint = `/api/expert/notifications/${notificationId}/unread`;
+        method = 'POST';
+      } else if (userRole === 'admin') {
+        console.warn('Endpoint unread indisponible pour les admins');
+        return;
+      }
       
-      const token = localStorage.getItem('token');
-      await fetch(endpoint, { 
-        method: 'PUT', 
-        headers: { 'Authorization': `Bearer ${token}` } 
+      const token = localStorage.getItem('token') || '';
+      const headers: Record<string, string> = {};
+
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
+      if (method === 'PUT' || method === 'POST' || method === 'PATCH') {
+        headers['Content-Type'] = 'application/json';
+      }
+
+      const response = await fetch(endpoint, { 
+        method,
+        headers
       });
-      reload(); // Recharger les notifications
+
+      if (!response.ok) {
+        throw new Error(`Erreur ${response.status}`);
+      }
+
+      await reload(); // Recharger les notifications
     } catch (error) { 
       console.error('Erreur marquage non lu:', error); 
     }
@@ -295,18 +317,36 @@ export function UniversalNotificationCenter({
   const archiveNotification = async (notificationId: string) => {
     try {
       let endpoint = `/api/notifications/${notificationId}/archive`;
-      if (userRole === 'expert') endpoint = `/api/expert/notifications/${notificationId}/archive`;
-      if (userRole === 'admin') endpoint = `/api/admin/notifications/${notificationId}/archive`;
+      let method: 'PUT' | 'POST' | 'PATCH' = 'PUT';
+
+      if (userRole === 'expert') {
+        endpoint = `/api/expert/notifications/${notificationId}/archive`;
+        method = 'POST';
+      } else if (userRole === 'admin') {
+        method = 'DELETE';
+      }
       
-      const token = localStorage.getItem('token');
-      await fetch(endpoint, { 
-        method: 'PUT', 
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        } 
+      const token = localStorage.getItem('token') || '';
+      const headers: Record<string, string> = {};
+
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
+      if (method !== 'DELETE') {
+        headers['Content-Type'] = 'application/json';
+      }
+
+      const response = await fetch(endpoint, { 
+        method,
+        headers
       });
-      reload(); // Recharger les notifications
+
+      if (!response.ok) {
+        throw new Error(`Erreur ${response.status}`);
+      }
+
+      await reload(); // Recharger les notifications
     } catch (error) { 
       console.error('Erreur archivage:', error); 
     }
@@ -315,17 +355,37 @@ export function UniversalNotificationCenter({
   const unarchiveNotification = async (notificationId: string) => {
     try {
       let endpoint = `/api/notifications/${notificationId}/unarchive`;
-      if (userRole === 'expert') endpoint = `/api/expert/notifications/${notificationId}/unarchive`;
-      if (userRole === 'admin') endpoint = `/api/admin/notifications/${notificationId}/unarchive`;
+      let method: 'PUT' | 'POST' | 'PATCH' = 'PUT';
+
+      if (userRole === 'expert') {
+        endpoint = `/api/expert/notifications/${notificationId}/unarchive`;
+        method = 'POST';
+      } else if (userRole === 'admin') {
+        console.warn('Endpoint unarchive indisponible pour les admins');
+        return;
+      }
       
-      const token = localStorage.getItem('token');
-      await fetch(endpoint, { 
-        method: 'PUT', 
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        } 
+      const token = localStorage.getItem('token') || '';
+      const headers: Record<string, string> = {};
+
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
+      if (method === 'PUT' || method === 'POST' || method === 'PATCH') {
+        headers['Content-Type'] = 'application/json';
+      }
+
+      const response = await fetch(endpoint, { 
+        method,
+        headers
       });
+
+      if (!response.ok) {
+        throw new Error(`Erreur ${response.status}`);
+      }
+
+      await reload();
     } catch (error) { 
       console.error('Erreur restauration:', error); 
     }

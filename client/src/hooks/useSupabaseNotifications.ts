@@ -102,21 +102,35 @@ export function useSupabaseNotifications(): UseSupabaseNotificationsReturn {
       }
 
       if (user?.type === 'expert') {
-        if (action === 'read') {
-          return {
-            url: `${API_BASE}/api/expert/notifications/${notificationId}/read`,
-            options: {
-              method: 'POST',
-              headers: {
-                ...defaultHeaders,
-                'Content-Type': 'application/json',
-              },
-            } as RequestInit,
-          };
+        const endpoint = (() => {
+          switch (action) {
+            case 'read':
+              return `/api/expert/notifications/${notificationId}/read`;
+            case 'unread':
+              return `/api/expert/notifications/${notificationId}/unread`;
+            case 'archive':
+              return `/api/expert/notifications/${notificationId}/archive`;
+            case 'unarchive':
+              return `/api/expert/notifications/${notificationId}/unarchive`;
+            default:
+              return null;
+          }
+        })();
+
+        if (!endpoint) {
+          return null;
         }
 
-        // Pas d'archive/unarchive côté expert
-        return null;
+        return {
+          url: `${API_BASE}${endpoint}`,
+          options: {
+            method: 'POST',
+            headers: {
+              ...defaultHeaders,
+              'Content-Type': 'application/json',
+            },
+          } as RequestInit,
+        };
       }
 
       const actionPath = (() => {
@@ -132,10 +146,14 @@ export function useSupabaseNotifications(): UseSupabaseNotificationsReturn {
         }
       })();
 
-      const method =
-        action === 'read' || action === 'archive' || action === 'unarchive'
-          ? 'PUT'
-          : 'PUT';
+      const methodMap: Record<string, string> = {
+        read: 'PUT',
+        archive: 'PUT',
+        unarchive: 'PUT',
+        unread: 'PUT',
+      };
+
+      const method = methodMap[action] || 'PUT';
 
       return {
         url: `${API_BASE}${actionPath}`,

@@ -282,7 +282,7 @@ class ExpertService {
 
   async markNotificationAsRead(notificationId: string): Promise<boolean> {
     try {
-      const response = await put(`/api/expert/notifications/${notificationId}/read`);
+      const response = await post(`/api/expert/notifications/${notificationId}/read`);
       return response.success;
     } catch (error) {
       console.error('Erreur marquage notification comme lue:', error);

@@ -58,9 +58,28 @@ const UnifiedNotificationCenter: React.FC = () => {
   const markAsRead = async (notificationId: string) => {
     try {
       let endpoint = `/api/notifications/${notificationId}/read`;
-      if (userRole === 'expert') endpoint = `/api/expert/notifications/${notificationId}/read`;
-      if (userRole === 'admin') endpoint = `/api/admin/notifications/${notificationId}/read`;
-      const response = await fetch(endpoint, { method: 'PUT', headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } });
+      let method: 'PUT' | 'POST' | 'PATCH' = 'PUT';
+
+      if (userRole === 'expert') {
+        endpoint = `/api/expert/notifications/${notificationId}/read`;
+        method = 'POST';
+      } else if (userRole === 'admin') {
+        endpoint = `/api/admin/notifications/${notificationId}/read`;
+        method = 'PATCH';
+      }
+
+      const token = localStorage.getItem('token') || '';
+      const headers: Record<string, string> = {};
+
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
+      if (method === 'PUT' || method === 'POST' || method === 'PATCH') {
+        headers['Content-Type'] = 'application/json';
+      }
+
+      const response = await fetch(endpoint, { method, headers });
 
       if (response.status === 404) {
         toast.info('Notification introuvable ou déjà traitée.');
@@ -77,15 +96,30 @@ const UnifiedNotificationCenter: React.FC = () => {
   const archiveNotification = async (notificationId: string) => {
     try {
       let endpoint = `/api/notifications/${notificationId}/archive`;
-      if (userRole === 'expert') endpoint = `/api/expert/notifications/${notificationId}/archive`;
-      if (userRole === 'admin') endpoint = `/api/admin/notifications/${notificationId}/archive`;
-      
+      let method: 'PUT' | 'POST' | 'DELETE' = 'PUT';
+
+      if (userRole === 'expert') {
+        endpoint = `/api/expert/notifications/${notificationId}/archive`;
+        method = 'POST';
+      } else if (userRole === 'admin') {
+        endpoint = `/api/admin/notifications/${notificationId}/archive`;
+        method = 'DELETE';
+      }
+
+      const token = localStorage.getItem('token') || '';
+      const headers: Record<string, string> = {};
+
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
+      if (method !== 'DELETE') {
+        headers['Content-Type'] = 'application/json';
+      }
+
       const response = await fetch(endpoint, { 
-        method: 'PUT', 
-        headers: { 
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        } 
+        method,
+        headers
       });
       
       if (response.ok) {
@@ -98,15 +132,30 @@ const UnifiedNotificationCenter: React.FC = () => {
   const unarchiveNotification = async (notificationId: string) => {
     try {
       let endpoint = `/api/notifications/${notificationId}/unarchive`;
-      if (userRole === 'expert') endpoint = `/api/expert/notifications/${notificationId}/unarchive`;
-      if (userRole === 'admin') endpoint = `/api/admin/notifications/${notificationId}/unarchive`;
-      
+      let method: 'PUT' | 'POST' | 'PATCH' = 'PUT';
+
+      if (userRole === 'expert') {
+        endpoint = `/api/expert/notifications/${notificationId}/unarchive`;
+        method = 'POST';
+      } else if (userRole === 'admin') {
+        console.warn('Endpoint unarchive indisponible pour les admins');
+        return;
+      }
+
+      const token = localStorage.getItem('token') || '';
+      const headers: Record<string, string> = {};
+
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
+      if (method === 'PUT' || method === 'POST' || method === 'PATCH') {
+        headers['Content-Type'] = 'application/json';
+      }
+
       const response = await fetch(endpoint, { 
-        method: 'PUT', 
-        headers: { 
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        } 
+        method,
+        headers
       });
       
       if (response.ok) {

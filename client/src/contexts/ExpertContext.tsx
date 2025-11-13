@@ -188,16 +188,23 @@ export const ExpertProvider: React.FC<ExpertProviderProps> = ({ children }) => {
         }
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          setNotifications(data.data);
-        } else {
-          setError(data.message || 'Erreur lors du chargement des notifications');
-        }
-      } else {
+      if (!response.ok) {
         setError('Erreur lors du chargement des notifications');
+        return;
       }
+
+      const data = await response.json();
+
+      if (!data.success) {
+        setError(data.message || 'Erreur lors du chargement des notifications');
+        return;
+      }
+
+      const payload = Array.isArray(data.data)
+        ? data.data
+        : data.data?.notifications || [];
+
+      setNotifications(payload);
     } catch (error) { setError('Erreur lors du chargement des notifications');
       console.error('Erreur loadNotifications: ', error); } finally { setLoading(false); }
   };

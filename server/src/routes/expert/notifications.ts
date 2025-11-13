@@ -155,6 +155,215 @@ router.post('/:id/read', async (req: Request, res: Response) => {
   }
 });
 
+// POST /api/expert/notifications/:id/unread - Marquer une notification comme non lue
+router.post('/:id/unread', async (req: Request, res: Response) => {
+  try {
+    const authUser = req.user;
+    
+    if (!authUser) {
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur non authentifié'
+      });
+    }
+    
+    const expertId = authUser.id;
+    const notificationId = req.params.id;
+
+    if (!expertId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur non authentifié'
+      });
+    }
+
+    const { data: notification, error: checkError } = await supabase
+      .from('notification')
+      .select('id')
+      .eq('id', notificationId)
+      .eq('user_id', expertId)
+      .eq('user_type', 'expert')
+      .single();
+
+    if (checkError || !notification) {
+      return res.status(404).json({
+        success: false,
+        message: 'Notification non trouvée'
+      });
+    }
+
+    const { error: updateError } = await supabase
+      .from('notification')
+      .update({
+        is_read: false,
+        status: 'unread',
+        read_at: null
+      })
+      .eq('id', notificationId)
+      .eq('user_id', expertId);
+
+    if (updateError) {
+      console.error('❌ Erreur marquage notification non lue:', updateError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors du marquage de la notification'
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: 'Notification marquée comme non lue'
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur marquage notification non lue:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur interne du serveur'
+    });
+  }
+});
+
+// POST /api/expert/notifications/:id/archive - Archiver une notification
+router.post('/:id/archive', async (req: Request, res: Response) => {
+  try {
+    const authUser = req.user;
+    
+    if (!authUser) {
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur non authentifié'
+      });
+    }
+    
+    const expertId = authUser.id;
+    const notificationId = req.params.id;
+
+    if (!expertId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur non authentifié'
+      });
+    }
+
+    const { data: notification, error: checkError } = await supabase
+      .from('notification')
+      .select('id')
+      .eq('id', notificationId)
+      .eq('user_id', expertId)
+      .eq('user_type', 'expert')
+      .single();
+
+    if (checkError || !notification) {
+      return res.status(404).json({
+        success: false,
+        message: 'Notification non trouvée'
+      });
+    }
+
+    const { error: updateError } = await supabase
+      .from('notification')
+      .update({
+        status: 'archived',
+        archived_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', notificationId)
+      .eq('user_id', expertId);
+
+    if (updateError) {
+      console.error('❌ Erreur archivage notification:', updateError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de l\'archivage de la notification'
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: 'Notification archivée'
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur archivage notification:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur interne du serveur'
+    });
+  }
+});
+
+// POST /api/expert/notifications/:id/unarchive - Restaurer une notification archivée
+router.post('/:id/unarchive', async (req: Request, res: Response) => {
+  try {
+    const authUser = req.user;
+    
+    if (!authUser) {
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur non authentifié'
+      });
+    }
+    
+    const expertId = authUser.id;
+    const notificationId = req.params.id;
+
+    if (!expertId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur non authentifié'
+      });
+    }
+
+    const { data: notification, error: checkError } = await supabase
+      .from('notification')
+      .select('id')
+      .eq('id', notificationId)
+      .eq('user_id', expertId)
+      .eq('user_type', 'expert')
+      .single();
+
+    if (checkError || !notification) {
+      return res.status(404).json({
+        success: false,
+        message: 'Notification non trouvée'
+      });
+    }
+
+    const { error: updateError } = await supabase
+      .from('notification')
+      .update({
+        status: 'read',
+        is_read: true,
+        archived_at: null,
+        read_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', notificationId)
+      .eq('user_id', expertId);
+
+    if (updateError) {
+      console.error('❌ Erreur restauration notification:', updateError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la restauration de la notification'
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: 'Notification restaurée'
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur restauration notification:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur interne du serveur'
+    });
+  }
+});
+
 // POST /api/expert/notifications/mark-all-read - Marquer toutes les notifications comme lues
 router.post('/mark-all-read', async (req: Request, res: Response) => {
   try {
