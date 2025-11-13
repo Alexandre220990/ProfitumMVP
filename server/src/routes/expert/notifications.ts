@@ -42,8 +42,8 @@ router.get('/', async (req: Request, res: Response) => {
     const { data: notifications, error: notificationsError } = await supabase
       .from('notification')
       .select('*')
-      .eq('recipient_id', expertId)
-      .eq('recipient_type', 'expert')
+      .eq('user_id', expertId)
+      .eq('user_type', 'expert')
       .order('created_at', { ascending: false })
       .range(parseInt(offset as string), parseInt(offset as string) + parseInt(limit as string) - 1);
 
@@ -59,9 +59,9 @@ router.get('/', async (req: Request, res: Response) => {
     const { count: unreadCount, error: countError } = await supabase
       .from('notification')
       .select('*', { count: 'exact', head: true })
-      .eq('recipient_id', expertId)
-      .eq('recipient_type', 'expert')
-      .eq('read', false);
+      .eq('user_id', expertId)
+      .eq('user_type', 'expert')
+      .eq('is_read', false);
 
     if (countError) {
       console.error('❌ Erreur comptage notifications non lues:', countError);
@@ -111,8 +111,8 @@ router.post('/:id/read', async (req: Request, res: Response) => {
       .from('notification')
       .select('id')
       .eq('id', notificationId)
-      .eq('recipient_id', expertId)
-      .eq('recipient_type', 'expert')
+      .eq('user_id', expertId)
+      .eq('user_type', 'expert')
       .single();
 
     if (checkError || !notification) {
@@ -126,11 +126,12 @@ router.post('/:id/read', async (req: Request, res: Response) => {
     const { error: updateError } = await supabase
       .from('notification')
       .update({
-        read: true,
+        is_read: true,
+        status: 'read',
         read_at: new Date().toISOString()
       })
       .eq('id', notificationId)
-      .eq('recipient_id', expertId);
+      .eq('user_id', expertId);
 
     if (updateError) {
       console.error('❌ Erreur marquage notification:', updateError);
@@ -179,12 +180,13 @@ router.post('/mark-all-read', async (req: Request, res: Response) => {
     const { error: updateError } = await supabase
       .from('notification')
       .update({
-        read: true,
+        is_read: true,
+        status: 'read',
         read_at: new Date().toISOString()
       })
-      .eq('recipient_id', expertId)
-      .eq('recipient_type', 'expert')
-      .eq('read', false);
+      .eq('user_id', expertId)
+      .eq('user_type', 'expert')
+      .eq('is_read', false);
 
     if (updateError) {
       console.error('❌ Erreur marquage toutes notifications:', updateError);
@@ -235,8 +237,8 @@ router.delete('/:id', async (req: Request, res: Response) => {
       .from('notification')
       .select('id')
       .eq('id', notificationId)
-      .eq('recipient_id', expertId)
-      .eq('recipient_type', 'expert')
+      .eq('user_id', expertId)
+      .eq('user_type', 'expert')
       .single();
 
     if (checkError || !notification) {
@@ -251,7 +253,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
       .from('notification')
       .delete()
       .eq('id', notificationId)
-      .eq('recipient_id', expertId);
+      .eq('user_id', expertId);
 
     if (deleteError) {
       console.error('❌ Erreur suppression notification:', deleteError);
@@ -300,9 +302,9 @@ router.get('/unread-count', async (req: Request, res: Response) => {
     const { count, error } = await supabase
       .from('notification')
       .select('*', { count: 'exact', head: true })
-      .eq('recipient_id', expertId)
-      .eq('recipient_type', 'expert')
-      .eq('read', false);
+      .eq('user_id', expertId)
+      .eq('user_type', 'expert')
+      .eq('is_read', false);
 
     if (error) {
       console.error('❌ Erreur comptage notifications non lues:', error);
