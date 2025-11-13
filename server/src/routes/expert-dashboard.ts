@@ -377,7 +377,7 @@ router.get('/revenue-pipeline', enhancedAuthMiddleware, async (req: Request, res
     // Récupérer le taux de commission de l'expert
     const { data: expertData } = await supabase
       .from('Expert')
-      .select('compensation')
+      .select('compensation:client_fee_percentage')
       .eq('id', expertId)
       .single();
 

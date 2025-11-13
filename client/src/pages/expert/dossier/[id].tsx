@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/hooks/use-auth';
 import { get, post, put } from '@/lib/api';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
-import DossierTimeline from '@/components/dossier/DossierTimeline';
 import InfosClientEnrichies from '@/components/dossier/InfosClientEnrichies';
 import ExpertDocumentRequestModal from '@/components/expert/ExpertDocumentRequestModal';
 import ExpertDossierActions from '@/components/expert/ExpertDossierActions';
@@ -103,7 +101,6 @@ interface Document {
 export default function ExpertDossierSynthese() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [cpe, setCPE] = useState<ClientProduitEligible | null>(null);
@@ -459,16 +456,6 @@ export default function ExpertDossierSynthese() {
               }}
               documentsCount={documentsCount}
               documentsReloadKey={documentsReloadKey}
-            />
-          </div>
-        )}
-
-        {/* Timeline & Commentaires (déplacée ici, juste après infos client) */}
-        {id && user && (
-          <div className="mb-8">
-            <DossierTimeline 
-              dossierId={id} 
-              userType={user.type as 'expert' | 'admin' | 'apporteur'} 
             />
           </div>
         )}

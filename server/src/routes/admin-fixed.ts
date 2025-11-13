@@ -111,7 +111,7 @@ router.get('/dashboard', asyncHandler(async (req, res) => {
         id,
         name,
         rating,
-        compensation,
+        compensation:client_fee_percentage,
         specializations
       `)
       .eq('status', 'active');

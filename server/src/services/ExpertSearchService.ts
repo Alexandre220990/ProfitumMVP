@@ -61,7 +61,7 @@ export class ExpertSearchService {
                         e.location,
                         e.rating,
                         e.description,
-                        e.compensation,
+                        e.client_fee_percentage AS compensation,
                         e.disponibilites,
                         e.certifications,
                         e.created_at,
@@ -129,12 +129,12 @@ export class ExpertSearchService {
             // Filtre de prix
             if (criteria.priceRange) {
                 if (criteria.priceRange.min) {
-                    conditions.push(`e.compensation >= $${paramIndex}`);
+                    conditions.push(`e.client_fee_percentage >= $${paramIndex}`);
                     params.push(criteria.priceRange.min);
                     paramIndex++;
                 }
                 if (criteria.priceRange.max) {
-                    conditions.push(`e.compensation <= $${paramIndex}`);
+                    conditions.push(`e.client_fee_percentage <= $${paramIndex}`);
                     params.push(criteria.priceRange.max);
                     paramIndex++;
                 }

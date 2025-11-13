@@ -27,7 +27,7 @@ router.get('/', asyncHandler(async (req, res) => {
         location,
         rating,
         description,
-        compensation,
+        compensation:client_fee_percentage,
         status,
         disponibilites,
         certifications,

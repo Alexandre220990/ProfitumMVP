@@ -242,7 +242,7 @@ router.get('/dashboard', asyncHandler(async (req, res) => {
         last_name,
         company_name,
         rating,
-        compensation,
+        compensation:client_fee_percentage,
         specializations
       `)
       .eq('status', 'active');
@@ -412,7 +412,7 @@ router.get('/stats/experts', asyncHandler(async (req, res) => {
         company_name,
         specializations,
         rating,
-        compensation,
+        compensation:client_fee_percentage,
         status,
         approval_status,
         created_at,

@@ -59,6 +59,8 @@ router.get('/dossier/:id/documents', enhancedAuthMiddleware, async (req: Request
         bucket_name,
         mime_type,
         file_size,
+        document_type,
+        metadata,
         validation_status,
         workflow_step,
         rejection_reason,

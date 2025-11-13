@@ -1110,7 +1110,7 @@ router.get('/experts', async (req: Request, res: Response) => {
         experience,
         location,
         rating,
-        compensation,
+        compensation:client_fee_percentage,
         description,
         completed_projects,
         disponibilites

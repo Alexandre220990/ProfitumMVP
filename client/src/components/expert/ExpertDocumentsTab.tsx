@@ -26,7 +26,8 @@ interface Document {
   storage_path: string;
   bucket_name: string;
   mime_type: string;
-  file_size: number;
+  file_size?: number | null;
+  document_type?: string | null;
   validation_status: 'pending' | 'validated' | 'rejected';
   workflow_step: string | null;
   rejection_reason: string | null;
@@ -453,7 +454,7 @@ export default function ExpertDocumentsTab({
         </div>
       ) : (
         <>
-          <div className="space-y-3">
+          <div className="space-y-2">
             {documents.map((doc) => {
               const validation = validations[doc.id];
               const isPending = doc.validation_status === 'pending';
@@ -462,45 +463,126 @@ export default function ExpertDocumentsTab({
                 document_id?: string;
               } | undefined;
               const isShared = Boolean(sharedOrigin);
+              const referenceName =
+                (doc.metadata?.requested_document_name as string | undefined) ||
+                (doc.metadata?.document_reference_name as string | undefined) ||
+                (doc.metadata?.description as string | undefined) ||
+                (doc.metadata?.label as string | undefined) ||
+                doc.document_type ||
+                null;
+
+              const statusInfo = (() => {
+                const base = 'rounded-full border px-2.5 py-0.5 text-xs font-medium';
+                if (doc.validation_status === 'validated') {
+                  return {
+                    label: 'Validé',
+                    className: `${base} border-green-200 bg-green-50 text-green-700`
+                  };
+                }
+                if (doc.validation_status === 'rejected') {
+                  return {
+                    label: 'Rejeté',
+                    className: `${base} border-red-200 bg-red-50 text-red-700`
+                  };
+                }
+                if (validation?.status === 'valid') {
+                  return {
+                    label: 'Prêt à valider',
+                    className: `${base} border-green-200 bg-green-50 text-green-700`
+                  };
+                }
+                if (validation?.status === 'invalid') {
+                  return {
+                    label: 'Rejet à confirmer',
+                    className: `${base} border-red-200 bg-red-50 text-red-600`
+                  };
+                }
+                return {
+                  label: 'En attente',
+                  className: `${base} border-gray-200 bg-gray-50 text-gray-700`
+                };
+              })();
+
+              const infoItems: JSX.Element[] = [];
+
+              if (doc.file_size) {
+                infoItems.push(<span>{formatFileSize(doc.file_size)}</span>);
+              }
+
+              infoItems.push(
+                <span className="flex items-center gap-1">
+                  <Calendar className="h-3 w-3" />
+                  {formatDistanceToNow(new Date(doc.created_at), { addSuffix: true, locale: fr })}
+                </span>
+              );
+
+              if (doc.workflow_step) {
+                infoItems.push(
+                  <Badge
+                    variant="outline"
+                    className="border-transparent bg-gray-100 text-[11px] uppercase tracking-wide text-gray-700"
+                  >
+                    {doc.workflow_step}
+                  </Badge>
+                );
+              }
               
               return (
                 <div
                   key={doc.id}
-                  className={`bg-white p-4 rounded-lg border-2 transition-all ${
-                    doc.validation_status === 'validated' ? 'border-green-200 bg-green-50' :
-                    doc.validation_status === 'rejected' ? 'border-red-200 bg-red-50' :
-                    validation?.status === 'valid' ? 'border-green-300' :
-                    validation?.status === 'invalid' ? 'border-red-300' :
-                    'border-gray-200'
+                  className={`rounded-lg border-2 bg-white p-3 transition-all sm:p-4 ${
+                    doc.validation_status === 'validated'
+                      ? 'border-green-200 bg-green-50'
+                      : doc.validation_status === 'rejected'
+                      ? 'border-red-200 bg-red-50'
+                      : validation?.status === 'valid'
+                      ? 'border-green-300'
+                      : validation?.status === 'invalid'
+                      ? 'border-red-300'
+                      : 'border-gray-200'
                   }`}
                 >
                   {/* En-tête document */}
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-3 flex-1">
-                      <FileText className={`h-5 w-5 ${
-                        doc.validation_status === 'validated' ? 'text-green-600' :
-                        doc.validation_status === 'rejected' ? 'text-red-600' :
-                        'text-blue-600'
-                      }`} />
-                      <div className="flex-1">
-                        <p className="font-semibold text-gray-900">{doc.filename}</p>
-                        <div className="flex items-center gap-3 text-sm text-gray-600 mt-1">
-                          <span>{formatFileSize(doc.file_size)}</span>
-                          <span>•</span>
-                          <span className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            {formatDistanceToNow(new Date(doc.created_at), { addSuffix: true, locale: fr })}
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex flex-1 items-start gap-3">
+                      <FileText
+                        className={`mt-1 h-5 w-5 ${
+                          doc.validation_status === 'validated'
+                            ? 'text-green-600'
+                            : doc.validation_status === 'rejected'
+                            ? 'text-red-600'
+                            : 'text-blue-600'
+                        }`}
+                      />
+                      <div className="flex-1 min-w-0 space-y-1">
+                        {referenceName && (
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                            {referenceName}
+                          </p>
+                        )}
+                        <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-2">
+                          <p className="truncate text-sm font-semibold text-gray-900">
+                            {doc.filename}
+                          </p>
+                          <span className="text-xs text-gray-500">
+                            Nom donné par le client lors de l'upload
                           </span>
-                          {doc.workflow_step && (
-                            <>
-                              <span>•</span>
-                              <Badge variant="outline" className="text-xs">{doc.workflow_step}</Badge>
-                            </>
-                          )}
                         </div>
+
+                        {infoItems.length > 0 && (
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-600">
+                            {infoItems.map((item, index) => (
+                              <span key={index} className="flex items-center gap-1">
+                                {index > 0 && <span className="text-gray-300">•</span>}
+                                {item}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
                         {doc.validation_status === 'validated' && isShared && (
-                          <div className="mt-2 inline-flex items-center gap-2 text-xs text-blue-700 bg-blue-50 px-2 py-1 rounded border border-blue-200">
-                            <Badge variant="outline" className="text-[10px] uppercase tracking-wide text-blue-700 border-blue-300">
+                          <div className="inline-flex items-center gap-2 rounded border border-blue-200 bg-blue-50 px-2 py-1 text-[11px] text-blue-700">
+                            <Badge variant="outline" className="border-blue-300 text-[10px] uppercase tracking-wide text-blue-700">
                               Réutilisé
                             </Badge>
                             <span>Document propagé automatiquement depuis un autre dossier</span>
@@ -509,98 +591,102 @@ export default function ExpertDocumentsTab({
                       </div>
                     </div>
 
-                    {/* Boutons visualiser et télécharger */}
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleView(doc)}
-                        title="Visualiser le document"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDownload(doc)}
-                        title="Télécharger le document"
-                      >
-                        <Download className="h-4 w-4" />
-                      </Button>
+                    <div className="flex flex-wrap items-center gap-2 sm:flex-col sm:items-end sm:justify-start">
+                      <span className={statusInfo.className}>{statusInfo.label}</span>
+
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-9 w-9 p-0"
+                          onClick={() => handleView(doc)}
+                          title="Visualiser le document"
+                        >
+                          <Eye className="h-4 w-4" />
+                          <span className="sr-only">Visualiser</span>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-9 w-9 p-0"
+                          onClick={() => handleDownload(doc)}
+                          title="Télécharger le document"
+                        >
+                          <Download className="h-4 w-4" />
+                          <span className="sr-only">Télécharger</span>
+                        </Button>
+                      </div>
                     </div>
                   </div>
 
                   {/* Zone de validation */}
-                  <div className="ml-8 space-y-3">
-                    {/* Documents déjà validés/rejetés */}
+                  <div className="mt-2 space-y-2 border-l border-dashed border-gray-200 pl-8 sm:pl-10">
                     {doc.validation_status === 'validated' && (
-                      <div className="inline-flex items-center gap-2 text-green-700 bg-green-100 px-3 py-1 rounded-full">
+                      <div className="flex flex-wrap items-center gap-2 text-xs text-green-700">
                         <CheckCircle className="h-4 w-4" />
-                        <span className="text-sm font-medium">✅ Document validé</span>
+                        <span>Document validé</span>
                         {doc.validated_at && (
-                          <span className="text-xs">
-                            • {formatDistanceToNow(new Date(doc.validated_at), { addSuffix: true, locale: fr })}
+                          <span className="text-[11px] text-green-600">
+                            {formatDistanceToNow(new Date(doc.validated_at), { addSuffix: true, locale: fr })}
                           </span>
                         )}
                       </div>
                     )}
 
                     {doc.validation_status === 'rejected' && (
-                      <div className="bg-red-100 px-3 py-2 rounded">
-                        <div className="flex items-center gap-2 text-red-700 mb-1">
+                      <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2">
+                        <div className="flex items-center gap-2 text-sm font-medium text-red-700">
                           <XCircle className="h-4 w-4" />
-                          <span className="text-sm font-medium">❌ Document rejeté</span>
+                          <span>Document rejeté</span>
                         </div>
                         {doc.rejection_reason && (
-                          <p className="text-sm text-red-600">
+                          <p className="mt-1 text-xs text-red-600">
                             Raison : {doc.rejection_reason}
                           </p>
                         )}
                       </div>
                     )}
 
-                    {/* Documents en attente - Radio buttons */}
                     {isPending && validation && (
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-4">
-                          <label className="flex items-center gap-2 cursor-pointer">
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap items-center gap-4">
+                          <label className="flex cursor-pointer items-center gap-2">
                             <input
                               type="radio"
                               name={`validation-${doc.id}`}
                               checked={validation.status === 'valid'}
                               onChange={() => handleToggleValidation(doc.id, 'valid')}
-                              className="w-4 h-4 text-green-600 focus:ring-green-500"
+                              className="h-4 w-4 text-green-600 focus:ring-green-500"
                             />
                             <span className="text-sm font-medium text-green-700">✅ Document valide</span>
                           </label>
 
-                          <label className="flex items-center gap-2 cursor-pointer">
+                          <label className="flex cursor-pointer items-center gap-2">
                             <input
                               type="radio"
                               name={`validation-${doc.id}`}
                               checked={validation.status === 'invalid'}
                               onChange={() => handleToggleValidation(doc.id, 'invalid')}
-                              className="w-4 h-4 text-red-600 focus:ring-red-500"
+                              className="h-4 w-4 text-red-600 focus:ring-red-500"
                             />
                             <span className="text-sm font-medium text-red-700">❌ Document invalide</span>
                           </label>
                         </div>
 
-                        {/* Champ raison si invalide */}
                         {validation.status === 'invalid' && (
-                          <div className="mt-2 bg-red-50 p-3 rounded-lg border border-red-200">
-                            <label className="block text-sm font-medium text-red-900 mb-2">
+                          <div className="rounded-md border border-red-200 bg-red-50 p-3">
+                            <label className="block text-sm font-medium text-red-900">
                               Raison du rejet *
                             </label>
                             <textarea
-                              className="w-full border border-red-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                              className="mt-2 w-full rounded-md border border-red-300 p-2 text-sm focus:border-red-500 focus:ring-2 focus:ring-red-500"
                               placeholder="Ex: Document illisible, date expirée, informations manquantes..."
                               value={validation.rejectionReason || ''}
                               onChange={(e) => handleRejectionReasonChange(doc.id, e.target.value)}
                               rows={2}
                             />
                             {(!validation.rejectionReason || validation.rejectionReason.trim().length === 0) && (
-                              <p className="text-xs text-red-600 mt-1">
+                              <p className="mt-1 text-[11px] text-red-600">
                                 ⚠️ La raison est obligatoire pour les documents invalides
                               </p>
                             )}

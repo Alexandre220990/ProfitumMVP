@@ -47,7 +47,7 @@ export class CommissionService {
           expert_id,
           clientId,
           Client(apporteur_id),
-          Expert(compensation)
+          Expert(compensation:client_fee_percentage)
         `)
         .eq('id', dossierId)
         .single();

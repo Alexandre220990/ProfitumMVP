@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import ExpertDocumentsTab from '@/components/expert/ExpertDocumentsTab';
+import DossierTimeline from '@/components/dossier/DossierTimeline';
 import {
   Building2,
   Phone,
@@ -10,7 +11,7 @@ import {
   MapPin,
   Users,
   Globe,
-  Target,
+  History,
   Clock,
   CheckCircle,
   Star,
@@ -138,33 +139,6 @@ const formatDateTime = (dateString?: string) => {
   });
 };
 
-const getInterestLevelBadge = (level?: string) => {
-  if (!level) return null;
-  
-  const config: Record<string, { color: string; icon: string }> = {
-    'low': { color: 'bg-gray-100 text-gray-700', icon: '📊' },
-    'medium': { color: 'bg-yellow-100 text-yellow-800', icon: '📈' },
-    'high': { color: 'bg-orange-100 text-orange-800', icon: '🔥' },
-    'very_high': { color: 'bg-red-100 text-red-800', icon: '🚀' }
-  };
-
-  const { color, icon } = config[level] || config['medium'];
-  const label = level === 'low' ? 'Faible' : 
-                level === 'medium' ? 'Moyen' :
-                level === 'high' ? 'Élevé' : 'Très élevé';
-
-  return <Badge className={color}>{icon} {label}</Badge>;
-};
-
-const getQualificationScore = (score?: number) => {
-  if (!score) return { label: 'Non évalué', color: 'text-gray-500', percentage: 0 };
-  
-  if (score >= 80) return { label: 'Excellent', color: 'text-green-600', percentage: score };
-  if (score >= 60) return { label: 'Bon', color: 'text-blue-600', percentage: score };
-  if (score >= 40) return { label: 'Moyen', color: 'text-yellow-600', percentage: score };
-  return { label: 'Faible', color: 'text-orange-600', percentage: score };
-};
-
 // ============================================================================
 // COMPOSANT PRINCIPAL
 // ============================================================================
@@ -180,7 +154,6 @@ export default function InfosClientEnrichies({
   documentsReloadKey
 }: InfosClientEnrichiesProps) {
   
-  const qualificationScore = getQualificationScore(client?.qualification_score);
   const nomComplet = client?.first_name && client?.last_name 
     ? `${client.first_name} ${client.last_name}` 
     : client?.name || 'Non renseigné';
@@ -213,9 +186,9 @@ export default function InfosClientEnrichies({
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="commercial">
-              <Target className="h-4 w-4 mr-2" />
-              Commercial
+            <TabsTrigger value="historique">
+              <History className="h-4 w-4 mr-2" />
+              Historique
             </TabsTrigger>
             <TabsTrigger value="apporteur">
               <Users className="h-4 w-4 mr-2" />
@@ -409,63 +382,21 @@ export default function InfosClientEnrichies({
             )}
           </TabsContent>
 
-          {/* ONGLET 4: Commercial */}
-          <TabsContent value="commercial" className="space-y-6">
-            <div className="bg-white p-6 rounded-lg border">
-              <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                <Target className="h-5 w-5 text-blue-600" />
-                Informations Commerciales
-              </h3>
-              
-              <div className="space-y-4">
-                {/* Score de qualification */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm text-gray-500">🎯 Score de qualification</p>
-                    <span className={`font-bold ${qualificationScore.color}`}>
-                      {client.qualification_score || 0}/100 - {qualificationScore.label}
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-3">
-                    <div 
-                      className={`h-3 rounded-full transition-all ${
-                        qualificationScore.percentage >= 80 ? 'bg-green-500' :
-                        qualificationScore.percentage >= 60 ? 'bg-blue-500' :
-                        qualificationScore.percentage >= 40 ? 'bg-yellow-500' : 'bg-orange-500'
-                      }`}
-                      style={{ width: `${qualificationScore.percentage}%` }}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-500 mb-1">📈 Niveau d'intérêt</p>
-                    <div>{getInterestLevelBadge(client.interest_level)}</div>
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-gray-500 mb-1">💵 Budget</p>
-                    <p className="font-semibold text-gray-900">{client.budget_range || 'Non renseigné'}</p>
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-gray-500 mb-1">⏱️ Timeline projet</p>
-                    <p className="font-semibold text-gray-900">{client.timeline || 'Non renseigné'}</p>
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-gray-500 mb-1">📍 Source d'acquisition</p>
-                    <p className="font-semibold text-gray-900">{client.source || 'Non renseigné'}</p>
-                  </div>
-
-                  <div className="col-span-2">
-                    <p className="text-sm text-gray-500 mb-1">🎨 Type de projet</p>
-                    <p className="font-semibold text-gray-900">{client.typeProjet || 'Non renseigné'}</p>
-                  </div>
-                </div>
+          {/* ONGLET 4: Historique */}
+          <TabsContent value="historique" className="space-y-6">
+            {dossierId ? (
+              <DossierTimeline
+                dossierId={dossierId}
+                className="border border-gray-200 shadow-sm"
+              />
+            ) : (
+              <div className="bg-gray-50 p-8 rounded-lg text-center">
+                <History className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                <p className="text-gray-600">
+                  Historique disponible uniquement dans la vue dossier
+                </p>
               </div>
-            </div>
+            )}
           </TabsContent>
 
           {/* ONGLET 5: Apporteur */}

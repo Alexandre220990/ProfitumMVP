@@ -569,7 +569,7 @@ router.get('/revenue-history', async (req: Request, res: Response) => {
     // Récupérer la date de création et le taux de commission de l'expert
     const { data: expertData } = await supabase
       .from('Expert')
-      .select('created_at, compensation')
+      .select('created_at, compensation:client_fee_percentage')
       .eq('id', expertId)
       .single();
 
@@ -659,7 +659,7 @@ router.get('/product-performance', async (req: Request, res: Response) => {
     // Récupérer le taux de commission de l'expert
     const { data: expertData } = await supabase
       .from('Expert')
-      .select('compensation')
+      .select('compensation:client_fee_percentage')
       .eq('id', expertId)
       .single();
 
@@ -766,7 +766,7 @@ router.get('/client-performance', async (req: Request, res: Response) => {
     // Récupérer le taux de commission de l'expert
     const { data: expertData } = await supabase
       .from('Expert')
-      .select('compensation')
+      .select('compensation:client_fee_percentage')
       .eq('id', expertId)
       .single();
 
@@ -957,7 +957,7 @@ router.get('/business', async (req: Request, res: Response) => {
         specializations,
         experience,
         rating,
-        compensation,
+        compensation:client_fee_percentage,
         total_revenue,
         total_clients,
         active_assignments
@@ -1458,7 +1458,7 @@ router.get('/dossier/:id', async (req: Request, res: Response) => {
     // Récupérer le taux de commission de l'expert
     const { data: expertData } = await supabase
       .from('Expert')
-      .select('compensation')
+      .select('compensation:client_fee_percentage')
       .eq('id', expertId)
       .single();
 
