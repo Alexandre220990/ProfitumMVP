@@ -170,16 +170,40 @@ export function UniversalNotificationCenter({
 
   const markAsRead = async (notificationId: string) => {
     try {
+      if (!notificationId) return;
+
       let endpoint = `/api/notifications/${notificationId}/read`;
-      if (userRole === 'expert') endpoint = `/api/expert/notifications/${notificationId}/read`;
-      if (userRole === 'admin') endpoint = `/api/admin/notifications/${notificationId}/read`;
-      
-      const token = localStorage.getItem('token');
-      await fetch(endpoint, { 
-        method: 'PUT', 
-        headers: { 'Authorization': `Bearer ${token}` } 
+      let method: 'PUT' | 'POST' | 'PATCH' = 'PUT';
+
+      if (userRole === 'expert') {
+        endpoint = `/api/expert/notifications/${notificationId}/read`;
+        method = 'POST';
+      } else if (userRole === 'admin') {
+        endpoint = `/api/admin/notifications/${notificationId}/read`;
+        method = 'PATCH';
+      }
+
+      const token = localStorage.getItem('token') || '';
+      const headers: Record<string, string> = {};
+
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
+      if (method === 'PUT' || method === 'POST' || method === 'PATCH') {
+        headers['Content-Type'] = 'application/json';
+      }
+
+      const response = await fetch(endpoint, {
+        method,
+        headers,
       });
-      reload(); // Recharger les notifications
+
+      if (!response.ok) {
+        throw new Error(`Erreur ${response.status}`);
+      }
+
+      await reload(); // Recharger les notifications
     } catch (error) { 
       console.error('Erreur marquage lu:', error); 
     }
