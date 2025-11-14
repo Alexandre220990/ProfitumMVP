@@ -248,89 +248,13 @@ export const ExpertDashboardOptimized = () => {
           </Button>
         </div>
 
-        {/* KPIs Cliquables - 5 KPIs */}
+        {/* KPIs Cliquables - 6 KPIs */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-8">
-          {/* KPI 1 : URGENCES */}
-          <Card 
-            className={`bg-gradient-to-br from-red-500 to-red-600 text-white cursor-pointer hover:shadow-lg transition-all ${activeTable === 'urgences' ? 'ring-4 ring-red-300' : ''}`} 
-            onClick={() => setActiveTable(activeTable === 'urgences' ? null : 'urgences')}
-          >
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-red-100 text-sm font-medium mb-1">Urgences</p>
-                  <p className="text-3xl font-bold">{prioritizedDossiers.length}</p>
-                </div>
-                <Zap className="h-10 w-10 text-red-200" />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* KPI 2 : CLIENTS ACTIFS */}
-          <Card 
-            className={`bg-gradient-to-br from-blue-500 to-blue-600 text-white cursor-pointer hover:shadow-lg transition-all ${activeTable === 'clients' ? 'ring-4 ring-blue-300' : ''}`} 
-            onClick={() => setActiveTable(activeTable === 'clients' ? null : 'clients')}
-          >
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-blue-100 text-sm font-medium mb-1">Clients actifs</p>
-                  <p className="text-3xl font-bold">{kpis?.clientsActifs || 0}</p>
-                </div>
-                <Users className="h-10 w-10 text-blue-200" />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* KPI 3 : RDV CETTE SEMAINE */}
-          <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white cursor-pointer hover:shadow-lg transition-all" onClick={() => navigate('/expert/agenda')}>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-purple-100 text-sm font-medium mb-1">RDV cette semaine</p>
-                  <p className="text-3xl font-bold">{kpis?.rdvCetteSemaine || 0}</p>
-                </div>
-                <Calendar className="h-10 w-10 text-purple-200" />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* KPI 4 : DOSSIERS EN COURS */}
-          <Card 
-            className={`bg-gradient-to-br from-orange-500 to-orange-600 text-white cursor-pointer hover:shadow-lg transition-all ${activeTable === 'dossiers' ? 'ring-4 ring-orange-300' : ''}`} 
-            onClick={() => setActiveTable(activeTable === 'dossiers' ? null : 'dossiers')}
-          >
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-orange-100 text-sm font-medium mb-1">Dossiers en cours</p>
-                  <p className="text-3xl font-bold">{kpis?.dossiersEnCours || 0}</p>
-                </div>
-                <Briefcase className="h-10 w-10 text-orange-200" />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* KPI 5 : APPORTEURS ACTIFS */}
-          <Card 
-            className={`bg-gradient-to-br from-green-500 to-green-600 text-white cursor-pointer hover:shadow-lg transition-all ${activeTable === 'apporteurs' ? 'ring-4 ring-green-300' : ''}`} 
-            onClick={() => setActiveTable(activeTable === 'apporteurs' ? null : 'apporteurs')}
-          >
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-green-100 text-sm font-medium mb-1">Apporteurs actifs</p>
-                  <p className="text-3xl font-bold">{kpis?.apporteursActifs || 0}</p>
-                </div>
-                <Target className="h-10 w-10 text-green-200" />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* ✅ KPI 6 : MES ALERTES */}
+          {/* KPI 1 : MES ALERTES */}
           <Card 
             className={`bg-gradient-to-br from-red-500 to-red-600 text-white cursor-pointer hover:shadow-lg transition-all ${alerts.length > 0 ? 'ring-4 ring-red-300 animate-pulse' : ''}`} 
             onClick={() => {
+              setActiveTable(null);
               if (alertsRef.current) {
                 alertsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
               }
@@ -356,11 +280,88 @@ export const ExpertDashboardOptimized = () => {
               </div>
             </CardContent>
           </Card>
+
+          {/* KPI 2 : URGENCES */}
+          <Card 
+            className={`bg-gradient-to-br from-red-500 to-red-600 text-white cursor-pointer hover:shadow-lg transition-all ${activeTable === 'urgences' ? 'ring-4 ring-red-300' : ''}`} 
+            onClick={() => setActiveTable(activeTable === 'urgences' ? null : 'urgences')}
+          >
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-red-100 text-sm font-medium mb-1">Urgences</p>
+                  <p className="text-3xl font-bold">{prioritizedDossiers.length}</p>
+                </div>
+                <Zap className="h-10 w-10 text-red-200" />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* KPI 3 : CLIENTS ACTIFS */}
+          <Card 
+            className={`bg-gradient-to-br from-blue-500 to-blue-600 text-white cursor-pointer hover:shadow-lg transition-all ${activeTable === 'clients' ? 'ring-4 ring-blue-300' : ''}`} 
+            onClick={() => setActiveTable(activeTable === 'clients' ? null : 'clients')}
+          >
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-blue-100 text-sm font-medium mb-1">Clients actifs</p>
+                  <p className="text-3xl font-bold">{kpis?.clientsActifs || 0}</p>
+                </div>
+                <Users className="h-10 w-10 text-blue-200" />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* KPI 4 : RDV CETTE SEMAINE */}
+          <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white cursor-pointer hover:shadow-lg transition-all" onClick={() => navigate('/expert/agenda')}>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-purple-100 text-sm font-medium mb-1">RDV cette semaine</p>
+                  <p className="text-3xl font-bold">{kpis?.rdvCetteSemaine || 0}</p>
+                </div>
+                <Calendar className="h-10 w-10 text-purple-200" />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* KPI 5 : DOSSIERS EN COURS */}
+          <Card 
+            className={`bg-gradient-to-br from-orange-500 to-orange-600 text-white cursor-pointer hover:shadow-lg transition-all ${activeTable === 'dossiers' ? 'ring-4 ring-orange-300' : ''}`} 
+            onClick={() => setActiveTable(activeTable === 'dossiers' ? null : 'dossiers')}
+          >
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-orange-100 text-sm font-medium mb-1">Dossiers en cours</p>
+                  <p className="text-3xl font-bold">{kpis?.dossiersEnCours || 0}</p>
+                </div>
+                <Briefcase className="h-10 w-10 text-orange-200" />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* KPI 6 : APPORTEURS ACTIFS */}
+          <Card 
+            className={`bg-gradient-to-br from-green-500 to-green-600 text-white cursor-pointer hover:shadow-lg transition-all ${activeTable === 'apporteurs' ? 'ring-4 ring-green-300' : ''}`} 
+            onClick={() => setActiveTable(activeTable === 'apporteurs' ? null : 'apporteurs')}
+          >
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-green-100 text-sm font-medium mb-1">Apporteurs actifs</p>
+                  <p className="text-3xl font-bold">{kpis?.apporteursActifs || 0}</p>
+                </div>
+                <Target className="h-10 w-10 text-green-200" />
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* 🚨 ALERTES URGENTES */}
         <div ref={alertsRef}>
-        {alerts.length > 0 && (
+        {alerts.length > 0 && !activeTable && (
           <Card className="mb-8 border-red-200 bg-gradient-to-r from-red-50 to-orange-50">
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
