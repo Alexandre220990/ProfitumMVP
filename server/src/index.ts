@@ -290,6 +290,9 @@ app.use('/api/documents', simpleAuthMiddleware, documentsUnifiedAllRoutes);
 // Route sécurisée pour télécharger des documents depuis Storage privé
 app.use('/api/documents-secure', documentsDownloadRoutes);
 
+// Routes notifications expert - PROTÉGÉES
+app.use('/api/expert/notifications', enhancedAuthMiddleware, requireUserType('expert'), expertNotificationsRoutes);
+
 // Routes expert - PROTÉGÉES avec permissions spécifiques  
 app.use('/api/expert', enhancedAuthMiddleware, requireUserType('expert'), expertRoutes);
 app.use('/api/expert/analytics', enhancedAuthMiddleware, requireUserType('expert'), expertAnalyticsRoutes);
@@ -563,7 +566,6 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // Routes de notifications expert - PROTÉGÉES
-app.use('/api/expert/notifications', enhancedAuthMiddleware, expertNotificationsRoutes);
 
 // Routes analytics - PROTÉGÉES avec permissions admin et expert
 app.use('/api/analytics', enhancedAuthMiddleware, analyticsRoutes);
