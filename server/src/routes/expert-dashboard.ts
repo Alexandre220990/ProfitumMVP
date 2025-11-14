@@ -2,6 +2,7 @@ import express, { Router, Request, Response } from 'express';
 import { AuthUser } from '../types/auth';
 import { supabase } from '../lib/supabase';
 import { enhancedAuthMiddleware } from '../middleware/auth-enhanced';
+import { DossierStatus, LEGACY_STATUS_MAP } from '../utils/dossierStatus';
 
 const router = express.Router();
 
@@ -114,12 +115,7 @@ router.get('/prioritized', enhancedAuthMiddleware, async (req: Request, res: Res
           )
         `)
         .eq('expert_id', expertId)
-        .in('statut', [
-          // Anciens statuts
-          'eligible', 'en_cours', 
-          // Nouveaux statuts
-          'admin_validated', 'expert_assigned', 'documents_requested', 'documents_completes', 'audit_en_cours'
-        ]);
+        .in('statut', RAW_ACTIVE_STATUSES);
       
       dossiers = result.data || [];
       error = result.error;
@@ -642,6 +638,53 @@ router.get('/dossiers-by-status/:status', enhancedAuthMiddleware, async (req: Re
 // ROUTE 4 : OVERVIEW COMPLET (KPIs + Données)
 // ============================================================================
 
+const ALL_NORMALIZED_STATUSES: DossierStatus[] = [
+  'pending_upload',
+  'pending_admin_validation',
+  'admin_validated',
+  'admin_rejected',
+  'expert_assigned',
+  'expert_pending_validation',
+  'expert_validated',
+  'charte_pending',
+  'charte_signed',
+  'documents_requested',
+  'complementary_documents_upload_pending',
+  'complementary_documents_sent',
+  'complementary_documents_validated',
+  'complementary_documents_refused',
+  'audit_in_progress',
+  'audit_completed',
+  'validation_pending',
+  'validated',
+  'implementation_in_progress',
+  'implementation_validated',
+  'payment_requested',
+  'payment_in_progress',
+  'refund_completed'
+];
+
+const INACTIVE_NORMALIZED_STATUSES: DossierStatus[] = [
+  'admin_rejected',
+  'refund_completed'
+];
+
+const ACTIVE_NORMALIZED_STATUSES = ALL_NORMALIZED_STATUSES.filter(
+  status => !INACTIVE_NORMALIZED_STATUSES.includes(status)
+);
+
+const LEGACY_ACTIVE_STATUSES = Object.entries(LEGACY_STATUS_MAP)
+  .filter(([, normalized]) => ACTIVE_NORMALIZED_STATUSES.includes(normalized))
+  .map(([legacy]) => legacy);
+
+const RAW_ACTIVE_STATUSES = Array.from(new Set([
+  ...ACTIVE_NORMALIZED_STATUSES,
+  ...LEGACY_ACTIVE_STATUSES,
+  // Statuts temporaires encore stockés tels quels côté BDD
+  'documents_completes',
+  'audit_en_cours'
+]));
+
 router.get('/overview', enhancedAuthMiddleware, async (req: Request, res: Response) => {
   try {
     const authUser = req.user as AuthUser;
@@ -666,7 +709,7 @@ router.get('/overview', enhancedAuthMiddleware, async (req: Request, res: Respon
       .from('ClientProduitEligible')
       .select('clientId', { count: 'exact', head: true })
       .eq('expert_id', expertId)
-      .in('statut', ['eligible', 'en_cours']);
+      .in('statut', RAW_ACTIVE_STATUSES);
 
     // RDV cette semaine
     const { count: rdvCetteSemaine } = await supabase
@@ -796,7 +839,7 @@ router.get('/clients-list', enhancedAuthMiddleware, async (req: Request, res: Re
         )
       `)
       .eq('expert_id', expertId)
-      .in('statut', ['eligible', 'en_cours']);
+      .in('statut', RAW_ACTIVE_STATUSES);
 
     if (error) {
       console.error('❌ Erreur récupération clients:', error);
