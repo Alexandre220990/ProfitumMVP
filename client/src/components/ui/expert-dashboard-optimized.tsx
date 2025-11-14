@@ -234,7 +234,7 @@ export const ExpertDashboardOptimized = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pt-12">
         
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
@@ -249,7 +249,7 @@ export const ExpertDashboardOptimized = () => {
         </div>
 
         {/* KPIs Cliquables - 5 KPIs */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-8">
           {/* KPI 1 : URGENCES */}
           <Card 
             className={`bg-gradient-to-br from-red-500 to-red-600 text-white cursor-pointer hover:shadow-lg transition-all ${activeTable === 'urgences' ? 'ring-4 ring-red-300' : ''}`} 
