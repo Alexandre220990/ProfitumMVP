@@ -64,6 +64,14 @@ export interface Conversation {
   // Propriétés enrichies pour l'affichage
   last_message?: Message;
   unread_count: number;
+  participants?: Array<{
+    id: string;
+    name: string;
+    type: 'client' | 'expert' | 'admin' | 'apporteur';
+    company?: string | null;
+    is_active?: boolean;
+    avatar?: string | null;
+  }>;
   otherParticipant?: {
     id: string;
     type: 'client' | 'expert' | 'admin';

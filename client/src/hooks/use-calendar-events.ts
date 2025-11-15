@@ -152,8 +152,9 @@ export const useCalendarEvents = (options: UseCalendarEventsOptions = {}): UseCa
       toast.success(`${newEvent.title} a été ajouté à votre calendrier`);
     },
     onError: (error) => {
-      setError(error instanceof Error ? error.message : 'Erreur lors de la création');
-      toast.error('Impossible de créer l\'événement');
+      const errorMessage = error instanceof Error ? error.message : 'Erreur lors de la création';
+      setError(errorMessage);
+      toast.error(errorMessage);
     }
   });
 

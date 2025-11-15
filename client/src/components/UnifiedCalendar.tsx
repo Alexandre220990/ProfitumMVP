@@ -233,7 +233,6 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
         await updateEvent({ ...eventData, id: selectedEvent.id });
       } else {
         console.log('📝 Création nouvel événement');
-        // Utiliser les dates du formulaire directement
         console.log('🔍 Appel createEvent avec:', eventData);
         await createEvent(eventData);
       }
@@ -242,6 +241,7 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
       setSelectedDate(null);
     } catch (error) {
       console.error('❌ Erreur création/mise à jour événement:', error);
+      throw error;
     }
   }, [selectedEvent, createEvent, updateEvent]);
 
@@ -1188,11 +1188,41 @@ interface EventDialogProps {
   onCancel: () => void;
 }
 
+type ParticipantType = 'client' | 'expert' | 'apporteur' | 'admin' | 'user';
+
+interface ParticipantOption {
+  id: string;
+  name: string;
+  email?: string;
+  type: ParticipantType;
+  isTemporary?: boolean;
+}
+
+const participantTypeLabels: Record<ParticipantType, string> = {
+  client: 'Clients',
+  expert: 'Experts',
+  apporteur: 'Apporteurs',
+  admin: 'Administrateurs',
+  user: 'Autres'
+};
+
+const participantTypeOrder: ParticipantType[] = ['client', 'expert', 'apporteur', 'admin', 'user'];
+
+const normalizeLabel = (value?: string | null) =>
+  (value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+
+const looksTemporary = (value?: string | null) => {
+  const normalized = normalizeLabel(value);
+  if (!normalized) return false;
+  return normalized.includes('client temporaire') || normalized.includes('temporaire') || normalized.includes('temporary');
+};
+
 const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, onSubmit, onCancel }) => {
   const { user } = useAuth();
-  const [prospects, setProspects] = React.useState<any[]>([]);
-  const [experts, setExperts] = React.useState<any[]>([]);
-  const [loadingLists, setLoadingLists] = React.useState(false);
   
   // Fonction pour formater l'heure en format datetime-local
   const formatDateTimeLocal = (date: Date) => {
@@ -1222,108 +1252,93 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
     color: event?.color || '#3B82F6',
     client_id: event?.client_id || '',
     expert_id: event?.expert_id || '',
+    apporteur_id: (event as any)?.apporteur_id || '',
     participants: event?.participants || []
   });
 
   // État pour gérer le modal de sélection de participants
   const [showParticipantsModal, setShowParticipantsModal] = useState(false);
-  const [availableParticipants, setAvailableParticipants] = useState<any[]>([]);
+  const [availableParticipants, setAvailableParticipants] = useState<ParticipantOption[]>([]);
   const [loadingParticipants, setLoadingParticipants] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const requiresClientSelection = ['admin', 'expert', 'apporteur'].includes(user?.type || '');
+  const canAssignExpert = ['admin', 'apporteur'].includes(user?.type || '');
+  const canAssignApporteur = user?.type === 'admin';
 
-  // Charger les listes de prospects et experts au montage
+  const participantGroups = React.useMemo(() => {
+    const groups: Record<ParticipantType, ParticipantOption[]> = {
+      client: [],
+      expert: [],
+      apporteur: [],
+      admin: [],
+      user: []
+    };
+
+    availableParticipants.forEach((participant) => {
+      if (participant.type === 'client' && participant.isTemporary) {
+        return;
+      }
+      const key = participant.type || 'user';
+      groups[key].push(participant);
+    });
+
+    participantTypeOrder.forEach((type) => {
+      groups[type].sort((a, b) => a.name.localeCompare(b.name, 'fr', { sensitivity: 'base' }));
+    });
+
+    return groups;
+  }, [availableParticipants]);
+
+  const clientOptions = participantGroups.client;
+  const expertOptions = participantGroups.expert;
+  const apporteurOptions = participantGroups.apporteur;
+
   React.useEffect(() => {
-    if (open && user?.type === 'apporteur') {
-      loadProspectsAndExperts();
+    if (open && ['admin', 'expert', 'apporteur', 'client'].includes(user?.type || '')) {
+      loadAvailableParticipants();
     }
-  }, [open, user]);
-
-  const loadProspectsAndExperts = async () => {
-    setLoadingLists(true);
-    try {
-      // Charger les prospects
-      const prospectsResponse = await fetch(`${config.API_URL}/api/apporteur/prospects`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
-      if (prospectsResponse.ok) {
-        const prospectsData = await prospectsResponse.json();
-        setProspects(prospectsData.data || []);
-      }
-
-      // Charger les experts
-      const expertsResponse = await fetch(`${config.API_URL}/api/experts`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
-      if (expertsResponse.ok) {
-        const expertsData = await expertsResponse.json();
-        setExperts(expertsData.data || []);
-      }
-    } catch (error) {
-      console.error('Erreur chargement listes:', error);
-    } finally {
-      setLoadingLists(false);
-    }
-  };
+  }, [open, user?.type]);
 
   // Charger tous les participants disponibles
   const loadAvailableParticipants = async () => {
     setLoadingParticipants(true);
     try {
-      const endpoints = [];
-      
-      // Charger selon le type d'utilisateur
+      const token = localStorage.getItem('token');
+      const headers = { 'Authorization': `Bearer ${token}` };
+      const requests: Array<{ type: ParticipantType; url: string }> = [];
+
       if (user?.type === 'admin') {
-        endpoints.push(
-          fetch(`${config.API_URL}/api/admin/clients`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-          }),
-          fetch(`${config.API_URL}/api/admin/experts`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-          }),
-          fetch(`${config.API_URL}/api/admin/apporteurs`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-          })
+        requests.push(
+          { type: 'client', url: `${config.API_URL}/api/admin/clients?limit=200` },
+          { type: 'expert', url: `${config.API_URL}/api/admin/experts?limit=200` },
+          { type: 'apporteur', url: `${config.API_URL}/api/admin/apporteurs?limit=200` }
         );
       } else if (user?.type === 'expert') {
-        // Expert peut ajouter des clients
-        endpoints.push(
-          fetch(`${config.API_URL}/api/clients`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-          })
-        );
+        requests.push({ type: 'client', url: `${config.API_URL}/api/admin/clients?limit=200` });
       } else if (user?.type === 'apporteur') {
-        // Apporteur peut ajouter prospects et experts
-        endpoints.push(
-          fetch(`${config.API_URL}/api/apporteur/prospects`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-          }),
-          fetch(`${config.API_URL}/api/experts`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-          })
+        requests.push(
+          { type: 'client', url: `${config.API_URL}/api/apporteur/prospects` },
+          { type: 'expert', url: `${config.API_URL}/api/experts` }
         );
       } else if (user?.type === 'client') {
-        // Client peut ajouter des experts
-        endpoints.push(
-          fetch(`${config.API_URL}/api/experts`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-          })
-        );
+        requests.push({ type: 'expert', url: `${config.API_URL}/api/experts` });
       }
 
-      const responses = await Promise.all(endpoints);
-      const participants: any[] = [];
+      const participants: ParticipantOption[] = [];
 
-      for (const response of responses) {
-        if (response.ok) {
-          const data = await response.json();
-          const items = data.data?.clients || data.data?.experts || data.data?.apporteurs || data.data || [];
-          participants.push(...items.map((item: any) => ({
-            id: item.id,
-            name: item.first_name && item.last_name 
-              ? `${item.first_name} ${item.last_name}` 
-              : item.company_name || item.email,
-            email: item.email,
-            type: item.type || 'user'
-          })));
+      for (const request of requests) {
+        try {
+          const response = await fetch(request.url, { headers });
+          if (!response.ok) continue;
+          const payload = await response.json();
+          const items = extractParticipantItems(payload);
+          const mapped = items
+            .map((item: any) => mapParticipant(item, request.type))
+            .filter((participant): participant is ParticipantOption => !!participant);
+          participants.push(...mapped);
+        } catch (requestError) {
+          console.warn(`⚠️ Impossible de charger ${request.type}:`, requestError);
         }
       }
 
@@ -1333,6 +1348,39 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
     } finally {
       setLoadingParticipants(false);
     }
+  };
+
+  const extractParticipantItems = (data: any): any[] => {
+    if (!data) return [];
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data.data)) return data.data;
+    if (Array.isArray(data.clients)) return data.clients;
+    if (Array.isArray(data.experts)) return data.experts;
+    if (Array.isArray(data.apporteurs)) return data.apporteurs;
+    if (data.data) {
+      if (Array.isArray(data.data.clients)) return data.data.clients;
+      if (Array.isArray(data.data.experts)) return data.data.experts;
+      if (Array.isArray(data.data.apporteurs)) return data.data.apporteurs;
+      if (Array.isArray(data.data.prospects)) return data.data.prospects;
+      if (Array.isArray(data.data.data)) return data.data.data;
+    }
+    if (Array.isArray(data.items)) return data.items;
+    return [];
+  };
+
+  const mapParticipant = (item: any, type: ParticipantType): ParticipantOption | null => {
+    if (!item?.id) return null;
+    const fallbackName = `${item.first_name || ''} ${item.last_name || ''}`.trim();
+    const displayName = item.company_name || item.full_name || fallbackName || item.name || item.email || 'Participant';
+    const isTemporary = item.is_temporary === true || looksTemporary(displayName) || looksTemporary(item.email);
+
+    return {
+      id: item.id,
+      name: displayName,
+      email: item.email || undefined,
+      type,
+      isTemporary
+    };
   };
 
   // Ajouter un participant
@@ -1366,19 +1414,29 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
     }
   }, [formData.start_date, event]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     console.log('🔍 EventDialog handleSubmit appelé');
     console.log('🔍 Données du formulaire avant traitement:', formData);
-    
-    // Validation pour apporteur : client_id obligatoire
-    if (user?.type === 'apporteur' && !formData.client_id) {
-      toast.error('⚠️ Vous devez sélectionner un client/prospect pour ce rendez-vous');
+
+    const errors: Record<string, string> = {};
+    if (requiresClientSelection && !formData.client_id) {
+      errors.client_id = user?.type === 'apporteur'
+        ? 'Sélectionnez un client/prospect'
+        : 'Sélectionnez un client';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      setSubmitError('Veuillez renseigner les champs obligatoires');
+      toast.error('Merci de compléter les champs obligatoires du rendez-vous');
       return;
     }
+
+    setFieldErrors({});
+    setSubmitError(null);
     
-    // Utiliser les dates directement
     const startDate = new Date(formData.start_date);
     const endDate = formData.end_date 
       ? new Date(formData.end_date)
@@ -1388,22 +1446,32 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
       ...formData,
       start_date: startDate.toISOString(),
       end_date: endDate.toISOString(),
-      // Nettoyer les champs vides
       location: formData.location || null,
       meeting_url: formData.meeting_url || null,
       client_id: formData.client_id || undefined,
-      expert_id: formData.expert_id || undefined
+      expert_id: formData.expert_id || undefined,
+      apporteur_id: formData.apporteur_id || undefined
     };
     
     console.log('🔍 Données d\'événement envoyées:', eventData);
     console.log('🔍 Appel onSubmit avec:', eventData);
     
-    onSubmit(eventData);
+    try {
+      await onSubmit(eventData);
+    } catch (error: any) {
+      const message = error?.message || 'Impossible d\'enregistrer l\'événement';
+      const field = error?.field;
+      setSubmitError(message);
+      if (field) {
+        setFieldErrors({ [field]: message });
+      }
+      toast.error(message);
+    }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {event ? 'Modifier l\'événement' : 'Créer un événement'}
@@ -1493,47 +1561,58 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
             </Button>
           </div>
 
-          {/* Sélecteurs Client et Expert (pour apporteurs) */}
-          {user?.type === 'apporteur' && (
-            <div className="grid grid-cols-2 gap-4 bg-blue-50 p-4 rounded-lg border border-blue-200">
-              <div>
-                <Label htmlFor="client_id" className="text-blue-900">Client/Prospect * <span className="text-xs text-blue-600">(Obligatoire)</span></Label>
-                <Select 
-                  value={formData.client_id} 
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, client_id: value }))}
-                  disabled={loadingLists}
+          {requiresClientSelection && (
+            <div className="grid gap-4 bg-slate-50 p-4 rounded-lg border border-slate-200 md:grid-cols-2">
+              <div className="space-y-1">
+                <Label htmlFor="client_id" className="text-slate-900">
+                  {user?.type === 'apporteur' ? 'Client / Prospect *' : 'Client *'}
+                </Label>
+                <Select
+                  value={formData.client_id}
+                  onValueChange={(value) => {
+                    setFormData(prev => ({ ...prev, client_id: value }));
+                    setFieldErrors(prev => ({ ...prev, client_id: '' }));
+                  }}
+                  disabled={clientOptions.length === 0}
                 >
-                  <SelectTrigger className="bg-white">
-                    <SelectValue placeholder={loadingLists ? "Chargement..." : "Sélectionner un client/prospect"} />
+                  <SelectTrigger className={cn('bg-white', fieldErrors.client_id && 'border-red-500')}>
+                    <SelectValue placeholder={clientOptions.length === 0 ? 'Aucun client disponible' : 'Sélectionner un client'} />
                   </SelectTrigger>
                   <SelectContent>
-                    {prospects.map((prospect) => (
-                      <SelectItem key={prospect.id} value={prospect.id}>
-                        {prospect.first_name} {prospect.last_name} {prospect.company_name ? `(${prospect.company_name})` : ''}
+                    {clientOptions.map((client) => (
+                      <SelectItem key={client.id} value={client.id}>
+                        {client.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {!formData.client_id && (
-                  <p className="text-xs text-red-600 mt-1">⚠️ Vous devez sélectionner un client/prospect</p>
+                {fieldErrors.client_id && (
+                  <p className="text-xs text-red-600">{fieldErrors.client_id}</p>
+                )}
+                {clientOptions.length === 0 && (
+                  <p className="text-xs text-slate-500">
+                    Aucun client disponible. Ajoutez un participant ou créez un client avant de planifier ce rendez-vous.
+                  </p>
                 )}
               </div>
-              
-              <div>
-                <Label htmlFor="expert_id" className="text-blue-900">Expert <span className="text-xs text-blue-600">(Optionnel)</span></Label>
-                <div className="flex gap-2">
-                  <Select 
-                    value={formData.expert_id} 
+
+              {canAssignExpert && (
+                <div className="space-y-1">
+                  <Label htmlFor="expert_id" className="text-slate-900">
+                    Expert {user?.type === 'apporteur' ? '(optionnel)' : ''}
+                  </Label>
+                  <Select
+                    value={formData.expert_id}
                     onValueChange={(value) => setFormData(prev => ({ ...prev, expert_id: value }))}
-                    disabled={loadingLists}
+                    disabled={expertOptions.length === 0}
                   >
                     <SelectTrigger className="bg-white flex-1">
-                      <SelectValue placeholder={loadingLists ? "Chargement..." : "Sélectionner un expert (optionnel)"} />
+                      <SelectValue placeholder={expertOptions.length === 0 ? 'Aucun expert' : 'Sélectionner un expert'} />
                     </SelectTrigger>
                     <SelectContent>
-                      {experts.map((expert) => (
+                      {expertOptions.map((expert) => (
                         <SelectItem key={expert.id} value={expert.id}>
-                          {expert.first_name} {expert.last_name} {expert.company_name ? `(${expert.company_name})` : ''}
+                          {expert.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -1544,13 +1623,46 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
                       variant="outline"
                       size="sm"
                       onClick={() => setFormData(prev => ({ ...prev, expert_id: '' }))}
-                      className="shrink-0"
                     >
-                      Retirer
+                      Retirer l'expert
                     </Button>
                   )}
                 </div>
-              </div>
+              )}
+
+              {canAssignApporteur && (
+                <div className="space-y-1 md:col-span-2">
+                  <Label htmlFor="apporteur_id" className="text-slate-900">
+                    Apporteur (optionnel)
+                  </Label>
+                  <Select
+                    value={formData.apporteur_id}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, apporteur_id: value }))}
+                    disabled={apporteurOptions.length === 0}
+                  >
+                    <SelectTrigger className="bg-white flex-1">
+                      <SelectValue placeholder={apporteurOptions.length === 0 ? 'Aucun apporteur' : 'Sélectionner un apporteur'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {apporteurOptions.map((apporteur) => (
+                        <SelectItem key={apporteur.id} value={apporteur.id}>
+                          {apporteur.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {formData.apporteur_id && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setFormData(prev => ({ ...prev, apporteur_id: '' }))}
+                    >
+                      Retirer l'apporteur
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -1642,6 +1754,12 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
             </div>
           )}
 
+          {submitError && (
+            <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              {submitError}
+            </div>
+          )}
+
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={onCancel}>
               Annuler
@@ -1666,42 +1784,54 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
               <div className="flex items-center justify-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
               </div>
-            ) : availableParticipants.length === 0 ? (
+            ) : participantTypeOrder.every(type => (participantGroups[type] || []).length === 0) ? (
               <div className="text-center py-8 text-gray-500">
                 <Users className="w-12 h-12 mx-auto mb-2 opacity-50" />
                 <p>Aucun participant disponible</p>
               </div>
             ) : (
               <div className="space-y-2 max-h-96 overflow-y-auto">
-                {availableParticipants.map((participant) => {
-                  const isAlreadyAdded = formData.participants.find((p: any) => p.id === participant.id);
+                {participantTypeOrder.map((type) => {
+                  const group = participantGroups[type];
+                  const visibleGroup = group?.filter(participant => !(participant.type === 'client' && participant.isTemporary)) || [];
+                  if (visibleGroup.length === 0) return null;
                   return (
-                    <button
-                      key={participant.id}
-                      type="button"
-                      onClick={() => !isAlreadyAdded && handleAddParticipant(participant)}
-                      disabled={isAlreadyAdded}
-                      className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                        isAlreadyAdded 
-                          ? 'bg-gray-50 border-gray-200 opacity-50 cursor-not-allowed' 
-                          : 'hover:bg-blue-50 hover:border-blue-300 border-gray-200 cursor-pointer'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-8 w-8">
-                          <AvatarFallback className="bg-blue-100 text-blue-600 text-xs">
-                            {participant.name?.charAt(0).toUpperCase() || '?'}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm truncate">{participant.name}</p>
-                          <p className="text-xs text-gray-500 truncate">{participant.email}</p>
-                        </div>
-                        {isAlreadyAdded && (
-                          <Badge variant="secondary" className="text-xs">Ajouté</Badge>
-                        )}
-                      </div>
-                    </button>
+                    <div key={type} className="space-y-2">
+                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                        {participantTypeLabels[type]}
+                      </p>
+                      {visibleGroup.map((participant) => {
+                        const isAlreadyAdded = formData.participants.find((p: any) => p.id === participant.id);
+                        return (
+                          <button
+                            key={participant.id}
+                            type="button"
+                            onClick={() => !isAlreadyAdded && handleAddParticipant(participant)}
+                            disabled={isAlreadyAdded}
+                            className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                              isAlreadyAdded 
+                                ? 'bg-gray-50 border-gray-200 opacity-50 cursor-not-allowed' 
+                                : 'hover:bg-blue-50 hover:border-blue-300 border-gray-200 cursor-pointer'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-8 w-8">
+                                <AvatarFallback className="bg-blue-100 text-blue-600 text-xs">
+                                  {participant.name?.charAt(0).toUpperCase() || '?'}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-sm truncate">{participant.name}</p>
+                                <p className="text-xs text-gray-500 truncate">{participant.email}</p>
+                              </div>
+                              {isAlreadyAdded && (
+                                <Badge variant="secondary" className="text-xs">Ajouté</Badge>
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
                   );
                 })}
               </div>

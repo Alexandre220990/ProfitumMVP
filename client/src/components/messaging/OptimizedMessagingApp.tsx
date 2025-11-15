@@ -48,6 +48,81 @@ import {
 // MESSAGERIE CLIENT MODERNE - DESIGN PROFESSIONNEL 2025
 // ============================================================================
 
+const SUPPORT_ADMIN_UUID = '00000000-0000-0000-0000-000000000000';
+
+const normalize = (value?: string | null) =>
+  (value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+
+const containsTemporaryKeyword = (value?: string | null) => {
+  const normalized = normalize(value);
+  return normalized.includes('client temporaire') || normalized === 'temporaire';
+};
+
+const isSupportAdminLabel = (value?: string | null) => {
+  const normalized = normalize(value);
+  return normalized.includes('support administratif');
+};
+
+const cleanConversationTitle = (title?: string): string => {
+  if (!title) return 'Conversation';
+  return title.replace(/\s*-\s*[^\s@]+@[^\s@]+\.[^\s@]+/g, '').trim();
+};
+
+const getPrimaryParticipant = (conversation: Conversation) => {
+  if (!Array.isArray(conversation.participants)) return null;
+
+  return (
+    conversation.participants.find(
+      (participant) =>
+        participant.id !== SUPPORT_ADMIN_UUID && !isSupportAdminLabel(participant.name)
+    ) ||
+    conversation.participants.find((participant) => participant.id !== SUPPORT_ADMIN_UUID) ||
+    conversation.participants[0]
+  );
+};
+
+const formatConversationLabel = (conversation: Conversation): string => {
+  const participant = getPrimaryParticipant(conversation);
+
+  if (participant) {
+    const parts = [participant.name, participant.company]
+      .filter((part): part is string => !!part && part.trim().length > 0)
+      .map((part) => part.trim());
+
+    if (parts.length > 0) {
+      return parts.join(' – ');
+    }
+  }
+
+  return cleanConversationTitle(conversation.title);
+};
+
+const isTemporaryConversation = (conversation: Conversation): boolean => {
+  if (containsTemporaryKeyword(conversation.title) || containsTemporaryKeyword(conversation.description)) {
+    return true;
+  }
+
+  if (conversation.tags?.some((tag) => normalize(tag) === 'temporary_client')) {
+    return true;
+  }
+
+  if (
+    Array.isArray(conversation.participants) &&
+    conversation.participants.some(
+      (participant) =>
+        containsTemporaryKeyword(participant.name) || containsTemporaryKeyword(participant.company)
+    )
+  ) {
+    return true;
+  }
+
+  return false;
+};
+
 interface OptimizedMessagingAppProps {
   className?: string;
   showHeader?: boolean;
@@ -56,12 +131,6 @@ interface OptimizedMessagingAppProps {
 export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
   className = ''
 }) => {
-  // Fonction utilitaire pour nettoyer les titres des conversations
-  const cleanConversationTitle = (title?: string): string => {
-    if (!title) return 'Conversation';
-    // Supprimer les emails et garder seulement le nom de l'interlocuteur
-    return title.replace(/\s*-\s*[^\s@]+@[^\s@]+\.[^\s@]+/g, '').trim();
-  };
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   
@@ -314,9 +383,11 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
       return null;
     }
     
+    const filteredConversations = conversations.filter((conv) => !isTemporaryConversation(conv));
+
     // Séparer les conversations par type
-    const adminSupportConversations = conversations.filter(conv => conv.type === 'admin_support');
-    const otherConversations = conversations.filter(conv => conv.type !== 'admin_support');
+    const adminSupportConversations = filteredConversations.filter(conv => conv.type === 'admin_support');
+    const otherConversations = filteredConversations.filter(conv => conv.type !== 'admin_support');
 
     const renderConversationItem = (conversation: Conversation, index: number) => (
       <motion.div
@@ -345,12 +416,12 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
           {isSidebarOpen && (
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between mb-1">
-                <h3 className={`text-sm truncate ${
+                <h3 className={`text-sm break-words whitespace-normal ${
                   conversation.unread_count > 0 
                     ? 'font-bold text-slate-900' 
                     : 'font-semibold text-slate-900'
                 }`}>
-                  {cleanConversationTitle(conversation.title)}
+                  {formatConversationLabel(conversation)}
                 </h3>
                 {conversation.unread_count > 0 && (
                   <Badge className="bg-red-500 text-white text-xs px-2 py-0.5 font-bold">
@@ -438,7 +509,7 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
         )}
       </>
     );
-  }, [messaging.currentConversation, isSidebarOpen, handleConversationSelect, cleanConversationTitle]);
+  }, [messaging.currentConversation, isSidebarOpen, handleConversationSelect]);
 
   // ========================================
   // RENDU PRINCIPAL - DESIGN MESSAGERIE MODERNE
@@ -531,8 +602,8 @@ export const OptimizedMessagingApp: React.FC<OptimizedMessagingAppProps> = ({
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <h3 className="font-semibold text-slate-900 flex items-center gap-2">
-                      {cleanConversationTitle(messaging.currentConversation.title)}
+                    <h3 className="font-semibold text-slate-900 flex items-center gap-2 break-words whitespace-normal">
+                      {formatConversationLabel(messaging.currentConversation)}
                       {participantStatus && !participantStatus.is_active && (
                         <Badge variant="destructive" className="text-xs">
                           Désactivé

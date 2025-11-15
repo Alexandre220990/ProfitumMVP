@@ -58,6 +58,7 @@ interface Alert {
   title: string;
   description: string;
   clientName: string;
+  productName?: string;
   actionLabel: string;
   actionUrl: string;
 }
@@ -195,20 +196,6 @@ export const ExpertDashboardOptimized = () => {
       }
     } catch (error) {
       toast.error('Erreur lors de l\'archivage de l\'alerte');
-    }
-  };
-
-  const handleSnoozeAlert = async (alertId: string, duration: number, e: React.MouseEvent) => {
-    e.stopPropagation();
-    try {
-      const response = await put(`/api/expert/alerts/${alertId}/snooze`, { duration });
-      if (response.success) {
-        setAlerts(alerts.filter(a => a.id !== alertId));
-        const hours = duration === 1 ? '1h' : duration === 3 ? '3h' : duration === 24 ? '24h' : '3 jours';
-        toast.success(`Alerte reportée de ${hours}`);
-      }
-    } catch (error) {
-      toast.error('Erreur lors du report de l\'alerte');
     }
   };
 
@@ -372,84 +359,75 @@ export const ExpertDashboardOptimized = () => {
                 <Badge className="bg-red-600 text-white">Attention requise</Badge>
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              {alerts.slice(0, 5).map((alert) => (
-                <div 
-                  key={alert.id}
-                  className={`p-4 rounded-lg border-l-4 cursor-pointer hover:shadow-md transition-all ${
-                    alert.type === 'critique' ? 'bg-red-100 border-red-500 hover:bg-red-200' :
-                    alert.type === 'important' ? 'bg-orange-100 border-orange-500 hover:bg-orange-200' :
-                    'bg-yellow-100 border-yellow-500 hover:bg-yellow-200'
-                  }`}
-                  onClick={() => {
-                    if (alert.actionUrl) {
-                      navigate(alert.actionUrl);
-                    }
-                  }}
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Badge className={
-                          alert.type === 'critique' ? 'bg-red-600' :
-                          alert.type === 'important' ? 'bg-orange-600' :
-                          'bg-yellow-600'
-                        }>
-                          {alert.type === 'critique' ? '🔴' : alert.type === 'important' ? '🟠' : '🟡'}
-                        </Badge>
-                        <span className="font-bold text-gray-900">{alert.title}</span>
+            <CardContent className="space-y-2.5">
+              {alerts.slice(0, 5).map((alert) => {
+                const productLabel = alert.productName || 'Dossier';
+                return (
+                  <div 
+                    key={alert.id}
+                    className={`p-3 rounded-xl border-l-4 cursor-pointer hover:shadow-md transition-all ${
+                      alert.type === 'critique' ? 'bg-red-100 border-red-500 hover:bg-red-200' :
+                      alert.type === 'important' ? 'bg-orange-100 border-orange-500 hover:bg-orange-200' :
+                      'bg-yellow-100 border-yellow-500 hover:bg-yellow-200'
+                    }`}
+                    onClick={() => {
+                      if (alert.actionUrl) {
+                        navigate(alert.actionUrl);
+                      }
+                    }}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-gray-600 mb-1">
+                          <Badge className={
+                            alert.type === 'critique' ? 'bg-red-600' :
+                            alert.type === 'important' ? 'bg-orange-600' :
+                            'bg-yellow-600'
+                          }>
+                            {alert.type === 'critique' ? '🔴' : alert.type === 'important' ? '🟠' : '🟡'}
+                          </Badge>
+                          <Badge variant="outline" className="bg-white/70 text-gray-700 border-dashed">
+                            {productLabel}
+                          </Badge>
+                        </div>
+                        <p className="font-semibold text-gray-900 leading-tight">
+                          {alert.title}
+                        </p>
+                        <p className="text-xs text-gray-500 font-medium">
+                          {alert.clientName}
+                        </p>
+                        <p className="text-sm text-gray-700">
+                          {alert.description}
+                        </p>
                       </div>
-                      <p className="text-sm text-gray-700">
-                        <strong>{alert.clientName}</strong> • {alert.description}
-                      </p>
+                      <Button size="sm" className="shrink-0" onClick={() => navigate(alert.actionUrl)}>
+                        {alert.actionLabel}
+                      </Button>
                     </div>
-                    <Button size="sm" onClick={() => navigate(alert.actionUrl)}>
-                      {alert.actionLabel}
-                    </Button>
-                  </div>
-                  
-                  {/* Boutons de gestion de l'alerte */}
-                  <div className="flex items-center gap-2 pt-2 border-t">
-                    <Button 
-                      size="sm" 
-                      variant="ghost" 
-                      onClick={(e) => handleMarkAlertRead(alert.id, e)}
-                      className="text-xs"
-                    >
-                      <Eye className="h-3 w-3 mr-1" />
-                      Marquer lue
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="ghost" 
-                      onClick={(e) => handleArchiveAlert(alert.id, e)}
-                      className="text-xs"
-                    >
-                      <Archive className="h-3 w-3 mr-1" />
-                      Archiver
-                    </Button>
-                    <div className="ml-auto flex gap-1">
+                    
+                    <div className="flex items-center gap-2 pt-2 border-t mt-2">
                       <Button 
                         size="sm" 
-                        variant="outline" 
-                        onClick={(e) => handleSnoozeAlert(alert.id, 1, e)}
+                        variant="ghost" 
+                        onClick={(e) => handleMarkAlertRead(alert.id, e)}
                         className="text-xs"
                       >
-                        <Bell className="h-3 w-3 mr-1" />
-                        1h
+                        <Eye className="h-3 w-3 mr-1" />
+                        Marquer lue
                       </Button>
                       <Button 
                         size="sm" 
-                        variant="outline" 
-                        onClick={(e) => handleSnoozeAlert(alert.id, 24, e)}
+                        variant="ghost" 
+                        onClick={(e) => handleArchiveAlert(alert.id, e)}
                         className="text-xs"
                       >
-                        24h
+                        <Archive className="h-3 w-3 mr-1" />
+                        Archiver
                       </Button>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               
               {alerts.length > 5 && (
                 <div className="text-center pt-2">

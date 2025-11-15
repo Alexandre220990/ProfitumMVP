@@ -56,6 +56,15 @@ export interface CreateEventData {
   dossier_id?: string;
   color?: string;
   metadata?: any;
+  client_id?: string;
+  expert_id?: string;
+  apporteur_id?: string;
+  participants?: Array<{
+    id: string;
+    name?: string;
+    email?: string;
+    type?: string;
+  }>;
 }
 
 export interface UpdateEventData extends Partial<CreateEventData> {
@@ -72,6 +81,18 @@ export interface CalendarStats {
 // ============================================================================
 // SERVICE PRINCIPAL
 // ============================================================================
+
+export class CalendarServiceError extends Error {
+  field?: string;
+  status?: number;
+
+  constructor(message: string, options?: { field?: string; status?: number }) {
+    super(message);
+    this.name = 'CalendarServiceError';
+    this.field = options?.field;
+    this.status = options?.status;
+  }
+}
 
 class CalendarService {
   private baseUrl = `${import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app'}/api/calendar`;
@@ -233,8 +254,16 @@ class CalendarService {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Erreur lors de la création de l\'événement');
+        let errorData: any = null;
+        try {
+          errorData = await response.json();
+        } catch (parseError) {
+          console.warn('⚠️ Impossible de parser la réponse erreur calendrier:', parseError);
+        }
+        throw new CalendarServiceError(
+          errorData?.message || 'Erreur lors de la création de l\'événement',
+          { field: errorData?.field, status: response.status }
+        );
       }
 
       const result = await response.json();

@@ -1,8 +1,42 @@
 import express, { Router, Request, Response } from 'express';
 import { AuthUser } from '../types/auth';
 import { supabase } from '../lib/supabase';
+import { normalizeDossierStatus } from '../utils/dossierStatus';
 
 const router = express.Router();
+
+const DOSSIER_REVIEW_NORMALIZED_STATUSES = new Set<string>([
+  'pending_upload',
+  'pending_admin_validation',
+  'admin_validated',
+  'expert_assigned',
+  'expert_pending_validation',
+  'documents_requested',
+  'complementary_documents_upload_pending',
+  'complementary_documents_sent',
+  'complementary_documents_validated',
+  'validation_pending',
+  'audit_in_progress'
+]);
+
+const DOSSIER_REVIEW_RAW_STATUSES = new Set<string>([
+  'documents_completes',
+  'audit_en_cours'
+]);
+
+const resolveDossierReviewable = (statut: string | null): boolean => {
+  if (!statut) return false;
+  if (DOSSIER_REVIEW_RAW_STATUSES.has(statut)) {
+    return true;
+  }
+  const normalized = normalizeDossierStatus(statut);
+  return DOSSIER_REVIEW_NORMALIZED_STATUSES.has(normalized);
+};
+
+const getDocumentValidationStatus = (doc: any): string => {
+  if (!doc) return 'pending';
+  return doc.validation_status || doc.status || 'pending';
+};
 
 // Route pour obtenir le profil expert
 router.get('/profile', async (req: Request, res: Response) => {
@@ -1731,6 +1765,195 @@ router.post('/dossier/:id/send-report', async (req: Request, res: Response) => {
 // ============================================================================
 
 // GET /api/expert/client/:id - Détails complets d'un client
+router.get('/client/:id/documents', async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Non authentifié' });
+    }
+
+    const authUser = req.user as AuthUser;
+    const { id } = req.params;
+
+    if (authUser.type !== 'expert') {
+      return res.status(403).json({ success: false, message: 'Accès non autorisé' });
+    }
+
+    const expertId = authUser.database_id || authUser.id;
+
+    const { data: dossiers, error: dossiersError } = await supabase
+      .from('ClientProduitEligible')
+      .select(`
+        id,
+        "clientId",
+        produitId,
+        statut,
+        metadata,
+        "montantFinal",
+        current_step,
+        progress,
+        updated_at,
+        ProduitEligible:produitId (
+          id,
+          nom,
+          categorie
+        ),
+        Client:clientId (
+          id,
+          company_name,
+          name
+        )
+      `)
+      .eq('"clientId"', id)
+      .eq('expert_id', expertId)
+      .order('created_at', { ascending: false });
+
+    if (dossiersError) {
+      console.error('Erreur récupération dossiers client/documents:', dossiersError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la récupération des dossiers'
+      });
+    }
+
+    if (!dossiers || dossiers.length === 0) {
+      return res.json({
+        success: true,
+        data: []
+      });
+    }
+
+    const dossierIds = dossiers.map(d => d.id);
+
+    const documentsByDossier = new Map<string, any[]>();
+
+    if (dossierIds.length > 0) {
+      const { data: documents, error: documentsError } = await supabase
+        .from('ClientProcessDocument')
+        .select(`
+          id,
+          client_id,
+          client_produit_id,
+          produit_id,
+          document_type,
+          filename,
+          file_size,
+          mime_type,
+          validation_status,
+          status,
+          workflow_step,
+          rejection_reason,
+          metadata,
+          created_at,
+          updated_at,
+          validated_at,
+          validated_by
+        `)
+        .in('client_produit_id', dossierIds)
+        .order('created_at', { ascending: false });
+
+      if (documentsError) {
+        console.error('Erreur récupération documents client:', documentsError);
+        return res.status(500).json({
+          success: false,
+          message: 'Erreur lors de la récupération des documents'
+        });
+      }
+
+      (documents || []).forEach(doc => {
+        if (!doc.client_produit_id) return;
+        const existing = documentsByDossier.get(doc.client_produit_id) || [];
+        existing.push(doc);
+        documentsByDossier.set(doc.client_produit_id, existing);
+      });
+    }
+
+    const payload = (dossiers || []).map(rawDossier => {
+      const produit = Array.isArray(rawDossier.ProduitEligible)
+        ? rawDossier.ProduitEligible[0]
+        : rawDossier.ProduitEligible;
+      const clientInfo = Array.isArray(rawDossier.Client)
+        ? rawDossier.Client[0]
+        : rawDossier.Client;
+      const docs = documentsByDossier.get(rawDossier.id) || [];
+
+      const mappedDocuments = docs.map(doc => {
+        const validationStatus = getDocumentValidationStatus(doc);
+        return {
+          id: doc.id,
+          dossierId: doc.client_produit_id,
+          clientId: doc.client_id,
+          produitId: doc.produit_id,
+          filename: doc.filename,
+          documentType: doc.document_type,
+          size: doc.file_size,
+          mimeType: doc.mime_type,
+          uploadedAt: doc.created_at,
+          updatedAt: doc.updated_at,
+          validationStatus,
+          status: doc.status || validationStatus,
+          rejectionReason: doc.rejection_reason,
+          workflowStep: doc.workflow_step,
+          uploadedBy: doc.metadata?.uploaded_by_label || doc.metadata?.uploaded_by || doc.metadata?.source || 'Client',
+          history: doc.metadata?.history || [],
+          actions: {
+            view: `/api/expert/document/${doc.id}/view`,
+            validate: `/api/expert/document/${doc.id}/validate`,
+            reject: `/api/expert/document/${doc.id}/reject`
+          },
+          canValidate: validationStatus !== 'validated',
+          canReject: validationStatus !== 'rejected'
+        };
+      });
+
+      const summary = {
+        total: mappedDocuments.length,
+        validated: mappedDocuments.filter(doc => doc.validationStatus === 'validated').length,
+        pending: mappedDocuments.filter(doc => doc.validationStatus === 'pending').length,
+        rejected: mappedDocuments.filter(doc => doc.validationStatus === 'rejected').length
+      };
+
+      const canReview = resolveDossierReviewable(rawDossier.statut);
+      const canAccept = canReview && summary.total > 0 && summary.pending === 0;
+
+      return {
+        dossierId: rawDossier.id,
+        clientId: rawDossier.clientId,
+        produitId: rawDossier.produitId,
+        productName: produit?.nom || 'Produit',
+        productCategory: produit?.categorie || 'Produit',
+        clientName: clientInfo?.company_name || clientInfo?.name || null,
+        statut: rawDossier.statut,
+        normalizedStatut: normalizeDossierStatus(rawDossier.statut),
+        updatedAt: rawDossier.updated_at,
+        metrics: summary,
+        documents: mappedDocuments,
+        actions: {
+          canAccept,
+          canReject: canReview,
+          canUpload: true,
+          acceptEndpoint: `/api/expert/dossier/${rawDossier.id}/validate-eligibility`,
+          rejectEndpoint: `/api/expert/dossier/${rawDossier.id}/validate-eligibility`,
+          requestDocumentsEndpoint: `/api/expert/dossier/${rawDossier.id}/request-documents`,
+          uploadEndpoint: '/api/documents/upload',
+          bulkDownloadUrl: `/api/expert/dossier/${rawDossier.id}/download-complete`,
+          dossierUrl: `/expert/dossier/${rawDossier.id}`
+        }
+      };
+    });
+
+    return res.json({
+      success: true,
+      data: payload
+    });
+  } catch (error) {
+    console.error('Erreur récupération documents client:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
 router.get('/client/:id', async (req: Request, res: Response) => {
   try {
     if (!req.user) {

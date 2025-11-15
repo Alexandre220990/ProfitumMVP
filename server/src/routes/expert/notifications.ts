@@ -14,19 +14,30 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 // ROUTES DE NOTIFICATIONS
 // ============================================================================
 
+const resolveExpertNotificationIds = (authUser?: AuthUser | null): string[] => {
+  if (!authUser) return [];
+
+  const ids = [
+    authUser.id,
+    authUser.database_id,
+    authUser.auth_user_id,
+  ].filter((value): value is string => typeof value === 'string' && value.length > 0);
+
+  return Array.from(new Set(ids));
+};
+
 // GET /api/expert/notifications - Récupérer les notifications de l'expert
 router.get('/', async (req: Request, res: Response) => {
   try {
-    const authUser = req.user;
-    
-    if (!authUser) {
+    const authUser = req.user as AuthUser | undefined;
+    const expertIds = resolveExpertNotificationIds(authUser);
+
+    if (!authUser || expertIds.length === 0) {
       return res.status(401).json({
         success: false,
         message: 'Utilisateur non authentifié'
       });
     }
-    
-    const expertId = authUser.id;
 
     // Vérifier que l'utilisateur est un expert
     if (authUser.type !== 'expert') {
@@ -42,7 +53,7 @@ router.get('/', async (req: Request, res: Response) => {
     const { data: notifications, error: notificationsError } = await supabase
       .from('notification')
       .select('*')
-      .eq('user_id', expertId)
+      .in('user_id', expertIds)
       .eq('user_type', 'expert')
       .order('created_at', { ascending: false })
       .range(parseInt(offset as string), parseInt(offset as string) + parseInt(limit as string) - 1);
@@ -59,7 +70,7 @@ router.get('/', async (req: Request, res: Response) => {
     const { count: unreadCount, error: countError } = await supabase
       .from('notification')
       .select('*', { count: 'exact', head: true })
-      .eq('user_id', expertId)
+      .in('user_id', expertIds)
       .eq('user_type', 'expert')
       .eq('is_read', false);
 
@@ -87,31 +98,24 @@ router.get('/', async (req: Request, res: Response) => {
 // POST /api/expert/notifications/:id/read - Marquer une notification comme lue
 router.post('/:id/read', async (req: Request, res: Response) => {
   try {
-    const authUser = req.user;
-    
-    if (!authUser) {
-      return res.status(401).json({
-        success: false,
-        message: 'Utilisateur non authentifié'
-      });
-    }
-    
-    const expertId = authUser.id;
-    const notificationId = req.params.id;
+    const authUser = req.user as AuthUser | undefined;
+    const expertIds = resolveExpertNotificationIds(authUser);
 
-    if (!expertId) {
+    if (!authUser || expertIds.length === 0) {
       return res.status(401).json({
         success: false,
         message: 'Utilisateur non authentifié'
       });
     }
+
+    const notificationId = req.params.id;
 
     // Vérifier que la notification appartient à l'expert
     const { data: notification, error: checkError } = await supabase
       .from('notification')
       .select('id')
       .eq('id', notificationId)
-      .eq('user_id', expertId)
+      .in('user_id', expertIds)
       .eq('user_type', 'expert')
       .single();
 
@@ -131,7 +135,7 @@ router.post('/:id/read', async (req: Request, res: Response) => {
         read_at: new Date().toISOString()
       })
       .eq('id', notificationId)
-      .eq('user_id', expertId);
+      .in('user_id', expertIds);
 
     if (updateError) {
       console.error('❌ Erreur marquage notification:', updateError);
@@ -158,30 +162,23 @@ router.post('/:id/read', async (req: Request, res: Response) => {
 // POST /api/expert/notifications/:id/unread - Marquer une notification comme non lue
 router.post('/:id/unread', async (req: Request, res: Response) => {
   try {
-    const authUser = req.user;
-    
-    if (!authUser) {
-      return res.status(401).json({
-        success: false,
-        message: 'Utilisateur non authentifié'
-      });
-    }
-    
-    const expertId = authUser.id;
-    const notificationId = req.params.id;
+    const authUser = req.user as AuthUser | undefined;
+    const expertIds = resolveExpertNotificationIds(authUser);
 
-    if (!expertId) {
+    if (!authUser || expertIds.length === 0) {
       return res.status(401).json({
         success: false,
         message: 'Utilisateur non authentifié'
       });
     }
+
+    const notificationId = req.params.id;
 
     const { data: notification, error: checkError } = await supabase
       .from('notification')
       .select('id')
       .eq('id', notificationId)
-      .eq('user_id', expertId)
+      .in('user_id', expertIds)
       .eq('user_type', 'expert')
       .single();
 
@@ -200,7 +197,7 @@ router.post('/:id/unread', async (req: Request, res: Response) => {
         read_at: null
       })
       .eq('id', notificationId)
-      .eq('user_id', expertId);
+      .in('user_id', expertIds);
 
     if (updateError) {
       console.error('❌ Erreur marquage notification non lue:', updateError);
@@ -227,30 +224,23 @@ router.post('/:id/unread', async (req: Request, res: Response) => {
 // POST /api/expert/notifications/:id/archive - Archiver une notification
 router.post('/:id/archive', async (req: Request, res: Response) => {
   try {
-    const authUser = req.user;
-    
-    if (!authUser) {
-      return res.status(401).json({
-        success: false,
-        message: 'Utilisateur non authentifié'
-      });
-    }
-    
-    const expertId = authUser.id;
-    const notificationId = req.params.id;
+    const authUser = req.user as AuthUser | undefined;
+    const expertIds = resolveExpertNotificationIds(authUser);
 
-    if (!expertId) {
+    if (!authUser || expertIds.length === 0) {
       return res.status(401).json({
         success: false,
         message: 'Utilisateur non authentifié'
       });
     }
+
+    const notificationId = req.params.id;
 
     const { data: notification, error: checkError } = await supabase
       .from('notification')
       .select('id')
       .eq('id', notificationId)
-      .eq('user_id', expertId)
+      .in('user_id', expertIds)
       .eq('user_type', 'expert')
       .single();
 
@@ -269,7 +259,7 @@ router.post('/:id/archive', async (req: Request, res: Response) => {
         updated_at: new Date().toISOString()
       })
       .eq('id', notificationId)
-      .eq('user_id', expertId);
+      .in('user_id', expertIds);
 
     if (updateError) {
       console.error('❌ Erreur archivage notification:', updateError);
@@ -296,30 +286,23 @@ router.post('/:id/archive', async (req: Request, res: Response) => {
 // POST /api/expert/notifications/:id/unarchive - Restaurer une notification archivée
 router.post('/:id/unarchive', async (req: Request, res: Response) => {
   try {
-    const authUser = req.user;
-    
-    if (!authUser) {
-      return res.status(401).json({
-        success: false,
-        message: 'Utilisateur non authentifié'
-      });
-    }
-    
-    const expertId = authUser.id;
-    const notificationId = req.params.id;
+    const authUser = req.user as AuthUser | undefined;
+    const expertIds = resolveExpertNotificationIds(authUser);
 
-    if (!expertId) {
+    if (!authUser || expertIds.length === 0) {
       return res.status(401).json({
         success: false,
         message: 'Utilisateur non authentifié'
       });
     }
+
+    const notificationId = req.params.id;
 
     const { data: notification, error: checkError } = await supabase
       .from('notification')
       .select('id')
       .eq('id', notificationId)
-      .eq('user_id', expertId)
+      .in('user_id', expertIds)
       .eq('user_type', 'expert')
       .single();
 
@@ -340,7 +323,7 @@ router.post('/:id/unarchive', async (req: Request, res: Response) => {
         updated_at: new Date().toISOString()
       })
       .eq('id', notificationId)
-      .eq('user_id', expertId);
+      .in('user_id', expertIds);
 
     if (updateError) {
       console.error('❌ Erreur restauration notification:', updateError);
@@ -367,18 +350,10 @@ router.post('/:id/unarchive', async (req: Request, res: Response) => {
 // POST /api/expert/notifications/mark-all-read - Marquer toutes les notifications comme lues
 router.post('/mark-all-read', async (req: Request, res: Response) => {
   try {
-    const authUser = req.user;
-    
-    if (!authUser) {
-      return res.status(401).json({
-        success: false,
-        message: 'Utilisateur non authentifié'
-      });
-    }
-    
-    const expertId = authUser.id;
+    const authUser = req.user as AuthUser | undefined;
+    const expertIds = resolveExpertNotificationIds(authUser);
 
-    if (!expertId) {
+    if (!authUser || expertIds.length === 0) {
       return res.status(401).json({
         success: false,
         message: 'Utilisateur non authentifié'
@@ -393,7 +368,7 @@ router.post('/mark-all-read', async (req: Request, res: Response) => {
         status: 'read',
         read_at: new Date().toISOString()
       })
-      .eq('user_id', expertId)
+      .in('user_id', expertIds)
       .eq('user_type', 'expert')
       .eq('is_read', false);
 

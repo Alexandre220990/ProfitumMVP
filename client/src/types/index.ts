@@ -51,3 +51,15 @@ export type {
   PreferenceCategory,
   PreferenceSetting
 } from './preferences'; 
+
+// Types cabinets
+export type {
+  Cabinet,
+  CabinetMember,
+  CabinetMemberRole,
+  CabinetProduct,
+  CabinetApporteur,
+  CabinetShare,
+  CabinetProductPayload,
+  CabinetKPIs
+} from './cabinets';

@@ -31,6 +31,7 @@ import clientReactivationRoutes from './routes/client-reactivation';
 import simplifiedProductsRoutes from './routes/simplified-products';
 import expertRoutes from './routes/expert';
 import adminRoutes from './routes/admin';
+import adminCabinetsRoutes from './routes/admin/cabinets';
 import auditRoutes from './routes/audit';
 // SUPPRIMÉ: import simulationRoute from './routes/simulation'; (fichier obsolète, doublon de simulationRoutes)
 
@@ -302,6 +303,7 @@ app.use('/api/expert', enhancedAuthMiddleware, requireUserType('expert'), expert
 // Routes admin - PROTÉGÉES avec permissions spécifiques
 // Routes admin avec authentification
 app.use('/api/admin', enhancedAuthMiddleware, requireUserType('admin'), adminRoutes);
+app.use('/api/admin/cabinets', enhancedAuthMiddleware, requireUserType('admin'), adminCabinetsRoutes);
 app.use('/api/admin/documents', enhancedAuthMiddleware, requireUserType('admin'), adminDocumentsUnifiedRoutes);
 
 // Routes de notifications admin - PROTÉGÉES

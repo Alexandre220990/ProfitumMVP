@@ -323,6 +323,7 @@ router.get('/alerts', enhancedAuthMiddleware, async (req: Request, res: Response
         description: notif.message || notif.description || '',
         dossierId: client_produit_id,
         clientName,
+        productName,
         urgency,
         actionLabel,
         actionUrl,
@@ -933,7 +934,7 @@ router.get('/dossiers-list', enhancedAuthMiddleware, async (req: Request, res: R
         )
       `)
       .eq('expert_id', expertId)
-      .in('statut', ['eligible', 'en_cours', 'termine'])
+      .in('statut', RAW_ACTIVE_STATUSES)
       .order('created_at', { ascending: false });
 
     if (error) {

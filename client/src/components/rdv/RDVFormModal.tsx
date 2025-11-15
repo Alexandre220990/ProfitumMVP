@@ -23,6 +23,13 @@ interface Participant {
   company_name?: string;
 }
 
+type EventCategory =
+  | 'rdv_client'
+  | 'reunion_interne'
+  | 'suivi_dossier'
+  | 'echeance_admin'
+  | 'rappel_personnel';
+
 interface RDVFormData {
   title: string;
   scheduled_date: string;
@@ -37,6 +44,7 @@ interface RDVFormData {
   expert_id?: string;
   apporteur_id?: string;
   priority: number;
+  category: EventCategory;
 }
 
 interface RDVFormModalProps {
@@ -78,6 +86,44 @@ const generateTimeSlots = (): string[] => {
 
 const TIME_SLOTS = generateTimeSlots();
 
+const EVENT_CATEGORIES: Array<{
+  value: EventCategory;
+  label: string;
+  description: string;
+  badge: string;
+}> = [
+  {
+    value: 'rdv_client',
+    label: 'RDV client',
+    description: 'Rencontre client/prospect (visio, tel, physique)',
+    badge: 'Client'
+  },
+  {
+    value: 'reunion_interne',
+    label: 'Réunion interne',
+    description: 'Point entre experts, apporteurs ou équipes support',
+    badge: 'Interne'
+  },
+  {
+    value: 'suivi_dossier',
+    label: 'Suivi de dossier',
+    description: 'Action dédiée à un dossier (relance documents, audit…)',
+    badge: 'Dossier'
+  },
+  {
+    value: 'echeance_admin',
+    label: 'Échéance administrative',
+    description: 'Date limite réglementaire ou dépôt administratif',
+    badge: 'Admin'
+  },
+  {
+    value: 'rappel_personnel',
+    label: 'Rappel personnel',
+    description: 'Mémo interne non partagé',
+    badge: 'Rappel'
+  }
+];
+
 // ============================================================================
 // COMPOSANT
 // ============================================================================
@@ -95,6 +141,7 @@ export const RDVFormModal: React.FC<RDVFormModalProps> = ({
     client?: Participant;
     expert?: Participant;
     apporteur?: Participant;
+    additionals?: Participant[];
   }>({});
 
   const [formData, setFormData] = useState<RDVFormData>({
@@ -108,6 +155,7 @@ export const RDVFormModal: React.FC<RDVFormModalProps> = ({
     description: '',
     notes: '',
     priority: 2,
+    category: 'rdv_client',
     ...initialData
   });
 
@@ -121,18 +169,47 @@ export const RDVFormModal: React.FC<RDVFormModalProps> = ({
   const loadContacts = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${config.API_URL}/api/messaging/contacts`, {
+      const response = await fetch(`${config.API_URL}/api/unified-messaging/contacts`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        setContacts(result.data || []);
+      if (!response.ok) {
+        setContacts([]);
+        return;
       }
+
+      const result = await response.json();
+      const data = result.data || {};
+
+      const groupKeys = ['clients', 'experts', 'apporteurs', 'admins'] as const;
+      const flatten = groupKeys.flatMap((key) =>
+        (data[key] || []).map((contact: any) => {
+          const keyString = key as string;
+          const inferredType = (keyString.endsWith('s')
+            ? keyString.slice(0, -1)
+            : keyString) as Participant['type'];
+
+          return {
+            id: contact.id,
+            name:
+              contact.full_name ||
+              contact.company_name ||
+              `${contact.first_name || ''} ${contact.last_name || ''}`.trim() ||
+              contact.name ||
+              contact.email,
+            email: contact.email,
+            type: (contact.type as Participant['type']) || inferredType,
+            company_name: contact.company_name
+          };
+        })
+      );
+
+      setContacts(flatten);
     } catch (error) {
       console.error('Erreur chargement contacts:', error);
+      setContacts([]);
     }
   };
 
@@ -163,11 +240,22 @@ export const RDVFormModal: React.FC<RDVFormModalProps> = ({
     setLoading(true);
 
     try {
+      const additionalInternalParticipants = (selectedParticipants.additionals || []).map(p => ({
+        id: p.id,
+        name: p.name,
+        email: p.email,
+        type: p.type,
+        company_name: p.company_name
+      }));
+
       const rdvPayload = {
         ...formData,
         client_id: selectedParticipants.client.id,
         expert_id: selectedParticipants.expert.id,
-        apporteur_id: selectedParticipants.apporteur?.id || null
+        apporteur_id: selectedParticipants.apporteur?.id || null,
+        metadata: {
+          additional_participants: additionalInternalParticipants
+        }
       };
 
       const token = localStorage.getItem('token');
@@ -216,6 +304,37 @@ export const RDVFormModal: React.FC<RDVFormModalProps> = ({
     return contacts.filter(c => c.type === type);
   };
 
+  const internalParticipantTypes: Participant['type'][] = ['expert', 'apporteur'];
+
+  const addInternalParticipant = (participant: Participant | undefined) => {
+    if (!participant) return;
+    setSelectedParticipants(prev => {
+      const list = prev.additionals || [];
+      if (list.some(p => p.id === participant.id)) {
+        return prev;
+      }
+      return {
+        ...prev,
+        additionals: [...list, participant]
+      };
+    });
+  };
+
+  const removeInternalParticipant = (participantId: string) => {
+    setSelectedParticipants(prev => ({
+      ...prev,
+      additionals: (prev.additionals || []).filter(p => p.id !== participantId)
+    }));
+  };
+
+  const availableInternalContacts = contacts.filter(contact => {
+    if (!internalParticipantTypes.includes(contact.type)) return false;
+    if (selectedParticipants.expert && contact.id === selectedParticipants.expert.id) return false;
+    if (selectedParticipants.apporteur && contact.id === selectedParticipants.apporteur.id) return false;
+    if (selectedParticipants.additionals?.some(p => p.id === contact.id)) return false;
+    return true;
+  });
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -226,6 +345,38 @@ export const RDVFormModal: React.FC<RDVFormModalProps> = ({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Section Type d'événement */}
+          <div className="space-y-4">
+            <Label>Type d'événement</Label>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {EVENT_CATEGORIES.map(category => {
+                const isSelected = formData.category === category.value;
+                return (
+                  <button
+                    key={category.value}
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, category: category.value }))}
+                    className={`p-4 rounded-xl border-2 text-left transition-all ${
+                      isSelected
+                        ? 'border-blue-600 bg-blue-50 shadow-sm'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-base font-semibold text-gray-900">
+                        {category.label}
+                      </p>
+                      <Badge variant={isSelected ? 'default' : 'outline'}>
+                        {category.badge}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-gray-600">{category.description}</p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Section Participants */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold flex items-center gap-2">
@@ -363,6 +514,61 @@ export const RDVFormModal: React.FC<RDVFormModalProps> = ({
                 </Select>
               )}
             </div>
+
+            {formData.category === 'reunion_interne' && (
+              <div>
+                <Label className="mb-2">Participants internes (experts / apporteurs)</Label>
+                <div className="space-y-3">
+                  <Select
+                    onValueChange={(value) => {
+                      const participant = contacts.find(c => c.id === value);
+                      addInternalParticipant(participant);
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={
+                        availableInternalContacts.length === 0
+                          ? 'Tous les contacts internes sont sélectionnés'
+                          : 'Ajouter un participant interne'
+                      } />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-64">
+                      {availableInternalContacts.length === 0 ? (
+                        <div className="px-3 py-2 text-sm text-gray-500">
+                          Aucun contact interne disponible
+                        </div>
+                      ) : (
+                        availableInternalContacts.map(contact => (
+                          <SelectItem key={contact.id} value={contact.id}>
+                            {contact.name} • {contact.type === 'expert' ? 'Expert' : 'Apporteur'}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                  {selectedParticipants.additionals && selectedParticipants.additionals.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {selectedParticipants.additionals.map(participant => (
+                        <Badge
+                          key={participant.id}
+                          variant="secondary"
+                          className="flex items-center gap-1 bg-slate-100 text-slate-800"
+                        >
+                          {participant.name}
+                          <button
+                            type="button"
+                            onClick={() => removeInternalParticipant(participant.id)}
+                            className="ml-1"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Section Planning */}
