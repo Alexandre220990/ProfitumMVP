@@ -8,11 +8,9 @@ import {
   Briefcase, 
   Users, 
   Calendar,
-  TrendingUp,
   AlertTriangle,
   Phone,
   Mail,
-  Euro,
   Target,
   Zap,
   CheckCircle,
@@ -484,104 +482,123 @@ export const ExpertDashboardOptimized = () => {
                   <p className="text-gray-600">Aucun dossier à traiter</p>
                 </div>
               ) : (
-                filteredDossiers.slice(0, 5).map((dossier, index) => (
-                  <div 
-                    key={dossier.id}
-                    className="p-6 bg-white border-2 rounded-lg hover:shadow-lg transition-all cursor-pointer"
-                    onClick={() => navigate(`/expert/dossier/${dossier.id}`)}
-                  >
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-start gap-4">
-                        {/* Numéro de priorité */}
-                        <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-xl ${
-                          index === 0 ? 'bg-red-100 text-red-700' :
-                          index === 1 ? 'bg-orange-100 text-orange-700' :
-                          index === 2 ? 'bg-yellow-100 text-yellow-700' :
-                          'bg-gray-100 text-gray-700'
-                        }`}>
-                          {index + 1}
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <h3 className="text-lg font-bold text-gray-900">{dossier.clientName}</h3>
-                            <Badge variant="outline">{dossier.productName}</Badge>
+                filteredDossiers.slice(0, 5).map((dossier, index) => {
+                  const statutLabel = dossier.statut === 'eligible' ? 'Prospect' : 'En cours';
+                  const statutVariant = dossier.statut === 'eligible' ? 'secondary' : 'default';
+                  const nextActionLabel = dossier.nextAction || 'Voir dossier';
+                  const canCall = Boolean(dossier.clientPhone);
+                  const canEmail = Boolean(dossier.clientEmail);
+
+                  return (
+                    <div
+                      key={dossier.id}
+                      className="p-5 bg-white border-2 rounded-2xl hover:shadow-md transition-all cursor-pointer"
+                      onClick={() => navigate(`/expert/dossier/${dossier.id}`)}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start gap-3">
+                          <div
+                            className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
+                              index === 0
+                                ? 'bg-red-100 text-red-700'
+                                : index === 1
+                                ? 'bg-orange-100 text-orange-700'
+                                : index === 2
+                                ? 'bg-yellow-100 text-yellow-700'
+                                : 'bg-slate-100 text-slate-700'
+                            }`}
+                          >
+                            {index + 1}
                           </div>
-                          <p className="text-sm text-gray-600 mb-3">
-                            <strong>{dossier.apporteurName}</strong> • Dernier contact il y a {dossier.daysSinceLastContact} jour(s)
-                          </p>
-                          <div className="flex items-center gap-4 text-sm">
-                            <span className="flex items-center gap-1">
-                              <TrendingUp className="h-4 w-4 text-orange-600" />
-                              Urgence: {dossier.urgenceScore}/40
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Euro className="h-4 w-4 text-green-600" />
-                              Valeur: {dossier.valeurScore}/30
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Target className="h-4 w-4 text-purple-600" />
-                              Probabilité: {dossier.probabiliteScore}/20
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Zap className="h-4 w-4 text-blue-600" />
-                              Facilité: {dossier.faciliteScore}/10
-                            </span>
+                          <div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h3 className="text-base font-semibold text-gray-900">{dossier.clientName}</h3>
+                              <Badge variant="outline">{dossier.productName}</Badge>
+                              <Badge variant={statutVariant}>{statutLabel}</Badge>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {dossier.apporteurName} • Dernier contact il y a {dossier.daysSinceLastContact} jour(s)
+                            </p>
                           </div>
                         </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Badge className="bg-purple-100 text-purple-800">
+                        <div className="text-right">
+                          <Badge className="bg-purple-100 text-purple-800 mb-1">
                             <Star className="h-3 w-3 mr-1" />
-                            Score: {dossier.priorityScore}/100
+                            Score {dossier.priorityScore}/100
                           </Badge>
+                          <p className="text-xl font-bold text-emerald-600 leading-tight">
+                            {dossier.montantFinal.toLocaleString()}€
+                          </p>
                         </div>
-                        <p className="text-2xl font-bold text-green-600">
-                          {dossier.montantFinal.toLocaleString()}€
-                        </p>
+                      </div>
+
+                      <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm text-gray-600">
+                        <div>
+                          <p className="text-[10px] uppercase text-gray-400 tracking-wide">Urgence</p>
+                          <p className="font-medium">{dossier.urgenceScore}/40</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] uppercase text-gray-400 tracking-wide">Valeur</p>
+                          <p className="font-medium">{dossier.valeurScore}/30</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] uppercase text-gray-400 tracking-wide">Probabilité</p>
+                          <p className="font-medium">{dossier.probabiliteScore}/20</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] uppercase text-gray-400 tracking-wide">Facilité</p>
+                          <p className="font-medium">{dossier.faciliteScore}/10</p>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 border-t pt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="text-sm text-gray-700">
+                          <p className="font-medium text-gray-900">Prochaine action</p>
+                          <p>{nextActionLabel}</p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Contact principal : {dossier.clientEmail || 'Non communiqué'}
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          {canCall && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                window.location.href = `tel:${dossier.clientPhone}`;
+                              }}
+                            >
+                              <Phone className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {canEmail && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                window.location.href = `mailto:${dossier.clientEmail}`;
+                              }}
+                            >
+                              <Mail className="h-4 w-4" />
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/expert/dossier/${dossier.id}`);
+                            }}
+                          >
+                            <ArrowUpRight className="h-4 w-4 mr-2" />
+                            {nextActionLabel}
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                    
-                    {/* Actions rapides */}
-                    <div className="flex items-center justify-between pt-4 border-t">
-                      <div className="flex items-center gap-2">
-                        <Badge variant={dossier.statut === 'eligible' ? 'secondary' : 'default'}>
-                          {dossier.statut === 'eligible' ? 'Prospect' : 'En cours'}
-                        </Badge>
-                        <span className="text-sm text-gray-600">
-                          {dossier.clientEmail}
-                        </span>
-                        <Badge variant="outline">{dossier.apporteurName}</Badge>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            window.location.href = `tel:${dossier.clientPhone}`;
-                          }}
-                        >
-                          <Phone className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          size="sm"
-                          variant="outline"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            window.location.href = `mailto:${dossier.clientEmail}`;
-                          }}
-                        >
-                          <Mail className="h-4 w-4" />
-                        </Button>
-                        <Button size="sm">
-                          <ArrowUpRight className="h-4 w-4 mr-2" />
-                          {dossier.nextAction}
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </CardContent>
           </Card>
