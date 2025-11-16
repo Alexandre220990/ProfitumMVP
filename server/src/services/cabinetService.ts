@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { NotificationService, NotificationType, NotificationPriority } from './notification-service';
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -9,15 +10,101 @@ if (!supabaseUrl || !supabaseKey) {
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+type CabinetMemberRole = 'OWNER' | 'MANAGER' | 'EXPERT' | 'ASSISTANT';
+type CabinetMemberType = 'expert' | 'apporteur' | 'assistant' | 'owner' | 'manager';
+type CabinetMemberStatus = 'active' | 'invited' | 'suspended' | 'disabled';
+
+type SupabaseCabinetMember = {
+  id: string;
+  cabinet_id: string;
+  member_id: string;
+  member_type: CabinetMemberType | string;
+  team_role: CabinetMemberRole;
+  status: CabinetMemberStatus;
+  manager_member_id: string | null;
+  permissions: Record<string, any> | null;
+  products: any[] | null;
+  metrics: Record<string, any> | null;
+  created_at: string;
+  last_refresh_at?: string | null;
+};
+
+type MemberProfile = {
+  id: string;
+  first_name?: string | null;
+  last_name?: string | null;
+  name?: string | null;
+  company_name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  type: CabinetMemberType | string;
+};
+
+type CabinetMemberWithProfile = SupabaseCabinetMember & {
+  profile: MemberProfile | null;
+};
+
+type CabinetTeamStatRow = {
+  cabinet_member_id: string;
+  cabinet_id: string;
+  member_id: string | null;
+  dossiers_total: number;
+  dossiers_en_cours: number;
+  dossiers_signes: number;
+  last_activity: string | null;
+};
+
+type CabinetHierarchyNode = CabinetMemberWithProfile & {
+  stats: CabinetTeamStatRow | null;
+  children: CabinetHierarchyNode[];
+};
+
+type AssignCabinetMemberInput = {
+  cabinetId: string;
+  memberId: string;
+  memberType: CabinetMemberType;
+  teamRole: CabinetMemberRole;
+  status?: CabinetMemberStatus;
+  managerMemberId?: string | null;
+  permissions?: Record<string, any>;
+  products?: any[];
+};
+
+const ROLE_PRIORITY: Record<CabinetMemberRole, number> = {
+  OWNER: 0,
+  MANAGER: 1,
+  EXPERT: 2,
+  ASSISTANT: 3
+};
+
 export class CabinetService {
+  // ---------------------------------------------------------------------------
+  // Cabinets
+  // ---------------------------------------------------------------------------
+
   static async listCabinets(filters: { search?: string }) {
     let query = supabase
       .from('Cabinet')
       .select(`
-        *,
+        id,
+        name,
+        slug,
+        status,
+        siret,
+        phone,
+        email,
+        address,
+        owner_expert_id,
+        metadata,
+        active_from,
+        active_until,
+        created_at,
+        updated_at,
+        owner:owner_expert_id(id, name, first_name, last_name, email),
         members:CabinetMember(count),
         produits:CabinetProduitEligible(count)
-      `);
+      `)
+      .order('created_at', { ascending: false });
 
     if (filters.search) {
       query = query.ilike('name', `%${filters.search}%`);
@@ -25,14 +112,40 @@ export class CabinetService {
 
     const { data, error } = await query;
     if (error) throw error;
-    return data;
+
+    const cabinetIds = (data || []).map(cab => cab.id);
+    const statsByCabinet = await this.getAggregatedTeamStats(cabinetIds);
+
+    return (data || []).map(cabinet => ({
+      ...cabinet,
+      stats_summary: statsByCabinet[cabinet.id] || {
+        members: 0,
+        dossiers_total: 0,
+        dossiers_en_cours: 0,
+        dossiers_signes: 0
+      }
+    }));
   }
 
   static async getCabinetDetail(id: string) {
     const { data, error } = await supabase
       .from('Cabinet')
       .select(`
-        *,
+        id,
+        name,
+        slug,
+        status,
+        siret,
+        phone,
+        email,
+        address,
+        owner_expert_id,
+        metadata,
+        active_from,
+        active_until,
+        created_at,
+        updated_at,
+        owner:owner_expert_id(id, name, first_name, last_name, email),
         members:CabinetMember(*),
         produits:CabinetProduitEligible(*)
       `)
@@ -40,7 +153,22 @@ export class CabinetService {
       .single();
 
     if (error) throw error;
-    return data;
+    if (!data) return null;
+
+    const [members, stats] = await Promise.all([
+      this.getCabinetMembersWithProfiles(id),
+      this.getCabinetTeamStats(id)
+    ]);
+
+    const hierarchy = this.buildHierarchy(members, stats);
+    const kpis = this.computeCabinetKpis(stats);
+
+    return {
+      ...data,
+      hierarchy,
+      teamStats: stats,
+      kpis
+    };
   }
 
   static async createCabinet(payload: {
@@ -49,10 +177,17 @@ export class CabinetService {
     phone?: string;
     email?: string;
     address?: string;
+    owner_expert_id?: string;
+    metadata?: Record<string, any>;
+    status?: string;
   }) {
     const { data, error } = await supabase
       .from('Cabinet')
-      .insert(payload)
+      .insert({
+        ...payload,
+        status: payload.status || 'draft',
+        metadata: payload.metadata || {}
+      })
       .select('*')
       .single();
 
@@ -72,13 +207,41 @@ export class CabinetService {
     return data;
   }
 
-  static async upsertCabinetProducts(cabinetId: string, products: Array<{
-    produit_eligible_id: string;
-    commission_rate?: number;
-    fee_amount?: number;
-    fee_mode?: 'fixed' | 'percent';
-    is_active?: boolean;
-  }>) {
+  static async setCabinetOwner(cabinetId: string, expertId: string) {
+    const { data, error } = await supabase
+      .from('Cabinet')
+      .update({ owner_expert_id: expertId, status: 'active' })
+      .eq('id', cabinetId)
+      .select('*')
+      .single();
+
+    if (error) throw error;
+    await this.assignCabinetMember({
+      cabinetId,
+      memberId: expertId,
+      memberType: 'expert',
+      teamRole: 'OWNER',
+      status: 'active',
+      permissions: { superUser: true }
+    });
+    return data;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Produits
+  // ---------------------------------------------------------------------------
+
+  static async upsertCabinetProducts(
+    cabinetId: string,
+    products: Array<{
+      produit_eligible_id: string;
+      commission_rate?: number;
+      fee_amount?: number;
+      fee_mode?: 'fixed' | 'percent';
+      is_active?: boolean;
+      metadata?: Record<string, any>;
+    }>
+  ) {
     if (!Array.isArray(products)) return [];
 
     const payload = products.map(product => ({
@@ -87,7 +250,8 @@ export class CabinetService {
       commission_rate: product.commission_rate ?? 0,
       fee_amount: product.fee_amount ?? 0,
       fee_mode: product.fee_mode || 'fixed',
-      is_active: product.is_active ?? true
+      is_active: product.is_active ?? true,
+      metadata: product.metadata || {}
     }));
 
     const { data, error } = await supabase
@@ -99,54 +263,197 @@ export class CabinetService {
     return data;
   }
 
+  // ---------------------------------------------------------------------------
+  // Membres & hiérarchie
+  // ---------------------------------------------------------------------------
+
+  static async assignCabinetMember(input: AssignCabinetMemberInput) {
+    const { data, error } = await supabase.rpc('assign_cabinet_member', {
+      _cabinet_id: input.cabinetId,
+      _member_id: input.memberId,
+      _member_type: input.memberType,
+      _team_role: input.teamRole,
+      _manager_member_id: input.managerMemberId ?? null,
+      _status: input.status || 'active',
+      _permissions: input.permissions || {},
+      _products: input.products || []
+    });
+
+    if (error) throw error;
+
+    // Notification automatique pour le nouveau membre
+    try {
+      const cabinet = await this.getCabinetDetail(input.cabinetId);
+      if (cabinet) {
+        await new NotificationService().sendNotification(
+          input.memberId,
+          'expert',
+          NotificationType.EXPERT_NEW_ASSIGNMENT,
+          {
+            title: `Vous avez été ajouté au cabinet ${cabinet.name}`,
+            message: `Vous avez été assigné comme ${input.teamRole} au cabinet ${cabinet.name}`,
+            cabinet_id: input.cabinetId,
+            cabinet_name: cabinet.name,
+            team_role: input.teamRole,
+            member_id: input.memberId
+          },
+          NotificationPriority.MEDIUM
+        );
+      }
+    } catch (notifError) {
+      console.error('Erreur notification ajout membre:', notifError);
+      // Ne pas bloquer l'opération en cas d'erreur de notification
+    }
+
+    return data;
+  }
+
   static async addMember(payload: {
     cabinet_id: string;
     member_id: string;
-    member_type: 'expert' | 'apporteur' | 'responsable_cabinet';
+    member_type: CabinetMemberType;
+    team_role?: CabinetMemberRole;
+    manager_member_id?: string | null;
+    status?: CabinetMemberStatus;
+    permissions?: Record<string, any>;
+    products?: any[];
   }) {
+    return this.assignCabinetMember({
+      cabinetId: payload.cabinet_id,
+      memberId: payload.member_id,
+      memberType: payload.member_type,
+      teamRole: payload.team_role || (payload.member_type === 'apporteur' ? 'ASSISTANT' : 'EXPERT'),
+      managerMemberId: payload.manager_member_id ?? null,
+      status: payload.status,
+      permissions: payload.permissions,
+      products: payload.products
+    });
+  }
+
+  static async assignManager(cabinetId: string, expertId: string) {
+    const { data, error } = await supabase.rpc('assign_manager', {
+      _cabinet_id: cabinetId,
+      _expert_id: expertId
+    });
+
+    if (error) throw error;
+    return data;
+  }
+
+  static async assignExpertToManager(cabinetId: string, expertId: string, managerMemberId: string) {
+    const { data, error } = await supabase.rpc('assign_expert_to_manager', {
+      _cabinet_id: cabinetId,
+      _expert_id: expertId,
+      _manager_member_id: managerMemberId
+    });
+
+    if (error) throw error;
+    return data;
+  }
+
+  static async updateCabinetMember(memberId: string, updates: Partial<Pick<SupabaseCabinetMember, 'status' | 'permissions' | 'products' | 'manager_member_id' | 'team_role'>>) {
+    const memberBefore = await supabase
+      .from('CabinetMember')
+      .select('*')
+      .eq('id', memberId)
+      .single();
+
     const { data, error } = await supabase
       .from('CabinetMember')
-      .insert(payload)
+      .update({
+        ...updates,
+        last_refresh_at: new Date().toISOString()
+      })
+      .eq('id', memberId)
       .select('*')
       .single();
 
     if (error) throw error;
+    await supabase.rpc('refresh_cabinet_team_stat');
+
+    // Notification automatique si statut changé
+    if (updates.status && memberBefore.data?.status !== updates.status) {
+      try {
+        const cabinet = await this.getCabinetDetail(memberBefore.data?.cabinet_id);
+        if (cabinet && memberBefore.data) {
+          const notificationType = updates.status === 'active' || updates.status === 'invited'
+            ? NotificationType.EXPERT_ACCOUNT_REACTIVATED
+            : NotificationType.EXPERT_ACCOUNT_SUSPENDED;
+          
+          await new NotificationService().sendNotification(
+            memberBefore.data.member_id,
+            'expert',
+            notificationType,
+            {
+              title: `Votre statut dans le cabinet ${cabinet.name} a changé`,
+              message: `Votre statut est maintenant : ${updates.status}`,
+              cabinet_id: memberBefore.data.cabinet_id,
+              cabinet_name: cabinet.name,
+              old_status: memberBefore.data.status,
+              new_status: updates.status
+            },
+            NotificationPriority.MEDIUM
+          );
+        }
+      } catch (notifError) {
+        console.error('Erreur notification update membre:', notifError);
+      }
+    }
+
     return data;
   }
 
   static async removeMember(cabinetId: string, memberId: string) {
     const { error } = await supabase
       .from('CabinetMember')
-      .delete()
+      .update({
+        status: 'disabled',
+        manager_member_id: null,
+        permissions: {},
+        products: []
+      })
       .eq('cabinet_id', cabinetId)
       .eq('member_id', memberId);
 
     if (error) throw error;
+    await supabase.rpc('refresh_cabinet_team_stat');
     return true;
   }
 
-  static async getCabinetApporteurs(cabinetId: string) {
-    const { data, error } = await supabase
-      .from('CabinetMember')
-      .select(`
-        id,
-        member_id,
-        member_type,
-        created_at,
-        ApporteurAffaires:member_id(id, first_name, last_name, company_name, email, phone_number)
-      `)
-      .eq('cabinet_id', cabinetId)
-      .eq('member_type', 'apporteur');
+  static async getCabinetMembersWithProfiles(cabinetId: string) {
+    const members = await this.fetchCabinetMembers(cabinetId);
+    const profiles = await this.fetchMemberProfiles(members);
 
-    if (error) throw error;
-
-    return (data || []).map((row: any) => ({
-      id: row.id,
-      member_id: row.member_id,
-      member_type: row.member_type,
-      created_at: row.created_at,
-      apporteur: row.ApporteurAffaires
+    return members.map(member => ({
+      ...member,
+      profile: profiles.get(member.member_id) || null
     }));
+  }
+
+  static async getCabinetHierarchy(cabinetId: string): Promise<CabinetHierarchyNode[]> {
+    const [members, stats] = await Promise.all([
+      this.getCabinetMembersWithProfiles(cabinetId),
+      this.getCabinetTeamStats(cabinetId)
+    ]);
+    return this.buildHierarchy(members, stats);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Lecture métier (apporteurs, clients, shares, timeline, tasks)
+  // ---------------------------------------------------------------------------
+
+  static async getCabinetApporteurs(cabinetId: string) {
+    const members = await this.getCabinetMembersWithProfiles(cabinetId);
+    return members
+      .filter(member => member.member_type === 'apporteur')
+      .map(member => ({
+        id: member.id,
+        member_id: member.member_id,
+        member_type: member.member_type,
+        created_at: member.created_at,
+        status: member.status,
+        apporteur: member.profile || null
+      }));
   }
 
   static async getCabinetClients(cabinetId: string) {
@@ -193,7 +500,6 @@ export class CabinetService {
       .eq('cabinet_id', cabinetId);
 
     if (error) throw error;
-
     return data || [];
   }
 
@@ -228,7 +534,10 @@ export class CabinetService {
     return true;
   }
 
-  static async getCabinetTimeline(cabinetId: string, filters?: { days?: number; page?: number; limit?: number }) {
+  static async getCabinetTimeline(
+    cabinetId: string,
+    filters?: { days?: number; page?: number; limit?: number }
+  ) {
     let query = supabase
       .from('RDV_Timeline')
       .select(`
@@ -258,7 +567,6 @@ export class CabinetService {
     query = query.range(from, to);
 
     const { data, error } = await query;
-
     if (error) throw error;
     return data || [];
   }
@@ -290,9 +598,206 @@ export class CabinetService {
     query = query.order('due_date', { ascending: true });
 
     const { data, error } = await query;
+    if (error) throw error;
+    return data || [];
+  }
+
+  // ---------------------------------------------------------------------------
+  // Helpers
+  // ---------------------------------------------------------------------------
+
+  private static async fetchCabinetMembers(cabinetId: string): Promise<SupabaseCabinetMember[]> {
+    const { data, error } = await supabase
+      .from('CabinetMember')
+      .select('id, cabinet_id, member_id, member_type, team_role, status, manager_member_id, permissions, products, metrics, created_at, last_refresh_at')
+      .eq('cabinet_id', cabinetId)
+      .order('team_role', { ascending: true });
 
     if (error) throw error;
     return data || [];
   }
+
+  static async getMemberRecord(cabinetId: string, memberId: string) {
+    const { data, error } = await supabase
+      .from('CabinetMember')
+      .select('id, cabinet_id, member_id, team_role, status, manager_member_id, permissions, products')
+      .eq('cabinet_id', cabinetId)
+      .eq('member_id', memberId)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data;
+  }
+
+  static async getMemberByRecordId(memberRecordId: string) {
+    const { data, error } = await supabase
+      .from('CabinetMember')
+      .select('id, cabinet_id, member_id, team_role, status, manager_member_id, permissions, products')
+      .eq('id', memberRecordId)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data;
+  }
+
+  private static async fetchMemberProfiles(members: SupabaseCabinetMember[]) {
+    const expertIds = members.filter(m => m.member_type === 'expert').map(m => m.member_id);
+    const apporteurIds = members.filter(m => m.member_type === 'apporteur').map(m => m.member_id);
+
+    const [experts, apporteurs] = await Promise.all([
+      expertIds.length
+        ? supabase
+            .from('Expert')
+            .select('id, first_name, last_name, name, email, phone, company_name')
+            .in('id', expertIds)
+        : Promise.resolve({ data: [], error: null }),
+      apporteurIds.length
+        ? supabase
+            .from('ApporteurAffaires')
+            .select('id, first_name, last_name, company_name, email, phone')
+            .in('id', apporteurIds)
+        : Promise.resolve({ data: [], error: null })
+    ]);
+
+    if (experts.error) throw experts.error;
+    if (apporteurs.error) throw apporteurs.error;
+
+    const map = new Map<string, MemberProfile>();
+
+    (experts.data || []).forEach(expert => {
+      map.set(expert.id, {
+        id: expert.id,
+        first_name: expert.first_name,
+        last_name: expert.last_name,
+        name: expert.name,
+        email: expert.email,
+        phone: expert.phone,
+        company_name: expert.company_name,
+        type: 'expert'
+      });
+    });
+
+    (apporteurs.data || []).forEach(apporteur => {
+      map.set(apporteur.id, {
+        id: apporteur.id,
+        first_name: apporteur.first_name,
+        last_name: apporteur.last_name,
+        name: `${apporteur.first_name || ''} ${apporteur.last_name || ''}`.trim() || apporteur.company_name,
+        email: apporteur.email,
+        phone: apporteur.phone,
+        company_name: apporteur.company_name,
+        type: 'apporteur'
+      });
+    });
+
+    return map;
+  }
+
+  private static buildHierarchy(members: CabinetMemberWithProfile[], stats: CabinetTeamStatRow[]): CabinetHierarchyNode[] {
+    const nodes = new Map<string, CabinetHierarchyNode>();
+    const statsMap = new Map(stats.map(stat => [stat.cabinet_member_id, stat]));
+
+    members.forEach(member => {
+      nodes.set(member.id, {
+        ...member,
+        stats: statsMap.get(member.id) || null,
+        children: []
+      });
+    });
+
+    const roots: CabinetHierarchyNode[] = [];
+
+    nodes.forEach(node => {
+      if (node.manager_member_id && nodes.has(node.manager_member_id)) {
+        nodes.get(node.manager_member_id)!.children.push(node);
+      } else {
+        roots.push(node);
+      }
+    });
+
+    const sortFn = (a: CabinetHierarchyNode, b: CabinetHierarchyNode) => {
+      const diff = ROLE_PRIORITY[a.team_role] - ROLE_PRIORITY[b.team_role];
+      if (diff !== 0) return diff;
+      const nameA = a.profile?.name || '';
+      const nameB = b.profile?.name || '';
+      return nameA.localeCompare(nameB);
+    };
+
+    roots.sort(sortFn);
+    roots.forEach(root => root.children.sort(sortFn));
+
+    return roots;
+  }
+
+  static async getCabinetTeamStats(cabinetId: string): Promise<CabinetTeamStatRow[]> {
+    const { data, error } = await supabase
+      .from('CabinetTeamStat')
+      .select('*')
+      .eq('cabinet_id', cabinetId);
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  static async refreshTeamStats() {
+    const { error } = await supabase.rpc('refresh_cabinet_team_stat');
+    if (error) throw error;
+    return true;
+  }
+
+  private static async getAggregatedTeamStats(cabinetIds: string[]) {
+    if (!cabinetIds.length) return {};
+
+    const { data, error } = await supabase
+      .from('CabinetTeamStat')
+      .select('cabinet_id, dossiers_total, dossiers_en_cours, dossiers_signes')
+      .in('cabinet_id', cabinetIds);
+
+    if (error) throw error;
+
+    return (data || []).reduce<Record<string, { members: number; dossiers_total: number; dossiers_en_cours: number; dossiers_signes: number }>>(
+      (acc, row) => {
+        const cabId = row.cabinet_id;
+        if (!cabinetIds.includes(cabId)) {
+          return acc;
+        }
+        if (!acc[cabId]) {
+          acc[cabId] = {
+            members: 0,
+            dossiers_total: 0,
+            dossiers_en_cours: 0,
+            dossiers_signes: 0
+          };
+        }
+        acc[cabId].members += 1;
+        acc[cabId].dossiers_total += row.dossiers_total;
+        acc[cabId].dossiers_en_cours += row.dossiers_en_cours;
+        acc[cabId].dossiers_signes += row.dossiers_signes;
+        return acc;
+      },
+      {}
+    );
+  }
+
+  private static computeCabinetKpis(stats: CabinetTeamStatRow[]) {
+    return stats.reduce(
+      (acc, stat) => {
+        acc.dossiers_total += stat.dossiers_total;
+        acc.dossiers_en_cours += stat.dossiers_en_cours;
+        acc.dossiers_signes += stat.dossiers_signes;
+        return acc;
+      },
+      {
+        dossiers_total: 0,
+        dossiers_en_cours: 0,
+        dossiers_signes: 0
+      }
+    );
+  }
+
+  static getCabinetKpisFromStats(stats: CabinetTeamStatRow[]) {
+    return this.computeCabinetKpis(stats);
+  }
 }
+
 

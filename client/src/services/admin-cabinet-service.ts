@@ -250,6 +250,92 @@ class AdminCabinetService {
 
     return response.json();
   }
+
+  async getAvailableExperts(search?: string): Promise<{ success: boolean; data: Array<{ id: string; name: string; email?: string; is_active?: boolean }> }> {
+    const params = new URLSearchParams();
+    if (search) params.append('search', search);
+
+    const queryString = params.toString();
+    const response = await fetch(`${this.baseUrl}/experts/available${queryString ? `?${queryString}` : ''}`, {
+      method: 'GET',
+      headers: this.getAuthHeaders()
+    });
+
+    if (!response.ok) {
+      throw new Error('Erreur lors de la récupération des experts');
+    }
+
+    return response.json();
+  }
+
+  async setCabinetOwner(cabinetId: string, expertId: string): Promise<{ success: boolean; data?: any }> {
+    const response = await fetch(`${this.baseUrl}/${cabinetId}/owner`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify({ expert_id: expertId })
+    });
+
+    if (!response.ok) {
+      throw new Error('Erreur lors de l\'assignation du propriétaire');
+    }
+
+    return response.json();
+  }
+
+  async assignCabinetManager(cabinetId: string, expertId: string): Promise<{ success: boolean; data?: any }> {
+    const response = await fetch(`${this.baseUrl}/${cabinetId}/assign-manager`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify({ expert_id: expertId })
+    });
+
+    if (!response.ok) {
+      throw new Error('Erreur lors de l\'assignation du manager');
+    }
+
+    return response.json();
+  }
+
+  async assignExpertToManager(cabinetId: string, payload: { expert_id: string; manager_member_id: string }): Promise<{ success: boolean; data?: any }> {
+    const response = await fetch(`${this.baseUrl}/${cabinetId}/assign-expert`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      throw new Error('Erreur lors de l\'assignation de l\'expert au manager');
+    }
+
+    return response.json();
+  }
+
+  async refreshCabinetStats(cabinetId: string): Promise<{ success: boolean; data?: any }> {
+    const response = await fetch(`${this.baseUrl}/${cabinetId}/refresh-stats`, {
+      method: 'POST',
+      headers: this.getAuthHeaders()
+    });
+
+    if (!response.ok) {
+      throw new Error('Erreur lors de l\'actualisation des statistiques');
+    }
+
+    return response.json();
+  }
+
+  async updateCabinetMember(cabinetId: string, memberRecordId: string, payload: { status?: string; team_role?: string; manager_member_id?: string | null; products?: string[] }): Promise<{ success: boolean; data?: any }> {
+    const response = await fetch(`${this.baseUrl}/${cabinetId}/members/${memberRecordId}`, {
+      method: 'PATCH',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      throw new Error('Erreur lors de la mise à jour du membre');
+    }
+
+    return response.json();
+  }
 }
 
 export const adminCabinetService = new AdminCabinetService();

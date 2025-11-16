@@ -81,7 +81,18 @@ export function UniversalNotificationCenter({
   } = usePushNotifications();
 
   // Notifications realtime
-  const { notifications, loading, reload } = useSupabaseNotifications();
+  const {
+    notifications,
+    loading,
+    reload,
+    markAsRead,
+    markAsUnread,
+    archiveNotification,
+    unarchiveNotification,
+    deleteNotification,
+    markAllAsRead,
+    deleteAllRead,
+  } = useSupabaseNotifications();
   
   // État local
   const [filter, setFilter] = useState<'all' | 'unread' | 'archived' | 'late'>('all');
@@ -168,86 +179,6 @@ export function UniversalNotificationCenter({
   // ACTIONS
   // ============================================================================
 
-  const markAsRead = async (notificationId: string) => {
-    try {
-      if (!notificationId) return;
-
-      let endpoint = `/api/notifications/${notificationId}/read`;
-      let method: 'PUT' | 'POST' | 'PATCH' = 'PUT';
-
-      if (userRole === 'expert') {
-        endpoint = `/api/expert/notifications/${notificationId}/read`;
-        method = 'POST';
-      } else if (userRole === 'admin') {
-        endpoint = `/api/admin/notifications/${notificationId}/read`;
-        method = 'PATCH';
-      }
-
-      const token = localStorage.getItem('token') || '';
-      const headers: Record<string, string> = {};
-
-      if (token) {
-        headers.Authorization = `Bearer ${token}`;
-      }
-
-      if (method === 'PUT' || method === 'POST' || method === 'PATCH') {
-        headers['Content-Type'] = 'application/json';
-      }
-
-      const response = await fetch(endpoint, {
-        method,
-        headers,
-      });
-
-      if (!response.ok) {
-        throw new Error(`Erreur ${response.status}`);
-      }
-
-      await reload(); // Recharger les notifications
-    } catch (error) { 
-      console.error('Erreur marquage lu:', error); 
-    }
-  };
-
-  const markAsUnread = async (notificationId: string) => {
-    try {
-      let endpoint = `/api/notifications/${notificationId}/unread`;
-      let method: 'PUT' | 'POST' | 'PATCH' = 'PUT';
-
-      if (userRole === 'expert') {
-        endpoint = `/api/expert/notifications/${notificationId}/unread`;
-        method = 'POST';
-      } else if (userRole === 'admin') {
-        console.warn('Endpoint unread indisponible pour les admins');
-        return;
-      }
-      
-      const token = localStorage.getItem('token') || '';
-      const headers: Record<string, string> = {};
-
-      if (token) {
-        headers.Authorization = `Bearer ${token}`;
-      }
-
-      if (method === 'PUT' || method === 'POST' || method === 'PATCH') {
-        headers['Content-Type'] = 'application/json';
-      }
-
-      const response = await fetch(endpoint, { 
-        method,
-        headers
-      });
-
-      if (!response.ok) {
-        throw new Error(`Erreur ${response.status}`);
-      }
-
-      await reload(); // Recharger les notifications
-    } catch (error) { 
-      console.error('Erreur marquage non lu:', error); 
-    }
-  };
-
   const toggleReadStatus = async (notification: any) => {
     if (notification.is_read) {
       await markAsUnread(notification.id);
@@ -311,120 +242,6 @@ export function UniversalNotificationCenter({
     const targetUrl = getPrimaryActionUrl(notification);
     if (targetUrl) {
       navigate(targetUrl);
-    }
-  };
-
-  const archiveNotification = async (notificationId: string) => {
-    try {
-      let endpoint = `/api/notifications/${notificationId}/archive`;
-      let method: 'PUT' | 'POST' | 'PATCH' = 'PUT';
-
-      if (userRole === 'expert') {
-        endpoint = `/api/expert/notifications/${notificationId}/archive`;
-        method = 'POST';
-      } else if (userRole === 'admin') {
-        method = 'DELETE';
-      }
-      
-      const token = localStorage.getItem('token') || '';
-      const headers: Record<string, string> = {};
-
-      if (token) {
-        headers.Authorization = `Bearer ${token}`;
-      }
-
-      if (method !== 'DELETE') {
-        headers['Content-Type'] = 'application/json';
-      }
-
-      const response = await fetch(endpoint, { 
-        method,
-        headers
-      });
-
-      if (!response.ok) {
-        throw new Error(`Erreur ${response.status}`);
-      }
-
-      await reload(); // Recharger les notifications
-    } catch (error) { 
-      console.error('Erreur archivage:', error); 
-    }
-  };
-
-  const unarchiveNotification = async (notificationId: string) => {
-    try {
-      let endpoint = `/api/notifications/${notificationId}/unarchive`;
-      let method: 'PUT' | 'POST' | 'PATCH' = 'PUT';
-
-      if (userRole === 'expert') {
-        endpoint = `/api/expert/notifications/${notificationId}/unarchive`;
-        method = 'POST';
-      } else if (userRole === 'admin') {
-        console.warn('Endpoint unarchive indisponible pour les admins');
-        return;
-      }
-      
-      const token = localStorage.getItem('token') || '';
-      const headers: Record<string, string> = {};
-
-      if (token) {
-        headers.Authorization = `Bearer ${token}`;
-      }
-
-      if (method === 'PUT' || method === 'POST' || method === 'PATCH') {
-        headers['Content-Type'] = 'application/json';
-      }
-
-      const response = await fetch(endpoint, { 
-        method,
-        headers
-      });
-
-      if (!response.ok) {
-        throw new Error(`Erreur ${response.status}`);
-      }
-
-      await reload();
-    } catch (error) { 
-      console.error('Erreur restauration:', error); 
-    }
-  };
-
-  const deleteNotification = async (notificationId: string) => {
-    try {
-      let endpoint = `/api/notifications/${notificationId}`;
-      if (userRole === 'expert') endpoint = `/api/expert/notifications/${notificationId}`;
-      if (userRole === 'admin') endpoint = `/api/admin/notifications/${notificationId}`;
-      
-      const token = localStorage.getItem('token');
-      await fetch(endpoint, { 
-        method: 'DELETE', 
-        headers: { 'Authorization': `Bearer ${token}` } 
-      });
-    } catch (error) { 
-      console.error('Erreur suppression:', error); 
-    }
-  };
-
-  const markAllAsRead = async () => {
-    try {
-      const unreadNotifs = enrichedNotifications.filter(
-        (n) => (n.status === 'unread' || !n.is_read) && n.status !== 'archived'
-      );
-      await Promise.all(unreadNotifs.map(n => markAsRead(n.id)));
-    } catch (error) {
-      console.error('Erreur marquage tout lu:', error);
-    }
-  };
-
-  const deleteAllRead = async () => {
-    try {
-      const readNotifs = enrichedNotifications.filter((n) => n.status === 'read');
-      await Promise.all(readNotifs.map(n => deleteNotification(n.id)));
-      reload();
-    } catch (error) {
-      console.error('Erreur suppression tout lu:', error);
     }
   };
 

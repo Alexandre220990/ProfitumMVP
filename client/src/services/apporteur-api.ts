@@ -6,6 +6,44 @@ interface ApiResponse<T> {
   error?: string;
 }
 
+export interface ApporteurNotificationFilters {
+  page?: number;
+  limit?: number;
+  type?: string;
+  priority?: string;
+  status?: string;
+  search?: string;
+  includeArchived?: boolean;
+}
+
+export interface ApporteurNotification {
+  id: string;
+  titre: string;
+  message: string;
+  type_notification: string;
+  priorite: string;
+  lue: boolean;
+  status?: string;
+  created_at: string;
+  updated_at?: string;
+  type_couleur?: string;
+}
+
+export interface ApporteurNotificationsResponse {
+  notifications: ApporteurNotification[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    total_pages: number;
+  };
+  metrics: {
+    unread: number;
+    highPriority: number;
+    total: number;
+  };
+}
+
 class ApporteurApiService {
   private baseUrl: string;
   private token: string | null;
@@ -80,7 +118,7 @@ class ApporteurApiService {
     const queryString = params.toString();
     const endpoint = queryString ? `/api/apporteur/clients?${queryString}` : '/api/apporteur/clients';
     
-    return this.request(endpoint);
+    return this.request<ApporteurNotificationsResponse>(endpoint);
   }
 
   async getClient(clientId: string) {
@@ -176,13 +214,49 @@ class ApporteurApiService {
   }
 
   // ===== NOTIFICATIONS =====
-  async getNotifications() {
-    return this.request('/api/apporteur/notifications');
+  async getNotifications(filters?: ApporteurNotificationFilters) {
+    const params = new URLSearchParams();
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          params.append(key, String(value));
+        }
+      });
+    }
+
+    const queryString = params.toString();
+    const endpoint = queryString ? `/api/apporteur/notifications?${queryString}` : '/api/apporteur/notifications';
+
+    return this.request(endpoint);
   }
 
   async markNotificationAsRead(notificationId: string) {
     return this.request(`/api/apporteur/notifications/${notificationId}/read`, {
       method: 'PUT',
+    });
+  }
+
+  async markAllNotificationsAsRead() {
+    return this.request('/api/apporteur/notifications/mark-all-read', {
+      method: 'PUT',
+    });
+  }
+
+  async archiveNotification(notificationId: string) {
+    return this.request(`/api/apporteur/notifications/${notificationId}/archive`, {
+      method: 'PUT',
+    });
+  }
+
+  async archiveAllNotifications() {
+    return this.request('/api/apporteur/notifications/archive-all', {
+      method: 'PUT',
+    });
+  }
+
+  async deleteNotification(notificationId: string) {
+    return this.request(`/api/apporteur/notifications/${notificationId}`, {
+      method: 'DELETE',
     });
   }
 

@@ -11,6 +11,16 @@ import {
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
+interface ApporteurNotificationFilters {
+    page?: number;
+    limit?: number;
+    type?: string;
+    priority?: string;
+    status?: string;
+    search?: string;
+    includeArchived?: boolean;
+}
+
 export class ApporteurService {
     
     // ===== DASHBOARD =====
@@ -921,10 +931,8 @@ export class ApporteurService {
     }
 
     // Vue notifications
-    static async getNotifications(apporteurId: string) {
+    static async getNotifications(apporteurId: string, filters: ApporteurNotificationFilters = {}) {
         try {
-            // La vue utilise auth.uid(), donc on doit passer par un filtre sur user_id
-            // Récupérer d'abord l'apporteur pour avoir son auth_user_id
             const { data: apporteur, error: apporteurError } = await supabase
                 .from('ApporteurAffaires')
                 .select('id, auth_user_id')
@@ -936,14 +944,43 @@ export class ApporteurService {
                 return { success: false, error: 'Apporteur non trouvé' };
             }
 
-            // Récupérer les notifications directement depuis la table avec filtre
-            const { data, error } = await supabase
+            const page = Math.max(Number(filters.page) || 1, 1);
+            const limit = Math.min(Math.max(Number(filters.limit) || 20, 1), 100);
+            const from = (page - 1) * limit;
+            const to = from + limit - 1;
+
+            let query = supabase
                 .from('notification')
-                .select('*')
+                .select('*', { count: 'exact' })
                 .eq('user_id', apporteur.id)
                 .eq('user_type', 'apporteur')
                 .order('created_at', { ascending: false })
-                .limit(50);
+                .range(from, to);
+
+            if (!filters.includeArchived) {
+                query = query.neq('status', 'archived');
+            }
+
+            if (filters.type && filters.type !== 'all') {
+                query = query.eq('notification_type', filters.type);
+            }
+
+            if (filters.priority && filters.priority !== 'all') {
+                query = query.eq('priority', filters.priority);
+            }
+
+            if (filters.status && filters.status !== 'all') {
+                query = query.eq('status', filters.status);
+            }
+
+            if (filters.search) {
+                const searchTerm = filters.search.trim();
+                if (searchTerm.length > 0) {
+                    query = query.or(`title.ilike.%${searchTerm}%,message.ilike.%${searchTerm}%`);
+                }
+            }
+
+            const { data, error, count } = await query;
 
             if (error) {
                 console.error('Erreur vue notifications:', error);
@@ -958,12 +995,53 @@ export class ApporteurService {
                 type_notification: notif.notification_type || 'info',
                 priorite: notif.priority || 'medium',
                 lue: notif.is_read || false,
+                status: notif.status || 'unread',
                 created_at: notif.created_at,
                 updated_at: notif.updated_at,
                 type_couleur: this.getNotificationColor(notif.notification_type)
             }));
 
-            return { success: true, data: formattedNotifications };
+            const [unreadStats, highPriorityStats, totalStats] = await Promise.all([
+                supabase
+                    .from('notification')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('user_id', apporteur.id)
+                    .eq('user_type', 'apporteur')
+                    .eq('is_read', false)
+                    .neq('status', 'archived'),
+                supabase
+                    .from('notification')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('user_id', apporteur.id)
+                    .eq('user_type', 'apporteur')
+                    .eq('priority', 'high')
+                    .eq('is_read', false)
+                    .neq('status', 'archived'),
+                supabase
+                    .from('notification')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('user_id', apporteur.id)
+                    .eq('user_type', 'apporteur')
+                    .neq('status', 'archived')
+            ]);
+
+            return {
+                success: true,
+                data: {
+                    notifications: formattedNotifications,
+                    pagination: {
+                        page,
+                        limit,
+                        total: count || 0,
+                        total_pages: Math.max(Math.ceil((count || 0) / limit), 1)
+                    },
+                    metrics: {
+                        unread: unreadStats.count || 0,
+                        highPriority: highPriorityStats.count || 0,
+                        total: totalStats.count || 0
+                    }
+                }
+            };
         } catch (error) {
             console.error('Erreur getNotifications:', error);
             return { success: false, error: 'Erreur lors de la récupération des notifications' };
@@ -971,12 +1049,14 @@ export class ApporteurService {
     }
 
     // Marquer une notification comme lue
-    static async markNotificationAsRead(notificationId: string) {
+    static async markNotificationAsRead(notificationId: string, apporteurId: string) {
         try {
             const { error } = await supabase
                 .from('notification')
-                .update({ is_read: true, read_at: new Date().toISOString() })
-                .eq('id', notificationId);
+                .update({ is_read: true, read_at: new Date().toISOString(), status: 'read' })
+                .eq('id', notificationId)
+                .eq('user_id', apporteurId)
+                .eq('user_type', 'apporteur');
 
             if (error) {
                 console.error('Erreur mark notification as read:', error);
@@ -1009,6 +1089,75 @@ export class ApporteurService {
         } catch (error) {
             console.error('Erreur markAllNotificationsAsRead:', error);
             return { success: false, error: 'Erreur lors de la mise à jour des notifications' };
+        }
+    }
+
+    static async archiveNotification(notificationId: string, apporteurId: string) {
+        try {
+            const { error } = await supabase
+                .from('notification')
+                .update({
+                    status: 'archived',
+                    archived_at: new Date().toISOString()
+                })
+                .eq('id', notificationId)
+                .eq('user_id', apporteurId)
+                .eq('user_type', 'apporteur');
+
+            if (error) {
+                console.error('Erreur archivage notification:', error);
+                return { success: false, error: error.message };
+            }
+
+            return { success: true, message: 'Notification archivée' };
+        } catch (error) {
+            console.error('Erreur archiveNotification:', error);
+            return { success: false, error: 'Erreur lors de l\'archivage de la notification' };
+        }
+    }
+
+    static async archiveAllNotifications(apporteurId: string) {
+        try {
+            const { error, count } = await supabase
+                .from('notification')
+                .update({
+                    status: 'archived',
+                    archived_at: new Date().toISOString()
+                })
+                .eq('user_id', apporteurId)
+                .eq('user_type', 'apporteur')
+                .neq('status', 'archived');
+
+            if (error) {
+                console.error('Erreur archivage notifications:', error);
+                return { success: false, error: error.message };
+            }
+
+            return { success: true, count: count || 0, message: 'Notifications archivées' };
+        } catch (error) {
+            console.error('Erreur archiveAllNotifications:', error);
+            return { success: false, error: 'Erreur lors de l\'archivage des notifications' };
+        }
+    }
+
+    static async deleteNotification(notificationId: string, apporteurId: string) {
+        try {
+            const { error } = await supabase
+                .from('notification')
+                .delete()
+                .eq('id', notificationId)
+                .eq('user_id', apporteurId)
+                .eq('user_type', 'apporteur');
+
+            if (error) {
+                console.error('Erreur suppression notification:', error);
+                return { success: false, error: error.message };
+            }
+
+            return { success: true, message: 'Notification supprimée' };
+        } catch (error) {
+            console.error('Erreur deleteNotification:', error);
+            return { success: false, error: 'Erreur lors de la suppression de la notification' };
         }
     }
 

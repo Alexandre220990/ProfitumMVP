@@ -124,11 +124,44 @@ router.get('/views/notifications', async (req: any, res: any): Promise<void> => 
     }
 });
 
+// Notifications avec pagination/filtre
+router.get('/notifications', async (req: any, res: any): Promise<void> => {
+    try {
+        const apporteurId = req.user!.database_id;
+        const {
+            page = '1',
+            limit = '20',
+            type,
+            priority,
+            status,
+            search,
+            includeArchived
+        } = req.query;
+
+        const filters = {
+            page: Number(page),
+            limit: Number(limit),
+            type: type as string | undefined,
+            priority: priority as string | undefined,
+            status: status as string | undefined,
+            search: search as string | undefined,
+            includeArchived: includeArchived === 'true'
+        };
+
+        const result = await ApporteurService.getNotifications(apporteurId, filters);
+        res.json(result);
+    } catch (error) {
+        console.error('Erreur récupération notifications:', error);
+        res.status(500).json({ success: false, error: 'Erreur lors de la récupération des notifications' });
+    }
+});
+
 // Marquer une notification comme lue
 router.put('/notifications/:notificationId/read', async (req: any, res: any): Promise<void> => {
     try {
         const { notificationId } = req.params;
-        const result = await ApporteurService.markNotificationAsRead(notificationId);
+        const apporteurId = req.user!.database_id;
+        const result = await ApporteurService.markNotificationAsRead(notificationId, apporteurId);
         res.json(result);
     } catch (error) {
         console.error('Erreur mark notification as read:', error);
@@ -145,6 +178,44 @@ router.put('/notifications/mark-all-read', async (req: any, res: any): Promise<v
     } catch (error) {
         console.error('Erreur mark all notifications as read:', error);
         res.status(500).json({ success: false, error: 'Erreur lors de la mise à jour des notifications' });
+    }
+});
+
+// Archiver une notification
+router.put('/notifications/:notificationId/archive', async (req: any, res: any): Promise<void> => {
+    try {
+        const apporteurId = req.user!.database_id;
+        const { notificationId } = req.params;
+        const result = await ApporteurService.archiveNotification(notificationId, apporteurId);
+        res.json(result);
+    } catch (error) {
+        console.error('Erreur archivage notification:', error);
+        res.status(500).json({ success: false, error: 'Erreur lors de l\'archivage de la notification' });
+    }
+});
+
+// Archiver toutes les notifications
+router.put('/notifications/archive-all', async (req: any, res: any): Promise<void> => {
+    try {
+        const apporteurId = req.user!.database_id;
+        const result = await ApporteurService.archiveAllNotifications(apporteurId);
+        res.json(result);
+    } catch (error) {
+        console.error('Erreur archivage notifications:', error);
+        res.status(500).json({ success: false, error: 'Erreur lors de l\'archivage des notifications' });
+    }
+});
+
+// Supprimer une notification
+router.delete('/notifications/:notificationId', async (req: any, res: any): Promise<void> => {
+    try {
+        const apporteurId = req.user!.database_id;
+        const { notificationId } = req.params;
+        const result = await ApporteurService.deleteNotification(notificationId, apporteurId);
+        res.json(result);
+    } catch (error) {
+        console.error('Erreur suppression notification:', error);
+        res.status(500).json({ success: false, error: 'Erreur lors de la suppression de la notification' });
     }
 });
 

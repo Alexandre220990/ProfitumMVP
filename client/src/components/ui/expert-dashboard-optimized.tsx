@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CabinetTeamManagement } from "@/components/cabinet/CabinetTeamManagement";
 import { 
   Briefcase, 
   Users, 
@@ -94,6 +96,7 @@ export const ExpertDashboardOptimized = () => {
   const [clientsList, setClientsList] = useState<any[]>([]);
   const [dossiersList, setDossiersList] = useState<any[]>([]);
   const [apporteursList, setApporteursList] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'team'>('dashboard');
   const alertsRef = React.useRef<HTMLDivElement>(null);
 
   // Charger toutes les données du dashboard
@@ -220,7 +223,17 @@ export const ExpertDashboardOptimized = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pt-12">
-        
+        <Tabs
+          value={activeTab}
+          onValueChange={(value) => setActiveTab(value as 'dashboard' | 'team')}
+          className="space-y-6"
+        >
+          <TabsList>
+            <TabsTrigger value="dashboard">Synthèse</TabsTrigger>
+            <TabsTrigger value="team">Gestion équipe</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="dashboard" className="space-y-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
@@ -775,7 +788,12 @@ export const ExpertDashboardOptimized = () => {
             </CardContent>
           </Card>
         )}
+          </TabsContent>
 
+          <TabsContent value="team">
+            <CabinetTeamManagement />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

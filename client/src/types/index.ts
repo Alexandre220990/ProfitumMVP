@@ -61,5 +61,12 @@ export type {
   CabinetApporteur,
   CabinetShare,
   CabinetProductPayload,
-  CabinetKPIs
+  CabinetKPIs,
+  CabinetTeamKPIs,
+  CabinetTeamRole,
+  CabinetMemberRecord,
+  CabinetHierarchyNode,
+  CabinetTeamStatsRow,
+  CabinetPermissions,
+  CabinetContextPayload
 } from './cabinets';

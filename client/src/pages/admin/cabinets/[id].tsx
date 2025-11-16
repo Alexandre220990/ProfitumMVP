@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { adminCabinetService } from '@/services/admin-cabinet-service';
-import { Cabinet, CabinetApporteur, CabinetProductPayload, CabinetShare } from '@/types';
+import { Cabinet, CabinetApporteur, CabinetProductPayload, CabinetShare, CabinetKPIs, CabinetTeamKPIs, CabinetMemberRole } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -10,21 +10,41 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus } from 'lucide-react';
+import { Plus, Check, ChevronsUpDown } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { toast } from 'sonner';
+import {
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer
+} from 'recharts';
+
+type AvailableExpert = {
+  id: string;
+  name: string;
+  email?: string | null;
+  is_active?: boolean;
+};
 
 const AdminCabinetDetailPage: React.FC = () => {
   const router = useRouter();
   const { id } = router.query;
+  const cabinetId = typeof id === 'string' ? id : null;
   const [cabinet, setCabinet] = useState<Cabinet | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [memberForm, setMemberForm] = useState({
-    member_id: '',
-    member_type: 'expert'
-  });
-  const [memberLoading, setMemberLoading] = useState(false);
   const [productsForm, setProductsForm] = useState<CabinetProductPayload[]>([]);
   const [productsLoading, setProductsLoading] = useState(false);
   const [clients, setClients] = useState<any[]>([]);
@@ -51,14 +71,55 @@ const AdminCabinetDetailPage: React.FC = () => {
   const [apporteurSearch, setApporteurSearch] = useState('');
   const [apporteurInviteForm, setApporteurInviteForm] = useState({ apporteur_id: '', member_type: 'apporteur' as const });
   const [apporteurInviteLoading, setApporteurInviteLoading] = useState(false);
+  const [ownerSearch, setOwnerSearch] = useState('');
+  const [managerSearch, setManagerSearch] = useState('');
+  const [expertSearch, setExpertSearch] = useState('');
+  const [availableOwnerExperts, setAvailableOwnerExperts] = useState<AvailableExpert[]>([]);
+  const [availableManagerExperts, setAvailableManagerExperts] = useState<AvailableExpert[]>([]);
+  const [availableExpertAssignments, setAvailableExpertAssignments] = useState<AvailableExpert[]>([]);
+  const [ownerSelection, setOwnerSelection] = useState('');
+  const [managerSelection, setManagerSelection] = useState('');
+  const [expertSelection, setExpertSelection] = useState('');
+  const [expertManagerSelection, setExpertManagerSelection] = useState('');
+  const [ownerAssigning, setOwnerAssigning] = useState(false);
+  const [managerAssigning, setManagerAssigning] = useState(false);
+  const [expertAssigning, setExpertAssigning] = useState(false);
+  const [ownerSearchLoading, setOwnerSearchLoading] = useState(false);
+  const [managerSearchLoading, setManagerSearchLoading] = useState(false);
+  const [expertSearchLoading, setExpertSearchLoading] = useState(false);
+  const [ownerSearchOpen, setOwnerSearchOpen] = useState(false);
+  const [memberForm, setMemberForm] = useState<{ member_id: string; member_type: CabinetMemberRole }>({ member_id: '', member_type: 'expert' });
+  const [memberLoading, setMemberLoading] = useState(false);
+
+  const fetchAvailableExperts = useCallback(
+    async (
+      searchTerm: string,
+      setter: React.Dispatch<React.SetStateAction<AvailableExpert[]>>,
+      setLoadingState: React.Dispatch<React.SetStateAction<boolean>>
+    ) => {
+      try {
+        setLoadingState(true);
+        const response = await adminCabinetService.getAvailableExperts(searchTerm);
+        setter(response.data || []);
+      } catch (error) {
+        console.error('Erreur chargement experts disponibles:', error);
+        setter([]);
+      } finally {
+        setLoadingState(false);
+      }
+    },
+    []
+  );
 
   const loadCabinet = async () => {
-    if (!id || typeof id !== 'string') return;
+    if (!cabinetId) return;
     try {
       setLoading(true);
-      const response = await adminCabinetService.getCabinetDetail(id);
+      setDataLoaded(false); // Réinitialiser le cache
+      const response = await adminCabinetService.getCabinetDetail(cabinetId);
       setCabinet(response.data);
       setError(null);
+      setLastCabinetId(cabinetId);
     } catch (err: any) {
       console.error('Erreur cabinet detail:', err);
       setError('Impossible de charger le cabinet');
@@ -68,10 +129,10 @@ const AdminCabinetDetailPage: React.FC = () => {
   };
 
   const loadClients = async () => {
-    if (!id || typeof id !== 'string') return;
+    if (!cabinetId) return;
     try {
       setClientsLoading(true);
-      const response = await adminCabinetService.getCabinetClients(id);
+      const response = await adminCabinetService.getCabinetClients(cabinetId);
       setClients(response.data || []);
     } catch (error) {
       console.error('Erreur chargement clients:', error);
@@ -81,10 +142,10 @@ const AdminCabinetDetailPage: React.FC = () => {
   };
 
   const loadApporteurs = async () => {
-    if (!id || typeof id !== 'string') return;
+    if (!cabinetId) return;
     try {
       setApporteursLoading(true);
-      const response = await adminCabinetService.getCabinetApporteurs(id);
+      const response = await adminCabinetService.getCabinetApporteurs(cabinetId);
       setApporteurs(response.data || []);
     } catch (error) {
       console.error('Erreur chargement apporteurs:', error);
@@ -94,10 +155,10 @@ const AdminCabinetDetailPage: React.FC = () => {
   };
 
   const loadShares = async () => {
-    if (!id || typeof id !== 'string') return;
+    if (!cabinetId) return;
     try {
       setSharesLoading(true);
-      const response = await adminCabinetService.getCabinetShares(id);
+      const response = await adminCabinetService.getCabinetShares(cabinetId);
       setShares(response.data || []);
     } catch (error) {
       console.error('Erreur chargement partages:', error);
@@ -106,13 +167,14 @@ const AdminCabinetDetailPage: React.FC = () => {
     }
   };
 
+
   const loadTimeline = async ({ reset = false, pageOverride }: { reset?: boolean; pageOverride?: number } = {}) => {
-    if (!id || typeof id !== 'string') return;
+    if (!cabinetId) return;
     try {
       setTimelineLoading(true);
       const days = timelineFilter === '30j' ? 30 : timelineFilter === '90j' ? 90 : undefined;
       const page = reset ? 1 : pageOverride ?? timelinePage;
-      const response = await adminCabinetService.getCabinetTimeline(id, { days, page, limit: 10 });
+      const response = await adminCabinetService.getCabinetTimeline(cabinetId, { days, page, limit: 10 });
       const newEvents = response.data || [];
       if (reset) {
         setTimeline(newEvents);
@@ -130,10 +192,10 @@ const AdminCabinetDetailPage: React.FC = () => {
   };
 
   const loadTasks = async () => {
-    if (!id || typeof id !== 'string') return;
+    if (!cabinetId) return;
     try {
       setTasksLoading(true);
-      const response = await adminCabinetService.getCabinetTasks(id, tasksFilter);
+      const response = await adminCabinetService.getCabinetTasks(cabinetId, tasksFilter);
       setTasks(response.data || []);
     } catch (error) {
       console.error('Erreur chargement tâches:', error);
@@ -152,7 +214,7 @@ const AdminCabinetDetailPage: React.FC = () => {
   };
 
   const handleInviteApporteur = async () => {
-    if (!id || typeof id !== 'string') return;
+    if (!cabinetId) return;
     if (!apporteurInviteForm.apporteur_id) {
       toast.error('Veuillez sélectionner un apporteur');
       return;
@@ -160,7 +222,7 @@ const AdminCabinetDetailPage: React.FC = () => {
 
     try {
       setApporteurInviteLoading(true);
-      await adminCabinetService.addCabinetMember(id, {
+      await adminCabinetService.addCabinetMember(cabinetId, {
         member_id: apporteurInviteForm.apporteur_id,
         member_type: apporteurInviteForm.member_type
       });
@@ -177,34 +239,10 @@ const AdminCabinetDetailPage: React.FC = () => {
     }
   };
 
-  const handleAddMember = async () => {
-    if (!id || typeof id !== 'string') return;
-    if (!memberForm.member_id.trim()) {
-      toast.error('Identifiant membre requis');
-      return;
-    }
-
-    try {
-      setMemberLoading(true);
-      await adminCabinetService.addCabinetMember(id, {
-        member_id: memberForm.member_id.trim(),
-        member_type: memberForm.member_type as any
-      });
-      toast.success('Membre ajouté');
-      setMemberForm({ member_id: '', member_type: memberForm.member_type });
-      loadCabinet();
-    } catch (err) {
-      console.error('Erreur ajout membre:', err);
-      toast.error('Impossible d\'ajouter le membre');
-    } finally {
-      setMemberLoading(false);
-    }
-  };
-
   const handleRemoveMember = async (memberId: string) => {
-    if (!id || typeof id !== 'string') return;
+    if (!cabinetId) return;
     try {
-      await adminCabinetService.removeCabinetMember(id, memberId);
+      await adminCabinetService.removeCabinetMember(cabinetId, memberId);
       toast.success('Membre retiré');
       loadCabinet();
     } catch (err) {
@@ -213,20 +251,187 @@ const AdminCabinetDetailPage: React.FC = () => {
     }
   };
 
+  const handleAssignOwner = async () => {
+    if (!cabinetId) return;
+    if (!ownerSelection) {
+      toast.error('Sélectionnez un expert');
+      return;
+    }
+
+    try {
+      setOwnerAssigning(true);
+      await adminCabinetService.setCabinetOwner(cabinetId, ownerSelection);
+      toast.success('Owner mis à jour');
+      setOwnerSelection('');
+      setOwnerSearch('');
+      loadCabinet();
+    } catch (error) {
+      console.error('Erreur définition owner:', error);
+      toast.error("Impossible de définir l'owner");
+    } finally {
+      setOwnerAssigning(false);
+    }
+  };
+
+  const handleAddMember = async () => {
+    if (!cabinetId) return;
+    if (!memberForm.member_id.trim()) {
+      toast.error('Identifiant membre requis');
+      return;
+    }
+
+    try {
+      setMemberLoading(true);
+      await adminCabinetService.addCabinetMember(cabinetId, {
+        member_id: memberForm.member_id.trim(),
+        member_type: memberForm.member_type
+      });
+      toast.success('Membre ajouté');
+      setMemberForm({ member_id: '', member_type: 'expert' });
+      loadCabinet();
+    } catch (err: any) {
+      console.error('Erreur ajout membre:', err);
+      toast.error(err?.message || "Impossible d'ajouter le membre");
+    } finally {
+      setMemberLoading(false);
+    }
+  };
+
+  const handleAddManager = async () => {
+    if (!cabinetId) return;
+    if (!managerSelection) {
+      toast.error('Sélectionnez un expert');
+      return;
+    }
+
+    try {
+      setManagerAssigning(true);
+      await adminCabinetService.assignCabinetManager(cabinetId, managerSelection);
+      toast.success('Manager ajouté');
+      setManagerSelection('');
+      loadCabinet();
+    } catch (error) {
+      console.error('Erreur ajout manager:', error);
+      toast.error('Impossible d’ajouter le manager');
+    } finally {
+      setManagerAssigning(false);
+    }
+  };
+
+  const handleAssignExpertToManager = async () => {
+    if (!cabinetId) return;
+    if (!expertSelection || !expertManagerSelection) {
+      toast.error('Sélectionnez un expert et un manager');
+      return;
+    }
+
+    try {
+      setExpertAssigning(true);
+      await adminCabinetService.assignExpertToManager(cabinetId, {
+        expert_id: expertSelection,
+        manager_member_id: expertManagerSelection
+      });
+      toast.success('Expert affecté');
+      setExpertSelection('');
+      setExpertManagerSelection('');
+      loadCabinet();
+    } catch (error) {
+      console.error('Erreur affectation expert:', error);
+      toast.error('Impossible d’affecter l’expert');
+    } finally {
+      setExpertAssigning(false);
+    }
+  };
+
+  const handleRefreshCabinetStats = async () => {
+    if (!cabinetId) return;
+    try {
+      await adminCabinetService.refreshCabinetStats(cabinetId);
+      toast.success('Statistiques rafraîchies');
+      loadCabinet();
+    } catch (error) {
+      console.error('Erreur refresh stats cabinet:', error);
+      toast.error('Impossible de rafraîchir les stats');
+    }
+  };
+
+  const handleUpdateMemberStatus = async (memberRecordId: string | undefined, status: string) => {
+    if (!cabinetId || !memberRecordId) return;
+    try {
+      await adminCabinetService.updateCabinetMember(cabinetId, memberRecordId, { status });
+      toast.success('Statut mis à jour');
+      loadCabinet();
+    } catch (error) {
+      console.error('Erreur mise à jour statut membre:', error);
+      toast.error('Impossible de mettre à jour le statut');
+    }
+  };
+
+  // Cache pour éviter les rechargements inutiles
+  const [lastCabinetId, setLastCabinetId] = useState<string | null>(null);
+  const [dataLoaded, setDataLoaded] = useState(false);
+
+  // Chargement parallèle optimisé des données du cabinet
+  const loadAllCabinetData = useCallback(async () => {
+    if (!cabinetId || cabinetId === lastCabinetId && dataLoaded) return;
+    
+    try {
+      setLoading(true);
+      setClientsLoading(true);
+      setApporteursLoading(true);
+      setSharesLoading(true);
+
+      // Chargement parallèle de toutes les données
+      const [cabinetResponse, clientsResponse, apporteursResponse, sharesResponse] = await Promise.all([
+        adminCabinetService.getCabinetDetail(cabinetId).catch(err => ({ error: err, data: null })),
+        adminCabinetService.getCabinetClients(cabinetId).catch(err => ({ error: err, data: [] })),
+        adminCabinetService.getCabinetApporteurs(cabinetId).catch(err => ({ error: err, data: [] })),
+        adminCabinetService.getCabinetShares(cabinetId).catch(err => ({ error: err, data: [] }))
+      ]);
+
+      if (cabinetResponse.data) {
+        setCabinet(cabinetResponse.data);
+        setError(null);
+      } else if (cabinetResponse.error) {
+        setError('Impossible de charger le cabinet');
+      }
+
+      if (!clientsResponse.error && clientsResponse.data) {
+        setClients(clientsResponse.data);
+      }
+
+      if (!apporteursResponse.error && apporteursResponse.data) {
+        setApporteurs(apporteursResponse.data);
+      }
+
+      if (!sharesResponse.error && sharesResponse.data) {
+        setShares(sharesResponse.data);
+      }
+
+      setLastCabinetId(cabinetId);
+      setDataLoaded(true);
+    } catch (err: any) {
+      console.error('Erreur chargement données cabinet:', err);
+      setError('Erreur lors du chargement des données');
+    } finally {
+      setLoading(false);
+      setClientsLoading(false);
+      setApporteursLoading(false);
+      setSharesLoading(false);
+    }
+  }, [cabinetId, lastCabinetId, dataLoaded]);
+
   useEffect(() => {
-    loadCabinet();
-    loadClients();
-    loadApporteurs();
-    loadShares();
-  }, [id]);
+    loadAllCabinetData();
+  }, [loadAllCabinetData]);
 
   useEffect(() => {
     loadTimeline({ reset: true });
-  }, [id, timelineFilter]);
+  }, [cabinetId, timelineFilter]);
 
   useEffect(() => {
     loadTasks();
-  }, [id, tasksFilter.status, tasksFilter.type]);
+  }, [cabinetId, tasksFilter.status, tasksFilter.type]);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -235,17 +440,65 @@ const AdminCabinetDetailPage: React.FC = () => {
     return () => clearTimeout(handler);
   }, [apporteurSearch]);
 
-  if (!id || typeof id !== 'string' || (loading && !cabinet)) {
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      fetchAvailableExperts(ownerSearch, setAvailableOwnerExperts, setOwnerSearchLoading);
+    }, 250);
+    return () => clearTimeout(handler);
+  }, [ownerSearch, fetchAvailableExperts]);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      fetchAvailableExperts(managerSearch, setAvailableManagerExperts, setManagerSearchLoading);
+    }, 250);
+    return () => clearTimeout(handler);
+  }, [managerSearch, fetchAvailableExperts]);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      fetchAvailableExperts(expertSearch, setAvailableExpertAssignments, setExpertSearchLoading);
+    }, 250);
+    return () => clearTimeout(handler);
+  }, [expertSearch, fetchAvailableExperts]);
+
+  if (!cabinetId || (loading && !cabinet)) {
     return <div>Chargement...</div>;
   }
 
-  const members = cabinet?.members || [];
+  const hierarchyMembers = useMemo(() => {
+    if (!cabinet?.hierarchy) return [];
+    const flat: any[] = [];
+    const walk = (nodes: any[]) => {
+      nodes.forEach((node) => {
+        flat.push(node);
+        if (node.children?.length) {
+          walk(node.children);
+        }
+      });
+    };
+    walk(cabinet.hierarchy);
+    return flat;
+  }, [cabinet?.hierarchy]);
+
+  const members = hierarchyMembers.length ? hierarchyMembers : cabinet?.members || [];
+  const managerMembers = useMemo(
+    () => members.filter((member: any) => member.team_role === 'MANAGER'),
+    [members]
+  );
+  const ownerDisplayName =
+    cabinet?.owner?.name ||
+    members.find((member: any) => member.team_role === 'OWNER')?.profile?.name ||
+    cabinet?.owner?.email ||
+    'Non défini';
   const produits = cabinet?.produits || [];
   const produitsEditable = produits.map((prod) => {
     const draft = productsForm.find((p) => p.produit_eligible_id === prod.produit_eligible_id);
     return draft ? { ...prod, ...draft } : prod;
   });
   const selectedApporteur = availableApporteurs.find((aa) => aa.id === apporteurInviteForm.apporteur_id);
+
+  const legacyKpis = cabinet?.kpis && 'clients_actifs' in cabinet.kpis ? (cabinet.kpis as CabinetKPIs) : null;
+  const teamKpis = cabinet?.kpis && 'dossiers_total' in cabinet.kpis ? (cabinet.kpis as CabinetTeamKPIs) : null;
 
   const handleProductFieldChange = (
     produitId: string,
@@ -270,7 +523,7 @@ const AdminCabinetDetailPage: React.FC = () => {
   };
 
   const handleSyncProducts = async () => {
-    if (!id || typeof id !== 'string') return;
+    if (!cabinetId) return;
     const payload = productsForm.length
       ? productsForm
       : produits.map((p) => ({
@@ -288,7 +541,7 @@ const AdminCabinetDetailPage: React.FC = () => {
 
     try {
       setProductsLoading(true);
-      await adminCabinetService.updateCabinetProducts(id, payload);
+      await adminCabinetService.updateCabinetProducts(cabinetId, payload);
       toast.success('Produits synchronisés');
       setProductsForm([]);
       loadCabinet();
@@ -301,13 +554,13 @@ const AdminCabinetDetailPage: React.FC = () => {
   };
 
   const handleCreateShare = async () => {
-    if (!id || typeof id !== 'string') return;
+    if (!cabinetId) return;
     if (!shareForm.client_produit_eligible_id.trim()) {
       toast.error('client_produit_eligible_id requis');
       return;
     }
     try {
-      await adminCabinetService.createCabinetShare(id, {
+      await adminCabinetService.createCabinetShare(cabinetId, {
         client_produit_eligible_id: shareForm.client_produit_eligible_id.trim(),
         expert_id: shareForm.expert_id.trim() || undefined
       });
@@ -321,9 +574,9 @@ const AdminCabinetDetailPage: React.FC = () => {
   };
 
   const handleDeleteShare = async (shareId: string) => {
-    if (!id || typeof id !== 'string') return;
+    if (!cabinetId) return;
     try {
-      await adminCabinetService.deleteCabinetShare(id, shareId);
+      await adminCabinetService.deleteCabinetShare(cabinetId, shareId);
       toast.success('Partage supprimé');
       loadShares();
     } catch (error) {
@@ -344,12 +597,24 @@ const AdminCabinetDetailPage: React.FC = () => {
             {cabinet?.siret && <span>SIRET : {cabinet.siret}</span>}
             {cabinet?.address && <span className="ml-4">{cabinet.address}</span>}
           </div>
+          {cabinet && (
+            <div className="flex items-center gap-3 mt-3 text-sm text-gray-600">
+              <Badge variant={cabinet.status === 'active' ? 'default' : 'outline'}>
+                {cabinet.status || 'draft'}
+              </Badge>
+              {cabinet.owner?.name ? (
+                <span>Owner : {cabinet.owner.name}</span>
+              ) : (
+                <span className="text-gray-400">Owner non défini</span>
+              )}
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={() => router.push('/admin/cabinets')}>
             Retour
           </Button>
-          <Button onClick={() => router.push(`/admin/cabinets/${id}/edit`)}>
+          <Button onClick={() => cabinetId && router.push(`/admin/cabinets/${cabinetId}/edit`)}>
             Modifier
           </Button>
         </div>
@@ -371,13 +636,18 @@ const AdminCabinetDetailPage: React.FC = () => {
         </TabsList>
 
         <TabsContent value="synthese" className="space-y-4">
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={handleRefreshCabinetStats}>
+              Rafraîchir les statistiques
+            </Button>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Card>
               <CardHeader>
                 <CardTitle>Clients actifs</CardTitle>
               </CardHeader>
               <CardContent className="text-3xl font-semibold text-gray-900">
-                {cabinet?.kpis?.clients_actifs ?? '—'}
+                {legacyKpis?.clients_actifs ?? '—'}
               </CardContent>
             </Card>
             <Card>
@@ -385,7 +655,7 @@ const AdminCabinetDetailPage: React.FC = () => {
                 <CardTitle>Dossiers en cours</CardTitle>
               </CardHeader>
               <CardContent className="text-3xl font-semibold text-gray-900">
-                {cabinet?.kpis?.dossiers_en_cours ?? '—'}
+                {legacyKpis?.dossiers_en_cours ?? teamKpis?.dossiers_en_cours ?? '—'}
               </CardContent>
             </Card>
             <Card>
@@ -393,7 +663,7 @@ const AdminCabinetDetailPage: React.FC = () => {
                 <CardTitle>Fees mensuels</CardTitle>
               </CardHeader>
               <CardContent className="text-3xl font-semibold text-gray-900">
-                {cabinet?.kpis?.fees_mensuels ? `${cabinet.kpis.fees_mensuels} €` : '—'}
+                {legacyKpis?.fees_mensuels != null ? `${legacyKpis.fees_mensuels} €` : '—'}
               </CardContent>
             </Card>
             <Card>
@@ -401,10 +671,126 @@ const AdminCabinetDetailPage: React.FC = () => {
                 <CardTitle>RDV 30 derniers jours</CardTitle>
               </CardHeader>
               <CardContent className="text-3xl font-semibold text-gray-900">
-                {cabinet?.kpis?.rdv_30j ?? '—'}
+                {legacyKpis?.rdv_30j ?? '—'}
               </CardContent>
             </Card>
           </div>
+
+          {/* Graphiques KPI */}
+          {(teamKpis || legacyKpis) && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+              {/* Graphique d'évolution des dossiers (Bar Chart) */}
+              {teamKpis && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Évolution des dossiers</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart
+                        data={[
+                          {
+                            name: 'Total',
+                            value: teamKpis.dossiers_total || 0
+                          },
+                          {
+                            name: 'En cours',
+                            value: teamKpis.dossiers_en_cours || 0
+                          },
+                          {
+                            name: 'Signés',
+                            value: teamKpis.dossiers_signes || 0
+                          }
+                        ]}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" />
+                        <YAxis />
+                        <Tooltip />
+                        <Legend />
+                        <Bar dataKey="value" fill="#2563eb" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Graphique de répartition par statut (Pie Chart) */}
+              {teamKpis && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Répartition par statut</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <PieChart>
+                        <Pie
+                          data={[
+                            { name: 'En cours', value: teamKpis.dossiers_en_cours || 0 },
+                            { name: 'Signés', value: teamKpis.dossiers_signes || 0 },
+                            { name: 'Autres', value: Math.max(0, (teamKpis.dossiers_total || 0) - (teamKpis.dossiers_en_cours || 0) - (teamKpis.dossiers_signes || 0)) }
+                          ].filter(item => item.value > 0)}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={(props: any) => `${props.name}: ${((props.percent || 0) * 100).toFixed(0)}%`}
+                          outerRadius={100}
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {[
+                            { name: 'En cours', value: teamKpis.dossiers_en_cours || 0 },
+                            { name: 'Signés', value: teamKpis.dossiers_signes || 0 },
+                            { name: 'Autres', value: Math.max(0, (teamKpis.dossiers_total || 0) - (teamKpis.dossiers_en_cours || 0) - (teamKpis.dossiers_signes || 0)) }
+                          ].filter(item => item.value > 0).map((_entry, index) => (
+                            <Cell key={`cell-${index}`} fill={['#3b82f6', '#10b981', '#f59e0b'][index % 3]} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Graphique de comparaison des dossiers (Line Chart) */}
+              {teamKpis && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Comparaison des dossiers</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <LineChart
+                        data={[
+                          {
+                            name: 'Total',
+                            value: teamKpis.dossiers_total || 0
+                          },
+                          {
+                            name: 'En cours',
+                            value: teamKpis.dossiers_en_cours || 0
+                          },
+                          {
+                            name: 'Signés',
+                            value: teamKpis.dossiers_signes || 0
+                          }
+                        ]}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" />
+                        <YAxis />
+                        <Tooltip />
+                        <Legend />
+                        <Line type="monotone" dataKey="value" stroke="#10b981" strokeWidth={2} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
 
           <Card>
             <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -586,7 +972,264 @@ const AdminCabinetDetailPage: React.FC = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="equipe">
+        <TabsContent value="equipe" className="space-y-6">
+          {/* Assignation Owner */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Propriétaire du cabinet</CardTitle>
+              <p className="text-sm text-gray-500">
+                Le propriétaire a tous les droits de gestion sur le cabinet
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-3">
+                <Badge variant={cabinet?.owner ? 'default' : 'outline'}>
+                  {ownerDisplayName}
+                </Badge>
+                {cabinet?.owner?.email && (
+                  <span className="text-sm text-gray-500">{cabinet.owner.email}</span>
+                )}
+              </div>
+              <div className="flex flex-col md:flex-row gap-3">
+                <Popover open={ownerSearchOpen} onOpenChange={setOwnerSearchOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      className="w-full md:w-[400px] justify-between"
+                      disabled={ownerSearchLoading}
+                    >
+                      {ownerSelection
+                        ? availableOwnerExperts.find((e) => e.id === ownerSelection)?.name || ownerSelection
+                        : 'Rechercher un expert...'}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0" align="start">
+                    <Command>
+                      <CommandInput
+                        placeholder="Tapez pour rechercher..."
+                        value={ownerSearch}
+                        onValueChange={setOwnerSearch}
+                      />
+                      <CommandList>
+                        {ownerSearchLoading ? (
+                          <div className="p-4 text-center text-sm text-gray-500">Recherche en cours...</div>
+                        ) : availableOwnerExperts.length === 0 ? (
+                          <CommandEmpty>
+                            {ownerSearch.length >= 2 ? 'Aucun expert trouvé' : 'Tapez au moins 2 caractères pour rechercher'}
+                          </CommandEmpty>
+                        ) : (
+                          <CommandGroup>
+                            {availableOwnerExperts.map((expert) => (
+                              <CommandItem
+                                key={expert.id}
+                                value={expert.id}
+                                onSelect={() => {
+                                  setOwnerSelection(expert.id);
+                                  setOwnerSearchOpen(false);
+                                }}
+                              >
+                                <Check
+                                  className={`mr-2 h-4 w-4 ${ownerSelection === expert.id ? 'opacity-100' : 'opacity-0'}`}
+                                />
+                                <div className="flex-1">
+                                  <p className="font-medium">{expert.name}</p>
+                                  {expert.email && (
+                                    <p className="text-xs text-gray-500">{expert.email}</p>
+                                  )}
+                                </div>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        )}
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                <Button
+                  onClick={handleAssignOwner}
+                  disabled={!ownerSelection || ownerAssigning}
+                >
+                  {ownerAssigning ? 'Assignation...' : 'Assigner comme propriétaire'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Assignation Manager */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Ajouter un manager</CardTitle>
+              <p className="text-sm text-gray-500">
+                Les managers peuvent gérer une équipe d'experts
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-col md:flex-row gap-3">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      className="w-full md:w-[400px] justify-between"
+                      disabled={managerSearchLoading}
+                    >
+                      {managerSelection
+                        ? availableManagerExperts.find((e) => e.id === managerSelection)?.name || managerSelection
+                        : 'Rechercher un expert...'}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0" align="start">
+                    <Command>
+                      <CommandInput
+                        placeholder="Tapez pour rechercher..."
+                        value={managerSearch}
+                        onValueChange={setManagerSearch}
+                      />
+                      <CommandList>
+                        {managerSearchLoading ? (
+                          <div className="p-4 text-center text-sm text-gray-500">Recherche en cours...</div>
+                        ) : availableManagerExperts.length === 0 ? (
+                          <CommandEmpty>
+                            {managerSearch.length >= 2 ? 'Aucun expert trouvé' : 'Tapez au moins 2 caractères pour rechercher'}
+                          </CommandEmpty>
+                        ) : (
+                          <CommandGroup>
+                            {availableManagerExperts.map((expert) => (
+                              <CommandItem
+                                key={expert.id}
+                                value={expert.id}
+                                onSelect={() => {
+                                  setManagerSelection(expert.id);
+                                }}
+                              >
+                                <Check
+                                  className={`mr-2 h-4 w-4 ${managerSelection === expert.id ? 'opacity-100' : 'opacity-0'}`}
+                                />
+                                <div className="flex-1">
+                                  <p className="font-medium">{expert.name}</p>
+                                  {expert.email && (
+                                    <p className="text-xs text-gray-500">{expert.email}</p>
+                                  )}
+                                </div>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        )}
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                <Button
+                  onClick={handleAddManager}
+                  disabled={!managerSelection || managerAssigning}
+                >
+                  {managerAssigning ? 'Ajout...' : 'Ajouter comme manager'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Assignation Expert à Manager */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Assigner un expert à un manager</CardTitle>
+              <p className="text-sm text-gray-500">
+                Assignez un expert à un manager existant
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Expert</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        className="w-full justify-between"
+                        disabled={expertSearchLoading}
+                      >
+                        {expertSelection
+                          ? availableExpertAssignments.find((e) => e.id === expertSelection)?.name || expertSelection
+                          : 'Rechercher un expert...'}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-0" align="start">
+                      <Command>
+                        <CommandInput
+                          placeholder="Tapez pour rechercher..."
+                          value={expertSearch}
+                          onValueChange={setExpertSearch}
+                        />
+                        <CommandList>
+                          {expertSearchLoading ? (
+                            <div className="p-4 text-center text-sm text-gray-500">Recherche en cours...</div>
+                          ) : availableExpertAssignments.length === 0 ? (
+                            <CommandEmpty>
+                              {expertSearch.length >= 2 ? 'Aucun expert trouvé' : 'Tapez au moins 2 caractères pour rechercher'}
+                            </CommandEmpty>
+                          ) : (
+                            <CommandGroup>
+                              {availableExpertAssignments.map((expert) => (
+                                <CommandItem
+                                  key={expert.id}
+                                  value={expert.id}
+                                  onSelect={() => {
+                                    setExpertSelection(expert.id);
+                                  }}
+                                >
+                                  <Check
+                                    className={`mr-2 h-4 w-4 ${expertSelection === expert.id ? 'opacity-100' : 'opacity-0'}`}
+                                  />
+                                  <div className="flex-1">
+                                    <p className="font-medium">{expert.name}</p>
+                                    {expert.email && (
+                                      <p className="text-xs text-gray-500">{expert.email}</p>
+                                    )}
+                                  </div>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          )}
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="space-y-2">
+                  <Label>Manager</Label>
+                  <Select
+                    value={expertManagerSelection}
+                    onValueChange={setExpertManagerSelection}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner un manager" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {managerMembers.map((manager: any) => (
+                        <SelectItem key={manager.id} value={manager.id}>
+                          {manager.profile?.name || manager.member_id}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <Button
+                onClick={handleAssignExpertToManager}
+                disabled={!expertSelection || !expertManagerSelection || expertAssigning}
+                className="w-full md:w-auto"
+              >
+                {expertAssigning ? 'Assignation...' : 'Assigner l\'expert'}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Gestion des membres */}
           <Card>
             <CardHeader className="space-y-4">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -607,7 +1250,7 @@ const AdminCabinetDetailPage: React.FC = () => {
                   <Select
                     defaultValue={memberForm.member_type}
                     onValueChange={(value) =>
-                      setMemberForm((prev) => ({ ...prev, member_type: value }))
+                      setMemberForm((prev) => ({ ...prev, member_type: value as CabinetMemberRole }))
                     }
                   >
                     <SelectTrigger className="w-full md:w-48">
@@ -634,10 +1277,10 @@ const AdminCabinetDetailPage: React.FC = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Nom</TableHead>
+                    <TableHead>Collaborateur</TableHead>
                     <TableHead>Rôle</TableHead>
-                    <TableHead>Produits autorisés</TableHead>
-                    <TableHead>Date d'ajout</TableHead>
+                    <TableHead>Résultats</TableHead>
+                    <TableHead>Statut</TableHead>
                     <TableHead></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -649,14 +1292,47 @@ const AdminCabinetDetailPage: React.FC = () => {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    members.map(member => (
-                      <TableRow key={member.id}>
-                        <TableCell>{member.member_id}</TableCell>
+                    members.map((member: any) => (
+                      <TableRow key={member.id || member.member_id}>
                         <TableCell>
-                          <Badge variant="outline">{member.member_type}</Badge>
+                          <div>
+                            <p className="font-medium text-gray-900">
+                              {member.profile?.name || member.member_id}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {member.profile?.email || member.member_id}
+                            </p>
+                          </div>
                         </TableCell>
-                        <TableCell>—</TableCell>
-                        <TableCell>{member.created_at ? new Date(member.created_at).toLocaleDateString('fr-FR') : '—'}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{member.team_role || member.member_type}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            <p className="font-semibold">
+                              {member.stats?.dossiers_signes ?? 0} signés
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {member.stats?.dossiers_en_cours ?? 0} en cours
+                            </p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Select
+                            value={member.status || 'active'}
+                            onValueChange={(value) => handleUpdateMemberStatus(member.id, value)}
+                          >
+                            <SelectTrigger className="w-32">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="active">Active</SelectItem>
+                              <SelectItem value="invited">Invité</SelectItem>
+                              <SelectItem value="suspended">Suspendu</SelectItem>
+                              <SelectItem value="disabled">Désactivé</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
                         <TableCell>
                           <Button
                             variant="ghost"
@@ -782,11 +1458,16 @@ const AdminCabinetDetailPage: React.FC = () => {
 
         <TabsContent value="clients">
           <Card>
-            <CardHeader>
-              <CardTitle>Clients & dossiers</CardTitle>
-              <p className="text-sm text-gray-500">
-                Liste des dossiers liés à ce cabinet.
-              </p>
+            <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <CardTitle>Clients & dossiers</CardTitle>
+                <p className="text-sm text-gray-500">
+                  Liste des dossiers liés à ce cabinet.
+                </p>
+              </div>
+              <Button variant="outline" onClick={loadClients} disabled={clientsLoading}>
+                {clientsLoading ? 'Chargement...' : 'Rafraîchir'}
+              </Button>
             </CardHeader>
             <CardContent className="overflow-x-auto">
               <Table>
