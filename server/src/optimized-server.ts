@@ -207,7 +207,7 @@ app.use('/api/simulations', publicRouteLogger, simulationRoutes);
 // ===== ROUTES PROTÉGÉES (avec cache) =====
 
 app.use('/api/experts', enhancedAuthMiddleware, cacheMiddleware(5 * 60 * 1000), expertsRouter);
-app.use('/api/produits-eligibles', enhancedAuthMiddleware, cacheMiddleware(10 * 60 * 1000), produitsEligiblesRouter);
+app.use('/api/produits-eligibles', cacheMiddleware(10 * 60 * 1000), produitsEligiblesRouter); // Middleware auth géré route par route
 app.use('/api/specializations', enhancedAuthMiddleware, cacheMiddleware(30 * 60 * 1000), specializationsRouter); // 30 min cache
 app.use('/api/audits', enhancedAuthMiddleware, auditsRouter);
 

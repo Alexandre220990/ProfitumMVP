@@ -258,8 +258,8 @@ if (process.env.NODE_ENV !== 'production') {
 // APIs des experts - PROTÉGÉES
 app.use('/api/experts', enhancedAuthMiddleware, expertsRouter);
 
-// APIs des produits éligibles - PROTÉGÉES
-app.use('/api/produits-eligibles', enhancedAuthMiddleware, produitsEligiblesRouter);
+// APIs des produits éligibles (middleware géré route par route dans produits-eligibles.ts)
+app.use('/api/produits-eligibles', produitsEligiblesRouter);
 
 // APIs des spécialisations - PROTÉGÉES
 app.use('/api/specializations', enhancedAuthMiddleware, specializationsRouter);
