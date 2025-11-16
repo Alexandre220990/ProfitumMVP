@@ -13,7 +13,27 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Configuration Redis pour le cache et les notifications en temps réel
-const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
+  retryStrategy: () => null, // Ne pas réessayer si Redis n'est pas disponible
+  maxRetriesPerRequest: null,
+  enableReadyCheck: false,
+  lazyConnect: true
+});
+
+// Gérer les erreurs Redis silencieusement (non bloquant)
+redis.on('error', (err) => {
+  // Ignorer les erreurs de connexion Redis (service optionnel)
+  if (err.message.includes('ECONNREFUSED') || err.message.includes('connect')) {
+    // Redis non disponible, continuer sans cache
+    return;
+  }
+  console.error('❌ Erreur Redis (non bloquant):', err.message);
+});
+
+// Ne pas connecter automatiquement si Redis n'est pas disponible
+redis.connect().catch(() => {
+  // Redis non disponible, continuer sans cache
+});
 
 // Event emitter pour les notifications en temps réel
 const notificationEmitter = new EventEmitter();

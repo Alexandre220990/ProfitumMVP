@@ -24,13 +24,19 @@ class CalendarCacheService {
   private setupEventHandlers() {
     this.redis.on('connect', () => {
       this.isConnected = true;
+      console.log('✅ Redis connecté pour le cache calendrier');
     });
     this.redis.on('end', () => {
       this.isConnected = false;
     });
-    this.redis.on('error', (err) => {
+    this.redis.on('error', (err: any) => {
       this.isConnected = false;
-      console.error('Redis error:', err);
+      // Ignorer les erreurs de connexion Redis (service optionnel)
+      if (err?.message?.includes('ECONNREFUSED') || err?.message?.includes('connect')) {
+        // Redis non disponible, continuer sans cache
+        return;
+      }
+      console.error('❌ Erreur Redis (non bloquant):', err?.message || err);
     });
   }
 

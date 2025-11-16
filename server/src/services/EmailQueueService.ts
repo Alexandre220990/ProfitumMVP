@@ -63,6 +63,16 @@ const emailQueue = new Queue('email-queue', {
   }
 });
 
+// Gérer les erreurs Redis silencieusement (non bloquant)
+emailQueue.on('error', (error) => {
+  // Ignorer les erreurs de connexion Redis (service optionnel)
+  if (error?.message?.includes('ECONNREFUSED') || error?.message?.includes('connect')) {
+    // Redis non disponible, les emails seront envoyés directement
+    return;
+  }
+  console.error('❌ Erreur queue email Redis (non bloquant):', error?.message || error);
+});
+
 // ============================================================================
 // SERVICE PRINCIPAL
 // ============================================================================
