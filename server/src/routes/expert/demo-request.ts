@@ -180,7 +180,7 @@ router.post('/', async (req: Request, res: Response) => {
       // Gérer les champs optionnels
       website: data.website || null,
       linkedin: data.linkedin || null,
-      compensation: data.compensation || 20,
+      client_fee_percentage: data.compensation ? data.compensation / 100 : 0.20, // Convertir % en décimal (20% = 0.20)
       max_clients: data.max_clients || 100,
       certifications: data.certifications || [],
       languages: data.languages || ['Français'],

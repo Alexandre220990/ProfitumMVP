@@ -1,6 +1,7 @@
 import express, { Router, Request, Response } from 'express';
 import { createClient } from "@supabase/supabase-js";
 import { ClientProduitEligibleSchema, ClientProduitEligible } from "../validations/clientProduitEligible";
+import { enhancedAuthMiddleware } from "../middleware/auth-enhanced";
 
 // Types pour l'authentification
 interface AuthUser {
@@ -31,18 +32,20 @@ router.get("/debug", (req, res) => {
   });
 });
 
-// Route pour récupérer tous les produits éligibles
+// Route publique pour récupérer tous les produits éligibles (sans authentification)
+// Utilisée par les formulaires d'inscription expert publics
 router.get("/", async (req, res) => {
   try {
     const { data: produits, error } = await supabaseClient
       .from('ProduitEligible')
-      .select('*');
+      .select('*')
+      .order('nom', { ascending: true });
     
     if (error) throw error;
     
     return res.json({
       success: true,
-      data: produits
+      data: produits || []
     });
   } catch (error: any) {
     console.error("Erreur lors de la récupération des produits éligibles:", error);
@@ -53,18 +56,19 @@ router.get("/", async (req, res) => {
   }
 });
 
-// Route pour récupérer tous les produits éligibles (alias)
+// Route publique pour récupérer tous les produits éligibles (alias, sans authentification)
 router.get("/produits-eligibles", async (req, res) => {
   try {
     const { data: produits, error } = await supabaseClient
       .from('ProduitEligible')
-      .select('*');
+      .select('*')
+      .order('nom', { ascending: true });
     
     if (error) throw error;
     
     return res.json({
       success: true,
-      data: produits
+      data: produits || []
     });
   } catch (error: any) {
     console.error("Erreur lors de la récupération des produits éligibles:", error);
@@ -84,8 +88,8 @@ router.options('/client/:clientId', (req, res) => {
   res.sendStatus(204);
 });
 
-// Route pour obtenir les produits éligibles d'un client
-router.get("/client/:clientId", async (req: Request, res: Response) => {
+// Route pour obtenir les produits éligibles d'un client (avec authentification)
+router.get("/client/:clientId", enhancedAuthMiddleware, async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });
@@ -136,8 +140,8 @@ router.get("/client/:clientId", async (req: Request, res: Response) => {
   }
 });
 
-// Route pour obtenir les détails d'un produit éligible
-router.get("/produits-eligibles/details/:produitId", async (req: Request, res: Response) => {
+// Route pour obtenir les détails d'un produit éligible (avec authentification)
+router.get("/produits-eligibles/details/:produitId", enhancedAuthMiddleware, async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, message: 'Non authentifié' });

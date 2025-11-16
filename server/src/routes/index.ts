@@ -49,38 +49,8 @@ router.use('/simulations', enhancedAuthMiddleware, simulationRoutes);
 // Routes des partenaires
 router.use('/partners', partnerRoutes);
 
-// Route publique pour le catalogue des produits éligibles (sans authentification)
-// Utilisée par les formulaires d'inscription expert publics
-router.get('/produits-eligibles', async (req, res) => {
-  try {
-    const { createClient } = await import('@supabase/supabase-js');
-    const supabaseClient = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-
-    const { data: produits, error } = await supabaseClient
-      .from('ProduitEligible')
-      .select('*')
-      .order('nom', { ascending: true });
-    
-    if (error) throw error;
-    
-    return res.json({
-      success: true,
-      data: produits || []
-    });
-  } catch (error: any) {
-    console.error("Erreur lors de la récupération du catalogue produits éligibles:", error);
-    return res.status(500).json({
-      success: false,
-      error: error.message || "Une erreur est survenue"
-    });
-  }
-});
-
-// Routes des produits éligibles (avec authentification pour les autres routes)
-router.use('/produits-eligibles', enhancedAuthMiddleware, produitsEligiblesRoutes);
+// Routes des produits éligibles (sans middleware global, géré route par route)
+router.use('/produits-eligibles', produitsEligiblesRoutes);
 
 // Routes des spécialisations
 router.use('/specializations', specializationsRoutes);

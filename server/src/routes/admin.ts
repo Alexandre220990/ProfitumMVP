@@ -1107,6 +1107,10 @@ router.put('/experts/:id', asyncHandler(async (req, res) => {
       phone: updateData.phone || null,
       // Stocker autre_produit si fourni
       autre_produit: updateData.autre_produit || null,
+      // Mapping compensation (%) -> client_fee_percentage (décimal)
+      ...(updateData.compensation !== undefined && {
+        client_fee_percentage: updateData.compensation / 100
+      }),
       // Ajouter le mot de passe hashé si fourni
       ...(hashedPassword && { password: hashedPassword }),
       updated_at: new Date().toISOString()
@@ -1117,6 +1121,7 @@ router.put('/experts/:id', asyncHandler(async (req, res) => {
     delete updateExpertData.temp_password;
     delete updateExpertData.produits_eligibles; // Géré séparément
     delete updateExpertData.cabinet_role; // Géré séparément
+    delete updateExpertData.compensation; // Mappé vers client_fee_percentage
 
     const { data, error } = await supabaseClient
       .from('Expert')
@@ -1271,7 +1276,7 @@ router.post('/experts', asyncHandler(async (req, res) => {
       specializations: expertData.specializations || [], // Garder pour compatibilité
       autre_produit: expertData.autre_produit || null,
       rating: expertData.rating || 0,
-      compensation: expertData.compensation || 0,
+      client_fee_percentage: expertData.compensation ? expertData.compensation / 100 : 0.30, // Convertir % en décimal (30% = 0.30)
       status: expertData.status || 'active',
       approval_status: expertData.approval_status || 'pending',
       experience: expertData.experience,
