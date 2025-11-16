@@ -29,6 +29,9 @@ interface PrioritizedDossier {
   nextAction: string;
   lastContact: string;
   daysSinceLastContact: number;
+  daysWaitingDocuments?: number; // Jours depuis la demande de documents
+  documentRequestDate?: string; // Date de la demande de documents
+  hasDocumentRequest?: boolean; // Si une demande de documents est en attente
 }
 
 interface Alert {
@@ -116,6 +119,19 @@ router.get('/prioritized', enhancedAuthMiddleware, async (req: Request, res: Res
         `)
         .eq('expert_id', expertId)
         .in('statut', RAW_ACTIVE_STATUSES);
+
+      // Récupérer les demandes de documents en attente pour ces dossiers
+      const dossierIds = (result.data || []).map(d => d.id);
+      let documentRequests: any[] = [];
+      if (dossierIds.length > 0) {
+        const { data: requests } = await supabase
+          .from('document_request')
+          .select('id, dossier_id, created_at, status')
+          .in('dossier_id', dossierIds)
+          .in('status', ['pending', 'in_progress'])
+          .order('created_at', { ascending: false });
+        documentRequests = requests || [];
+      }
       
       dossiers = result.data || [];
       error = result.error;
@@ -133,11 +149,25 @@ router.get('/prioritized', enhancedAuthMiddleware, async (req: Request, res: Res
       });
     }
 
+    // Créer un map des demandes de documents par dossier_id
+    const documentRequestMap = new Map<string, { created_at: string; daysWaiting: number }>();
+    const now = new Date();
+    documentRequests.forEach(req => {
+      const requestDate = new Date(req.created_at);
+      const daysWaiting = Math.floor((now.getTime() - requestDate.getTime()) / (1000 * 60 * 60 * 24));
+      documentRequestMap.set(req.dossier_id, {
+        created_at: req.created_at,
+        daysWaiting
+      });
+    });
+
     // Calculer le score de priorité pour chaque dossier
     const prioritizedDossiers: PrioritizedDossier[] = (dossiers || []).map((dossier: any) => {
-      const now = new Date();
       const updatedAt = new Date(dossier.updated_at);
       const daysSinceLastContact = Math.floor((now.getTime() - updatedAt.getTime()) / (1000 * 60 * 60 * 24));
+      
+      // Récupérer la demande de documents si elle existe
+      const docRequest = documentRequestMap.get(dossier.id);
 
       // 1. URGENCE (40 points) - Plus c'est ancien, plus c'est urgent
       let urgenceScore = 0;
@@ -171,9 +201,20 @@ router.get('/prioritized', enhancedAuthMiddleware, async (req: Request, res: Res
       // SCORE TOTAL
       const priorityScore = urgenceScore + valeurScore + probabiliteScore + faciliteScore;
 
-      // Déterminer la prochaine action
+      // Déterminer la prochaine action en fonction de la demande de documents
       let nextAction = '';
-      if (dossier.statut === 'eligible' || dossier.statut === 'admin_validated' || dossier.statut === 'expert_assigned') {
+      if (docRequest) {
+        // Si on attend des documents, afficher le message approprié
+        if (docRequest.daysWaiting >= 15) {
+          nextAction = `En attente de documents depuis ${docRequest.daysWaiting} jours - Relance 3 envoyée`;
+        } else if (docRequest.daysWaiting >= 10) {
+          nextAction = `En attente de documents depuis ${docRequest.daysWaiting} jours - Relance 2 envoyée`;
+        } else if (docRequest.daysWaiting >= 5) {
+          nextAction = `En attente de documents depuis ${docRequest.daysWaiting} jours - Relance 1 envoyée`;
+        } else {
+          nextAction = `En attente de documents depuis ${docRequest.daysWaiting} jour${docRequest.daysWaiting > 1 ? 's' : ''}`;
+        }
+      } else if (dossier.statut === 'eligible' || dossier.statut === 'admin_validated' || dossier.statut === 'expert_assigned') {
         nextAction = 'Examiner documents';
       } else if (dossier.statut === 'documents_requested') {
         nextAction = 'Attendre documents client';
@@ -207,7 +248,10 @@ router.get('/prioritized', enhancedAuthMiddleware, async (req: Request, res: Res
         faciliteScore,
         nextAction,
         lastContact: dossier.updated_at,
-        daysSinceLastContact
+        daysSinceLastContact,
+        daysWaitingDocuments: docRequest?.daysWaiting,
+        documentRequestDate: docRequest?.created_at,
+        hasDocumentRequest: !!docRequest
       };
     });
 

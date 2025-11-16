@@ -50,6 +50,9 @@ interface PrioritizedDossier {
   faciliteScore: number;
   nextAction: string;
   daysSinceLastContact: number;
+  daysWaitingDocuments?: number;
+  documentRequestDate?: string;
+  hasDocumentRequest?: boolean;
 }
 
 interface Alert {
@@ -88,6 +91,20 @@ export const ExpertDashboardOptimized = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { context: cabinetContext, loading: cabinetLoading } = useCabinetContext();
+  
+  // Debug: Log cabinet context
+  useEffect(() => {
+    if (cabinetContext) {
+      console.log('🔍 Cabinet Context:', {
+        hasContext: !!cabinetContext,
+        permissions: cabinetContext.permissions,
+        canManageMembers: cabinetContext.permissions?.canManageMembers,
+        membership: cabinetContext.membership
+      });
+    } else if (!cabinetLoading) {
+      console.log('⚠️ Pas de cabinet context pour cet expert');
+    }
+  }, [cabinetContext, cabinetLoading]);
   
   const [loading, setLoading] = useState(true);
   const [kpis, setKpis] = useState<KPIs | null>(null);
@@ -553,32 +570,70 @@ export const ExpertDashboardOptimized = () => {
                         </div>
                       </div>
 
-                      <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm text-gray-600">
-                        <div>
-                          <p className="text-[10px] uppercase text-gray-400 tracking-wide">Urgence</p>
-                          <p className="font-medium">{dossier.urgenceScore}/40</p>
+                      {/* Alerte documents en attente */}
+                      {dossier.hasDocumentRequest && dossier.daysWaitingDocuments !== undefined && (
+                        <div className={`mt-3 p-3 rounded-lg border-2 ${
+                          dossier.daysWaitingDocuments >= 15
+                            ? 'bg-red-50 border-red-300'
+                            : dossier.daysWaitingDocuments >= 10
+                            ? 'bg-orange-50 border-orange-300'
+                            : dossier.daysWaitingDocuments >= 5
+                            ? 'bg-yellow-50 border-yellow-300'
+                            : 'bg-blue-50 border-blue-300'
+                        }`}>
+                          <div className="flex items-start gap-2">
+                            <AlertTriangle className={`h-5 w-5 mt-0.5 ${
+                              dossier.daysWaitingDocuments >= 15
+                                ? 'text-red-600'
+                                : dossier.daysWaitingDocuments >= 10
+                                ? 'text-orange-600'
+                                : dossier.daysWaitingDocuments >= 5
+                                ? 'text-yellow-600'
+                                : 'text-blue-600'
+                            }`} />
+                            <div className="flex-1">
+                              <p className={`text-sm font-semibold ${
+                                dossier.daysWaitingDocuments >= 15
+                                  ? 'text-red-800'
+                                  : dossier.daysWaitingDocuments >= 10
+                                  ? 'text-orange-800'
+                                  : dossier.daysWaitingDocuments >= 5
+                                  ? 'text-yellow-800'
+                                  : 'text-blue-800'
+                              }`}>
+                                {dossier.daysWaitingDocuments >= 15
+                                  ? '⚠️ Relance 3 envoyée'
+                                  : dossier.daysWaitingDocuments >= 10
+                                  ? '⚠️ Relance 2 envoyée'
+                                  : dossier.daysWaitingDocuments >= 5
+                                  ? '⚠️ Relance 1 envoyée'
+                                  : '📄 Documents en attente'}
+                              </p>
+                              <p className={`text-xs mt-1 ${
+                                dossier.daysWaitingDocuments >= 15
+                                  ? 'text-red-700'
+                                  : dossier.daysWaitingDocuments >= 10
+                                  ? 'text-orange-700'
+                                  : dossier.daysWaitingDocuments >= 5
+                                  ? 'text-yellow-700'
+                                  : 'text-blue-700'
+                              }`}>
+                                En attente de documents depuis {dossier.daysWaitingDocuments} jour{dossier.daysWaitingDocuments > 1 ? 's' : ''}
+                                {dossier.daysWaitingDocuments >= 15 && (
+                                  <span className="block mt-1 font-semibold">
+                                    Si pas de retour dans les 5 prochains jours, l'expert se réserve le droit d'annuler la collaboration.
+                                  </span>
+                                )}
+                              </p>
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-[10px] uppercase text-gray-400 tracking-wide">Valeur</p>
-                          <p className="font-medium">{dossier.valeurScore}/30</p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] uppercase text-gray-400 tracking-wide">Probabilité</p>
-                          <p className="font-medium">{dossier.probabiliteScore}/20</p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] uppercase text-gray-400 tracking-wide">Facilité</p>
-                          <p className="font-medium">{dossier.faciliteScore}/10</p>
-                        </div>
-                      </div>
+                      )}
 
-                      <div className="mt-4 border-t pt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="mt-3 border-t pt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="text-sm text-gray-700">
                           <p className="font-medium text-gray-900">Prochaine action</p>
-                          <p>{nextActionLabel}</p>
-                          <p className="text-xs text-gray-500 mt-1">
-                            Contact principal : {dossier.clientEmail || 'Non communiqué'}
-                          </p>
+                          <p className={dossier.hasDocumentRequest ? 'text-orange-600 font-semibold' : ''}>{nextActionLabel}</p>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
                           {canCall && (
