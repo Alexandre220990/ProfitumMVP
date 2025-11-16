@@ -33,8 +33,7 @@ const STATUS_BADGES: Record<string, string> = {
 
 type MemberFormState = {
   member_id: string;
-  member_type: 'expert' | 'apporteur' | 'assistant' | 'responsable_cabinet';
-  team_role: 'MANAGER' | 'EXPERT' | 'ASSISTANT';
+  team_role: 'OWNER' | 'MANAGER' | 'EXPERT'; // Rôles dans le cabinet uniquement
   manager_member_id?: string | null;
   status: 'active' | 'invited' | 'suspended';
   products: string;
@@ -42,7 +41,6 @@ type MemberFormState = {
 
 const defaultForm: MemberFormState = {
   member_id: '',
-  member_type: 'expert',
   team_role: 'EXPERT',
   manager_member_id: null,
   status: 'active',
@@ -163,7 +161,28 @@ export const CabinetTeamManagement = () => {
   
   const members = useMemo(() => flattenHierarchy(filteredHierarchy), [filteredHierarchy]);
   const managers = members.filter(member => member.team_role === 'MANAGER');
+  const experts = members.filter(member => member.team_role === 'EXPERT' && member.status === 'active');
+  const activeMembers = members.filter(member => member.status === 'active');
+  
   const stats = context?.kpis;
+  
+  // Calculer les KPIs managériaux
+  const totalMembers = activeMembers.length;
+  const avgDossiersEnCours = totalMembers > 0 ? Math.round((stats?.dossiers_en_cours ?? 0) / totalMembers) : 0;
+  const avgDossiersSignes = totalMembers > 0 ? Math.round((stats?.dossiers_signes ?? 0) / totalMembers) : 0;
+  
+  // Top performer (celui avec le plus de dossiers signés)
+  const topPerformer = members
+    .filter(m => m.stats && m.stats.dossiers_signes > 0)
+    .sort((a, b) => (b.stats?.dossiers_signes || 0) - (a.stats?.dossiers_signes || 0))[0];
+  
+  // Collaborateurs sans activité récente (> 30 jours)
+  const inactiveMembers = members.filter(member => {
+    if (!member.stats?.last_activity) return false;
+    const lastActivity = new Date(member.stats.last_activity);
+    const daysSinceActivity = Math.floor((Date.now() - lastActivity.getTime()) / (1000 * 60 * 60 * 24));
+    return daysSinceActivity > 30;
+  });
 
   const searchUsers = useCallback(async (term: string) => {
     if (!term || term.length < 2) {
@@ -173,8 +192,8 @@ export const CabinetTeamManagement = () => {
     
     setUserSearchLoading(true);
     try {
-      const type = formState.member_type === 'apporteur' ? 'apporteur' : 'expert';
-      const users = await expertCabinetService.getAvailableUsers(term, type);
+      // Rechercher uniquement des experts ou assistants (pas d'apporteurs)
+      const users = await expertCabinetService.getAvailableUsers(term, 'expert');
       setAvailableUsers(users);
     } catch (err) {
       console.error('Erreur recherche utilisateurs:', err);
@@ -182,7 +201,7 @@ export const CabinetTeamManagement = () => {
     } finally {
       setUserSearchLoading(false);
     }
-  }, [formState.member_type]);
+  }, []);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -195,12 +214,7 @@ export const CabinetTeamManagement = () => {
     return () => clearTimeout(timeoutId);
   }, [userSearchTerm, searchUsers]);
 
-  useEffect(() => {
-    // Reset user search when member_type changes
-    setFormState(prev => ({ ...prev, member_id: '' }));
-    setUserSearchTerm('');
-    setAvailableUsers([]);
-  }, [formState.member_type]);
+  // Plus besoin de reset quand member_type change (supprimé)
 
   const handleSubmit = async () => {
     if (!formState.member_id.trim()) {
@@ -211,7 +225,7 @@ export const CabinetTeamManagement = () => {
     try {
       await addMember({
         member_id: formState.member_id.trim(),
-        member_type: formState.member_type,
+        member_type: 'expert', // Toujours 'expert' pour les collaborateurs du cabinet
         team_role: formState.team_role,
         manager_member_id: formState.manager_member_id || null,
         status: formState.status,
@@ -318,7 +332,7 @@ export const CabinetTeamManagement = () => {
                           >
                             {formState.member_id
                               ? availableUsers.find(u => u.id === formState.member_id)?.name || formState.member_id
-                              : 'Rechercher un expert ou apporteur...'}
+                              : 'Rechercher un expert ou assistant...'}
                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                           </Button>
                         </PopoverTrigger>
@@ -371,44 +385,29 @@ export const CabinetTeamManagement = () => {
                         </p>
                       )}
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label>Type</Label>
-                        <Select
-                          value={formState.member_type}
-                          onValueChange={value =>
-                            setFormState(prev => ({ ...prev, member_type: value as MemberFormState['member_type'] }))
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="expert">Expert</SelectItem>
-                            <SelectItem value="apporteur">Apporteur</SelectItem>
-                            <SelectItem value="assistant">Assistant</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label>Rôle</Label>
-                        <Select
-                          value={formState.team_role}
-                          onValueChange={value =>
-                            setFormState(prev => ({ ...prev, team_role: value as MemberFormState['team_role'] }))
-                          }
-                          disabled={!permissions?.isOwner}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="MANAGER">Manager</SelectItem>
-                            <SelectItem value="EXPERT">Expert</SelectItem>
-                            <SelectItem value="ASSISTANT">Assistant</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
+                    <div>
+                      <Label>Rôle dans le cabinet</Label>
+                      <Select
+                        value={formState.team_role}
+                        onValueChange={value =>
+                          setFormState(prev => ({ ...prev, team_role: value as MemberFormState['team_role'] }))
+                        }
+                        disabled={!permissions?.isOwner}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="OWNER">Owner (propriétaire)</SelectItem>
+                          <SelectItem value="MANAGER">Manager</SelectItem>
+                          <SelectItem value="EXPERT">Expert</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {!permissions?.isOwner && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          Seul l'owner peut modifier les rôles
+                        </p>
+                      )}
                     </div>
                     {canAssignManager(permissions) && (
                       <div>
@@ -478,13 +477,16 @@ export const CabinetTeamManagement = () => {
         </div>
       </div>
 
-      {/* KPIs */}
-      <div className="grid gap-4 md:grid-cols-4">
+      {/* KPIs Managériaux */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardContent className="flex items-center justify-between p-5">
             <div>
-              <p className="text-sm text-gray-500">Total dossiers</p>
-              <p className="text-2xl font-bold text-gray-900">{stats?.dossiers_total ?? 0}</p>
+              <p className="text-sm text-gray-500">Collaborateurs actifs</p>
+              <p className="text-2xl font-bold text-gray-900">{totalMembers}</p>
+              <p className="text-xs text-gray-400 mt-1">
+                {experts.length} experts, {managers.length} managers
+              </p>
             </div>
             <Users className="h-8 w-8 text-blue-500" />
           </CardContent>
@@ -492,8 +494,11 @@ export const CabinetTeamManagement = () => {
         <Card>
           <CardContent className="flex items-center justify-between p-5">
             <div>
-              <p className="text-sm text-gray-500">En cours</p>
+              <p className="text-sm text-gray-500">Dossiers en cours</p>
               <p className="text-2xl font-bold text-gray-900">{stats?.dossiers_en_cours ?? 0}</p>
+              <p className="text-xs text-gray-400 mt-1">
+                Moyenne: {avgDossiersEnCours} par collaborateur
+              </p>
             </div>
             <Shield className="h-8 w-8 text-amber-500" />
           </CardContent>
@@ -501,8 +506,11 @@ export const CabinetTeamManagement = () => {
         <Card>
           <CardContent className="flex items-center justify-between p-5">
             <div>
-              <p className="text-sm text-gray-500">Signés</p>
+              <p className="text-sm text-gray-500">Dossiers signés</p>
               <p className="text-2xl font-bold text-gray-900">{stats?.dossiers_signes ?? 0}</p>
+              <p className="text-xs text-gray-400 mt-1">
+                Moyenne: {avgDossiersSignes} par collaborateur
+              </p>
             </div>
             <UserCheck className="h-8 w-8 text-emerald-500" />
           </CardContent>
@@ -510,13 +518,43 @@ export const CabinetTeamManagement = () => {
         <Card>
           <CardContent className="flex items-center justify-between p-5">
             <div>
-              <p className="text-sm text-gray-500">Managers actifs</p>
+              <p className="text-sm text-gray-500">Managers</p>
               <p className="text-2xl font-bold text-gray-900">{managers.length}</p>
+              {inactiveMembers.length > 0 && (
+                <p className="text-xs text-orange-600 mt-1">
+                  {inactiveMembers.length} sans activité récente
+                </p>
+              )}
             </div>
             <Users className="h-8 w-8 text-slate-500" />
           </CardContent>
         </Card>
       </div>
+      
+      {/* Top Performer */}
+      {topPerformer && (
+        <Card className="bg-gradient-to-r from-emerald-50 to-blue-50 border-emerald-200">
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Top performer</p>
+                <p className="text-lg font-bold text-gray-900 mt-1">
+                  {topPerformer.profile?.name || 'Collaborateur'}
+                </p>
+                <p className="text-sm text-gray-500 mt-1">
+                  {topPerformer.stats?.dossiers_signes || 0} dossiers signés
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-2xl font-bold text-emerald-600">
+                  {topPerformer.stats?.dossiers_signes || 0}
+                </p>
+                <p className="text-xs text-gray-500">dossiers signés</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
@@ -550,51 +588,85 @@ export const CabinetTeamManagement = () => {
                     <TableHead>Collaborateur</TableHead>
                     <TableHead>Rôle</TableHead>
                     <TableHead>Résultats</TableHead>
+                    <TableHead>Dernière activité</TableHead>
                     <TableHead>Statut</TableHead>
                     {canManageMembers(permissions) && <TableHead className="text-right">Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {members.map(member => (
-                    <TableRow key={member.id}>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium text-gray-900">
-                            {member.profile?.name || 'Collaborateur'}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {member.profile?.email || member.member_id}
-                          </p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={ROLE_BADGES[member.team_role] || 'bg-slate-600 text-white'}>
-                          {member.team_role}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">
-                          <p className="font-semibold">{member.stats?.dossiers_signes || 0} signés</p>
-                          <p className="text-xs text-gray-500">{member.stats?.dossiers_en_cours || 0} en cours</p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Select
-                          value={member.status}
-                          onValueChange={value => handleStatusChange(member.id, value)}
-                          disabled={!canManageMembers(permissions)}
-                        >
-                          <SelectTrigger className="w-[140px]">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="active">Actif</SelectItem>
-                            <SelectItem value="invited">Invité</SelectItem>
-                            <SelectItem value="suspended">Suspendu</SelectItem>
-                            <SelectItem value="disabled">Désactivé</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
+                  {members.map(member => {
+                    // Calculer les jours depuis la dernière activité
+                    let daysSinceActivity: number | null = null;
+                    let activityLabel = 'Jamais';
+                    if (member.stats?.last_activity) {
+                      const lastActivity = new Date(member.stats.last_activity);
+                      daysSinceActivity = Math.floor((Date.now() - lastActivity.getTime()) / (1000 * 60 * 60 * 24));
+                      if (daysSinceActivity === 0) {
+                        activityLabel = "Aujourd'hui";
+                      } else if (daysSinceActivity === 1) {
+                        activityLabel = 'Hier';
+                      } else if (daysSinceActivity < 7) {
+                        activityLabel = `Il y a ${daysSinceActivity} jours`;
+                      } else if (daysSinceActivity < 30) {
+                        activityLabel = `Il y a ${Math.floor(daysSinceActivity / 7)} semaines`;
+                      } else {
+                        activityLabel = `Il y a ${Math.floor(daysSinceActivity / 30)} mois`;
+                      }
+                    }
+                    
+                    const isInactive = daysSinceActivity !== null && daysSinceActivity > 30;
+                    
+                    return (
+                      <TableRow key={member.id}>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium text-gray-900">
+                              {member.profile?.name || 'Collaborateur'}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {member.profile?.email || member.member_id}
+                            </p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={ROLE_BADGES[member.team_role] || 'bg-slate-600 text-white'}>
+                            {member.team_role}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            <p className="font-semibold text-emerald-600">{member.stats?.dossiers_signes || 0} signés</p>
+                            <p className="text-xs text-gray-500">{member.stats?.dossiers_en_cours || 0} en cours</p>
+                            <p className="text-xs text-gray-400">{member.stats?.dossiers_total || 0} total</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            <p className={isInactive ? 'text-orange-600 font-medium' : 'text-gray-700'}>
+                              {activityLabel}
+                            </p>
+                            {isInactive && (
+                              <p className="text-xs text-orange-500">⚠️ Inactif</p>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Select
+                            value={member.status}
+                            onValueChange={value => handleStatusChange(member.id, value)}
+                            disabled={!canManageMembers(permissions)}
+                          >
+                            <SelectTrigger className="w-[140px]">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="active">Actif</SelectItem>
+                              <SelectItem value="invited">Invité</SelectItem>
+                              <SelectItem value="suspended">Suspendu</SelectItem>
+                              <SelectItem value="disabled">Désactivé</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
                       {canManageMembers(permissions) && (
                         <TableCell className="text-right">
                           <Button
@@ -607,10 +679,11 @@ export const CabinetTeamManagement = () => {
                         </TableCell>
                       )}
                     </TableRow>
-                  ))}
+                    );
+                  })}
                   {!members.length && (
                     <TableRow>
-                      <TableCell colSpan={5}>
+                      <TableCell colSpan={6}>
                         <div className="py-8 text-center text-sm text-gray-500">
                           Aucun collaborateur enregistré.
                         </div>
