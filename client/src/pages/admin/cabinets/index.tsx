@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { adminCabinetService } from '@/services/admin-cabinet-service';
 import { Cabinet } from '@/types';
-import { useRouter } from 'next/router';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Search, Users, Shield } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ const AdminCabinetsPage: React.FC = () => {
   const [cabinets, setCabinets] = useState<Cabinet[]>([]);
   const [search, setSearch] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
+  const navigate = useNavigate();
 
   const fetchCabinets = async () => {
     try {
@@ -39,11 +39,11 @@ const AdminCabinetsPage: React.FC = () => {
   };
 
   const handleCreateCabinet = () => {
-    router.push('/admin/cabinets/new');
+    navigate('/admin/cabinets/new');
   };
 
   const handleViewCabinet = (id: string) => {
-    router.push(`/admin/cabinets/${id}`);
+    navigate(`/admin/cabinets/${id}`);
   };
 
   return (

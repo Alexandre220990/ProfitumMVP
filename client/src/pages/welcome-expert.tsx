@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -63,7 +63,9 @@ const formSchema = z.object({
     .transform((val) => val.replace(/\s/g, '')) // Supprimer les espaces
     .refine((val) => val.length === 9, 'Le SIREN doit contenir exactement 9 chiffres')
     .refine((val) => /^\d{9}$/.test(val), 'Le SIREN ne doit contenir que des chiffres'),
-  specializations: z.array(z.string()).min(1, 'Au moins une spécialisation est requise'),
+  produits_eligibles: z.array(z.string()).min(1, 'Au moins un produit est requis'),
+  autre_produit: z.string().optional(),
+  cabinet_role: z.enum(['OWNER', 'MANAGER', 'EXPERT']).optional(),
   secteur_activite: z.array(z.string()).min(1, 'Au moins un secteur d\'activité est requis'),
   experience: z.string().min(1, 'L\'expérience est requise'),
   location: z.string().min(2, 'La localisation est requise'),
@@ -87,16 +89,13 @@ type FormData = z.infer<typeof formSchema>;
 // DONNÉES STATIQUES
 // ============================================================================
 
-// Spécialisations alignées sur les produits éligibles de la BDD
-const specializationsOptions = [
-  { value: 'TICPE', label: 'TICPE', description: 'Remboursement de la Taxe Intérieure de Consommation sur les Produits Énergétiques' },
-  { value: 'DFS', label: 'DFS', description: 'Déduction Forfaitaire Spécifique' },
-  { value: 'URSSAF', label: 'URSSAF', description: 'Optimisation de Charges Sociales' },
-  { value: 'MSA', label: 'MSA', description: 'Optimisation Charges MSA' },
-  { value: 'FONCIER', label: 'Fiscalité Foncière', description: 'Optimisation Fiscalité Foncière' },
-  { value: 'Optimisation Énergie', label: 'Optimisation Énergie', description: 'Optimisation des contrats d\'électricité et de gaz' },
-  { value: 'Recouvrement', label: 'Recouvrement', description: 'Avocat spécialisé en recouvrement d\'impayés' }
-];
+// Interface pour ProduitEligible
+interface ProduitEligible {
+  id: string;
+  nom: string;
+  description: string | null;
+  categorie: string | null;
+}
 
 // Secteurs d'activité alignés sur le simulateur (GENERAL_001)
 const secteursActiviteOptions = [
@@ -201,7 +200,11 @@ const benefits = [
 const WelcomeExpert = () => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedSpecializations, setSelectedSpecializations] = useState<string[]>([]);
+  const [produitsEligibles, setProduitsEligibles] = useState<ProduitEligible[]>([]);
+  const [loadingProduits, setLoadingProduits] = useState(true);
+  const [selectedProduits, setSelectedProduits] = useState<string[]>([]);
+  const [autreProduit, setAutreProduit] = useState('');
+  const [cabinetRole, setCabinetRole] = useState<'OWNER' | 'MANAGER' | 'EXPERT' | ''>('');
   const [selectedSecteurs, setSelectedSecteurs] = useState<string[]>([]);
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>(['Français']);
   const [selectedCertifications, setSelectedCertifications] = useState<string[]>([]);
@@ -220,7 +223,9 @@ const WelcomeExpert = () => {
       confirm_password: '',
       company_name: '',
       siren: '',
-      specializations: [],
+      produits_eligibles: [],
+      autre_produit: '',
+      cabinet_role: undefined,
       secteur_activite: [],
       experience: '',
       location: '',
@@ -235,6 +240,33 @@ const WelcomeExpert = () => {
       documents: undefined
     }
   });
+
+  // ============================================================================
+  // CHARGEMENT DES PRODUITS ÉLIGIBLES
+  // ============================================================================
+  
+  useEffect(() => {
+    const fetchProduitsEligibles = async () => {
+      try {
+        setLoadingProduits(true);
+        const response = await fetch(`${config.API_URL}/api/produits-eligibles`);
+        if (!response.ok) {
+          throw new Error('Erreur lors de la récupération des produits');
+        }
+        const data = await response.json();
+        if (data.success && data.data) {
+          setProduitsEligibles(data.data);
+        }
+      } catch (error) {
+        console.error('Erreur chargement produits:', error);
+        toast.error('Erreur lors du chargement des produits');
+      } finally {
+        setLoadingProduits(false);
+      }
+    };
+    
+    fetchProduitsEligibles();
+  }, []);
 
   // ============================================================================
   // FONCTIONS UTILITAIRES
@@ -278,15 +310,15 @@ const WelcomeExpert = () => {
   // GESTIONNAIRES D'ÉVÉNEMENTS
   // ============================================================================
 
-  const handleSpecializationChange = (specialization: string, checked: boolean) => {
+  const handleProduitChange = (produitId: string, checked: boolean) => {
     if (checked) {
-      const newSpecializations = [...selectedSpecializations, specialization];
-      setSelectedSpecializations(newSpecializations);
-      form.setValue('specializations', newSpecializations);
+      const newProduits = [...selectedProduits, produitId];
+      setSelectedProduits(newProduits);
+      form.setValue('produits_eligibles', newProduits);
     } else {
-      const newSpecializations = selectedSpecializations.filter(s => s !== specialization);
-      setSelectedSpecializations(newSpecializations);
-      form.setValue('specializations', newSpecializations);
+      const newProduits = selectedProduits.filter(p => p !== produitId);
+      setSelectedProduits(newProduits);
+      form.setValue('produits_eligibles', newProduits);
     }
   };
 
@@ -402,7 +434,9 @@ const WelcomeExpert = () => {
         },
         body: JSON.stringify({
           ...data,
-          specializations: selectedSpecializations,
+          produits_eligibles: selectedProduits,
+          autre_produit: autreProduit || undefined,
+          cabinet_role: cabinetRole || undefined,
           secteur_activite: selectedSecteurs,
           languages: selectedLanguages,
           certifications: selectedCertifications,
@@ -875,34 +909,132 @@ const WelcomeExpert = () => {
                     </div>
                   </div>
 
-                  {/* Spécialisations */}
+                  {/* Rôle dans le cabinet */}
+                  <div className="space-y-4">
+                    <h3 className="text-2xl font-semibold text-white flex items-center">
+                      <Users className="w-6 h-6 mr-3 text-blue-400" />
+                      Rôle dans le cabinet
+                    </h3>
+                    <p className="text-sm text-gray-300">Indiquez votre rôle si vous faites partie d'un cabinet</p>
+                    
+                    <FormField
+                      control={form.control}
+                      name="cabinet_role"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <Select 
+                              value={cabinetRole} 
+                              onValueChange={(value) => {
+                                setCabinetRole(value as 'OWNER' | 'MANAGER' | 'EXPERT');
+                                field.onChange(value || undefined);
+                              }}
+                            >
+                              <SelectTrigger className="bg-white/10 border-white/20 text-white">
+                                <SelectValue placeholder="Sélectionner un rôle (optionnel)" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="OWNER">Propriétaire (Owner)</SelectItem>
+                                <SelectItem value="MANAGER">Manager</SelectItem>
+                                <SelectItem value="EXPERT">Expert</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {/* Produits éligibles */}
                   <div className="space-y-4">
                     <h3 className="text-2xl font-semibold text-white flex items-center">
                       <Shield className="w-6 h-6 mr-3 text-purple-400" />
-                      Spécialisations produits *
+                      Produits éligibles *
                     </h3>
                     <p className="text-sm text-gray-300">Sélectionnez les produits fiscaux sur lesquels vous êtes expert</p>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {specializationsOptions.map((spec) => (
-                        <div key={spec.value} className="flex items-start space-x-3 p-3 border border-white/20 rounded-lg hover:bg-white/5 transition-colors">
-                          <Checkbox
-                            id={spec.value}
-                            checked={selectedSpecializations.includes(spec.value)}
-                            onCheckedChange={(checked: boolean) => handleSpecializationChange(spec.value, checked)}
-                            className="border-white/20 mt-1"
-                          />
-                          <div className="flex-1">
-                            <label htmlFor={spec.value} className="text-sm font-medium cursor-pointer text-white block">
-                              {spec.label}
-                            </label>
-                            <p className="text-xs text-gray-400 mt-1">{spec.description}</p>
-                          </div>
+                    {loadingProduits ? (
+                      <div className="text-center py-8">
+                        <div className="w-8 h-8 border-4 border-white/20 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
+                        <p className="text-gray-400">Chargement des produits...</p>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {produitsEligibles.map((produit) => (
+                            <div key={produit.id} className="flex items-start space-x-3 p-3 border border-white/20 rounded-lg hover:bg-white/5 transition-colors">
+                              <Checkbox
+                                id={produit.id}
+                                checked={selectedProduits.includes(produit.id)}
+                                onCheckedChange={(checked: boolean) => handleProduitChange(produit.id, checked)}
+                                className="border-white/20 mt-1"
+                              />
+                              <div className="flex-1">
+                                <label htmlFor={produit.id} className="text-sm font-medium cursor-pointer text-white block">
+                                  {produit.nom}
+                                </label>
+                                {produit.description && (
+                                  <p className="text-xs text-gray-400 mt-1">{produit.description}</p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                    {form.formState.errors.specializations && (
-                      <p className="text-red-400 text-sm">{form.formState.errors.specializations.message}</p>
+                        
+                        {/* Option "Autre" */}
+                        <div className="space-y-2">
+                          <div className="flex items-start space-x-3 p-3 border border-white/20 rounded-lg hover:bg-white/5 transition-colors">
+                            <Checkbox
+                              id="autre-produit"
+                              checked={autreProduit.length > 0}
+                              onCheckedChange={(checked: boolean) => {
+                                if (checked) {
+                                  // Laisser l'utilisateur remplir le champ
+                                } else {
+                                  setAutreProduit('');
+                                  form.setValue('autre_produit', '');
+                                }
+                              }}
+                              className="border-white/20 mt-1"
+                            />
+                            <div className="flex-1">
+                              <label htmlFor="autre-produit" className="text-sm font-medium cursor-pointer text-white block">
+                                Autre
+                              </label>
+                              <p className="text-xs text-gray-400 mt-1">Précisez un produit non listé</p>
+                            </div>
+                          </div>
+                          {autreProduit.length > 0 && (
+                            <FormField
+                              control={form.control}
+                              name="autre_produit"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormControl>
+                                    <Textarea
+                                      {...field}
+                                      value={autreProduit}
+                                      onChange={(e) => {
+                                        setAutreProduit(e.target.value);
+                                        field.onChange(e.target.value);
+                                      }}
+                                      placeholder="Décrivez le produit..."
+                                      className="bg-white/10 border-white/20 text-white placeholder-gray-400"
+                                      rows={3}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          )}
+                        </div>
+                        
+                        {form.formState.errors.produits_eligibles && (
+                          <p className="text-red-400 text-sm">{form.formState.errors.produits_eligibles.message}</p>
+                        )}
+                      </>
                     )}
                   </div>
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useRouter } from 'next/router';
+import { useNavigate } from 'react-router-dom';
 import { adminCabinetService } from '@/services/admin-cabinet-service';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
 const AdminCabinetCreatePage: React.FC = () => {
-  const router = useRouter();
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     name: '',
     siret: '',
@@ -43,7 +43,7 @@ const AdminCabinetCreatePage: React.FC = () => {
       });
 
       toast.success('Cabinet créé avec succès');
-      router.push(`/admin/cabinets/${response.data?.id}`);
+      navigate(`/admin/cabinets/${response.data?.id}`);
     } catch (error) {
       console.error('Erreur création cabinet:', error);
       toast.error('Erreur lors de la création du cabinet');
@@ -123,7 +123,7 @@ const AdminCabinetCreatePage: React.FC = () => {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => router.push('/admin/cabinets')}
+                onClick={() => navigate('/admin/cabinets')}
                 disabled={loading}
               >
                 Annuler

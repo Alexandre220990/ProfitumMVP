@@ -27,6 +27,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { get, put } from "@/lib/api";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { useCabinetContext } from "@/hooks/useCabinetContext";
 
 // ============================================================================
 // TYPES
@@ -86,6 +87,7 @@ interface Apporteur {
 export const ExpertDashboardOptimized = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { context: cabinetContext, loading: cabinetLoading } = useCabinetContext();
   
   const [loading, setLoading] = useState(true);
   const [kpis, setKpis] = useState<KPIs | null>(null);
@@ -209,7 +211,11 @@ export const ExpertDashboardOptimized = () => {
   });
 
 
-  if (loading) {
+  // Gérer le cas où l'expert n'a pas de cabinet (useCabinetContext peut retourner une erreur)
+  const hasCabinet = cabinetContext !== null;
+  const canManageTeam = cabinetContext?.permissions?.canManageMembers || false;
+
+  if (loading || (cabinetLoading && hasCabinet)) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center">
         <div className="text-center">
@@ -230,7 +236,9 @@ export const ExpertDashboardOptimized = () => {
         >
           <TabsList>
             <TabsTrigger value="dashboard">Synthèse</TabsTrigger>
-            <TabsTrigger value="team">Gestion équipe</TabsTrigger>
+            {cabinetContext?.permissions?.canManageMembers && (
+              <TabsTrigger value="team">Gestion équipe</TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="dashboard" className="space-y-8">

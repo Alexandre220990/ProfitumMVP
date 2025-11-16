@@ -126,7 +126,42 @@ export const CabinetTeamManagement = () => {
   const permissions = context?.permissions;
 
   const hierarchy = context?.hierarchy || [];
-  const members = useMemo(() => flattenHierarchy(hierarchy), [hierarchy]);
+  const currentMembership = context?.membership;
+  
+  // Filtrer la hiérarchie selon le rôle :
+  // - OWNER : voir toute la hiérarchie du cabinet
+  // - MANAGER : voir uniquement son équipe (experts sous lui)
+  const filteredHierarchy = useMemo(() => {
+    if (!permissions || !currentMembership) return hierarchy;
+    
+    if (permissions.isOwner) {
+      // OWNER : voir tout
+      return hierarchy;
+    } else if (permissions.isManager && currentMembership.id) {
+      // MANAGER : voir uniquement son équipe (enfants directs et indirects)
+      const findManagerNode = (nodes: CabinetHierarchyNode[]): CabinetHierarchyNode | null => {
+        for (const node of nodes) {
+          if (node.id === currentMembership.id) {
+            return node;
+          }
+          const found = findManagerNode(node.children || []);
+          if (found) return found;
+        }
+        return null;
+      };
+      
+      const managerNode = findManagerNode(hierarchy);
+      if (managerNode) {
+        // Retourner uniquement le nœud manager avec ses enfants
+        return [managerNode];
+      }
+      return [];
+    }
+    
+    return [];
+  }, [hierarchy, permissions, currentMembership]);
+  
+  const members = useMemo(() => flattenHierarchy(filteredHierarchy), [filteredHierarchy]);
   const managers = members.filter(member => member.team_role === 'MANAGER');
   const stats = context?.kpis;
 
@@ -243,9 +278,13 @@ export const CabinetTeamManagement = () => {
     <div className="space-y-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Gestion d’équipe</h2>
+          <h2 className="text-2xl font-bold text-gray-900">
+            {permissions?.isOwner ? 'Gestion du cabinet' : 'Gestion de mon équipe'}
+          </h2>
           <p className="text-gray-500">
-            Pilotez votre cabinet, vos managers et vos experts en un coup d’œil.
+            {permissions?.isOwner 
+              ? "Pilotez votre cabinet, vos managers et vos experts en un coup d'œil."
+              : "Pilotez votre équipe d'experts en un coup d'œil."}
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
@@ -485,12 +524,16 @@ export const CabinetTeamManagement = () => {
             <CardTitle>Structure hiérarchique</CardTitle>
           </CardHeader>
           <CardContent>
-            {hierarchy.length ? (
+            {filteredHierarchy.length ? (
               <ScrollArea className="max-h-[460px] pr-4">
-                <HierarchyList nodes={hierarchy} />
+                <HierarchyList nodes={filteredHierarchy} />
               </ScrollArea>
             ) : (
-              <p className="text-sm text-gray-500">Aucun membre pour ce cabinet.</p>
+              <p className="text-sm text-gray-500">
+                {permissions?.isManager 
+                  ? 'Aucun expert dans votre équipe pour le moment.'
+                  : 'Aucun membre pour ce cabinet.'}
+              </p>
             )}
           </CardContent>
         </Card>

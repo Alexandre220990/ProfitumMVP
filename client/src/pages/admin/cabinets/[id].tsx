@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
-import { useRouter } from 'next/router';
+import { useParams, useNavigate } from 'react-router-dom';
 import { adminCabinetService } from '@/services/admin-cabinet-service';
 import { Cabinet, CabinetApporteur, CabinetProductPayload, CabinetShare, CabinetKPIs, CabinetTeamKPIs, CabinetMemberRole } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -39,9 +39,9 @@ type AvailableExpert = {
 };
 
 const AdminCabinetDetailPage: React.FC = () => {
-  const router = useRouter();
-  const { id } = router.query;
-  const cabinetId = typeof id === 'string' ? id : null;
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const cabinetId = id || null;
   const [cabinet, setCabinet] = useState<Cabinet | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -611,10 +611,10 @@ const AdminCabinetDetailPage: React.FC = () => {
           )}
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => router.push('/admin/cabinets')}>
+          <Button variant="outline" onClick={() => navigate('/admin/cabinets')}>
             Retour
           </Button>
-          <Button onClick={() => cabinetId && router.push(`/admin/cabinets/${cabinetId}/edit`)}>
+          <Button onClick={() => cabinetId && navigate(`/admin/cabinets/${cabinetId}/edit`)}>
             Modifier
           </Button>
         </div>

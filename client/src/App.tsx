@@ -105,6 +105,9 @@ const AdminExpertSynthese = React.lazy(() => import('./pages/admin/expert-synthe
 const AdminDossierSynthese = React.lazy(() => import('./pages/admin/dossier-synthese')); // ✅ PAGE SYNTHÈSE DOSSIER
 const AdminProduitSynthese = React.lazy(() => import('./pages/admin/produit-synthese')); // ✅ PAGE SYNTHÈSE PRODUIT
 const AdminApporteurSynthese = React.lazy(() => import('./pages/admin/apporteur-synthese'));
+const AdminCabinetsList = React.lazy(() => import('./pages/admin/cabinets/index'));
+const AdminCabinetDetail = React.lazy(() => import('./pages/admin/cabinets/[id]'));
+const AdminCabinetNew = React.lazy(() => import('./pages/admin/cabinets/new'));
 
 // Expert pages
 const ExpertDashboard = React.lazy(() => import('./pages/expert/dashboard'));
@@ -329,6 +332,11 @@ function App() {
                         
                         {/* GED & Documents - PAGE UNIFIÉE */}
                         <Route path="documents-ged" element={<AdminDocumentsGEDUnifie />} />
+                        
+                        {/* Gestion cabinets */}
+                        <Route path="cabinets" element={<AdminCabinetsList />} />
+                        <Route path="cabinets/:id" element={<AdminCabinetDetail />} />
+                        <Route path="cabinets/new" element={<AdminCabinetNew />} />
                         
                         {/* Gestion */}
                         <Route path="gestion-clients" element={<AdminGestionClients />} />

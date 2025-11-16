@@ -20,6 +20,7 @@ import {
   Target,
   CheckCircle,
   AlertTriangle,
+  AlertCircle,
   Edit,
   RefreshCw,
   Eye,
@@ -717,6 +718,22 @@ const ExpertSynthese: React.FC = () => {
                                 </Badge>
                               ))}
                             </div>
+                          </div>
+                        )}
+
+                        {/* Affichage du texte libre "Autre produit" */}
+                        {(expert as any).autre_produit && (
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <label className="text-sm font-medium text-blue-800 mb-2 flex items-center gap-2">
+                              <AlertCircle className="w-4 h-4" />
+                              Produit non listé (texte libre)
+                            </label>
+                            <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                              {(expert as any).autre_produit}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-2 italic">
+                              Ce produit n'est pas dans le catalogue ProduitEligible. Visible uniquement pour validation admin.
+                            </p>
                           </div>
                         )}
 

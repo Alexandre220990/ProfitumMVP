@@ -592,6 +592,46 @@ router.get('/experts', asyncHandler(async (req, res) => {
   }
 }));
 
+// GET /api/admin/experts/:id/produits - Récupérer les produits éligibles d'un expert
+router.get('/experts/:id/produits', asyncHandler(async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const { data: produits, error } = await supabaseClient
+      .from('ExpertProduitEligible')
+      .select(`
+        id,
+        produit_id,
+        niveauExpertise,
+        statut,
+        ProduitEligible:produit_id (
+          id,
+          nom,
+          description,
+          categorie
+        )
+      `)
+      .eq('expert_id', id)
+      .eq('statut', 'actif');
+
+    if (error) {
+      throw error;
+    }
+
+    return res.json({
+      success: true,
+      data: produits || []
+    });
+
+  } catch (error) {
+    console.error('Erreur récupération produits expert:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des produits de l\'expert'
+    });
+  }
+}));
+
 // GET /api/admin/experts/:id - Détails d'un expert
 router.get('/experts/:id', asyncHandler(async (req, res) => {
   try {
@@ -1053,7 +1093,7 @@ router.put('/experts/:id', asyncHandler(async (req, res) => {
     }
 
     // Préparer les données de mise à jour avec mapping correct
-    const updateExpertData = {
+    const updateExpertData: any = {
       ...updateData,
       // Mapping city -> location
       location: updateData.city || updateData.location,
@@ -1065,14 +1105,18 @@ router.put('/experts/:id', asyncHandler(async (req, res) => {
       max_clients: updateData.max_clients || 10,
       hourly_rate: updateData.hourly_rate || 0,
       phone: updateData.phone || null,
+      // Stocker autre_produit si fourni
+      autre_produit: updateData.autre_produit || null,
       // Ajouter le mot de passe hashé si fourni
       ...(hashedPassword && { password: hashedPassword }),
       updated_at: new Date().toISOString()
     };
 
-    // Supprimer les champs qui ne doivent pas être mis à jour
+    // Supprimer les champs qui ne doivent pas être mis à jour directement dans Expert
     delete updateExpertData.city;
     delete updateExpertData.temp_password;
+    delete updateExpertData.produits_eligibles; // Géré séparément
+    delete updateExpertData.cabinet_role; // Géré séparément
 
     const { data, error } = await supabaseClient
       .from('Expert')
@@ -1083,6 +1127,41 @@ router.put('/experts/:id', asyncHandler(async (req, res) => {
 
     if (error) {
       throw error;
+    }
+
+    // Mettre à jour les ProduitEligible dans ExpertProduitEligible (si produits_eligibles fournis)
+    if (updateData.produits_eligibles !== undefined) {
+      try {
+        // Supprimer les anciens produits
+        await supabaseClient
+          .from('ExpertProduitEligible')
+          .delete()
+          .eq('expert_id', id);
+
+        // Ajouter les nouveaux produits
+        if (updateData.produits_eligibles.length > 0) {
+          const expertProduitEligibles = updateData.produits_eligibles.map((produitId: string) => ({
+            expert_id: id,
+            produit_id: produitId,
+            niveauExpertise: 'intermediaire',
+            statut: 'actif',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }));
+
+          const { error: epeError } = await supabaseClient
+            .from('ExpertProduitEligible')
+            .insert(expertProduitEligibles);
+
+          if (epeError) {
+            console.error('⚠️ Erreur mise à jour ExpertProduitEligible (non bloquant):', epeError);
+          } else {
+            console.log(`✅ ${expertProduitEligibles.length} produits éligibles mis à jour pour l'expert`);
+          }
+        }
+      } catch (epeErr) {
+        console.error('⚠️ Erreur lors de la mise à jour des produits (non bloquant):', epeErr);
+      }
     }
 
     // Log de l'action
@@ -1189,7 +1268,8 @@ router.post('/experts', asyncHandler(async (req, res) => {
       email: expertData.email,
       password: hashedPassword, // Stocker le mot de passe hashé
       company_name: expertData.company_name,
-      specializations: expertData.specializations || [],
+      specializations: expertData.specializations || [], // Garder pour compatibilité
+      autre_produit: expertData.autre_produit || null,
       rating: expertData.rating || 0,
       compensation: expertData.compensation || 0,
       status: expertData.status || 'active',
@@ -1223,6 +1303,32 @@ router.post('/experts', asyncHandler(async (req, res) => {
       // Supprimer l'utilisateur Auth si l'insertion échoue
       await supabaseClient.auth.admin.deleteUser(authData.user.id);
       throw expertError;
+    }
+
+    // Enregistrer les ProduitEligible dans ExpertProduitEligible (si produits_eligibles fournis)
+    if (expertData.produits_eligibles && expertData.produits_eligibles.length > 0) {
+      try {
+        const expertProduitEligibles = expertData.produits_eligibles.map((produitId: string) => ({
+          expert_id: newExpert.id,
+          produit_id: produitId,
+          niveauExpertise: 'intermediaire',
+          statut: 'actif',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }));
+
+        const { error: epeError } = await supabaseClient
+          .from('ExpertProduitEligible')
+          .insert(expertProduitEligibles);
+
+        if (epeError) {
+          console.error('⚠️ Erreur insertion ExpertProduitEligible (non bloquant):', epeError);
+        } else {
+          console.log(`✅ ${expertProduitEligibles.length} produits éligibles enregistrés pour l'expert`);
+        }
+      } catch (epeErr) {
+        console.error('⚠️ Erreur lors de l\'enregistrement des produits (non bloquant):', epeErr);
+      }
     }
 
     // Log de l'action

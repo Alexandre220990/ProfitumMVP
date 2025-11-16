@@ -18,7 +18,8 @@ import {
   X,
   ChevronDown,
   User,
-  Shield
+  Shield,
+  Building2
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -80,6 +81,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       href: '/admin/documents-ged',
       icon: Database,
       current: location.pathname.includes('/admin/documents-ged')
+    },
+    {
+      name: 'Gestion cabinets',
+      href: '/admin/cabinets',
+      icon: Building2,
+      current: location.pathname.includes('/admin/cabinets')
     },
     
     // Gestion

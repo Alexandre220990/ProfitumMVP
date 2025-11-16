@@ -424,7 +424,17 @@ router.post('/expert/login', loginRateLimiter, async (req, res) => {
     
     console.log("✅ Expert authentifié avec succès:", { email: userEmail, available_types: profiles.map(p => p.type) });
     
-    // 5. Réponse
+    // 5. Récupérer les infos cabinet si l'expert en a un
+    let cabinetInfo = null;
+    try {
+      const { CabinetService } = await import('../services/cabinetService');
+      cabinetInfo = await CabinetService.getExpertCabinetInfo(expertProfile.database_id);
+    } catch (cabinetError) {
+      console.warn('⚠️  Impossible de récupérer les infos cabinet:', cabinetError);
+      // Ne pas bloquer la connexion si erreur cabinet
+    }
+    
+    // 6. Réponse
     return res.json({
       success: true,
       data: {
@@ -434,7 +444,12 @@ router.post('/expert/login', loginRateLimiter, async (req, res) => {
           type: 'expert',
           database_id: expertProfile.database_id,
           available_types: profiles.map(p => p.type),
-          auth_user_id: authUserId
+          auth_user_id: authUserId,
+          cabinet: cabinetInfo ? {
+            id: cabinetInfo.cabinet_id,
+            role: cabinetInfo.membership.team_role,
+            permissions: cabinetInfo.permissions
+          } : null
         }
       }
     });

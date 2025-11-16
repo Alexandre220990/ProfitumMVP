@@ -798,6 +798,46 @@ export class CabinetService {
   static getCabinetKpisFromStats(stats: CabinetTeamStatRow[]) {
     return this.computeCabinetKpis(stats);
   }
+
+  static async getExpertCabinetInfo(expertId: string) {
+    // Récupérer le cabinet_id de l'expert
+    const { data: expert, error: expertError } = await supabase
+      .from('Expert')
+      .select('id, cabinet_id')
+      .eq('id', expertId)
+      .single();
+
+    if (expertError || !expert?.cabinet_id) {
+      return null;
+    }
+
+    // Récupérer le membership dans le cabinet
+    const membership = await this.getMemberRecord(expert.cabinet_id, expertId);
+    
+    if (!membership) {
+      return null;
+    }
+
+    // Construire les permissions
+    const isOwner = membership.team_role === 'OWNER';
+    const isManager = membership.team_role === 'MANAGER';
+    const canManageMembers = isOwner || isManager;
+
+    return {
+      cabinet_id: expert.cabinet_id,
+      membership: {
+        id: membership.id,
+        team_role: membership.team_role,
+        status: membership.status
+      },
+      permissions: {
+        isOwner,
+        isManager,
+        canManageMembers,
+        managerMemberId: membership.manager_member_id || null
+      }
+    };
+  }
 }
 
 

@@ -25,7 +25,9 @@ const demoRequestSchema = z.object({
   confirm_password: z.string().optional(), // Not needed in backend validation
   company_name: z.string().min(2, 'Le nom de l\'entreprise est requis'),
   siren: z.string().length(9, 'Le SIREN doit contenir exactement 9 chiffres').regex(/^\d{9}$/, 'Le SIREN ne doit contenir que des chiffres'),
-  specializations: z.array(z.string()).min(1, 'Au moins une spécialisation est requise'),
+  produits_eligibles: z.array(z.string()).min(1, 'Au moins un produit est requis'),
+  autre_produit: z.string().optional(),
+  cabinet_role: z.enum(['OWNER', 'MANAGER', 'EXPERT']).optional(),
   secteur_activite: z.array(z.string()).min(1, 'Au moins un secteur d\'activité est requis'),
   experience: z.string().min(1, 'L\'expérience est requise'),
   location: z.string().min(2, 'La localisation est requise'),
@@ -157,24 +159,36 @@ router.post('/', async (req: Request, res: Response) => {
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
     // Préparer les données pour l'insertion
-    const expertData = {
-      ...data,
+    const expertData: any = {
+      first_name: data.first_name,
+      last_name: data.last_name,
       // Concaténer first_name et last_name pour créer name (requis par la BDD)
       name: `${data.first_name} ${data.last_name}`.trim(),
+      email: data.email,
+      company_name: data.company_name,
+      // Nettoyer le SIREN (supprimer les espaces)
+      siren: data.siren.replace(/\s/g, ''),
       // Valeurs par défaut
       approval_status: 'pending',
       status: 'inactive',
       rating: 0,
       availability: 'disponible',
-      // Nettoyer le SIREN (supprimer les espaces)
-      siren: data.siren.replace(/\s/g, ''),
+      experience: data.experience,
+      location: data.location,
+      description: data.description,
+      phone: data.phone,
       // Gérer les champs optionnels
       website: data.website || null,
       linkedin: data.linkedin || null,
       compensation: data.compensation || 20,
       max_clients: data.max_clients || 100,
       certifications: data.certifications || [],
+      languages: data.languages || ['Français'],
       documents: data.documents || null,
+      secteur_activite: data.secteur_activite || [],
+      // Stocker le texte libre "autre_produit" dans Expert (pas de lien ProduitEligible)
+      // Ce champ sera visible par l'admin lors de la validation
+      autre_produit: data.autre_produit || null,
       // Mot de passe hashé
       password: hashedPassword,
       auth_user_id: null,
@@ -199,6 +213,32 @@ router.post('/', async (req: Request, res: Response) => {
     }
 
     console.log('✅ Expert créé avec succès:', newExpert.id);
+
+    // Enregistrer les ProduitEligible dans ExpertProduitEligible (si produits_eligibles fournis)
+    if (data.produits_eligibles && data.produits_eligibles.length > 0) {
+      try {
+        const expertProduitEligibles = data.produits_eligibles.map((produitId: string) => ({
+          expert_id: newExpert.id,
+          produit_id: produitId,
+          niveauExpertise: 'intermediaire',
+          statut: 'actif',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }));
+
+        const { error: epeError } = await supabase
+          .from('ExpertProduitEligible')
+          .insert(expertProduitEligibles);
+
+        if (epeError) {
+          console.error('⚠️ Erreur insertion ExpertProduitEligible (non bloquant):', epeError);
+        } else {
+          console.log(`✅ ${expertProduitEligibles.length} produits éligibles enregistrés pour l'expert`);
+        }
+      } catch (epeErr) {
+        console.error('⚠️ Erreur lors de l\'enregistrement des produits (non bloquant):', epeErr);
+      }
+    }
 
     // Créer notification dans le dashboard admin
     await createAdminNotification(newExpert);

@@ -34,7 +34,13 @@ export const useCabinetContext = (): UseCabinetContextReturn => {
       setError(null);
     } catch (err: any) {
       console.error('❌ useCabinetContext.fetchContext', err);
-      setError(err?.message || 'Impossible de charger le cabinet');
+      // Si l'expert n'a pas de cabinet, ce n'est pas une erreur bloquante
+      if (err?.message?.includes('Aucun cabinet associé') || err?.message?.includes('404')) {
+        setContext(null);
+        setError(null); // Pas d'erreur, juste pas de cabinet
+      } else {
+        setError(err?.message || 'Impossible de charger le cabinet');
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);

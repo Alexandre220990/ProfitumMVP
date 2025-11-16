@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/hooks/use-auth";
 import { useNavigate, useParams, Navigate } from "react-router-dom";
-import { Save, ArrowLeft, UserPlus, User, Building2, MapPin, Phone, Mail, Star, Percent, Calendar, Shield, AlertCircle, CheckCircle, XCircle, Globe, Lock, Eye, EyeOff } from "lucide-react";
+import { Save, ArrowLeft, UserPlus, User, Building2, MapPin, Phone, Mail, Star, Percent, Calendar, Shield, AlertCircle, CheckCircle, XCircle, Globe, Lock, Eye, EyeOff, Users } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +17,13 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 
 // Configuration Supabase - Utilise l'instance importée depuis @/lib/supabase
 
+interface ProduitEligible {
+  id: string;
+  nom: string;
+  description: string | null;
+  categorie: string | null;
+}
+
 interface ExpertForm {
   first_name: string;
   last_name: string;
@@ -24,7 +31,9 @@ interface ExpertForm {
   password?: string;
   temp_password?: string;
   company_name: string;
-  specializations: string[];
+  produits_eligibles: string[];
+  autre_produit?: string;
+  cabinet_role?: 'OWNER' | 'MANAGER' | 'EXPERT';
   rating: number;
   compensation: number;
   status: string;
@@ -44,18 +53,6 @@ interface ExpertForm {
   hourly_rate?: number;
 }
 
-const specializationsOptions = [
-  { value: 'TICPE', label: 'TICPE', description: 'Taxe Intérieure de Consommation sur les Produits Énergétiques' },
-  { value: 'DFS', label: 'DFS', description: 'Déclaration Fiscale Simplifiée' },
-  { value: 'URSSAF', label: 'URSSAF', description: 'Union de Recouvrement des Cotisations de Sécurité Sociale' },
-  { value: 'CEE', label: 'CEE', description: 'Certificats d\'Économies d\'Énergie' },
-  { value: 'Audit énergétique', label: 'Audit énergétique', description: 'Audit de performance énergétique' },
-  { value: 'Certification ISO', label: 'Certification ISO', description: 'Certifications ISO 9001, 14001, etc.' },
-  { value: 'Formation', label: 'Formation', description: 'Formation professionnelle' },
-  { value: 'Conseil', label: 'Conseil', description: 'Conseil en entreprise' },
-  { value: 'Comptabilité', label: 'Comptabilité', description: 'Services comptables' },
-  { value: 'Fiscalité', label: 'Fiscalité', description: 'Conseil fiscal' }
-];
 
 const experienceOptions = [
   { value: 'Moins de 2 ans', label: 'Moins de 2 ans' },
@@ -112,7 +109,9 @@ const FormulaireExpert = () => {
     password: '',
     temp_password: '',
     company_name: '',
-    specializations: [],
+    produits_eligibles: [],
+    autre_produit: '',
+    cabinet_role: undefined,
     rating: 0,
     compensation: 0,
     status: 'active',
@@ -131,6 +130,12 @@ const FormulaireExpert = () => {
     max_clients: 10,
     hourly_rate: 0
   });
+
+  const [produitsEligibles, setProduitsEligibles] = useState<ProduitEligible[]>([]);
+  const [loadingProduits, setLoadingProduits] = useState(true);
+  const [selectedProduits, setSelectedProduits] = useState<string[]>([]);
+  const [autreProduit, setAutreProduit] = useState('');
+  const [cabinetRole, setCabinetRole] = useState<'OWNER' | 'MANAGER' | 'EXPERT' | ''>('');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -157,6 +162,29 @@ const FormulaireExpert = () => {
   if (user.type !== 'admin') {
     return <Navigate to="/connect-admin" replace />;
   }
+
+  // Charger les produits éligibles
+  useEffect(() => {
+    const fetchProduitsEligibles = async () => {
+      try {
+        setLoadingProduits(true);
+        const response = await fetch('/api/produits-eligibles');
+        if (!response.ok) {
+          throw new Error('Erreur lors de la récupération des produits');
+        }
+        const data = await response.json();
+        if (data.success && data.data) {
+          setProduitsEligibles(data.data);
+        }
+      } catch (error) {
+        console.error('Erreur chargement produits:', error);
+      } finally {
+        setLoadingProduits(false);
+      }
+    };
+    
+    fetchProduitsEligibles();
+  }, []);
 
   // Charger les données de l'expert si en mode édition
   useEffect(() => {
@@ -201,6 +229,22 @@ const FormulaireExpert = () => {
         lastName = nameParts.slice(1).join(' ') || '';
       }
       
+      // Charger les produits éligibles de l'expert
+      const produitsResponse = await fetch(`/api/admin/experts/${id}/produits`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      let produitsIds: string[] = [];
+      if (produitsResponse.ok) {
+        const produitsData = await produitsResponse.json();
+        if (produitsData.success && produitsData.data) {
+          produitsIds = produitsData.data.map((p: any) => p.produit_id || p.id);
+        }
+      }
+      
       setForm({
         ...expertData,
         first_name: firstName,
@@ -213,8 +257,15 @@ const FormulaireExpert = () => {
         availability: expertData.availability || 'disponible',
         max_clients: expertData.max_clients || 10,
         hourly_rate: expertData.hourly_rate || 0,
-        certifications: expertData.certifications || []
+        certifications: expertData.certifications || [],
+        produits_eligibles: produitsIds,
+        autre_produit: expertData.autre_produit || '',
+        cabinet_role: expertData.cabinet_role || undefined
       });
+      
+      setSelectedProduits(produitsIds);
+      setAutreProduit(expertData.autre_produit || '');
+      setCabinetRole(expertData.cabinet_role || '');
     } catch (err) {
       setError('Erreur lors du chargement de l\'expert');
       console.error('Erreur chargement expert: ', err);
@@ -234,7 +285,7 @@ const FormulaireExpert = () => {
     if (!form.company_name.trim()) errors.company_name = 'Le nom de l\'entreprise est requis';
     if (form.siren && !/^\d{9}$/.test(form.siren)) errors.siren = 'Le SIREN doit contenir 9 chiffres';
     if (form.phone && !/^[\d\s\+\-\(\)]+$/.test(form.phone)) errors.phone = 'Format de téléphone invalide';
-    if (form.specializations.length === 0) errors.specializations = 'Au moins une spécialisation est requise';
+    if (form.produits_eligibles.length === 0) errors.produits_eligibles = 'Au moins un produit est requis';
     if (form.rating < 0 || form.rating > 5) errors.rating = 'La note doit être entre 0 et 5';
     if (form.compensation < 0 || form.compensation > 100) errors.compensation = 'La compensation doit être entre 0 et 100%';
 
@@ -296,16 +347,20 @@ const FormulaireExpert = () => {
     }
   };
 
-  const handleSpecializationChange = (specialization: string, checked: boolean) => {
+  const handleProduitChange = (produitId: string, checked: boolean) => {
     if (checked) {
+      const newProduits = [...selectedProduits, produitId];
+      setSelectedProduits(newProduits);
       setForm(prev => ({
         ...prev,
-        specializations: [...prev.specializations, specialization]
+        produits_eligibles: newProduits
       }));
     } else {
+      const newProduits = selectedProduits.filter(p => p !== produitId);
+      setSelectedProduits(newProduits);
       setForm(prev => ({
         ...prev,
-        specializations: prev.specializations.filter(s => s !== specialization)
+        produits_eligibles: newProduits
       }));
     }
   };
@@ -710,37 +765,114 @@ const FormulaireExpert = () => {
 
                 <Separator />
 
-                {/* Spécialisations */}
+                {/* Rôle dans le cabinet */}
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-2">
+                    <Users className="w-5 h-5 text-blue-600" />
+                    <h3 className="text-lg font-semibold text-gray-900">Rôle dans le cabinet</h3>
+                  </div>
+                  
+                  <div className="max-w-md">
+                    <Select 
+                      value={cabinetRole} 
+                      onValueChange={(value) => {
+                        setCabinetRole(value as 'OWNER' | 'MANAGER' | 'EXPERT');
+                        setForm(prev => ({ ...prev, cabinet_role: value as 'OWNER' | 'MANAGER' | 'EXPERT' }));
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner un rôle (optionnel)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="OWNER">Propriétaire (Owner)</SelectItem>
+                        <SelectItem value="MANAGER">Manager</SelectItem>
+                        <SelectItem value="EXPERT">Expert</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Produits éligibles */}
                 <div className="space-y-4">
                   <div className="flex items-center space-x-2">
                     <Shield className="w-5 h-5 text-purple-600" />
-                    <h3 className="text-lg font-semibold text-gray-900">Spécialisations *</h3>
-                    {validationErrors.specializations && <span className="text-red-500">*</span>}
+                    <h3 className="text-lg font-semibold text-gray-900">Produits éligibles *</h3>
+                    {validationErrors.produits_eligibles && <span className="text-red-500">*</span>}
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {specializationsOptions.map((spec) => (
-                      <Tooltip key={spec.value}>
-                        <TooltipTrigger asChild>
-                          <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 transition-colors">
-                            <Checkbox
-                              id={spec.value}
-                              checked={form.specializations.includes(spec.value)}
-                              onCheckedChange={(checked: boolean) => handleSpecializationChange(spec.value, checked as boolean)}
-                            />
-                            <Label htmlFor={spec.value} className="text-sm font-medium cursor-pointer flex-1">
-                              {spec.label}
+                  {loadingProduits ? (
+                    <div className="text-center py-8">
+                      <div className="w-8 h-8 border-4 border-gray-300 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
+                      <p className="text-gray-500">Chargement des produits...</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {produitsEligibles.map((produit) => (
+                          <Tooltip key={produit.id}>
+                            <TooltipTrigger asChild>
+                              <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 transition-colors">
+                                <Checkbox
+                                  id={produit.id}
+                                  checked={selectedProduits.includes(produit.id)}
+                                  onCheckedChange={(checked: boolean) => handleProduitChange(produit.id, checked as boolean)}
+                                />
+                                <Label htmlFor={produit.id} className="text-sm font-medium cursor-pointer flex-1">
+                                  {produit.nom}
+                                </Label>
+                              </div>
+                            </TooltipTrigger>
+                            {produit.description && (
+                              <TooltipContent>
+                                <p>{produit.description}</p>
+                              </TooltipContent>
+                            )}
+                          </Tooltip>
+                        ))}
+                      </div>
+                      
+                      {/* Option "Autre" */}
+                      <div className="space-y-2">
+                        <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 transition-colors">
+                          <Checkbox
+                            id="autre-produit"
+                            checked={autreProduit.length > 0}
+                            onCheckedChange={(checked: boolean) => {
+                              if (!checked) {
+                                setAutreProduit('');
+                                setForm(prev => ({ ...prev, autre_produit: '' }));
+                              }
+                            }}
+                          />
+                          <Label htmlFor="autre-produit" className="text-sm font-medium cursor-pointer flex-1">
+                            Autre
+                          </Label>
+                        </div>
+                        {autreProduit.length > 0 && (
+                          <div className="ml-8">
+                            <Label htmlFor="autre-produit-text" className="text-sm text-gray-600 mb-2 block">
+                              Décrivez le produit
                             </Label>
+                            <Textarea
+                              id="autre-produit-text"
+                              value={autreProduit}
+                              onChange={(e) => {
+                                setAutreProduit(e.target.value);
+                                setForm(prev => ({ ...prev, autre_produit: e.target.value }));
+                              }}
+                              placeholder="Décrivez le produit..."
+                              rows={3}
+                            />
                           </div>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>{spec.description}</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    ))}
-                  </div>
-                  {validationErrors.specializations && (
-                    <p className="text-red-500 text-sm">{validationErrors.specializations}</p>
+                        )}
+                      </div>
+                      
+                      {validationErrors.produits_eligibles && (
+                        <p className="text-red-500 text-sm">{validationErrors.produits_eligibles}</p>
+                      )}
+                    </>
                   )}
                 </div>
 
@@ -1002,16 +1134,19 @@ const FormulaireExpert = () => {
                   </p>
                 </div>
 
-                {/* Résumé des spécialisations sélectionnées */}
-                {form.specializations.length > 0 && (
+                {/* Résumé des produits sélectionnés */}
+                {form.produits_eligibles.length > 0 && (
                   <div className="space-y-2">
-                    <Label>Spécialisations sélectionnées</Label>
+                    <Label>Produits sélectionnés</Label>
                     <div className="flex flex-wrap gap-2">
-                      {form.specializations.map((spec) => (
-                        <Badge key={spec} variant="secondary" className="bg-blue-100 text-blue-800">
-                          {spec}
-                        </Badge>
-                      ))}
+                      {form.produits_eligibles.map((produitId) => {
+                        const produit = produitsEligibles.find(p => p.id === produitId);
+                        return (
+                          <Badge key={produitId} variant="secondary" className="bg-blue-100 text-blue-800">
+                            {produit?.nom || produitId}
+                          </Badge>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -1028,7 +1163,7 @@ const FormulaireExpert = () => {
                   </Button>
                   <Button
                     type="submit"
-                    disabled={loading || form.specializations.length === 0}
+                    disabled={loading || form.produits_eligibles.length === 0}
                     className="bg-blue-600 hover:bg-blue-700"
                   >
                     {loading ? (
