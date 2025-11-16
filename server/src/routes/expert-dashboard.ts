@@ -88,6 +88,7 @@ router.get('/prioritized', enhancedAuthMiddleware, async (req: Request, res: Res
 
     // Récupérer tous les dossiers de l'expert avec jointures
     let dossiers: any[] = [];
+    let documentRequests: any[] = [];
     let error: any = null;
     
     try {
@@ -120,10 +121,12 @@ router.get('/prioritized', enhancedAuthMiddleware, async (req: Request, res: Res
         .eq('expert_id', expertId)
         .in('statut', RAW_ACTIVE_STATUSES);
 
+      dossiers = result.data || [];
+      error = result.error;
+
       // Récupérer les demandes de documents en attente pour ces dossiers
-      const dossierIds = (result.data || []).map(d => d.id);
-      let documentRequests: any[] = [];
-      if (dossierIds.length > 0) {
+      if (!error && dossiers.length > 0) {
+        const dossierIds = dossiers.map(d => d.id);
         const { data: requests } = await supabase
           .from('document_request')
           .select('id, dossier_id, created_at, status')
@@ -132,9 +135,6 @@ router.get('/prioritized', enhancedAuthMiddleware, async (req: Request, res: Res
           .order('created_at', { ascending: false });
         documentRequests = requests || [];
       }
-      
-      dossiers = result.data || [];
-      error = result.error;
     } catch (catchError: any) {
       console.error('❌ Exception requête Supabase:', catchError);
       error = catchError;
