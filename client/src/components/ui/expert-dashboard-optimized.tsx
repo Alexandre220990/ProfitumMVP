@@ -689,7 +689,7 @@ export const ExpertDashboardOptimized = () => {
                                   ? '⚠️ Relance 2 envoyée'
                                   : dossier.daysWaitingDocuments >= 5
                                   ? '⚠️ Relance 1 envoyée'
-                                  : '📄 Documents en attente'}
+                                  : '📄 En attente documents client'}
                               </p>
                               <p className={`text-xs mt-1 ${
                                 dossier.daysWaitingDocuments >= 15
@@ -712,17 +712,13 @@ export const ExpertDashboardOptimized = () => {
                         </div>
                       )}
 
-                      <div className="mt-3 border-t pt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="text-sm text-gray-700">
-                          <p className="font-medium text-gray-900">Prochaine action</p>
-                          <p className={
-                            dossier.actionType === 'documents_pending_validation' 
-                              ? 'text-orange-600 font-semibold' 
-                              : dossier.actionType === 'documents_requested'
-                              ? 'text-blue-600 font-semibold'
-                              : ''
-                          }>{nextActionLabel}</p>
-                        </div>
+                      {/* Section "Prochaine action" - Masquée si une alerte est déjà affichée */}
+                      {!(dossier.hasPendingDocuments || dossier.hasDocumentRequest) && (
+                        <div className="mt-3 border-t pt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="text-sm text-gray-700">
+                            <p className="font-medium text-gray-900">Prochaine action</p>
+                            <p>{nextActionLabel}</p>
+                          </div>
                         <div className="flex flex-wrap items-center gap-2">
                           {canCall && (
                             <Button
@@ -759,7 +755,8 @@ export const ExpertDashboardOptimized = () => {
                             {nextActionLabel}
                           </Button>
                         </div>
-                      </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })

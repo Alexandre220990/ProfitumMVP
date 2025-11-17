@@ -260,7 +260,7 @@ router.get('/prioritized', enhancedAuthMiddleware, async (req: Request, res: Res
         nextAction = `Documents reçus, vérification à effectuer (${pendingDocsCount} document${pendingDocsCount > 1 ? 's' : ''})`;
         actionType = 'documents_pending_validation';
       } else if (docRequest) {
-        // PRIORITÉ 2 : On attend des documents du client
+        // PRIORITÉ 2 : On attend des documents du client (demande explicite dans document_request)
         actionType = 'documents_requested';
         if (docRequest.daysWaiting >= 15) {
           nextAction = `En attente documents client depuis ${docRequest.daysWaiting} jours - Relance 3 envoyée`;
@@ -271,11 +271,24 @@ router.get('/prioritized', enhancedAuthMiddleware, async (req: Request, res: Res
         } else {
           nextAction = `En attente documents client depuis ${docRequest.daysWaiting} jour${docRequest.daysWaiting > 1 ? 's' : ''}`;
         }
+      } else if (dossier.statut === 'documents_requested') {
+        // Statut explicite : documents demandés
+        actionType = 'documents_requested';
+        nextAction = `En attente documents client depuis ${daysSinceLastContact} jour${daysSinceLastContact > 1 ? 's' : ''}`;
+      } else if ((dossier.statut === 'en_cours' || dossier.statut === 'audit_en_cours') && daysSinceLastContact >= 5) {
+        // Dossier en cours avec plus de 5 jours sans contact = probablement en attente de documents
+        actionType = 'documents_requested';
+        if (daysSinceLastContact >= 15) {
+          nextAction = `En attente documents client depuis ${daysSinceLastContact} jours - Relance 3 envoyée`;
+        } else if (daysSinceLastContact >= 10) {
+          nextAction = `En attente documents client depuis ${daysSinceLastContact} jours - Relance 2 envoyée`;
+        } else if (daysSinceLastContact >= 5) {
+          nextAction = `En attente documents client depuis ${daysSinceLastContact} jours - Relance 1 envoyée`;
+        } else {
+          nextAction = `En attente documents client depuis ${daysSinceLastContact} jour${daysSinceLastContact > 1 ? 's' : ''}`;
+        }
       } else if (dossier.statut === 'eligible' || dossier.statut === 'admin_validated' || dossier.statut === 'expert_assigned') {
         nextAction = 'Examiner documents';
-      } else if (dossier.statut === 'documents_requested') {
-        nextAction = 'En attente documents client';
-        actionType = 'documents_requested';
       } else if (dossier.statut === 'en_cours' || dossier.statut === 'audit_en_cours') {
         if (daysSinceLastContact > 7) {
           nextAction = 'Relancer client';
@@ -307,9 +320,9 @@ router.get('/prioritized', enhancedAuthMiddleware, async (req: Request, res: Res
         nextAction,
         lastContact: dossier.updated_at,
         daysSinceLastContact,
-        daysWaitingDocuments: docRequest?.daysWaiting,
+        daysWaitingDocuments: docRequest?.daysWaiting || (actionType === 'documents_requested' && daysSinceLastContact >= 5 ? daysSinceLastContact : undefined),
         documentRequestDate: docRequest?.created_at,
-        hasDocumentRequest: !!docRequest,
+        hasDocumentRequest: !!docRequest || (actionType === 'documents_requested' && daysSinceLastContact >= 5),
         hasPendingDocuments: hasPendingDocs,
         pendingDocumentsCount: pendingDocsCount,
         actionType
