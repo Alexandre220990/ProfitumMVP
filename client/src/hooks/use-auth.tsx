@@ -124,6 +124,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('➡️ Redirection vers dashboard client');
         navigate('/dashboard/client');
       } else if (user.type === 'expert') {
+        // Vérifier le statut d'approbation de l'expert
+        try {
+          const { get } = await import('@/lib/api');
+          const approvalResponse = await get('/experts/approval-status');
+          
+          if (approvalResponse.success && approvalResponse.data) {
+            const approvalStatus = (approvalResponse.data as any).status;
+            if (approvalStatus !== 'approved') {
+              console.log('⚠️ Expert non approuvé, redirection vers page pending-approval');
+              navigate('/expert-pending-approval');
+              return;
+            }
+          }
+        } catch (error) {
+          console.error('⚠️ Erreur vérification statut approbation (non bloquant):', error);
+          // En cas d'erreur, on continue vers le dashboard
+        }
+        
         console.log('➡️ Redirection vers dashboard expert');
         navigate('/expert/dashboard');
       } else if (user.type === 'admin') {

@@ -5,9 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Clock, Mail, AlertCircle, Home, RefreshCw, CheckCircle, Phone } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/hooks/use-auth";
-import { get } from "@/lib/api";
+import { get, post } from "@/lib/api";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 
 interface UserInfo {
   name: string;
@@ -37,6 +39,9 @@ const ExpertPendingApproval = () => {
   const [lastCheck, setLastCheck] = useState<Date>(new Date());
   const [isChecking, setIsChecking] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [showContactDialog, setShowContactDialog] = useState(false);
+  const [contactMessage, setContactMessage] = useState("");
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
 
   // Charger les données initiales
   useEffect(() => {
@@ -131,8 +136,37 @@ const ExpertPendingApproval = () => {
   };
 
   const handleContactSupport = () => {
-    // Rediriger vers la page À Propos
-    navigate("/a-propos");
+    setShowContactDialog(true);
+  };
+
+  const handleSendMessage = async () => {
+    if (!contactMessage.trim()) {
+      toast.error("Veuillez saisir un message");
+      return;
+    }
+
+    setIsSendingMessage(true);
+    try {
+      const response = await post('/expert/contact-admin', {
+        message: contactMessage,
+        subject: approvalStatus?.status === 'rejected' 
+          ? `Demande d'informations - Expert refusé`
+          : `Demande d'informations - Expert en attente`
+      });
+
+      if (response.success) {
+        toast.success("Votre message a été envoyé aux équipes. Nous vous répondrons dans les plus brefs délais.");
+        setContactMessage("");
+        setShowContactDialog(false);
+      } else {
+        toast.error(response.message || "Erreur lors de l'envoi du message");
+      }
+    } catch (error) {
+      console.error("Erreur envoi message:", error);
+      toast.error("Erreur lors de l'envoi du message");
+    } finally {
+      setIsSendingMessage(false);
+    }
   };
 
   const handleViewProfile = () => {
@@ -253,12 +287,18 @@ const ExpertPendingApproval = () => {
         <div className="text-center mb-8">
           {getStatusIcon(approvalStatus?.status || 'pending')}
           <h1 className="text-3xl font-bold text-gray-900 mb-4">
-            {approvalStatus?.status === 'approved' ? 'Compte approuvé !' : 'Compte en cours d\'approbation'}
+            {approvalStatus?.status === 'approved' 
+              ? 'Compte approuvé !' 
+              : approvalStatus?.status === 'rejected'
+              ? 'Compte bloqué pour l\'instant'
+              : 'Compte en cours d\'approbation'}
           </h1>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
             {approvalStatus?.status === 'approved' 
               ? 'Votre compte expert a été approuvé. Vous pouvez maintenant accéder à votre tableau de bord.'
-              : 'Votre compte expert est actuellement en cours d\'examen par nos équipes Profitum. Ce processus prend généralement 24 à 48 heures.'
+              : approvalStatus?.status === 'rejected'
+              ? 'Votre compte a été refusé par nos équipes. Veuillez patienter ou contacter nos équipes pour plus d\'informations.'
+              : 'Votre compte expert est actuellement en cours d\'examen par nos équipes Profitum. Vous recevrez un email quand votre compte sera validé. Ce processus prend généralement 24 à 48 heures.'
             }
           </p>
           {approvalStatus && (
@@ -421,30 +461,46 @@ const ExpertPendingApproval = () => {
 
         {/* Actions */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Button 
-            onClick={handleCheckStatus}
-            disabled={isChecking}
-            className="flex items-center gap-2"
-          >
-            <RefreshCw className={`h-4 w-4 ${isChecking ? 'animate-spin' : ''}`} />
-            {isChecking ? 'Vérification...' : 'Vérifier le statut'}
-          </Button>
-          <Button 
-            variant="outline"
-            onClick={handleContactSupport}
-            className="flex items-center gap-2"
-          >
-            <Mail className="h-4 w-4" />
-            Nous contacter
-          </Button>
-          <Button 
-            variant="outline"
-            onClick={() => window.open('tel:+33123456789', '_blank')}
-            className="flex items-center gap-2"
-          >
-            <Phone className="h-4 w-4" />
-            Appeler le support
-          </Button>
+          {approvalStatus?.status !== 'rejected' && (
+            <Button 
+              onClick={handleCheckStatus}
+              disabled={isChecking}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${isChecking ? 'animate-spin' : ''}`} />
+              {isChecking ? 'Vérification...' : 'Vérifier le statut'}
+            </Button>
+          )}
+          {approvalStatus?.status === 'rejected' && (
+            <Button 
+              variant="default"
+              onClick={handleContactSupport}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+            >
+              <Mail className="h-4 w-4" />
+              Contacter nos équipes
+            </Button>
+          )}
+          {approvalStatus?.status !== 'rejected' && (
+            <>
+              <Button 
+                variant="outline"
+                onClick={handleContactSupport}
+                className="flex items-center gap-2"
+              >
+                <Mail className="h-4 w-4" />
+                Nous contacter
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={() => window.open('tel:+33123456789', '_blank')}
+                className="flex items-center gap-2"
+              >
+                <Phone className="h-4 w-4" />
+                Appeler le support
+              </Button>
+            </>
+          )}
           <Button 
             variant="ghost"
             onClick={() => navigate("/")}
@@ -463,19 +519,94 @@ const ExpertPendingApproval = () => {
         </div>
 
         {/* Alert d'information */}
-        <Alert className="mt-8">
-          <Mail className="h-4 w-4" />
+        <Alert className={`mt-8 ${approvalStatus?.status === 'rejected' ? 'border-red-200 bg-red-50' : ''}`}>
+          <AlertCircle className={`h-4 w-4 ${approvalStatus?.status === 'rejected' ? 'text-red-600' : ''}`} />
           <AlertDescription>
-            <strong>Important :</strong> Vous recevrez un email de confirmation dès que votre compte sera approuvé. 
-            Vous pouvez également vérifier le statut en cliquant sur le bouton ci-dessus.
-            {approvalStatus?.status === 'rejected' && (
-              <span className="block mt-2">
-                <strong>Votre demande a été rejetée.</strong> Veuillez nous contacter pour plus d'informations.
-              </span>
+            {approvalStatus?.status === 'rejected' ? (
+              <>
+                <strong className="text-red-900">Compte refusé :</strong> Votre compte expert a été refusé par nos équipes. 
+                Si vous souhaitez obtenir plus d'informations ou contester cette décision, veuillez utiliser le bouton "Contacter nos équipes" ci-dessus.
+                {approvalStatus.reviewer_notes && (
+                  <span className="block mt-2 text-sm text-red-700">
+                    <strong>Raison :</strong> {approvalStatus.reviewer_notes}
+                  </span>
+                )}
+              </>
+            ) : approvalStatus?.status === 'pending' ? (
+              <>
+                <strong>Important :</strong> Votre compte est en cours de revue par nos équipes. 
+                Vous recevrez un email dès que votre compte sera validé. 
+                Vous pouvez également vérifier le statut en cliquant sur le bouton ci-dessus.
+              </>
+            ) : (
+              <>
+                <strong>Important :</strong> Vous recevrez un email de confirmation dès que votre compte sera approuvé. 
+                Vous pouvez également vérifier le statut en cliquant sur le bouton ci-dessus.
+              </>
             )}
           </AlertDescription>
         </Alert>
       </div>
+
+      {/* Dialog de contact */}
+      <Dialog open={showContactDialog} onOpenChange={setShowContactDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Contacter nos équipes</DialogTitle>
+            <DialogDescription>
+              {approvalStatus?.status === 'rejected' 
+                ? "Votre compte a été refusé. Vous pouvez nous contacter pour obtenir plus d'informations ou contester cette décision."
+                : "Votre compte est en cours de revue. Vous pouvez nous contacter pour obtenir plus d'informations sur l'état de votre demande."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">
+                Votre message
+              </label>
+              <Textarea
+                value={contactMessage}
+                onChange={(e) => setContactMessage(e.target.value)}
+                placeholder="Décrivez votre demande ou votre question..."
+                rows={6}
+                className="w-full"
+              />
+            </div>
+            {approvalStatus?.status === 'rejected' && (
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="text-sm">
+                  Les informations suivantes seront automatiquement incluses dans votre message :
+                  <ul className="list-disc list-inside mt-2 space-y-1">
+                    <li>Vos informations (nom, email, entreprise)</li>
+                    <li>Date de votre demande</li>
+                    <li>Date de refus (si disponible)</li>
+                    {userInfo?.company && <li>Informations du cabinet</li>}
+                  </ul>
+                </AlertDescription>
+              </Alert>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowContactDialog(false);
+                setContactMessage("");
+              }}
+              disabled={isSendingMessage}
+            >
+              Annuler
+            </Button>
+            <Button
+              onClick={handleSendMessage}
+              disabled={isSendingMessage || !contactMessage.trim()}
+            >
+              {isSendingMessage ? "Envoi..." : "Envoyer"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

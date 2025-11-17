@@ -350,13 +350,13 @@ router.post('/members/new', async (req: Request, res: Response) => {
       .eq('id', cabinetId)
       .single();
 
-    // Générer un mot de passe aléatoire
-    const randomPassword = generateRandomPassword(12);
+    // Générer un mot de passe temporaire (sera changé à la première connexion)
+    const temporaryPassword = generateRandomPassword(12);
 
     // 1. Créer l'utilisateur dans Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email,
-      password: randomPassword,
+      password: temporaryPassword,
       email_confirm: true,
       user_metadata: {
         type: 'expert',
@@ -467,7 +467,28 @@ router.post('/members/new', async (req: Request, res: Response) => {
         }
       }
 
-      // Retourner les données (sans le mot de passe)
+      // 6. Notification admin : Nouvel expert en attente de validation
+      try {
+        const { NotificationTriggers } = await import('../../services/NotificationTriggers');
+        await NotificationTriggers.onNewExpertRegistration({
+          id: newExpert.id,
+          nom: newExpert.last_name || '',
+          prenom: newExpert.first_name || '',
+          email: newExpert.email,
+          specialite: secteur_activite && Array.isArray(secteur_activite) 
+            ? secteur_activite.join(', ') 
+            : undefined
+        });
+        console.log('✅ Notification admin nouvel expert envoyée');
+      } catch (notifError) {
+        console.error('⚠️ Erreur notification admin (non bloquant):', notifError);
+      }
+
+      // 7. Préparer les informations pour l'email
+      const frontendUrl = process.env.FRONTEND_URL || 'https://www.profitum.app';
+      const loginUrl = `${frontendUrl}/connexion-expert`;
+
+      // Retourner les données avec les informations pour l'email
       return res.status(201).json({
         success: true,
         data: {
@@ -479,8 +500,11 @@ router.post('/members/new', async (req: Request, res: Response) => {
             company_name: newExpert.company_name
           },
           member,
-          password_generated: true // Indiquer qu'un mot de passe a été généré
-          // Note: Le mot de passe sera envoyé par email (à implémenter)
+          email_info: {
+            email: email,
+            temporary_password: temporaryPassword,
+            login_url: loginUrl
+          }
         }
       });
     } catch (error) {

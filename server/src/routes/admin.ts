@@ -857,6 +857,64 @@ router.put('/experts/:id/reject', asyncHandler(async (req, res) => {
         user_agent: req.get('User-Agent')
       });
 
+    // 🔔 NOTIFICATION AU CABINET : Si l'expert appartient à un cabinet, notifier OWNER et MANAGER
+    if (expert.cabinet_id) {
+      try {
+        // Récupérer les membres OWNER et MANAGER du cabinet
+        const { data: cabinetMembers, error: membersError } = await supabaseClient
+          .from('CabinetMember')
+          .select(`
+            id,
+            member_id,
+            team_role,
+            Expert:member_id (
+              id,
+              auth_user_id,
+              first_name,
+              last_name,
+              email
+            )
+          `)
+          .eq('cabinet_id', expert.cabinet_id)
+          .in('team_role', ['OWNER', 'MANAGER'])
+          .eq('status', 'active');
+
+        if (!membersError && cabinetMembers && cabinetMembers.length > 0) {
+          // Créer une notification pour chaque OWNER/MANAGER
+          for (const member of cabinetMembers) {
+            const expertMember = Array.isArray(member.Expert) ? member.Expert[0] : member.Expert;
+            if (expertMember?.auth_user_id) {
+              await supabaseClient
+                .from('notification')
+                .insert({
+                  user_id: expertMember.auth_user_id,
+                  user_type: 'expert',
+                  title: '⚠️ Expert refusé par l\'administration',
+                  message: `L'expert ${expert.first_name} ${expert.last_name} (${expert.email}) a été refusé par l'administration.${reason ? ` Raison : ${reason}` : ''}`,
+                  notification_type: 'expert_rejected',
+                  priority: 'high',
+                  is_read: false,
+                  action_url: `/expert/cabinet/team`,
+                  action_data: {
+                    expert_id: expert.id,
+                    expert_email: expert.email,
+                    expert_name: `${expert.first_name} ${expert.last_name}`,
+                    rejected_at: new Date().toISOString(),
+                    reason: reason || null,
+                    cabinet_id: expert.cabinet_id
+                  },
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                });
+            }
+          }
+          console.log(`✅ Notifications cabinet envoyées (${cabinetMembers.length} membres)`);
+        }
+      } catch (cabinetNotifError) {
+        console.error('⚠️ Erreur notification cabinet (non bloquant):', cabinetNotifError);
+      }
+    }
+
     return res.json({
       success: true,
       data,

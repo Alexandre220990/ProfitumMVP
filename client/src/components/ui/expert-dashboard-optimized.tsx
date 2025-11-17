@@ -21,7 +21,9 @@ import {
   Star,
   Eye,
   Archive,
-  Bell
+  Bell,
+  LayoutDashboard,
+  UserCog
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { get, put } from "@/lib/api";
@@ -230,7 +232,6 @@ export const ExpertDashboardOptimized = () => {
 
   // Gérer le cas où l'expert n'a pas de cabinet (useCabinetContext peut retourner une erreur)
   const hasCabinet = cabinetContext !== null;
-  const canManageTeam = cabinetContext?.permissions?.canManageMembers || false;
 
   if (loading || (cabinetLoading && hasCabinet)) {
     return (
@@ -251,7 +252,58 @@ export const ExpertDashboardOptimized = () => {
           onValueChange={(value) => setActiveTab(value as 'dashboard' | 'team')}
           className="space-y-6"
         >
-          <TabsList>
+          <div className="flex items-center gap-3 mb-8">
+            <div className="flex items-center gap-2 bg-white/80 backdrop-blur-sm rounded-2xl p-1.5 shadow-lg border border-gray-100/50">
+              <button
+                onClick={() => setActiveTab('dashboard')}
+                className={`
+                  relative flex items-center gap-2.5 px-6 py-3 rounded-xl font-medium text-sm
+                  transition-all duration-300 ease-out
+                  ${
+                    activeTab === 'dashboard'
+                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30 scale-[1.02]'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50/80'
+                  }
+                `}
+              >
+                {activeTab === 'dashboard' && (
+                  <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-600/20 to-indigo-600/20 blur-xl -z-10" />
+                )}
+                <LayoutDashboard className={`h-4 w-4 ${activeTab === 'dashboard' ? 'text-white' : 'text-gray-400'}`} />
+                <span className="relative z-10">Synthèse</span>
+                {activeTab === 'dashboard' && (
+                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-white/60 rounded-full" />
+                )}
+              </button>
+              
+              {cabinetContext?.permissions?.canManageMembers && (
+                <button
+                  onClick={() => setActiveTab('team')}
+                  className={`
+                    relative flex items-center gap-2.5 px-6 py-3 rounded-xl font-medium text-sm
+                    transition-all duration-300 ease-out
+                    ${
+                      activeTab === 'team'
+                        ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/30 scale-[1.02]'
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50/80'
+                    }
+                  `}
+                >
+                  {activeTab === 'team' && (
+                    <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 blur-xl -z-10" />
+                  )}
+                  <UserCog className={`h-4 w-4 ${activeTab === 'team' ? 'text-white' : 'text-gray-400'}`} />
+                  <span className="relative z-10">Gestion équipe</span>
+                  {activeTab === 'team' && (
+                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-white/60 rounded-full" />
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
+          
+          {/* TabsList caché mais nécessaire pour le fonctionnement des TabsContent */}
+          <TabsList className="hidden">
             <TabsTrigger value="dashboard">Synthèse</TabsTrigger>
             {cabinetContext?.permissions?.canManageMembers && (
               <TabsTrigger value="team">Gestion équipe</TabsTrigger>

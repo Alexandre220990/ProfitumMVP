@@ -2099,4 +2099,106 @@ router.get('/client/:id', async (req: Request, res: Response) => {
   }
 });
 
+// POST /api/expert/contact-admin - Envoyer un message à l'admin (expert refusé/en attente)
+router.post('/contact-admin', async (req: Request, res: Response) => {
+  try {
+    const user = req.user as AuthUser;
+    if (!user || user.type !== 'expert') {
+      return res.status(403).json({ success: false, message: 'Accès réservé aux experts' });
+    }
+
+    const { message, subject } = req.body;
+
+    if (!message || !message.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Le message est requis'
+      });
+    }
+
+    // Récupérer les informations de l'expert
+    const { data: expert, error: expertError } = await supabase
+      .from('Expert')
+      .select('id, email, first_name, last_name, company_name, cabinet_id, approval_status, created_at')
+      .eq('id', user.database_id)
+      .single();
+
+    if (expertError || !expert) {
+      return res.status(404).json({
+        success: false,
+        message: 'Expert non trouvé'
+      });
+    }
+
+    // Récupérer les informations du cabinet si applicable
+    let cabinetInfo = null;
+    if (expert.cabinet_id) {
+      const { data: cabinet } = await supabase
+        .from('Cabinet')
+        .select('id, name, siret')
+        .eq('id', expert.cabinet_id)
+        .single();
+      cabinetInfo = cabinet;
+    }
+
+    // Récupérer tous les admins pour leur envoyer une notification
+    const { data: admins, error: adminsError } = await supabase
+      .from('Admin')
+      .select('auth_user_id, email, first_name, last_name');
+
+    if (adminsError || !admins || admins.length === 0) {
+      console.error('⚠️ Aucun admin trouvé pour notification');
+    } else {
+      // Créer une notification pour chaque admin
+      const notificationTitle = subject || `Message de l'expert ${expert.first_name} ${expert.last_name}`;
+      const notificationMessage = `Expert ${expert.first_name} ${expert.last_name} (${expert.email})${expert.approval_status === 'rejected' ? ' - COMPTE REFUSÉ' : expert.approval_status === 'pending' ? ' - COMPTE EN ATTENTE' : ''} demande des informations.\n\nMessage :\n${message}\n\nInformations expert :\n- Email : ${expert.email}\n- Entreprise : ${expert.company_name || 'N/A'}\n- Date de demande : ${new Date(expert.created_at).toLocaleDateString('fr-FR')}${expert.approval_status === 'rejected' ? '\n- Date de refus : À déterminer' : ''}${cabinetInfo ? `\n- Cabinet : ${cabinetInfo.name} (${cabinetInfo.siret || 'N/A'})` : ''}`;
+
+      for (const admin of admins) {
+        if (admin.auth_user_id) {
+          await supabase
+            .from('notification')
+            .insert({
+              user_id: admin.auth_user_id,
+              user_type: 'admin',
+              title: notificationTitle,
+              message: notificationMessage,
+              notification_type: 'expert_contact_request',
+              priority: 'high',
+              is_read: false,
+              action_url: `/admin/experts/${expert.id}`,
+              action_data: {
+                expert_id: expert.id,
+                expert_email: expert.email,
+                expert_name: `${expert.first_name} ${expert.last_name}`,
+                expert_company: expert.company_name,
+                approval_status: expert.approval_status,
+                request_date: expert.created_at,
+                cabinet_id: expert.cabinet_id,
+                cabinet_name: cabinetInfo?.name || null,
+                message: message,
+                contact_date: new Date().toISOString()
+              },
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+        }
+      }
+      console.log(`✅ Notifications admin envoyées (${admins.length} admins)`);
+    }
+
+    return res.json({
+      success: true,
+      message: 'Votre message a été envoyé aux équipes. Nous vous répondrons dans les plus brefs délais.'
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur POST /expert/contact-admin:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur',
+      error: error instanceof Error ? error.message : 'Erreur inconnue'
+    });
+  }
+});
+
 export default router; 

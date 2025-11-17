@@ -310,6 +310,37 @@ export const CabinetTeamManagement = () => {
     }));
   };
 
+  const openEmailClient = (emailInfo: {
+    email: string;
+    temporary_password: string;
+    login_url: string;
+  }, expertName: string) => {
+    const subject = encodeURIComponent(`Bienvenue dans l'équipe - Vos identifiants de connexion`);
+    const body = encodeURIComponent(`Bonjour ${expertName},
+
+Votre compte expert a été créé avec succès. Voici vos identifiants de connexion :
+
+📧 Email : ${emailInfo.email}
+🔐 Mot de passe provisoire : ${emailInfo.temporary_password}
+
+🔗 Lien de connexion : ${emailInfo.login_url}
+
+IMPORTANT :
+- Votre mot de passe a été généré automatiquement et est sécurisé.
+- Vous pouvez le conserver tel quel, mais il est recommandé de le modifier lors de votre première connexion.
+- Pour changer votre mot de passe, rendez-vous dans les paramètres de votre compte après connexion.
+
+Votre compte est actuellement en attente de validation par nos équipes. Vous recevrez un email de confirmation dès que votre compte sera validé.
+
+Bienvenue dans l'équipe !
+
+Cordialement,
+L'équipe Profitum`);
+    
+    const mailtoLink = `mailto:${emailInfo.email}?subject=${subject}&body=${body}`;
+    window.open(mailtoLink, '_blank');
+  };
+
   const handleSubmit = async () => {
     // Validation
     if (!formState.first_name.trim() || !formState.last_name.trim() || !formState.email.trim()) {
@@ -336,8 +367,9 @@ export const CabinetTeamManagement = () => {
 
     try {
       // Créer le collaborateur via l'API backend
-      // Le backend créera l'expert, le CabinetMember avec status='pending' pour validation admin
-      const response = await fetch(`${config.API_URL}/api/expert/cabinet/members`, {
+      // Le backend créera l'expert, le CabinetMember avec status='invited' pour validation admin
+      // et retournera les informations pour l'email
+      const response = await fetch(`${config.API_URL}/api/expert/cabinet/members/new`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -362,7 +394,19 @@ export const CabinetTeamManagement = () => {
         throw new Error(error.message || 'Erreur lors de la création du collaborateur');
       }
 
-      toast.success('Collaborateur créé. En attente de validation admin.');
+      const result = await response.json();
+      
+      if (result.success && result.data?.email_info) {
+        const expertName = `${formState.first_name} ${formState.last_name}`;
+        
+        // Ouvrir le client email pré-rempli
+        openEmailClient(result.data.email_info, expertName);
+        
+        toast.success('Collaborateur créé avec succès ! Le client email a été ouvert avec les identifiants.');
+      } else {
+        toast.success('Collaborateur créé. En attente de validation admin.');
+      }
+      
       setFormState(defaultForm);
       setDialogOpen(false);
       refresh(); // Rafraîchir la liste
