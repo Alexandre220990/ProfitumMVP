@@ -75,7 +75,7 @@ export class ExpertProduitEligibleSyncService {
                                 .from('ExpertProduitEligible')
                                 .update({
                                     statut: 'actif',
-                                    niveauExpertise: 'intermediaire', // Valeur par défaut
+                                    niveau_expertise: 'intermediaire', // Valeur par défaut
                                     updated_at: now
                                 })
                                 .eq('id', existing.id);
@@ -95,7 +95,7 @@ export class ExpertProduitEligibleSyncService {
                                 expert_id: expertId,
                                 produit_id: produitId,
                                 statut: 'actif',
-                                niveauExpertise: 'intermediaire', // Valeur par défaut
+                                niveau_expertise: 'intermediaire', // Valeur par défaut
                                 created_at: now,
                                 updated_at: now
                             });
@@ -135,7 +135,7 @@ export class ExpertProduitEligibleSyncService {
                 .from('ExpertProduitEligible')
                 .select(`
                     produit_id,
-                    niveauExpertise,
+                    niveau_expertise,
                     statut,
                     ProduitEligible:produit_id (
                         id,
@@ -150,7 +150,7 @@ export class ExpertProduitEligibleSyncService {
             return (data || []).map((ep: any) => ({
                 produit_id: ep.produit_id,
                 produit_nom: ep.ProduitEligible?.nom || 'Produit inconnu',
-                niveauExpertise: ep.niveauExpertise || 'intermediaire',
+                niveauExpertise: ep.niveau_expertise || ep.niveauExpertise || 'intermediaire',
                 statut: ep.statut
             }));
         } catch (error) {

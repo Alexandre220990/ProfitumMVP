@@ -220,7 +220,7 @@ router.post('/', async (req: Request, res: Response) => {
         const expertProduitEligibles = data.produits_eligibles.map((produitId: string) => ({
           expert_id: newExpert.id,
           produit_id: produitId,
-          niveauExpertise: 'intermediaire',
+          niveau_expertise: 'intermediaire',
           statut: 'actif',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()

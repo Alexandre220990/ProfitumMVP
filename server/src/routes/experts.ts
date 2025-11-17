@@ -199,7 +199,7 @@ router.get('/', async (req, res) => {
         updated_at,
         expertProduitEligibles:ExpertProduitEligible!inner (
           produit_id,
-          niveauExpertise,
+          niveau_expertise,
           statut,
           ProduitEligible:produit_id (
             id,
@@ -300,7 +300,7 @@ router.get('/:id', async (req, res) => {
         updated_at,
         expertProduitEligibles:ExpertProduitEligible!inner (
           produit_id,
-          niveauExpertise,
+          niveau_expertise,
           statut,
           ProduitEligible:produit_id (
             id,

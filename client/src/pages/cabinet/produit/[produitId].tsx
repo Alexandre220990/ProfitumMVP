@@ -79,9 +79,11 @@ interface ProduitSyntheseData {
       updated_at: string;
       Client?: {
         id: string;
-        nom?: string;
+        name?: string;
         email: string;
         company_name?: string;
+        first_name?: string;
+        last_name?: string;
       };
       Expert?: {
         id: string;
@@ -521,7 +523,11 @@ export default function CabinetProduitSynthese() {
                   <TableCell>
                     <div>
                       <p className="font-medium text-gray-900">
-                        {dossier.Client?.nom || dossier.Client?.company_name || 'N/A'}
+                        {dossier.Client?.name || 
+                          (dossier.Client?.first_name && dossier.Client?.last_name 
+                            ? `${dossier.Client.first_name} ${dossier.Client.last_name}` 
+                            : dossier.Client?.first_name || dossier.Client?.last_name) ||
+                          dossier.Client?.company_name || 'N/A'}
                       </p>
                       <p className="text-xs text-gray-500">{dossier.Client?.email}</p>
                     </div>
@@ -618,7 +624,11 @@ export default function CabinetProduitSynthese() {
                 <div className="space-y-2">
                   {data.alertes.blockedDossiers.items.map((dossier: any) => (
                     <div key={dossier.id} className="text-xs text-orange-800 bg-white p-2 rounded">
-                      {dossier.Client?.nom || 'N/A'} • {dossier.Expert?.name || 'N/A'} • 
+                      {dossier.Client?.name || 
+                        (dossier.Client?.first_name && dossier.Client?.last_name 
+                          ? `${dossier.Client.first_name} ${dossier.Client.last_name}` 
+                          : dossier.Client?.first_name || dossier.Client?.last_name) ||
+                        dossier.Client?.company_name || 'N/A'} • {dossier.Expert?.name || 'N/A'} • 
                       Statut: {dossier.statut} • {dossier.daysSinceUpdate} jours
                     </div>
                   ))}

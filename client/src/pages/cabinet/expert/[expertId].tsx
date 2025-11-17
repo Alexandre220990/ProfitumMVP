@@ -86,9 +86,11 @@ interface ExpertSyntheseData {
       updated_at: string;
       Client?: {
         id: string;
-        nom?: string;
+        name?: string;
         email: string;
         company_name?: string;
+        first_name?: string;
+        last_name?: string;
       };
       ProduitEligible?: {
         id: string;
@@ -508,7 +510,11 @@ export default function CabinetExpertSynthese() {
                     <TableCell>
                       <div>
                         <p className="font-medium text-gray-900">
-                          {dossier.Client?.nom || dossier.Client?.company_name || 'N/A'}
+                          {dossier.Client?.name || 
+                            (dossier.Client?.first_name && dossier.Client?.last_name 
+                              ? `${dossier.Client.first_name} ${dossier.Client.last_name}` 
+                              : dossier.Client?.first_name || dossier.Client?.last_name) ||
+                            dossier.Client?.company_name || 'N/A'}
                         </p>
                         <p className="text-xs text-gray-500">{dossier.Client?.email}</p>
                       </div>

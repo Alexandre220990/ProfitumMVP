@@ -453,7 +453,7 @@ router.post('/members/new', async (req: Request, res: Response) => {
           expert_id: newExpert.id,
           produit_id: p.produit_id,
           client_fee_percentage: p.client_fee_percentage || 0.30, // En décimal (0.30 = 30%)
-          niveauExpertise: 'intermediaire',
+          niveau_expertise: 'intermediaire',
           statut: 'actif',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
@@ -1054,8 +1054,11 @@ async function getBlockedDossiers(produitId: string) {
       montantFinal,
       Client:clientId (
         id,
-        nom,
-        email
+        name,
+        email,
+        company_name,
+        first_name,
+        last_name
       ),
       Expert:expert_id (
         id,
@@ -1277,9 +1280,11 @@ router.get('/products/:produitId/synthese', async (req: Request, res: Response) 
         updated_at,
         Client:clientId (
           id,
-          nom,
+          name,
           email,
-          company_name
+          company_name,
+          first_name,
+          last_name
         ),
         Expert:expert_id (
           id,
@@ -1448,8 +1453,11 @@ router.get('/products/:produitId/synthese', async (req: Request, res: Response) 
       const searchLower = (search as string).toLowerCase();
       dossiersFiltered = dossiersFiltered.filter((d: any) => {
         const client = d.Client as any;
+        const clientName = client?.name || 
+          (client?.first_name && client?.last_name ? `${client.first_name} ${client.last_name}` : client?.first_name || client?.last_name) ||
+          client?.company_name || '';
         return (
-          client?.nom?.toLowerCase().includes(searchLower) ||
+          clientName.toLowerCase().includes(searchLower) ||
           client?.email?.toLowerCase().includes(searchLower) ||
           client?.company_name?.toLowerCase().includes(searchLower)
         );
@@ -1575,9 +1583,11 @@ router.get('/experts/:expertId/synthese', async (req: Request, res: Response) =>
         updated_at,
         Client:clientId (
           id,
-          nom,
+          name,
           email,
-          company_name
+          company_name,
+          first_name,
+          last_name
         ),
         ProduitEligible:produitId (
           id,
@@ -1755,8 +1765,11 @@ router.get('/experts/:expertId/synthese', async (req: Request, res: Response) =>
         const client = d.Client as any;
         const produit = d.ProduitEligible as any;
         const produitData = Array.isArray(produit) ? produit[0] : produit;
+        const clientName = client?.name || 
+          (client?.first_name && client?.last_name ? `${client.first_name} ${client.last_name}` : client?.first_name || client?.last_name) ||
+          client?.company_name || '';
         return (
-          client?.nom?.toLowerCase().includes(searchLower) ||
+          clientName.toLowerCase().includes(searchLower) ||
           client?.email?.toLowerCase().includes(searchLower) ||
           client?.company_name?.toLowerCase().includes(searchLower) ||
           produitData?.nom?.toLowerCase().includes(searchLower)

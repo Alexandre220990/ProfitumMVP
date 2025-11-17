@@ -602,7 +602,7 @@ router.get('/experts/:id/produits', asyncHandler(async (req, res) => {
       .select(`
         id,
         produit_id,
-        niveauExpertise,
+        niveau_expertise,
         statut,
         ProduitEligible:produit_id (
           id,
@@ -1206,7 +1206,7 @@ router.put('/experts/:id', asyncHandler(async (req, res) => {
           const expertProduitEligibles = updateData.produits_eligibles.map((produitId: string) => ({
             expert_id: id,
             produit_id: produitId,
-            niveauExpertise: 'intermediaire',
+            niveau_expertise: 'intermediaire',
             statut: 'actif',
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
@@ -1374,7 +1374,7 @@ router.post('/experts', asyncHandler(async (req, res) => {
         const expertProduitEligibles = expertData.produits_eligibles.map((produitId: string) => ({
           expert_id: newExpert.id,
           produit_id: produitId,
-          niveauExpertise: 'intermediaire',
+          niveau_expertise: 'intermediaire',
           statut: 'actif',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()

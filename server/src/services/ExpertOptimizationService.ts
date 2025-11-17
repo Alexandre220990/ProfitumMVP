@@ -133,7 +133,7 @@ export class ExpertOptimizationService {
         .select(`
           expert_id,
           produit_id,
-          niveauExpertise,
+          niveau_expertise,
           statut,
           Expert!inner (
             id,
@@ -207,7 +207,7 @@ export class ExpertOptimizationService {
         // Vérifier si l'expert a ce produit dans ses spécialisations
         const { data: expertProduit } = await supabase
           .from('ExpertProduitEligible')
-          .select('niveauExpertise, statut')
+          .select('niveau_expertise, statut')
           .eq('expert_id', expert.id)
           .eq('produit_id', product.productId)
           .single();
@@ -223,7 +223,7 @@ export class ExpertOptimizationService {
             'intermediaire': 20,
             'debutant': 10
           };
-          const expertiseLevel = expertProduit.niveauExpertise || 'intermediaire';
+          const expertiseLevel = expertProduit.niveau_expertise || 'intermediaire';
           const expertisePoints = expertiseScore[expertiseLevel] || 20;
           
           matchScore += expertisePoints;
