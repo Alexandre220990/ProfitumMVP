@@ -55,6 +55,9 @@ interface PrioritizedDossier {
   daysWaitingDocuments?: number;
   documentRequestDate?: string;
   hasDocumentRequest?: boolean;
+  hasPendingDocuments?: boolean;
+  pendingDocumentsCount?: number;
+  actionType?: 'documents_pending_validation' | 'documents_requested' | 'other';
 }
 
 interface Alert {
@@ -578,11 +581,21 @@ export const ExpertDashboardOptimized = () => {
                   const nextActionLabel = dossier.nextAction || 'Voir dossier';
                   const canCall = Boolean(dossier.clientPhone);
                   const canEmail = Boolean(dossier.clientEmail);
+                  
+                  // Déterminer la couleur de la tuile selon le type d'action
+                  const getTileBorderColor = () => {
+                    if (dossier.actionType === 'documents_pending_validation') {
+                      return 'border-orange-400 bg-orange-50/30'; // Orange pour documents en attente de validation
+                    } else if (dossier.actionType === 'documents_requested') {
+                      return 'border-blue-400 bg-blue-50/30'; // Bleu pour documents demandés
+                    }
+                    return 'border-gray-200 bg-white'; // Par défaut
+                  };
 
                   return (
                     <div
                       key={dossier.id}
-                      className="p-5 bg-white border-2 rounded-2xl hover:shadow-md transition-all cursor-pointer"
+                      className={`p-5 border-2 rounded-2xl hover:shadow-md transition-all cursor-pointer ${getTileBorderColor()}`}
                       onClick={() => navigate(`/expert/dossier/${dossier.id}`)}
                     >
                       <div className="flex items-start justify-between gap-4">
@@ -622,8 +635,25 @@ export const ExpertDashboardOptimized = () => {
                         </div>
                       </div>
 
-                      {/* Alerte documents en attente */}
-                      {dossier.hasDocumentRequest && dossier.daysWaitingDocuments !== undefined && (
+                      {/* Alerte documents en attente de validation (PRIORITÉ 1) */}
+                      {dossier.hasPendingDocuments && dossier.pendingDocumentsCount && (
+                        <div className="mt-3 p-3 rounded-lg border-2 bg-orange-50 border-orange-400">
+                          <div className="flex items-start gap-2">
+                            <AlertTriangle className="h-5 w-5 mt-0.5 text-orange-600" />
+                            <div className="flex-1">
+                              <p className="text-sm font-semibold text-orange-800">
+                                📋 Documents reçus, vérification à effectuer
+                              </p>
+                              <p className="text-xs mt-1 text-orange-700">
+                                {dossier.pendingDocumentsCount} document{dossier.pendingDocumentsCount > 1 ? 's' : ''} en attente de validation par l'expert
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Alerte documents demandés (PRIORITÉ 2) */}
+                      {!dossier.hasPendingDocuments && dossier.hasDocumentRequest && dossier.daysWaitingDocuments !== undefined && (
                         <div className={`mt-3 p-3 rounded-lg border-2 ${
                           dossier.daysWaitingDocuments >= 15
                             ? 'bg-red-50 border-red-300'
@@ -685,7 +715,13 @@ export const ExpertDashboardOptimized = () => {
                       <div className="mt-3 border-t pt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="text-sm text-gray-700">
                           <p className="font-medium text-gray-900">Prochaine action</p>
-                          <p className={dossier.hasDocumentRequest ? 'text-orange-600 font-semibold' : ''}>{nextActionLabel}</p>
+                          <p className={
+                            dossier.actionType === 'documents_pending_validation' 
+                              ? 'text-orange-600 font-semibold' 
+                              : dossier.actionType === 'documents_requested'
+                              ? 'text-blue-600 font-semibold'
+                              : ''
+                          }>{nextActionLabel}</p>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
                           {canCall && (

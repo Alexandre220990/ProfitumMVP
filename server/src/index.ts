@@ -100,6 +100,7 @@ import rdvCompletionService from './services/rdvCompletionService';
 import { getCorsConfig, corsMiddleware } from './config/cors';
 import { startCalendarRemindersCron } from './cron/calendar-reminders';
 import { startRefundRemindersCron } from './cron/refund-reminder';
+import { startActionTypeRemindersCron } from './cron/action-type-reminders';
 import routes from './routes';
 
 // Routes apporteurs d'affaires
@@ -712,6 +713,14 @@ server.listen(PORT, HOST, () => {
     // Relances automatiques J+7 et J+14 si demande pas envoyée
   } catch (error) {
     console.error('❌ Erreur démarrage cron job relances remboursement:', error);
+  }
+
+  // Démarrer le cron job pour les relances basées sur les actionType
+  try {
+    startActionTypeRemindersCron();
+    // Relances automatiques selon les SLA définis pour chaque actionType
+  } catch (error) {
+    console.error('❌ Erreur démarrage cron job relances actionType:', error);
   }
   
   // monitoringSystem.recordAuditLog({

@@ -32,6 +32,9 @@ interface PrioritizedDossier {
   daysWaitingDocuments?: number; // Jours depuis la demande de documents
   documentRequestDate?: string; // Date de la demande de documents
   hasDocumentRequest?: boolean; // Si une demande de documents est en attente
+  hasPendingDocuments?: boolean; // Si des documents sont en attente de validation
+  pendingDocumentsCount?: number; // Nombre de documents en attente de validation
+  actionType?: 'documents_pending_validation' | 'documents_requested' | 'other'; // Type d'action urgente
 }
 
 interface Alert {
@@ -125,8 +128,11 @@ router.get('/prioritized', enhancedAuthMiddleware, async (req: Request, res: Res
       error = result.error;
 
       // Récupérer les demandes de documents en attente pour ces dossiers
+      // ET les documents en attente de validation
       if (!error && dossiers.length > 0) {
         const dossierIds = dossiers.map(d => d.id);
+        
+        // Récupérer les demandes de documents
         const { data: requests } = await supabase
           .from('document_request')
           .select('id, dossier_id, created_at, status')
@@ -161,6 +167,42 @@ router.get('/prioritized', enhancedAuthMiddleware, async (req: Request, res: Res
       });
     });
 
+    // Récupérer les documents en attente de validation pour ces dossiers
+    const pendingDocumentsMap = new Map<string, number>();
+    if (dossiers.length > 0) {
+      const dossierIds = dossiers.map(d => d.id);
+      
+      // Récupérer tous les documents de ces dossiers
+      const { data: allDocs, error: allDocsError } = await supabase
+        .from('ClientProcessDocument')
+        .select('client_produit_id, validation_status, status')
+        .in('client_produit_id', dossierIds);
+
+      if (!allDocsError && allDocs) {
+        // Compter les documents en attente de validation
+        // Un document est en attente si :
+        // - validation_status est 'pending' ou null
+        // - ET status n'est pas 'rejected'
+        allDocs.forEach((doc: any) => {
+          const validationStatus = doc.validation_status;
+          const status = doc.status;
+          
+          // Document en attente si validation_status est pending/null et pas rejeté
+          const isPending = (
+            (validationStatus === 'pending' || validationStatus === null) &&
+            status !== 'rejected' &&
+            validationStatus !== 'validated'
+          );
+          
+          if (isPending) {
+            const dossierId = doc.client_produit_id;
+            const currentCount = pendingDocumentsMap.get(dossierId) || 0;
+            pendingDocumentsMap.set(dossierId, currentCount + 1);
+          }
+        });
+      }
+    }
+
     // Calculer le score de priorité pour chaque dossier
     const prioritizedDossiers: PrioritizedDossier[] = (dossiers || []).map((dossier: any) => {
       const updatedAt = new Date(dossier.updated_at);
@@ -168,6 +210,10 @@ router.get('/prioritized', enhancedAuthMiddleware, async (req: Request, res: Res
       
       // Récupérer la demande de documents si elle existe
       const docRequest = documentRequestMap.get(dossier.id);
+      
+      // Récupérer le nombre de documents en attente de validation
+      const pendingDocsCount = pendingDocumentsMap.get(dossier.id) || 0;
+      const hasPendingDocs = pendingDocsCount > 0;
 
       // 1. URGENCE (40 points) - Plus c'est ancien, plus c'est urgent
       let urgenceScore = 0;
@@ -198,26 +244,38 @@ router.get('/prioritized', enhancedAuthMiddleware, async (req: Request, res: Res
       else if (validationState === 'pending_expert_validation') faciliteScore = 5;
       else faciliteScore = 3;
 
-      // SCORE TOTAL
-      const priorityScore = urgenceScore + valeurScore + probabiliteScore + faciliteScore;
+      // SCORE TOTAL - Bonus si documents en attente de validation (action urgente)
+      let bonusUrgent = 0;
+      if (hasPendingDocs) {
+        bonusUrgent = 20; // Bonus important pour documents en attente
+      }
+      const priorityScore = urgenceScore + valeurScore + probabiliteScore + faciliteScore + bonusUrgent;
 
-      // Déterminer la prochaine action en fonction de la demande de documents
+      // Déterminer la prochaine action - PRIORISER les documents en attente de validation
       let nextAction = '';
-      if (docRequest) {
-        // Si on attend des documents, afficher le message approprié
+      let actionType: 'documents_pending_validation' | 'documents_requested' | 'other' = 'other';
+      
+      if (hasPendingDocs) {
+        // PRIORITÉ 1 : Documents reçus, en attente de validation
+        nextAction = `Documents reçus, vérification à effectuer (${pendingDocsCount} document${pendingDocsCount > 1 ? 's' : ''})`;
+        actionType = 'documents_pending_validation';
+      } else if (docRequest) {
+        // PRIORITÉ 2 : On attend des documents du client
+        actionType = 'documents_requested';
         if (docRequest.daysWaiting >= 15) {
-          nextAction = `En attente de documents depuis ${docRequest.daysWaiting} jours - Relance 3 envoyée`;
+          nextAction = `En attente documents client depuis ${docRequest.daysWaiting} jours - Relance 3 envoyée`;
         } else if (docRequest.daysWaiting >= 10) {
-          nextAction = `En attente de documents depuis ${docRequest.daysWaiting} jours - Relance 2 envoyée`;
+          nextAction = `En attente documents client depuis ${docRequest.daysWaiting} jours - Relance 2 envoyée`;
         } else if (docRequest.daysWaiting >= 5) {
-          nextAction = `En attente de documents depuis ${docRequest.daysWaiting} jours - Relance 1 envoyée`;
+          nextAction = `En attente documents client depuis ${docRequest.daysWaiting} jours - Relance 1 envoyée`;
         } else {
-          nextAction = `En attente de documents depuis ${docRequest.daysWaiting} jour${docRequest.daysWaiting > 1 ? 's' : ''}`;
+          nextAction = `En attente documents client depuis ${docRequest.daysWaiting} jour${docRequest.daysWaiting > 1 ? 's' : ''}`;
         }
       } else if (dossier.statut === 'eligible' || dossier.statut === 'admin_validated' || dossier.statut === 'expert_assigned') {
         nextAction = 'Examiner documents';
       } else if (dossier.statut === 'documents_requested') {
-        nextAction = 'Attendre documents client';
+        nextAction = 'En attente documents client';
+        actionType = 'documents_requested';
       } else if (dossier.statut === 'en_cours' || dossier.statut === 'audit_en_cours') {
         if (daysSinceLastContact > 7) {
           nextAction = 'Relancer client';
@@ -251,7 +309,10 @@ router.get('/prioritized', enhancedAuthMiddleware, async (req: Request, res: Res
         daysSinceLastContact,
         daysWaitingDocuments: docRequest?.daysWaiting,
         documentRequestDate: docRequest?.created_at,
-        hasDocumentRequest: !!docRequest
+        hasDocumentRequest: !!docRequest,
+        hasPendingDocuments: hasPendingDocs,
+        pendingDocumentsCount: pendingDocsCount,
+        actionType
       };
     });
 
