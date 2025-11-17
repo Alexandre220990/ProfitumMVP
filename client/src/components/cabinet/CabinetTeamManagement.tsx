@@ -261,10 +261,11 @@ export const CabinetTeamManagement = () => {
       }
     };
     
-    if (isDialogOpen && context?.cabinet?.id) {
+    // Charger les produits dès que le contexte du cabinet est disponible
+    if (context?.cabinet?.id) {
       fetchCabinetProduits();
     }
-  }, [isDialogOpen, context?.cabinet?.id]);
+  }, [context?.cabinet?.id]);
   
   // Fonction pour formater le SIREN avec des espaces (123 456 789)
   const formatSiren = (siren: string | null | undefined): string => {
@@ -278,7 +279,18 @@ export const CabinetTeamManagement = () => {
   // Pré-remplir company_name et siren avec les infos du cabinet
   useEffect(() => {
     if (isDialogOpen && context?.cabinet) {
-      const cabinetSiren = formatSiren(context.cabinet.siret);
+      // Extraire le SIREN du SIRET (les 9 premiers chiffres)
+      let cabinetSiren = '';
+      if (context.cabinet.siret) {
+        // Le SIRET contient 14 chiffres, le SIREN est les 9 premiers
+        const cleanSiret = context.cabinet.siret.replace(/\D/g, '');
+        if (cleanSiret.length >= 9) {
+          cabinetSiren = formatSiren(cleanSiret.substring(0, 9));
+        } else {
+          cabinetSiren = formatSiren(cleanSiret);
+        }
+      }
+      
       console.log('🔍 Pré-remplissage formulaire:', {
         cabinetName: context.cabinet.name,
         cabinetSiret: context.cabinet.siret,
