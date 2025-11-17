@@ -266,14 +266,33 @@ export const CabinetTeamManagement = () => {
     }
   }, [isDialogOpen, context?.cabinet?.id]);
   
+  // Fonction pour formater le SIREN avec des espaces (123 456 789)
+  const formatSiren = (siren: string | null | undefined): string => {
+    if (!siren) return '';
+    // Supprimer tous les espaces et caractères non numériques
+    const cleanSiren = siren.replace(/\D/g, '');
+    // Ajouter des espaces tous les 3 chiffres
+    return cleanSiren.replace(/(\d{3})(?=\d)/g, '$1 ');
+  };
+
   // Pré-remplir company_name et siren avec les infos du cabinet
   useEffect(() => {
     if (isDialogOpen && context?.cabinet) {
+      const cabinetSiren = formatSiren(context.cabinet.siret);
+      console.log('🔍 Pré-remplissage formulaire:', {
+        cabinetName: context.cabinet.name,
+        cabinetSiret: context.cabinet.siret,
+        formattedSiren: cabinetSiren
+      });
+      
       setFormState(prev => ({
         ...prev,
         company_name: context.cabinet.name || prev.company_name,
-        siren: context.cabinet.siret || prev.siren
+        siren: cabinetSiren || prev.siren
       }));
+    } else if (!isDialogOpen) {
+      // Réinitialiser le formulaire quand le dialog se ferme
+      setFormState(defaultForm);
     }
   }, [isDialogOpen, context?.cabinet]);
 
