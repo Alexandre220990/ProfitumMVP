@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useCallback } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,13 +9,12 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { Plus, RefreshCw, Users, Shield, UserCheck, Check, ChevronsUpDown } from 'lucide-react';
+import { Plus, RefreshCw, Users, Shield, UserCheck } from 'lucide-react';
 import { useCabinetContext } from '@/hooks/useCabinetContext';
 import { CabinetHierarchyNode, CabinetPermissions } from '@/types';
-import { expertCabinetService } from '@/services/cabinet-service';
+import { config } from '@/config/env';
 
 const ROLE_BADGES: Record<string, string> = {
   OWNER: 'bg-blue-600 text-white',
@@ -31,20 +30,44 @@ const STATUS_BADGES: Record<string, string> = {
   disabled: 'bg-gray-200 text-gray-700'
 };
 
+interface ProduitEligible {
+  id: string;
+  nom: string;
+  description?: string;
+  categorie?: string;
+  commission_rate?: number; // Commission du cabinet pour ce produit (en décimal)
+  fee_mode?: 'fixed' | 'percent';
+}
+
+interface ExpertProduitEligible {
+  produit_id: string;
+  client_fee_percentage: number; // En décimal (ex: 0.30 = 30%)
+}
+
 type MemberFormState = {
-  member_id: string;
-  team_role: 'OWNER' | 'MANAGER' | 'EXPERT'; // Rôles dans le cabinet uniquement
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string; // Optionnel
+  company_name: string;
+  siren: string;
+  team_role: 'OWNER' | 'MANAGER' | 'EXPERT';
   manager_member_id?: string | null;
-  status: 'active' | 'invited' | 'suspended';
-  products: string;
+  produits_eligibles: ExpertProduitEligible[]; // Array avec produit_id + client_fee_percentage
+  secteur_activite: string[];
 };
 
 const defaultForm: MemberFormState = {
-  member_id: '',
+  first_name: '',
+  last_name: '',
+  email: '',
+  phone: '',
+  company_name: '',
+  siren: '',
   team_role: 'EXPERT',
   manager_member_id: null,
-  status: 'active',
-  products: ''
+  produits_eligibles: [], // Array de { produit_id, client_fee_percentage }
+  secteur_activite: []
 };
 
 const flattenHierarchy = (nodes: CabinetHierarchyNode[]): CabinetHierarchyNode[] => {
@@ -113,15 +136,27 @@ const canAssignManager = (permissions: CabinetPermissions | undefined) => permis
 const canManageMembers = (permissions: CabinetPermissions | undefined) => permissions?.canManageMembers;
 
 export const CabinetTeamManagement = () => {
-  const { context, loading, error, refresh, mutationLoading, addMember, updateMember, removeMember, refreshStats } =
+  const { context, loading, error, refresh, mutationLoading, updateMember, removeMember, refreshStats } =
     useCabinetContext();
   const [isDialogOpen, setDialogOpen] = useState(false);
   const [formState, setFormState] = useState<MemberFormState>(defaultForm);
-  const [userSearchOpen, setUserSearchOpen] = useState(false);
-  const [availableUsers, setAvailableUsers] = useState<Array<{ id: string; name: string; email?: string }>>([]);
-  const [userSearchTerm, setUserSearchTerm] = useState('');
-  const [userSearchLoading, setUserSearchLoading] = useState(false);
+  const [produitsEligibles, setProduitsEligibles] = useState<ProduitEligible[]>([]);
+  const [loadingProduits, setLoadingProduits] = useState(false);
   const permissions = context?.permissions;
+  
+  // Secteurs d'activité disponibles
+  const secteursActivite = [
+    'Transport',
+    'Logistique',
+    'Commerce',
+    'Industrie',
+    'Services',
+    'BTP',
+    'Agriculture',
+    'Santé',
+    'Éducation',
+    'Autre'
+  ];
 
   const hierarchy = context?.hierarchy || [];
   const currentMembership = context?.membership;
@@ -161,8 +196,14 @@ export const CabinetTeamManagement = () => {
   
   const members = useMemo(() => flattenHierarchy(filteredHierarchy), [filteredHierarchy]);
   const managers = members.filter(member => member.team_role === 'MANAGER');
+  const owners = members.filter(member => member.team_role === 'OWNER');
   const experts = members.filter(member => member.team_role === 'EXPERT' && member.status === 'active');
   const activeMembers = members.filter(member => member.status === 'active');
+  
+  // Liste des managers possibles (OWNER + MANAGER) pour le rattachement hiérarchique
+  const availableManagers = useMemo(() => {
+    return [...owners, ...managers].filter(m => m.status === 'active');
+  }, [owners, managers]);
   
   const stats = context?.kpis;
   
@@ -184,60 +225,149 @@ export const CabinetTeamManagement = () => {
     return daysSinceActivity > 30;
   });
 
-  const searchUsers = useCallback(async (term: string) => {
-    if (!term || term.length < 2) {
-      setAvailableUsers([]);
+  // Charger les ProduitEligible du CABINET (pas tous les produits du catalogue)
+  useEffect(() => {
+    const fetchCabinetProduits = async () => {
+      try {
+        setLoadingProduits(true);
+        // Récupérer les produits du cabinet via l'API
+        const response = await fetch(`${config.API_URL}/api/expert/cabinet/products`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        if (!response.ok) {
+          throw new Error('Erreur lors de la récupération des produits du cabinet');
+        }
+        const data = await response.json();
+        if (data.success && data.data) {
+          // data.data devrait être un array de { produit_eligible_id, commission_rate, ProduitEligible: {...} }
+          const produits = data.data.map((item: any) => ({
+            id: item.produit_eligible_id || item.ProduitEligible?.id,
+            nom: item.ProduitEligible?.nom || item.nom,
+            description: item.ProduitEligible?.description,
+            categorie: item.ProduitEligible?.categorie,
+            commission_rate: item.commission_rate ? item.commission_rate / 100 : null, // Commission du cabinet (convertir % en décimal)
+            fee_mode: item.fee_mode || 'percent'
+          }));
+          setProduitsEligibles(produits);
+        }
+      } catch (error) {
+        console.error('Erreur chargement produits cabinet:', error);
+        toast.error('Erreur lors du chargement des produits du cabinet');
+      } finally {
+        setLoadingProduits(false);
+      }
+    };
+    
+    if (isDialogOpen && context?.cabinet?.id) {
+      fetchCabinetProduits();
+    }
+  }, [isDialogOpen, context?.cabinet?.id]);
+  
+  // Pré-remplir company_name et siren avec les infos du cabinet
+  useEffect(() => {
+    if (isDialogOpen && context?.cabinet) {
+      setFormState(prev => ({
+        ...prev,
+        company_name: context.cabinet.name || prev.company_name,
+        siren: context.cabinet.siret || prev.siren
+      }));
+    }
+  }, [isDialogOpen, context?.cabinet]);
+
+  const handleProduitChange = (produitId: string, checked: boolean) => {
+    // Trouver le produit pour récupérer sa commission_rate du cabinet
+    const produit = produitsEligibles.find(p => p.id === produitId);
+    const defaultFee = produit?.commission_rate || 0.30; // Utiliser commission_rate du cabinet ou 30% par défaut
+    
+    setFormState(prev => ({
+      ...prev,
+      produits_eligibles: checked
+        ? [...prev.produits_eligibles, { produit_id: produitId, client_fee_percentage: defaultFee }]
+        : prev.produits_eligibles.filter(p => p.produit_id !== produitId)
+    }));
+  };
+
+  const handleProduitFeeChange = (produitId: string, percentage: number) => {
+    setFormState(prev => ({
+      ...prev,
+      produits_eligibles: prev.produits_eligibles.map(p =>
+        p.produit_id === produitId
+          ? { ...p, client_fee_percentage: percentage / 100 } // Convertir % en décimal
+          : p
+      )
+    }));
+  };
+
+  const handleSecteurChange = (secteur: string, checked: boolean) => {
+    setFormState(prev => ({
+      ...prev,
+      secteur_activite: checked
+        ? [...prev.secteur_activite, secteur]
+        : prev.secteur_activite.filter(s => s !== secteur)
+    }));
+  };
+
+  const handleSubmit = async () => {
+    // Validation
+    if (!formState.first_name.trim() || !formState.last_name.trim() || !formState.email.trim()) {
+      toast.error('Prénom, nom et email sont requis');
       return;
     }
     
-    setUserSearchLoading(true);
-    try {
-      // Rechercher uniquement des experts ou assistants (pas d'apporteurs)
-      const users = await expertCabinetService.getAvailableUsers(term, 'expert');
-      setAvailableUsers(users);
-    } catch (err) {
-      console.error('Erreur recherche utilisateurs:', err);
-      toast.error('Impossible de rechercher les utilisateurs');
-    } finally {
-      setUserSearchLoading(false);
+    if (!formState.company_name.trim()) {
+      toast.error('Nom de l\'entreprise est requis');
+      return;
     }
-  }, []);
-
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      if (userSearchTerm) {
-        searchUsers(userSearchTerm);
-      } else {
-        setAvailableUsers([]);
-      }
-    }, 300);
-    return () => clearTimeout(timeoutId);
-  }, [userSearchTerm, searchUsers]);
-
-  // Plus besoin de reset quand member_type change (supprimé)
-
-  const handleSubmit = async () => {
-    if (!formState.member_id.trim()) {
-      toast.error('Identifiant membre requis');
+    
+    if (formState.produits_eligibles.length === 0) {
+      toast.error('Au moins un produit éligible doit être sélectionné');
+      return;
+    }
+    
+    // Vérifier que tous les produits ont un client_fee_percentage défini
+    const produitsInvalides = formState.produits_eligibles.filter(p => !p.client_fee_percentage || p.client_fee_percentage <= 0);
+    if (produitsInvalides.length > 0) {
+      toast.error('Tous les produits sélectionnés doivent avoir un pourcentage de compensation défini');
       return;
     }
 
     try {
-      await addMember({
-        member_id: formState.member_id.trim(),
-        member_type: 'expert', // Toujours 'expert' pour les collaborateurs du cabinet
-        team_role: formState.team_role,
-        manager_member_id: formState.manager_member_id || null,
-        status: formState.status,
-        products: formState.products
-          ? formState.products.split(',').map(p => p.trim()).filter(Boolean)
-          : []
+      // Créer le collaborateur via l'API backend
+      // Le backend créera l'expert, le CabinetMember avec status='pending' pour validation admin
+      const response = await fetch(`${config.API_URL}/api/expert/cabinet/members`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          first_name: formState.first_name.trim(),
+          last_name: formState.last_name.trim(),
+          email: formState.email.trim(),
+          phone: formState.phone.trim() || null,
+          company_name: formState.company_name.trim(),
+          siren: formState.siren.trim() || null,
+          team_role: formState.team_role,
+          manager_member_id: formState.manager_member_id || null,
+          produits_eligibles: formState.produits_eligibles, // Array de { produit_id, client_fee_percentage }
+          secteur_activite: formState.secteur_activite
+        })
       });
-      toast.success('Collaborateur ajouté');
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Erreur lors de la création du collaborateur');
+      }
+
+      toast.success('Collaborateur créé. En attente de validation admin.');
       setFormState(defaultForm);
       setDialogOpen(false);
+      refresh(); // Rafraîchir la liste
     } catch (err: any) {
-      toast.error(err?.message || 'Impossible d’ajouter le collaborateur');
+      toast.error(err?.message || 'Impossible de créer le collaborateur');
     }
   };
 
@@ -252,7 +382,7 @@ export const CabinetTeamManagement = () => {
 
   const handleStatusChange = async (memberRecordId: string, status: string) => {
     try {
-      await updateMember(memberRecordId, { status: status as MemberFormState['status'] });
+      await updateMember(memberRecordId, { status: status as 'active' | 'invited' | 'suspended' | 'disabled' });
       toast.success('Statut mis à jour');
     } catch (err: any) {
       toast.error(err?.message || 'Impossible de mettre à jour le statut');
@@ -314,161 +444,226 @@ export const CabinetTeamManagement = () => {
                   Ajouter un collaborateur
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-lg">
+              <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                  <DialogTitle>Ajouter un membre</DialogTitle>
+                  <DialogTitle>Ajouter un nouveau collaborateur</DialogTitle>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Le collaborateur sera créé avec un statut "En attente" et nécessitera une validation admin.
+                  </p>
                 </DialogHeader>
-                <div className="space-y-4 py-2">
-                  <div className="grid grid-cols-1 gap-4">
-                    <div>
-                      <Label>Rechercher un utilisateur</Label>
-                      <Popover open={userSearchOpen} onOpenChange={setUserSearchOpen}>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            role="combobox"
-                            className="w-full justify-between"
-                            disabled={userSearchLoading}
-                          >
-                            {formState.member_id
-                              ? availableUsers.find(u => u.id === formState.member_id)?.name || formState.member_id
-                              : 'Rechercher un expert ou assistant...'}
-                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-full p-0" align="start">
-                          <Command>
-                            <CommandInput
-                              placeholder="Tapez pour rechercher..."
-                              value={userSearchTerm}
-                              onValueChange={setUserSearchTerm}
-                            />
-                            <CommandList>
-                              {userSearchLoading ? (
-                                <div className="p-4 text-center text-sm text-gray-500">Recherche en cours...</div>
-                              ) : availableUsers.length === 0 ? (
-                                <CommandEmpty>
-                                  {userSearchTerm.length >= 2 ? 'Aucun utilisateur trouvé' : 'Tapez au moins 2 caractères pour rechercher'}
-                                </CommandEmpty>
-                              ) : (
-                                <CommandGroup>
-                                  {availableUsers.map((user) => (
-                                    <CommandItem
-                                      key={user.id}
-                                      value={user.id}
-                                      onSelect={() => {
-                                        setFormState(prev => ({ ...prev, member_id: user.id }));
-                                        setUserSearchOpen(false);
-                                        setUserSearchTerm('');
-                                      }}
-                                    >
-                                      <Check
-                                        className={`mr-2 h-4 w-4 ${formState.member_id === user.id ? 'opacity-100' : 'opacity-0'}`}
-                                      />
-                                      <div className="flex-1">
-                                        <p className="font-medium">{user.name}</p>
-                                        {user.email && (
-                                          <p className="text-xs text-gray-500">{user.email}</p>
-                                        )}
-                                      </div>
-                                    </CommandItem>
-                                  ))}
-                                </CommandGroup>
-                              )}
-                            </CommandList>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
-                      {formState.member_id && (
-                        <p className="mt-1 text-xs text-gray-500">
-                          ID sélectionné : {formState.member_id}
-                        </p>
-                      )}
-                    </div>
-                    <div>
-                      <Label>Rôle dans le cabinet</Label>
-                      <Select
-                        value={formState.team_role}
-                        onValueChange={value =>
-                          setFormState(prev => ({ ...prev, team_role: value as MemberFormState['team_role'] }))
-                        }
-                        disabled={!permissions?.isOwner}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="OWNER">Owner (propriétaire)</SelectItem>
-                          <SelectItem value="MANAGER">Manager</SelectItem>
-                          <SelectItem value="EXPERT">Expert</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {!permissions?.isOwner && (
-                        <p className="text-xs text-gray-500 mt-1">
-                          Seul l'owner peut modifier les rôles
-                        </p>
-                      )}
-                    </div>
-                    {canAssignManager(permissions) && (
-                      <div>
-                        <Label>Manager rattaché</Label>
-                        <Select
-                          value={formState.manager_member_id || 'none'}
-                          onValueChange={value =>
-                            setFormState(prev => ({
-                              ...prev,
-                              manager_member_id: value === 'none' ? null : value
-                            }))
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Aucun manager" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">Aucune supervision</SelectItem>
-                            {managers.map(manager => (
-                              <SelectItem key={manager.id} value={manager.id}>
-                                {manager.profile?.name || manager.member_id}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                <ScrollArea className="max-h-[calc(90vh-180px)] pr-4">
+                  <div className="space-y-6 py-4">
+                    {/* Informations personnelles */}
+                    <div className="space-y-4">
+                      <h3 className="text-sm font-semibold text-gray-900">Informations personnelles</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label>Prénom *</Label>
+                          <Input
+                            value={formState.first_name}
+                            onChange={e => setFormState(prev => ({ ...prev, first_name: e.target.value }))}
+                            placeholder="Prénom"
+                          />
+                        </div>
+                        <div>
+                          <Label>Nom *</Label>
+                          <Input
+                            value={formState.last_name}
+                            onChange={e => setFormState(prev => ({ ...prev, last_name: e.target.value }))}
+                            placeholder="Nom de famille"
+                          />
+                        </div>
+                        <div>
+                          <Label>Email *</Label>
+                          <Input
+                            type="email"
+                            value={formState.email}
+                            onChange={e => setFormState(prev => ({ ...prev, email: e.target.value }))}
+                            placeholder="expert@cabinet.fr"
+                          />
+                        </div>
+                        <div>
+                          <Label>Téléphone</Label>
+                          <Input
+                            value={formState.phone}
+                            onChange={e => setFormState(prev => ({ ...prev, phone: e.target.value }))}
+                            placeholder="+33 6 12 34 56 78"
+                          />
+                        </div>
                       </div>
-                    )}
-                    <div>
-                      <Label>Statut initial</Label>
-                      <Select
-                        value={formState.status}
-                        onValueChange={value =>
-                          setFormState(prev => ({ ...prev, status: value as MemberFormState['status'] }))
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="active">Actif</SelectItem>
-                          <SelectItem value="invited">Invité</SelectItem>
-                          <SelectItem value="suspended">Suspendu</SelectItem>
-                        </SelectContent>
-                      </Select>
                     </div>
-                    <div>
-                      <Label>Produits autorisés (IDs séparés par des virgules)</Label>
-                      <Input
-                        value={formState.products}
-                        onChange={e => setFormState(prev => ({ ...prev, products: e.target.value }))}
-                        placeholder="prod-elig-1, prod-elig-2"
-                      />
+
+                    {/* Informations entreprise */}
+                    <div className="space-y-4">
+                      <h3 className="text-sm font-semibold text-gray-900">Informations entreprise</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label>Nom de l'entreprise *</Label>
+                          <Input
+                            value={formState.company_name}
+                            onChange={e => setFormState(prev => ({ ...prev, company_name: e.target.value }))}
+                            placeholder="Nom du cabinet"
+                          />
+                        </div>
+                        <div>
+                          <Label>SIREN</Label>
+                          <Input
+                            value={formState.siren}
+                            onChange={e => setFormState(prev => ({ ...prev, siren: e.target.value }))}
+                            placeholder="123 456 789"
+                          />
+                        </div>
+                      </div>
                     </div>
+
+                    {/* Rôle et hiérarchie */}
+                    <div className="space-y-4">
+                      <h3 className="text-sm font-semibold text-gray-900">Rôle et hiérarchie</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label>Rôle dans le cabinet *</Label>
+                          <Select
+                            value={formState.team_role}
+                            onValueChange={value =>
+                              setFormState(prev => ({ ...prev, team_role: value as MemberFormState['team_role'] }))
+                            }
+                            disabled={!permissions?.isOwner}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="OWNER">Owner (propriétaire)</SelectItem>
+                              <SelectItem value="MANAGER">Manager</SelectItem>
+                              <SelectItem value="EXPERT">Expert</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {canAssignManager(permissions) && (
+                          <div>
+                            <Label>Manager rattaché</Label>
+                            <Select
+                              value={formState.manager_member_id || 'none'}
+                              onValueChange={value =>
+                                setFormState(prev => ({
+                                  ...prev,
+                                  manager_member_id: value === 'none' ? null : value
+                                }))
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Aucune supervision" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">Aucune supervision</SelectItem>
+                                {availableManagers.map(manager => (
+                                  <SelectItem key={manager.id} value={manager.id}>
+                                    {manager.profile?.name || manager.member_id} ({manager.team_role})
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Produits éligibles */}
+                    <div className="space-y-4">
+                      <h3 className="text-sm font-semibold text-gray-900">Produits éligibles *</h3>
+                      {loadingProduits ? (
+                        <div className="text-center py-8">
+                          <div className="w-8 h-8 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
+                          <p className="text-sm text-gray-500">Chargement des produits...</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3 max-h-64 overflow-y-auto border rounded-lg p-3">
+                          {produitsEligibles.map((produit) => {
+                            const isSelected = formState.produits_eligibles.some(p => p.produit_id === produit.id);
+                            const selectedProduit = formState.produits_eligibles.find(p => p.produit_id === produit.id);
+                            
+                            return (
+                              <div key={produit.id} className="border rounded-lg p-3 hover:bg-gray-50">
+                                <div className="flex items-start space-x-2">
+                                  <Checkbox
+                                    id={produit.id}
+                                    checked={isSelected}
+                                    onCheckedChange={(checked: boolean) => handleProduitChange(produit.id, checked)}
+                                    className="mt-1"
+                                  />
+                                  <div className="flex-1">
+                                    <label htmlFor={produit.id} className="text-sm font-medium cursor-pointer block">
+                                      {produit.nom}
+                                    </label>
+                                    {produit.description && (
+                                      <p className="text-xs text-gray-500 mt-0.5">{produit.description}</p>
+                                    )}
+                                    {isSelected && (
+                                      <div className="mt-2">
+                                        <Label className="text-xs text-gray-600">
+                                          Compensation (%)
+                                          {produit.commission_rate && (
+                                            <span className="text-gray-400 ml-1">
+                                              (Cabinet: {Math.round(produit.commission_rate * 100)}%)
+                                            </span>
+                                          )}
+                                        </Label>
+                                        <Input
+                                          type="number"
+                                          min="0"
+                                          max="100"
+                                          step="0.1"
+                                          value={selectedProduit ? (selectedProduit.client_fee_percentage * 100) : (produit.commission_rate ? produit.commission_rate * 100 : 30)}
+                                          onChange={e => handleProduitFeeChange(produit.id, parseFloat(e.target.value) || 0)}
+                                          className="mt-1 w-24"
+                                          placeholder={produit.commission_rate ? String(Math.round(produit.commission_rate * 100)) : "30"}
+                                        />
+                                        <p className="text-xs text-gray-400 mt-1">
+                                          {produit.commission_rate 
+                                            ? `Pré-rempli avec la commission du cabinet (${Math.round(produit.commission_rate * 100)}%)`
+                                            : 'Pourcentage pour ce produit'}
+                                        </p>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Secteurs d'activité */}
+                    <div className="space-y-4">
+                      <h3 className="text-sm font-semibold text-gray-900">Secteurs d'activité</h3>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-32 overflow-y-auto border rounded-lg p-3">
+                        {secteursActivite.map((secteur) => (
+                          <div key={secteur} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`secteur-${secteur}`}
+                              checked={formState.secteur_activite.includes(secteur)}
+                              onCheckedChange={(checked: boolean) => handleSecteurChange(secteur, checked)}
+                            />
+                            <label htmlFor={`secteur-${secteur}`} className="text-sm cursor-pointer">
+                              {secteur}
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
                   </div>
-                </div>
-                <DialogFooter className="gap-2">
-                  <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                </ScrollArea>
+                <DialogFooter className="gap-2 mt-4">
+                  <Button variant="outline" onClick={() => {
+                    setDialogOpen(false);
+                    setFormState(defaultForm);
+                  }}>
                     Annuler
                   </Button>
                   <Button onClick={handleSubmit} disabled={mutationLoading}>
-                    Ajouter
+                    {mutationLoading ? 'Création...' : 'Ajouter'}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -696,6 +891,119 @@ export const CabinetTeamManagement = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Gestion des produits du cabinet (OWNER uniquement) */}
+      {permissions?.isOwner && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Gestion des produits du cabinet</CardTitle>
+                <p className="text-sm text-gray-500 mt-1">
+                  Gérez les produits éligibles de votre cabinet et leurs commissions. Ces produits seront disponibles lors de l'ajout de collaborateurs.
+                </p>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => toast.info('Bientôt : ajouter un produit au cabinet')}>
+                <Plus className="h-4 w-4 mr-2" />
+                Ajouter un produit
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {loadingProduits ? (
+              <div className="text-center py-8">
+                <div className="w-8 h-8 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
+                <p className="text-sm text-gray-500">Chargement des produits...</p>
+              </div>
+            ) : produitsEligibles.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-sm text-gray-500">Aucun produit configuré pour ce cabinet</p>
+                <Button variant="outline" size="sm" className="mt-4" onClick={() => toast.info('Bientôt : ajouter un produit')}>
+                  Ajouter le premier produit
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {produitsEligibles.map((produit) => (
+                  <div key={produit.id} className="border rounded-lg p-4 flex items-center justify-between">
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-900">{produit.nom}</p>
+                      {produit.description && (
+                        <p className="text-xs text-gray-500 mt-1">{produit.description}</p>
+                      )}
+                      <div className="flex items-center gap-4 mt-2">
+                        <div>
+                          <span className="text-xs text-gray-500">Commission cabinet: </span>
+                          <span className="text-sm font-semibold text-gray-900">
+                            {produit.commission_rate ? `${Math.round(produit.commission_rate * 100)}%` : 'Non définie'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-xs text-gray-500">Mode: </span>
+                          <span className="text-sm text-gray-700">{produit.fee_mode || 'percent'}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" size="sm" onClick={() => toast.info('Bientôt : modifier commission')}>
+                        Modifier
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => toast.info('Bientôt : supprimer produit')}>
+                        Supprimer
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Consultation des produits (MANAGER uniquement) */}
+      {permissions?.isManager && !permissions?.isOwner && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Produits du cabinet</CardTitle>
+            <p className="text-sm text-gray-500 mt-1">
+              Consultation des produits éligibles de votre cabinet (modification réservée au Owner)
+            </p>
+          </CardHeader>
+          <CardContent>
+            {loadingProduits ? (
+              <div className="text-center py-8">
+                <div className="w-8 h-8 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
+                <p className="text-sm text-gray-500">Chargement des produits...</p>
+              </div>
+            ) : produitsEligibles.length === 0 ? (
+              <p className="text-sm text-gray-500 text-center py-8">Aucun produit configuré pour ce cabinet</p>
+            ) : (
+              <div className="space-y-3">
+                {produitsEligibles.map((produit) => (
+                  <div key={produit.id} className="border rounded-lg p-4">
+                    <p className="font-medium text-gray-900">{produit.nom}</p>
+                    {produit.description && (
+                      <p className="text-xs text-gray-500 mt-1">{produit.description}</p>
+                    )}
+                    <div className="flex items-center gap-4 mt-2">
+                      <div>
+                        <span className="text-xs text-gray-500">Commission cabinet: </span>
+                        <span className="text-sm font-semibold text-gray-900">
+                          {produit.commission_rate ? `${Math.round(produit.commission_rate * 100)}%` : 'Non définie'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-xs text-gray-500">Mode: </span>
+                        <span className="text-sm text-gray-700">{produit.fee_mode || 'percent'}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <Separator />
       <div className="flex flex-wrap items-center justify-between gap-4">
