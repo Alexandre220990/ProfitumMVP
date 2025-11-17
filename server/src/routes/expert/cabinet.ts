@@ -441,7 +441,7 @@ router.post('/members/new', async (req: Request, res: Response) => {
         member_type: 'expert' as any,
         team_role: resolvedRole as any,
         manager_member_id: resolvedManagerId,
-        status: 'pending', // En attente de validation admin
+        status: 'invited', // En attente de validation admin
         permissions: {},
         products: []
       });
