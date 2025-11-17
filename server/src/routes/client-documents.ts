@@ -279,7 +279,7 @@ router.post('/dossier/:id/validate-step-3', enhancedAuthMiddleware, async (req: 
     // Vérifier les documents rejetés
     const { data: rejectedDocs, error: rejectedError } = await supabase
       .from('ClientProcessDocument')
-      .select('id, filename, document_type')
+      .select('id, filename, document_type, parent_document_id')
       .eq('client_produit_id', dossierId)
       .eq('validation_status', 'rejected');
 
@@ -292,19 +292,45 @@ router.post('/dossier/:id/validate-step-3', enhancedAuthMiddleware, async (req: 
     }
 
     // ✅ VÉRIFICATION AVEC VERSIONING : Exclure les documents rejetés qui ont été remplacés
-    const { data: allDocs } = await supabase
+    const { data: allDocs, error: allDocsError } = await supabase
       .from('ClientProcessDocument')
       .select('id, parent_document_id, validation_status')
       .eq('client_produit_id', dossierId);
 
+    if (allDocsError) {
+      console.error('❌ Erreur récupération tous les documents:', allDocsError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la vérification des documents'
+      });
+    }
+
     // Filtrer les documents rejetés qui n'ont PAS été remplacés
+    // NOTE: La structure peut être complexe - un document rejeté peut pointer vers un document validé
+    // et un nouveau document peut pointer vers le rejeté
     const unresolvedRejectedDocs = (rejectedDocs || []).filter(rejectedDoc => {
       // Vérifier s'il existe un document de remplacement (avec parent_document_id = rejectedDoc.id)
-      const hasReplacement = (allDocs || []).some(doc => 
+      // Le remplacement doit être pending ou validated (pas rejeté)
+      const hasValidReplacement = (allDocs || []).some(doc => 
         doc.parent_document_id === rejectedDoc.id && 
-        doc.validation_status !== 'rejected' // Le remplacement doit être pending ou validated
+        doc.validation_status !== 'rejected'
       );
-      return !hasReplacement; // Garder seulement ceux qui n'ont PAS de remplacement
+      
+      // Si le document rejeté a lui-même un parent (pointant vers un document validé),
+      // on doit vérifier si ce parent validé existe toujours et n'a pas été remplacé
+      const rejectedDocParent = rejectedDoc.parent_document_id 
+        ? (allDocs || []).find(doc => doc.id === rejectedDoc.parent_document_id)
+        : null;
+      
+      // Si le rejeté a un parent validé ET qu'il n'y a pas de remplacement valide du rejeté,
+      // alors le rejeté bloque (car il remplace un validé)
+      if (rejectedDocParent && rejectedDocParent.validation_status === 'validated') {
+        // Le rejeté remplace un validé, donc il bloque s'il n'a pas de remplacement valide
+        return !hasValidReplacement;
+      }
+      
+      // Sinon, logique normale : le rejeté bloque s'il n'a pas de remplacement valide
+      return !hasValidReplacement;
     });
 
     console.log('🔍 Vérification documents rejetés:', {
@@ -340,43 +366,79 @@ router.post('/dossier/:id/validate-step-3', enhancedAuthMiddleware, async (req: 
     }
 
     // Marquer l'étape 3 comme complétée
-    const { error: stepError } = await supabase
+    // Vérifier d'abord si l'étape existe
+    const { data: existingStep } = await supabase
       .from('DossierStep')
-      .update({
-        status: 'completed',
-        progress: 100,
-        completed_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
+      .select('id')
       .eq('dossier_id', dossierId)
-      .eq('step_name', 'Collecte des documents');
+      .eq('step_name', 'Collecte des documents')
+      .maybeSingle();
 
-    if (stepError) {
-      console.error('❌ Erreur mise à jour étape:', stepError);
-      return res.status(500).json({
-        success: false,
-        message: 'Erreur lors de la mise à jour de l\'étape'
-      });
+    if (existingStep) {
+      const { error: stepError } = await supabase
+        .from('DossierStep')
+        .update({
+          status: 'completed',
+          progress: 100,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existingStep.id);
+
+      if (stepError) {
+        console.error('❌ Erreur mise à jour étape:', stepError);
+        return res.status(500).json({
+          success: false,
+          message: 'Erreur lors de la mise à jour de l\'étape',
+          details: stepError.message
+        });
+      }
+    } else {
+      console.warn('⚠️ Étape "Collecte des documents" non trouvée pour le dossier:', dossierId);
+      // Créer l'étape si elle n'existe pas
+      const { error: createStepError } = await supabase
+        .from('DossierStep')
+        .insert({
+          dossier_id: dossierId,
+          step_name: 'Collecte des documents',
+          status: 'completed',
+          progress: 100,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+
+      if (createStepError) {
+        console.error('❌ Erreur création étape:', createStepError);
+        return res.status(500).json({
+          success: false,
+          message: 'Erreur lors de la création de l\'étape',
+          details: createStepError.message
+        });
+      }
     }
+
 
     // Marquer la demande de documents comme complétée si elle existe
     if (documentRequest) {
-      await supabase
+      const { error: updateRequestError } = await supabase
         .from('document_request')
         .update({
-          status: 'completed',
-          completed_at: new Date().toISOString()
+          status: 'completed'
         })
         .eq('id', documentRequest.id);
+      
+      if (updateRequestError) {
+        console.error('⚠️ Erreur mise à jour demande documents (non bloquant):', updateRequestError);
+      }
     }
 
     // Mettre à jour le statut du dossier
-    await supabase
+    const dossierMetadata = dossier.metadata as any || {};
+    const { error: updateDossierError } = await supabase
       .from('ClientProduitEligible')
       .update({
         statut: 'documents_completes',
         metadata: {
-          ...(dossier.metadata as any || {}),
+          ...dossierMetadata,
           documents_missing: false,
           step_3_completed_at: new Date().toISOString()
         },
@@ -384,16 +446,32 @@ router.post('/dossier/:id/validate-step-3', enhancedAuthMiddleware, async (req: 
       })
       .eq('id', dossierId);
 
-    // Activer l'étape 4 "Audit technique"
-    await supabase
+    if (updateDossierError) {
+      console.error('❌ Erreur mise à jour dossier:', updateDossierError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la mise à jour du dossier',
+        details: updateDossierError.message
+      });
+    }
+
+    // Activer l'étape 4 "Audit technique" (si elle existe)
+    const { data: auditStep } = await supabase
       .from('DossierStep')
-      .update({
-        status: 'in_progress',
-        updated_at: new Date().toISOString()
-      })
+      .select('id')
       .eq('dossier_id', dossierId)
       .eq('step_name', 'Audit technique')
-      .eq('status', 'pending');
+      .maybeSingle();
+
+    if (auditStep) {
+      await supabase
+        .from('DossierStep')
+        .update({
+          status: 'in_progress',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', auditStep.id);
+    }
 
     // 📅 TIMELINE : Ajouter événement étape 3 complétée
     try {
