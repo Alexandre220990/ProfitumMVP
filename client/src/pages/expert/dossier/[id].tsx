@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { get, post, put } from '@/lib/api';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,6 +10,7 @@ import { Progress } from '@/components/ui/progress';
 import InfosClientEnrichies from '@/components/dossier/InfosClientEnrichies';
 import ExpertDocumentRequestModal from '@/components/expert/ExpertDocumentRequestModal';
 import ExpertDossierActions from '@/components/expert/ExpertDossierActions';
+import ReviseAuditModal from '@/components/expert/ReviseAuditModal';
 import type { ClientProduitStatut } from '@/types/statuts';
 import { STATUT_COLORS, STATUT_LABELS, getProgressFromStatut } from '@/types/statuts';
 import {
@@ -127,6 +128,15 @@ export default function ExpertDossierSynthese() {
   const [documentsCount, setDocumentsCount] = useState<number>(0);
   const [preFilledDocuments, setPreFilledDocuments] = useState<Array<{name: string; reason: string}>>([]);
   const [documentsReloadKey, setDocumentsReloadKey] = useState(0);
+  const [searchParams] = useSearchParams();
+  const [showReviseModal, setShowReviseModal] = useState(false);
+
+  // Vérifier si on doit ouvrir le modal de révision
+  useEffect(() => {
+    if (searchParams.get('action') === 'revise') {
+      setShowReviseModal(true);
+    }
+  }, [searchParams]);
 
   // Charger les données du CPE
   useEffect(() => {
@@ -847,6 +857,36 @@ export default function ExpertDossierSynthese() {
           </Card>
         )}
       </div>
+
+      {/* Modal de révision d'audit */}
+      {cpe && cpe.statut === 'audit_rejected_by_client' && (
+        <ReviseAuditModal
+          isOpen={showReviseModal}
+          onClose={() => {
+            setShowReviseModal(false);
+            navigate(`/expert/dossier/${id}`);
+          }}
+          dossierId={id || ''}
+          currentMontant={cpe.montantFinal || 0}
+          currentNotes={(cpe.metadata as any)?.audit_result?.notes || ''}
+          rejectionReason={(cpe.metadata as any)?.client_validation?.reason || ''}
+          onSuccess={() => {
+            // Recharger les données du dossier
+            const loadCPE = async () => {
+              if (!id) return;
+              try {
+                const response = await get<ClientProduitEligible>(`/api/expert/dossier/${id}`);
+                if (response.success && response.data) {
+                  setCPE(response.data);
+                }
+              } catch (error) {
+                console.error('Erreur rechargement CPE:', error);
+              }
+            };
+            loadCPE();
+          }}
+        />
+      )}
     </div>
   );
 }

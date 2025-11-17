@@ -6,8 +6,10 @@
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, CheckCircle, DollarSign, FileText, Loader2 } from 'lucide-react';
+import { AlertCircle, CheckCircle, DollarSign, FileText, Loader2, X } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { get, post } from '@/lib/api';
 import { toast } from 'sonner';
 
@@ -42,6 +44,9 @@ export default function AuditValidationModal({
   const [commissionInfo, setCommissionInfo] = useState<CommissionInfo | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
+  const [isRejecting, setIsRejecting] = useState(false);
+  const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
 
   // Charger les infos de commission à l'ouverture
   useEffect(() => {
@@ -56,7 +61,7 @@ export default function AuditValidationModal({
       const response = await get(`/api/client/dossier/${dossierId}/audit-commission-info`);
       
       if (response.success && response.data) {
-        setCommissionInfo(response.data);
+        setCommissionInfo(response.data as CommissionInfo);
         console.log('💰 Infos commission chargées:', response.data);
       } else {
         toast.error('Erreur de chargement des informations');
@@ -94,8 +99,33 @@ export default function AuditValidationModal({
   };
 
   const handleRejectAudit = async () => {
-    // TODO: Implémenter modal de refus avec raison
-    toast.info('Fonctionnalité à venir : refus d\'audit');
+    if (!rejectReason.trim()) {
+      toast.error('Veuillez indiquer la raison du refus');
+      return;
+    }
+
+    setIsRejecting(true);
+    try {
+      const response = await post(`/api/client/dossier/${dossierId}/validate-audit`, {
+        action: 'reject',
+        reason: rejectReason.trim()
+      });
+
+      if (response.success) {
+        toast.success('Audit refusé. L\'expert a été notifié et pourra proposer une nouvelle version.');
+        setShowRejectDialog(false);
+        setRejectReason('');
+        onValidated();
+        onClose();
+      } else {
+        toast.error(response.message || 'Erreur lors du refus');
+      }
+    } catch (error) {
+      console.error('Erreur refus audit:', error);
+      toast.error('Erreur lors du refus');
+    } finally {
+      setIsRejecting(false);
+    }
   };
 
   return (
@@ -261,7 +291,7 @@ export default function AuditValidationModal({
             <div className="flex gap-3 pt-4">
               <Button
                 onClick={handleValidateAudit}
-                disabled={isValidating}
+                disabled={isValidating || isRejecting}
                 className="flex-1 bg-green-600 hover:bg-green-700"
               >
                 {isValidating ? (
@@ -277,9 +307,18 @@ export default function AuditValidationModal({
                 )}
               </Button>
               <Button
+                onClick={() => setShowRejectDialog(true)}
+                variant="outline"
+                disabled={isValidating || isRejecting}
+                className="border-red-300 text-red-600 hover:bg-red-50"
+              >
+                <X className="w-4 h-4 mr-2" />
+                Refuser
+              </Button>
+              <Button
                 onClick={onClose}
                 variant="outline"
-                disabled={isValidating}
+                disabled={isValidating || isRejecting}
               >
                 Annuler
               </Button>
@@ -295,6 +334,65 @@ export default function AuditValidationModal({
           </div>
         )}
       </DialogContent>
+
+      {/* Dialog de refus */}
+      <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <X className="w-5 h-5" />
+              Refuser l'audit
+            </DialogTitle>
+            <DialogDescription>
+              Veuillez indiquer la raison de votre refus. L'expert sera notifié et pourra proposer une nouvelle version.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="reject-reason" className="text-sm font-medium">
+                Raison du refus *
+              </Label>
+              <Textarea
+                id="reject-reason"
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="Ex: Le montant proposé est insuffisant, les conditions de commission ne sont pas acceptables..."
+                className="mt-2 min-h-[100px]"
+                disabled={isRejecting}
+              />
+            </div>
+          </div>
+          <div className="flex gap-3 justify-end">
+            <Button
+              onClick={() => {
+                setShowRejectDialog(false);
+                setRejectReason('');
+              }}
+              variant="outline"
+              disabled={isRejecting}
+            >
+              Annuler
+            </Button>
+            <Button
+              onClick={handleRejectAudit}
+              disabled={isRejecting || !rejectReason.trim()}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isRejecting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Envoi...
+                </>
+              ) : (
+                <>
+                  <X className="w-4 h-4 mr-2" />
+                  Confirmer le refus
+                </>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }

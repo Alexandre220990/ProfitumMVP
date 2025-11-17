@@ -36,6 +36,7 @@ interface ProduitEligible {
   description?: string;
   categorie?: string;
   commission_rate?: number; // Commission du cabinet pour ce produit (en décimal)
+  client_fee_percentage_min?: number | null; // Minimum de commission autorisé pour négociation (en décimal)
   fee_mode?: 'fixed' | 'percent';
 }
 
@@ -134,6 +135,140 @@ const HierarchyList = ({
 
 const canAssignManager = (permissions: CabinetPermissions | undefined) => permissions?.isOwner;
 const canManageMembers = (permissions: CabinetPermissions | undefined) => permissions?.canManageMembers;
+
+// Composant pour éditer le minimum de commission d'un produit
+function ProductMinCommissionEditor({ produit, onUpdate }: { produit: ProduitEligible; onUpdate: () => void }) {
+  const [editingMin, setEditingMin] = useState(false);
+  const [minValue, setMinValue] = useState<number | null>(produit.client_fee_percentage_min ? produit.client_fee_percentage_min * 100 : null);
+  const [savingMin, setSavingMin] = useState(false);
+
+  const handleSaveMin = async () => {
+    setSavingMin(true);
+    try {
+      // Trouver l'ID du CabinetProduitEligible
+      const response = await fetch(`${config.API_URL}/api/expert/cabinet/products`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      const data = await response.json();
+      const cabinetProduct = data.data?.find((p: any) => p.produit_eligible_id === produit.id);
+      
+      if (!cabinetProduct?.id) {
+        toast.error('Produit non trouvé dans le cabinet');
+        return;
+      }
+
+      const updateResponse = await fetch(`${config.API_URL}/api/expert/cabinet/products/${cabinetProduct.id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          client_fee_percentage_min: minValue !== null ? minValue / 100 : null
+        })
+      });
+
+      const updateData = await updateResponse.json();
+      if (updateData.success) {
+        toast.success('Minimum de commission mis à jour');
+        setEditingMin(false);
+        onUpdate();
+      } else {
+        toast.error(updateData.message || 'Erreur lors de la mise à jour');
+      }
+    } catch (error) {
+      console.error('Erreur sauvegarde minimum:', error);
+      toast.error('Erreur lors de la sauvegarde');
+    } finally {
+      setSavingMin(false);
+    }
+  };
+
+  return (
+    <div className="border rounded-lg p-4">
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex-1">
+          <p className="font-medium text-gray-900">{produit.nom}</p>
+          {produit.description && (
+            <p className="text-xs text-gray-500 mt-1">{produit.description}</p>
+          )}
+        </div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3">
+        <div>
+          <Label className="text-xs text-gray-600">Commission cabinet (max)</Label>
+          <p className="text-sm font-semibold text-gray-900 mt-1">
+            {produit.commission_rate ? `${Math.round(produit.commission_rate * 100)}%` : 'Non définie'}
+          </p>
+        </div>
+        <div>
+          <Label className="text-xs text-gray-600">Minimum négociation</Label>
+          {editingMin ? (
+            <div className="flex items-center gap-2 mt-1">
+              <Input
+                type="number"
+                min="0"
+                max={produit.commission_rate ? produit.commission_rate * 100 : 100}
+                step="0.1"
+                value={minValue !== null ? minValue : ''}
+                onChange={(e) => setMinValue(e.target.value ? parseFloat(e.target.value) : null)}
+                className="w-20 text-sm"
+                placeholder="Min %"
+                disabled={savingMin}
+              />
+              <span className="text-xs text-gray-500">%</span>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleSaveMin}
+                disabled={savingMin}
+              >
+                {savingMin ? '...' : '✓'}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setEditingMin(false);
+                  setMinValue(produit.client_fee_percentage_min ? produit.client_fee_percentage_min * 100 : null);
+                }}
+                disabled={savingMin}
+              >
+                ✕
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 mt-1">
+              <p className="text-sm font-semibold text-gray-900">
+                {minValue !== null ? `${minValue.toFixed(1)}%` : 'Non défini'}
+              </p>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setEditingMin(true)}
+                className="h-6 px-2 text-xs"
+              >
+                Modifier
+              </Button>
+            </div>
+          )}
+          <p className="text-xs text-gray-400 mt-1">
+            {minValue !== null 
+              ? `Les experts peuvent négocier entre ${minValue.toFixed(1)}% et ${produit.commission_rate ? Math.round(produit.commission_rate * 100) : 0}%`
+              : 'Aucune négociation autorisée (experts doivent utiliser le max)'}
+          </p>
+        </div>
+        <div>
+          <Label className="text-xs text-gray-600">Mode</Label>
+          <p className="text-sm text-gray-700 mt-1">{produit.fee_mode || 'percent'}</p>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export const CabinetTeamManagement = () => {
   const { context, loading, error, refresh, mutationLoading, updateMember, removeMember, refreshStats } =
@@ -249,6 +384,7 @@ export const CabinetTeamManagement = () => {
             description: item.ProduitEligible?.description,
             categorie: item.ProduitEligible?.categorie,
             commission_rate: item.commission_rate ? item.commission_rate / 100 : null, // Commission du cabinet (convertir % en décimal)
+            client_fee_percentage_min: item.client_fee_percentage_min || null, // Minimum de commission (en décimal)
             fee_mode: item.fee_mode || 'percent'
           }));
           setProduitsEligibles(produits);
@@ -998,36 +1134,43 @@ L'équipe Profitum`);
                 </Button>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {produitsEligibles.map((produit) => (
-                  <div key={produit.id} className="border rounded-lg p-4 flex items-center justify-between">
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-900">{produit.nom}</p>
-                      {produit.description && (
-                        <p className="text-xs text-gray-500 mt-1">{produit.description}</p>
-                      )}
-                      <div className="flex items-center gap-4 mt-2">
-                        <div>
-                          <span className="text-xs text-gray-500">Commission cabinet: </span>
-                          <span className="text-sm font-semibold text-gray-900">
-                            {produit.commission_rate ? `${Math.round(produit.commission_rate * 100)}%` : 'Non définie'}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-xs text-gray-500">Mode: </span>
-                          <span className="text-sm text-gray-700">{produit.fee_mode || 'percent'}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm" onClick={() => toast.info('Bientôt : modifier commission')}>
-                        Modifier
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => toast.info('Bientôt : supprimer produit')}>
-                        Supprimer
-                      </Button>
-                    </div>
-                  </div>
+                  <ProductMinCommissionEditor
+                    key={produit.id}
+                    produit={produit}
+                    onUpdate={() => {
+                      // Recharger les produits après mise à jour
+                      const fetchCabinetProduits = async () => {
+                        try {
+                          const response = await fetch(`${config.API_URL}/api/expert/cabinet/products`, {
+                            headers: {
+                              'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                              'Content-Type': 'application/json'
+                            }
+                          });
+                          if (response.ok) {
+                            const data = await response.json();
+                            if (data.success && data.data) {
+                              const produits = data.data.map((item: any) => ({
+                                id: item.produit_eligible_id || item.ProduitEligible?.id,
+                                nom: item.ProduitEligible?.nom || item.nom,
+                                description: item.ProduitEligible?.description,
+                                categorie: item.ProduitEligible?.categorie,
+                                commission_rate: item.commission_rate ? item.commission_rate / 100 : null,
+                                client_fee_percentage_min: item.client_fee_percentage_min || null,
+                                fee_mode: item.fee_mode || 'percent'
+                              }));
+                              setProduitsEligibles(produits);
+                            }
+                          }
+                        } catch (error) {
+                          console.error('Erreur rechargement produits:', error);
+                        }
+                      };
+                      fetchCabinetProduits();
+                    }}
+                  />
                 ))}
               </div>
             )}

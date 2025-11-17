@@ -735,6 +735,7 @@ router.get('/products', async (req: Request, res: Response) => {
         commission_rate,
         fee_amount,
         fee_mode,
+        client_fee_percentage_min,
         is_active,
         metadata,
         created_at,
@@ -853,7 +854,7 @@ router.put('/products/:id', async (req: Request, res: Response) => {
     }
 
     const { id } = req.params;
-    const { commission_rate, fee_amount, fee_mode, is_active } = req.body;
+    const { commission_rate, fee_amount, fee_mode, is_active, client_fee_percentage_min } = req.body;
 
     // Vérifier que le produit appartient au cabinet
     const { data: existingProduct, error: checkError } = await supabase
@@ -869,12 +870,35 @@ router.put('/products/:id', async (req: Request, res: Response) => {
       });
     }
 
+    // Validation: client_fee_percentage_min doit être <= commission_rate
+    if (client_fee_percentage_min !== undefined && commission_rate !== undefined) {
+      const minDecimal = typeof client_fee_percentage_min === 'number' 
+        ? client_fee_percentage_min 
+        : parseFloat(client_fee_percentage_min);
+      const maxDecimal = typeof commission_rate === 'number' 
+        ? commission_rate / 100 
+        : parseFloat(commission_rate) / 100;
+      
+      if (minDecimal > maxDecimal) {
+        return res.status(400).json({
+          success: false,
+          message: 'Le minimum de commission ne peut pas être supérieur au maximum'
+        });
+      }
+    }
+
     // Mettre à jour
     const updates: Record<string, any> = {};
     if (commission_rate !== undefined) updates.commission_rate = commission_rate;
     if (fee_amount !== undefined) updates.fee_amount = fee_amount;
     if (fee_mode !== undefined) updates.fee_mode = fee_mode;
     if (is_active !== undefined) updates.is_active = is_active;
+    if (client_fee_percentage_min !== undefined) {
+      // Convertir en décimal si fourni en pourcentage
+      updates.client_fee_percentage_min = typeof client_fee_percentage_min === 'number' && client_fee_percentage_min > 1
+        ? client_fee_percentage_min / 100
+        : client_fee_percentage_min;
+    }
     updates.updated_at = new Date().toISOString();
 
     const { data: updated, error: updateError } = await supabase

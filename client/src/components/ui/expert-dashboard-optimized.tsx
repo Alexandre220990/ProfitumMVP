@@ -23,7 +23,9 @@ import {
   Archive,
   Bell,
   LayoutDashboard,
-  UserCog
+  UserCog,
+  XCircle,
+  Edit
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { get, put } from "@/lib/api";
@@ -120,6 +122,7 @@ export const ExpertDashboardOptimized = () => {
   const [clientsList, setClientsList] = useState<any[]>([]);
   const [dossiersList, setDossiersList] = useState<any[]>([]);
   const [apporteursList, setApporteursList] = useState<any[]>([]);
+  const [rejectedAudits, setRejectedAudits] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'team'>('dashboard');
   const alertsRef = React.useRef<HTMLDivElement>(null);
 
@@ -131,10 +134,11 @@ export const ExpertDashboardOptimized = () => {
       setLoading(true);
 
       // Charger toutes les données en parallèle
-      const [overviewRes, alertsRes, prioritizedRes] = await Promise.all([
+      const [overviewRes, alertsRes, prioritizedRes, rejectedRes] = await Promise.all([
         get<{ kpis: KPIs; apporteurs: Apporteur[] }>('/api/expert/dashboard/overview'),
         get<Alert[]>('/api/expert/dashboard/alerts'),
-        get<PrioritizedDossier[]>('/api/expert/dashboard/prioritized')
+        get<PrioritizedDossier[]>('/api/expert/dashboard/prioritized'),
+        get<any[]>('/api/expert/dashboard/rejected-audits')
       ]);
 
       if (overviewRes.success && overviewRes.data) {
@@ -147,6 +151,10 @@ export const ExpertDashboardOptimized = () => {
 
       if (prioritizedRes.success && prioritizedRes.data) {
         setPrioritizedDossiers(prioritizedRes.data);
+      }
+
+      if (rejectedRes.success && rejectedRes.data) {
+        setRejectedAudits(rejectedRes.data);
       }
 
     } catch (error) {
@@ -436,6 +444,73 @@ export const ExpertDashboardOptimized = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* 🔴 DOSSIERS REFUSÉS PAR LE CLIENT */}
+        {rejectedAudits.length > 0 && !activeTable && (
+          <Card className="mb-8 border-red-200 bg-gradient-to-r from-red-50 to-pink-50">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <XCircle className="h-5 w-5 text-red-600" />
+                  <span className="text-red-900">Audits Refusés ({rejectedAudits.length})</span>
+                </div>
+                <Badge className="bg-red-600 text-white">Action requise</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {rejectedAudits.slice(0, 5).map((rejected) => (
+                <div 
+                  key={rejected.id}
+                  className="p-4 rounded-xl border-l-4 border-red-500 bg-white hover:shadow-md transition-all"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Badge variant="outline" className="bg-white text-gray-700">
+                          {rejected.produitName}
+                        </Badge>
+                        {rejected.revisionNumber > 0 && (
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700">
+                            Révision #{rejected.revisionNumber}
+                          </Badge>
+                        )}
+                        <span className="text-xs text-gray-500">
+                          Il y a {rejected.daysSinceRejection} jour{rejected.daysSinceRejection > 1 ? 's' : ''}
+                        </span>
+                      </div>
+                      <p className="font-semibold text-gray-900 mb-1">
+                        {rejected.clientName}
+                      </p>
+                      <p className="text-sm text-gray-600 mb-2">
+                        Montant: {rejected.montantFinal.toLocaleString('fr-FR')} €
+                      </p>
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-2 mt-2">
+                        <p className="text-xs font-semibold text-red-900 mb-1">Raison du refus :</p>
+                        <p className="text-sm text-red-800">{rejected.rejectionReason}</p>
+                      </div>
+                    </div>
+                    <Button 
+                      size="sm" 
+                      className="shrink-0 bg-red-600 hover:bg-red-700"
+                      onClick={() => navigate(`/expert/dossier/${rejected.id}?action=revise`)}
+                    >
+                      <Edit className="h-4 w-4 mr-2" />
+                      Nouvelle proposition
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              
+              {rejectedAudits.length > 5 && (
+                <div className="text-center pt-2">
+                  <p className="text-sm text-gray-600">
+                    + {rejectedAudits.length - 5} autre(s) refus(s)
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* 🚨 ALERTES URGENTES */}
         <div ref={alertsRef}>

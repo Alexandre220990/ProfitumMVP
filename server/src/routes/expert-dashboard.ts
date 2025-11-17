@@ -168,7 +168,9 @@ router.get('/prioritized', enhancedAuthMiddleware, async (req: Request, res: Res
     });
 
     // Récupérer les documents en attente de validation pour ces dossiers
+    // ET vérifier si des documents ont été uploadés
     const pendingDocumentsMap = new Map<string, number>();
+    const hasDocumentsMap = new Map<string, boolean>(); // Map pour vérifier si des documents ont été uploadés
     if (dossiers.length > 0) {
       const dossierIds = dossiers.map(d => d.id);
       
@@ -180,12 +182,14 @@ router.get('/prioritized', enhancedAuthMiddleware, async (req: Request, res: Res
 
       if (!allDocsError && allDocs) {
         // Compter les documents en attente de validation
-        // Un document est en attente si :
-        // - validation_status est 'pending' ou null
-        // - ET status n'est pas 'rejected'
+        // ET vérifier si des documents ont été uploadés
         allDocs.forEach((doc: any) => {
+          const dossierId = doc.client_produit_id;
           const validationStatus = doc.validation_status;
           const status = doc.status;
+          
+          // Marquer qu'au moins un document a été uploadé pour ce dossier
+          hasDocumentsMap.set(dossierId, true);
           
           // Document en attente si validation_status est pending/null et pas rejeté
           const isPending = (
@@ -195,7 +199,6 @@ router.get('/prioritized', enhancedAuthMiddleware, async (req: Request, res: Res
           );
           
           if (isPending) {
-            const dossierId = doc.client_produit_id;
             const currentCount = pendingDocumentsMap.get(dossierId) || 0;
             pendingDocumentsMap.set(dossierId, currentCount + 1);
           }
@@ -214,6 +217,9 @@ router.get('/prioritized', enhancedAuthMiddleware, async (req: Request, res: Res
       // Récupérer le nombre de documents en attente de validation
       const pendingDocsCount = pendingDocumentsMap.get(dossier.id) || 0;
       const hasPendingDocs = pendingDocsCount > 0;
+      
+      // Vérifier si des documents ont été uploadés pour ce dossier
+      const hasUploadedDocuments = hasDocumentsMap.get(dossier.id) || false;
 
       // 1. URGENCE (40 points) - Plus c'est ancien, plus c'est urgent
       let urgenceScore = 0;
@@ -257,7 +263,11 @@ router.get('/prioritized', enhancedAuthMiddleware, async (req: Request, res: Res
       
       if (hasPendingDocs) {
         // PRIORITÉ 1 : Documents reçus, en attente de validation
-        nextAction = `Documents reçus, vérification à effectuer (${pendingDocsCount} document${pendingDocsCount > 1 ? 's' : ''})`;
+        // Afficher aussi les jours d'attente du client si > 0
+        const daysInfo = daysSinceLastContact > 0 
+          ? `. Client en attente depuis ${daysSinceLastContact} jour${daysSinceLastContact > 1 ? 's' : ''}`
+          : '';
+        nextAction = `${pendingDocsCount} document${pendingDocsCount > 1 ? 's' : ''} à vérifier${daysInfo}`;
         actionType = 'documents_pending_validation';
       } else if (docRequest) {
         // PRIORITÉ 2 : On attend des documents du client (demande explicite dans document_request)
@@ -288,7 +298,22 @@ router.get('/prioritized', enhancedAuthMiddleware, async (req: Request, res: Res
           nextAction = `En attente documents client depuis ${daysSinceLastContact} jour${daysSinceLastContact > 1 ? 's' : ''}`;
         }
       } else if (dossier.statut === 'eligible' || dossier.statut === 'admin_validated' || dossier.statut === 'expert_assigned') {
-        nextAction = 'Examiner documents';
+        // Vérifier si des documents ont été uploadés avant de dire "Examiner documents"
+        if (hasUploadedDocuments) {
+          nextAction = 'Examiner documents';
+        } else {
+          // Aucun document uploadé : on est en attente des documents
+          actionType = 'documents_requested';
+          if (daysSinceLastContact >= 15) {
+            nextAction = `En attente documents client depuis ${daysSinceLastContact} jours - Relance 3 envoyée`;
+          } else if (daysSinceLastContact >= 10) {
+            nextAction = `En attente documents client depuis ${daysSinceLastContact} jours - Relance 2 envoyée`;
+          } else if (daysSinceLastContact >= 5) {
+            nextAction = `En attente documents client depuis ${daysSinceLastContact} jours - Relance 1 envoyée`;
+          } else {
+            nextAction = `En attente documents client depuis ${daysSinceLastContact} jour${daysSinceLastContact > 1 ? 's' : ''}`;
+          }
+        }
       } else if (dossier.statut === 'en_cours' || dossier.statut === 'audit_en_cours') {
         if (daysSinceLastContact > 7) {
           nextAction = 'Relancer client';
@@ -320,9 +345,9 @@ router.get('/prioritized', enhancedAuthMiddleware, async (req: Request, res: Res
         nextAction,
         lastContact: dossier.updated_at,
         daysSinceLastContact,
-        daysWaitingDocuments: docRequest?.daysWaiting || (actionType === 'documents_requested' && daysSinceLastContact >= 5 ? daysSinceLastContact : undefined),
+        daysWaitingDocuments: docRequest?.daysWaiting || (actionType === 'documents_requested' ? daysSinceLastContact : undefined),
         documentRequestDate: docRequest?.created_at,
-        hasDocumentRequest: !!docRequest || (actionType === 'documents_requested' && daysSinceLastContact >= 5),
+        hasDocumentRequest: !!docRequest || actionType === 'documents_requested',
         hasPendingDocuments: hasPendingDocs,
         pendingDocumentsCount: pendingDocsCount,
         actionType
@@ -353,6 +378,107 @@ router.get('/prioritized', enhancedAuthMiddleware, async (req: Request, res: Res
 // ROUTE 2 : ALERTES PROACTIVES (ACTIONS URGENTES)
 // ============================================================================
 
+// ============================================================================
+// ROUTE : DOSSIERS REFUSÉS PAR LE CLIENT
+// ============================================================================
+
+router.get('/rejected-audits', enhancedAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const authUser = req.user as AuthUser;
+    
+    if (!authUser || authUser.type !== 'expert') {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Accès non autorisé' 
+      });
+    }
+
+    const expertId = authUser.database_id || authUser.id;
+
+    // Récupérer les dossiers refusés par le client
+    const { data: dossiers, error } = await supabase
+      .from('ClientProduitEligible')
+      .select(`
+        id,
+        "clientId",
+        "produitId",
+        "montantFinal",
+        statut,
+        metadata,
+        created_at,
+        updated_at,
+        Client:clientId (
+          id,
+          company_name,
+          nom,
+          prenom,
+          first_name,
+          last_name,
+          email
+        ),
+        ProduitEligible:produitId (
+          id,
+          nom
+        )
+      `)
+      .eq('expert_id', expertId)
+      .eq('statut', 'audit_rejected_by_client')
+      .order('updated_at', { ascending: false });
+
+    if (error) {
+      console.error('❌ Erreur récupération dossiers refusés:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur serveur'
+      });
+    }
+
+    // Enrichir avec les informations de refus
+    const enrichedDossiers = (dossiers || []).map((dossier: any) => {
+      const clientInfo = Array.isArray(dossier.Client) ? dossier.Client[0] : dossier.Client;
+      const produitInfo = Array.isArray(dossier.ProduitEligible) ? dossier.ProduitEligible[0] : dossier.ProduitEligible;
+      
+      const clientName = clientInfo?.company_name 
+        || `${clientInfo?.first_name || clientInfo?.prenom || ''} ${clientInfo?.last_name || clientInfo?.nom || ''}`.trim()
+        || 'Client inconnu';
+      
+      const rejectionInfo = dossier.metadata?.client_validation || {};
+      const rejectionDate = rejectionInfo.validated_at 
+        ? new Date(rejectionInfo.validated_at)
+        : new Date(dossier.updated_at);
+      
+      const daysSinceRejection = Math.floor((Date.now() - rejectionDate.getTime()) / (1000 * 60 * 60 * 24));
+
+      return {
+        id: dossier.id,
+        clientId: dossier.clientId,
+        clientName,
+        clientEmail: clientInfo?.email || '',
+        produitId: dossier.produitId,
+        produitName: produitInfo?.nom || 'Produit inconnu',
+        montantFinal: dossier.montantFinal || 0,
+        rejectionReason: rejectionInfo.reason || 'Aucune raison spécifiée',
+        rejectionDate: rejectionDate.toISOString(),
+        daysSinceRejection,
+        previousAuditResult: dossier.metadata?.audit_result || null,
+        revisionNumber: dossier.metadata?.audit_result?.revision?.revision_number || 0
+      };
+    });
+
+    return res.json({
+      success: true,
+      data: enrichedDossiers
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur rejected-audits:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
 router.get('/alerts', enhancedAuthMiddleware, async (req: Request, res: Response) => {
   try {
     const authUser = req.user as AuthUser;
@@ -379,6 +505,9 @@ router.get('/alerts', enhancedAuthMiddleware, async (req: Request, res: Response
         'documents_completed',
         'audit_required',
         'audit_validated',
+        'audit_rejected',
+        'audit_rejected_by_client',
+        'audit_revised',
         'client_message'
       ])
       .order('created_at', { ascending: false })
@@ -417,6 +546,14 @@ router.get('/alerts', enhancedAuthMiddleware, async (req: Request, res: Response
         type = 'attention';
         category = 'dossier';
         actionLabel = 'Voir dossier';
+      } else if (notif.notification_type === 'audit_rejected' || notif.notification_type === 'audit_rejected_by_client') {
+        type = 'critique';
+        category = 'dossier';
+        actionLabel = 'Créer nouvelle proposition';
+      } else if (notif.notification_type === 'audit_revised') {
+        type = 'important';
+        category = 'dossier';
+        actionLabel = 'Voir nouvelle proposition';
       }
 
       // Urgence basée sur la priorité et le type

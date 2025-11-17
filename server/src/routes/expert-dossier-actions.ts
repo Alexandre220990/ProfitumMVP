@@ -994,7 +994,7 @@ router.post('/dossier/:id/complete-audit', enhancedAuthMiddleware, async (req: R
   try {
     const user = (req as AuthenticatedRequest).user;
     const { id: client_produit_id } = req.params;
-    const { montant_final, rapport_url, notes } = req.body;
+    const { montant_final, rapport_url, notes, client_fee_percentage } = req.body;
 
     if (!user || user.type !== 'expert') {
       return res.status(403).json({
@@ -1013,25 +1013,36 @@ router.post('/dossier/:id/complete-audit', enhancedAuthMiddleware, async (req: R
     console.log('✅ Expert termine audit:', {
       expert_id: user.database_id,
       client_produit_id,
-      montant_final
+      montant_final,
+      client_fee_percentage
     });
 
-    // Récupérer infos expert
+    // Récupérer infos expert avec cabinet et produit
     const { data: expertData } = await supabase
       .from('Expert')
-      .select('id, name')
+      .select(`
+        id, 
+        name, 
+        client_fee_percentage,
+        cabinet_id,
+        ExpertProduitEligible!inner(
+          produit_id,
+          client_fee_percentage
+        )
+      `)
       .eq('id', user.database_id)
       .single();
 
     const expertNameFallback = expertData?.name || user.email || 'Expert';
+    const defaultClientFeePercentage = expertData?.client_fee_percentage ?? 0.30;
 
-    // Récupérer le dossier
+    // Récupérer le dossier avec produit
     const { data: dossier, error: fetchError } = await supabase
       .from('ClientProduitEligible')
       .select(`
         *,
         Client(id, auth_user_id, company_name, nom, prenom, apporteur_id),
-        ProduitEligible(nom)
+        ProduitEligible(id, nom)
       `)
       .eq('id', client_produit_id)
       .single();
@@ -1051,7 +1062,73 @@ router.post('/dossier/:id/complete-audit', enhancedAuthMiddleware, async (req: R
       });
     }
 
-    // Mettre à jour le dossier
+    // VALIDATION NÉGOCIATION COMMISSION
+    let negotiatedClientFeePercentage = defaultClientFeePercentage;
+    if (client_fee_percentage !== undefined && client_fee_percentage !== null) {
+      // Convertir en décimal si fourni en pourcentage (> 1)
+      const negotiatedDecimal = typeof client_fee_percentage === 'number' && client_fee_percentage > 1
+        ? client_fee_percentage / 100
+        : parseFloat(String(client_fee_percentage));
+
+      if (isNaN(negotiatedDecimal) || negotiatedDecimal <= 0 || negotiatedDecimal > 1) {
+        return res.status(400).json({
+          success: false,
+          message: 'Pourcentage de commission invalide (doit être entre 0 et 100%)'
+        });
+      }
+
+      // Récupérer le minimum défini par le owner du cabinet pour ce produit
+      let minClientFeePercentage: number | null = null;
+      if (expertData?.cabinet_id && dossier.ProduitEligible?.id) {
+        const { data: cabinetProduct } = await supabase
+          .from('CabinetProduitEligible')
+          .select('client_fee_percentage_min, commission_rate')
+          .eq('cabinet_id', expertData.cabinet_id)
+          .eq('produit_eligible_id', dossier.ProduitEligible.id)
+          .single();
+
+        if (cabinetProduct?.client_fee_percentage_min !== null && cabinetProduct?.client_fee_percentage_min !== undefined) {
+          minClientFeePercentage = parseFloat(String(cabinetProduct.client_fee_percentage_min));
+        }
+      }
+
+      // Vérifier que la commission négociée respecte le minimum
+      if (minClientFeePercentage !== null && negotiatedDecimal < minClientFeePercentage) {
+        return res.status(400).json({
+          success: false,
+          message: `Le pourcentage de commission minimum autorisé est ${(minClientFeePercentage * 100).toFixed(1)}% (défini par le propriétaire du cabinet)`
+        });
+      }
+
+      // Vérifier que la commission négociée ne dépasse pas le maximum (client_fee_percentage de l'expert)
+      if (negotiatedDecimal > defaultClientFeePercentage) {
+        return res.status(400).json({
+          success: false,
+          message: `Le pourcentage de commission ne peut pas dépasser ${(defaultClientFeePercentage * 100).toFixed(1)}%`
+        });
+      }
+
+      negotiatedClientFeePercentage = negotiatedDecimal;
+    } else {
+      // Si pas de négociation, vérifier si un minimum est défini
+      // Si oui, on ne peut pas utiliser le default (il faut négocier)
+      if (expertData?.cabinet_id && dossier.ProduitEligible?.id) {
+        const { data: cabinetProduct } = await supabase
+          .from('CabinetProduitEligible')
+          .select('client_fee_percentage_min')
+          .eq('cabinet_id', expertData.cabinet_id)
+          .eq('produit_eligible_id', dossier.ProduitEligible.id)
+          .single();
+
+        if (cabinetProduct?.client_fee_percentage_min !== null && cabinetProduct?.client_fee_percentage_min !== undefined) {
+          // Un minimum est défini, mais l'expert n'a pas négocié
+          // On utilise quand même le default, mais on enregistre dans les métadonnées
+          console.log('⚠️ Minimum défini mais pas de négociation, utilisation du default');
+        }
+      }
+    }
+
+    // Mettre à jour le dossier avec la commission négociée
     const { data: updatedDossier, error: updateError } = await supabase
       .from('ClientProduitEligible')
       .update({
@@ -1067,7 +1144,10 @@ router.post('/dossier/:id/complete-audit', enhancedAuthMiddleware, async (req: R
             montant_initial: dossier.montantFinal,
             montant_final: montant_final,
             rapport_url: rapport_url || null,
-            notes: notes || ''
+            notes: notes || '',
+            client_fee_percentage_negotiated: negotiatedClientFeePercentage,
+            client_fee_percentage_default: defaultClientFeePercentage,
+            commission_negotiated: client_fee_percentage !== undefined && client_fee_percentage !== null
           }
         },
         updated_at: new Date().toISOString()
@@ -1193,6 +1273,261 @@ router.post('/dossier/:id/complete-audit', enhancedAuthMiddleware, async (req: R
 });
 
 /**
+ * POST /api/expert/dossier/:id/update-audit
+ * Expert modifie l'audit après un refus client (nouvelle proposition)
+ */
+router.post('/dossier/:id/update-audit', enhancedAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const user = (req as AuthenticatedRequest).user;
+    const { id: client_produit_id } = req.params;
+    const { montant_final, rapport_url, notes, client_fee_percentage } = req.body;
+
+    if (!user || user.type !== 'expert') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux experts'
+      });
+    }
+
+    // Récupérer le dossier pour vérifier le statut
+    const { data: dossier, error: fetchError } = await supabase
+      .from('ClientProduitEligible')
+      .select(`
+        *,
+        Client(id, auth_user_id, company_name, nom, prenom, apporteur_id),
+        ProduitEligible(id, nom),
+        Expert(id, name, client_fee_percentage, cabinet_id)
+      `)
+      .eq('id', client_produit_id)
+      .single();
+
+    if (fetchError || !dossier) {
+      return res.status(404).json({
+        success: false,
+        message: 'Dossier non trouvé'
+      });
+    }
+
+    // Vérifier que l'expert est assigné
+    if (dossier.expert_id !== user.database_id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Ce dossier ne vous est pas assigné'
+      });
+    }
+
+    // Vérifier que le dossier a été refusé par le client
+    if (dossier.statut !== 'audit_rejected_by_client') {
+      return res.status(400).json({
+        success: false,
+        message: 'Ce dossier n\'a pas été refusé par le client. Utilisez /complete-audit pour finaliser un audit.'
+      });
+    }
+
+    // Récupérer la raison du refus
+    const rejectionReason = dossier.metadata?.client_validation?.reason || 'Aucune raison spécifiée';
+
+    // Récupérer infos expert
+    const expertInfo = Array.isArray(dossier.Expert) ? dossier.Expert[0] : dossier.Expert;
+    const expertNameFallback = expertInfo?.name || user.email || 'Expert';
+    const defaultClientFeePercentage = expertInfo?.client_fee_percentage ?? 0.30;
+
+    // VALIDATION NÉGOCIATION COMMISSION (même logique que complete-audit)
+    let negotiatedClientFeePercentage = defaultClientFeePercentage;
+    if (client_fee_percentage !== undefined && client_fee_percentage !== null) {
+      const negotiatedDecimal = typeof client_fee_percentage === 'number' && client_fee_percentage > 1
+        ? client_fee_percentage / 100
+        : parseFloat(String(client_fee_percentage));
+
+      if (isNaN(negotiatedDecimal) || negotiatedDecimal <= 0 || negotiatedDecimal > 1) {
+        return res.status(400).json({
+          success: false,
+          message: 'Pourcentage de commission invalide (doit être entre 0 et 100%)'
+        });
+      }
+
+      // Récupérer le minimum défini par le owner du cabinet pour ce produit
+      let minClientFeePercentage: number | null = null;
+      if (expertInfo?.cabinet_id && dossier.ProduitEligible?.id) {
+        const { data: cabinetProduct } = await supabase
+          .from('CabinetProduitEligible')
+          .select('client_fee_percentage_min, commission_rate')
+          .eq('cabinet_id', expertInfo.cabinet_id)
+          .eq('produit_eligible_id', dossier.ProduitEligible.id)
+          .single();
+
+        if (cabinetProduct?.client_fee_percentage_min !== null && cabinetProduct?.client_fee_percentage_min !== undefined) {
+          minClientFeePercentage = parseFloat(String(cabinetProduct.client_fee_percentage_min));
+        }
+      }
+
+      // Vérifier que la commission négociée respecte le minimum
+      if (minClientFeePercentage !== null && negotiatedDecimal < minClientFeePercentage) {
+        return res.status(400).json({
+          success: false,
+          message: `Le pourcentage de commission minimum autorisé est ${(minClientFeePercentage * 100).toFixed(1)}% (défini par le propriétaire du cabinet)`
+        });
+      }
+
+      // Vérifier que la commission négociée ne dépasse pas le maximum
+      if (negotiatedDecimal > defaultClientFeePercentage) {
+        return res.status(400).json({
+          success: false,
+          message: `Le pourcentage de commission ne peut pas dépasser ${(defaultClientFeePercentage * 100).toFixed(1)}%`
+        });
+      }
+
+      negotiatedClientFeePercentage = negotiatedDecimal;
+    }
+
+    // Mettre à jour le dossier avec la nouvelle proposition
+    const newMontantFinal = montant_final !== undefined ? montant_final : dossier.montantFinal;
+    const newNotes = notes !== undefined ? notes : dossier.metadata?.audit_result?.notes || '';
+    const newRapportUrl = rapport_url !== undefined ? rapport_url : dossier.metadata?.audit_result?.rapport_url || null;
+
+    const { data: updatedDossier, error: updateError } = await supabase
+      .from('ClientProduitEligible')
+      .update({
+        statut: 'audit_completed', // Retour à l'état précédent
+        current_step: 4,
+        progress: 70,
+        montantFinal: newMontantFinal,
+        metadata: {
+          ...dossier.metadata,
+          audit_result: {
+            ...dossier.metadata?.audit_result,
+            completed_by: user.database_id,
+            completed_at: new Date().toISOString(),
+            montant_initial: dossier.montantFinal,
+            montant_final: newMontantFinal,
+            rapport_url: newRapportUrl,
+            notes: newNotes,
+            client_fee_percentage_negotiated: negotiatedClientFeePercentage,
+            client_fee_percentage_default: defaultClientFeePercentage,
+            commission_negotiated: client_fee_percentage !== undefined && client_fee_percentage !== null,
+            revision: {
+              previous_rejection_reason: rejectionReason,
+              previous_rejection_at: dossier.metadata?.client_validation?.validated_at,
+              revised_at: new Date().toISOString(),
+              revision_number: (dossier.metadata?.audit_result?.revision?.revision_number || 0) + 1
+            }
+          },
+          // Conserver l'historique des refus
+          client_validation_history: [
+            ...(dossier.metadata?.client_validation_history || []),
+            dossier.metadata?.client_validation
+          ]
+        },
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', client_produit_id)
+      .select()
+      .single();
+
+    if (updateError) {
+      throw updateError;
+    }
+
+    console.log(`✅ Nouvelle proposition d'audit - Montant: ${newMontantFinal} €, Commission: ${(negotiatedClientFeePercentage * 100).toFixed(1)}%`);
+
+    // Infos client
+    const clientInfo = Array.isArray(dossier.Client) ? dossier.Client[0] : dossier.Client;
+    const clientName = clientInfo?.company_name || clientInfo?.nom || 'Client';
+
+    // 📅 TIMELINE - Nouvelle proposition après refus
+    try {
+      await DossierTimelineService.addEvent({
+        dossier_id: client_produit_id,
+        type: 'expert_action',
+        actor_type: 'expert',
+        actor_name: expertNameFallback,
+        title: '🔄 Nouvelle proposition d\'audit',
+        description: `Expert ${expertNameFallback} - Nouvelle proposition après refus client\nMontant final : ${newMontantFinal.toLocaleString('fr-FR')} €\nRaison du refus précédent: ${rejectionReason}${newNotes ? '\nNote: ' + newNotes : ''}${negotiatedClientFeePercentage !== defaultClientFeePercentage ? `\nCommission négociée: ${(negotiatedClientFeePercentage * 100).toFixed(1)}% (au lieu de ${(defaultClientFeePercentage * 100).toFixed(1)}%)` : ''}`,
+        metadata: { 
+          montant_final: newMontantFinal, 
+          rapport_url: newRapportUrl, 
+          notes: newNotes,
+          previous_rejection_reason: rejectionReason,
+          client_fee_percentage_negotiated: negotiatedClientFeePercentage,
+          revision_number: (dossier.metadata?.audit_result?.revision?.revision_number || 0) + 1
+        },
+        icon: '🔄',
+        color: 'blue',
+        action_url: newRapportUrl || undefined
+      });
+    } catch (timelineError) {
+      console.error('⚠️ Erreur timeline (non bloquant):', timelineError);
+    }
+
+    // 🔔 NOTIFICATION → CLIENT
+    if (clientInfo?.auth_user_id) {
+      await supabase
+        .from('notification')
+        .insert({
+          user_id: clientInfo.auth_user_id,
+          user_type: 'client',
+          title: `🔄 Nouvelle proposition d'audit - ${dossier.ProduitEligible?.nom || 'Dossier'}`,
+          message: `Votre expert a proposé une nouvelle version de l'audit. Montant estimé : ${newMontantFinal.toLocaleString('fr-FR')} €. Veuillez examiner la nouvelle proposition.`,
+          notification_type: 'audit_revised',
+          priority: 'high',
+          is_read: false,
+          action_url: `/produits/${dossier.ProduitEligible?.nom?.toLowerCase()}/${client_produit_id}`,
+          action_data: {
+            client_produit_id,
+            expert_id: user.database_id,
+            expert_name: expertNameFallback,
+            montant_final: newMontantFinal,
+            rapport_url: newRapportUrl,
+            revised_at: new Date().toISOString(),
+            previous_rejection_reason: rejectionReason
+          },
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+    }
+
+    // 🔔 NOTIFICATION → ADMIN
+    const { data: admins } = await supabase
+      .from('Admin')
+      .select('auth_user_id')
+      .eq('is_active', true);
+
+    if (admins) {
+      for (const admin of admins) {
+        if (admin.auth_user_id) {
+          await supabase.from('notification').insert({
+            user_id: admin.auth_user_id,
+            user_type: 'admin',
+            title: `🔄 Nouvelle proposition d'audit - En attente validation client`,
+            message: `${expertNameFallback} - ${clientName} - Nouvelle proposition : ${newMontantFinal.toLocaleString('fr-FR')} €`,
+            notification_type: 'admin_info',
+            priority: 'medium',
+            is_read: false,
+            action_url: `/admin/dossiers/${client_produit_id}`,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+        }
+      }
+    }
+
+    return res.json({
+      success: true,
+      message: 'Nouvelle proposition d\'audit créée avec succès',
+      data: updatedDossier
+    });
+
+  } catch (error: any) {
+    console.error('❌ Erreur update audit:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la mise à jour de l\'audit',
+      details: error.message
+    });
+  }
+});
+
+/**
  * GET /api/client/dossier/:id/audit-commission-info
  * Récupérer les infos de commission pour affichage modal (avant validation)
  */
@@ -1228,7 +1563,13 @@ router.get('/client/dossier/:id/audit-commission-info', enhancedAuthMiddleware, 
     }
 
     const expertInfo = Array.isArray(dossier.Expert) ? dossier.Expert[0] : dossier.Expert;
-    const clientFeePercentage = expertInfo?.client_fee_percentage ?? 0.30;
+    
+    // Utiliser la commission négociée si disponible, sinon le default
+    const dossierMetadata = (dossier as any).metadata;
+    const auditResult = dossierMetadata?.audit_result;
+    const clientFeePercentage = auditResult?.client_fee_percentage_negotiated 
+      ?? expertInfo?.client_fee_percentage 
+      ?? 0.30;
     const profitumFeePercentage = expertInfo?.profitum_fee_percentage ?? 0.30;
     const montantRemboursement = dossier.montantFinal || 0;
     
@@ -1328,10 +1669,15 @@ router.post('/client/dossier/:id/validate-audit', enhancedAuthMiddleware, async 
 
     const expertInfo = Array.isArray(dossier.Expert) ? dossier.Expert[0] : dossier.Expert;
     const expertNameFallback = expertInfo?.name || user.email || 'Expert';
-    const clientFeePercentage = expertInfo?.client_fee_percentage ?? 0.30;
+    const defaultClientFeePercentage = expertInfo?.client_fee_percentage ?? 0.30;
     const profitumFeePercentage = expertInfo?.profitum_fee_percentage ?? 0.30;
 
-    // Calculer estimation WATERFALL (pour info client)
+    // Utiliser la commission négociée si disponible, sinon le default
+    const dossierMetadata = (dossier as any).metadata;
+    const auditResult = dossierMetadata?.audit_result;
+    const clientFeePercentage = auditResult?.client_fee_percentage_negotiated ?? defaultClientFeePercentage;
+
+    // Calculer estimation WATERFALL (pour info client) avec la commission négociée
     const montantRemboursement = dossier.montantFinal || 0;
     const expertTotalFee = montantRemboursement * clientFeePercentage;
     const profitumTotalFee = expertTotalFee * profitumFeePercentage;
@@ -1355,10 +1701,15 @@ router.post('/client/dossier/:id/validate-audit', enhancedAuthMiddleware, async 
     };
 
     // Si acceptation, enregistrer les conditions de commission acceptées
+    // Utiliser la commission négociée si disponible
+    const commissionWasNegotiated = auditResult?.commission_negotiated || false;
+    
     if (action === 'accept') {
       metadataUpdate.commission_conditions_accepted = {
         waterfall_model: true,
         client_fee_percentage: clientFeePercentage,
+        client_fee_percentage_default: defaultClientFeePercentage,
+        commission_negotiated: commissionWasNegotiated,
         profitum_fee_percentage: profitumFeePercentage,
         montant_remboursement: montantRemboursement,
         expert_total_fee: expertTotalFee,
@@ -1371,7 +1722,7 @@ router.post('/client/dossier/:id/validate-audit', enhancedAuthMiddleware, async 
         expert_name: expertNameFallback
       };
       console.log('💰 Conditions commission WATERFALL acceptées:', {
-        client_paie_expert: `${expertTotalFee.toFixed(2)} € (${(clientFeePercentage * 100).toFixed(0)}%)`,
+        client_paie_expert: `${expertTotalFee.toFixed(2)} € (${(clientFeePercentage * 100).toFixed(0)}%)${commissionWasNegotiated ? ' [NÉGOCIÉ]' : ''}`,
         expert_paie_profitum: `${profitumTotalFee.toFixed(2)} € (${(profitumFeePercentage * 100).toFixed(0)}%)`,
         profitum_ttc: `${profitumTotalTTC.toFixed(2)} €`
       });
@@ -1489,8 +1840,8 @@ router.post('/client/dossier/:id/validate-audit', enhancedAuthMiddleware, async 
           user_id: expertInfo.auth_user_id,
           user_type: 'expert',
           title: `⚠️ Audit refusé par le client`,
-          message: `${clientName} a refusé l'audit. Raison : ${reason || 'Non spécifié'}. Veuillez le contacter.`,
-          notification_type: 'audit_rejected',
+          message: `${clientName} a refusé l'audit. Raison : ${reason || 'Non spécifié'}. Veuillez proposer une nouvelle version.`,
+          notification_type: 'audit_rejected_by_client',
           priority: 'high',
           is_read: false,
           action_url: `/expert/dossier/${client_produit_id}`,
