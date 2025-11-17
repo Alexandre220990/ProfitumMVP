@@ -538,25 +538,39 @@ router.get('/dossier/:id/documents', enhancedAuthMiddleware, async (req: Request
 
     // Filtrer pour ne garder que les versions actives
     // Un document est "actif" si :
-    // 1. Il n'a pas de parent (document original)
-    // 2. OU il est la dernière version de son parent
+    // 1. Il n'a pas de parent (document original) ET il n'a pas de remplacement valide
+    // 2. OU il est un remplacement et c'est la dernière version de son parent
     const activeDocuments = (allDocuments || []).filter(doc => {
-      // Si pas de parent, c'est un document original = actif
+      // Si pas de parent, c'est un document original
       if (!doc.parent_document_id) {
-        // Vérifier qu'il n'existe pas un remplacement plus récent
-        const hasNewerReplacement = (allDocuments || []).some(other => 
+        // Vérifier qu'il n'existe pas un remplacement plus récent ET valide (pas rejeté)
+        const hasNewerValidReplacement = (allDocuments || []).some(other => 
           other.parent_document_id === doc.id && 
-          new Date(other.created_at) > new Date(doc.created_at)
+          new Date(other.created_at) > new Date(doc.created_at) &&
+          other.validation_status !== 'rejected' // Le remplacement doit être pending ou validated
         );
-        return !hasNewerReplacement;
+        return !hasNewerValidReplacement;
       }
       
-      // Si c'est un remplacement, vérifier qu'il est le plus récent
-      const newerReplacements = (allDocuments || []).filter(other => 
-        other.parent_document_id === doc.parent_document_id &&
-        new Date(other.created_at) > new Date(doc.created_at)
+      // Si c'est un remplacement, vérifier qu'il est le plus récent VALIDE de son parent
+      // ET qu'il n'y a pas de remplacement plus récent VALIDE de lui-même
+      const parentId = doc.parent_document_id;
+      
+      // Vérifier s'il existe un remplacement plus récent et VALIDE du même parent
+      const newerValidReplacementsOfParent = (allDocuments || []).filter(other => 
+        other.parent_document_id === parentId &&
+        new Date(other.created_at) > new Date(doc.created_at) &&
+        other.validation_status !== 'rejected' // Seuls les remplacements valides comptent
       );
-      return newerReplacements.length === 0;
+      
+      // Si ce remplacement a lui-même un remplacement plus récent VALIDE, il n'est pas actif
+      const newerValidReplacementsOfThis = (allDocuments || []).filter(other => 
+        other.parent_document_id === doc.id &&
+        new Date(other.created_at) > new Date(doc.created_at) &&
+        other.validation_status !== 'rejected'
+      );
+      
+      return newerValidReplacementsOfParent.length === 0 && newerValidReplacementsOfThis.length === 0;
     });
 
     // Mapper les données pour le frontend (avec fallbacks)

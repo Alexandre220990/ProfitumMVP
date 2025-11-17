@@ -113,14 +113,21 @@ export default function ClientStep3DocumentCollection({
 
   // Séparer les documents par statut
   // ✅ Note : Le backend filtre déjà les documents pour ne retourner que les versions actives
-  // Si un document rejeté apparaît dans cette liste, c'est qu'il n'a PAS été remplacé
+  // Si un document rejeté apparaît dans cette liste, c'est qu'il n'a PAS été remplacé par un document valide
   const rejectedDocs = documents.filter(d => d.validation_status === 'rejected');
 
-  // Calculer le nombre de documents complétés
-  // ✅ CONCORDANCE EXACTE AVEC LE BACKEND :
-  // - Un document rejeté dans la liste = il n'a pas été remplacé (bloqueur)
-  // - Le backend filtre déjà via parent_document_id, donc pas besoin de re-vérifier ici
-  const unresolvedRejectedDocsCount = rejectedDocs.length; // Documents rejetés NON remplacés
+  // Vérifier si chaque document rejeté a un remplacement valide (pending ou validated)
+  // Le backend devrait déjà filtrer cela, mais on double-vérifie côté frontend pour sécurité
+  const unresolvedRejectedDocs = rejectedDocs.filter(rejectedDoc => {
+    // Chercher un remplacement valide pour ce document rejeté
+    const hasValidReplacement = documents.some(doc => 
+      doc.parent_document_id === rejectedDoc.id && 
+      doc.validation_status !== 'rejected' // Le remplacement doit être pending ou validated
+    );
+    return !hasValidReplacement; // Garder seulement ceux qui n'ont PAS de remplacement valide
+  });
+
+  const unresolvedRejectedDocsCount = unresolvedRejectedDocs.length; // Documents rejetés NON remplacés par un document valide
 
   const requestedDocsCount = requestedDocs.filter(d => d.required).length;
   const requestedDocsUploaded = requestedDocs.filter(d => d.required && d.uploaded).length;
@@ -417,12 +424,70 @@ export default function ClientStep3DocumentCollection({
     );
   }
 
+  // Organiser les documents pour l'affichage
+  // Grouper les remplacements avec leurs parents pour un affichage cohérent
+  const documentMap = new Map<string, Document>();
+  const replacementMap = new Map<string, Document[]>(); // parent_id -> [replacements]
+  
+  documents.forEach(doc => {
+    if (doc.parent_document_id) {
+      // C'est un remplacement
+      if (!replacementMap.has(doc.parent_document_id)) {
+        replacementMap.set(doc.parent_document_id, []);
+      }
+      replacementMap.get(doc.parent_document_id)!.push(doc);
+    } else {
+      // C'est un document original
+      documentMap.set(doc.id, doc);
+    }
+  });
+
+  // Créer la liste d'affichage : documents originaux + leurs remplacements (si existants)
+  // Si un document a un remplacement valide, on affiche le remplacement au lieu de l'original
+  const displayDocuments: Document[] = [];
+  
+  documentMap.forEach((originalDoc, originalId) => {
+    const replacements = replacementMap.get(originalId) || [];
+    const validReplacements = replacements.filter(r => r.validation_status !== 'rejected');
+    
+    if (validReplacements.length > 0) {
+      // Afficher le remplacement valide le plus récent au lieu de l'original
+      const latestReplacement = validReplacements.sort((a, b) => 
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      )[0];
+      displayDocuments.push(latestReplacement);
+    } else {
+      // Pas de remplacement valide : afficher l'original
+      // (même s'il est rejeté, car c'est le document qui bloque)
+      displayDocuments.push(originalDoc);
+    }
+  });
+
+  // Ajouter les remplacements orphelins (cas où le parent n'existe plus dans la liste)
+  replacementMap.forEach((replacements, parentId) => {
+    if (!documentMap.has(parentId)) {
+      // Le parent n'est plus dans la liste (filtré par le backend), afficher le remplacement le plus récent
+      const validReplacements = replacements.filter(r => r.validation_status !== 'rejected');
+      if (validReplacements.length > 0) {
+        const latestReplacement = validReplacements.sort((a, b) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        )[0];
+        displayDocuments.push(latestReplacement);
+      }
+    }
+  });
+
+  // Trier par date de création décroissante (plus récents en premier)
+  displayDocuments.sort((a, b) => 
+    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
+
   // Fusionner tous les documents + les documents demandés non uploadés
   const allItems: Array<{
     type: 'document' | 'requested';
     data: Document | RequestedDocument;
   }> = [
-    ...documents.map(doc => ({ type: 'document' as const, data: doc })),
+    ...displayDocuments.map(doc => ({ type: 'document' as const, data: doc })),
     ...requestedDocs
       .filter(req => !req.uploaded)
       .map(req => ({ type: 'requested' as const, data: req }))
