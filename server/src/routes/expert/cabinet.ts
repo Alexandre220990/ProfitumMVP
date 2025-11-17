@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { supabase } from '../../lib/supabase';
 import { CabinetService } from '../../services/cabinetService';
 import { AuthUser } from '../../types/auth';
+import { normalizeDossierStatus } from '../../utils/dossierStatus';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 
@@ -889,7 +890,12 @@ router.put('/products/:id', async (req: Request, res: Response) => {
 
     // Mettre à jour
     const updates: Record<string, any> = {};
-    if (commission_rate !== undefined) updates.commission_rate = commission_rate;
+    if (commission_rate !== undefined) {
+      // Convertir en décimal si fourni en pourcentage (> 1)
+      updates.commission_rate = typeof commission_rate === 'number' && commission_rate > 1
+        ? commission_rate / 100
+        : commission_rate;
+    }
     if (fee_amount !== undefined) updates.fee_amount = fee_amount;
     if (fee_mode !== undefined) updates.fee_mode = fee_mode;
     if (is_active !== undefined) updates.is_active = is_active;
@@ -973,6 +979,837 @@ router.delete('/products/:id', async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('❌ Erreur DELETE /expert/cabinet/products/:id:', error);
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// ============================================================================
+// Routes pour les alertes produit (OWNER uniquement)
+// ============================================================================
+
+// Statuts actifs (pas terminés, pas rejetés, pas annulés)
+const ACTIVE_STATUSES = [
+  'pending_upload',
+  'pending_admin_validation',
+  'admin_validated',
+  'expert_assigned',
+  'expert_pending_validation',
+  'expert_validated',
+  'charte_pending',
+  'charte_signed',
+  'documents_requested',
+  'complementary_documents_upload_pending',
+  'complementary_documents_sent',
+  'complementary_documents_validated',
+  'complementary_documents_refused',
+  'audit_in_progress',
+  'audit_completed',
+  'validation_pending',
+  'validated',
+  'implementation_in_progress',
+  'implementation_validated',
+  'payment_requested',
+  'payment_in_progress',
+  // Statuts legacy
+  'eligible',
+  'opportunité',
+  'documents_uploaded',
+  'eligible_confirmed',
+  'eligibility_validated',
+  'expert_pending_acceptance',
+  'en_cours',
+  'documents_manquants',
+  'documents_completes',
+  'audit_en_cours'
+];
+
+// Statuts inactifs (terminés, rejetés, annulés)
+const INACTIVE_STATUSES = [
+  'admin_rejected',
+  'refund_completed',
+  'rejected',
+  'cancelled',
+  'archived'
+];
+
+// Helper: Vérifier si un statut est actif
+const isActiveStatus = (statut: string | null | undefined): boolean => {
+  if (!statut) return false;
+  const normalized = normalizeDossierStatus(statut);
+  return !INACTIVE_STATUSES.includes(normalized);
+};
+
+// 1. DOSSIERS BLOQUÉS (> 7 jours sans mise à jour)
+async function getBlockedDossiers(produitId: string) {
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  
+  // Récupérer tous les dossiers du produit
+  const { data: dossiers, error } = await supabase
+    .from('ClientProduitEligible')
+    .select(`
+      id,
+      statut,
+      updated_at,
+      montantFinal,
+      Client:clientId (
+        id,
+        nom,
+        email
+      ),
+      Expert:expert_id (
+        id,
+        name,
+        email
+      )
+    `)
+    .eq('produitId', produitId)
+    .order('updated_at', { ascending: true });
+
+  if (error) throw error;
+
+  // Filtrer et calculer les jours depuis la dernière mise à jour
+  const blockedDossiers = (dossiers || [])
+    .filter(dossier => {
+      const isActive = isActiveStatus(dossier.statut);
+      if (!isActive) return false;
+      
+      const updatedAt = new Date(dossier.updated_at);
+      return updatedAt < sevenDaysAgo;
+    })
+    .map(dossier => {
+      const daysSinceUpdate = Math.floor(
+        (new Date().getTime() - new Date(dossier.updated_at).getTime()) / (1000 * 60 * 60 * 24)
+      );
+      return {
+        ...dossier,
+        daysSinceUpdate
+      };
+    });
+
+  return blockedDossiers;
+}
+
+// 2. EXPERTS INACTIFS (> 14 jours avec dossiers actifs)
+async function getInactiveExperts(produitId: string) {
+  const fourteenDaysAgo = new Date();
+  fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+
+  // Récupérer tous les dossiers actifs du produit avec leurs experts
+  const { data: dossiers, error: dossiersError } = await supabase
+    .from('ClientProduitEligible')
+    .select(`
+      id,
+      expert_id,
+      statut,
+      updated_at,
+      Expert:expert_id (
+        id,
+        name,
+        email
+      )
+    `)
+    .eq('produitId', produitId)
+    .not('expert_id', 'is', null);
+
+  if (dossiersError) throw dossiersError;
+
+  // Grouper par expert et calculer la dernière activité
+  const expertsMap = new Map();
+  
+  (dossiers || []).forEach(dossier => {
+    if (!dossier.expert_id || !isActiveStatus(dossier.statut)) return;
+    
+    const expertId = dossier.expert_id;
+    const expert = dossier.Expert as any;
+    
+    if (!expertsMap.has(expertId)) {
+      expertsMap.set(expertId, {
+        expert,
+        dossiers: [],
+        lastActivity: null
+      });
+    }
+    
+    const expertData = expertsMap.get(expertId);
+    expertData.dossiers.push(dossier);
+    
+    const dossierDate = new Date(dossier.updated_at);
+    if (!expertData.lastActivity || dossierDate > expertData.lastActivity) {
+      expertData.lastActivity = dossierDate;
+    }
+  });
+
+  // Filtrer les experts inactifs (> 14 jours)
+  const inactiveExperts = Array.from(expertsMap.entries())
+    .map(([expertId, data]: [string, any]) => ({
+      expertId,
+      expert: data.expert,
+      activeDossiers: data.dossiers.length,
+      lastActivity: data.lastActivity,
+      daysSinceActivity: Math.floor(
+        (new Date().getTime() - data.lastActivity.getTime()) / (1000 * 60 * 60 * 24)
+      )
+    }))
+    .filter((exp: any) => exp.lastActivity < fourteenDaysAgo)
+    .sort((a: any, b: any) => a.lastActivity.getTime() - b.lastActivity.getTime());
+
+  return inactiveExperts;
+}
+
+// GET /api/expert/cabinet/products/:produitId/alerts - Récupérer les alertes pour un produit
+router.get('/products/:produitId/alerts', async (req: Request, res: Response) => {
+  try {
+    const user = req.user as AuthUser;
+    if (!user || user.type !== 'expert') {
+      return res.status(403).json({ success: false, message: 'Accès réservé aux experts' });
+    }
+
+    const { cabinetId, membership } = await resolveCabinetContext(user);
+    if (!cabinetId || !isOwner(membership)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé au owner'
+      });
+    }
+
+    const { produitId } = req.params;
+
+    // Vérifier que le produit appartient au cabinet
+    const { data: cabinetProduct, error: productError } = await supabase
+      .from('CabinetProduitEligible')
+      .select('id, produit_eligible_id')
+      .eq('cabinet_id', cabinetId)
+      .eq('produit_eligible_id', produitId)
+      .eq('is_active', true)
+      .single();
+
+    if (productError || !cabinetProduct) {
+      return res.status(404).json({
+        success: false,
+        message: 'Produit introuvable dans ce cabinet'
+      });
+    }
+
+    // Récupérer les alertes
+    const blockedDossiers = await getBlockedDossiers(produitId);
+    const inactiveExperts = await getInactiveExperts(produitId);
+
+    return res.json({
+      success: true,
+      data: {
+        blockedDossiers: {
+          count: blockedDossiers.length,
+          items: blockedDossiers
+        },
+        inactiveExperts: {
+          count: inactiveExperts.length,
+          items: inactiveExperts
+        }
+      }
+    });
+  } catch (error) {
+    console.error('❌ Erreur GET /expert/cabinet/products/:produitId/alerts:', error);
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// GET /api/expert/cabinet/products/:produitId/synthese - Synthèse complète d'un produit
+router.get('/products/:produitId/synthese', async (req: Request, res: Response) => {
+  try {
+    const user = req.user as AuthUser;
+    if (!user || user.type !== 'expert') {
+      return res.status(403).json({ success: false, message: 'Accès réservé aux experts' });
+    }
+
+    const { cabinetId, membership } = await resolveCabinetContext(user);
+    if (!cabinetId || !isOwner(membership)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé au owner'
+      });
+    }
+
+    const { produitId } = req.params;
+    const { page = '1', limit = '20', statut, expertId, search } = req.query;
+
+    // Vérifier que le produit appartient au cabinet et récupérer ses infos
+    const { data: cabinetProduct, error: productError } = await supabase
+      .from('CabinetProduitEligible')
+      .select(`
+        id,
+        produit_eligible_id,
+        commission_rate,
+        fee_amount,
+        fee_mode,
+        client_fee_percentage_min,
+        is_active,
+        ProduitEligible:produit_eligible_id (
+          id,
+          nom,
+          description,
+          categorie
+        )
+      `)
+      .eq('cabinet_id', cabinetId)
+      .eq('produit_eligible_id', produitId)
+      .eq('is_active', true)
+      .single();
+
+    if (productError || !cabinetProduct) {
+      return res.status(404).json({
+        success: false,
+        message: 'Produit introuvable dans ce cabinet'
+      });
+    }
+
+    // Récupérer tous les dossiers du produit avec jointures
+    let dossiersQuery = supabase
+      .from('ClientProduitEligible')
+      .select(`
+        id,
+        clientId,
+        expert_id,
+        statut,
+        montantFinal,
+        tauxFinal,
+        created_at,
+        updated_at,
+        Client:clientId (
+          id,
+          nom,
+          email,
+          company_name
+        ),
+        Expert:expert_id (
+          id,
+          name,
+          email
+        )
+      `, { count: 'exact' })
+      .eq('produitId', produitId);
+
+    // Appliquer les filtres
+    if (statut && statut !== 'all') {
+      dossiersQuery = dossiersQuery.eq('statut', statut);
+    }
+    if (expertId && expertId !== 'all') {
+      dossiersQuery = dossiersQuery.eq('expert_id', expertId);
+    }
+
+    // Pagination pour la liste
+    const pageNum = parseInt(page as string);
+    const limitNum = parseInt(limit as string);
+    const offset = (pageNum - 1) * limitNum;
+    const dossiersQueryPaginated = dossiersQuery
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limitNum - 1);
+
+    const { data: dossiersPaginated, error: dossiersError, count: totalDossiers } = await dossiersQueryPaginated;
+    if (dossiersError) throw dossiersError;
+
+    // Récupérer tous les dossiers pour les statistiques (sans pagination)
+    const { data: allDossiers, error: allDossiersError } = await supabase
+      .from('ClientProduitEligible')
+      .select(`
+        id,
+        statut,
+        expert_id,
+        montantFinal,
+        tauxFinal,
+        created_at,
+        updated_at,
+        Expert:expert_id (
+          id,
+          name,
+          email
+        )
+      `)
+      .eq('produitId', produitId);
+
+    if (allDossiersError) throw allDossiersError;
+
+    const dossiersList = allDossiers || [];
+
+    // 1. KPIs GLOBAUX
+    const total = dossiersList.length;
+    const enCours = dossiersList.filter(d => isActiveStatus(d.statut)).length;
+    const signes = dossiersList.filter(d => normalizeDossierStatus(d.statut) === 'validated').length;
+    const enAttente = dossiersList.filter(d => {
+      const status = normalizeDossierStatus(d.statut);
+      return ['pending_upload', 'pending_admin_validation', 'expert_pending_validation'].includes(status);
+    }).length;
+
+    // 2. RÉPARTITION PAR STATUT
+    const statutsRepartition: Record<string, number> = {};
+    dossiersList.forEach(dossier => {
+      const status = normalizeDossierStatus(dossier.statut);
+      statutsRepartition[status] = (statutsRepartition[status] || 0) + 1;
+    });
+
+    // 3. EXPERTS RELIÉS AU PRODUIT
+    const expertsMap = new Map();
+    dossiersList.forEach(dossier => {
+      if (!dossier.expert_id || !dossier.Expert) return;
+      
+      const expert = dossier.Expert as any;
+      if (!expertsMap.has(dossier.expert_id)) {
+        expertsMap.set(dossier.expert_id, {
+          expert: {
+            id: expert.id,
+            name: expert.name,
+            email: expert.email
+          },
+          dossiersTotal: 0,
+          dossiersEnCours: 0,
+          dossiersSignes: 0,
+          dossiersTermines: 0,
+          montantTotal: 0,
+          lastActivity: null
+        });
+      }
+
+      const expertData = expertsMap.get(dossier.expert_id);
+      expertData.dossiersTotal++;
+      
+      if (isActiveStatus(dossier.statut)) {
+        expertData.dossiersEnCours++;
+      }
+      if (normalizeDossierStatus(dossier.statut) === 'validated') {
+        expertData.dossiersSignes++;
+      }
+      if (normalizeDossierStatus(dossier.statut) === 'refund_completed') {
+        expertData.dossiersTermines++;
+      }
+
+      if (dossier.montantFinal) {
+        expertData.montantTotal += dossier.montantFinal;
+      }
+
+      const updatedAt = new Date(dossier.updated_at);
+      if (!expertData.lastActivity || updatedAt > expertData.lastActivity) {
+        expertData.lastActivity = updatedAt;
+      }
+    });
+
+    const expertsRelies = Array.from(expertsMap.values()).map(exp => ({
+      ...exp,
+      tauxReussite: exp.dossiersTotal > 0 ? Math.round((exp.dossiersSignes / exp.dossiersTotal) * 100) : 0,
+      daysSinceActivity: exp.lastActivity
+        ? Math.floor((new Date().getTime() - exp.lastActivity.getTime()) / (1000 * 60 * 60 * 24))
+        : null
+    })).sort((a, b) => b.dossiersTotal - a.dossiersTotal);
+
+    // 4. MONTANTS ET COMMISSIONS
+    const dossiersValides = dossiersList.filter(d => normalizeDossierStatus(d.statut) === 'validated' && d.montantFinal);
+    const montantTotalSignes = dossiersValides.reduce((sum, d) => sum + (d.montantFinal || 0), 0);
+    const commissionRate = cabinetProduct.commission_rate || 0.30;
+    const commissionGeneree = montantTotalSignes * commissionRate;
+    const commissionMoyenne = dossiersValides.length > 0 ? commissionGeneree / dossiersValides.length : 0;
+
+    // 5. ÉVOLUTION TEMPORELLE (30 derniers jours)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    const evolution = [];
+    for (let i = 29; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      date.setHours(0, 0, 0, 0);
+      
+      const nextDate = new Date(date);
+      nextDate.setDate(nextDate.getDate() + 1);
+      
+      const dossiersCreated = dossiersList.filter(d => {
+        const created = new Date(d.created_at);
+        return created >= date && created < nextDate;
+      }).length;
+
+      const dossiersSigned = dossiersList.filter(d => {
+        if (normalizeDossierStatus(d.statut) !== 'validated') return false;
+        const updated = new Date(d.updated_at);
+        return updated >= date && updated < nextDate;
+      }).length;
+
+      evolution.push({
+        date: date.toISOString().split('T')[0],
+        dossiersCreated,
+        dossiersSigned
+      });
+    }
+
+    // 6. ALERTES
+    const blockedDossiers = await getBlockedDossiers(produitId);
+    const inactiveExperts = await getInactiveExperts(produitId);
+
+    // Format des dossiers paginés avec recherche
+    let dossiersFiltered = dossiersPaginated || [];
+    if (search) {
+      const searchLower = (search as string).toLowerCase();
+      dossiersFiltered = dossiersFiltered.filter((d: any) => {
+        const client = d.Client as any;
+        return (
+          client?.nom?.toLowerCase().includes(searchLower) ||
+          client?.email?.toLowerCase().includes(searchLower) ||
+          client?.company_name?.toLowerCase().includes(searchLower)
+        );
+      });
+    }
+
+    // Extraire les données du produit (gérer le cas array/objet)
+    const produitEligible = cabinetProduct.ProduitEligible as any;
+    const produitData = Array.isArray(produitEligible) 
+      ? produitEligible[0]
+      : produitEligible;
+
+    return res.json({
+      success: true,
+      data: {
+        produit: {
+          id: produitData?.id || cabinetProduct.produit_eligible_id,
+          nom: produitData?.nom,
+          description: produitData?.description,
+          categorie: produitData?.categorie,
+          commission_rate: commissionRate,
+          client_fee_percentage_min: cabinetProduct.client_fee_percentage_min,
+          fee_mode: cabinetProduct.fee_mode
+        },
+        kpis: {
+          total,
+          enCours,
+          signes,
+          enAttente
+        },
+        montants: {
+          montantTotalSignes,
+          commissionGeneree,
+          commissionMoyenne
+        },
+        statutsRepartition,
+        expertsRelies,
+        evolution,
+        dossiers: {
+          items: dossiersFiltered,
+          total: totalDossiers || 0,
+          page: pageNum,
+          limit: limitNum,
+          totalPages: Math.ceil((totalDossiers || 0) / limitNum)
+        },
+        alertes: {
+          blockedDossiers: {
+            count: blockedDossiers.length,
+            items: blockedDossiers.slice(0, 5) // Limiter à 5 pour l'affichage
+          },
+          inactiveExperts: {
+            count: inactiveExperts.length,
+            items: inactiveExperts.slice(0, 5) // Limiter à 5 pour l'affichage
+          }
+        }
+      }
+    });
+  } catch (error) {
+    console.error('❌ Erreur GET /expert/cabinet/products/:produitId/synthese:', error);
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// GET /api/expert/cabinet/experts/:expertId/synthese - Synthèse complète d'un expert
+router.get('/experts/:expertId/synthese', async (req: Request, res: Response) => {
+  try {
+    const user = req.user as AuthUser;
+    if (!user || user.type !== 'expert') {
+      return res.status(403).json({ success: false, message: 'Accès réservé aux experts' });
+    }
+
+    const { cabinetId, membership } = await resolveCabinetContext(user);
+    if (!cabinetId || !isOwner(membership)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé au owner'
+      });
+    }
+
+    const { expertId } = req.params;
+    const { page = '1', limit = '20', produitId, statut, search } = req.query;
+
+    // Vérifier que l'expert appartient au cabinet
+    const { data: expertMember, error: memberError } = await supabase
+      .from('CabinetMember')
+      .select(`
+        id,
+        member_id,
+        team_role,
+        Expert:member_id (
+          id,
+          name,
+          email,
+          company_name,
+          phone,
+          first_name,
+          last_name
+        )
+      `)
+      .eq('cabinet_id', cabinetId)
+      .eq('member_id', expertId)
+      .eq('status', 'active')
+      .single();
+
+    if (memberError || !expertMember) {
+      return res.status(404).json({
+        success: false,
+        message: 'Expert introuvable dans ce cabinet'
+      });
+    }
+
+    // Récupérer tous les dossiers de l'expert avec jointures
+    let dossiersQuery = supabase
+      .from('ClientProduitEligible')
+      .select(`
+        id,
+        clientId,
+        produitId,
+        statut,
+        montantFinal,
+        tauxFinal,
+        created_at,
+        updated_at,
+        Client:clientId (
+          id,
+          nom,
+          email,
+          company_name
+        ),
+        ProduitEligible:produitId (
+          id,
+          nom,
+          description,
+          categorie
+        )
+      `, { count: 'exact' })
+      .eq('expert_id', expertId);
+
+    // Appliquer les filtres
+    if (statut && statut !== 'all') {
+      dossiersQuery = dossiersQuery.eq('statut', statut);
+    }
+    if (produitId && produitId !== 'all') {
+      dossiersQuery = dossiersQuery.eq('produitId', produitId);
+    }
+
+    // Pagination pour la liste
+    const pageNum = parseInt(page as string);
+    const limitNum = parseInt(limit as string);
+    const offset = (pageNum - 1) * limitNum;
+    const dossiersQueryPaginated = dossiersQuery
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limitNum - 1);
+
+    const { data: dossiersPaginated, error: dossiersError, count: totalDossiers } = await dossiersQueryPaginated;
+    if (dossiersError) throw dossiersError;
+
+    // Récupérer tous les dossiers pour les statistiques (sans pagination)
+    const { data: allDossiers, error: allDossiersError } = await supabase
+      .from('ClientProduitEligible')
+      .select(`
+        id,
+        produitId,
+        statut,
+        montantFinal,
+        tauxFinal,
+        created_at,
+        updated_at,
+        ProduitEligible:produitId (
+          id,
+          nom,
+          description,
+          categorie
+        )
+      `)
+      .eq('expert_id', expertId);
+
+    if (allDossiersError) throw allDossiersError;
+
+    const dossiersList = allDossiers || [];
+
+    // 1. KPIs GLOBAUX
+    const total = dossiersList.length;
+    const enCours = dossiersList.filter(d => isActiveStatus(d.statut)).length;
+    const signes = dossiersList.filter(d => normalizeDossierStatus(d.statut) === 'validated').length;
+    const termines = dossiersList.filter(d => normalizeDossierStatus(d.statut) === 'refund_completed').length;
+
+    // 2. RÉPARTITION PAR PRODUIT
+    const produitsMap = new Map();
+    dossiersList.forEach(dossier => {
+      if (!dossier.produitId || !dossier.ProduitEligible) return;
+      
+      const produit = dossier.ProduitEligible as any;
+      const produitData = Array.isArray(produit) ? produit[0] : produit;
+      
+      if (!produitsMap.has(dossier.produitId)) {
+        produitsMap.set(dossier.produitId, {
+          produit: {
+            id: produitData?.id || dossier.produitId,
+            nom: produitData?.nom,
+            description: produitData?.description,
+            categorie: produitData?.categorie
+          },
+          dossiersTotal: 0,
+          dossiersEnCours: 0,
+          dossiersSignes: 0,
+          dossiersTermines: 0,
+          montantTotal: 0
+        });
+      }
+
+      const produitStats = produitsMap.get(dossier.produitId);
+      produitStats.dossiersTotal++;
+      
+      if (isActiveStatus(dossier.statut)) {
+        produitStats.dossiersEnCours++;
+      }
+      if (normalizeDossierStatus(dossier.statut) === 'validated') {
+        produitStats.dossiersSignes++;
+      }
+      if (normalizeDossierStatus(dossier.statut) === 'refund_completed') {
+        produitStats.dossiersTermines++;
+      }
+
+      if (dossier.montantFinal) {
+        produitStats.montantTotal += dossier.montantFinal;
+      }
+    });
+
+    const dossiersParProduit = Array.from(produitsMap.values())
+      .map(prod => ({
+        ...prod,
+        tauxReussite: prod.dossiersTotal > 0 ? Math.round((prod.dossiersSignes / prod.dossiersTotal) * 100) : 0
+      }))
+      .sort((a, b) => b.dossiersTotal - a.dossiersTotal);
+
+    // 3. MONTANTS ET COMMISSIONS
+    const dossiersValides = dossiersList.filter(d => normalizeDossierStatus(d.statut) === 'validated' && d.montantFinal);
+    const montantTotalSignes = dossiersValides.reduce((sum, d) => sum + (d.montantFinal || 0), 0);
+    
+    // Récupérer la commission de l'expert pour ce produit (prendre la moyenne si plusieurs produits)
+    const { data: expertProduits, error: expertProduitsError } = await supabase
+      .from('ExpertProduitEligible')
+      .select('produit_id, client_fee_percentage')
+      .eq('expert_id', expertId);
+
+    let commissionMoyenneExpert = 0.30; // Défaut 30%
+    if (!expertProduitsError && expertProduits && expertProduits.length > 0) {
+      const totalCommission = expertProduits.reduce((sum, ep) => sum + (ep.client_fee_percentage || 0.30), 0);
+      commissionMoyenneExpert = totalCommission / expertProduits.length;
+    }
+
+    const commissionGeneree = montantTotalSignes * commissionMoyenneExpert;
+
+    // 4. RÉPARTITION PAR STATUT
+    const statutsRepartition: Record<string, number> = {};
+    dossiersList.forEach(dossier => {
+      const status = normalizeDossierStatus(dossier.statut);
+      statutsRepartition[status] = (statutsRepartition[status] || 0) + 1;
+    });
+
+    // 5. ÉVOLUTION TEMPORELLE (30 derniers jours)
+    const evolution = [];
+    for (let i = 29; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      date.setHours(0, 0, 0, 0);
+      
+      const nextDate = new Date(date);
+      nextDate.setDate(nextDate.getDate() + 1);
+      
+      const dossiersCreated = dossiersList.filter(d => {
+        const created = new Date(d.created_at);
+        return created >= date && created < nextDate;
+      }).length;
+
+      const dossiersSigned = dossiersList.filter(d => {
+        if (normalizeDossierStatus(d.statut) !== 'validated') return false;
+        const updated = new Date(d.updated_at);
+        return updated >= date && updated < nextDate;
+      }).length;
+
+      evolution.push({
+        date: date.toISOString().split('T')[0],
+        dossiersCreated,
+        dossiersSigned
+      });
+    }
+
+    // 6. DERNIÈRE ACTIVITÉ
+    const lastActivity = dossiersList.length > 0
+      ? dossiersList.reduce((latest, d) => {
+          const updated = new Date(d.updated_at);
+          return updated > latest ? updated : latest;
+        }, new Date(dossiersList[0].updated_at))
+      : null;
+
+    // Format des dossiers paginés avec recherche
+    let dossiersFiltered = dossiersPaginated || [];
+    if (search) {
+      const searchLower = (search as string).toLowerCase();
+      dossiersFiltered = dossiersFiltered.filter((d: any) => {
+        const client = d.Client as any;
+        const produit = d.ProduitEligible as any;
+        const produitData = Array.isArray(produit) ? produit[0] : produit;
+        return (
+          client?.nom?.toLowerCase().includes(searchLower) ||
+          client?.email?.toLowerCase().includes(searchLower) ||
+          client?.company_name?.toLowerCase().includes(searchLower) ||
+          produitData?.nom?.toLowerCase().includes(searchLower)
+        );
+      });
+    }
+
+    const expert = expertMember.Expert as any;
+    const expertData = Array.isArray(expert) ? expert[0] : expert;
+
+    return res.json({
+      success: true,
+      data: {
+        expert: {
+          id: expertData?.id || expertId,
+          name: expertData?.name,
+          email: expertData?.email,
+          company_name: expertData?.company_name,
+          phone: expertData?.phone,
+          first_name: expertData?.first_name,
+          last_name: expertData?.last_name,
+          team_role: expertMember.team_role
+        },
+        kpis: {
+          total,
+          enCours,
+          signes,
+          termines,
+          tauxReussite: total > 0 ? Math.round((signes / total) * 100) : 0
+        },
+        montants: {
+          montantTotalSignes,
+          commissionGeneree,
+          commissionMoyenneExpert
+        },
+        statutsRepartition,
+        dossiersParProduit,
+        evolution,
+        lastActivity: lastActivity?.toISOString() || null,
+        daysSinceActivity: lastActivity
+          ? Math.floor((new Date().getTime() - lastActivity.getTime()) / (1000 * 60 * 60 * 24))
+          : null,
+        dossiers: {
+          items: dossiersFiltered,
+          total: totalDossiers || 0,
+          page: pageNum,
+          limit: limitNum,
+          totalPages: Math.ceil((totalDossiers || 0) / limitNum)
+        }
+      }
+    });
+  } catch (error) {
+    console.error('❌ Erreur GET /expert/cabinet/experts/:expertId/synthese:', error);
     return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });

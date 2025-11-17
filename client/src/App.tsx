@@ -117,6 +117,10 @@ const ExpertAgenda = React.lazy(() => import('./pages/expert/agenda'));
 const ExpertDossier = React.lazy(() => import('./pages/expert/dossier/[id]'));
 const ExpertClient = React.lazy(() => import('./pages/expert/client/[id]'));
 
+// Cabinet pages (expert/owner)
+const CabinetProduitSynthese = React.lazy(() => import('./pages/cabinet/produit/[produitId]'));
+const CabinetExpertSynthese = React.lazy(() => import('./pages/cabinet/expert/[expertId]'));
+
 // Analytics page
 const AnalyticsPage = React.lazy(() => import('./pages/analytics-simple'));
 
@@ -301,6 +305,12 @@ function App() {
                         {/* Profil & Aide */}
                         <Route path="profile/expert" element={<ProfileExpert />} />
                         <Route path="aide-expert" element={<AideExpert />} />
+                      </Route>
+                      
+                      {/* Routes cabinet (owner) */}
+                      <Route path="/cabinet" element={<ExpertLayout />}>
+                        <Route path="produit/:produitId" element={<CabinetProduitSynthese />} />
+                        <Route path="expert/:expertId" element={<CabinetExpertSynthese />} />
                       </Route>
                       
                       {/* Routes dashboard/expert pour compatibilité */}
