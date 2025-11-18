@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CabinetTeamManagement } from "@/components/cabinet/CabinetTeamManagement";
 import { 
   Briefcase, 
@@ -26,8 +27,7 @@ import {
   XCircle,
   Edit,
   ArrowUp,
-  ArrowDown,
-  Filter
+  ArrowDown
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { get, put } from "@/lib/api";
@@ -130,7 +130,7 @@ export const ExpertDashboardOptimized = () => {
   // États pour les filtres des dossiers
   const [sortProgress, setSortProgress] = useState<'asc' | 'desc' | null>(null);
   const [sortMontant, setSortMontant] = useState<'asc' | 'desc' | null>(null);
-  const [filterPriorityActions, setFilterPriorityActions] = useState<boolean>(false);
+  const [filterStatut, setFilterStatut] = useState<string | null>(null);
 
   // Charger toutes les données du dashboard
   const loadDashboardData = useCallback(async () => {
@@ -626,7 +626,22 @@ export const ExpertDashboardOptimized = () => {
                   <p className="text-gray-600">Aucun dossier à traiter</p>
                 </div>
               ) : (
-                prioritizedDossiers.slice(0, 5).map((dossier, index) => {
+                [...prioritizedDossiers]
+                  .sort((a, b) => {
+                    // Priorité 1 : Dossiers avec documents en attente de validation par l'expert
+                    if (a.hasPendingDocuments && !b.hasPendingDocuments) return -1;
+                    if (!a.hasPendingDocuments && b.hasPendingDocuments) return 1;
+                    
+                    // Si les deux ont des documents en attente, trier par nombre de documents (décroissant)
+                    if (a.hasPendingDocuments && b.hasPendingDocuments) {
+                      return (b.pendingDocumentsCount || 0) - (a.pendingDocumentsCount || 0);
+                    }
+                    
+                    // Sinon, conserver l'ordre par priorityScore (déjà trié par le backend)
+                    return b.priorityScore - a.priorityScore;
+                  })
+                  .slice(0, 5)
+                  .map((dossier, index) => {
                   const statutLabel = dossier.statut === 'eligible' ? 'Prospect' : 'En cours';
                   const statutVariant = dossier.statut === 'eligible' ? 'secondary' : 'default';
                   const nextActionLabel = dossier.nextAction || 'Voir dossier';
@@ -877,16 +892,25 @@ export const ExpertDashboardOptimized = () => {
                   <span>Mes Dossiers ({dossiersList.length})</span>
                 </CardTitle>
                 <div className="flex items-center gap-2">
-                  {/* Filtre Actions prioritaires */}
-                  <Button
-                    variant={filterPriorityActions ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setFilterPriorityActions(!filterPriorityActions)}
-                    className="flex items-center gap-2"
+                  {/* Filtre par statut */}
+                  <Select
+                    value={filterStatut || 'all'}
+                    onValueChange={(value) => setFilterStatut(value === 'all' ? null : value)}
                   >
-                    <Filter className="h-4 w-4" />
-                    Actions prioritaires
-                  </Button>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Statut" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tous les statuts</SelectItem>
+                      {Array.from(new Set(dossiersList.map(d => d.statut).filter(Boolean)))
+                        .sort()
+                        .map((statut) => (
+                          <SelectItem key={statut} value={statut}>
+                            {statut}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
                   
                   {/* Tri par progression */}
                   <Button
@@ -938,9 +962,9 @@ export const ExpertDashboardOptimized = () => {
                   {dossiersList
                     .filter(dossier => dossier && dossier.id)
                     .filter(dossier => {
-                      // Filtre actions prioritaires
-                      if (filterPriorityActions) {
-                        return dossier.hasPriorityAction === true;
+                      // Filtre par statut
+                      if (filterStatut) {
+                        return dossier.statut === filterStatut;
                       }
                       return true;
                     })

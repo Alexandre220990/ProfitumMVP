@@ -1040,10 +1040,11 @@ router.get('/overview', enhancedAuthMiddleware, async (req: Request, res: Respon
       .neq('status', 'cancelled');
 
     // Mes dossiers (tous les dossiers de l'expert, quel que soit le statut)
+    // Inclut les dossiers où expert_id = expertId OU expert_pending_id = expertId
     const { count: dossiersEnCours } = await supabase
       .from('ClientProduitEligible')
       .select('*', { count: 'exact', head: true })
-      .eq('expert_id', expertId);
+      .or(`expert_id.eq.${expertId},expert_pending_id.eq.${expertId}`);
 
     // Apporteurs avec statistiques détaillées
     const { data: apporteursData } = await supabase
