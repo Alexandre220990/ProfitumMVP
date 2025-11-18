@@ -1041,10 +1041,36 @@ router.get('/overview', enhancedAuthMiddleware, async (req: Request, res: Respon
 
     // Mes dossiers (tous les dossiers de l'expert, quel que soit le statut)
     // Inclut les dossiers où expert_id = expertId OU expert_pending_id = expertId
-    const { count: dossiersEnCours } = await supabase
+    // IMPORTANT: Inclut aussi les dossiers avec statut 'refund_completed' (Remboursement effectué)
+    // et ceux avec date_remboursement remplie, même s'ils sont terminés
+    // 
+    // NOTE: Utiliser une requête avec données plutôt que count pour éviter les problèmes avec .or()
+    const { data: allDossiers, error: dossiersError, count: dossiersEnCours } = await supabase
       .from('ClientProduitEligible')
-      .select('*', { count: 'exact', head: true })
+      .select('id', { count: 'exact' })
       .or(`expert_id.eq.${expertId},expert_pending_id.eq.${expertId}`);
+      // Pas de filtre sur statut ou date_remboursement - on veut TOUS les dossiers
+    
+    // Utiliser le count de la requête, ou compter les données si le count échoue
+    const totalDossiers = dossiersEnCours !== null ? dossiersEnCours : (allDossiers?.length || 0);
+    
+    // Debug: Vérifier le comptage
+    if (dossiersError) {
+      console.error('❌ Erreur comptage dossiers:', dossiersError);
+    } else {
+      const refundCompletedCount = allDossiers?.filter((d: any) => {
+        // Pour cette requête, on n'a que l'id, donc on ne peut pas filtrer par statut ici
+        // Mais on peut logger pour debug
+        return true;
+      }).length || 0;
+      
+      console.log(`📊 Debug KPI dossiers - Expert ${expertId}:`, {
+        total_count: dossiersEnCours,
+        total_data_length: allDossiers?.length,
+        total_utilise: totalDossiers,
+        refund_completed_dans_liste: 'N/A (requête optimisée)'
+      });
+    }
 
     // Apporteurs avec statistiques détaillées
     const { data: apporteursData } = await supabase
@@ -1106,7 +1132,7 @@ router.get('/overview', enhancedAuthMiddleware, async (req: Request, res: Respon
         kpis: {
           clientsActifs: clientsActifs || 0,
           rdvCetteSemaine: rdvCetteSemaine || 0,
-          dossiersEnCours: dossiersEnCours || 0,
+          dossiersEnCours: totalDossiers || 0,
           apporteursActifs: apporteursList.length
         },
         apporteurs: apporteursList
@@ -1229,6 +1255,8 @@ router.get('/dossiers-list', enhancedAuthMiddleware, async (req: Request, res: R
 
     // Récupérer TOUS les dossiers de l'expert (quel que soit le statut)
     // Inclut les dossiers où expert_id = expertId OU expert_pending_id = expertId
+    // IMPORTANT: Inclut aussi les dossiers avec statut 'refund_completed' (Remboursement effectué)
+    // et ceux avec date_remboursement remplie, même s'ils sont terminés
     const { data: dossiers, error } = await supabase
       .from('ClientProduitEligible')
       .select(`
@@ -1243,6 +1271,7 @@ router.get('/dossiers-list', enhancedAuthMiddleware, async (req: Request, res: R
         progress,
         expert_id,
         expert_pending_id,
+        date_remboursement,
         created_at,
         updated_at,
         Client:clientId (
@@ -1264,6 +1293,21 @@ router.get('/dossiers-list', enhancedAuthMiddleware, async (req: Request, res: R
         message: 'Erreur serveur' 
       });
     }
+
+    // Debug: Vérifier le nombre de dossiers récupérés
+    const totalDossiers = dossiers?.length || 0;
+    const refundCompletedCount = dossiers?.filter((d: any) => d.statut === 'refund_completed').length || 0;
+    const dateRemboursementCount = dossiers?.filter((d: any) => {
+      // Vérifier si date_remboursement existe dans les données (peut nécessiter un select explicite)
+      return d.date_remboursement !== null && d.date_remboursement !== undefined;
+    }).length || 0;
+    
+    console.log(`📊 Debug /dossiers-list - Expert ${expertId}:`, {
+      total_dossiers: totalDossiers,
+      refund_completed: refundCompletedCount,
+      avec_date_remboursement: dateRemboursementCount,
+      statuts: dossiers?.map((d: any) => d.statut) || []
+    });
 
     // Récupérer les informations sur les documents en attente de validation
     const dossierIds = (dossiers || []).map((d: any) => d.id);
@@ -1333,6 +1377,13 @@ router.get('/dossiers-list', enhancedAuthMiddleware, async (req: Request, res: R
         hasPriorityAction,
         pendingDocumentsCount: docsPendingByDossier.get(d.id) || 0
       };
+    });
+
+    // Debug: Vérifier le nombre final de dossiers dans la liste retournée
+    console.log(`📊 Debug /dossiers-list final - Expert ${expertId}:`, {
+      total_dossiers_list: dossiersList.length,
+      dossiers_refund_completed: dossiersList.filter((d: any) => d.statut === 'refund_completed').length,
+      ids_dossiers: dossiersList.map((d: any) => d.id)
     });
 
     return res.json({
