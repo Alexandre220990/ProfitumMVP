@@ -221,45 +221,108 @@ router.get('/prioritized', enhancedAuthMiddleware, async (req: Request, res: Res
       // Vérifier si des documents ont été uploadés pour ce dossier
       const hasUploadedDocuments = hasDocumentsMap.get(dossier.id) || false;
 
-      // 1. URGENCE (40 points) - Plus c'est ancien, plus c'est urgent
-      let urgenceScore = 0;
-      if (daysSinceLastContact <= 1) urgenceScore = 10;
-      else if (daysSinceLastContact <= 3) urgenceScore = 20;
-      else if (daysSinceLastContact <= 7) urgenceScore = 30;
-      else urgenceScore = 40; // Très urgent
-
-      // 2. VALEUR (30 points) - Montant du dossier
-      const montant = dossier.montantFinal || 0;
-      let valeurScore = 0;
-      if (montant >= 50000) valeurScore = 30;
-      else if (montant >= 30000) valeurScore = 25;
-      else if (montant >= 15000) valeurScore = 20;
-      else if (montant >= 5000) valeurScore = 15;
-      else valeurScore = 10;
-
-      // 3. PROBABILITÉ (20 points) - Statut du dossier
-      let probabiliteScore = 0;
-      const validationState = dossier.metadata?.validation_state || '';
-      if (dossier.statut === 'en_cours') probabiliteScore = 20;
-      else if (validationState === 'eligibility_validated') probabiliteScore = 15;
-      else probabiliteScore = 10;
-
-      // 4. FACILITÉ (10 points) - Statut de validation
-      let faciliteScore = 0;
-      if (validationState === 'eligibility_validated') faciliteScore = 10;
-      else if (validationState === 'pending_expert_validation') faciliteScore = 5;
-      else faciliteScore = 3;
-
-      // SCORE TOTAL - Bonus si documents en attente de validation (action urgente)
-      let bonusUrgent = 0;
+      // DÉTERMINER LE TYPE D'ACTION EN PREMIER (avant le calcul du score)
+      // Action à faire par l'expert = priorité maximale (score très élevé)
+      // Action en attente du client = moins prioritaire (score moyen)
+      let actionType: 'documents_pending_validation' | 'documents_requested' | 'other' = 'other';
+      
       if (hasPendingDocs) {
-        bonusUrgent = 20; // Bonus important pour documents en attente
+        actionType = 'documents_pending_validation';
+      } else if (docRequest) {
+        actionType = 'documents_requested';
+      } else if (dossier.statut === 'documents_requested') {
+        actionType = 'documents_requested';
+      } else if ((dossier.statut === 'en_cours' || dossier.statut === 'audit_en_cours') && daysSinceLastContact >= 5) {
+        actionType = 'documents_requested';
+      } else if ((dossier.statut === 'eligible' || dossier.statut === 'admin_validated' || dossier.statut === 'expert_assigned') && !hasUploadedDocuments) {
+        actionType = 'documents_requested';
       }
-      const priorityScore = urgenceScore + valeurScore + probabiliteScore + faciliteScore + bonusUrgent;
+      
+      // Variables communes pour le calcul du score
+      const validationState = dossier.metadata?.validation_state || '';
+      const montant = dossier.montantFinal || 0;
+      
+      // CALCULER LE SCORE DE PRIORITÉ
+      let priorityScore = 0;
+      let urgenceScore = 0;
+      let valeurScore = 0;
+      let probabiliteScore = 0;
+      let faciliteScore = 0;
+      
+      if (hasPendingDocs) {
+        // PRIORITÉ MAXIMALE : Action à faire par l'expert
+        // Les documents sont en attente de validation par l'expert
+        // Score fixe très élevé pour toujours apparaître en haut, indépendant du temps
+        priorityScore = 1000 + montant / 1000; // 1000+ avec petit bonus par montant
+        // Pour les scores détaillés, utiliser des valeurs minimales car le score total est déjà très élevé
+        urgenceScore = 0;
+        valeurScore = 0;
+        probabiliteScore = 0;
+        faciliteScore = 0;
+      } else if (actionType === 'documents_requested') {
+        // PRIORITÉ MOYENNE : Action en attente du client
+        // L'expert attend que le client fournisse des documents
+        // Score modéré qui diminue légèrement avec le temps (mais reste inférieur aux actions expert)
+        const daysWaiting = docRequest?.daysWaiting || daysSinceLastContact || 0;
+        let baseScore = 200; // Base pour actions client
+        
+        // Légère pénalité pour temps long (mais jamais en dessous de la base)
+        if (daysWaiting >= 15) {
+          baseScore = 150; // Légère pénalité si très long
+        } else if (daysWaiting >= 10) {
+          baseScore = 170;
+        } else if (daysWaiting >= 5) {
+          baseScore = 185;
+        }
+        
+        // Ajouter valeur et probabilité
+        if (montant >= 50000) valeurScore = 50;
+        else if (montant >= 30000) valeurScore = 40;
+        else if (montant >= 15000) valeurScore = 30;
+        else if (montant >= 5000) valeurScore = 20;
+        else valeurScore = 10;
+        
+        if (dossier.statut === 'en_cours') probabiliteScore = 20;
+        else if (validationState === 'eligibility_validated') probabiliteScore = 15;
+        else probabiliteScore = 10;
+        
+        urgenceScore = 0;
+        faciliteScore = 0;
+        priorityScore = baseScore + valeurScore + probabiliteScore;
+      } else {
+        // AUTRES CAS : Score normal basé sur valeur, probabilité, etc.
+        // Le temps ne pèse plus beaucoup (juste un indicateur, pas une pénalité importante)
+        
+        // 1. VALEUR (40 points) - Montant du dossier (le plus important)
+        if (montant >= 50000) valeurScore = 40;
+        else if (montant >= 30000) valeurScore = 35;
+        else if (montant >= 15000) valeurScore = 30;
+        else if (montant >= 5000) valeurScore = 25;
+        else valeurScore = 20;
+
+        // 2. PROBABILITÉ (30 points) - Statut du dossier
+        if (dossier.statut === 'en_cours') probabiliteScore = 30;
+        else if (validationState === 'eligibility_validated') probabiliteScore = 25;
+        else probabiliteScore = 15;
+
+        // 3. FACILITÉ (20 points) - Statut de validation
+        if (validationState === 'eligibility_validated') faciliteScore = 20;
+        else if (validationState === 'pending_expert_validation') faciliteScore = 15;
+        else faciliteScore = 10;
+
+        // 4. URGENCE (10 points) - Temps sans contact (poids réduit)
+        // Le temps pèse beaucoup moins dans le calcul final
+        if (daysSinceLastContact <= 1) urgenceScore = 10;
+        else if (daysSinceLastContact <= 3) urgenceScore = 8;
+        else if (daysSinceLastContact <= 7) urgenceScore = 6;
+        else if (daysSinceLastContact <= 14) urgenceScore = 4;
+        else urgenceScore = 2; // Même très ancien, pénalité minime
+
+        priorityScore = valeurScore + probabiliteScore + faciliteScore + urgenceScore;
+      }
 
       // Déterminer la prochaine action - PRIORISER les documents en attente de validation
       let nextAction = '';
-      let actionType: 'documents_pending_validation' | 'documents_requested' | 'other' = 'other';
       
       if (hasPendingDocs) {
         // PRIORITÉ 1 : Documents reçus, en attente de validation
@@ -976,12 +1039,11 @@ router.get('/overview', enhancedAuthMiddleware, async (req: Request, res: Respon
       .lte('scheduled_date', endOfWeek.toISOString().split('T')[0])
       .neq('status', 'cancelled');
 
-    // Dossiers en cours
+    // Mes dossiers (tous les dossiers de l'expert, quel que soit le statut)
     const { count: dossiersEnCours } = await supabase
       .from('ClientProduitEligible')
       .select('*', { count: 'exact', head: true })
-      .eq('expert_id', expertId)
-      .eq('statut', 'en_cours');
+      .eq('expert_id', expertId);
 
     // Apporteurs avec statistiques détaillées
     const { data: apporteursData } = await supabase
@@ -1164,7 +1226,8 @@ router.get('/dossiers-list', enhancedAuthMiddleware, async (req: Request, res: R
 
     const expertId = authUser.database_id || authUser.id;
 
-    // Récupérer tous les dossiers
+    // Récupérer TOUS les dossiers de l'expert (quel que soit le statut)
+    // Inclut les dossiers où expert_id = expertId OU expert_pending_id = expertId
     const { data: dossiers, error } = await supabase
       .from('ClientProduitEligible')
       .select(`
@@ -1177,6 +1240,8 @@ router.get('/dossiers-list', enhancedAuthMiddleware, async (req: Request, res: R
         priorite,
         current_step,
         progress,
+        expert_id,
+        expert_pending_id,
         created_at,
         updated_at,
         Client:clientId (
@@ -1188,8 +1253,7 @@ router.get('/dossiers-list', enhancedAuthMiddleware, async (req: Request, res: R
           nom
         )
       `)
-      .eq('expert_id', expertId)
-      .in('statut', RAW_ACTIVE_STATUSES)
+      .or(`expert_id.eq.${expertId},expert_pending_id.eq.${expertId}`)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -1200,9 +1264,53 @@ router.get('/dossiers-list', enhancedAuthMiddleware, async (req: Request, res: R
       });
     }
 
+    // Récupérer les informations sur les documents en attente de validation
+    const dossierIds = (dossiers || []).map((d: any) => d.id);
+    let documentsPending: any[] = [];
+    let auditCompleted: any[] = [];
+
+    if (dossierIds.length > 0) {
+      // Documents en attente de validation
+      const { data: docsData } = await supabase
+        .from('Document')
+        .select('dossier_id, validation_status')
+        .in('dossier_id', dossierIds)
+        .eq('validation_status', 'pending');
+
+      documentsPending = docsData || [];
+
+      // Audits complétés (pour identifier ceux en attente de soumission)
+      const { data: auditsData } = await supabase
+        .from('AuditRapport')
+        .select('dossier_id, created_at')
+        .in('dossier_id', dossierIds);
+
+      auditCompleted = auditsData || [];
+    }
+
+    // Créer un map pour les documents en attente par dossier
+    const docsPendingByDossier = new Map<string, number>();
+    documentsPending.forEach((doc: any) => {
+      const count = docsPendingByDossier.get(doc.dossier_id) || 0;
+      docsPendingByDossier.set(doc.dossier_id, count + 1);
+    });
+
+    // Créer un map pour les audits complétés par dossier
+    const auditsByDossier = new Map<string, boolean>();
+    auditCompleted.forEach((audit: any) => {
+      auditsByDossier.set(audit.dossier_id, true);
+    });
+
     const dossiersList = (dossiers || []).map((d: any) => {
       const client = Array.isArray(d.Client) ? d.Client[0] : d.Client;
       const produit = Array.isArray(d.ProduitEligible) ? d.ProduitEligible[0] : d.ProduitEligible;
+      
+      // Déterminer les actions prioritaires
+      const hasPendingAcceptance = d.expert_pending_id === expertId && !d.expert_id;
+      const hasPendingDocuments = (docsPendingByDossier.get(d.id) || 0) > 0;
+      const hasAuditToSubmit = auditsByDossier.has(d.id) && (d.statut === 'audit_completed' || d.statut === 'audit_en_cours');
+      
+      const hasPriorityAction = hasPendingAcceptance || hasPendingDocuments || hasAuditToSubmit;
       
       return {
         id: d.id,
@@ -1210,13 +1318,19 @@ router.get('/dossiers-list', enhancedAuthMiddleware, async (req: Request, res: R
         client_email: client?.email,
         produit_nom: produit?.nom || 'Produit',
         statut: d.statut,
-        montant: d.montantFinal,
+        montant: d.montantFinal || 0,
         priorite: d.priorite,
         current_step: d.current_step,
-        progress: d.progress,
+        progress: d.progress || 0,
         created_at: d.created_at,
         updated_at: d.updated_at,
-        validation_state: d.metadata?.validation_state
+        validation_state: d.metadata?.validation_state,
+        // Actions prioritaires
+        hasPendingAcceptance,
+        hasPendingDocuments,
+        hasAuditToSubmit,
+        hasPriorityAction,
+        pendingDocumentsCount: docsPendingByDossier.get(d.id) || 0
       };
     });
 

@@ -18,14 +18,16 @@ import {
   CheckCircle,
   RefreshCw,
   ArrowUpRight,
-  Star,
   Eye,
   Archive,
   Bell,
   LayoutDashboard,
   UserCog,
   XCircle,
-  Edit
+  Edit,
+  ArrowUp,
+  ArrowDown,
+  Filter
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { get, put } from "@/lib/api";
@@ -117,7 +119,6 @@ export const ExpertDashboardOptimized = () => {
   const [kpis, setKpis] = useState<KPIs | null>(null);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [prioritizedDossiers, setPrioritizedDossiers] = useState<PrioritizedDossier[]>([]);
-  const [activeView, setActiveView] = useState<'all' | 'prospects' | 'clients'>('all');
   const [activeTable, setActiveTable] = useState<'urgences' | 'clients' | 'dossiers' | 'apporteurs' | null>(null);
   const [clientsList, setClientsList] = useState<any[]>([]);
   const [dossiersList, setDossiersList] = useState<any[]>([]);
@@ -125,6 +126,11 @@ export const ExpertDashboardOptimized = () => {
   const [rejectedAudits, setRejectedAudits] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'team'>('dashboard');
   const alertsRef = React.useRef<HTMLDivElement>(null);
+  
+  // États pour les filtres des dossiers
+  const [sortProgress, setSortProgress] = useState<'asc' | 'desc' | null>(null);
+  const [sortMontant, setSortMontant] = useState<'asc' | 'desc' | null>(null);
+  const [filterPriorityActions, setFilterPriorityActions] = useState<boolean>(false);
 
   // Charger toutes les données du dashboard
   const loadDashboardData = useCallback(async () => {
@@ -232,13 +238,6 @@ export const ExpertDashboardOptimized = () => {
     }
   };
 
-  // Filtrer les dossiers selon la vue active
-  const filteredDossiers = prioritizedDossiers.filter(d => {
-    if (activeView === 'all') return true;
-    if (activeView === 'prospects') return d.statut === 'eligible';
-    if (activeView === 'clients') return d.statut === 'en_cours';
-    return true;
-  });
 
 
   // Gérer le cas où l'expert n'a pas de cabinet (useCabinetContext peut retourner une erreur)
@@ -412,7 +411,7 @@ export const ExpertDashboardOptimized = () => {
             </CardContent>
           </Card>
 
-          {/* KPI 5 : DOSSIERS EN COURS */}
+          {/* KPI 5 : MES DOSSIERS */}
           <Card 
             className={`bg-gradient-to-br from-orange-500 to-orange-600 text-white cursor-pointer hover:shadow-lg transition-all ${activeTable === 'dossiers' ? 'ring-4 ring-orange-300' : ''}`} 
             onClick={() => setActiveTable(activeTable === 'dossiers' ? null : 'dossiers')}
@@ -420,7 +419,7 @@ export const ExpertDashboardOptimized = () => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-orange-100 text-sm font-medium mb-1">Dossiers en cours</p>
+                  <p className="text-orange-100 text-sm font-medium mb-1">Mes dossiers</p>
                   <p className="text-3xl font-bold">{kpis?.dossiersEnCours || 0}</p>
                 </div>
                 <Briefcase className="h-10 w-10 text-orange-200" />
@@ -609,48 +608,25 @@ export const ExpertDashboardOptimized = () => {
 
         {/* 📊 TABLEAUX FILTRABLES (selon KPI cliqué) */}
 
-        {/* TABLEAU URGENCES : Dossiers à Traiter (Priorisés par Score) */}
+        {/* TABLEAU URGENCES : Dossiers en cours */}
         {activeTable === 'urgences' && (
           <Card className="mb-8">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
                   <Zap className="h-5 w-5 text-red-600" />
-                  <span>Dossiers à Traiter (Priorisés par Score)</span>
+                  <span>Dossiers en cours</span>
                 </CardTitle>
-                <div className="flex gap-2">
-                  <Button
-                    variant={activeView === 'all' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setActiveView('all')}
-                  >
-                    Tous ({prioritizedDossiers.length})
-                  </Button>
-                  <Button
-                    variant={activeView === 'prospects' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setActiveView('prospects')}
-                  >
-                    Prospects ({prioritizedDossiers.filter(d => d.statut === 'eligible').length})
-                  </Button>
-                  <Button
-                    variant={activeView === 'clients' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setActiveView('clients')}
-                  >
-                    Clients ({prioritizedDossiers.filter(d => d.statut === 'en_cours').length})
-                  </Button>
-                </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              {filteredDossiers.length === 0 ? (
+              {prioritizedDossiers.length === 0 ? (
                 <div className="text-center py-12">
                   <CheckCircle className="h-12 w-12 text-gray-400 mx-auto mb-3" />
                   <p className="text-gray-600">Aucun dossier à traiter</p>
                 </div>
               ) : (
-                filteredDossiers.slice(0, 5).map((dossier, index) => {
+                prioritizedDossiers.slice(0, 5).map((dossier, index) => {
                   const statutLabel = dossier.statut === 'eligible' ? 'Prospect' : 'En cours';
                   const statutVariant = dossier.statut === 'eligible' ? 'secondary' : 'default';
                   const nextActionLabel = dossier.nextAction || 'Voir dossier';
@@ -700,10 +676,6 @@ export const ExpertDashboardOptimized = () => {
                           </div>
                         </div>
                         <div className="text-right">
-                          <Badge className="bg-purple-100 text-purple-800 mb-1">
-                            <Star className="h-3 w-3 mr-1" />
-                            Score {dossier.priorityScore}/100
-                          </Badge>
                           <p className="text-xl font-bold text-emerald-600 leading-tight">
                             {dossier.montantFinal.toLocaleString()}€
                           </p>
@@ -899,23 +871,129 @@ export const ExpertDashboardOptimized = () => {
         {activeTable === 'dossiers' && (
           <Card className="mb-8">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Briefcase className="h-5 w-5 text-orange-600" />
-                <span>Mes Dossiers ({dossiersList.length})</span>
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Briefcase className="h-5 w-5 text-orange-600" />
+                  <span>Mes Dossiers ({dossiersList.length})</span>
+                </CardTitle>
+                <div className="flex items-center gap-2">
+                  {/* Filtre Actions prioritaires */}
+                  <Button
+                    variant={filterPriorityActions ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setFilterPriorityActions(!filterPriorityActions)}
+                    className="flex items-center gap-2"
+                  >
+                    <Filter className="h-4 w-4" />
+                    Actions prioritaires
+                  </Button>
+                  
+                  {/* Tri par progression */}
+                  <Button
+                    variant={sortProgress ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => {
+                      if (sortProgress === 'asc') {
+                        setSortProgress('desc');
+                      } else if (sortProgress === 'desc') {
+                        setSortProgress(null);
+                      } else {
+                        setSortProgress('asc');
+                      }
+                      setSortMontant(null);
+                    }}
+                    className="flex items-center gap-2"
+                  >
+                    Progression
+                    {sortProgress === 'asc' && <ArrowUp className="h-4 w-4" />}
+                    {sortProgress === 'desc' && <ArrowDown className="h-4 w-4" />}
+                  </Button>
+                  
+                  {/* Tri par montant */}
+                  <Button
+                    variant={sortMontant ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => {
+                      if (sortMontant === 'asc') {
+                        setSortMontant('desc');
+                      } else if (sortMontant === 'desc') {
+                        setSortMontant(null);
+                      } else {
+                        setSortMontant('asc');
+                      }
+                      setSortProgress(null);
+                    }}
+                    className="flex items-center gap-2"
+                  >
+                    Montant
+                    {sortMontant === 'asc' && <ArrowUp className="h-4 w-4" />}
+                    {sortMontant === 'desc' && <ArrowDown className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               {dossiersList.length > 0 ? (
                 <div className="space-y-3">
-                  {dossiersList.filter(dossier => dossier && dossier.id).map((dossier) => (
+                  {dossiersList
+                    .filter(dossier => dossier && dossier.id)
+                    .filter(dossier => {
+                      // Filtre actions prioritaires
+                      if (filterPriorityActions) {
+                        return dossier.hasPriorityAction === true;
+                      }
+                      return true;
+                    })
+                    .sort((a, b) => {
+                      // Tri par progression
+                      if (sortProgress === 'asc') {
+                        return (a.progress || 0) - (b.progress || 0);
+                      } else if (sortProgress === 'desc') {
+                        return (b.progress || 0) - (a.progress || 0);
+                      }
+                      
+                      // Tri par montant
+                      if (sortMontant === 'asc') {
+                        return (a.montant || 0) - (b.montant || 0);
+                      } else if (sortMontant === 'desc') {
+                        return (b.montant || 0) - (a.montant || 0);
+                      }
+                      
+                      return 0;
+                    })
+                    .map((dossier) => (
                     <div 
                       key={dossier.id} 
-                      className="p-4 bg-white border rounded-lg hover:shadow-md transition-all cursor-pointer"
+                      className={`p-4 bg-white border rounded-lg hover:shadow-md transition-all cursor-pointer ${
+                        dossier.hasPriorityAction ? 'border-orange-400 bg-orange-50/30' : ''
+                      }`}
                       onClick={() => navigate(`/expert/dossier/${dossier.id}`)}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
-                          <h4 className="font-bold text-gray-900 mb-1">{dossier?.client_name || 'Client inconnu'}</h4>
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className="font-bold text-gray-900">{dossier?.client_name || 'Client inconnu'}</h4>
+                            {dossier.hasPriorityAction && (
+                              <Badge className="bg-orange-500 text-white">
+                                Action requise
+                              </Badge>
+                            )}
+                            {dossier.hasPendingAcceptance && (
+                              <Badge className="bg-red-500 text-white">
+                                Acceptation en attente
+                              </Badge>
+                            )}
+                            {dossier.hasPendingDocuments && (
+                              <Badge className="bg-yellow-500 text-white">
+                                {dossier.pendingDocumentsCount} doc(s) à valider
+                              </Badge>
+                            )}
+                            {dossier.hasAuditToSubmit && (
+                              <Badge className="bg-blue-500 text-white">
+                                Audit à soumettre
+                              </Badge>
+                            )}
+                          </div>
                           <p className="text-sm text-gray-600 mb-2">
                             {dossier?.produit_nom || 'Produit'}
                           </p>
