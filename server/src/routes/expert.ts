@@ -488,12 +488,13 @@ router.get('/revenue-history', async (req: Request, res: Response) => {
     const expertCreatedAt = expertData?.created_at ? new Date(expertData.created_at) : new Date();
     const expertCommissionRate = expertData?.compensation || 10; // Par défaut 10% si non défini
 
-    // Récupérer tous les CPE terminés de l'expert
+    // Récupérer tous les CPE terminés de l'expert (refund_completed)
+    // Inclut les dossiers où expert_id = expertId OU expert_pending_id = expertId
     const { data: cpeData, error } = await supabase
       .from('ClientProduitEligible')
-      .select('"montantFinal", updated_at, statut')
-      .eq('expert_id', expertId)
-      .eq('statut', 'termine')
+      .select('"montantFinal", updated_at, statut, "date_remboursement"')
+      .or(`expert_id.eq.${expertId},expert_pending_id.eq.${expertId}`)
+      .eq('statut', 'refund_completed')
       .order('updated_at', { ascending: true });
 
     if (error) {
@@ -578,6 +579,7 @@ router.get('/product-performance', async (req: Request, res: Response) => {
     const expertCommissionRate = expertData?.compensation || 10; // Par défaut 10% si non défini
 
     // Récupérer tous les CPE de l'expert (tous statuts)
+    // Inclut les dossiers où expert_id = expertId OU expert_pending_id = expertId
     const { data: cpeData, error } = await supabase
       .from('ClientProduitEligible')
       .select(`
@@ -590,7 +592,7 @@ router.get('/product-performance', async (req: Request, res: Response) => {
           categorie
         )
       `)
-      .eq('expert_id', expertId);
+      .or(`expert_id.eq.${expertId},expert_pending_id.eq.${expertId}`);
 
     if (error) {
       console.error('❌ Erreur récupération produits:', error);
@@ -621,7 +623,7 @@ router.get('/product-performance', async (req: Request, res: Response) => {
 
       productStats[productName].assignments += 1;
 
-      if (cpe.statut === 'termine') {
+      if (cpe.statut === 'refund_completed') {
         productStats[productName].completed += 1;
         const commission = (cpe.montantFinal || 0) * (expertCommissionRate / 100);
         productStats[productName].revenue += commission;
@@ -685,6 +687,7 @@ router.get('/client-performance', async (req: Request, res: Response) => {
     const expertCommissionRate = expertData?.compensation || 10; // Par défaut 10% si non défini
 
     // Récupérer tous les CPE de l'expert avec infos client
+    // Inclut les dossiers où expert_id = expertId OU expert_pending_id = expertId
     const { data: cpeData, error } = await supabase
       .from('ClientProduitEligible')
       .select(`
@@ -702,7 +705,7 @@ router.get('/client-performance', async (req: Request, res: Response) => {
           last_name
         )
       `)
-      .eq('expert_id', expertId);
+      .or(`expert_id.eq.${expertId},expert_pending_id.eq.${expertId}`);
 
     if (error) {
       console.error('❌ Erreur récupération clients:', error);
@@ -741,7 +744,7 @@ router.get('/client-performance', async (req: Request, res: Response) => {
 
       clientStats[clientId].totalAssignments += 1;
 
-      if (cpe.statut === 'termine') {
+      if (cpe.statut === 'refund_completed') {
         const commission = (cpe.montantFinal || 0) * (expertCommissionRate / 100);
         clientStats[clientId].totalRevenue += commission;
       }

@@ -15,7 +15,6 @@ import {
   Package, 
   Star, 
   BarChart3, 
-  PieChart,
   Loader2,
   Download,
   AlertCircle,
@@ -192,12 +191,6 @@ const ExpertMesAffaires = () => {
     }).format(amount);
   };
 
-  const handleExportData = (type: string) => {
-    // Logique d'export des données
-    console.log(`Export ${type} data`);
-    toast.success(`Export des données ${type} en cours de préparation`);
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex flex-col items-center justify-center">
@@ -288,12 +281,17 @@ const ExpertMesAffaires = () => {
 
         {/* 💰 REVENUE PIPELINE - Montant Récupérable Potentiel */}
         {revenuePipeline && (
-          <Card className="mb-8 bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-200">
+          <Card className="mb-8 bg-gradient-to-r from-emerald-50 via-teal-50 to-cyan-50 border-2 border-emerald-200 shadow-lg">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Euro className="h-5 w-5 text-emerald-600" />
-                <span className="text-emerald-900">Pipeline de Revenus Prévisionnel</span>
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Euro className="h-5 w-5 text-emerald-600" />
+                  <span className="text-emerald-900">Pipeline de Revenus Prévisionnel</span>
+                </CardTitle>
+                <Badge className="bg-emerald-600 text-white">
+                  Données en temps réel
+                </Badge>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
@@ -373,12 +371,28 @@ const ExpertMesAffaires = () => {
               </div>
 
               {/* Total prévisionnel */}
-              <div className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white p-6 rounded-xl text-center">
-                <p className="text-sm font-medium text-emerald-100 mb-2">Revenus Prévisionnels Totaux</p>
-                <p className="text-4xl font-bold">
-                  {revenuePipeline.totalPrevisionnel.toLocaleString()}€
+              <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 text-white p-8 rounded-xl text-center shadow-xl">
+                <p className="text-sm font-medium text-emerald-100 mb-2 uppercase tracking-wide">Revenus Prévisionnels Totaux</p>
+                <p className="text-5xl font-bold mb-2">
+                  {revenuePipeline.totalPrevisionnel.toLocaleString('fr-FR')}€
                 </p>
-                <p className="text-xs text-emerald-200 mt-2">Basé sur probabilités de conversion</p>
+                <p className="text-xs text-emerald-100 mt-2">Basé sur probabilités de conversion et dossiers en cours</p>
+                <div className="mt-4 pt-4 border-t border-emerald-400/30">
+                  <div className="grid grid-cols-3 gap-4 text-xs">
+                    <div>
+                      <p className="text-emerald-200">Prospects</p>
+                      <p className="font-bold text-lg">{revenuePipeline.prospects.montantPotentiel.toLocaleString('fr-FR')}€</p>
+                    </div>
+                    <div>
+                      <p className="text-emerald-200">En signature</p>
+                      <p className="font-bold text-lg">{revenuePipeline.enSignature.montantPotentiel.toLocaleString('fr-FR')}€</p>
+                    </div>
+                    <div>
+                      <p className="text-emerald-200">Signés</p>
+                      <p className="font-bold text-lg">{revenuePipeline.signes.commissionExpert.toLocaleString('fr-FR')}€</p>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Tableau des dossiers détaillés */}
@@ -490,39 +504,79 @@ const ExpertMesAffaires = () => {
               <TabsContent value="revenue" className="mt-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Historique des revenus</CardTitle>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2">
+                        <TrendingUp className="h-5 w-5 text-blue-600" />
+                        Historique des revenus
+                      </CardTitle>
+                      {revenueData.length > 0 && (
+                        <div className="text-sm text-gray-600">
+                          Total: <span className="font-bold text-green-600">
+                            {formatCurrency(revenueData.reduce((sum, d) => sum + d.revenue, 0))}
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </CardHeader>
                   <CardContent>
                     {revenueData.length > 0 ? (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Mois</TableHead>
-                            <TableHead>Revenus</TableHead>
-                            <TableHead>Missions</TableHead>
-                            <TableHead>Moyenne par mission</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {revenueData.map((data, index) => (
-                            <TableRow key={index}>
-                              <TableCell className="font-medium">{data.month}</TableCell>
-                              <TableCell className="font-semibold text-green-600">
-                                {formatCurrency(data.revenue)}
-                              </TableCell>
-                              <TableCell>{data.assignments}</TableCell>
-                              <TableCell>
-                                {data.assignments > 0 ? formatCurrency(data.revenue / data.assignments) : '0€'}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+                      <div className="space-y-4">
+                        <div className="overflow-x-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Mois</TableHead>
+                                <TableHead className="text-right">Revenus</TableHead>
+                                <TableHead className="text-right">Missions</TableHead>
+                                <TableHead className="text-right">Moyenne par mission</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {revenueData.map((data, index) => (
+                                <TableRow key={index} className="hover:bg-gray-50">
+                                  <TableCell className="font-medium">{data.month}</TableCell>
+                                  <TableCell className="text-right font-semibold text-green-600">
+                                    {formatCurrency(data.revenue)}
+                                  </TableCell>
+                                  <TableCell className="text-right">{data.assignments}</TableCell>
+                                  <TableCell className="text-right">
+                                    {data.assignments > 0 ? formatCurrency(data.revenue / data.assignments) : '0€'}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                        {/* Graphique simple avec barres */}
+                        <div className="mt-6 pt-6 border-t">
+                          <h4 className="text-sm font-medium text-gray-700 mb-4">Évolution mensuelle</h4>
+                          <div className="space-y-3">
+                            {revenueData.slice().reverse().map((data, index) => {
+                              const maxRevenue = Math.max(...revenueData.map(d => d.revenue), 1);
+                              const percentage = (data.revenue / maxRevenue) * 100;
+                              return (
+                                <div key={index} className="space-y-1">
+                                  <div className="flex items-center justify-between text-xs">
+                                    <span className="text-gray-600">{data.month}</span>
+                                    <span className="font-semibold text-gray-900">{formatCurrency(data.revenue)}</span>
+                                  </div>
+                                  <div className="w-full bg-gray-200 rounded-full h-2">
+                                    <div 
+                                      className="bg-gradient-to-r from-green-500 to-emerald-500 h-2 rounded-full transition-all"
+                                      style={{ width: `${percentage}%` }}
+                                    />
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
                     ) : (
                       <div className="text-center py-12">
                         <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                        <p className="text-gray-600">Aucune donnée de revenus disponible</p>
-                        <p className="text-sm text-gray-500 mt-2">Les données apparaîtront au fur et à mesure de vos missions</p>
+                        <p className="text-gray-600 font-medium">Aucune donnée de revenus disponible</p>
+                        <p className="text-sm text-gray-500 mt-2">Les données apparaîtront au fur et à mesure de vos missions terminées</p>
                       </div>
                     )}
                   </CardContent>
@@ -532,47 +586,90 @@ const ExpertMesAffaires = () => {
               <TabsContent value="products" className="mt-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Performance par produit</CardTitle>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2">
+                        <Package className="h-5 w-5 text-blue-600" />
+                        Performance par produit
+                      </CardTitle>
+                      {productPerformance.length > 0 && (
+                        <div className="text-sm text-gray-600">
+                          {productPerformance.length} produit{productPerformance.length > 1 ? 's' : ''}
+                        </div>
+                      )}
+                    </div>
                   </CardHeader>
                   <CardContent>
                     {productPerformance.length > 0 ? (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Produit</TableHead>
-                            <TableHead>Missions</TableHead>
-                            <TableHead>Revenus</TableHead>
-                            <TableHead>Taux de réussite</TableHead>
-                            <TableHead>Note moyenne</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {productPerformance.map((product, index) => (
-                            <TableRow key={index}>
-                              <TableCell className="font-medium">{product.product}</TableCell>
-                              <TableCell>{product.assignments}</TableCell>
-                              <TableCell className="font-semibold text-green-600">
-                                {formatCurrency(product.revenue)}
-                              </TableCell>
-                              <TableCell>
-                                <Badge className={(product.successRate ?? 0) >= 80 ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}>
-                                  {product.successRate ? product.successRate.toFixed(1) : '0.0'}%
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex items-center">
-                                  <Star className="h-4 w-4 text-yellow-500 mr-1" />
-                                  <span>{product.averageRating ? product.averageRating.toFixed(1) : '0.0'}/5</span>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+                      <div className="space-y-4">
+                        <div className="overflow-x-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Produit</TableHead>
+                                <TableHead className="text-right">Missions</TableHead>
+                                <TableHead className="text-right">Revenus</TableHead>
+                                <TableHead className="text-right">Taux de réussite</TableHead>
+                                <TableHead className="text-right">Note moyenne</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {productPerformance.map((product, index) => (
+                                <TableRow key={index} className="hover:bg-gray-50">
+                                  <TableCell className="font-medium">{product.product}</TableCell>
+                                  <TableCell className="text-right">{product.assignments}</TableCell>
+                                  <TableCell className="text-right font-semibold text-green-600">
+                                    {formatCurrency(product.revenue)}
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    <Badge className={
+                                      (product.successRate ?? 0) >= 80 
+                                        ? "bg-green-100 text-green-800 border-green-300" 
+                                        : (product.successRate ?? 0) >= 50
+                                        ? "bg-yellow-100 text-yellow-800 border-yellow-300"
+                                        : "bg-red-100 text-red-800 border-red-300"
+                                    }>
+                                      {product.successRate ? product.successRate.toFixed(1) : '0.0'}%
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    <div className="flex items-center justify-end">
+                                      <Star className="h-4 w-4 text-yellow-500 mr-1 fill-yellow-500" />
+                                      <span className="font-medium">{product.averageRating ? product.averageRating.toFixed(1) : '0.0'}/5</span>
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                        {/* Statistiques résumées */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 pt-6 border-t">
+                          <div className="bg-blue-50 p-4 rounded-lg">
+                            <p className="text-sm text-gray-600 mb-1">Total missions</p>
+                            <p className="text-2xl font-bold text-blue-600">
+                              {productPerformance.reduce((sum, p) => sum + p.assignments, 0)}
+                            </p>
+                          </div>
+                          <div className="bg-green-50 p-4 rounded-lg">
+                            <p className="text-sm text-gray-600 mb-1">Total revenus</p>
+                            <p className="text-2xl font-bold text-green-600">
+                              {formatCurrency(productPerformance.reduce((sum, p) => sum + p.revenue, 0))}
+                            </p>
+                          </div>
+                          <div className="bg-purple-50 p-4 rounded-lg">
+                            <p className="text-sm text-gray-600 mb-1">Taux de réussite moyen</p>
+                            <p className="text-2xl font-bold text-purple-600">
+                              {productPerformance.length > 0
+                                ? (productPerformance.reduce((sum, p) => sum + (p.successRate || 0), 0) / productPerformance.length).toFixed(1)
+                                : '0.0'}%
+                            </p>
+                          </div>
+                        </div>
+                      </div>
                     ) : (
                       <div className="text-center py-12">
                         <Package className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                        <p className="text-gray-600">Aucune donnée produit disponible</p>
+                        <p className="text-gray-600 font-medium">Aucune donnée produit disponible</p>
                         <p className="text-sm text-gray-500 mt-2">Complétez vos premières missions pour voir vos performances par produit</p>
                       </div>
                     )}
@@ -583,54 +680,91 @@ const ExpertMesAffaires = () => {
               <TabsContent value="clients" className="mt-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Performance par client</CardTitle>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2">
+                        <Building2 className="h-5 w-5 text-blue-600" />
+                        Performance par client
+                      </CardTitle>
+                      {clientPerformance.length > 0 && (
+                        <div className="text-sm text-gray-600">
+                          {clientPerformance.length} client{clientPerformance.length > 1 ? 's' : ''}
+                        </div>
+                      )}
+                    </div>
                   </CardHeader>
                   <CardContent>
                     {clientPerformance.length > 0 ? (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Client</TableHead>
-                            <TableHead>Missions</TableHead>
-                            <TableHead>Revenus</TableHead>
-                            <TableHead>Note moyenne</TableHead>
-                            <TableHead>Dernière mission</TableHead>
-                            <TableHead>Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {clientPerformance.map((client, index) => (
-                            <TableRow key={index}>
-                              <TableCell className="font-medium">{client.clientName}</TableCell>
-                              <TableCell>{client.totalAssignments}</TableCell>
-                              <TableCell className="font-semibold text-green-600">
-                                {formatCurrency(client.totalRevenue)}
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex items-center">
-                                  <Star className="h-4 w-4 text-yellow-500 mr-1" />
-                                  <span>{client.averageRating ? client.averageRating.toFixed(1) : '0.0'}/5</span>
-                                </div>
-                              </TableCell>
-                              <TableCell>{formatDate(client.lastAssignment)}</TableCell>
-                              <TableCell>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => navigate(`/expert/client/${client.clientId}`)}
-                                >
-                                  Voir détails
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+                      <div className="space-y-4">
+                        <div className="overflow-x-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Client</TableHead>
+                                <TableHead className="text-right">Missions</TableHead>
+                                <TableHead className="text-right">Revenus</TableHead>
+                                <TableHead className="text-right">Note moyenne</TableHead>
+                                <TableHead>Dernière mission</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {clientPerformance.map((client, index) => (
+                                <TableRow key={index} className="hover:bg-gray-50">
+                                  <TableCell className="font-medium">{client.clientName}</TableCell>
+                                  <TableCell className="text-right">{client.totalAssignments}</TableCell>
+                                  <TableCell className="text-right font-semibold text-green-600">
+                                    {formatCurrency(client.totalRevenue)}
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    <div className="flex items-center justify-end">
+                                      <Star className="h-4 w-4 text-yellow-500 mr-1 fill-yellow-500" />
+                                      <span className="font-medium">{client.averageRating ? client.averageRating.toFixed(1) : '0.0'}/5</span>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>{formatDate(client.lastAssignment)}</TableCell>
+                                  <TableCell className="text-right">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => navigate(`/expert/client/${client.clientId}`)}
+                                    >
+                                      Voir détails
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                        {/* Statistiques résumées */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 pt-6 border-t">
+                          <div className="bg-blue-50 p-4 rounded-lg">
+                            <p className="text-sm text-gray-600 mb-1">Total clients</p>
+                            <p className="text-2xl font-bold text-blue-600">
+                              {clientPerformance.length}
+                            </p>
+                          </div>
+                          <div className="bg-green-50 p-4 rounded-lg">
+                            <p className="text-sm text-gray-600 mb-1">Total revenus</p>
+                            <p className="text-2xl font-bold text-green-600">
+                              {formatCurrency(clientPerformance.reduce((sum, c) => sum + c.totalRevenue, 0))}
+                            </p>
+                          </div>
+                          <div className="bg-purple-50 p-4 rounded-lg">
+                            <p className="text-sm text-gray-600 mb-1">Note moyenne globale</p>
+                            <p className="text-2xl font-bold text-purple-600">
+                              {clientPerformance.length > 0
+                                ? (clientPerformance.reduce((sum, c) => sum + (c.averageRating || 0), 0) / clientPerformance.length).toFixed(1)
+                                : '0.0'}/5
+                            </p>
+                          </div>
+                        </div>
+                      </div>
                     ) : (
                       <div className="text-center py-12">
                         <Building2 className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                        <p className="text-gray-600">Aucune donnée client disponible</p>
-                        <p className="text-sm text-gray-500 mt-2">Vos statistiques clients apparaîtront ici</p>
+                        <p className="text-gray-600 font-medium">Aucune donnée client disponible</p>
+                        <p className="text-sm text-gray-500 mt-2">Vos statistiques clients apparaîtront ici au fur et à mesure de vos missions</p>
                       </div>
                     )}
                   </CardContent>

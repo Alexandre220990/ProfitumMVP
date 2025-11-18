@@ -699,10 +699,11 @@ router.get('/revenue-pipeline', enhancedAuthMiddleware, async (req: Request, res
     const expertCommissionRate = (expertData?.compensation || 10) / 100; // Convertir en décimal
 
     // 1. PROSPECTS (statut = 'eligible')
+    // Inclut les dossiers où expert_id = expertId OU expert_pending_id = expertId
     const { data: prospects } = await supabase
       .from('ClientProduitEligible')
       .select('"montantFinal"')
-      .eq('expert_id', expertId)
+      .or(`expert_id.eq.${expertId},expert_pending_id.eq.${expertId}`)
       .eq('statut', 'eligible');
 
     const prospectsTotal = (prospects || []).reduce((sum, p) => sum + (p.montantFinal || 0), 0);
@@ -728,12 +729,12 @@ router.get('/revenue-pipeline', enhancedAuthMiddleware, async (req: Request, res
     const enSignatureProbability = 0.85; // 85% de conversion
     const enSignaturePotentiel = enSignatureTotal * enSignatureProbability;
 
-    // 3. SIGNÉS (statut = 'termine')
+    // 3. SIGNÉS (statut = 'refund_completed' - Remboursement effectué)
     const { data: signes } = await supabase
       .from('ClientProduitEligible')
       .select('"montantFinal"')
       .eq('expert_id', expertId)
-      .eq('statut', 'termine');
+      .eq('statut', 'refund_completed');
 
     const signesTotal = (signes || []).reduce((sum, s) => sum + (s.montantFinal || 0), 0);
     const commissionExpert = signesTotal * expertCommissionRate; // Commission personnalisée expert
@@ -889,7 +890,7 @@ router.get('/dossiers-by-status/:status', enhancedAuthMiddleware, async (req: Re
       dossiers = enrichedDossiers;
 
     } else if (status === 'signes') {
-      // SIGNÉS (statut = 'termine')
+      // SIGNÉS (statut = 'refund_completed' - Remboursement effectué)
       const { data, error } = await supabase
         .from('ClientProduitEligible')
         .select(`
@@ -899,10 +900,11 @@ router.get('/dossiers-by-status/:status', enhancedAuthMiddleware, async (req: Re
           created_at,
           updated_at,
           "clientId",
-          "produitId"
+          "produitId",
+          "date_remboursement"
         `)
         .eq('expert_id', expertId)
-        .eq('statut', 'termine')
+        .eq('statut', 'refund_completed')
         .order('updated_at', { ascending: false })
         .limit(50);
 
