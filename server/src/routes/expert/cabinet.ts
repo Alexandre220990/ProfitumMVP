@@ -347,7 +347,7 @@ router.post('/members/new', async (req: Request, res: Response) => {
     // Récupérer les infos du cabinet pour pré-remplir company_name et siren
     const { data: cabinet } = await supabase
       .from('Cabinet')
-      .select('name, siret')
+      .select('name, siret, siren')
       .eq('id', cabinetId)
       .single();
 
@@ -390,7 +390,7 @@ router.post('/members/new', async (req: Request, res: Response) => {
         last_name,
         name: `${first_name} ${last_name}`,
         company_name: company_name || cabinet?.name || '',
-        siren: siren || cabinet?.siret || '',
+        siren: siren || cabinet?.siren || '',
         phone: phone || null,
         cabinet_id: cabinetId,
         secteur_activite: secteur_activite || [],

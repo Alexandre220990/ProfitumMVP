@@ -525,21 +525,12 @@ export const CabinetTeamManagement = () => {
   // Pré-remplir company_name et siren avec les infos du cabinet
   useEffect(() => {
     if (isDialogOpen && context?.cabinet) {
-      // Extraire le SIREN du SIRET (les 9 premiers chiffres)
-      let cabinetSiren = '';
-      if (context.cabinet.siret) {
-        // Le SIRET contient 14 chiffres, le SIREN est les 9 premiers
-        const cleanSiret = context.cabinet.siret.replace(/\D/g, '');
-        if (cleanSiret.length >= 9) {
-          cabinetSiren = formatSiren(cleanSiret.substring(0, 9));
-        } else {
-          cabinetSiren = formatSiren(cleanSiret);
-        }
-      }
+      // Utiliser directement le SIREN du cabinet (formaté avec espaces)
+      const cabinetSiren = context.cabinet.siren ? formatSiren(context.cabinet.siren) : '';
       
       console.log('🔍 Pré-remplissage formulaire:', {
         cabinetName: context.cabinet.name,
-        cabinetSiret: context.cabinet.siret,
+        cabinetSiren: context.cabinet.siren,
         formattedSiren: cabinetSiren
       });
       

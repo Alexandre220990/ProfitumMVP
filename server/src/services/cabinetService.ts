@@ -91,6 +91,7 @@ export class CabinetService {
         slug,
         status,
         siret,
+        siren,
         phone,
         email,
         address,
@@ -136,6 +137,7 @@ export class CabinetService {
         slug,
         status,
         siret,
+        siren,
         phone,
         email,
         address,
@@ -174,6 +176,7 @@ export class CabinetService {
   static async createCabinet(payload: {
     name: string;
     siret?: string;
+    siren?: string;
     phone?: string;
     email?: string;
     address?: string;

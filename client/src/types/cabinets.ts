@@ -82,6 +82,7 @@ export interface Cabinet {
   id: string;
   name: string;
   siret?: string;
+  siren?: string;
   phone?: string;
   email?: string;
   address?: string;
