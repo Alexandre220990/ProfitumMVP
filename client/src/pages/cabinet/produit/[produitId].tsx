@@ -20,10 +20,260 @@ import {
   Loader2
 } from 'lucide-react';
 import { STATUT_LABELS, type ClientProduitStatut } from '@/types/statuts';
+import { config } from '@/config';
 
 const getStatutLabel = (statut: string) => {
   return STATUT_LABELS[statut as ClientProduitStatut] || statut;
 };
+
+// ============================================================================
+// COMPOSANT D'ÉDITION DES COMMISSIONS
+// ============================================================================
+
+interface ProductCommissionEditorProps {
+  produitId: string;
+  commissionRate?: number | null;
+  clientFeeMin?: number | null;
+  feeMode?: string;
+  onUpdate: () => void;
+}
+
+function ProductCommissionEditor({ 
+  produitId, 
+  commissionRate, 
+  clientFeeMin, 
+  feeMode,
+  onUpdate 
+}: ProductCommissionEditorProps) {
+  const [editingMax, setEditingMax] = useState(false);
+  const [editingMin, setEditingMin] = useState(false);
+  const [maxValue, setMaxValue] = useState<number | null>(
+    commissionRate !== null && commissionRate !== undefined ? commissionRate : null
+  );
+  const [minValue, setMinValue] = useState<number | null>(
+    clientFeeMin !== null && clientFeeMin !== undefined ? clientFeeMin : null
+  );
+  const [savingMax, setSavingMax] = useState(false);
+  const [savingMin, setSavingMin] = useState(false);
+
+  // Récupérer l'ID du CabinetProduitEligible
+  const [cabinetProductId, setCabinetProductId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchCabinetProductId = async () => {
+      try {
+        const response = await get<Array<{ id: string; produit_eligible_id: string }>>('/api/expert/cabinet/products');
+        if (response.success && response.data && Array.isArray(response.data)) {
+          const product = response.data.find((p) => p.produit_eligible_id === produitId);
+          if (product?.id) {
+            setCabinetProductId(product.id);
+          }
+        }
+      } catch (error) {
+        console.error('Erreur récupération produit cabinet:', error);
+      }
+    };
+    fetchCabinetProductId();
+  }, [produitId]);
+
+  const handleSaveMax = async () => {
+    if (!cabinetProductId) {
+      toast.error('Produit non trouvé dans le cabinet');
+      return;
+    }
+
+    if (maxValue === null || maxValue === undefined) {
+      toast.error('Valeur requise');
+      return;
+    }
+
+    if (minValue !== null && maxValue < minValue) {
+      toast.error('Le maximum ne peut pas être inférieur au minimum');
+      return;
+    }
+
+    setSavingMax(true);
+    try {
+      const response = await fetch(`${config.API_URL}/api/expert/cabinet/products/${cabinetProductId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          commission_rate: maxValue // Le backend gère la conversion
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        toast.success('Commission maximum mise à jour');
+        setEditingMax(false);
+        onUpdate();
+      } else {
+        toast.error(data.message || 'Erreur lors de la mise à jour');
+      }
+    } catch (error) {
+      console.error('Erreur mise à jour commission max:', error);
+      toast.error('Erreur lors de la mise à jour');
+    } finally {
+      setSavingMax(false);
+    }
+  };
+
+  const handleSaveMin = async () => {
+    if (!cabinetProductId) {
+      toast.error('Produit non trouvé dans le cabinet');
+      return;
+    }
+
+    if (minValue !== null && maxValue !== null && minValue > maxValue) {
+      toast.error('Le minimum ne peut pas être supérieur au maximum');
+      return;
+    }
+
+    setSavingMin(true);
+    try {
+      const response = await fetch(`${config.API_URL}/api/expert/cabinet/products/${cabinetProductId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          client_fee_percentage_min: minValue !== null ? minValue : null // Le backend gère la conversion
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        toast.success('Commission minimum mise à jour');
+        setEditingMin(false);
+        onUpdate();
+      } else {
+        toast.error(data.message || 'Erreur lors de la mise à jour');
+      }
+    } catch (error) {
+      console.error('Erreur mise à jour commission min:', error);
+      toast.error('Erreur lors de la mise à jour');
+    } finally {
+      setSavingMin(false);
+    }
+  };
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div>
+        <p className="text-xs text-gray-600 mb-1">Commission cabinet (max)</p>
+        {editingMax ? (
+          <div className="flex items-center gap-2 mt-1">
+            <Input
+              type="number"
+              min={minValue !== null ? minValue : 0}
+              max="100"
+              step="0.1"
+              value={maxValue !== null ? maxValue : ''}
+              onChange={(e) => setMaxValue(e.target.value ? parseFloat(e.target.value) : null)}
+              className="w-20 text-sm"
+              placeholder="Max %"
+              disabled={savingMax}
+            />
+            <span className="text-xs text-gray-500">%</span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleSaveMax}
+              disabled={savingMax}
+            >
+              {savingMax ? '...' : '✓'}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setEditingMax(false);
+                setMaxValue(commissionRate !== null && commissionRate !== undefined ? commissionRate : null);
+              }}
+              disabled={savingMax}
+            >
+              ✕
+            </Button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 mt-1">
+            <p className="text-lg font-semibold">
+              {maxValue !== null ? `${maxValue.toFixed(1)}%` : 'Non définie'}
+            </p>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setEditingMax(true)}
+              className="h-6 px-2 text-xs"
+            >
+              Modifier
+            </Button>
+          </div>
+        )}
+      </div>
+      <div>
+        <p className="text-xs text-gray-600 mb-1">Minimum négociation</p>
+        {editingMin ? (
+          <div className="flex items-center gap-2 mt-1">
+            <Input
+              type="number"
+              min="0"
+              max={maxValue !== null ? maxValue : 100}
+              step="0.1"
+              value={minValue !== null ? minValue : ''}
+              onChange={(e) => setMinValue(e.target.value ? parseFloat(e.target.value) : null)}
+              className="w-20 text-sm"
+              placeholder="Min %"
+              disabled={savingMin}
+            />
+            <span className="text-xs text-gray-500">%</span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleSaveMin}
+              disabled={savingMin}
+            >
+              {savingMin ? '...' : '✓'}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setEditingMin(false);
+                setMinValue(clientFeeMin !== null && clientFeeMin !== undefined ? clientFeeMin : null);
+              }}
+              disabled={savingMin}
+            >
+              ✕
+            </Button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 mt-1">
+            <p className="text-lg font-semibold">
+              {minValue !== null ? `${minValue.toFixed(1)}%` : 'Non défini'}
+            </p>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setEditingMin(true)}
+              className="h-6 px-2 text-xs"
+            >
+              Modifier
+            </Button>
+          </div>
+        )}
+      </div>
+      <div>
+        <p className="text-xs text-gray-600 mb-1">Mode</p>
+        <p className="text-lg font-semibold">{feeMode || 'percent'}</p>
+      </div>
+    </div>
+  );
+}
 
 // ============================================================================
 // TYPES
@@ -250,26 +500,16 @@ export default function CabinetProduitSynthese() {
           <CardTitle className="text-lg">⚙️ Configuration du produit</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <p className="text-xs text-gray-600 mb-1">Commission cabinet (max)</p>
-              <p className="text-lg font-semibold">
-                {data.produit.commission_rate ? `${(data.produit.commission_rate * 100).toFixed(1)}%` : 'Non définie'}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-600 mb-1">Minimum négociation</p>
-              <p className="text-lg font-semibold">
-                {data.produit.client_fee_percentage_min
-                  ? `${(data.produit.client_fee_percentage_min * 100).toFixed(1)}%`
-                  : 'Non défini'}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-600 mb-1">Mode</p>
-              <p className="text-lg font-semibold">{data.produit.fee_mode || 'percent'}</p>
-            </div>
-          </div>
+          <ProductCommissionEditor 
+            produitId={produitId!}
+            commissionRate={data.produit.commission_rate}
+            clientFeeMin={data.produit.client_fee_percentage_min}
+            feeMode={data.produit.fee_mode}
+            onUpdate={() => {
+              // Recharger les données après mise à jour
+              window.location.reload();
+            }}
+          />
         </CardContent>
       </Card>
 

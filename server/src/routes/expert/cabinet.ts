@@ -1040,16 +1040,43 @@ const isActiveStatus = (statut: string | null | undefined): boolean => {
 };
 
 // 1. DOSSIERS BLOQUÉS (> 7 jours sans mise à jour)
-async function getBlockedDossiers(produitId: string) {
+// Helper pour vérifier si un statut est >= expert_assigned
+function isStatusAfterExpertAssigned(statut: string): boolean {
+  const statusesAfterExpertAssigned = [
+    'expert_assigned',
+    'expert_pending_validation',
+    'expert_validated',
+    'charte_pending',
+    'charte_signed',
+    'documents_requested',
+    'complementary_documents_upload_pending',
+    'complementary_documents_sent',
+    'complementary_documents_validated',
+    'complementary_documents_refused',
+    'audit_in_progress',
+    'audit_completed',
+    'validation_pending',
+    'validated',
+    'implementation_in_progress',
+    'implementation_validated',
+    'payment_requested',
+    'payment_in_progress',
+    'refund_completed'
+  ];
+  return statusesAfterExpertAssigned.includes(statut);
+}
+
+async function getBlockedDossiers(produitId: string, authorizedExpertIds: Set<string>) {
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
   
-  // Récupérer tous les dossiers du produit
-  const { data: dossiers, error } = await supabase
+  // Récupérer tous les dossiers du produit avec statut >= expert_assigned
+  let dossiersQuery = supabase
     .from('ClientProduitEligible')
     .select(`
       id,
       statut,
+      expert_id,
       updated_at,
       montantFinal,
       Client:clientId (
@@ -1069,11 +1096,26 @@ async function getBlockedDossiers(produitId: string) {
     .eq('produitId', produitId)
     .order('updated_at', { ascending: true });
 
+  // Filtrer uniquement les dossiers dont l'expert est membre du cabinet
+  if (authorizedExpertIds.size > 0) {
+    dossiersQuery = dossiersQuery.in('expert_id', Array.from(authorizedExpertIds));
+  } else {
+    // Si aucun expert autorisé, retourner une liste vide
+    dossiersQuery = dossiersQuery.eq('expert_id', '00000000-0000-0000-0000-000000000000');
+  }
+
+  const { data: dossiers, error } = await dossiersQuery;
   if (error) throw error;
 
   // Filtrer et calculer les jours depuis la dernière mise à jour
   const blockedDossiers = (dossiers || [])
     .filter(dossier => {
+      // Vérifier que le statut est >= expert_assigned
+      if (!isStatusAfterExpertAssigned(dossier.statut)) return false;
+      
+      // Vérifier que l'expert est membre du cabinet
+      if (!dossier.expert_id || !authorizedExpertIds.has(dossier.expert_id)) return false;
+      
       const isActive = isActiveStatus(dossier.statut);
       if (!isActive) return false;
       
@@ -1094,12 +1136,13 @@ async function getBlockedDossiers(produitId: string) {
 }
 
 // 2. EXPERTS INACTIFS (> 14 jours avec dossiers actifs)
-async function getInactiveExperts(produitId: string) {
+async function getInactiveExperts(produitId: string, authorizedExpertIds: Set<string>) {
   const fourteenDaysAgo = new Date();
   fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
 
   // Récupérer tous les dossiers actifs du produit avec leurs experts
-  const { data: dossiers, error: dossiersError } = await supabase
+  // Filtrer uniquement les dossiers dont l'expert est membre du cabinet
+  let dossiersQuery = supabase
     .from('ClientProduitEligible')
     .select(`
       id,
@@ -1115,13 +1158,27 @@ async function getInactiveExperts(produitId: string) {
     .eq('produitId', produitId)
     .not('expert_id', 'is', null);
 
+  // Filtrer uniquement les dossiers dont l'expert est membre du cabinet
+  if (authorizedExpertIds.size > 0) {
+    dossiersQuery = dossiersQuery.in('expert_id', Array.from(authorizedExpertIds));
+  } else {
+    dossiersQuery = dossiersQuery.eq('expert_id', '00000000-0000-0000-0000-000000000000');
+  }
+
+  const { data: dossiers, error: dossiersError } = await dossiersQuery;
   if (dossiersError) throw dossiersError;
 
   // Grouper par expert et calculer la dernière activité
   const expertsMap = new Map();
   
   (dossiers || []).forEach(dossier => {
-    if (!dossier.expert_id || !isActiveStatus(dossier.statut)) return;
+    // Vérifier que le statut est >= expert_assigned
+    if (!isStatusAfterExpertAssigned(dossier.statut)) return;
+    
+    // Vérifier que l'expert est membre du cabinet
+    if (!dossier.expert_id || !authorizedExpertIds.has(dossier.expert_id)) return;
+    
+    if (!isActiveStatus(dossier.statut)) return;
     
     const expertId = dossier.expert_id;
     const expert = dossier.Expert as any;
@@ -1194,9 +1251,38 @@ router.get('/products/:produitId/alerts', async (req: Request, res: Response) =>
       });
     }
 
-    // Récupérer les alertes
-    const blockedDossiers = await getBlockedDossiers(produitId);
-    const inactiveExperts = await getInactiveExperts(produitId);
+    // Récupérer tous les membres du cabinet (owner, managers, experts)
+    const { data: cabinetMembers, error: membersError } = await supabase
+      .from('CabinetMember')
+      .select('member_id, member_type, team_role, status')
+      .eq('cabinet_id', cabinetId)
+      .eq('status', 'active');
+    
+    if (membersError) throw membersError;
+    
+    // Récupérer aussi l'owner du cabinet
+    const { data: cabinet, error: cabinetError } = await supabase
+      .from('Cabinet')
+      .select('owner_expert_id')
+      .eq('id', cabinetId)
+      .single();
+    
+    if (cabinetError) throw cabinetError;
+    
+    // Construire la liste des expert_ids autorisés (membres du cabinet + owner)
+    const authorizedExpertIds = new Set<string>();
+    if (cabinet?.owner_expert_id) {
+      authorizedExpertIds.add(cabinet.owner_expert_id);
+    }
+    (cabinetMembers || []).forEach(member => {
+      if (member.member_type === 'expert' || member.team_role === 'OWNER' || member.team_role === 'MANAGER' || member.team_role === 'EXPERT') {
+        authorizedExpertIds.add(member.member_id);
+      }
+    });
+
+    // Récupérer les alertes (uniquement pour les experts du cabinet et statut >= expert_assigned)
+    const blockedDossiers = await getBlockedDossiers(produitId, authorizedExpertIds);
+    const inactiveExperts = await getInactiveExperts(produitId, authorizedExpertIds);
 
     return res.json({
       success: true,
@@ -1266,7 +1352,37 @@ router.get('/products/:produitId/synthese', async (req: Request, res: Response) 
       });
     }
 
-    // Récupérer tous les dossiers du produit avec jointures
+    // Récupérer tous les membres du cabinet (owner, managers, experts)
+    const { data: cabinetMembers, error: membersError } = await supabase
+      .from('CabinetMember')
+      .select('member_id, member_type, team_role, status')
+      .eq('cabinet_id', cabinetId)
+      .eq('status', 'active');
+    
+    if (membersError) throw membersError;
+    
+    // Récupérer aussi l'owner du cabinet
+    const { data: cabinet, error: cabinetError } = await supabase
+      .from('Cabinet')
+      .select('owner_expert_id')
+      .eq('id', cabinetId)
+      .single();
+    
+    if (cabinetError) throw cabinetError;
+    
+    // Construire la liste des expert_ids autorisés (membres du cabinet + owner)
+    const authorizedExpertIds = new Set<string>();
+    if (cabinet?.owner_expert_id) {
+      authorizedExpertIds.add(cabinet.owner_expert_id);
+    }
+    (cabinetMembers || []).forEach(member => {
+      if (member.member_type === 'expert' || member.team_role === 'OWNER' || member.team_role === 'MANAGER' || member.team_role === 'EXPERT') {
+        authorizedExpertIds.add(member.member_id);
+      }
+    });
+    
+    // Récupérer tous les dossiers du produit avec jointures, filtrés par experts du cabinet
+    // ET avec le statut "expert_assigned"
     let dossiersQuery = supabase
       .from('ClientProduitEligible')
       .select(`
@@ -1293,10 +1409,23 @@ router.get('/products/:produitId/synthese', async (req: Request, res: Response) 
         )
       `, { count: 'exact' })
       .eq('produitId', produitId);
+    
+    // Filtrer uniquement les dossiers dont l'expert est membre du cabinet
+    if (authorizedExpertIds.size > 0) {
+      dossiersQuery = dossiersQuery.in('expert_id', Array.from(authorizedExpertIds));
+    } else {
+      // Si aucun expert autorisé, retourner une liste vide
+      dossiersQuery = dossiersQuery.eq('expert_id', '00000000-0000-0000-0000-000000000000'); // UUID impossible
+    }
 
-    // Appliquer les filtres
+    // Appliquer les filtres de statut
+    // Par défaut, on filtre uniquement les dossiers avec statut "expert_assigned"
+    // Sauf si l'utilisateur a choisi un autre filtre
     if (statut && statut !== 'all') {
       dossiersQuery = dossiersQuery.eq('statut', statut);
+    } else {
+      // Par défaut : uniquement les dossiers avec statut expert_assigned
+      dossiersQuery = dossiersQuery.eq('statut', 'expert_assigned');
     }
     if (expertId && expertId !== 'all') {
       dossiersQuery = dossiersQuery.eq('expert_id', expertId);
@@ -1313,8 +1442,9 @@ router.get('/products/:produitId/synthese', async (req: Request, res: Response) 
     const { data: dossiersPaginated, error: dossiersError, count: totalDossiers } = await dossiersQueryPaginated;
     if (dossiersError) throw dossiersError;
 
-    // Récupérer tous les dossiers pour les statistiques (sans pagination)
-    const { data: allDossiers, error: allDossiersError } = await supabase
+    // Récupérer tous les dossiers pour les statistiques (sans pagination), filtrés par experts du cabinet
+    // ET avec le statut "expert_assigned"
+    let allDossiersQuery = supabase
       .from('ClientProduitEligible')
       .select(`
         id,
@@ -1330,7 +1460,17 @@ router.get('/products/:produitId/synthese', async (req: Request, res: Response) 
           email
         )
       `)
-      .eq('produitId', produitId);
+      .eq('produitId', produitId)
+      .eq('statut', 'expert_assigned'); // Pour les statistiques, on filtre uniquement les dossiers avec statut expert_assigned
+    
+    // Filtrer uniquement les dossiers dont l'expert est membre du cabinet
+    if (authorizedExpertIds.size > 0) {
+      allDossiersQuery = allDossiersQuery.in('expert_id', Array.from(authorizedExpertIds));
+    } else {
+      allDossiersQuery = allDossiersQuery.eq('expert_id', '00000000-0000-0000-0000-000000000000');
+    }
+    
+    const { data: allDossiers, error: allDossiersError } = await allDossiersQuery;
 
     if (allDossiersError) throw allDossiersError;
 
@@ -1352,10 +1492,13 @@ router.get('/products/:produitId/synthese', async (req: Request, res: Response) 
       statutsRepartition[status] = (statutsRepartition[status] || 0) + 1;
     });
 
-    // 3. EXPERTS RELIÉS AU PRODUIT
+    // 3. EXPERTS RELIÉS AU PRODUIT (uniquement ceux qui sont membres du cabinet)
     const expertsMap = new Map();
     dossiersList.forEach(dossier => {
       if (!dossier.expert_id || !dossier.Expert) return;
+      
+      // Vérifier que l'expert est membre du cabinet
+      if (!authorizedExpertIds.has(dossier.expert_id)) return;
       
       const expert = dossier.Expert as any;
       if (!expertsMap.has(dossier.expert_id)) {
@@ -1408,7 +1551,9 @@ router.get('/products/:produitId/synthese', async (req: Request, res: Response) 
     // 4. MONTANTS ET COMMISSIONS
     const dossiersValides = dossiersList.filter(d => normalizeDossierStatus(d.statut) === 'validated' && d.montantFinal);
     const montantTotalSignes = dossiersValides.reduce((sum, d) => sum + (d.montantFinal || 0), 0);
-    const commissionRate = cabinetProduct.commission_rate || 0.30;
+    // commission_rate est stocké en pourcentage (ex: 30.00 pour 30%), donc on divise par 100 pour obtenir la décimale
+    const commissionRateRaw = cabinetProduct.commission_rate || 30.0;
+    const commissionRate = commissionRateRaw > 1 ? commissionRateRaw / 100 : commissionRateRaw;
     const commissionGeneree = montantTotalSignes * commissionRate;
     const commissionMoyenne = dossiersValides.length > 0 ? commissionGeneree / dossiersValides.length : 0;
 
@@ -1443,9 +1588,9 @@ router.get('/products/:produitId/synthese', async (req: Request, res: Response) 
       });
     }
 
-    // 6. ALERTES
-    const blockedDossiers = await getBlockedDossiers(produitId);
-    const inactiveExperts = await getInactiveExperts(produitId);
+    // 6. ALERTES (uniquement pour les experts du cabinet et statut >= expert_assigned)
+    const blockedDossiers = await getBlockedDossiers(produitId, authorizedExpertIds);
+    const inactiveExperts = await getInactiveExperts(produitId, authorizedExpertIds);
 
     // Format des dossiers paginés avec recherche
     let dossiersFiltered = dossiersPaginated || [];
@@ -1470,6 +1615,15 @@ router.get('/products/:produitId/synthese', async (req: Request, res: Response) 
       ? produitEligible[0]
       : produitEligible;
 
+    // Préparer les valeurs de commission pour le frontend
+    // commission_rate est stocké en pourcentage dans la BDD, on le renvoie tel quel pour l'affichage
+    const commissionRateForDisplay = cabinetProduct.commission_rate || 30.0;
+    const clientFeeMinForDisplay = cabinetProduct.client_fee_percentage_min 
+      ? (cabinetProduct.client_fee_percentage_min > 1 
+          ? cabinetProduct.client_fee_percentage_min 
+          : cabinetProduct.client_fee_percentage_min * 100)
+      : null;
+    
     return res.json({
       success: true,
       data: {
@@ -1478,8 +1632,8 @@ router.get('/products/:produitId/synthese', async (req: Request, res: Response) 
           nom: produitData?.nom,
           description: produitData?.description,
           categorie: produitData?.categorie,
-          commission_rate: commissionRate,
-          client_fee_percentage_min: cabinetProduct.client_fee_percentage_min,
+          commission_rate: commissionRateForDisplay, // En pourcentage pour l'affichage
+          client_fee_percentage_min: clientFeeMinForDisplay, // En pourcentage pour l'affichage
           fee_mode: cabinetProduct.fee_mode
         },
         kpis: {
