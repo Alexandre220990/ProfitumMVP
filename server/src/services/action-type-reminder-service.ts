@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { Database } from '../types/supabase';
+import { DossierTimelineService } from './dossier-timeline-service';
 
 const supabase = createClient(
   process.env.SUPABASE_URL || '',
@@ -735,6 +736,34 @@ export class ActionTypeReminderService {
 
     // Marquer la relance comme envoyée dans les métadonnées
     await this.markReminderSent(dossier.id, dossier.actionType, reminderConfig.days);
+
+    // Déterminer le type de relance pour la timeline
+    let typeRelance: 'relance_1' | 'relance_2' | 'relance_3' | 'relance_critical' = 'relance_1';
+    if (reminderConfig.type === 'reminder_critical' || reminderConfig.type === 'reminder_escalation_max') {
+      typeRelance = 'relance_critical';
+    } else if (daysSinceAction >= 15) {
+      typeRelance = 'relance_3';
+    } else if (daysSinceAction >= 10) {
+      typeRelance = 'relance_2';
+    } else if (daysSinceAction >= 5) {
+      typeRelance = 'relance_1';
+    }
+
+    // Créer un événement dans la timeline
+    try {
+      await DossierTimelineService.relanceSystemeEnvoyee({
+        dossier_id: dossier.id,
+        type_relance: typeRelance,
+        action_type: dossier.actionType,
+        jours_attente: daysSinceAction,
+        message: message,
+        produit_nom: produitNom,
+        client_nom: clientName
+      });
+    } catch (error) {
+      console.error('❌ Erreur création événement timeline relance:', error);
+      // Ne pas faire échouer la relance si l'événement timeline échoue
+    }
 
     console.log(`✅ Relance envoyée pour dossier ${dossier.id} (${dossier.actionType}, J+${daysSinceAction})`);
   }

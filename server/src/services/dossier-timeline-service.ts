@@ -913,5 +913,46 @@ Date : ${data.paiement_date}` : ''}`,
       color: 'green'
     });
   }
+
+  /**
+   * Événement : Relance système envoyée
+   */
+  static async relanceSystemeEnvoyee(data: {
+    dossier_id: string;
+    type_relance: 'relance_1' | 'relance_2' | 'relance_3' | 'relance_critical';
+    action_type: string;
+    jours_attente: number;
+    message: string;
+    produit_nom?: string;
+    client_nom?: string;
+  }): Promise<void> {
+    const relanceLabels = {
+      'relance_1': 'Relance 1',
+      'relance_2': 'Relance 2',
+      'relance_3': 'Relance 3',
+      'relance_critical': 'Relance critique'
+    };
+
+    const relanceLabel = relanceLabels[data.type_relance] || 'Relance système';
+
+    await this.addEvent({
+      dossier_id: data.dossier_id,
+      type: 'system_action',
+      actor_type: 'system',
+      actor_name: 'Système',
+      title: `📧 ${relanceLabel} envoyée`,
+      description: `${relanceLabel} envoyée automatiquement${data.produit_nom ? ` pour ${data.produit_nom}` : ''}${data.client_nom ? ` - ${data.client_nom}` : ''}\n${data.message}\nJours d'attente : ${data.jours_attente} jour${data.jours_attente > 1 ? 's' : ''}`,
+      metadata: {
+        type_relance: data.type_relance,
+        action_type: data.action_type,
+        jours_attente: data.jours_attente,
+        message: data.message,
+        produit_nom: data.produit_nom || null,
+        client_nom: data.client_nom || null
+      },
+      icon: '📧',
+      color: 'gray'
+    });
+  }
 }
 

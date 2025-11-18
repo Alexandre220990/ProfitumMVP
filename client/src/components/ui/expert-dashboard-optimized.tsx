@@ -699,36 +699,36 @@ export const ExpertDashboardOptimized = () => {
                         </div>
                       )}
 
-                      {/* Alerte documents demandés (PRIORITÉ 2) */}
+                      {/* Alerte documents demandés (PRIORITÉ 2) - Relances système */}
                       {!dossier.hasPendingDocuments && dossier.hasDocumentRequest && dossier.daysWaitingDocuments !== undefined && (
                         <div className={`mt-3 p-3 rounded-lg border-2 ${
                           dossier.daysWaitingDocuments >= 15
-                            ? 'bg-red-50 border-red-300'
+                            ? 'bg-purple-50 border-purple-300'
                             : dossier.daysWaitingDocuments >= 10
-                            ? 'bg-orange-50 border-orange-300'
+                            ? 'bg-indigo-50 border-indigo-300'
                             : dossier.daysWaitingDocuments >= 5
-                            ? 'bg-yellow-50 border-yellow-300'
-                            : 'bg-blue-50 border-blue-300'
+                            ? 'bg-violet-50 border-violet-300'
+                            : 'bg-slate-50 border-slate-300'
                         }`}>
                           <div className="flex items-start gap-2">
                             <AlertTriangle className={`h-5 w-5 mt-0.5 ${
                               dossier.daysWaitingDocuments >= 15
-                                ? 'text-red-600'
+                                ? 'text-purple-600'
                                 : dossier.daysWaitingDocuments >= 10
-                                ? 'text-orange-600'
+                                ? 'text-indigo-600'
                                 : dossier.daysWaitingDocuments >= 5
-                                ? 'text-yellow-600'
-                                : 'text-blue-600'
+                                ? 'text-violet-600'
+                                : 'text-slate-600'
                             }`} />
                             <div className="flex-1">
                               <p className={`text-sm font-semibold ${
                                 dossier.daysWaitingDocuments >= 15
-                                  ? 'text-red-800'
+                                  ? 'text-purple-800'
                                   : dossier.daysWaitingDocuments >= 10
-                                  ? 'text-orange-800'
+                                  ? 'text-indigo-800'
                                   : dossier.daysWaitingDocuments >= 5
-                                  ? 'text-yellow-800'
-                                  : 'text-blue-800'
+                                  ? 'text-violet-800'
+                                  : 'text-slate-800'
                               }`}>
                                 {dossier.daysWaitingDocuments >= 15
                                   ? '⚠️ Relance 3 envoyée'
@@ -740,12 +740,12 @@ export const ExpertDashboardOptimized = () => {
                               </p>
                               <p className={`text-xs mt-1 ${
                                 dossier.daysWaitingDocuments >= 15
-                                  ? 'text-red-700'
+                                  ? 'text-purple-700'
                                   : dossier.daysWaitingDocuments >= 10
-                                  ? 'text-orange-700'
+                                  ? 'text-indigo-700'
                                   : dossier.daysWaitingDocuments >= 5
-                                  ? 'text-yellow-700'
-                                  : 'text-blue-700'
+                                  ? 'text-violet-700'
+                                  : 'text-slate-700'
                               }`}>
                                 En attente de documents depuis {dossier.daysWaitingDocuments} jour{dossier.daysWaitingDocuments > 1 ? 's' : ''}
                                 {dossier.daysWaitingDocuments >= 15 && (
