@@ -2618,7 +2618,7 @@ router.post('/dossier/:id/record-final-result', enhancedAuthMiddleware, async (r
         *,
         Client(id, auth_user_id, company_name, nom, prenom, apporteur_id),
         ProduitEligible(nom),
-        Expert(id, name, compensation)
+        Expert(id, name, client_fee_percentage)
       `)
       .eq('id', client_produit_id)
       .eq('expert_id', user.database_id)

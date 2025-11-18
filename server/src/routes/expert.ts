@@ -64,9 +64,17 @@ router.get('/profile', async (req: Request, res: Response) => {
       return res.status(500).json({ success: false, message: 'Erreur serveur' });
     }
 
+    // Mapper client_fee_percentage vers compensation pour compatibilité frontend
+    const expertWithCompensation = expert ? {
+      ...expert,
+      compensation: expert.client_fee_percentage !== null && expert.client_fee_percentage !== undefined
+        ? expert.client_fee_percentage * 100 // Convertir décimal en pourcentage
+        : null
+    } : null;
+
     return res.json({
       success: true,
-      data: expert
+      data: expertWithCompensation
     });
   } catch (error) {
     console.error('Erreur lors de la récupération du profil expert:', error);
