@@ -118,6 +118,7 @@ import rdvRoutes from './routes/rdv';
 import testEmailRoutes from './routes/test-email';
 import publicUploadRoutes from './routes/public-upload';
 import expertDemoRequestRoutes from './routes/expert/demo-request';
+import contactRoutes from './routes/contact';
 import expertDocumentsRoutes from './routes/expert-documents';
 import clientDocumentsRoutes from './routes/client-documents';
 
@@ -227,6 +228,10 @@ console.log('📝 Route inscription apporteur montée sur /api/apporteur/registe
 // 📤 ROUTE D'UPLOAD PUBLIQUE - Pour uploads avant authentification
 app.use('/api/upload', publicRouteLogger, publicUploadRoutes);
 console.log('📤 Route upload publique montée sur /api/upload (PUBLIQUE)');
+
+// 📧 ROUTE DE CONTACT PUBLIQUE - Pour formulaire de contact public
+app.use('/api/contact', publicRouteLogger, contactRoutes);
+console.log('📧 Route contact publique montée sur /api/contact (PUBLIQUE)');
 
 // 📋 ROUTE DEMANDE EXPERT - PUBLIQUE (pas d'authentification requise)
 app.use('/api/expert/demo-request', publicRouteLogger, expertDemoRequestRoutes);

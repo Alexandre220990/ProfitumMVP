@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { 
   Bell, 
@@ -18,7 +19,10 @@ import {
   FileText,
   Users,
   Eye,
-  Trash2
+  Trash2,
+  Mail,
+  Phone,
+  User
 } from 'lucide-react';
 import { config } from '@/config/env';
 import { useNavigate } from 'react-router-dom';
@@ -47,6 +51,7 @@ export function NotificationCenter({ onNotificationAction, compact = false }: No
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'unread' | 'urgent'>('unread');
+  const [selectedContact, setSelectedContact] = useState<Notification | null>(null);
 
   useEffect(() => {
     loadNotifications();
@@ -106,6 +111,12 @@ export function NotificationCenter({ onNotificationAction, compact = false }: No
       await markAsRead(notification.id);
     }
 
+    // Si c'est une notification de contact, ouvrir le popup
+    if (notification.notification_type === 'contact_message') {
+      setSelectedContact(notification);
+      return;
+    }
+
     // Rediriger vers l'action
     if (notification.action_url) {
       // Si l'action_url contient un ID de dossier, on peut déclencher l'action directement
@@ -160,6 +171,7 @@ export function NotificationCenter({ onNotificationAction, compact = false }: No
     switch (type) {
       case 'admin_action_required': return <FileText className="w-5 h-5 text-red-500" />;
       case 'expert_assigned': return <Users className="w-5 h-5 text-blue-500" />;
+      case 'contact_message': return <Mail className="w-5 h-5 text-purple-500" />;
       default: return <Bell className="w-5 h-5 text-gray-500" />;
     }
   };
@@ -332,6 +344,103 @@ export function NotificationCenter({ onNotificationAction, compact = false }: No
           </ScrollArea>
         )}
       </CardContent>
+
+      {/* Popup de visualisation du message de contact */}
+      <Dialog open={!!selectedContact} onOpenChange={(open) => !open && setSelectedContact(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="w-5 h-5 text-purple-500" />
+              Message de contact
+            </DialogTitle>
+            <DialogDescription>
+              Détails du message reçu
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedContact && selectedContact.action_data && (
+            <div className="space-y-4 mt-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                  <User className="w-5 h-5 text-gray-600 mt-0.5" />
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Nom</p>
+                    <p className="font-semibold text-gray-900">{selectedContact.action_data.name || 'Non renseigné'}</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                  <Mail className="w-5 h-5 text-gray-600 mt-0.5" />
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Email</p>
+                    <p className="font-semibold text-gray-900 break-all">{selectedContact.action_data.email || 'Non renseigné'}</p>
+                  </div>
+                </div>
+                
+                {selectedContact.action_data.phone && (
+                  <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                    <Phone className="w-5 h-5 text-gray-600 mt-0.5" />
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">Téléphone</p>
+                      <p className="font-semibold text-gray-900">{selectedContact.action_data.phone}</p>
+                    </div>
+                  </div>
+                )}
+                
+                {selectedContact.action_data.subject && (
+                  <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                    <FileText className="w-5 h-5 text-gray-600 mt-0.5" />
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">Sujet</p>
+                      <p className="font-semibold text-gray-900">{selectedContact.action_data.subject}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <p className="text-xs text-gray-500 mb-2">Message</p>
+                <p className="text-gray-900 whitespace-pre-wrap leading-relaxed">
+                  {selectedContact.action_data.message || 'Aucun message'}
+                </p>
+              </div>
+              
+              <div className="flex items-center justify-between pt-4 border-t">
+                <p className="text-xs text-gray-500">
+                  Reçu le {new Date(selectedContact.created_at).toLocaleString('fr-FR', {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      if (selectedContact.action_data?.email) {
+                        window.location.href = `mailto:${selectedContact.action_data.email}`;
+                      }
+                    }}
+                  >
+                    <Mail className="w-4 h-4 mr-2" />
+                    Répondre
+                  </Button>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => setSelectedContact(null)}
+                  >
+                    Fermer
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

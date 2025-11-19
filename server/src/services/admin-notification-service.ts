@@ -274,5 +274,75 @@ export class AdminNotificationService {
       return { success: false, notification_ids: [] };
     }
   }
+
+  /**
+   * Notifier les admins : Nouveau message de contact
+   */
+  static async notifyNewContactMessage(data: {
+    contact_message_id: string;
+    name: string;
+    email: string;
+    phone?: string | null;
+    subject?: string | null;
+    message: string;
+  }): Promise<{ success: boolean; notification_ids: string[] }> {
+    try {
+      const adminIds = await this.getAdminIds();
+      
+      if (adminIds.length === 0) {
+        return { success: false, notification_ids: [] };
+      }
+
+      const notificationIds: string[] = [];
+
+      for (const adminId of adminIds) {
+        const { data: notification, error } = await supabase
+          .from('notification')
+          .insert({
+            user_id: adminId,
+            user_type: 'admin',
+            title: `📧 Nouveau message de contact`,
+            message: `${data.name} (${data.email}) vous a envoyé un message${data.subject ? ` : ${data.subject}` : ''}`,
+            notification_type: 'contact_message',
+            priority: 'medium',
+            is_read: false,
+            action_url: `/admin/contact/${data.contact_message_id}`,
+            action_data: {
+              contact_message_id: data.contact_message_id,
+              name: data.name,
+              email: data.email,
+              phone: data.phone,
+              subject: data.subject,
+              message: data.message,
+              action_required: 'view_contact'
+            },
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .select()
+          .single();
+
+        if (!error && notification) {
+          notificationIds.push(notification.id);
+
+          // 📡 Envoyer via SSE en temps réel
+          const sse = getSSEService();
+          if (sse) {
+            sse.sendNotificationToUser(adminId, notification);
+            sse.sendKPIRefresh();
+          }
+        }
+      }
+
+      return {
+        success: notificationIds.length > 0,
+        notification_ids: notificationIds
+      };
+
+    } catch (error) {
+      console.error('❌ Erreur notifyNewContactMessage:', error);
+      return { success: false, notification_ids: [] };
+    }
+  }
 }
 

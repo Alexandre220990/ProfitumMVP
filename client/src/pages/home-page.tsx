@@ -196,8 +196,7 @@ const ADVANTAGES = [
   { 
     icon: ShieldCheck, 
     title: "Experts Vérifiés", 
-    desc: "Tous nos experts sont rigoureusement sélectionnés et certifiés pour garantir un accompagnement de qualité.", 
-    link: "/create-account-client" 
+    desc: "Tous nos experts sont rigoureusement sélectionnés et certifiés pour garantir un accompagnement de qualité."
   },
   { 
     icon: Handshake, 
@@ -400,25 +399,23 @@ const ValuePropositionSection = () => (
       
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8 lg:gap-12">
         {ADVANTAGES.map((advantage, index) => (
-          <Link key={index} to={advantage.link || "#"}>
-            <div className="group relative">
-              <div className="bg-gradient-to-br from-slate-50 to-blue-50 border border-slate-200 rounded-2xl p-8 hover:border-blue-300 transition-all duration-300 transform hover:-translate-y-2 hover:shadow-xl">
-                <div className="flex items-center justify-center mb-8">
-                  <div className="relative">
-                    <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-4 rounded-2xl shadow-lg group-hover:shadow-xl transition-all duration-300">
-                      <advantage.icon className="w-8 h-8 text-white" />
-                    </div>
+          <div key={index} className="group relative">
+            <div className="bg-gradient-to-br from-slate-50 to-blue-50 border border-slate-200 rounded-2xl p-8 hover:border-blue-300 transition-all duration-300 transform hover:-translate-y-2 hover:shadow-xl">
+              <div className="flex items-center justify-center mb-8">
+                <div className="relative">
+                  <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-4 rounded-2xl shadow-lg group-hover:shadow-xl transition-all duration-300">
+                    <advantage.icon className="w-8 h-8 text-white" />
                   </div>
                 </div>
-                <h3 className="text-xl font-bold mb-4 text-slate-900 text-center">{advantage.title}</h3>
-                <p className="text-slate-600 text-center leading-relaxed">{advantage.desc}</p>
-                
-                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                  <div className="w-8 h-1 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full"></div>
-                </div>
+              </div>
+              <h3 className="text-xl font-bold mb-4 text-slate-900 text-center">{advantage.title}</h3>
+              <p className="text-slate-600 text-center leading-relaxed">{advantage.desc}</p>
+              
+              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                <div className="w-8 h-1 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full"></div>
               </div>
             </div>
-          </Link>
+          </div>
         ))}
       </div>
     </div>
@@ -554,7 +551,10 @@ const ServicesSection = () => {
             <Calculator className="w-5 h-5 text-blue-600" />
             <span className="text-sm sm:text-base text-slate-700 font-medium whitespace-nowrap">Besoin d'un audit personnalisé ?</span>
           </div>
-          <button className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-2 rounded-xl font-medium hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 transform hover:-translate-y-0.5 whitespace-nowrap">
+          <button 
+            onClick={() => navigate('/contact')}
+            className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-2 rounded-xl font-medium hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 transform hover:-translate-y-0.5 whitespace-nowrap"
+          >
             Contactez-nous
           </button>
         </div>
@@ -618,10 +618,10 @@ const CallToActionSection = () => (
         Rejoignez Profitum et commencez à économiser dès aujourd'hui avec nos experts qualifiés.
       </p>
       <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center items-stretch sm:items-center">
-        <Link to="/create-account-client" className="w-full sm:w-auto">
+        <Link to="/simulateur" className="w-full sm:w-auto">
           <Button className="w-full sm:w-auto group bg-white text-blue-700 font-bold px-8 sm:px-10 py-3 sm:py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
             <span className="flex items-center justify-center gap-2 text-sm sm:text-base">
-              <span className="whitespace-nowrap">Créer mon compte gratuitement</span>
+              <span className="whitespace-nowrap">Commencer une simulation</span>
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </span>
           </Button>
@@ -688,24 +688,6 @@ const FooterSection = () => (
             <li><a href="#" className="text-slate-300 hover:text-white transition-colors">CIR</a></li>
             <li><a href="#" className="text-slate-300 hover:text-white transition-colors">CEE</a></li>
           </ul>
-        </div>
-      </div>
-
-      {/* Newsletter - Responsive */}
-      <div className="border-t border-slate-700 pt-8 mb-8">
-        <div className="max-w-md mx-auto text-center">
-          <h4 className="text-base sm:text-lg font-semibold text-white mb-3 sm:mb-4">Restez informé</h4>
-          <p className="text-sm sm:text-base text-slate-300 mb-4 sm:mb-6 px-4">Recevez nos dernières actualités et conseils d'optimisation</p>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <input 
-              type="email" 
-              placeholder="Votre email" 
-              className="flex-1 px-4 py-3 bg-slate-800 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 text-sm sm:text-base"
-            />
-            <button className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 whitespace-nowrap text-sm sm:text-base">
-              S'abonner
-            </button>
-          </div>
         </div>
       </div>
 

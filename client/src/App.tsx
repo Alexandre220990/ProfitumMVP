@@ -85,6 +85,7 @@ const DFSPage = React.lazy(() => import('./pages/dfs'));
 const CIRPage = React.lazy(() => import('./pages/cir'));
 const CEEPage = React.lazy(() => import('./pages/cee'));
 const EnergiePage = React.lazy(() => import('./pages/energie'));
+const ContactPage = React.lazy(() => import('./pages/contact'));
 const InscriptionSimulateur = React.lazy(() => import('./pages/inscription-simulateur'));
 const SimulateurClient = React.lazy(() => import('./pages/simulateur-client'));
 const UnauthorizedPage = React.lazy(() => import('./pages/unauthorized'));
@@ -199,6 +200,7 @@ function App() {
                     <Route path="/solutions/cir" element={<CIRPage />} />
                     <Route path="/solutions/cee" element={<CEEPage />} />
                     <Route path="/solutions/energie" element={<EnergiePage />} />
+                    <Route path="/contact" element={<ContactPage />} />
                     <Route path="/experts" element={<Experts />} />
                     <Route path="/experts/:id" element={<ExpertDetails />} />
                     <Route path="/connexion-client" element={<ConnexionClient />} />
