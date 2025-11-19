@@ -1382,9 +1382,21 @@ router.get('/dossiers-list', enhancedAuthMiddleware, async (req: Request, res: R
     });
 
     // Debug: Vérifier le nombre final de dossiers dans la liste retournée
+    const rejectedDossiers = dossiersList.filter((d: any) => 
+      d.statut?.includes('rejected') || 
+      d.statut === 'rejected' || 
+      d.statut === 'rejete' || 
+      d.statut === 'eligibility_rejected' ||
+      d.statut === 'admin_rejected' ||
+      d.statut === 'audit_rejected_by_client'
+    );
+    
     console.log(`📊 Debug /dossiers-list final - Expert ${expertId}:`, {
       total_dossiers_list: dossiersList.length,
       dossiers_refund_completed: dossiersList.filter((d: any) => d.statut === 'refund_completed').length,
+      dossiers_rejetes: rejectedDossiers.length,
+      statuts_rejetes: rejectedDossiers.map((d: any) => ({ id: d.id, statut: d.statut })),
+      tous_les_statuts: [...new Set(dossiersList.map((d: any) => d.statut))],
       ids_dossiers: dossiersList.map((d: any) => d.id)
     });
 
@@ -1420,6 +1432,9 @@ router.get('/apporteurs-list', enhancedAuthMiddleware, async (req: Request, res:
     const expertId = authUser.database_id || authUser.id;
 
     // Récupérer les apporteurs via les clients
+    // Inclure tous les statuts pertinents (pas seulement 'eligible' et 'en_cours')
+    // pour afficher tous les apporteurs qui ont des dossiers avec l'expert
+    // On exclut seulement les statuts vraiment terminés/annulés
     const { data: cpes, error } = await supabase
       .from('ClientProduitEligible')
       .select(`
@@ -1436,7 +1451,9 @@ router.get('/apporteurs-list', enhancedAuthMiddleware, async (req: Request, res:
         )
       `)
       .eq('expert_id', expertId)
-      .in('statut', ['eligible', 'en_cours']);
+      .not('statut', 'eq', 'cancelled')
+      .not('statut', 'eq', 'archived')
+      .not('statut', 'eq', 'annule');
 
     if (error) {
       console.error('❌ Erreur récupération apporteurs:', error);
