@@ -488,6 +488,16 @@ const ServicesSection = () => {
                 navigate('/solutions/urssaf');
               } else if (service.id === 'social') {
                 navigate('/solutions/social');
+              } else if (service.id === 'foncier') {
+                navigate('/solutions/foncier');
+              } else if (service.id === 'dfs') {
+                navigate('/solutions/dfs');
+              } else if (service.id === 'cir') {
+                navigate('/solutions/cir');
+              } else if (service.id === 'cee') {
+                navigate('/solutions/cee');
+              } else if (service.id === 'energie') {
+                navigate('/solutions/energie');
               }
             }}
             className={`group relative bg-gradient-to-br ${service.bgGradient} rounded-3xl p-8 transition-all duration-500 transform hover:-translate-y-3 hover:shadow-2xl cursor-pointer border ${service.borderColor} ${service.hoverBorderColor} overflow-hidden`}

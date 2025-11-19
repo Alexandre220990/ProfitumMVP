@@ -328,45 +328,7 @@ export default function URSSAFPage() {
         </div>
       </section>
 
-      {/* Section 5 : Résultats et statistiques */}
-      <section className="py-12 sm:py-16 md:py-20 lg:py-24 bg-white">
-        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="max-w-4xl mx-auto">
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 mb-6 sm:mb-8 text-center">
-              Des économies significatives pour nos clients
-            </h2>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8">
-              <div className="text-center">
-                <div className="text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent mb-2">
-                  5 000€
-                </div>
-                <div className="text-sm sm:text-base text-slate-600">à</div>
-                <div className="text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent mb-3">
-                  25 000€
-                </div>
-                <p className="text-slate-600 text-sm sm:text-base">Économies moyennes par audit</p>
-              </div>
-              
-              <div className="text-center">
-                <div className="text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent mb-3">
-                  15%
-                </div>
-                <p className="text-slate-600 text-sm sm:text-base">En moyenne d'économies sur vos charges sociales</p>
-              </div>
-              
-              <div className="text-center">
-                <div className="text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent mb-3">
-                  2 semaines
-                </div>
-                <p className="text-slate-600 text-sm sm:text-base">Délai moyen d'audit</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Section 6 : FAQ */}
+      {/* Section 5 : FAQ */}
       <section className="py-12 sm:py-16 md:py-20 lg:py-24 bg-gradient-to-br from-slate-50 via-white to-emerald-50">
         <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 mb-6 sm:mb-8 text-center">

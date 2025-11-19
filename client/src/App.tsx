@@ -80,6 +80,11 @@ const SimulateurEligibilite = React.lazy(() => import('./pages/simulateur-eligib
 const TICPEPage = React.lazy(() => import('./pages/ticpe'));
 const URSSAFPage = React.lazy(() => import('./pages/urssaf'));
 const SocialPage = React.lazy(() => import('./pages/social'));
+const FoncierPage = React.lazy(() => import('./pages/foncier'));
+const DFSPage = React.lazy(() => import('./pages/dfs'));
+const CIRPage = React.lazy(() => import('./pages/cir'));
+const CEEPage = React.lazy(() => import('./pages/cee'));
+const EnergiePage = React.lazy(() => import('./pages/energie'));
 const InscriptionSimulateur = React.lazy(() => import('./pages/inscription-simulateur'));
 const SimulateurClient = React.lazy(() => import('./pages/simulateur-client'));
 const UnauthorizedPage = React.lazy(() => import('./pages/unauthorized'));
@@ -189,6 +194,11 @@ function App() {
                     <Route path="/solutions/ticpe" element={<TICPEPage />} />
                     <Route path="/solutions/urssaf" element={<URSSAFPage />} />
                     <Route path="/solutions/social" element={<SocialPage />} />
+                    <Route path="/solutions/foncier" element={<FoncierPage />} />
+                    <Route path="/solutions/dfs" element={<DFSPage />} />
+                    <Route path="/solutions/cir" element={<CIRPage />} />
+                    <Route path="/solutions/cee" element={<CEEPage />} />
+                    <Route path="/solutions/energie" element={<EnergiePage />} />
                     <Route path="/experts" element={<Experts />} />
                     <Route path="/experts/:id" element={<ExpertDetails />} />
                     <Route path="/connexion-client" element={<ConnexionClient />} />
