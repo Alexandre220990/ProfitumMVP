@@ -606,6 +606,185 @@ export class EmailService {
         return this.sendEmail(candidateEmail, subject, html, text);
     }
 
+    /**
+     * Envoyer un email de demande de RDV au candidat apporteur
+     */
+    static async sendApporteurRDVRequestNotification(
+        candidateEmail: string,
+        firstName: string,
+        lastName: string,
+        adminNotes?: string
+    ): Promise<boolean> {
+        const subject = 'Demande de rendez-vous - Candidature Apporteur d\'Affaires';
+        const html = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <title>Demande de rendez-vous</title>
+                <style>
+                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                    .header { background: #f59e0b; color: white; padding: 20px; text-align: center; }
+                    .content { padding: 20px; background: #f9fafb; }
+                    .notes { background: #fffbeb; padding: 15px; border-radius: 6px; margin: 15px 0; border-left: 4px solid #f59e0b; }
+                    .footer { text-align: center; padding: 20px; color: #666; font-size: 14px; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>📅 Demande de rendez-vous</h1>
+                    </div>
+                    <div class="content">
+                        <p>Bonjour ${firstName} ${lastName},</p>
+                        <p>Nous avons bien reçu votre candidature pour devenir apporteur d'affaires chez Profitum.</p>
+                        <p>Nous souhaiterions échanger avec vous pour mieux comprendre votre profil et vos motivations.</p>
+                        <p><strong>Pouvez-vous nous indiquer vos disponibilités pour un échange ?</strong></p>
+                        ${adminNotes ? `<div class="notes"><strong>Message de l'équipe :</strong><br>${adminNotes}</div>` : ''}
+                        <p>Nous vous remercions pour votre intérêt et restons à votre disposition pour toute question.</p>
+                        <p>Cordialement,<br>L'équipe Profitum</p>
+                    </div>
+                    <div class="footer">
+                        <p>Profitum - Plateforme de gestion des aides financières</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+        `;
+        const text = `
+            Demande de rendez-vous - Candidature Apporteur d'Affaires
+            
+            Bonjour ${firstName} ${lastName},
+            Nous avons bien reçu votre candidature pour devenir apporteur d'affaires chez Profitum.
+            Nous souhaiterions échanger avec vous pour mieux comprendre votre profil et vos motivations.
+            Pouvez-vous nous indiquer vos disponibilités pour un échange ?
+            ${adminNotes ? `Message de l'équipe : ${adminNotes}` : ''}
+            Nous vous remercions pour votre intérêt et restons à votre disposition pour toute question.
+            Cordialement,
+            L'équipe Profitum
+        `;
+
+        return this.sendEmail(candidateEmail, subject, html, text);
+    }
+
+    /**
+     * Notifier l'admin avec un email contenant un message prédéfini pour ouvrir le mail
+     */
+    static async notifyAdminRDVRequest(
+        candidatureId: string,
+        firstName: string,
+        lastName: string,
+        candidateEmail: string,
+        candidatePhone: string,
+        companyName: string,
+        rdvTitle: string,
+        rdvDate: string,
+        rdvTime: string
+    ): Promise<boolean> {
+        const adminEmail = process.env.ADMIN_EMAIL || 'admin@profitum.app';
+        const subject = `📅 Demande de RDV - Candidature ${firstName} ${lastName}`;
+        
+        // Formater la date en français
+        const dateObj = new Date(rdvDate);
+        const formattedDate = dateObj.toLocaleDateString('fr-FR', { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+        });
+        
+        // Message prédéfini pour l'email à envoyer au candidat avec les infos du RDV
+        const predefinedMessage = `Bonjour ${firstName} ${lastName},
+
+Nous avons bien reçu votre candidature pour devenir apporteur d'affaires chez Profitum.
+
+Nous souhaiterions échanger avec vous pour mieux comprendre votre profil et vos motivations.
+
+Nous vous proposons un rendez-vous de qualification :
+📅 ${rdvTitle}
+🗓️ ${formattedDate}
+🕐 ${rdvTime}
+
+Pouvez-vous nous confirmer votre disponibilité pour ce créneau, ou nous proposer un autre horaire si celui-ci ne vous convient pas ?
+
+Nous vous remercions pour votre intérêt et restons à votre disposition pour toute question.
+
+Cordialement,
+L'équipe Profitum`;
+
+        const html = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <title>Demande de RDV</title>
+                <style>
+                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                    .header { background: #f59e0b; color: white; padding: 20px; text-align: center; }
+                    .content { padding: 20px; background: #f9fafb; }
+                    .info-box { background: #eff6ff; padding: 15px; border-radius: 6px; margin: 15px 0; }
+                    .message-box { background: #fffbeb; padding: 15px; border-radius: 6px; margin: 15px 0; border-left: 4px solid #f59e0b; font-family: monospace; white-space: pre-wrap; }
+                    .button { display: inline-block; background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 10px 0; }
+                    .footer { text-align: center; padding: 20px; color: #666; font-size: 14px; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>📅 Demande de RDV</h1>
+                    </div>
+                    <div class="content">
+                        <p>Une demande de RDV a été effectuée pour la candidature suivante :</p>
+                        <div class="info-box">
+                            <p><strong>Nom :</strong> ${firstName} ${lastName}</p>
+                            <p><strong>Email :</strong> <a href="mailto:${candidateEmail}">${candidateEmail}</a></p>
+                            <p><strong>Téléphone :</strong> <a href="tel:${candidatePhone}">${candidatePhone}</a></p>
+                            <p><strong>Entreprise :</strong> ${companyName}</p>
+                            <p><strong>ID Candidature :</strong> ${candidatureId}</p>
+                            <hr style="margin: 15px 0; border: none; border-top: 1px solid #ddd;">
+                            <p><strong>📅 RDV proposé :</strong></p>
+                            <p><strong>Titre :</strong> ${rdvTitle}</p>
+                            <p><strong>Date :</strong> ${formattedDate}</p>
+                            <p><strong>Heure :</strong> ${rdvTime}</p>
+                        </div>
+                        <p><strong>Message prédéfini à envoyer au candidat :</strong></p>
+                        <div class="message-box">${predefinedMessage}</div>
+                        <p>Vous pouvez copier ce message et l'envoyer directement au candidat, ou cliquer sur le lien ci-dessous pour ouvrir votre client email :</p>
+                        <div style="text-align: center;">
+                            <a href="mailto:${candidateEmail}?subject=Demande de rendez-vous - Candidature Apporteur d'Affaires&body=${encodeURIComponent(predefinedMessage)}" class="button">📧 Ouvrir le mail</a>
+                        </div>
+                        <p style="margin-top: 20px;">
+                            <a href="${process.env.FRONTEND_URL || 'https://www.profitum.app'}/admin">Accéder au dashboard admin</a>
+                        </p>
+                    </div>
+                    <div class="footer">
+                        <p>Profitum - Plateforme de gestion des aides financières</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+        `;
+        const text = `
+            Demande de RDV - Candidature Apporteur d'Affaires
+            
+            Une demande de RDV a été effectuée pour la candidature suivante :
+            Nom : ${firstName} ${lastName}
+            Email : ${candidateEmail}
+            Téléphone : ${candidatePhone}
+            Entreprise : ${companyName}
+            ID Candidature : ${candidatureId}
+            
+            Message prédéfini à envoyer au candidat :
+            ${predefinedMessage}
+            
+            Accéder au dashboard : ${process.env.FRONTEND_URL || 'https://www.profitum.app'}/admin
+        `;
+
+        return this.sendEmail(adminEmail, subject, html, text);
+    }
+
     // ===== MÉTHODE GÉNÉRIQUE D'ENVOI =====
     private static async sendEmail(to: string, subject: string, html: string, text?: string): Promise<boolean> {
         // TODO: Intégrer votre service d'email préféré

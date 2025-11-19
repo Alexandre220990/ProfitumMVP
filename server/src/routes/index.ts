@@ -103,8 +103,8 @@ router.use('/', staticAssetsRoutes);
 // Routes de messagerie unifiée
 router.use('/messaging', enhancedAuthMiddleware, unifiedMessagingRoutes);
 
-// Routes d'inscription apporteur (publiques)
-router.use('/apporteur', apporteurRegisterRoutes);
+// SUPPRIMÉ: Routes d'inscription apporteur (déjà montées directement dans index.ts ligne 224)
+// router.use('/apporteur', apporteurRegisterRoutes);
 
 // Routes admin pour les candidatures
 router.use('/admin', enhancedAuthMiddleware, requireUserType('admin'), adminCandidaturesRoutes);

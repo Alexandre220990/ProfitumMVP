@@ -63,14 +63,24 @@ router.post('/register', upload.single('cv_file'), async (req: Request, res: Res
       sector,
       siren,
       motivation_letter,
-      sponsor_code
+      sponsor_code,
+      password
     } = req.body;
 
     // Validation des données
-    if (!first_name || !last_name || !email || !phone || !company_name || !company_type || !sector || !motivation_letter) {
+    if (!first_name || !last_name || !email || !phone || !company_name || !company_type || !sector || !motivation_letter || !password) {
       res.status(400).json({ 
         success: false, 
-        error: 'Tous les champs obligatoires doivent être remplis' 
+        error: 'Tous les champs obligatoires doivent être remplis (y compris le mot de passe)' 
+      });
+      return;
+    }
+
+    // Validation du mot de passe (minimum 8 caractères)
+    if (password.length < 8) {
+      res.status(400).json({ 
+        success: false, 
+        error: 'Le mot de passe doit contenir au moins 8 caractères' 
       });
       return;
     }
@@ -116,9 +126,45 @@ router.post('/register', upload.single('cv_file'), async (req: Request, res: Res
     // Générer un code d'affiliation unique
     const affiliation_code = `AFF${Date.now().toString().slice(-6)}`;
 
+    // Créer l'utilisateur Supabase Auth avec le mot de passe fourni (mais email non confirmé pour l'instant)
+    // Le compte sera activé lors de l'approbation par l'admin
+    let authUserId = null;
+    try {
+      const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: false, // Email non confirmé tant que l'admin n'a pas approuvé
+        user_metadata: {
+          first_name,
+          last_name,
+          type: 'apporteur',
+          company_name,
+          siren: siren || null
+        }
+      });
+
+      if (authError) {
+        console.error('Erreur création utilisateur auth:', authError);
+        // Si l'utilisateur existe déjà, on continue quand même
+        if (authError.message.includes('already registered')) {
+          res.status(400).json({ 
+            success: false, 
+            error: 'Un compte avec cet email existe déjà' 
+          });
+          return;
+        }
+      } else {
+        authUserId = authUser?.user?.id || null;
+      }
+    } catch (authError) {
+      console.error('Erreur création compte auth:', authError);
+      // Continuer même si l'auth échoue, on pourra le créer plus tard lors de l'approbation
+    }
+
     // Insérer la candidature dans ApporteurAffaires avec statut 'candidature'
     const candidatureData = {
       id: uuidv4(),
+      auth_user_id: authUserId, // Lier le compte auth si créé
       first_name,
       last_name,
       email,

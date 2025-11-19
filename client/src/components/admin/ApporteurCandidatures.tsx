@@ -55,7 +55,7 @@ interface ApporteurCandidature {
   motivation_letter: string;
   cv_file_path?: string;
   sponsor_code?: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'candidature' | 'pending_approval' | 'active' | 'rejected';
   admin_notes?: string;
   created_at: string;
   updated_at: string;
@@ -72,6 +72,12 @@ const ApporteurCandidatures: React.FC = () => {
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [adminNotes, setAdminNotes] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isRDVModalOpen, setIsRDVModalOpen] = useState(false);
+  const [rdvData, setRdvData] = useState({
+    title: 'RDV de qualification',
+    date: '',
+    time: ''
+  });
 
   // Charger les candidatures
   const loadCandidatures = async () => {
@@ -103,8 +109,8 @@ const ApporteurCandidatures: React.FC = () => {
     loadCandidatures();
   }, []);
 
-  // Traiter une candidature (approuver/rejeter)
-  const handleProcessCandidature = async (candidatureId: string, action: 'approve' | 'reject') => {
+  // Traiter une candidature (approuver/rejeter/demander RDV)
+  const handleProcessCandidature = async (candidatureId: string, action: 'approve' | 'reject' | 'request_rdv', rdvInfo?: { title: string; date: string; time: string }) => {
     try {
       setIsProcessing(true);
       const token = localStorage.getItem('token');
@@ -116,14 +122,56 @@ const ApporteurCandidatures: React.FC = () => {
         },
         body: JSON.stringify({
           action,
-          admin_notes: adminNotes
+          admin_notes: adminNotes,
+          ...(action === 'request_rdv' && rdvInfo ? {
+            rdv_title: rdvInfo.title,
+            rdv_date: rdvInfo.date,
+            rdv_time: rdvInfo.time
+          } : {})
         })
       });
 
       const result = await response.json();
 
       if (result.success) {
-        toast.success(`Candidature ${action === 'approve' ? 'approuvée' : 'rejetée'} avec succès`);
+        if (action === 'request_rdv') {
+          toast.success('Demande de RDV envoyée avec succès');
+          setIsRDVModalOpen(false);
+          setRdvData({ title: 'RDV de qualification', date: '', time: '' });
+          
+          // Ouvrir le client email avec le message prédéfini
+          if (selectedCandidature && rdvInfo) {
+            const formattedDate = new Date(rdvInfo.date).toLocaleDateString('fr-FR', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            });
+            
+            const emailBody = `Bonjour ${selectedCandidature.first_name} ${selectedCandidature.last_name},
+
+Nous avons bien reçu votre candidature pour devenir apporteur d'affaires chez Profitum.
+
+Nous souhaiterions échanger avec vous pour mieux comprendre votre profil et vos motivations.
+
+Nous vous proposons un rendez-vous de qualification :
+📅 ${rdvInfo.title}
+🗓️ ${formattedDate}
+🕐 ${rdvInfo.time}
+
+Pouvez-vous nous confirmer votre disponibilité pour ce créneau, ou nous proposer un autre horaire si celui-ci ne vous convient pas ?
+
+Nous vous remercions pour votre intérêt et restons à votre disposition pour toute question.
+
+Cordialement,
+L'équipe Profitum`;
+
+            const mailtoLink = `mailto:${selectedCandidature.email}?subject=Demande de rendez-vous - Candidature Apporteur d'Affaires&body=${encodeURIComponent(emailBody)}`;
+            window.location.href = mailtoLink;
+          }
+        } else {
+          toast.success(`Candidature ${action === 'approve' ? 'approuvée' : 'rejetée'} avec succès`);
+        }
         setAdminNotes('');
         setIsDetailDialogOpen(false);
         loadCandidatures();
@@ -183,7 +231,10 @@ const ApporteurCandidatures: React.FC = () => {
   const getStatusBadge = (status: string) => {
     const statusConfig = {
       pending: { label: 'En attente', variant: 'secondary' as const, icon: Clock },
+      candidature: { label: 'Candidature', variant: 'secondary' as const, icon: Clock },
+      pending_approval: { label: 'En attente', variant: 'secondary' as const, icon: Clock },
       approved: { label: 'Approuvée', variant: 'default' as const, icon: CheckCircle },
+      active: { label: 'Active', variant: 'default' as const, icon: CheckCircle },
       rejected: { label: 'Rejetée', variant: 'destructive' as const, icon: XCircle }
     };
 
@@ -228,7 +279,7 @@ const ApporteurCandidatures: React.FC = () => {
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="bg-blue-50 text-blue-700">
-            {candidatures.filter(c => c.status === 'pending').length} en attente
+            {candidatures.filter(c => c.status === 'pending' || c.status === 'candidature' || c.status === 'pending_approval').length} en attente
           </Badge>
           <Badge variant="outline" className="bg-green-50 text-green-700">
             {candidatures.filter(c => c.status === 'approved').length} approuvées
@@ -262,7 +313,9 @@ const ApporteurCandidatures: React.FC = () => {
                 <SelectContent>
                   <SelectItem value="all">Tous les statuts</SelectItem>
                   <SelectItem value="pending">En attente</SelectItem>
+                  <SelectItem value="candidature">Candidatures</SelectItem>
                   <SelectItem value="approved">Approuvées</SelectItem>
+                  <SelectItem value="active">Actives</SelectItem>
                   <SelectItem value="rejected">Rejetées</SelectItem>
                 </SelectContent>
               </Select>
@@ -469,7 +522,7 @@ const ApporteurCandidatures: React.FC = () => {
               )}
 
               {/* Actions admin */}
-              {selectedCandidature.status === 'pending' && (
+              {(selectedCandidature.status === 'pending' || selectedCandidature.status === 'candidature' || selectedCandidature.status === 'pending_approval') && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg">Actions</CardTitle>
@@ -493,6 +546,14 @@ const ApporteurCandidatures: React.FC = () => {
                       >
                         <CheckCircle className="h-4 w-4 mr-2" />
                         Approuver
+                      </Button>
+                      <Button
+                        onClick={() => setIsRDVModalOpen(true)}
+                        disabled={isProcessing}
+                        className="bg-orange-600 hover:bg-orange-700"
+                      >
+                        <Calendar className="h-4 w-4 mr-2" />
+                        Demander un RDV
                       </Button>
                       <Button
                         onClick={() => handleProcessCandidature(selectedCandidature.id, 'reject')}
@@ -538,6 +599,71 @@ const ApporteurCandidatures: React.FC = () => {
               )}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de demande de RDV */}
+      <Dialog open={isRDVModalOpen} onOpenChange={setIsRDVModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Demander un RDV de qualification</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="rdv_title">Titre du RDV *</Label>
+              <Input
+                id="rdv_title"
+                value={rdvData.title}
+                onChange={(e) => setRdvData(prev => ({ ...prev, title: e.target.value }))}
+                placeholder="Ex: RDV de qualification"
+              />
+            </div>
+            <div>
+              <Label htmlFor="rdv_date">Date *</Label>
+              <Input
+                id="rdv_date"
+                type="date"
+                value={rdvData.date}
+                onChange={(e) => setRdvData(prev => ({ ...prev, date: e.target.value }))}
+                min={new Date().toISOString().split('T')[0]}
+              />
+            </div>
+            <div>
+              <Label htmlFor="rdv_time">Heure *</Label>
+              <Input
+                id="rdv_time"
+                type="time"
+                value={rdvData.time}
+                onChange={(e) => setRdvData(prev => ({ ...prev, time: e.target.value }))}
+              />
+            </div>
+            <div className="flex gap-2 justify-end pt-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsRDVModalOpen(false);
+                  setRdvData({ title: 'RDV de qualification', date: '', time: '' });
+                }}
+              >
+                Annuler
+              </Button>
+              <Button
+                onClick={() => {
+                  if (!rdvData.title || !rdvData.date || !rdvData.time) {
+                    toast.error('Veuillez remplir tous les champs');
+                    return;
+                  }
+                  if (selectedCandidature) {
+                    handleProcessCandidature(selectedCandidature.id, 'request_rdv', rdvData);
+                  }
+                }}
+                disabled={isProcessing}
+                className="bg-orange-600 hover:bg-orange-700"
+              >
+                Valider
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

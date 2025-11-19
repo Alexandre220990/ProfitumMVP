@@ -23,7 +23,7 @@ router.get('/apporteur-candidatures', async (req: any, res: Response): Promise<v
         *,
         admin:Admin(id, first_name, last_name)
       `)
-      .eq('status', 'candidature')
+      .in('status', ['candidature', 'pending_approval'])
       .order('candidature_created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -73,7 +73,7 @@ router.get('/apporteur-candidatures/:id', async (req: any, res: Response): Promi
         admin:Admin(id, first_name, last_name)
       `)
       .eq('id', id)
-      .eq('status', 'candidature')
+      .in('status', ['candidature', 'pending_approval'])
       .single();
 
     if (error || !candidature) {
@@ -107,7 +107,7 @@ router.get('/apporteur-candidatures/:id/cv', async (req: any, res: Response): Pr
       .from('ApporteurAffaires')
       .select('cv_file_path, first_name, last_name')
       .eq('id', id)
-      .eq('status', 'candidature')
+      .in('status', ['candidature', 'pending_approval'])
       .single();
 
     if (error || !candidature || !candidature.cv_file_path) {
@@ -149,12 +149,24 @@ router.post('/apporteur-candidatures/:id/process', async (req: any, res: Respons
     const { action, admin_notes } = req.body;
     const adminId = req.user.database_id;
 
-    if (!['approve', 'reject'].includes(action)) {
+    if (!['approve', 'reject', 'request_rdv'].includes(action)) {
       res.status(400).json({ 
         success: false, 
-        error: 'Action invalide. Utilisez "approve" ou "reject"' 
+        error: 'Action invalide. Utilisez "approve", "reject" ou "request_rdv"' 
       });
       return;
+    }
+
+    // Pour request_rdv, vérifier que les données du RDV sont fournies
+    if (action === 'request_rdv') {
+      const { rdv_title, rdv_date, rdv_time } = req.body;
+      if (!rdv_title || !rdv_date || !rdv_time) {
+        res.status(400).json({ 
+          success: false, 
+          error: 'Pour demander un RDV, les champs rdv_title, rdv_date et rdv_time sont requis' 
+        });
+        return;
+      }
     }
 
     // Récupérer la candidature
@@ -162,7 +174,7 @@ router.post('/apporteur-candidatures/:id/process', async (req: any, res: Respons
       .from('ApporteurAffaires')
       .select('*')
       .eq('id', id)
-      .eq('status', 'candidature')
+      .in('status', ['candidature', 'pending_approval'])
       .single();
 
     if (candidatureError || !candidature) {
@@ -173,17 +185,39 @@ router.post('/apporteur-candidatures/:id/process', async (req: any, res: Respons
       return;
     }
 
-    const newStatus = action === 'approve' ? 'active' : 'rejected';
+    let newStatus: string;
+    let updateData: any = {
+      approved_by: adminId, // Utiliser approved_by au lieu de admin_id
+      admin_notes: admin_notes || null,
+      updated_at: new Date().toISOString()
+    };
+
+    if (action === 'approve') {
+      newStatus = 'active';
+      updateData.approved_at = new Date().toISOString();
+    } else if (action === 'reject') {
+      newStatus = 'rejected';
+    } else if (action === 'request_rdv') {
+      const { rdv_title, rdv_date, rdv_time } = req.body;
+      newStatus = 'candidature'; // Garder le statut candidature mais marquer la demande de RDV
+      updateData.rdv_requested = true;
+      updateData.rdv_requested_at = new Date().toISOString();
+      updateData.rdv_requested_by = adminId;
+      // Stocker les infos du RDV dans admin_notes ou dans une colonne dédiée si elle existe
+      updateData.admin_notes = admin_notes || '';
+      updateData.rdv_title = rdv_title;
+      updateData.rdv_date = rdv_date;
+      updateData.rdv_time = rdv_time;
+    } else {
+      newStatus = 'candidature';
+    }
+
+    updateData.status = newStatus;
 
     // Mettre à jour la candidature
     const { error: updateError } = await supabase
       .from('ApporteurAffaires')
-      .update({
-        status: newStatus,
-        admin_id: adminId,
-        admin_notes: admin_notes || null,
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', id);
 
     if (updateError) {
@@ -195,32 +229,45 @@ router.post('/apporteur-candidatures/:id/process', async (req: any, res: Respons
       return;
     }
 
-    // Si approuvée, créer le compte apporteur
+    // Si approuvée, activer le compte apporteur (le compte auth a déjà été créé lors de l'inscription)
     if (action === 'approve') {
       try {
-        // Générer un mot de passe temporaire
-        const temporaryPassword = 'TempPass' + Math.random().toString(36).substring(2, 15);
+        // Si le compte auth n'existe pas encore, le créer (cas de migration)
+        if (!candidature.auth_user_id) {
+          // Générer un mot de passe temporaire si le compte n'existe pas
+          const temporaryPassword = 'TempPass' + Math.random().toString(36).substring(2, 15);
 
-        // Créer l'utilisateur Supabase Auth
-        const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
-          email: candidature.email,
-          password: temporaryPassword,
-          email_confirm: true
-        });
+          const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
+            email: candidature.email,
+            password: temporaryPassword,
+            email_confirm: true
+          });
 
-        if (authError) {
-          console.error('Erreur création utilisateur auth:', authError);
-          // Continuer même si l'auth échoue
+          if (authError) {
+            console.error('Erreur création utilisateur auth:', authError);
+          } else {
+            updateData.auth_user_id = authUser?.user?.id || null;
+          }
+        } else {
+          // Activer le compte existant (confirmer l'email)
+          const { error: updateAuthError } = await supabase.auth.admin.updateUserById(
+            candidature.auth_user_id,
+            { email_confirm: true }
+          );
+
+          if (updateAuthError) {
+            console.error('Erreur activation compte auth:', updateAuthError);
+          }
         }
 
-        // Mettre à jour l'apporteur avec les informations d'auth
+        // Mettre à jour l'apporteur avec les informations d'activation
         const { data: apporteur, error: apporteurError } = await supabase
           .from('ApporteurAffaires')
           .update({
-            auth_user_id: authUser?.user?.id || null,
-            commission_rate: 0.15, // 15% par défaut
-            affiliation_code: `AFF${Date.now().toString().slice(-6)}`,
-            updated_at: new Date().toISOString()
+            ...updateData,
+            profitum_share_percentage: 0.10, // 10% par défaut (au lieu de commission_rate)
+            affiliation_code: candidature.affiliation_code || `AFF${Date.now().toString().slice(-6)}`,
+            is_active: true
           })
           .eq('id', id)
           .select()
@@ -231,28 +278,21 @@ router.post('/apporteur-candidatures/:id/process', async (req: any, res: Respons
           // Ne pas faire échouer le processus
         }
 
-        // Envoyer email avec les identifiants
+        // Envoyer email de confirmation (le mot de passe a déjà été défini lors de l'inscription)
         if (apporteur) {
           try {
-            const credentials = {
-              email: candidature.email,
-              temporaryPassword: temporaryPassword,
-              loginUrl: `${process.env.FRONTEND_URL || 'https://www.profitum.app'}/apporteur/login`,
-              firstName: candidature.first_name,
-              lastName: candidature.last_name,
-              companyName: candidature.company_name,
-              companyType: candidature.company_type,
-              siren: candidature.siren
-            };
-            
-            await ApporteurEmailService.sendApporteurCredentials(credentials);
+            await EmailService.sendApporteurApprovalNotification(
+              candidature.email,
+              candidature.first_name,
+              candidature.last_name
+            );
           } catch (emailError) {
-            console.error('Erreur envoi email identifiants:', emailError);
+            console.error('Erreur envoi email confirmation:', emailError);
             // Ne pas faire échouer le processus
           }
         }
       } catch (error) {
-        console.error('Erreur création compte apporteur:', error);
+        console.error('Erreur activation compte apporteur:', error);
         // Ne pas faire échouer le processus de validation
       }
     }
@@ -265,12 +305,26 @@ router.post('/apporteur-candidatures/:id/process', async (req: any, res: Respons
           candidature.first_name, 
           candidature.last_name
         );
-      } else {
+      } else if (action === 'reject') {
         await EmailService.sendApporteurRejectionNotification(
           candidature.email, 
           candidature.first_name, 
           candidature.last_name,
           admin_notes
+        );
+      } else if (action === 'request_rdv') {
+        const { rdv_title, rdv_date, rdv_time } = req.body;
+        // Envoyer email à l'admin avec message prédéfini pour ouvrir le mail avec les infos du RDV
+        await EmailService.notifyAdminRDVRequest(
+          candidature.id,
+          candidature.first_name,
+          candidature.last_name,
+          candidature.email,
+          candidature.phone,
+          candidature.company_name,
+          rdv_title,
+          rdv_date,
+          rdv_time
         );
       }
     } catch (emailError) {
@@ -278,9 +332,15 @@ router.post('/apporteur-candidatures/:id/process', async (req: any, res: Respons
       // Ne pas faire échouer le processus
     }
 
+    const actionMessages: Record<string, string> = {
+      'approve': 'approuvée',
+      'reject': 'rejetée',
+      'request_rdv': 'demande de RDV envoyée'
+    };
+
     res.json({
       success: true,
-      message: `Candidature ${action === 'approve' ? 'approuvée' : 'rejetée'} avec succès`,
+      message: `Candidature ${actionMessages[action] || 'traitée'} avec succès`,
       data: {
         candidature_id: id,
         status: newStatus,
