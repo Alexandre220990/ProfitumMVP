@@ -11,8 +11,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { 
   User, 
-  Mail, 
-  Phone, 
   Building, 
   FileText, 
   CheckCircle, 
@@ -46,6 +44,8 @@ interface ApporteurRegistrationData {
   last_name: string;
   email: string;
   phone: string;
+  password: string;
+  confirm_password: string;
   company_name: string;
   company_type: string;
   siren?: string;
@@ -210,6 +210,8 @@ export default function BecomeApporteur() {
     last_name: '',
     email: '',
     phone: '',
+    password: '',
+    confirm_password: '',
     company_name: '',
     company_type: '',
     siren: '',
@@ -239,6 +241,10 @@ export default function BecomeApporteur() {
       if (!formData.email) newErrors.email = 'L\'email est requis';
       else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Email invalide';
       if (!formData.phone) newErrors.phone = 'Le téléphone est requis';
+      if (!formData.password) newErrors.password = 'Le mot de passe est requis';
+      else if (formData.password.length < 8) newErrors.password = 'Le mot de passe doit contenir au moins 8 caractères';
+      if (!formData.confirm_password) newErrors.confirm_password = 'La confirmation du mot de passe est requise';
+      else if (formData.password !== formData.confirm_password) newErrors.confirm_password = 'Les mots de passe ne correspondent pas';
     }
 
     if (stepNumber === 2) {
@@ -295,11 +301,16 @@ export default function BecomeApporteur() {
       formDataToSend.append('last_name', formData.last_name);
       formDataToSend.append('email', formData.email);
       formDataToSend.append('phone', formData.phone);
+      formDataToSend.append('password', formData.password);
       formDataToSend.append('company_name', formData.company_name);
       formDataToSend.append('company_type', formData.company_type);
       formDataToSend.append('sector', formData.sector);
       formDataToSend.append('motivation_letter', formData.motivation_letter);
       formDataToSend.append('sponsor_code', formData.sponsor_code || '');
+      
+      if (formData.siren) {
+        formDataToSend.append('siren', formData.siren);
+      }
       
       if (formData.cv_file) {
         formDataToSend.append('cv_file', formData.cv_file);
@@ -784,6 +795,30 @@ export default function BecomeApporteur() {
                       className={errors.phone ? 'border-red-500' : ''}
                     />
                     {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
+                  </div>
+                  <div>
+                    <Label htmlFor="password">Mot de passe *</Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      value={formData.password}
+                      onChange={(e) => handleInputChange('password', e.target.value)}
+                      className={errors.password ? 'border-red-500' : ''}
+                      placeholder="Minimum 8 caractères"
+                    />
+                    {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
+                  </div>
+                  <div>
+                    <Label htmlFor="confirm_password">Confirmer le mot de passe *</Label>
+                    <Input
+                      id="confirm_password"
+                      type="password"
+                      value={formData.confirm_password}
+                      onChange={(e) => handleInputChange('confirm_password', e.target.value)}
+                      className={errors.confirm_password ? 'border-red-500' : ''}
+                      placeholder="Répétez le mot de passe"
+                    />
+                    {errors.confirm_password && <p className="text-red-500 text-xs mt-1">{errors.confirm_password}</p>}
                   </div>
                 </div>
               )}
