@@ -98,6 +98,7 @@ const AboutPage = React.lazy(() => import('./pages/about'));
 
 // Admin pages
 const AdminDashboard = React.lazy(() => import('./pages/admin/dashboard'));
+const AdminContactMessage = React.lazy(() => import('./pages/admin/contact-message'));
 const AdminDashboardOptimized = React.lazy(() => import('./pages/admin/dashboard-optimized'));
 const AdminClientDetails = React.lazy(() => import('./pages/admin/client-details'));
 const AdminExpertDetails = React.lazy(() => import('./pages/admin/expert-details'));
@@ -385,6 +386,7 @@ function App() {
                         <Route path="monitoring" element={<AdminMonitoring />} />
                         <Route path="formulaire-expert" element={<AdminFormulaireExpert />} />
                         <Route path="formulaire-client" element={<AdminFormulaireClient />} />
+                        <Route path="contact/:id" element={<AdminContactMessage />} />
                       </Route>
                       
                       {/* Routes dashboard/admin pour compatibilité */}

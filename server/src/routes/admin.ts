@@ -5157,19 +5157,123 @@ router.get('/notifications', async (req, res) => {
   }
 });
 
+// GET /api/admin/contact/:id - Récupérer un message de contact
+router.get('/contact/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = (req as any).user as AuthUser;
+    
+    if (!user || user.type !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux administrateurs'
+      });
+    }
+
+    const { data: contactMessage, error } = await supabaseAdmin
+      .from('contact_messages')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error || !contactMessage) {
+      console.error('❌ Erreur récupération message contact:', error);
+      return res.status(404).json({
+        success: false,
+        message: 'Message de contact introuvable'
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: contactMessage
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route contact:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+// PATCH /api/admin/contact/:id/status - Mettre à jour le statut d'un message de contact
+router.patch('/contact/:id/status', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const user = (req as any).user as AuthUser;
+    
+    if (!user || user.type !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux administrateurs'
+      });
+    }
+
+    if (!status || !['new', 'read', 'replied', 'archived'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Statut invalide'
+      });
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('contact_messages')
+      .update({ 
+        status,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error || !data) {
+      console.error('❌ Erreur mise à jour statut:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la mise à jour du statut'
+      });
+    }
+
+    return res.json({
+      success: true,
+      data
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route contact status:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
 // PATCH /api/admin/notifications/:id/read - Marquer notification comme lue
 router.patch('/notifications/:id/read', async (req, res) => {
   try {
     const { id } = req.params;
+    const user = (req as any).user as AuthUser;
     
-    const { data, error } = await supabaseClient
-      .from('AdminNotification')
+    if (!user || user.type !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux administrateurs'
+      });
+    }
+    
+    // ✅ CORRECTION: Utiliser la table 'notification' au lieu de 'AdminNotification'
+    const { data, error } = await supabaseAdmin
+      .from('notification')
       .update({ 
-        status: 'read',
+        is_read: true,
         read_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
+      .eq('user_id', user.id)
       .select();
     
     if (error) {
