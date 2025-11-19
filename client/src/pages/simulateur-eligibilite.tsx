@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, Clock, Calculator, Building2, Truck, Home, DollarSign, Check, Target, Zap, ArrowRight, CheckCircle } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { ChevronLeft, Clock, Calculator, Building2, Truck, Home, DollarSign, Check, Target, Zap, ArrowRight, CheckCircle, Mail } from "lucide-react";
 import { config } from "@/config/env";
 import PublicHeader from '@/components/PublicHeader';
 
@@ -140,6 +141,9 @@ const SimulateurEligibilite = () => {
   // Nouveaux états pour la validation
   const [currentResponse, setCurrentResponse] = useState<any>(null);
   const [isValidating, setIsValidating] = useState(false);
+  
+  // État pour l'email du visiteur
+  const [visitorEmail, setVisitorEmail] = useState<string>('');
 
   // Tracking analytics
   const trackEvent = (eventName: string, data: Record<string, unknown> = {}) => { 
@@ -228,15 +232,19 @@ const SimulateurEligibilite = () => {
     };
   }, [sessionToken, currentStep, totalSteps]);
 
-  // Initialisation du simulateur
-  useEffect(() => { 
-    initializeSimulator(); 
-  }, []);
+  // Initialisation du simulateur - DÉSACTIVÉ car on attend le clic sur "Commencer la simulation"
+  // L'initialisation se fait maintenant directement dans le onClick du bouton
+  // useEffect(() => { 
+  //   initializeSimulator(); 
+  // }, []);
 
   const initializeSimulator = async () => { 
     try {
       console.log('🚀 Initialisation du simulateur PUBLIC (mode anonyme)...');
       setSessionStartTime(Date.now());
+      
+      // Récupérer l'email depuis l'état ou le localStorage
+      const emailToSend = visitorEmail || localStorage.getItem('simulator_visitor_email') || '';
       
       // Créer une session SANS token (mode anonyme pur)
       const sessionResponse = await fetch(`${config.API_URL}/api/simulator/session`, { 
@@ -247,7 +255,8 @@ const SimulateurEligibilite = () => {
         body: JSON.stringify({
           client_data: {
             temp_id: `temp_${Date.now()}`,
-            created_at: new Date().toISOString()
+            created_at: new Date().toISOString(),
+            email: emailToSend // ✅ Envoyer l'email du visiteur
           }
         })
       });
@@ -729,9 +738,35 @@ const SimulateurEligibilite = () => {
               </div>
             </div>
 
+            {/* Formulaire email */}
+            <div className="max-w-md mx-auto space-y-4">
+              <p className="text-slate-700 text-lg font-medium">
+                Renseignez votre adresse email pour commencer la simulation
+              </p>
+              <div className="relative">
+                <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
+                <Input
+                  type="email"
+                  placeholder="votre@email.com"
+                  value={visitorEmail}
+                  onChange={(e) => setVisitorEmail(e.target.value)}
+                  className="pl-12 pr-4 py-6 text-lg border-2 border-slate-200 rounded-2xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300"
+                />
+              </div>
+            </div>
+
             <Button 
-              onClick={() => setShowWelcomeScreen(false)}
-              className="group relative bg-gradient-to-r from-blue-500 to-purple-600 text-white font-bold px-10 py-4 text-lg rounded-full hover:from-blue-600 hover:to-purple-700 transform hover:scale-105 transition-all duration-300 shadow-2xl hover:shadow-blue-500/25"
+              onClick={async () => {
+                // Stocker l'email dans le localStorage
+                if (visitorEmail) {
+                  localStorage.setItem('simulator_visitor_email', visitorEmail);
+                }
+                setShowWelcomeScreen(false);
+                // Initialiser le simulateur immédiatement avec l'email
+                await initializeSimulator();
+              }}
+              disabled={!visitorEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(visitorEmail)}
+              className="group relative bg-gradient-to-r from-blue-500 to-purple-600 text-white font-bold px-10 py-4 text-lg rounded-full hover:from-blue-600 hover:to-purple-700 transform hover:scale-105 transition-all duration-300 shadow-2xl hover:shadow-blue-500/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             >
               <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full opacity-0 group-hover:opacity-20 transition-opacity duration-300 blur-xl"></div>
               <span className="relative flex items-center">

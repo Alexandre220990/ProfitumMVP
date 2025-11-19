@@ -1,7 +1,10 @@
 -- =====================================================
--- CORRECTION RAPIDE SIMULATEUR
+-- CORRECTION RAPIDE SIMULATEUR + GESTION EMAIL VISITEUR
 -- Date: 2025-01-31
--- Description: Correction rapide de l'erreur 500 du simulateur
+-- Description: 
+--   1. Correction rapide de l'erreur 500 du simulateur
+--   2. Utilisation de l'email réel du visiteur pour les clients temporaires
+--   3. Champs optionnels (name, company_name) laissés NULL jusqu'à l'inscription
 -- =====================================================
 
 -- SUPPRIMER TOUT EN CASCADE
@@ -23,6 +26,8 @@ DECLARE
     v_result JSON;
 BEGIN
     -- Créer le client temporaire
+    -- ✅ Utiliser l'email réel s'il est fourni, sinon générer un email temporaire
+    -- ✅ Les champs name, company_name, phone_number sont laissés NULL jusqu'à l'inscription finale
     INSERT INTO "Client" (
         id,
         email,
@@ -41,11 +46,19 @@ BEGIN
         metadata
     ) VALUES (
         gen_random_uuid(),
-        'temp_' || extract(epoch from now())::text || '_' || encode(gen_random_bytes(4), 'hex') || '@profitum.temp',
+        -- Utiliser l'email réel s'il est fourni et valide, sinon générer un email temporaire
+        CASE 
+            WHEN p_client_data->>'email' IS NOT NULL 
+                 AND p_client_data->>'email' != '' 
+                 AND (p_client_data->>'email')::text NOT LIKE '%@profitum.temp%'
+            THEN (p_client_data->>'email')::text
+            ELSE 'temp_' || extract(epoch from now())::text || '_' || encode(gen_random_bytes(4), 'hex') || '@profitum.temp'
+        END,
         crypt(encode(gen_random_bytes(32), 'hex'), gen_salt('bf')),
-        COALESCE(p_client_data->>'name', 'Client Temporaire'),
-        COALESCE(p_client_data->>'company_name', 'Entreprise Temporaire'),
-        COALESCE(p_client_data->>'phone_number', NULL),
+        -- ✅ NULL au lieu de valeurs par défaut - sera rempli à l'inscription
+        NULL,
+        NULL,
+        NULL,
         'temporaire',
         'actif',
         NOW() + INTERVAL '24 hours',
@@ -57,7 +70,15 @@ BEGIN
         jsonb_build_object(
             'session_token', p_session_token,
             'source', 'simulator_temporary',
-            'client_data', p_client_data
+            'client_data', p_client_data,
+            'has_real_email', CASE 
+                WHEN p_client_data->>'email' IS NOT NULL 
+                     AND p_client_data->>'email' != '' 
+                     AND (p_client_data->>'email')::text NOT LIKE '%@profitum.temp%'
+                THEN true 
+                ELSE false 
+            END,
+            'created_at_simulator_start', NOW()
         )
     ) RETURNING id INTO v_client_id;
     

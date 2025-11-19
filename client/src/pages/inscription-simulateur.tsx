@@ -35,7 +35,7 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-type MigrationStep = 'checking' | 'migrating' | 'completed' | 'error';
+type MigrationStep = 'checking' | 'migrating' | 'completed' | 'error' | 'idle';
 
 interface EligibilityResult { 
   produit_id: string;
@@ -52,7 +52,6 @@ const InscriptionSimulateur = () => {
   
   const [isLoading, setIsLoading] = useState(false);
   const [migrationStep, setMigrationStep] = useState<MigrationStep>('checking');
-  const [_sessionData, setSessionData] = useState<any>(null);
   const [eligibilityResults, setEligibilityResults] = useState<EligibilityResult[]>([]);
   const [totalSavings, setTotalSavings] = useState(0);
   const [highEligibilityCount, setHighEligibilityCount] = useState(0);
@@ -93,13 +92,25 @@ const InscriptionSimulateur = () => {
       // ✅ Pas besoin de vérifier la migration - on a déjà toutes les données
       setMigrationStep('completed');
       
+      // Récupérer l'email depuis le localStorage (saisi avant la simulation)
+      const savedEmail = localStorage.getItem('simulator_visitor_email');
+      
       // Pré-remplir le formulaire avec les données extraites si disponibles
-      if (state.extractedData) {
-        form.reset({
-          ...form.getValues(), 
-          company_name: state.extractedData.company_name || ""
-        });
+      const formData: any = {
+        ...form.getValues()
+      };
+      
+      if (state.extractedData?.company_name) {
+        formData.company_name = state.extractedData.company_name;
       }
+      
+      // Pré-remplir l'email si disponible
+      if (savedEmail) {
+        formData.email = savedEmail;
+        console.log('✅ Email pré-rempli depuis le simulateur:', savedEmail);
+      }
+      
+      form.reset(formData);
     } else { 
       // Rediriger si pas de données du simulateur
       console.error('❌ Données simulateur manquantes:', {
@@ -133,7 +144,7 @@ const InscriptionSimulateur = () => {
           const sessionData = await sessionResponse.json();
 
           if (sessionData.success) { 
-            setSessionData(sessionData.data); 
+            // Session data récupérée (non utilisée car migration automatique)
           }
         } else { 
           setMigrationStep('error');
@@ -220,6 +231,7 @@ const InscriptionSimulateur = () => {
       // Nettoyage des données temporaires
       localStorage.removeItem('sessionToken');
       localStorage.removeItem('eligibilityResults');
+      localStorage.removeItem('simulator_visitor_email');
       sessionStorage.clear();
 
       toast.success(`🎉 Inscription réussie ! Bienvenue ${data.username} ! Votre compte a été créé avec ${eligibilityResults.length} produits éligibles`);
@@ -262,6 +274,8 @@ const InscriptionSimulateur = () => {
         return 'Redirection...';
       case 'error':
         return 'Erreur...';
+      case 'idle':
+        return 'En attente...';
       default:
         return 'Traitement...';
     }
