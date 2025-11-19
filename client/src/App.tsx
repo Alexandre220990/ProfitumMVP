@@ -77,6 +77,9 @@ const ConnectAdmin = React.lazy(() => import('./pages/connect-admin'));
 const HomePage = React.lazy(() => import('./pages/home-page'));
 const HomepageTest = React.lazy(() => import('./pages/homepage-test'));
 const SimulateurEligibilite = React.lazy(() => import('./pages/simulateur-eligibilite'));
+const TICPEPage = React.lazy(() => import('./pages/ticpe'));
+const URSSAFPage = React.lazy(() => import('./pages/urssaf'));
+const SocialPage = React.lazy(() => import('./pages/social'));
 const InscriptionSimulateur = React.lazy(() => import('./pages/inscription-simulateur'));
 const SimulateurClient = React.lazy(() => import('./pages/simulateur-client'));
 const UnauthorizedPage = React.lazy(() => import('./pages/unauthorized'));
@@ -183,6 +186,9 @@ function App() {
                     <Route path="/simulateur" element={<SimulateurEligibilite />} />
                     <Route path="/simulateur-eligibilite" element={<SimulateurEligibilite />} />
                     <Route path="/inscription-simulateur" element={<InscriptionSimulateur />} />
+                    <Route path="/solutions/ticpe" element={<TICPEPage />} />
+                    <Route path="/solutions/urssaf" element={<URSSAFPage />} />
+                    <Route path="/solutions/social" element={<SocialPage />} />
                     <Route path="/experts" element={<Experts />} />
                     <Route path="/experts/:id" element={<ExpertDetails />} />
                     <Route path="/connexion-client" element={<ConnexionClient />} />

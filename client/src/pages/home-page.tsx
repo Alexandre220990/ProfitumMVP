@@ -458,7 +458,10 @@ const RevolutionSection = () => (
   </section>
 );
 
-const ServicesSection = () => (
+const ServicesSection = () => {
+  const navigate = useNavigate();
+  
+  return (
   <section className="py-12 sm:py-16 md:py-20 lg:py-24 bg-gradient-to-br from-slate-50 via-white to-blue-50">
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="text-center mb-12 sm:mb-16 lg:mb-20">
@@ -478,6 +481,15 @@ const ServicesSection = () => (
         {SERVICES.map((service) => (
           <div
             key={service.id}
+            onClick={() => {
+              if (service.id === 'ticpe') {
+                navigate('/solutions/ticpe');
+              } else if (service.id === 'urssaf') {
+                navigate('/solutions/urssaf');
+              } else if (service.id === 'social') {
+                navigate('/solutions/social');
+              }
+            }}
             className={`group relative bg-gradient-to-br ${service.bgGradient} rounded-3xl p-8 transition-all duration-500 transform hover:-translate-y-3 hover:shadow-2xl cursor-pointer border ${service.borderColor} ${service.hoverBorderColor} overflow-hidden`}
           >
             {/* Background pattern */}
@@ -539,7 +551,8 @@ const ServicesSection = () => (
       </div>
     </div>
   </section>
-);
+  );
+};
 
 const TestimonialsSection = () => (
   <section className="py-12 sm:py-16 md:py-20 lg:py-24 bg-gradient-to-br from-slate-50 to-blue-50">
