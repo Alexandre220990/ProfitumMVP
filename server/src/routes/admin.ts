@@ -5376,7 +5376,13 @@ router.get('/dossiers/:id', asyncHandler(async (req, res) => {
           last_name,
           name,
           company_name,
-          email
+          email,
+          cabinet_id,
+          Cabinet:cabinet_id (
+            id,
+            name,
+            siret
+          )
         )
       `)
       .eq('id', id)

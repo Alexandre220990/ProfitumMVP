@@ -72,6 +72,12 @@ interface DossierData {
     name: string;
     company_name?: string;
     email: string;
+    cabinet_id?: string;
+    Cabinet?: {
+      id: string;
+      name: string;
+      siret?: string;
+    };
   };
 }
 
@@ -575,10 +581,32 @@ const DossierSynthese: React.FC = () => {
                       </div>
                       <div>
                         <span className="text-gray-600">Expert Assigné</span>
-                        <p className="font-medium text-gray-900 mt-1">
-                          {dossier.Expert ? `${dossier.Expert.first_name || ''} ${dossier.Expert.last_name || ''}`.trim() || dossier.Expert.name : 'Aucun'}
-                        </p>
+                        <div className="mt-1">
+                          {dossier.Expert ? (
+                            <button
+                              onClick={() => navigate(`/admin/experts/${dossier.Expert!.id}`)}
+                              className="font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                            >
+                              {`${dossier.Expert.first_name || ''} ${dossier.Expert.last_name || ''}`.trim() || dossier.Expert.name}
+                            </button>
+                          ) : (
+                            <p className="font-medium text-gray-900">Aucun</p>
+                          )}
+                        </div>
                       </div>
+                      {dossier.Expert?.Cabinet && (
+                        <div>
+                          <span className="text-gray-600">Cabinet</span>
+                          <div className="mt-1">
+                            <button
+                              onClick={() => navigate(`/admin/cabinets/${dossier.Expert!.Cabinet!.id}`)}
+                              className="font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                            >
+                              {dossier.Expert.Cabinet.name}
+                            </button>
+                          </div>
+                        </div>
+                      )}
                       <div>
                         <span className="text-gray-600">Date de création</span>
                         <p className="font-medium text-gray-900 mt-1">
