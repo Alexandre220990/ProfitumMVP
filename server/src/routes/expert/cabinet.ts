@@ -1419,14 +1419,11 @@ router.get('/products/:produitId/synthese', async (req: Request, res: Response) 
     }
 
     // Appliquer les filtres de statut
-    // Par défaut, on filtre uniquement les dossiers avec statut "expert_assigned"
-    // Sauf si l'utilisateur a choisi un autre filtre
+    // Par défaut, on inclut tous les statuts pour que l'owner puisse voir tous ses dossiers
     if (statut && statut !== 'all') {
       dossiersQuery = dossiersQuery.eq('statut', statut);
-    } else {
-      // Par défaut : uniquement les dossiers avec statut expert_assigned
-      dossiersQuery = dossiersQuery.eq('statut', 'expert_assigned');
     }
+    // Si statut est 'all' ou non spécifié, on ne filtre pas par statut (inclut tous les statuts)
     if (expertId && expertId !== 'all') {
       dossiersQuery = dossiersQuery.eq('expert_id', expertId);
     }
@@ -1443,7 +1440,7 @@ router.get('/products/:produitId/synthese', async (req: Request, res: Response) 
     if (dossiersError) throw dossiersError;
 
     // Récupérer tous les dossiers pour les statistiques (sans pagination), filtrés par experts du cabinet
-    // ET avec le statut "expert_assigned"
+    // Inclure tous les statuts pour que l'owner puisse voir tous ses dossiers
     let allDossiersQuery = supabase
       .from('ClientProduitEligible')
       .select(`
@@ -1460,8 +1457,8 @@ router.get('/products/:produitId/synthese', async (req: Request, res: Response) 
           email
         )
       `)
-      .eq('produitId', produitId)
-      .eq('statut', 'expert_assigned'); // Pour les statistiques, on filtre uniquement les dossiers avec statut expert_assigned
+      .eq('produitId', produitId);
+    // Ne pas filtrer par statut pour les statistiques - inclure tous les statuts
     
     // Filtrer uniquement les dossiers dont l'expert est membre du cabinet
     if (authorizedExpertIds.size > 0) {
@@ -1695,13 +1692,22 @@ router.get('/experts/:expertId/synthese', async (req: Request, res: Response) =>
     const { page = '1', limit = '20', produitId, statut, search } = req.query;
 
     // Vérifier que l'expert appartient au cabinet
-    const { data: expertMember, error: memberError } = await supabase
-      .from('CabinetMember')
-      .select(`
-        id,
-        member_id,
-        team_role,
-        Expert:member_id (
+    // D'abord vérifier si c'est l'owner du cabinet
+    const { data: cabinet, error: cabinetError } = await supabase
+      .from('Cabinet')
+      .select('owner_expert_id')
+      .eq('id', cabinetId)
+      .single();
+    
+    if (cabinetError) throw cabinetError;
+    
+    // Si c'est l'owner, on peut continuer sans vérifier CabinetMember
+    let expertMember = null;
+    if (cabinet?.owner_expert_id === expertId) {
+      // C'est l'owner, récupérer ses infos depuis Expert
+      const { data: expertData, error: expertError } = await supabase
+        .from('Expert')
+        .select(`
           id,
           name,
           email,
@@ -1709,18 +1715,54 @@ router.get('/experts/:expertId/synthese', async (req: Request, res: Response) =>
           phone,
           first_name,
           last_name
-        )
-      `)
-      .eq('cabinet_id', cabinetId)
-      .eq('member_id', expertId)
-      .eq('status', 'active')
-      .single();
+        `)
+        .eq('id', expertId)
+        .single();
+      
+      if (expertError || !expertData) {
+        return res.status(404).json({
+          success: false,
+          message: 'Expert introuvable'
+        });
+      }
+      
+      expertMember = {
+        id: null,
+        member_id: expertId,
+        team_role: 'OWNER',
+        Expert: expertData
+      };
+    } else {
+      // Sinon, vérifier dans CabinetMember
+      const { data: memberData, error: memberError } = await supabase
+        .from('CabinetMember')
+        .select(`
+          id,
+          member_id,
+          team_role,
+          Expert:member_id (
+            id,
+            name,
+            email,
+            company_name,
+            phone,
+            first_name,
+            last_name
+          )
+        `)
+        .eq('cabinet_id', cabinetId)
+        .eq('member_id', expertId)
+        .eq('status', 'active')
+        .single();
 
-    if (memberError || !expertMember) {
-      return res.status(404).json({
-        success: false,
-        message: 'Expert introuvable dans ce cabinet'
-      });
+      if (memberError || !memberData) {
+        return res.status(404).json({
+          success: false,
+          message: 'Expert introuvable dans ce cabinet'
+        });
+      }
+      
+      expertMember = memberData;
     }
 
     // Récupérer tous les dossiers de l'expert avec jointures

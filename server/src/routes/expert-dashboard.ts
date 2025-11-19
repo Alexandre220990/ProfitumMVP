@@ -473,8 +473,6 @@ router.get('/rejected-audits', enhancedAuthMiddleware, async (req: Request, res:
         Client:clientId (
           id,
           company_name,
-          nom,
-          prenom,
           first_name,
           last_name,
           email
@@ -502,7 +500,7 @@ router.get('/rejected-audits', enhancedAuthMiddleware, async (req: Request, res:
       const produitInfo = Array.isArray(dossier.ProduitEligible) ? dossier.ProduitEligible[0] : dossier.ProduitEligible;
       
       const clientName = clientInfo?.company_name 
-        || `${clientInfo?.first_name || clientInfo?.prenom || ''} ${clientInfo?.last_name || clientInfo?.nom || ''}`.trim()
+        || `${clientInfo?.first_name || ''} ${clientInfo?.last_name || ''}`.trim()
         || 'Client inconnu';
       
       const rejectionInfo = dossier.metadata?.client_validation || {};
