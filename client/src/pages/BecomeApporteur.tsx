@@ -81,25 +81,25 @@ const BENEFITS = [
   {
     icon: DollarSign,
     title: "Revenus Récurrents",
-    description: "Commission moyenne de 15% par dossier + récurrence annuelle sur certains produits",
+    description: "Commission moyenne de 15% par dossier + récurrence annuelle. Pour sociétés : partenariats B2B avec volumes. Pour commerciaux : revenus complémentaires flexibles",
     color: "from-green-500 to-emerald-500"
   },
   {
     icon: Zap,
     title: "Simplicité d'Usage",
-    description: "Plateforme 100% digitale. Enregistrez un prospect en 5 minutes, on gère le reste",
+    description: "Plateforme 100% digitale. Enregistrez un prospect en 5 minutes. Pour sociétés : intégration API possible. Pour commerciaux : outils de prospection intégrés",
     color: "from-blue-500 to-cyan-500"
   },
   {
     icon: Users,
     title: "Support Complet",
-    description: "Formation obligatoire 1h, support technique, documentation et outils marketing",
+    description: "Formation obligatoire 1h, support technique dédié, documentation complète. Pour sociétés : account manager dédié. Pour commerciaux : communauté et outils marketing",
     color: "from-purple-500 to-violet-500"
   },
   {
     icon: Target,
-    title: "Multi-Produits",
-    description: "10 produits éligibles. Augmentez vos revenus en proposant plusieurs solutions par client",
+    title: "Multi-Produits & Multi-Profils",
+    description: "10 produits éligibles. Augmentez vos revenus en proposant plusieurs solutions. Adapté aux deux modèles : apport d'affaires structuré ou prospection commerciale",
     color: "from-orange-500 to-red-500"
   }
 ];
@@ -114,7 +114,7 @@ const STEPS_TIMELINE = [
   {
     number: 2,
     title: "Enregistrer un Prospect",
-    description: "Créez une fiche prospect (nom, secteur, budget). Simulation automatique identifie les besoins en 5 questions",
+    description: "Créez une fiche prospect (nom, secteur, budget). Pour sociétés : orientez vos clients existants. Pour commerciaux : enregistrez vos prospects. Simulation automatique identifie les besoins en 5 questions",
     icon: Briefcase
   },
   {
@@ -139,58 +139,69 @@ const STEPS_TIMELINE = [
 
 const TESTIMONIALS = [
   {
-    quote: "En 3 mois, j'ai généré 12,000€ de commissions avec seulement 8 prospects. La plateforme fait tout le travail !",
+    quote: "En tant que cabinet d'expertise-comptable, nous avons monétisé notre portefeuille client existant. 12,000€ de commissions en 3 mois avec seulement 8 clients orientés. Le partenariat B2B fonctionne parfaitement !",
     author: "Marie L.",
-    role: "Expert-Comptable, Paris",
+    role: "Cabinet d'Expertise-Comptable, Paris",
     revenue: "4,000€/mois",
     clients: 8,
     duration: "3 mois",
-    rating: 5
+    rating: 5,
+    type: "société"
   },
   {
-    quote: "Le matching automatique avec les experts est génial. Je me concentre sur l'apport, Profitum gère le reste.",
+    quote: "Commercial indépendant, j'ai développé une activité complémentaire avec Profitum. Le matching automatique avec les experts est génial. Je me concentre sur la prospection, Profitum gère le reste.",
     author: "Thomas B.",
     role: "Commercial Indépendant, Lyon",
     revenue: "6,500€/mois",
     clients: 15,
     duration: "6 mois",
-    rating: 5
+    rating: 5,
+    type: "commercial"
   },
   {
-    quote: "Les outils de suivi sont incroyables. Je sais toujours où en sont mes dossiers. Interface très professionnelle !",
+    quote: "Notre société de conseil a intégré Profitum pour générer des leads qualifiés. Les outils de suivi sont incroyables, nous savons toujours où en sont nos apports. Interface très professionnelle adaptée au B2B !",
     author: "Alexandre D.",
-    role: "Apporteur Professionnel, Bordeaux",
+    role: "Société de Conseil, Bordeaux",
     revenue: "8,000€/mois",
     clients: 22,
     duration: "1 an",
-    rating: 5
+    rating: 5,
+    type: "société"
   }
 ];
 
 const FAQ_ITEMS = [
   {
-    question: "Dois-je déjà avoir des clients ?",
-    answer: "Non ! Vous pouvez démarrer sans portefeuille. Notre plateforme vous accompagne dès le début avec des outils de prospection. Nous réfléchissons également à fournir des leads qualifiés."
+    question: "Dois-je déjà avoir des clients pour devenir apporteur ?",
+    answer: "Non, cela dépend de votre profil ! Si vous êtes une société partenaire, vous pouvez monétiser votre portefeuille client existant. Si vous êtes commercial indépendant, vous pouvez démarrer sans portefeuille - notre plateforme vous accompagne avec des outils de prospection. Nous réfléchissons également à fournir des leads qualifiés pour les commerciaux."
   },
   {
-    question: "Y a-t-il des frais d'inscription ?",
-    answer: "Absolument aucun frais. L'inscription est 100% gratuite. Vous ne payez rien, vous ne faites que gagner."
+    question: "Y a-t-il des frais d'inscription ou des coûts cachés ?",
+    answer: "Absolument aucun frais. L'inscription est 100% gratuite pour tous les profils. Vous ne payez rien, vous ne faites que gagner des commissions sur les dossiers convertis."
   },
   {
-    question: "Puis-je travailler à temps partiel ?",
-    answer: "Oui ! Beaucoup de nos apporteurs cumulent avec une autre activité. Vous gérez votre temps librement et développez à votre rythme."
+    question: "Quelle est la différence entre société partenaire et commercial indépendant ?",
+    answer: "Les sociétés partenaires ont généralement un portefeuille client existant qu'elles orientent vers Profitum (partenariats B2B, intégration API possible, account manager dédié). Les commerciaux indépendants prospectent activement de nouveaux clients pour générer des revenus complémentaires (outils de prospection, flexibilité horaire). Les deux bénéficient de la même plateforme et des mêmes commissions."
+  },
+  {
+    question: "Puis-je travailler à temps partiel ou cumuler avec une autre activité ?",
+    answer: "Oui, surtout pour les commerciaux indépendants ! Beaucoup de nos apporteurs cumulent avec une autre activité. Vous gérez votre temps librement et développez à votre rythme. Pour les sociétés, c'est un complément de revenus sur votre activité principale."
   },
   {
     question: "Les commissions sont-elles récurrentes ?",
-    answer: "Oui pour certains produits ! Vous touchez une commission initiale + des commissions annuelles sur les renouvellements (max 1 an selon les produits)."
+    answer: "Oui pour certains produits ! Vous touchez une commission initiale lors de la signature + des commissions annuelles sur les renouvellements (max 1 an selon les produits). Cela fonctionne pour les deux profils d'apporteurs."
   },
   {
-    question: "Quel support vais-je recevoir ?",
-    answer: "Formation obligatoire MOOC d'1h avec QCM, support technique, documentation complète, et outils marketing clés en main."
+    question: "Quel support vais-je recevoir selon mon profil ?",
+    answer: "Tous les apporteurs bénéficient d'une formation obligatoire MOOC d'1h avec QCM, support technique, et documentation complète. Les sociétés partenaires ont en plus un account manager dédié et peuvent bénéficier d'intégrations API. Les commerciaux ont accès à des outils marketing clés en main et une communauté active."
   },
   {
     question: "Combien de temps avant ma première commission ?",
-    answer: "En moyenne 30-45 jours (inscription → premier client → signature → paiement sous 30 jours)."
+    answer: "En moyenne 30-45 jours (inscription → premier client → signature → paiement sous 30 jours). Pour les sociétés avec un portefeuille existant, cela peut être plus rapide. Pour les commerciaux en prospection, cela dépend de votre rythme de prospection."
+  },
+  {
+    question: "Les sociétés peuvent-elles intégrer Profitum via API ?",
+    answer: "Oui, nous proposons des intégrations API pour les sociétés partenaires souhaitant automatiser l'envoi de leurs clients vers notre plateforme. Contactez-nous pour discuter de votre projet d'intégration."
   }
 ];
 
@@ -374,15 +385,15 @@ export default function BecomeApporteur() {
             </Badge>
             
             <h1 className="text-4xl lg:text-6xl font-bold mb-6 leading-tight">
-              Générez 2,000€ à 8,000€/mois
+              Devenez Apporteur d'Affaires
               <br />
               <span className="bg-gradient-to-r from-yellow-300 to-orange-300 bg-clip-text text-transparent">
-                en Apportant des Clients
+                Pour Sociétés & Commerciaux
               </span>
             </h1>
             
             <p className="text-xl lg:text-2xl mb-8 text-blue-100 max-w-3xl mx-auto">
-              Plateforme 100% digitale | Formation incluse | Support dédié | Commission jusqu'à 15%
+              Monétisez votre réseau client ou développez votre activité commerciale | Plateforme 100% digitale | Commission jusqu'à 15%
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
@@ -416,6 +427,192 @@ export default function BecomeApporteur() {
       </section>
 
       {/* ========================================
+          SECTION DEUX PROFILS D'APPORTEURS
+      ======================================== */}
+      <section className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="text-center mb-16"
+          >
+            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
+              Deux Profils, Une Même Opportunité
+            </h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              Que vous soyez une société avec un portefeuille client ou un commercial indépendant, 
+              Profitum s'adapte à votre modèle d'affaires
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+            {/* Profil 1 : Société */}
+            <motion.div
+              initial={{ opacity: 0, x: -50 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+            >
+              <Card className="h-full border-2 border-blue-200 shadow-xl hover:shadow-2xl transition-all">
+                <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-100">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center">
+                      <Building className="w-7 h-7 text-white" />
+                    </div>
+                    <CardTitle className="text-2xl text-gray-900">Société Partenaire</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <p className="text-lg text-gray-700 mb-6 font-medium">
+                    Vous avez une société avec un portefeuille client existant ? 
+                    <span className="text-blue-600 font-bold"> Monétisez vos relations</span> en les orientant vers Profitum.
+                  </p>
+                  
+                  <div className="space-y-4 mb-6">
+                    <div className="flex items-start gap-3">
+                      <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <h4 className="font-bold text-gray-900 mb-1">Apport d'Affaires Structuré</h4>
+                        <p className="text-gray-600 text-sm">
+                          Renvoyez vos clients vers notre plateforme et générez des revenus récurrents 
+                          sur chaque dossier converti
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <h4 className="font-bold text-gray-900 mb-1">Génération de Leads Qualifiés</h4>
+                        <p className="text-gray-600 text-sm">
+                          Transformez votre réseau en source de leads qualifiés avec suivi complet 
+                          et reporting détaillé
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <h4 className="font-bold text-gray-900 mb-1">Partnership B2B</h4>
+                        <p className="text-gray-600 text-sm">
+                          Accords de partenariat, intégration API possible, dashboard dédié pour 
+                          suivre vos apports en temps réel
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <p className="text-sm text-gray-700">
+                      <strong className="text-blue-600">Idéal pour :</strong> Cabinets d'expertise-comptable, 
+                      sociétés de conseil, courtiers, agences immobilières, call centers, 
+                      et toute société avec un portefeuille client B2B
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* Profil 2 : Commercial */}
+            <motion.div
+              initial={{ opacity: 0, x: 50 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+            >
+              <Card className="h-full border-2 border-purple-200 shadow-xl hover:shadow-2xl transition-all">
+                <CardHeader className="bg-gradient-to-r from-purple-50 to-purple-100">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-purple-600 flex items-center justify-center">
+                      <User className="w-7 h-7 text-white" />
+                    </div>
+                    <CardTitle className="text-2xl text-gray-900">Commercial Indépendant</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <p className="text-lg text-gray-700 mb-6 font-medium">
+                    Vous êtes commercial ou chasseur de clients ? 
+                    <span className="text-purple-600 font-bold"> Développez votre activité</span> avec Profitum 
+                    et générez des revenus complémentaires.
+                  </p>
+                  
+                  <div className="space-y-4 mb-6">
+                    <div className="flex items-start gap-3">
+                      <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <h4 className="font-bold text-gray-900 mb-1">Revenus Complémentaires</h4>
+                        <p className="text-gray-600 text-sm">
+                          Générez 2,000€ à 8,000€/mois en apportant des clients. 
+                          Commission moyenne de 15% par dossier signé
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <h4 className="font-bold text-gray-900 mb-1">Prospection Facilitée</h4>
+                        <p className="text-gray-600 text-sm">
+                          Outils de prospection intégrés, simulation automatique des besoins, 
+                          matching expert pour convertir plus facilement
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <h4 className="font-bold text-gray-900 mb-1">Activité Flexible</h4>
+                        <p className="text-gray-600 text-sm">
+                          Travaillez à votre rythme, cumulez avec une autre activité, 
+                          gérez votre portefeuille depuis votre dashboard
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-purple-50 p-4 rounded-lg">
+                    <p className="text-sm text-gray-700">
+                      <strong className="text-purple-600">Idéal pour :</strong> Commerciaux indépendants, 
+                      chasseurs de clients, experts-comptables, conseillers, 
+                      et toute personne souhaitant développer une activité d'apporteur d'affaires
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+            className="text-center"
+          >
+            <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200">
+              <CardContent className="p-6">
+                <h3 className="text-xl font-bold text-gray-900 mb-3">
+                  Les Deux Profils Bénéficient de la Même Plateforme
+                </h3>
+                <p className="text-gray-700 mb-4">
+                  Dashboard temps réel, suivi des dossiers, messagerie intégrée, 
+                  calcul automatique des commissions, et support dédié pour tous
+                </p>
+                <Button 
+                  size="lg"
+                  onClick={scrollToForm}
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-6 text-lg"
+                >
+                  Rejoindre le Réseau
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ========================================
           SECTION POURQUOI PROFITUM
       ======================================== */}
       <section className="py-20 bg-gray-50">
@@ -431,7 +628,8 @@ export default function BecomeApporteur() {
               Pourquoi Rejoindre Profitum ?
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Une plateforme complète pour développer votre activité d'apporteur d'affaires
+              Que vous soyez société partenaire ou commercial indépendant, 
+              bénéficiez d'une plateforme complète pour monétiser vos apports d'affaires
             </p>
           </motion.div>
 
@@ -476,7 +674,7 @@ export default function BecomeApporteur() {
               Comment Ça Marche ?
             </h2>
             <p className="text-xl text-gray-600">
-              5 étapes simples pour réussir avec Profitum
+              5 étapes simples pour réussir avec Profitum - Valable pour sociétés partenaires et commerciaux indépendants
             </p>
           </motion.div>
 
@@ -596,7 +794,7 @@ export default function BecomeApporteur() {
               Ils Réussissent avec Profitum
             </h2>
             <p className="text-xl text-gray-600">
-              Des résultats concrets de nos apporteurs
+              Des résultats concrets de nos apporteurs - Sociétés partenaires et commerciaux indépendants
             </p>
           </motion.div>
 
@@ -609,12 +807,23 @@ export default function BecomeApporteur() {
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: index * 0.15 }}
               >
-                <Card className="h-full border-0 shadow-lg hover:shadow-2xl transition-all">
+                <Card className={`h-full border-0 shadow-lg hover:shadow-2xl transition-all ${
+                  testimonial.type === 'société' ? 'border-l-4 border-blue-500' : 'border-l-4 border-purple-500'
+                }`}>
                   <CardContent className="p-6">
-                    <div className="flex gap-1 mb-4">
-                      {[...Array(testimonial.rating)].map((_, i) => (
-                        <Star key={i} className="w-5 h-5 fill-yellow-400 text-yellow-400" />
-                      ))}
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex gap-1">
+                        {[...Array(testimonial.rating)].map((_, i) => (
+                          <Star key={i} className="w-5 h-5 fill-yellow-400 text-yellow-400" />
+                        ))}
+                      </div>
+                      <Badge className={
+                        testimonial.type === 'société' 
+                          ? 'bg-blue-100 text-blue-700 border-blue-300' 
+                          : 'bg-purple-100 text-purple-700 border-purple-300'
+                      }>
+                        {testimonial.type === 'société' ? '🏢 Société' : '👤 Commercial'}
+                      </Badge>
                     </div>
                     <p className="text-gray-700 italic mb-6">"{testimonial.quote}"</p>
                     <div className="border-t pt-4">
