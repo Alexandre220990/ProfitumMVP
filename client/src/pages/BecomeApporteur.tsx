@@ -28,8 +28,7 @@ import {
   Award,
   Briefcase,
   Clock,
-  ChevronDown,
-  Sparkles
+  ChevronDown
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { config } from '@/config';
@@ -366,65 +365,63 @@ export default function BecomeApporteur() {
       {/* ========================================
           SECTION HERO
       ======================================== */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white py-20 lg:py-28">
-        {/* Background pattern subtil */}
-        <div className="absolute inset-0 opacity-5">
-          <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '60px 60px' }}></div>
+      <section className="relative overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white py-24 lg:py-32">
+        {/* Background pattern très subtil */}
+        <div className="absolute inset-0 opacity-[0.02]">
+          <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)', backgroundSize: '80px 80px' }}></div>
         </div>
-        {/* Accent doré subtil */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-amber-500/10 to-transparent rounded-full blur-3xl"></div>
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-amber-500/10 to-transparent rounded-full blur-3xl"></div>
+        {/* Accent doré très subtil */}
+        <div className="absolute top-1/4 right-1/4 w-[500px] h-[500px] bg-gradient-to-br from-amber-500/5 to-transparent rounded-full blur-3xl"></div>
+        <div className="absolute bottom-1/4 left-1/4 w-[400px] h-[400px] bg-gradient-to-tr from-amber-500/5 to-transparent rounded-full blur-3xl"></div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
             className="text-center"
           >
-            <Badge className="bg-white/10 text-white border-white/20 backdrop-blur-sm mb-6 px-4 py-2">
-              <Sparkles className="w-4 h-4 mr-2" />
-              Rejoignez notre réseau d'apporteurs performants
+            <Badge className="bg-white/5 text-slate-300 border-white/10 backdrop-blur-sm mb-8 px-3 py-1.5 text-xs font-light tracking-wider uppercase">
+              Réseau d'apporteurs d'affaires
             </Badge>
             
-            <h1 className="text-4xl lg:text-6xl font-bold mb-6 leading-tight">
+            <h1 className="text-3xl lg:text-5xl font-light mb-6 leading-[1.2] tracking-tight">
               Devenez Apporteur d'Affaires
               <br />
-              <span className="bg-gradient-to-r from-amber-400 via-amber-300 to-amber-400 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-amber-300 via-amber-200 to-amber-300 bg-clip-text text-transparent font-normal">
                 Commercial ou Société avec Portefeuille
               </span>
             </h1>
             
-            <p className="text-xl lg:text-2xl mb-8 text-slate-300 max-w-3xl mx-auto leading-relaxed">
-              <span className="font-semibold text-white">Commercial indépendant ?</span> Développez votre activité et générez des revenus complémentaires.
-              <br className="hidden lg:block" />
-              <span className="font-semibold text-white">Société avec portefeuille client ?</span> Monétisez vos relations existantes en les orientant vers Profitum.
+            <p className="text-base lg:text-lg mb-10 text-slate-400 max-w-2xl mx-auto leading-relaxed font-light">
+              <span className="text-slate-200">Commercial indépendant</span> — Développez votre activité et générez des revenus complémentaires.
+              <br className="hidden lg:block mt-2" />
+              <span className="text-slate-200">Société avec portefeuille</span> — Monétisez vos relations existantes en les orientant vers Profitum.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+            <div className="flex flex-col sm:flex-row gap-3 justify-center mb-16">
               <Button 
-                size="lg"
                 onClick={scrollToForm}
-                className="bg-white text-slate-900 hover:bg-slate-100 text-lg px-8 py-6 shadow-2xl font-semibold transition-all hover:scale-105"
+                className="bg-white text-slate-900 hover:bg-slate-50 text-sm px-6 py-3 shadow-lg font-medium transition-all hover:shadow-xl"
               >
                 Devenir Apporteur
-                <ArrowRight className="ml-2 h-5 w-5" />
+                <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
 
-            {/* Stats rapides */}
-            <div className="grid grid-cols-3 gap-6 max-w-2xl mx-auto">
+            {/* Stats discrètes */}
+            <div className="grid grid-cols-3 gap-8 max-w-xl mx-auto border-t border-white/10 pt-8">
               <div className="text-center">
-                <div className="text-3xl font-bold text-amber-400">15%</div>
-                <div className="text-sm text-slate-400">Commission moyenne</div>
+                <div className="text-2xl font-light text-amber-300 mb-1">15%</div>
+                <div className="text-xs text-slate-500 uppercase tracking-wider">Commission</div>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-amber-400">0€</div>
-                <div className="text-sm text-slate-400">Frais d'inscription</div>
+                <div className="text-2xl font-light text-amber-300 mb-1">0€</div>
+                <div className="text-xs text-slate-500 uppercase tracking-wider">Frais</div>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-amber-400">24-48h</div>
-                <div className="text-sm text-slate-400">Validation</div>
+                <div className="text-2xl font-light text-amber-300 mb-1">24-48h</div>
+                <div className="text-xs text-slate-500 uppercase tracking-wider">Validation</div>
               </div>
             </div>
           </motion.div>
