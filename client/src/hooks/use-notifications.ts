@@ -45,7 +45,9 @@ export function useNotifications() {
       const result = await response.json();
 
       if (result.success && result.data) {
-        setNotifications(result.data);
+        // S'assurer que result.data est un tableau
+        const notificationsData = Array.isArray(result.data) ? result.data : [];
+        setNotifications(notificationsData);
       } else {
         setNotifications([]);
       }
@@ -71,11 +73,12 @@ export function useNotifications() {
   const markAsRead = useCallback(async (notificationId: string) => {
     try {
       // Optimistic update
-      setNotifications(prev =>
-        prev.map(notif =>
+      setNotifications(prev => {
+        if (!Array.isArray(prev)) return [];
+        return prev.map(notif =>
           notif.id === notificationId ? { ...notif, lue: true } : notif
-        )
-      );
+        );
+      });
 
       const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
       const token = localStorage.getItem('token');
@@ -97,7 +100,10 @@ export function useNotifications() {
   const markAllAsRead = useCallback(async () => {
     try {
       // Optimistic update
-      setNotifications(prev => prev.map(notif => ({ ...notif, lue: true })));
+      setNotifications(prev => {
+        if (!Array.isArray(prev)) return [];
+        return prev.map(notif => ({ ...notif, lue: true }));
+      });
 
       const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
       const token = localStorage.getItem('token');
@@ -119,6 +125,14 @@ export function useNotifications() {
   const getStats = useCallback((): NotificationStats => {
     const byType: Record<string, number> = {};
     
+    if (!Array.isArray(notifications)) {
+      return {
+        total: 0,
+        unread: 0,
+        byType
+      };
+    }
+    
     notifications.forEach(notif => {
       byType[notif.type_notification] = (byType[notif.type_notification] || 0) + 1;
     });
@@ -131,6 +145,7 @@ export function useNotifications() {
   }, [notifications]);
 
   const getUnreadCount = useCallback(() => {
+    if (!Array.isArray(notifications)) return 0;
     return notifications.filter(n => !n.lue).length;
   }, [notifications]);
 

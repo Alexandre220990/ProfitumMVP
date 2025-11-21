@@ -100,7 +100,7 @@ export function NotificationSlider({ isOpen, onClose }: NotificationSliderProps)
               <div className="flex items-center justify-center h-32">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
               </div>
-            ) : notifications.length === 0 ? (
+            ) : !Array.isArray(notifications) || notifications.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-32 text-gray-500">
                 <Bell className="h-8 w-8 mb-2" />
                 <p className="text-sm">Aucune notification</p>

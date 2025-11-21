@@ -549,7 +549,7 @@ const ServicesSection = () => {
         <div className="inline-flex flex-col sm:flex-row items-center gap-3 sm:gap-4 bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl px-6 sm:px-8 py-4 shadow-sm max-w-full">
           <div className="flex items-center gap-2 sm:gap-3">
             <Calculator className="w-5 h-5 text-blue-600" />
-            <span className="text-sm sm:text-base text-slate-700 font-medium whitespace-nowrap">Besoin d'un audit personnalisé ?</span>
+            <span className="text-sm sm:text-base text-slate-700 font-medium whitespace-nowrap">Besoin d'une étude individualisée ?</span>
           </div>
           <button 
             onClick={() => navigate('/contact')}
