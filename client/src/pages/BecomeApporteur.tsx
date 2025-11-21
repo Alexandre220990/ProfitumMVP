@@ -366,11 +366,14 @@ export default function BecomeApporteur() {
       {/* ========================================
           SECTION HERO
       ======================================== */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-purple-600 to-blue-700 text-white py-20 lg:py-28">
-        {/* Background pattern */}
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '40px 40px' }}></div>
+      <section className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white py-20 lg:py-28">
+        {/* Background pattern subtil */}
+        <div className="absolute inset-0 opacity-5">
+          <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '60px 60px' }}></div>
         </div>
+        {/* Accent doré subtil */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-amber-500/10 to-transparent rounded-full blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-amber-500/10 to-transparent rounded-full blur-3xl"></div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <motion.div
@@ -379,7 +382,7 @@ export default function BecomeApporteur() {
             transition={{ duration: 0.6 }}
             className="text-center"
           >
-            <Badge className="bg-white/20 text-white border-white/30 mb-6 px-4 py-2">
+            <Badge className="bg-white/10 text-white border-white/20 backdrop-blur-sm mb-6 px-4 py-2">
               <Sparkles className="w-4 h-4 mr-2" />
               Rejoignez notre réseau d'apporteurs performants
             </Badge>
@@ -387,22 +390,24 @@ export default function BecomeApporteur() {
             <h1 className="text-4xl lg:text-6xl font-bold mb-6 leading-tight">
               Devenez Apporteur d'Affaires
               <br />
-              <span className="bg-gradient-to-r from-yellow-300 to-orange-300 bg-clip-text text-transparent">
-                Pour Sociétés & Commerciaux
+              <span className="bg-gradient-to-r from-amber-400 via-amber-300 to-amber-400 bg-clip-text text-transparent">
+                Commercial ou Société avec Portefeuille
               </span>
             </h1>
             
-            <p className="text-xl lg:text-2xl mb-8 text-blue-100 max-w-3xl mx-auto">
-              Monétisez votre réseau client ou développez votre activité commerciale | Plateforme 100% digitale | Commission jusqu'à 15%
+            <p className="text-xl lg:text-2xl mb-8 text-slate-300 max-w-3xl mx-auto leading-relaxed">
+              <span className="font-semibold text-white">Commercial indépendant ?</span> Développez votre activité et générez des revenus complémentaires.
+              <br className="hidden lg:block" />
+              <span className="font-semibold text-white">Société avec portefeuille client ?</span> Monétisez vos relations existantes en les orientant vers Profitum.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
               <Button 
                 size="lg"
                 onClick={scrollToForm}
-                className="bg-white text-blue-600 hover:bg-blue-50 text-lg px-8 py-6 shadow-xl"
+                className="bg-white text-slate-900 hover:bg-slate-100 text-lg px-8 py-6 shadow-2xl font-semibold transition-all hover:scale-105"
               >
-                🚀 Devenir Apporteur Maintenant
+                Devenir Apporteur
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </div>
@@ -410,16 +415,16 @@ export default function BecomeApporteur() {
             {/* Stats rapides */}
             <div className="grid grid-cols-3 gap-6 max-w-2xl mx-auto">
               <div className="text-center">
-                <div className="text-3xl font-bold">15%</div>
-                <div className="text-sm text-blue-200">Commission moyenne</div>
+                <div className="text-3xl font-bold text-amber-400">15%</div>
+                <div className="text-sm text-slate-400">Commission moyenne</div>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold">0€</div>
-                <div className="text-sm text-blue-200">Frais d'inscription</div>
+                <div className="text-3xl font-bold text-amber-400">0€</div>
+                <div className="text-sm text-slate-400">Frais d'inscription</div>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold">24-48h</div>
-                <div className="text-sm text-blue-200">Validation</div>
+                <div className="text-3xl font-bold text-amber-400">24-48h</div>
+                <div className="text-sm text-slate-400">Validation</div>
               </div>
             </div>
           </motion.div>
@@ -581,34 +586,6 @@ export default function BecomeApporteur() {
               </Card>
             </motion.div>
           </div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-            className="text-center"
-          >
-            <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200">
-              <CardContent className="p-6">
-                <h3 className="text-xl font-bold text-gray-900 mb-3">
-                  Les Deux Profils Bénéficient de la Même Plateforme
-                </h3>
-                <p className="text-gray-700 mb-4">
-                  Dashboard temps réel, suivi des dossiers, messagerie intégrée, 
-                  calcul automatique des commissions, et support dédié pour tous
-                </p>
-                <Button 
-                  size="lg"
-                  onClick={scrollToForm}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-6 text-lg"
-                >
-                  Rejoindre le Réseau
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </CardContent>
-            </Card>
-          </motion.div>
         </div>
       </section>
 
