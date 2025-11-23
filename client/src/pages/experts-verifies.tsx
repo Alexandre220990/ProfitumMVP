@@ -84,25 +84,13 @@ export default function ExpertsVerifies() {
       <PublicHeader />
 
       {/* Hero Section - Style home page */}
-      <section className="relative min-h-[80vh] flex items-center justify-center overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 pt-16">
+      <section className="relative min-h-[75vh] flex items-center justify-center overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 pt-8">
         {/* Animated background elements */}
         <div className="absolute inset-0">
           <div className="absolute top-0 left-0 w-full h-full opacity-10">
             <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl animate-pulse"></div>
             <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-indigo-500/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-purple-500/15 rounded-full blur-3xl animate-pulse delay-500"></div>
-          </div>
-          
-          {/* Geometric patterns */}
-          <div className="absolute inset-0 opacity-5">
-            <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-              <defs>
-                <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
-                  <path d="M 10 0 L 0 0 0 10" fill="none" stroke="currentColor" strokeWidth="0.5"/>
-                </pattern>
-              </defs>
-              <rect width="100" height="100" fill="url(#grid)" />
-            </svg>
           </div>
         </div>
 
@@ -122,10 +110,10 @@ export default function ExpertsVerifies() {
           ))}
         </div>
 
-        <div className="relative z-10 max-w-7xl mx-auto px-6 py-20 lg:py-32">
+        <div className="relative z-10 max-w-7xl mx-auto px-6 py-12 lg:py-16">
           <div className="text-center">
             {/* Premium badge with micro-interactions */}
-            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-slate-700/30 to-slate-800/30 backdrop-blur-xl border border-slate-500/20 text-slate-300 px-5 py-2.5 rounded-full text-xs font-light mb-8 shadow-lg group">
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-slate-700/30 to-slate-800/30 backdrop-blur-xl border border-slate-500/20 text-slate-300 px-5 py-2.5 rounded-full text-xs font-light mb-6 shadow-lg group">
               <div className="relative">
                 <Crown className="w-3.5 h-3.5 text-amber-400/80 group-hover:rotate-12 transition-transform duration-300" />
                 <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-emerald-400/60 rounded-full animate-pulse"></div>
@@ -138,8 +126,8 @@ export default function ExpertsVerifies() {
             </div>
             
             {/* Main headline with sophisticated typography */}
-            <div className="mb-12">
-              <h1 className="text-3xl md:text-4xl lg:text-5xl font-light text-white mb-8 leading-[1.3] tracking-tight max-w-4xl mx-auto">
+            <div className="mb-8">
+              <h1 className="text-3xl md:text-4xl lg:text-5xl font-light text-white mb-6 leading-[1.3] tracking-tight max-w-4xl mx-auto">
                 <span className="block font-extralight opacity-75 mb-2">
                   Sélection d'experts
                 </span>
@@ -153,7 +141,7 @@ export default function ExpertsVerifies() {
             </div>
 
             {/* Value propositions with sophisticated icons */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12 max-w-5xl mx-auto">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8 max-w-5xl mx-auto">
               {marketplaceStats.map((stat, index) => (
                 <div key={index} className="group flex flex-col items-center text-center">
                   <div className="relative mb-4">
