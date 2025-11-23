@@ -216,77 +216,77 @@ const ADVANTAGES = [
 
 const HeroSection = ({ navigate }: { navigate: (path: string) => void }) => (
   <section className="relative min-h-[calc(100vh-73px)] bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 overflow-hidden flex items-center">
-    <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16 lg:py-20">
+    <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12 lg:py-16">
       {/* Badges de confiance - Responsive avec wrap */}
-      <div className="flex flex-wrap justify-center gap-2 sm:gap-3 mb-8 sm:mb-10">
-        <div className="inline-flex items-center gap-2 bg-white/90 backdrop-blur-sm border border-blue-200 text-blue-700 px-3 py-1.5 rounded-full text-xs font-medium shadow-sm">
-          <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
-          <span className="whitespace-nowrap">Plateforme certifiée</span>
+      <div className="flex flex-wrap justify-center gap-2 sm:gap-3 mb-6 sm:mb-8">
+        <div className="inline-flex items-center gap-1.5 bg-white/90 backdrop-blur-sm border border-blue-200/50 text-blue-600 px-3 py-1 rounded-full text-xs font-light shadow-sm">
+          <div className="w-1 h-1 bg-blue-500 rounded-full"></div>
+          <span className="whitespace-nowrap tracking-wide">Plateforme certifiée</span>
         </div>
-        <div className="inline-flex items-center gap-2 bg-white/90 backdrop-blur-sm border border-emerald-200 text-emerald-700 px-3 py-1.5 rounded-full text-xs font-medium shadow-sm">
+        <div className="inline-flex items-center gap-1.5 bg-white/90 backdrop-blur-sm border border-emerald-200/50 text-emerald-600 px-3 py-1 rounded-full text-xs font-light shadow-sm">
           <ShieldCheck className="w-3 h-3" />
-          <span className="whitespace-nowrap">Experts vérifiés</span>
+          <span className="whitespace-nowrap tracking-wide">Experts vérifiés</span>
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row items-center justify-between gap-8 lg:gap-12 xl:gap-16">
+      <div className="flex flex-col lg:flex-row items-center justify-between gap-6 lg:gap-10 xl:gap-12">
         {/* Section Contenu - Responsive avec max-width adaptatif */}
         <div className="flex-1 w-full max-w-full lg:max-w-3xl xl:max-w-4xl">
           {/* Titre principal - Responsive et centré sur mobile */}
-          <div className="mb-8 sm:mb-10 lg:mb-12 text-center lg:text-left">
-            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-slate-900 mb-4 sm:mb-6 leading-tight">
-              <span className="block font-bold text-slate-900">
+          <div className="mb-6 sm:mb-8 lg:mb-10 text-center lg:text-left">
+            <h1 className="text-2xl sm:text-3xl md:text-3xl lg:text-4xl font-light text-slate-900 mb-3 sm:mb-4 leading-[1.3] tracking-tight">
+              <span className="block font-extralight text-slate-700">
                 Profitum connecte les entreprises aux
               </span>
-              <span className="block font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mt-1">
+              <span className="block font-normal bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mt-1">
                 meilleurs experts
               </span>
-              <span className="block font-bold text-slate-900 mt-2">
+              <span className="block font-extralight text-slate-700 mt-2">
                 pour transformer contraintes en opportunités financières
               </span>
             </h1>
-            <p className="text-base sm:text-lg md:text-xl text-slate-600 leading-relaxed max-w-2xl mx-auto lg:mx-0">
+            <p className="text-sm sm:text-base md:text-base text-slate-500 leading-relaxed max-w-2xl mx-auto lg:mx-0 font-light tracking-wide">
               Économisez jusqu'à 25% sur vos charges et boostez votre trésorerie avec nos experts certifiés. Résultats garantis en 30 jours.
             </p>
           </div>
 
           {/* Boutons d'action - Responsive avec meilleur espacement */}
-          <div className="flex flex-col sm:flex-col lg:flex-row gap-4 sm:gap-6 mb-8">
+          <div className="flex flex-col sm:flex-col lg:flex-row gap-3 sm:gap-4 mb-6">
             {/* CTA Client - Design premium responsive */}
             <div className="flex-1 group w-full">
               <div className="relative">
                 {/* Label avec design sophistiqué */}
-                <div className="flex items-center gap-2 mb-3 sm:mb-4">
-                  <div className="w-2 h-2 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full animate-pulse"></div>
-                  <span className="text-xs font-bold text-slate-700 uppercase tracking-widest">Entreprises</span>
+                <div className="flex items-center gap-2 mb-2 sm:mb-3">
+                  <div className="w-1.5 h-1.5 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full"></div>
+                  <span className="text-xs font-light text-slate-600 uppercase tracking-wide">Entreprises</span>
                   <div className="flex-1 h-px bg-gradient-to-r from-blue-200 to-transparent"></div>
                 </div>
                 
                 {/* Bouton principal avec effets avancés */}
                 <button 
                   onClick={() => navigate('/simulateur')}
-                  className="group relative w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:via-indigo-700 hover:to-blue-800 text-white font-bold py-3 sm:py-4 px-6 sm:px-8 rounded-2xl shadow-2xl hover:shadow-blue-500/25 transition-all duration-500 transform hover:-translate-y-1 sm:hover:-translate-y-2 overflow-hidden"
+                  className="group relative w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:via-indigo-700 hover:to-blue-800 text-white font-medium py-2.5 sm:py-3 px-5 sm:px-6 rounded-xl shadow-lg hover:shadow-blue-500/20 transition-all duration-300 transform hover:-translate-y-0.5 overflow-hidden"
                 >
                   {/* Effet de brillance */}
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
                   
                   {/* Contenu du bouton - Text responsive */}
-                  <span className="relative flex items-center justify-center gap-2 sm:gap-3">
-                    <span className="text-sm sm:text-base">Calculer mes économies</span>
-                    <div className="w-4 h-4 sm:w-5 sm:h-5 bg-white/20 rounded-full flex items-center justify-center">
+                  <span className="relative flex items-center justify-center gap-2">
+                    <span className="text-xs sm:text-sm font-medium">Calculer mes économies</span>
+                    <div className="w-4 h-4 bg-white/20 rounded-full flex items-center justify-center">
                       <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform duration-300" />
                     </div>
                   </span>
                 </button>
                 
                 {/* Annotation avec design premium - Responsive */}
-                <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
-                  <div className="flex items-center gap-1.5 bg-white/80 backdrop-blur-sm border border-green-200 rounded-full px-3 py-1.5">
-                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-                    <span className="text-xs font-semibold text-green-700 whitespace-nowrap">Gratuit</span>
+                <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
+                  <div className="flex items-center gap-1 bg-white/80 backdrop-blur-sm border border-green-200/50 rounded-full px-2.5 py-1">
+                    <div className="w-1 h-1 bg-green-500 rounded-full"></div>
+                    <span className="text-xs font-light text-green-600 whitespace-nowrap tracking-wide">Gratuit</span>
                   </div>
-                  <span className="text-xs text-slate-500 font-medium hidden sm:inline">•</span>
-                  <span className="text-xs text-slate-600 font-medium whitespace-nowrap">Résultats en 2 min</span>
+                  <span className="text-xs text-slate-400 font-light hidden sm:inline">•</span>
+                  <span className="text-xs text-slate-500 font-light whitespace-nowrap tracking-wide">Résultats en 2 min</span>
                 </div>
               </div>
             </div>
@@ -295,37 +295,37 @@ const HeroSection = ({ navigate }: { navigate: (path: string) => void }) => (
             <div className="flex-1 group w-full">
               <div className="relative">
                 {/* Label avec design sophistiqué */}
-                <div className="flex items-center gap-2 mb-3 sm:mb-4">
-                  <div className="w-2 h-2 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full animate-pulse"></div>
-                  <span className="text-xs font-bold text-slate-700 uppercase tracking-widest">Experts</span>
+                <div className="flex items-center gap-2 mb-2 sm:mb-3">
+                  <div className="w-1.5 h-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full"></div>
+                  <span className="text-xs font-light text-slate-600 uppercase tracking-wide">Experts</span>
                   <div className="flex-1 h-px bg-gradient-to-r from-emerald-200 to-transparent"></div>
                 </div>
                 
                 {/* Bouton principal avec effets avancés */}
                 <button 
                   onClick={() => navigate('/welcome-expert')}
-                  className="group relative w-full bg-white border-2 border-emerald-200 hover:border-emerald-300 text-emerald-700 font-bold py-3 sm:py-4 px-6 sm:px-8 rounded-2xl shadow-xl hover:shadow-emerald-500/20 transition-all duration-500 transform hover:-translate-y-1 sm:hover:-translate-y-2 overflow-hidden"
+                  className="group relative w-full bg-white border border-emerald-200/50 hover:border-emerald-300 text-emerald-700 font-medium py-2.5 sm:py-3 px-5 sm:px-6 rounded-xl shadow-md hover:shadow-emerald-500/10 transition-all duration-300 transform hover:-translate-y-0.5 overflow-hidden"
                 >
                   {/* Effet de brillance */}
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-emerald-50 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
                   
                   {/* Contenu du bouton - Text responsive */}
-                  <span className="relative flex items-center justify-center gap-2 sm:gap-3">
-                    <span className="text-sm sm:text-base">Rejoindre les experts</span>
-                    <div className="w-4 h-4 sm:w-5 sm:h-5 bg-emerald-100 rounded-full flex items-center justify-center">
+                  <span className="relative flex items-center justify-center gap-2">
+                    <span className="text-xs sm:text-sm font-medium">Rejoindre les experts</span>
+                    <div className="w-4 h-4 bg-emerald-100 rounded-full flex items-center justify-center">
                       <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform duration-300" />
                     </div>
                   </span>
                 </button>
                 
                 {/* Annotation avec design premium - Responsive */}
-                <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
-                  <div className="flex items-center gap-1.5 bg-white/80 backdrop-blur-sm border border-purple-200 rounded-full px-3 py-1.5">
-                    <div className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse"></div>
-                    <span className="text-xs font-semibold text-purple-700 whitespace-nowrap">+40% clients</span>
+                <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">
+                  <div className="flex items-center gap-1 bg-white/80 backdrop-blur-sm border border-purple-200/50 rounded-full px-2.5 py-1">
+                    <div className="w-1 h-1 bg-purple-500 rounded-full"></div>
+                    <span className="text-xs font-light text-purple-600 whitespace-nowrap tracking-wide">+40% clients</span>
                   </div>
-                  <span className="text-xs text-slate-500 font-medium hidden sm:inline">•</span>
-                  <span className="text-xs text-slate-600 font-medium whitespace-nowrap">Commissions garanties</span>
+                  <span className="text-xs text-slate-400 font-light hidden sm:inline">•</span>
+                  <span className="text-xs text-slate-500 font-light whitespace-nowrap tracking-wide">Commissions garanties</span>
                 </div>
               </div>
             </div>
@@ -333,46 +333,46 @@ const HeroSection = ({ navigate }: { navigate: (path: string) => void }) => (
         </div>
 
         {/* Section KPI - Masqué sur mobile et tablette, visible desktop */}
-        <div className="hidden xl:flex flex-shrink-0 w-72">
-          <div className="w-full space-y-4">
-            <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-5 border border-blue-100 shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-2xl font-bold text-slate-900">€2.5M</div>
-                <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center">
-                  <TrendingUp className="w-5 h-5 text-white" />
+        <div className="hidden xl:flex flex-shrink-0 w-64">
+          <div className="w-full space-y-3">
+            <div className="bg-white/90 backdrop-blur-sm rounded-xl p-4 border border-blue-100/50 shadow-sm">
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="text-xl font-semibold text-slate-900">€2.5M</div>
+                <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg flex items-center justify-center">
+                  <TrendingUp className="w-4 h-4 text-white" />
                 </div>
               </div>
-              <div className="text-xs text-slate-600">Économies générées</div>
+              <div className="text-xs text-slate-500 font-light tracking-wide">Économies générées</div>
             </div>
             
-            <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-5 border border-emerald-100 shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-2xl font-bold text-slate-900">98%</div>
-                <div className="w-10 h-10 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center">
-                  <ShieldCheck className="w-5 h-5 text-white" />
+            <div className="bg-white/90 backdrop-blur-sm rounded-xl p-4 border border-emerald-100/50 shadow-sm">
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="text-xl font-semibold text-slate-900">98%</div>
+                <div className="w-8 h-8 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg flex items-center justify-center">
+                  <ShieldCheck className="w-4 h-4 text-white" />
                 </div>
               </div>
-              <div className="text-xs text-slate-600">Taux de satisfaction</div>
+              <div className="text-xs text-slate-500 font-light tracking-wide">Taux de satisfaction</div>
             </div>
             
-            <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-5 border border-purple-100 shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-2xl font-bold text-slate-900">24h</div>
-                <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
-                  <Clock className="w-5 h-5 text-white" />
+            <div className="bg-white/90 backdrop-blur-sm rounded-xl p-4 border border-purple-100/50 shadow-sm">
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="text-xl font-semibold text-slate-900">24h</div>
+                <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
+                  <Clock className="w-4 h-4 text-white" />
                 </div>
               </div>
-              <div className="text-xs text-slate-600">Délai de réponse</div>
+              <div className="text-xs text-slate-500 font-light tracking-wide">Délai de réponse</div>
             </div>
 
-            <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-5 border border-orange-100 shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-2xl font-bold text-slate-900">20+</div>
-                <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-amber-500 rounded-xl flex items-center justify-center">
-                  <Target className="w-5 h-5 text-white" />
+            <div className="bg-white/90 backdrop-blur-sm rounded-xl p-4 border border-orange-100/50 shadow-sm">
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="text-xl font-semibold text-slate-900">20+</div>
+                <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-amber-500 rounded-lg flex items-center justify-center">
+                  <Target className="w-4 h-4 text-white" />
                 </div>
               </div>
-              <div className="text-xs text-slate-600">Produits d'optimisation</div>
+              <div className="text-xs text-slate-500 font-light tracking-wide">Produits d'optimisation</div>
             </div>
           </div>
         </div>
