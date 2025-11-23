@@ -16,29 +16,29 @@ const marketplaceProcess = [
   { 
     step: "01", 
     icon: Search, 
-    title: "Recherche intelligente", 
-    description: "Notre algorithme vous propose les experts les plus pertinents selon vos besoins spécifiques", 
+    title: "Recherche", 
+    description: "Sélection des experts correspondant à vos besoins", 
     color: "from-blue-500 to-cyan-500" 
   },
   { 
     step: "02", 
     icon: UserCheck, 
-    title: "Sélection vérifiée", 
-    description: "Tous nos experts sont rigoureusement sélectionnés et validés pour garantir la qualité", 
+    title: "Vérification", 
+    description: "Validation des compétences et certifications", 
     color: "from-purple-500 to-pink-500" 
   },
   { 
     step: "03", 
     icon: MessageSquare, 
-    title: "Contact direct", 
-    description: "Échangez directement avec l'expert de votre choix, sans intermédiaire", 
+    title: "Contact", 
+    description: "Échange direct avec l'expert sélectionné", 
     color: "from-green-500 to-emerald-500" 
   },
   { 
     step: "04", 
     icon: Handshake, 
-    title: "Sur-mesure", 
-    description: "Bénéficiez d'un suivi personnalisé et d'un accompagnement adapté à vos objectifs", 
+    title: "Accompagnement", 
+    description: "Suivi personnalisé adapté à vos objectifs", 
     color: "from-orange-500 to-red-500" 
   }
 ];
@@ -47,30 +47,30 @@ const marketplaceProcess = [
 const marketplaceBenefits = [
   { 
     icon: Zap, 
-    title: "Simplicité absolue", 
-    description: "Trouvez l'expert parfait en quelques clics. Plus besoin de passer des heures à chercher et comparer.", 
-    highlight: "Gain de temps : 80%",
+    title: "Efficacité", 
+    description: "Identification rapide des experts adaptés à vos besoins spécifiques.", 
+    highlight: "Optimisation du temps",
     color: "from-blue-500 to-indigo-600"
   },
   { 
     icon: Shield, 
-    title: "Qualité garantie", 
-    description: "Tous nos experts sont vérifiés et évalués. Vous avez accès aux meilleurs professionnels du marché.", 
-    highlight: "Experts certifiés : 100%",
+    title: "Qualité", 
+    description: "Réseau d'experts vérifiés, certifiés et expérimentés.", 
+    highlight: "Sélection rigoureuse",
     color: "from-green-500 to-emerald-600"
   },
   { 
     icon: DollarSign, 
-    title: "Tarifs transparents", 
-    description: "Pas de surprise ! Les tarifs sont clairement affichés et négociés pour vous garantir les meilleurs prix.", 
-    highlight: "Économies : 15-30%",
+    title: "Transparence", 
+    description: "Tarification claire et négociation adaptée à votre contexte.", 
+    highlight: "Optimisation budgétaire",
     color: "from-purple-500 to-pink-600"
   },
   { 
     icon: BarChart3, 
-    title: "Suivi en temps réel", 
-    description: "Suivez l'avancement de vos projets en temps réel avec notre tableau de bord intuitif.", 
-    highlight: "Visibilité : 100%",
+    title: "Suivi", 
+    description: "Accompagnement personnalisé avec visibilité sur l'avancement.", 
+    highlight: "Pilotage continu",
     color: "from-cyan-500 to-teal-600"
   }
 ];
@@ -125,32 +125,29 @@ export default function ExpertsVerifies() {
         <div className="relative z-10 max-w-7xl mx-auto px-6 py-20 lg:py-32">
           <div className="text-center">
             {/* Premium badge with micro-interactions */}
-            <div className="inline-flex items-center gap-3 bg-gradient-to-r from-blue-600/20 to-indigo-600/20 backdrop-blur-xl border border-blue-500/30 text-blue-100 px-8 py-4 rounded-full text-sm font-medium mb-8 shadow-2xl hover:scale-105 transition-all duration-300 group">
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-slate-700/30 to-slate-800/30 backdrop-blur-xl border border-slate-500/20 text-slate-300 px-5 py-2.5 rounded-full text-xs font-light mb-8 shadow-lg group">
               <div className="relative">
-                <Crown className="w-5 h-5 text-yellow-400 group-hover:rotate-12 transition-transform duration-300" />
-                <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                <Crown className="w-3.5 h-3.5 text-amber-400/80 group-hover:rotate-12 transition-transform duration-300" />
+                <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-emerald-400/60 rounded-full animate-pulse"></div>
               </div>
-              <span className="font-semibold">Marketplace d'experts vérifiés</span>
+              <span className="font-light tracking-wide">Experts vérifiés</span>
               <div className="flex items-center gap-1">
-                <div className="w-1 h-1 bg-green-400 rounded-full animate-pulse"></div>
-                <span className="text-xs text-green-300">Certifiés</span>
+                <div className="w-0.5 h-0.5 bg-emerald-400/60 rounded-full animate-pulse"></div>
+                <span className="text-xs text-slate-400 font-light">Certifiés</span>
               </div>
             </div>
             
             {/* Main headline with sophisticated typography */}
-            <div className="mb-8">
-              <h1 className="text-4xl md:text-6xl lg:text-7xl font-extralight text-white mb-6 leading-[0.9] tracking-tight max-w-6xl mx-auto">
-                <span className="block font-light opacity-90">
-                  Découvrez notre réseau d'
+            <div className="mb-12">
+              <h1 className="text-3xl md:text-4xl lg:text-5xl font-light text-white mb-8 leading-[1.3] tracking-tight max-w-4xl mx-auto">
+                <span className="block font-extralight opacity-75 mb-2">
+                  Sélection d'experts
                 </span>
-                <span className="block font-bold bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 bg-clip-text text-transparent animate-gradient">
-                  experts vérifiés
+                <span className="block font-normal bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 bg-clip-text text-transparent">
+                  vérifiés et certifiés
                 </span>
-                <span className="block font-light opacity-90 mt-2">
-                  rigoureusement sélectionnés pour
-                </span>
-                <span className="block font-bold bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 bg-clip-text text-transparent animate-gradient delay-500">
-                  transformer vos contraintes
+                <span className="block font-extralight opacity-70 mt-4 text-lg md:text-xl lg:text-2xl max-w-2xl mx-auto">
+                  Accompagnement sur mesure pour vos projets financiers
                 </span>
               </h1>
             </div>
@@ -166,22 +163,22 @@ export default function ExpertsVerifies() {
                     </div>
                   </div>
                   <div className="text-white">
-                    <div className="text-2xl font-bold mb-1">{stat.value}</div>
-                    <div className="text-sm text-slate-300 font-medium">{stat.label}</div>
+                    <div className="text-xl font-light mb-1">{stat.value}</div>
+                    <div className="text-xs text-slate-400 font-light tracking-wide">{stat.label}</div>
                   </div>
                 </div>
               ))}
             </div>
 
             {/* Trust indicators - simplified */}
-            <div className="flex items-center justify-center gap-6 text-slate-400 text-sm">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                <span>Experts certifiés</span>
+            <div className="flex items-center justify-center gap-8 text-slate-400/80 text-xs font-light tracking-wide">
+              <div className="flex items-center gap-1.5">
+                <div className="w-1 h-1 bg-emerald-400/50 rounded-full"></div>
+                <span>Certifiés</span>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse delay-300"></div>
-                <span>+200 experts vérifiés</span>
+              <div className="flex items-center gap-1.5">
+                <div className="w-1 h-1 bg-slate-400/50 rounded-full"></div>
+                <span>Réseau sélectionné</span>
               </div>
             </div>
           </div>
@@ -205,15 +202,15 @@ export default function ExpertsVerifies() {
         
         <div className="relative z-10 max-w-7xl mx-auto px-6">
           <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 text-blue-800 px-6 py-3 rounded-full text-sm font-semibold mb-6">
-              <Search className="w-4 h-4" />
-              Comment ça marche ?
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-slate-100/50 to-slate-50/50 border border-slate-200/50 text-slate-600 px-5 py-2 rounded-full text-xs font-light mb-6 tracking-wide">
+              <Search className="w-3.5 h-3.5" />
+              Processus
             </div>
-            <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-6">
-              En 4 étapes simples, accédez aux <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">meilleurs experts</span>
+            <h2 className="text-2xl md:text-3xl font-light text-slate-900 mb-4 tracking-tight">
+              <span className="text-slate-700">Accès aux</span> <span className="font-normal text-slate-900">experts sélectionnés</span>
             </h2>
-            <p className="text-xl text-slate-600 max-w-3xl mx-auto">
-              Un processus optimisé pour vous connecter rapidement aux experts les plus qualifiés
+            <p className="text-sm text-slate-500 max-w-2xl mx-auto font-light tracking-wide">
+              Parcours simplifié pour identifier et collaborer avec les professionnels adaptés
             </p>
           </div>
           
@@ -230,9 +227,9 @@ export default function ExpertsVerifies() {
                       </div>
                     </div>
                   </div>
-                  <div className="text-sm font-semibold text-blue-600 mb-2 text-center">{process.step}</div>
-                  <h3 className="text-xl font-bold mb-4 text-slate-900 text-center">{process.title}</h3>
-                  <p className="text-slate-600 text-center leading-relaxed text-sm">
+                  <div className="text-xs font-light text-slate-400 mb-3 text-center tracking-wide">{process.step}</div>
+                  <h3 className="text-base font-normal mb-3 text-slate-900 text-center tracking-tight">{process.title}</h3>
+                  <p className="text-slate-500 text-center leading-relaxed text-xs font-light">
                     {process.description}
                   </p>
                   
@@ -257,28 +254,26 @@ export default function ExpertsVerifies() {
         <div className="relative z-10 max-w-7xl mx-auto px-6">
           <div className="grid md:grid-cols-2 gap-16 items-center">
             <div>
-              <div className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 text-blue-800 px-6 py-3 rounded-full text-sm font-semibold mb-6">
-                <Shield className="w-4 h-4" />
-                L'Ultra-Sélection qui fait la différence
+              <div className="inline-flex items-center gap-2 bg-gradient-to-r from-slate-100/50 to-slate-50/50 border border-slate-200/50 text-slate-600 px-5 py-2 rounded-full text-xs font-light mb-6 tracking-wide">
+                <Shield className="w-3.5 h-3.5" />
+                Sélection
               </div>
-              <h2 className="text-4xl font-bold text-slate-900 mb-8">
-                Pourquoi nos experts sont <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">exceptionnels</span>
+              <h2 className="text-2xl md:text-3xl font-light text-slate-900 mb-6 tracking-tight">
+                <span className="text-slate-700">Critères d'excellence</span> <span className="font-normal text-slate-900">et vérification rigoureuse</span>
               </h2>
-              <div className="space-y-6 text-slate-700">
-                <p className="text-lg leading-relaxed">
-                  Chez Profitum, nous ne croyons pas au hasard. Chaque expert de notre réseau 
-                  a été méticuleusement sélectionné selon des critères d'excellence exigeants 
-                  que nous appliquons sans compromis.
+              <div className="space-y-5 text-slate-600">
+                <p className="text-sm leading-relaxed font-light">
+                  Chaque expert de notre réseau est sélectionné selon des critères stricts 
+                  d'excellence professionnelle. Nous privilégions la qualité sur la quantité, 
+                  en validant les compétences, certifications et expériences.
                 </p>
-                <p className="text-lg leading-relaxed">
-                  <strong>Fini les mauvaises surprises</strong> - place aux résultats concrets. 
-                  Notre processus de sélection garantit que vous travaillez uniquement avec 
-                  des professionnels reconnus, certifiés et expérimentés.
+                <p className="text-sm leading-relaxed font-light">
+                  Notre processus de vérification garantit que vous collaborez uniquement 
+                  avec des professionnels reconnus, certifiés et expérimentés dans leur domaine.
                 </p>
-                <p className="text-lg leading-relaxed">
-                  <strong>Votre succès est notre réputation</strong>. C'est pourquoi nous 
-                  investissons des centaines d'heures chaque mois pour identifier, évaluer 
-                  et valider les meilleurs experts de chaque domaine.
+                <p className="text-sm leading-relaxed font-light">
+                  L'excellence se construit dans le détail. Nous consacrons un temps significatif 
+                  à l'identification et à la validation de chaque expert avant intégration.
                 </p>
               </div>
             </div>
@@ -291,38 +286,38 @@ export default function ExpertsVerifies() {
                       <FileCheck className="w-8 h-8 text-white" />
                     </div>
                   </div>
-                  <h3 className="font-semibold text-slate-900 mb-2">Vérification Rigoureuse</h3>
-                  <p className="text-sm text-slate-600">7 étapes de validation</p>
+                  <h3 className="font-normal text-slate-900 mb-1.5 text-sm tracking-tight">Vérification</h3>
+                  <p className="text-xs text-slate-500 font-light">Validation exhaustive</p>
                 </div>
                 <div className="text-center group">
                   <div className="relative mb-4">
-                    <div className="absolute inset-0 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full blur-lg opacity-30 group-hover:opacity-50 transition-opacity duration-300"></div>
-                    <div className="relative bg-gradient-to-br from-green-500 to-emerald-600 p-4 rounded-full shadow-lg group-hover:shadow-xl transition-all duration-300">
-                      <Award className="w-8 h-8 text-white" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full blur-lg opacity-20 group-hover:opacity-30 transition-opacity duration-300"></div>
+                    <div className="relative bg-gradient-to-br from-green-500 to-emerald-600 p-3 rounded-full shadow-md group-hover:shadow-lg transition-all duration-300">
+                      <Award className="w-6 h-6 text-white" />
                     </div>
                   </div>
-                  <h3 className="font-semibold text-slate-900 mb-2">Certifications</h3>
-                  <p className="text-sm text-slate-600">Diplômes et accréditations</p>
+                  <h3 className="font-normal text-slate-900 mb-1.5 text-sm tracking-tight">Certifications</h3>
+                  <p className="text-xs text-slate-500 font-light">Accréditations validées</p>
                 </div>
                 <div className="text-center group">
                   <div className="relative mb-4">
-                    <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full blur-lg opacity-30 group-hover:opacity-50 transition-opacity duration-300"></div>
-                    <div className="relative bg-gradient-to-br from-purple-500 to-pink-600 p-4 rounded-full shadow-lg group-hover:shadow-xl transition-all duration-300">
-                      <Star className="w-8 h-8 text-white" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full blur-lg opacity-20 group-hover:opacity-30 transition-opacity duration-300"></div>
+                    <div className="relative bg-gradient-to-br from-purple-500 to-pink-600 p-3 rounded-full shadow-md group-hover:shadow-lg transition-all duration-300">
+                      <Star className="w-6 h-6 text-white" />
                     </div>
                   </div>
-                  <h3 className="font-semibold text-slate-900 mb-2">Réputation</h3>
-                  <p className="text-sm text-slate-600">Avis clients vérifiés</p>
+                  <h3 className="font-normal text-slate-900 mb-1.5 text-sm tracking-tight">Réputation</h3>
+                  <p className="text-xs text-slate-500 font-light">Références vérifiées</p>
                 </div>
                 <div className="text-center group">
                   <div className="relative mb-4">
-                    <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-teal-500 rounded-full blur-lg opacity-30 group-hover:opacity-50 transition-opacity duration-300"></div>
-                    <div className="relative bg-gradient-to-br from-cyan-500 to-teal-600 p-4 rounded-full shadow-lg group-hover:shadow-xl transition-all duration-300">
-                      <TrendingUp className="w-8 h-8 text-white" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-teal-500 rounded-full blur-lg opacity-20 group-hover:opacity-30 transition-opacity duration-300"></div>
+                    <div className="relative bg-gradient-to-br from-cyan-500 to-teal-600 p-3 rounded-full shadow-md group-hover:shadow-lg transition-all duration-300">
+                      <TrendingUp className="w-6 h-6 text-white" />
                     </div>
                   </div>
-                  <h3 className="font-semibold text-slate-900 mb-2">Performance</h3>
-                  <p className="text-sm text-slate-600">Résultats mesurables</p>
+                  <h3 className="font-normal text-slate-900 mb-1.5 text-sm tracking-tight">Performance</h3>
+                  <p className="text-xs text-slate-500 font-light">Résultats attestés</p>
                 </div>
               </div>
             </div>
@@ -339,15 +334,15 @@ export default function ExpertsVerifies() {
         
         <div className="relative z-10 max-w-7xl mx-auto px-6">
           <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 text-blue-800 px-6 py-3 rounded-full text-sm font-semibold mb-6">
-              <Zap className="w-4 h-4" />
-              Pourquoi choisir notre écosystème ?
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-slate-100/50 to-slate-50/50 border border-slate-200/50 text-slate-600 px-5 py-2 rounded-full text-xs font-light mb-6 tracking-wide">
+              <Zap className="w-3.5 h-3.5" />
+              Avantages
             </div>
-            <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-6">
-              Des avantages <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">concrets</span>
+            <h2 className="text-2xl md:text-3xl font-light text-slate-900 mb-4 tracking-tight">
+              <span className="text-slate-700">Services dédiés</span> <span className="font-normal text-slate-900">et accompagnement personnalisé</span>
             </h2>
-            <p className="text-xl text-slate-600 max-w-3xl mx-auto">
-              Des avantages concrets qui transforment votre expérience
+            <p className="text-sm text-slate-500 max-w-2xl mx-auto font-light tracking-wide">
+              Accès privilégié à un réseau d'experts et à des outils adaptés
             </p>
           </div>
           
@@ -364,12 +359,12 @@ export default function ExpertsVerifies() {
                       </div>
                     </div>
                   </div>
-                  <h3 className="text-xl font-semibold text-slate-900 mb-3 text-center">{benefit.title}</h3>
-                  <p className="text-slate-600 mb-4 text-sm leading-relaxed text-center">
+                  <h3 className="text-base font-normal text-slate-900 mb-2 text-center tracking-tight">{benefit.title}</h3>
+                  <p className="text-slate-500 mb-3 text-xs leading-relaxed text-center font-light">
                     {benefit.description}
                   </p>
-                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-3 py-2 rounded-lg text-center">
-                    <span className="text-sm font-semibold text-blue-700">{benefit.highlight}</span>
+                  <div className="bg-gradient-to-r from-slate-50 to-slate-100/50 px-3 py-1.5 rounded text-center border border-slate-200/30">
+                    <span className="text-xs font-light text-slate-600 tracking-wide">{benefit.highlight}</span>
                   </div>
                 </div>
               </div>
@@ -388,11 +383,11 @@ export default function ExpertsVerifies() {
         <div className="relative z-10 max-w-6xl mx-auto px-6">
           {/* Section principale - Clients */}
           <div className="mb-12 text-center">
-            <h2 className="text-2xl md:text-3xl font-semibold text-white mb-4 leading-tight max-w-4xl mx-auto">
-              Optimisez vos performances et réduisez vos coûts dès maintenant avec des experts correspondant à vos besoins spécifiques
+            <h2 className="text-xl md:text-2xl font-light text-white mb-4 leading-relaxed max-w-3xl mx-auto tracking-tight">
+              Accès à un réseau d'experts pour optimiser vos projets financiers
           </h2>
-            <p className="text-base md:text-lg text-slate-300 mb-6 max-w-2xl mx-auto">
-            Des milliers d'entreprises font déjà confiance à nos experts... Pourquoi pas vous ?
+            <p className="text-sm text-slate-400 mb-6 max-w-xl mx-auto font-light tracking-wide">
+            Collaboration avec des professionnels sélectionnés et vérifiés
           </p>
             <Button 
               onClick={() => navigate("/simulateur")}

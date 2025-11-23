@@ -5323,27 +5323,46 @@ router.patch('/notifications/:id/read', async (req, res) => {
       });
     }
     
-    // ✅ CORRECTION: Utiliser id (Supabase Auth ID) pour user_id car les notifications admin utilisent auth_user_id
-    // Le middleware enhancedAuthMiddleware définit user.id comme l'ID Supabase Auth
-    const userId = (user as any).id || (user as any).auth_user_id;
+    // ✅ CORRECTION: Récupérer l'auth_user_id pour filtrer les notifications
+    // Les notifications utilisent auth_user_id (Supabase Auth ID) dans user_id
+    let userId = (user as any).id || (user as any).auth_user_id;
     
+    // Si user.id et auth_user_id sont undefined, récupérer depuis la table Admin
     if (!userId || userId === 'undefined' || userId === undefined) {
-      console.error('❌ Erreur: user.id est undefined dans la route notification read', {
-        user: user ? {
-          type: user.type,
-          email: (user as any).email,
-          hasId: !!(user as any).id,
-          hasAuthUserId: !!(user as any).auth_user_id,
-          hasDatabaseId: !!(user as any).database_id,
-          idValue: (user as any).id,
-          authUserIdValue: (user as any).auth_user_id,
-          databaseIdValue: (user as any).database_id
-        } : 'user is null'
-      });
-      return res.status(500).json({
-        success: false,
-        message: 'Erreur d\'authentification: ID utilisateur manquant'
-      });
+      const databaseId = (user as any).database_id;
+      
+      if (!databaseId) {
+        console.error('❌ Erreur: user.id et database_id sont undefined', {
+          user: user ? {
+            type: user.type,
+            email: (user as any).email,
+            hasId: !!(user as any).id,
+            hasAuthUserId: !!(user as any).auth_user_id,
+            hasDatabaseId: !!(user as any).database_id
+          } : 'user is null'
+        });
+        return res.status(500).json({
+          success: false,
+          message: 'Erreur d\'authentification: ID utilisateur manquant'
+        });
+      }
+      
+      // Récupérer l'auth_user_id depuis la table Admin
+      const { data: adminData, error: adminError } = await supabaseAdmin
+        .from('Admin')
+        .select('auth_user_id')
+        .eq('id', databaseId)
+        .single();
+      
+      if (adminError || !adminData || !adminData.auth_user_id) {
+        console.error('❌ Erreur récupération auth_user_id admin:', adminError);
+        return res.status(500).json({
+          success: false,
+          message: 'Erreur lors de la récupération des informations utilisateur'
+        });
+      }
+      
+      userId = adminData.auth_user_id;
     }
     
     // ✅ CORRECTION: Utiliser la table 'notification' au lieu de 'AdminNotification'
