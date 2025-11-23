@@ -5323,6 +5323,29 @@ router.patch('/notifications/:id/read', async (req, res) => {
       });
     }
     
+    // ✅ CORRECTION: Utiliser id (Supabase Auth ID) pour user_id car les notifications admin utilisent auth_user_id
+    // Le middleware enhancedAuthMiddleware définit user.id comme l'ID Supabase Auth
+    const userId = (user as any).id || (user as any).auth_user_id;
+    
+    if (!userId || userId === 'undefined' || userId === undefined) {
+      console.error('❌ Erreur: user.id est undefined dans la route notification read', {
+        user: user ? {
+          type: user.type,
+          email: (user as any).email,
+          hasId: !!(user as any).id,
+          hasAuthUserId: !!(user as any).auth_user_id,
+          hasDatabaseId: !!(user as any).database_id,
+          idValue: (user as any).id,
+          authUserIdValue: (user as any).auth_user_id,
+          databaseIdValue: (user as any).database_id
+        } : 'user is null'
+      });
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur d\'authentification: ID utilisateur manquant'
+      });
+    }
+    
     // ✅ CORRECTION: Utiliser la table 'notification' au lieu de 'AdminNotification'
     const { data, error } = await supabaseAdmin
       .from('notification')
@@ -5332,7 +5355,7 @@ router.patch('/notifications/:id/read', async (req, res) => {
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .select();
     
     if (error) {
