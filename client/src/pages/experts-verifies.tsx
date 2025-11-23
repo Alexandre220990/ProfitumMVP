@@ -428,7 +428,7 @@ export default function ExpertsVerifies() {
               asChild
               className="bg-slate-700 hover:bg-slate-600 text-white border-0 px-6 py-3 text-base font-medium shadow-lg hover:shadow-xl transition-all duration-200"
             >
-              <a href="https://www.profitum.app/experts-verifies" target="_blank" rel="noopener noreferrer">
+              <a href="https://www.profitum.app/welcome-expert" target="_blank" rel="noopener noreferrer">
                 <Handshake className="w-4 h-4 mr-2" />
                 Rejoindre notre écosystème
                 <ArrowRight className="w-4 h-4 ml-2" />

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -18,7 +18,6 @@ import {
   Play,
   CheckCircle,
   ArrowRight,
-  Quote,
   Award,
   TrendingUp,
   Users as UsersIcon,
@@ -89,13 +88,40 @@ type FormData = z.infer<typeof formSchema>;
 // DONNÉES STATIQUES
 // ============================================================================
 
-// Interface pour ProduitEligible
-interface ProduitEligible {
+// Grandes catégories d'expertise (types d'expertise)
+interface CategorieExpertise {
   id: string;
   nom: string;
-  description: string | null;
-  categorie: string | null;
+  description: string;
 }
+
+const categoriesExpertise: CategorieExpertise[] = [
+  {
+    id: 'optimisation-fiscale',
+    nom: 'Optimisation Fiscale',
+    description: 'Optimisation de la fiscalité (FONCIER, TVA)'
+  },
+  {
+    id: 'optimisation-sociale',
+    nom: 'Optimisation Sociale',
+    description: 'Optimisation des charges sociales (DFS, MSA, URSSAF)'
+  },
+  {
+    id: 'optimisation-energetique',
+    nom: 'Optimisation Énergétique',
+    description: 'Optimisation énergétique (CEE, Optimisation fournisseur électricité, Optimisation fournisseur gaz, TICPE)'
+  },
+  {
+    id: 'services-juridiques-recouvrement',
+    nom: 'Services Juridiques et Recouvrement',
+    description: 'Services juridiques et recouvrement d\'impayés'
+  },
+  {
+    id: 'logiciels-outils-numeriques',
+    nom: 'Logiciels et Outils Numériques',
+    description: 'Logiciels et outils numériques (Logiciel Solid, Chronotachygraphes digitaux)'
+  }
+];
 
 // Secteurs d'activité alignés sur le simulateur (GENERAL_001)
 const secteursActiviteOptions = [
@@ -139,37 +165,6 @@ const certificationOptions = [
   'Formation continue'
 ];
 
-const testimonials = [
-  {
-    name: 'Cabinet Fiscal Plus',
-    text: 'Profitum nous a permis de doubler notre clientèle en 6 mois. La plateforme est intuitive et les clients sont qualifiés.',
-    author: 'Marie Dubois',
-    position: 'Directrice',
-    rating: 5
-  },
-  {
-    name: 'Expertise Comptable Pro',
-    text: 'Une plateforme intuitive qui nous fait gagner un temps précieux. Les missions sont variées et intéressantes.',
-    author: 'Pierre Martin',
-    position: 'Expert-comptable',
-    rating: 5
-  },
-  {
-    name: 'Conseil Fiscal Excellence',
-    text: 'Des clients qualifiés et des missions intéressantes. Profitum a transformé notre façon de travailler.',
-    author: 'Sophie Bernard',
-    position: 'Consultante',
-    rating: 5
-  },
-  {
-    name: 'Audit & Optimisation',
-    text: 'La meilleure décision pour développer notre activité. Une équipe réactive et des outils performants.',
-    author: 'Jean Dupont',
-    position: 'Directeur',
-    rating: 5
-  }
-];
-
 const benefits = [
   {
     icon: TrendingUp,
@@ -200,9 +195,7 @@ const benefits = [
 const WelcomeExpert = () => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [produitsEligibles, setProduitsEligibles] = useState<ProduitEligible[]>([]);
-  const [loadingProduits, setLoadingProduits] = useState(true);
-  const [selectedProduits, setSelectedProduits] = useState<string[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [autreProduit, setAutreProduit] = useState('');
   const [cabinetRole, setCabinetRole] = useState<'OWNER' | 'MANAGER' | 'EXPERT' | ''>('');
   const [selectedSecteurs, setSelectedSecteurs] = useState<string[]>([]);
@@ -223,7 +216,7 @@ const WelcomeExpert = () => {
       confirm_password: '',
       company_name: '',
       siren: '',
-      produits_eligibles: [],
+      produits_eligibles: [], // Sera rempli avec les catégories sélectionnées
       autre_produit: '',
       cabinet_role: undefined,
       secteur_activite: [],
@@ -240,33 +233,6 @@ const WelcomeExpert = () => {
       documents: undefined
     }
   });
-
-  // ============================================================================
-  // CHARGEMENT DES PRODUITS ÉLIGIBLES
-  // ============================================================================
-  
-  useEffect(() => {
-    const fetchProduitsEligibles = async () => {
-      try {
-        setLoadingProduits(true);
-        const response = await fetch(`${config.API_URL}/api/produits-eligibles`);
-        if (!response.ok) {
-          throw new Error('Erreur lors de la récupération des produits');
-        }
-        const data = await response.json();
-        if (data.success && data.data) {
-          setProduitsEligibles(data.data);
-        }
-      } catch (error) {
-        console.error('Erreur chargement produits:', error);
-        toast.error('Erreur lors du chargement des produits');
-      } finally {
-        setLoadingProduits(false);
-      }
-    };
-    
-    fetchProduitsEligibles();
-  }, []);
 
   // ============================================================================
   // FONCTIONS UTILITAIRES
@@ -310,15 +276,16 @@ const WelcomeExpert = () => {
   // GESTIONNAIRES D'ÉVÉNEMENTS
   // ============================================================================
 
-  const handleProduitChange = (produitId: string, checked: boolean) => {
+  const handleCategorieChange = (categorieId: string, checked: boolean) => {
     if (checked) {
-      const newProduits = [...selectedProduits, produitId];
-      setSelectedProduits(newProduits);
-      form.setValue('produits_eligibles', newProduits);
+      const newCategories = [...selectedCategories, categorieId];
+      setSelectedCategories(newCategories);
+      // Envoyer les IDs des catégories comme produits_eligibles pour la compatibilité avec le backend
+      form.setValue('produits_eligibles', newCategories);
     } else {
-      const newProduits = selectedProduits.filter(p => p !== produitId);
-      setSelectedProduits(newProduits);
-      form.setValue('produits_eligibles', newProduits);
+      const newCategories = selectedCategories.filter(c => c !== categorieId);
+      setSelectedCategories(newCategories);
+      form.setValue('produits_eligibles', newCategories);
     }
   };
 
@@ -434,7 +401,7 @@ const WelcomeExpert = () => {
         },
         body: JSON.stringify({
           ...data,
-          produits_eligibles: selectedProduits,
+          produits_eligibles: selectedCategories, // Envoyer les catégories sélectionnées
           autre_produit: autreProduit || undefined,
           cabinet_role: cabinetRole || undefined,
           secteur_activite: selectedSecteurs,
@@ -469,51 +436,70 @@ const WelcomeExpert = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       <PublicHeader />
       
-      {/* Section Hero */}
-      <section className="relative pt-32 pb-20 overflow-hidden">
+      {/* Section Hero - Design haut niveau et compact */}
+      <section className="relative min-h-[70vh] flex items-center justify-center overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 pt-20 pb-16">
+        {/* Animated background elements - plus subtils */}
         <div className="absolute inset-0">
-          <div className="absolute top-0 left-0 w-full h-full opacity-10">
-            <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl animate-pulse"></div>
-            <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-indigo-500/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
+          <div className="absolute top-0 left-0 w-full h-full opacity-8">
+            <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/15 rounded-full blur-3xl animate-pulse"></div>
+            <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-indigo-500/15 rounded-full blur-3xl animate-pulse delay-1000"></div>
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl animate-pulse delay-500"></div>
+          </div>
+          
+          {/* Geometric patterns subtils */}
+          <div className="absolute inset-0 opacity-3">
+            <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+              <defs>
+                <pattern id="grid-hero" width="10" height="10" patternUnits="userSpaceOnUse">
+                  <path d="M 10 0 L 0 0 0 10" fill="none" stroke="currentColor" strokeWidth="0.5"/>
+                </pattern>
+              </defs>
+              <rect width="100" height="100" fill="url(#grid-hero)" />
+            </svg>
           </div>
         </div>
 
-        <div className="relative z-10 max-w-7xl mx-auto px-6">
+        <div className="relative z-10 max-w-6xl mx-auto px-6 py-12">
           <div className="text-center">
-            <div className="inline-flex items-center gap-3 bg-gradient-to-r from-blue-600/20 to-indigo-600/20 backdrop-blur-xl border border-blue-500/30 text-blue-100 px-8 py-4 rounded-full text-sm font-medium mb-8">
-              <Award className="w-5 h-5 text-yellow-400" />
-              Rejoignez l'élite des experts fiscaux
+            {/* Badge premium - plus discret */}
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600/15 to-indigo-600/15 backdrop-blur-xl border border-blue-500/20 text-blue-100 px-6 py-2.5 rounded-full text-xs font-medium mb-6 shadow-lg">
+              <Award className="w-4 h-4 text-yellow-400" />
+              <span className="font-medium">Réseau d'experts sélectionnés</span>
             </div>
             
-            <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
-              Développez votre activité avec{' '}
-              <span className="bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
+            {/* Titre principal - typographie sophistiquée et compacte */}
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-extralight text-white mb-4 leading-[1.1] tracking-tight max-w-5xl mx-auto">
+              <span className="block font-light opacity-90 mb-1">
+                Développez votre activité avec
+              </span>
+              <span className="block font-bold bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 bg-clip-text text-transparent">
                 Profitum
               </span>
             </h1>
             
-            <p className="text-xl md:text-2xl text-gray-300 mb-12 max-w-4xl mx-auto leading-relaxed">
-              Rejoignez notre réseau d'experts sélectionnés et accédez à des clients qualifiés. 
-              Une plateforme moderne pour développer votre activité en toute sérénité.
+            {/* Description - plus concise */}
+            <p className="text-lg md:text-xl text-slate-300 mb-8 max-w-2xl mx-auto leading-relaxed">
+              Rejoignez notre réseau d'experts sélectionnés et accédez à des clients qualifiés.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            {/* CTA - couleurs différentes pour texte et fond */}
+            <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
               <Button 
                 size="lg" 
-                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-8 py-4 text-lg font-semibold rounded-full"
+                className="bg-white text-slate-900 hover:bg-slate-100 px-8 py-3 text-base font-semibold rounded-lg shadow-xl hover:shadow-2xl transition-all duration-200"
                 onClick={() => document.getElementById('form-section')?.scrollIntoView({ behavior: 'smooth' })}
               >
                 Demander une démo
-                <ArrowRight className="w-5 h-5 ml-2" />
+                <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
               
               <Button 
                 variant="outline" 
                 size="lg"
-                className="border-white/20 text-white hover:bg-white/10 px-8 py-4 text-lg font-semibold rounded-full"
+                className="border-2 border-white/30 bg-transparent text-white hover:bg-white/10 hover:border-white/50 px-8 py-3 text-base font-semibold rounded-lg backdrop-blur-sm transition-all duration-200"
                 onClick={() => document.getElementById('video-section')?.scrollIntoView({ behavior: 'smooth' })}
               >
-                <Play className="w-5 h-5 mr-2" />
+                <Play className="w-4 h-4 mr-2" />
                 Voir la présentation
               </Button>
             </div>
@@ -571,42 +557,6 @@ const WelcomeExpert = () => {
                 <p className="text-gray-400 text-sm">Bientôt disponible</p>
               </div>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Section Témoignages */}
-      <section className="py-20 bg-white/5 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-white mb-4">
-              Ils nous font confiance
-            </h2>
-            <p className="text-xl text-gray-300 max-w-3xl mx-auto">
-              Découvrez les témoignages de nos experts partenaires
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {testimonials.map((testimonial, index) => (
-              <Card key={index} className="bg-white/10 backdrop-blur-sm border-white/20">
-                <CardContent className="p-8">
-                  <div className="flex items-center mb-4">
-                    <Quote className="w-8 h-8 text-blue-400 mr-3" />
-                    <div className="flex-1">
-                      <h3 className="text-xl font-semibold text-white">{testimonial.name}</h3>
-                      <p className="text-gray-400 text-sm">{testimonial.author} - {testimonial.position}</p>
-                    </div>
-                    <div className="flex items-center">
-                      {[...Array(testimonial.rating)].map((_, i) => (
-                        <Star key={i} className="w-5 h-5 text-yellow-400 fill-current" />
-                      ))}
-                    </div>
-                  </div>
-                  <p className="text-gray-300 leading-relaxed">"{testimonial.text}"</p>
-                </CardContent>
-              </Card>
-            ))}
           </div>
         </div>
       </section>
@@ -946,95 +896,86 @@ const WelcomeExpert = () => {
                     />
                   </div>
 
-                  {/* Produits éligibles */}
+                  {/* Type d'expertise */}
                   <div className="space-y-4">
                     <h3 className="text-2xl font-semibold text-white flex items-center">
                       <Shield className="w-6 h-6 mr-3 text-purple-400" />
-                      Produits éligibles *
+                      Type d'expertise *
                     </h3>
-                    <p className="text-sm text-gray-300">Sélectionnez les produits fiscaux sur lesquels vous êtes expert</p>
+                    <p className="text-sm text-gray-300">Sélectionnez vos types d'expertise</p>
                     
-                    {loadingProduits ? (
-                      <div className="text-center py-8">
-                        <div className="w-8 h-8 border-4 border-white/20 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
-                        <p className="text-gray-400">Chargement des produits...</p>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {produitsEligibles.map((produit) => (
-                            <div key={produit.id} className="flex items-start space-x-3 p-3 border border-white/20 rounded-lg hover:bg-white/5 transition-colors">
-                              <Checkbox
-                                id={produit.id}
-                                checked={selectedProduits.includes(produit.id)}
-                                onCheckedChange={(checked: boolean) => handleProduitChange(produit.id, checked)}
-                                className="border-white/20 mt-1"
-                              />
-                              <div className="flex-1">
-                                <label htmlFor={produit.id} className="text-sm font-medium cursor-pointer text-white block">
-                                  {produit.nom}
-                                </label>
-                                {produit.description && (
-                                  <p className="text-xs text-gray-400 mt-1">{produit.description}</p>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                        
-                        {/* Option "Autre" */}
-                        <div className="space-y-2">
-                          <div className="flex items-start space-x-3 p-3 border border-white/20 rounded-lg hover:bg-white/5 transition-colors">
-                            <Checkbox
-                              id="autre-produit"
-                              checked={autreProduit.length > 0}
-                              onCheckedChange={(checked: boolean) => {
-                                if (checked) {
-                                  // Laisser l'utilisateur remplir le champ
-                                } else {
-                                  setAutreProduit('');
-                                  form.setValue('autre_produit', '');
-                                }
-                              }}
-                              className="border-white/20 mt-1"
-                            />
-                            <div className="flex-1">
-                              <label htmlFor="autre-produit" className="text-sm font-medium cursor-pointer text-white block">
-                                Autre
-                              </label>
-                              <p className="text-xs text-gray-400 mt-1">Précisez un produit non listé</p>
-                            </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {categoriesExpertise.map((categorie) => (
+                        <div key={categorie.id} className="flex items-start space-x-3 p-3 border border-white/20 rounded-lg hover:bg-white/5 transition-colors">
+                          <Checkbox
+                            id={categorie.id}
+                            checked={selectedCategories.includes(categorie.id)}
+                            onCheckedChange={(checked: boolean) => handleCategorieChange(categorie.id, checked)}
+                            className="border-white/20 mt-1"
+                          />
+                          <div className="flex-1">
+                            <label htmlFor={categorie.id} className="text-sm font-medium cursor-pointer text-white block">
+                              {categorie.nom}
+                            </label>
+                            {categorie.description && (
+                              <p className="text-xs text-gray-400 mt-1">{categorie.description}</p>
+                            )}
                           </div>
-                          {autreProduit.length > 0 && (
-                            <FormField
-                              control={form.control}
-                              name="autre_produit"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormControl>
-                                    <Textarea
-                                      {...field}
-                                      value={autreProduit}
-                                      onChange={(e) => {
-                                        setAutreProduit(e.target.value);
-                                        field.onChange(e.target.value);
-                                      }}
-                                      placeholder="Décrivez le produit..."
-                                      className="bg-white/10 border-white/20 text-white placeholder-gray-400"
-                                      rows={3}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          )}
                         </div>
-                        
-                        {form.formState.errors.produits_eligibles && (
-                          <p className="text-red-400 text-sm">{form.formState.errors.produits_eligibles.message}</p>
-                        )}
-                      </>
+                      ))}
+                    </div>
+                    
+                    {/* Option "Autre" */}
+                    <div className="space-y-2">
+                      <div className="flex items-start space-x-3 p-3 border border-white/20 rounded-lg hover:bg-white/5 transition-colors">
+                        <Checkbox
+                          id="autre-produit"
+                          checked={autreProduit.length > 0}
+                          onCheckedChange={(checked: boolean) => {
+                            if (checked) {
+                              // Laisser l'utilisateur remplir le champ
+                            } else {
+                              setAutreProduit('');
+                              form.setValue('autre_produit', '');
+                            }
+                          }}
+                          className="border-white/20 mt-1"
+                        />
+                        <div className="flex-1">
+                          <label htmlFor="autre-produit" className="text-sm font-medium cursor-pointer text-white block">
+                            Autre
+                          </label>
+                          <p className="text-xs text-gray-400 mt-1">Précisez un produit non listé</p>
+                        </div>
+                      </div>
+                      {autreProduit.length > 0 && (
+                        <FormField
+                          control={form.control}
+                          name="autre_produit"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormControl>
+                                <Textarea
+                                  {...field}
+                                  value={autreProduit}
+                                  onChange={(e) => {
+                                    setAutreProduit(e.target.value);
+                                    field.onChange(e.target.value);
+                                  }}
+                                  placeholder="Décrivez le produit..."
+                                  className="bg-white/10 border-white/20 text-white placeholder-gray-400"
+                                  rows={3}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      )}
+                    </div>
+                    
+                    {form.formState.errors.produits_eligibles && (
+                      <p className="text-red-400 text-sm">{form.formState.errors.produits_eligibles.message}</p>
                     )}
                   </div>
 
