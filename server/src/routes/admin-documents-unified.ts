@@ -20,7 +20,8 @@ router.get('/process', async (req: Request, res: Response) => {
   try {
     const { 
       client_id, 
-      produit_id, 
+      produit_id,
+      client_produit_id,
       document_type, 
       workflow_step, 
       status,
@@ -48,6 +49,7 @@ router.get('/process', async (req: Request, res: Response) => {
     // Filtres
     if (client_id) query = query.eq('client_id', client_id);
     if (produit_id) query = query.eq('produit_id', produit_id);
+    if (client_produit_id) query = query.eq('client_produit_id', client_produit_id);
     if (document_type) query = query.eq('document_type', document_type);
     if (workflow_step) query = query.eq('workflow_step', workflow_step);
     if (status) query = query.eq('status', status);

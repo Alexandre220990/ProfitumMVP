@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/hooks/use-auth";
 import { useNotificationSSE } from "@/hooks/use-notification-sse";
 import { toast } from "sonner";
@@ -91,6 +92,7 @@ interface ProduitEligible {
   nom: string;
   description: string;
   categorie?: string;
+  secteurs_activite?: string[]; // Liste des secteurs d'activité (JSONB dans la BDD)
   montant_min?: number;
   montant_max?: number;
   taux_min?: number;
@@ -189,6 +191,7 @@ const AdminDashboardOptimized: React.FC = () => {
     nom: '',
     description: '',
     categorie: '',
+    secteurs_activite: [] as string[], // Liste des secteurs sélectionnés
     type_produit: 'financier',
     montant_min: '',
     montant_max: '',
@@ -198,6 +201,30 @@ const AdminDashboardOptimized: React.FC = () => {
     duree_max: '',
     active: true
   });
+
+  // Liste des secteurs d'activité disponibles (alignés sur GENERAL_001)
+  const secteursActiviteOptions = [
+    'Transport et Logistique',
+    'Commerce et Distribution',
+    'Industrie et Fabrication',
+    'Services aux Entreprises',
+    'BTP et Construction',
+    'Restauration et Hôtellerie',
+    'Santé et Services Sociaux',
+    'Agriculture et Agroalimentaire',
+    'Services à la Personne',
+    'Autre secteur'
+  ];
+
+  // Liste des catégories disponibles
+  const categoriesOptions = [
+    'Optimisation Fiscale',
+    'Optimisation Sociale',
+    'Optimisation Énergétique',
+    'Services Juridiques et Recouvrement',
+    'Logiciels et Outils Numériques',
+    'Services Additionnels et Équipements'
+  ];
   
   // ===== DONNÉES KPI PROFITUM =====
   const [kpiData, setKpiData] = useState({
@@ -256,6 +283,44 @@ const AdminDashboardOptimized: React.FC = () => {
       style: 'currency',
       currency: 'EUR'
     }).format(amount);
+  };
+
+  // Fonction utilitaire pour formater le temps écoulé
+  const getTimeAgo = (date: Date) => {
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    
+    if (diffInSeconds < 60) {
+      return 'Il y a moins d\'une minute';
+    }
+    
+    const diffInMinutes = Math.floor(diffInSeconds / 60);
+    if (diffInMinutes < 60) {
+      return `Il y a ${diffInMinutes} minute${diffInMinutes > 1 ? 's' : ''}`;
+    }
+    
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) {
+      return `Il y a ${diffInHours} heure${diffInHours > 1 ? 's' : ''}`;
+    }
+    
+    const diffInDays = Math.floor(diffInHours / 24);
+    if (diffInDays < 7) {
+      return `Il y a ${diffInDays} jour${diffInDays > 1 ? 's' : ''}`;
+    }
+    
+    const diffInWeeks = Math.floor(diffInDays / 7);
+    if (diffInWeeks < 4) {
+      return `Il y a ${diffInWeeks} semaine${diffInWeeks > 1 ? 's' : ''}`;
+    }
+    
+    const diffInMonths = Math.floor(diffInDays / 30);
+    if (diffInMonths < 12) {
+      return `Il y a ${diffInMonths} mois`;
+    }
+    
+    const diffInYears = Math.floor(diffInDays / 365);
+    return `Il y a ${diffInYears} an${diffInYears > 1 ? 's' : ''}`;
   };
 
   // ========================================
@@ -915,9 +980,31 @@ const AdminDashboardOptimized: React.FC = () => {
           console.log('📦 Réponse produits COMPLÈTE:', produitsResponse);
           if (produitsResponse.success) {
             // Format standard : { success: true, data: { produits: [...] } }
-            const produitsData = (produitsResponse.data as any)?.produits || [];
+            let produitsData = (produitsResponse.data as any)?.produits || [];
             console.log('📦 Produits extraits:', produitsData);
-            console.log('📦 Nombre de produits:', produitsData.length);
+            
+            // Filtrer "Optimisation Énergie" qui a été remplacé
+            produitsData = produitsData.filter((p: any) => p.nom !== 'Optimisation Énergie');
+            
+            // Convertir secteurs_activite de JSONB (string ou array) en array
+            produitsData = produitsData.map((p: any) => {
+              if (p.secteurs_activite) {
+                // Si c'est une string JSON, la parser
+                if (typeof p.secteurs_activite === 'string') {
+                  try {
+                    p.secteurs_activite = JSON.parse(p.secteurs_activite);
+                  } catch (e) {
+                    p.secteurs_activite = [];
+                  }
+                }
+                // Si c'est déjà un array, on le garde tel quel
+              } else {
+                p.secteurs_activite = [];
+              }
+              return p;
+            });
+            
+            console.log('📦 Nombre de produits (après filtrage):', produitsData.length);
             data = produitsData;
           } else {
             console.error('❌ Erreur chargement produits:', produitsResponse.message);
@@ -1010,9 +1097,57 @@ const AdminDashboardOptimized: React.FC = () => {
           const validationsExpertsResponse = await get('/admin/experts');
           
           if (validationsDossiersResponse.success) {
+            const dossiers = (validationsDossiersResponse.data as any)?.dossiers || [];
+            
+            // Récupérer les documents pour chaque dossier depuis ClientProcessDocument
+            const dossierIds = dossiers.map((d: any) => d.id);
+            let documentsByDossier: {[key: string]: any[]} = {};
+            
+            if (dossierIds.length > 0) {
+              try {
+                // Récupérer les documents pour chaque dossier individuellement
+                const documentPromises = dossierIds.map(async (dossierId: string) => {
+                  try {
+                    const response = await fetch(`${config.API_URL}/api/admin/documents/process?client_produit_id=${dossierId}`, {
+                      headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                      }
+                    });
+                    if (response.ok) {
+                      const data = await response.json();
+                      if (data.success && data.data) {
+                        return { dossierId, documents: data.data };
+                      }
+                    }
+                  } catch (error) {
+                    console.error(`❌ Erreur récupération documents pour dossier ${dossierId}:`, error);
+                  }
+                  return { dossierId, documents: [] };
+                });
+                
+                const documentsResults = await Promise.all(documentPromises);
+                documentsResults.forEach(({ dossierId, documents }) => {
+                  documentsByDossier[dossierId] = documents;
+                });
+              } catch (error) {
+                console.error('❌ Erreur récupération documents:', error);
+              }
+            }
+            
+            // Enrichir les dossiers avec le nombre de documents validés
+            const enrichedDossiers = dossiers.map((dossier: any) => {
+              const docs = documentsByDossier[dossier.id] || [];
+              const validatedDocs = docs.filter((doc: any) => doc.validation_status === 'validated').length;
+              return {
+                ...dossier,
+                documents_count: docs.length,
+                validated_documents_count: validatedDocs
+              };
+            });
+            
             setSectionData((prev: SectionData) => ({ 
               ...prev, 
-              dossiers: (validationsDossiersResponse.data as any)?.dossiers || [] 
+              dossiers: enrichedDossiers
             }));
           } else {
             console.error('❌ Erreur dossiers validations:', validationsDossiersResponse.message);
@@ -2575,6 +2710,33 @@ const AdminDashboardOptimized: React.FC = () => {
                                                         )}
                                                       </div>
                                                       
+                                                      <div className="flex gap-1">
+                                                        <Button 
+                                                          size="sm"
+                                                          variant="ghost"
+                                                          className="h-7 text-xs flex-1"
+                                                          onClick={() => {
+                                                            if (dossier.Client?.id) {
+                                                              navigate(`/admin/clients/${dossier.Client.id}`);
+                                                            }
+                                                          }}
+                                                        >
+                                                          <Eye className="w-3 h-3 mr-1" />
+                                                          Voir client
+                                                        </Button>
+                                                        <Button 
+                                                          size="sm"
+                                                          variant="ghost"
+                                                          className="h-7 text-xs flex-1"
+                                                          onClick={() => {
+                                                            navigate(`/admin/dossiers/${dossier.id}`);
+                                                          }}
+                                                        >
+                                                          <FileText className="w-3 h-3 mr-1" />
+                                                          Voir dossier
+                                                        </Button>
+                                                      </div>
+                                                      
                                                       <Button 
                                                         size="sm"
                                                         variant="ghost"
@@ -2720,6 +2882,17 @@ const AdminDashboardOptimized: React.FC = () => {
                                                               nom: produit.nom,
                                                               description: produit.description,
                                                               categorie: produit.categorie || '',
+                                                              secteurs_activite: Array.isArray(produit.secteurs_activite) 
+                                                                ? produit.secteurs_activite 
+                                                                : (typeof produit.secteurs_activite === 'string' 
+                                                                  ? (() => {
+                                                                      try {
+                                                                        return JSON.parse(produit.secteurs_activite);
+                                                                      } catch {
+                                                                        return [];
+                                                                      }
+                                                                    })()
+                                                                  : []),
                                                               type_produit: produit.type_produit || 'financier',
                                                               montant_min: produit.montant_min?.toString() || '',
                                                               montant_max: produit.montant_max?.toString() || '',
@@ -3103,6 +3276,108 @@ const AdminDashboardOptimized: React.FC = () => {
                       </Card>
                     </div>
 
+                    {/* Top 5 Clients */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Users className="w-5 h-5 text-green-600" />
+                          Top 5 Clients
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {(() => {
+                          // Calculer les top clients basés sur les dossiers
+                          const clientStats = new Map<string, {
+                            company_name: string;
+                            email: string;
+                            nombre_dossiers: number;
+                            montant_total: number;
+                            montant_moyen: number;
+                            premier_dossier_id?: string; // ID du premier dossier pour navigation
+                          }>();
+
+                          sectionData.dossiers.forEach((dossier: any) => {
+                            if (!dossier.Client) return;
+                            
+                            const clientId = dossier.Client.id;
+                            const email = dossier.Client.email || 'N/A';
+                            const companyName = dossier.Client.company_name || 
+                                              `${dossier.Client.first_name || ''} ${dossier.Client.last_name || ''}`.trim() || 
+                                              'N/A';
+                            
+                            if (!clientStats.has(clientId)) {
+                              clientStats.set(clientId, {
+                                company_name: companyName,
+                                email: email,
+                                nombre_dossiers: 0,
+                                montant_total: 0,
+                                montant_moyen: 0,
+                                premier_dossier_id: dossier.id
+                              });
+                            }
+                            
+                            const stats = clientStats.get(clientId)!;
+                            stats.nombre_dossiers += 1;
+                            stats.montant_total += dossier.montantFinal || 0;
+                            if (!stats.premier_dossier_id) {
+                              stats.premier_dossier_id = dossier.id;
+                            }
+                          });
+
+                          // Calculer les montants moyens et trier
+                          const topClients = Array.from(clientStats.values())
+                            .map(client => ({
+                              ...client,
+                              montant_moyen: client.nombre_dossiers > 0 
+                                ? client.montant_total / client.nombre_dossiers 
+                                : 0
+                            }))
+                            .sort((a, b) => b.montant_total - a.montant_total)
+                            .slice(0, 5);
+
+                          return topClients.length > 0 ? (
+                            <div className="space-y-2">
+                              {topClients.map((client) => (
+                                <div
+                                  key={client.email}
+                                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                                  onClick={() => {
+                                    if (client.premier_dossier_id) {
+                                      navigate(`/admin/dossiers/${client.premier_dossier_id}`);
+                                    }
+                                  }}
+                                >
+                                  <div className="flex-1">
+                                    <p className="font-medium text-gray-900">{client.company_name}</p>
+                                    <p className="text-sm text-gray-500">{client.email}</p>
+                                  </div>
+                                  <div className="flex items-center gap-6 text-sm">
+                                    <div className="text-right">
+                                      <p className="text-gray-500">Dossiers</p>
+                                      <p className="font-bold text-blue-600">{client.nombre_dossiers}</p>
+                                    </div>
+                                    <div className="text-right">
+                                      <p className="text-gray-500">Montant total</p>
+                                      <p className="font-bold text-green-600">{formatCurrency(client.montant_total)}</p>
+                                    </div>
+                                    <div className="text-right">
+                                      <p className="text-gray-500">Montant moyen</p>
+                                      <p className="font-bold text-purple-600">{formatCurrency(client.montant_moyen)}</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-center py-8 text-gray-500">
+                              <Users className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+                              <p>Aucun client avec dossiers</p>
+                            </div>
+                          );
+                        })()}
+                      </CardContent>
+                    </Card>
+
                     {/* Graphiques et analyses détaillées */}
                     <Card>
                       <CardHeader>
@@ -3126,8 +3401,7 @@ const AdminDashboardOptimized: React.FC = () => {
                     {/* En-tête avec statistiques */}
                     <div className="flex items-center justify-between">
                       <div>
-                        <h2 className="text-2xl font-bold text-slate-900">Centre de Notifications & Validations</h2>
-                        <p className="text-slate-600">Gérez vos notifications et validez les dossiers en attente</p>
+                        <h2 className="text-2xl font-bold text-slate-900">CENTRE DE VALIDATION</h2>
                       </div>
                       <div className="flex gap-2">
                         <Button 
@@ -3151,9 +3425,6 @@ const AdminDashboardOptimized: React.FC = () => {
                         </Button>
                       </div>
                     </div>
-
-                    {/* Centre de notifications intégré */}
-                    <UniversalNotificationCenter mode="compact" />
 
                     {/* Filtres avancés */}
                     <Card>
@@ -3301,10 +3572,18 @@ const AdminDashboardOptimized: React.FC = () => {
                                           </span>
                                         </div>
                                         <p className="text-xs text-gray-500">
-                                          📎 {dossier.documents_sent?.length || 0} document(s) uploadé(s)
+                                          📎 {(dossier as any).documents_count || 0} document(s) uploadé(s)
                                         </p>
                                       </div>
                                       <div className="flex flex-col gap-2">
+                                        <Button 
+                                          size="sm" 
+                                          variant="outline"
+                                          onClick={() => navigate(`/admin/dossiers/${dossier.id}`)}
+                                        >
+                                          <Eye className="w-4 h-4 mr-1" />
+                                          Consulter le dossier
+                                        </Button>
                                         <Button 
                                           size="sm" 
                                           variant="outline"
@@ -3320,6 +3599,7 @@ const AdminDashboardOptimized: React.FC = () => {
                                           size="sm" 
                                           variant="default"
                                           className="bg-green-600 hover:bg-green-700"
+                                          disabled={(dossier as any).documents_count === 0 || (dossier as any).validated_documents_count === 0}
                                           onClick={() => handleValidateEligibility(dossier.id, dossier.ProduitEligible?.nom || 'Dossier')}
                                         >
                                           <CheckCircle className="w-4 h-4 mr-1" />
@@ -3486,27 +3766,71 @@ const AdminDashboardOptimized: React.FC = () => {
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-3">
-                          <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded">
-                            <div className="flex items-center gap-3">
-                              <Check className="w-4 h-4 text-green-600" />
-                              <div>
-                                <p className="font-medium text-green-800">Expert URSSAF validé</p>
-                                <p className="text-sm text-green-600">Par Admin - Il y a 2h</p>
-                              </div>
-                            </div>
-                            <Badge variant="default">Validé</Badge>
-                          </div>
-                          
-                          <div className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded">
-                            <div className="flex items-center gap-3">
-                              <X className="w-4 h-4 text-red-600" />
-                              <div>
-                                <p className="font-medium text-red-800">Document DFS rejeté</p>
-                                <p className="text-sm text-red-600">Par Admin - Il y a 4h</p>
-                              </div>
-                            </div>
-                            <Badge variant="destructive">Rejeté</Badge>
-                          </div>
+                          {(() => {
+                            // Filtrer les dossiers validés ou rejetés
+                            const historiqueValidations = sectionData.dossiers
+                              ?.filter((d: any) => 
+                                d.admin_eligibility_status === 'validated' || 
+                                d.admin_eligibility_status === 'rejected' ||
+                                d.eligibility_validated_at ||
+                                (d.statut === 'admin_validated' || d.statut === 'admin_rejected')
+                              )
+                              .sort((a: any, b: any) => {
+                                const dateA = a.eligibility_validated_at || a.updated_at || a.created_at;
+                                const dateB = b.eligibility_validated_at || b.updated_at || b.created_at;
+                                return new Date(dateB).getTime() - new Date(dateA).getTime();
+                              })
+                              .slice(0, 10) || [];
+
+                            if (historiqueValidations.length === 0) {
+                              return (
+                                <div className="text-center py-8 text-gray-500">
+                                  <Clock className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+                                  <p>Aucune validation dans l'historique</p>
+                                </div>
+                              );
+                            }
+
+                            return historiqueValidations.map((dossier: any) => {
+                              const isValide = dossier.admin_eligibility_status === 'validated' || dossier.statut === 'admin_validated';
+                              const dateValidation = dossier.eligibility_validated_at || dossier.updated_at || dossier.created_at;
+                              const timeAgo = getTimeAgo(new Date(dateValidation));
+                              const produitNom = dossier.ProduitEligible?.nom || 'Produit inconnu';
+                              const clientNom = dossier.Client?.company_name || 
+                                `${dossier.Client?.first_name || ''} ${dossier.Client?.last_name || ''}`.trim() || 
+                                'Client inconnu';
+
+                              return (
+                                <div 
+                                  key={dossier.id}
+                                  className={`flex items-center justify-between p-3 rounded ${
+                                    isValide 
+                                      ? 'bg-green-50 border border-green-200' 
+                                      : 'bg-red-50 border border-red-200'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-3">
+                                    {isValide ? (
+                                      <Check className="w-4 h-4 text-green-600" />
+                                    ) : (
+                                      <X className="w-4 h-4 text-red-600" />
+                                    )}
+                                    <div>
+                                      <p className={`font-medium ${isValide ? 'text-green-800' : 'text-red-800'}`}>
+                                        {produitNom} - {clientNom}
+                                      </p>
+                                      <p className={`text-sm ${isValide ? 'text-green-600' : 'text-red-600'}`}>
+                                        Par Admin - {timeAgo}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <Badge variant={isValide ? "default" : "destructive"}>
+                                    {isValide ? 'Validé' : 'Rejeté'}
+                                  </Badge>
+                                </div>
+                              );
+                            });
+                          })()}
                         </div>
                       </CardContent>
                     </Card>
@@ -3964,13 +4288,53 @@ const AdminDashboardOptimized: React.FC = () => {
               />
             </div>
             <div>
-              <Label htmlFor="add-categorie">Catégorie</Label>
-              <Input
-                id="add-categorie"
-                value={produitForm.categorie}
-                onChange={(e) => setProduitForm(prev => ({ ...prev, categorie: e.target.value }))}
-                placeholder="Ex: general, logiciel..."
-              />
+              <Label htmlFor="add-categorie">Catégorie *</Label>
+              <Select 
+                value={produitForm.categorie} 
+                onValueChange={(val) => setProduitForm(prev => ({ ...prev, categorie: val }))}
+              >
+                <SelectTrigger id="add-categorie">
+                  <SelectValue placeholder="Sélectionner une catégorie" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categoriesOptions.map((cat) => (
+                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="add-secteurs">Secteurs d'activité</Label>
+              <p className="text-xs text-gray-500 mb-2">Sélectionnez les secteurs concernés (laisser vide = tous secteurs)</p>
+              <div className="border rounded-md p-3 max-h-48 overflow-y-auto space-y-2">
+                {secteursActiviteOptions.map((secteur) => (
+                  <div key={secteur} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`secteur-${secteur}`}
+                      checked={produitForm.secteurs_activite.includes(secteur)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setProduitForm(prev => ({
+                            ...prev,
+                            secteurs_activite: [...prev.secteurs_activite, secteur]
+                          }));
+                        } else {
+                          setProduitForm(prev => ({
+                            ...prev,
+                            secteurs_activite: prev.secteurs_activite.filter(s => s !== secteur)
+                          }));
+                        }
+                      }}
+                    />
+                    <label
+                      htmlFor={`secteur-${secteur}`}
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                    >
+                      {secteur}
+                    </label>
+                  </div>
+                ))}
+              </div>
             </div>
             <div className="border-t pt-4">
               <h4 className="font-semibold mb-3">Montants (€)</h4>
@@ -4078,6 +4442,7 @@ const AdminDashboardOptimized: React.FC = () => {
                     nom: '',
                     description: '',
                     categorie: '',
+                    secteurs_activite: [],
                     type_produit: 'financier',
                     montant_min: '',
                     montant_max: '',
@@ -4142,12 +4507,53 @@ const AdminDashboardOptimized: React.FC = () => {
               />
             </div>
             <div>
-              <Label htmlFor="edit-categorie">Catégorie</Label>
-              <Input
-                id="edit-categorie"
-                value={produitForm.categorie}
-                onChange={(e) => setProduitForm(prev => ({ ...prev, categorie: e.target.value }))}
-              />
+              <Label htmlFor="edit-categorie">Catégorie *</Label>
+              <Select 
+                value={produitForm.categorie} 
+                onValueChange={(val) => setProduitForm(prev => ({ ...prev, categorie: val }))}
+              >
+                <SelectTrigger id="edit-categorie">
+                  <SelectValue placeholder="Sélectionner une catégorie" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categoriesOptions.map((cat) => (
+                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="edit-secteurs">Secteurs d'activité</Label>
+              <p className="text-xs text-gray-500 mb-2">Sélectionnez les secteurs concernés (laisser vide = tous secteurs)</p>
+              <div className="border rounded-md p-3 max-h-48 overflow-y-auto space-y-2">
+                {secteursActiviteOptions.map((secteur) => (
+                  <div key={secteur} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`edit-secteur-${secteur}`}
+                      checked={produitForm.secteurs_activite.includes(secteur)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setProduitForm(prev => ({
+                            ...prev,
+                            secteurs_activite: [...prev.secteurs_activite, secteur]
+                          }));
+                        } else {
+                          setProduitForm(prev => ({
+                            ...prev,
+                            secteurs_activite: prev.secteurs_activite.filter(s => s !== secteur)
+                          }));
+                        }
+                      }}
+                    />
+                    <label
+                      htmlFor={`edit-secteur-${secteur}`}
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                    >
+                      {secteur}
+                    </label>
+                  </div>
+                ))}
+              </div>
             </div>
             <div className="border-t pt-4">
               <h4 className="font-semibold mb-3">Montants (€)</h4>
@@ -4247,6 +4653,7 @@ const AdminDashboardOptimized: React.FC = () => {
                   credentials: 'include',
                   body: JSON.stringify({
                     ...produitForm,
+                    secteurs_activite: produitForm.secteurs_activite.length > 0 ? produitForm.secteurs_activite : [],
                     montant_min: produitForm.montant_min ? parseFloat(produitForm.montant_min) : null,
                     montant_max: produitForm.montant_max ? parseFloat(produitForm.montant_max) : null,
                     taux_min: produitForm.taux_min ? parseFloat(produitForm.taux_min) : null,
