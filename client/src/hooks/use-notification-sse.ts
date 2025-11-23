@@ -42,10 +42,20 @@ export function useNotificationSSE(options?: {
 
     let reconnectTimeout: NodeJS.Timeout;
     let reconnectAttempts = 0;
-    const MAX_RECONNECT_ATTEMPTS = 5;
+    const MAX_RECONNECT_ATTEMPTS = 3; // Réduit de 5 à 3 pour éviter les boucles
+    let lastRefreshAttempt = 0;
+    const MIN_REFRESH_INTERVAL = 60000; // 1 minute minimum entre refreshs
+    let refreshFailed = false; // Flag pour arrêter si refresh échoue
 
     const connect = async () => {
       try {
+        // Vérifier si on a déjà échoué à refresh le token
+        if (refreshFailed) {
+          console.warn('⚠️ Refresh token échoué précédemment, connexion SSE désactivée');
+          setError('Session expirée - veuillez vous reconnecter');
+          return;
+        }
+
         // Essayer de récupérer un token frais depuis Supabase
         let token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
         
@@ -60,9 +70,15 @@ export function useNotificationSSE(options?: {
               token = session.access_token;
               localStorage.setItem('token', session.access_token);
               console.log('✅ Token Supabase récupéré pour SSE');
+            } else {
+              console.warn('⚠️ Pas de session Supabase, connexion SSE désactivée');
+              setError('Non authentifié');
+              return;
             }
           } catch (error) {
             console.error('❌ Erreur récupération session:', error);
+            setError('Erreur d\'authentification');
+            return;
           }
         }
         
@@ -88,6 +104,7 @@ export function useNotificationSSE(options?: {
           setConnected(true);
           setError(null);
           reconnectAttempts = 0;
+          refreshFailed = false; // Reset le flag si connexion réussie
         };
 
         // Événement: Message reçu
@@ -161,8 +178,14 @@ export function useNotificationSSE(options?: {
           eventSource.close();
 
           // Si c'est potentiellement une erreur 401, essayer de refresh le token
-          if (reconnectAttempts === 0) {
+          // Mais seulement si on n'a pas déjà tenté récemment (rate limiting)
+          const now = Date.now();
+          const timeSinceLastRefresh = now - lastRefreshAttempt;
+          
+          if (reconnectAttempts === 0 && timeSinceLastRefresh >= MIN_REFRESH_INTERVAL) {
             console.log('🔄 Tentative de refresh du token Supabase...');
+            lastRefreshAttempt = now;
+            
             try {
               const { supabase } = await import('@/lib/supabase');
               const { data: { session }, error: refreshError } = await supabase.auth.refreshSession();
@@ -175,16 +198,40 @@ export function useNotificationSSE(options?: {
                 // Retry immédiatement avec le nouveau token
                 setTimeout(() => {
                   reconnectAttempts = 0; // Reset car on a un nouveau token
+                  refreshFailed = false; // Reset le flag
                   connect();
                 }, 500);
                 return;
+              } else {
+                console.error('❌ Refresh token échoué:', refreshError);
+                refreshFailed = true; // Marquer comme échoué
+                setError('Session expirée - veuillez vous reconnecter');
+                toast.error('Session expirée. Veuillez vous reconnecter pour activer les notifications.');
+                return; // Ne pas continuer les reconnexions
               }
-            } catch (refreshError) {
+            } catch (refreshError: any) {
               console.error('❌ Impossible de refresh le token:', refreshError);
+              // Si erreur 429 (rate limiting), arrêter complètement
+              if (refreshError?.status === 429 || refreshError?.message?.includes('429')) {
+                console.error('❌ Rate limiting Supabase (429), arrêt des tentatives');
+                refreshFailed = true;
+                setError('Trop de tentatives - veuillez attendre quelques minutes');
+                toast.error('Trop de tentatives de connexion. Veuillez attendre quelques minutes.');
+                return;
+              }
+              refreshFailed = true;
+              setError('Session expirée - veuillez vous reconnecter');
+              return; // Ne pas continuer les reconnexions
             }
           }
 
-          // Tentative de reconnexion avec backoff exponentiel
+          // Si refresh échoué, ne pas tenter de reconnexion
+          if (refreshFailed) {
+            console.warn('⚠️ Refresh échoué, arrêt des reconnexions');
+            return;
+          }
+
+          // Tentative de reconnexion avec backoff exponentiel (seulement si pas de refresh échoué)
           if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
             const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
             console.log(`🔄 Reconnexion SSE dans ${delay}ms (tentative ${reconnectAttempts + 1}/${MAX_RECONNECT_ATTEMPTS})`);

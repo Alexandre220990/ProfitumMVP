@@ -632,6 +632,110 @@ router.get('/experts/:id/produits', asyncHandler(async (req, res) => {
   }
 }));
 
+// GET /api/admin/experts/all - Tous les experts de la plateforme
+// ⚠️ IMPORTANT: Cette route doit être AVANT /experts/:id pour éviter que "all" soit interprété comme un ID
+router.get('/experts/all', asyncHandler(async (req, res) => {
+  try {
+    console.log('🔍 Récupération de tous les experts...');
+    
+    const { data: experts, error } = await supabaseClient
+      .from('Expert')
+      .select(`
+        id,
+        name,
+        first_name,
+        last_name,
+        email,
+        company_name,
+        specializations,
+        secteur_activite,
+        experience,
+        location,
+        rating,
+        status,
+        approval_status,
+        created_at,
+        approved_at,
+        approved_by,
+        description
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('❌ Erreur récupération tous les experts:', error);
+      throw error;
+    }
+
+    console.log(`✅ ${experts?.length || 0} experts trouvés sur la plateforme`);
+
+    return res.json({
+      success: true,
+      data: {
+        experts: experts || []
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route experts/all:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération de tous les experts'
+    });
+  }
+}));
+
+// GET /api/admin/experts/all - Tous les experts de la plateforme
+// ⚠️ IMPORTANT: Cette route doit être AVANT /experts/:id pour éviter que "all" soit interprété comme un ID
+router.get('/experts/all', asyncHandler(async (req, res) => {
+  try {
+    console.log('🔍 Récupération de tous les experts...');
+    
+    const { data: experts, error } = await supabaseClient
+      .from('Expert')
+      .select(`
+        id,
+        name,
+        first_name,
+        last_name,
+        email,
+        company_name,
+        specializations,
+        secteur_activite,
+        experience,
+        location,
+        rating,
+        status,
+        approval_status,
+        created_at,
+        approved_at,
+        approved_by,
+        description
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('❌ Erreur récupération tous les experts:', error);
+      throw error;
+    }
+
+    console.log(`✅ ${experts?.length || 0} experts trouvés sur la plateforme`);
+
+    return res.json({
+      success: true,
+      data: {
+        experts: experts || []
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route experts/all:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération de tous les experts'
+    });
+  }
+}));
+
 // GET /api/admin/experts/:id - Détails d'un expert
 router.get('/experts/:id', asyncHandler(async (req, res) => {
   try {
@@ -4327,56 +4431,7 @@ router.get('/clients/all', asyncHandler(async (req, res) => {
   }
 }));
 
-// GET /api/admin/experts/all - Tous les experts de la plateforme
-router.get('/experts/all', asyncHandler(async (req, res) => {
-  try {
-    console.log('🔍 Récupération de tous les experts...');
-    
-    const { data: experts, error } = await supabaseClient
-      .from('Expert')
-      .select(`
-        id,
-        name,
-        first_name,
-        last_name,
-        email,
-        company_name,
-        specializations,
-        secteur_activite,
-        experience,
-        location,
-        rating,
-        status,
-        approval_status,
-        created_at,
-        approved_at,
-        approved_by,
-        description
-      `)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('❌ Erreur récupération tous les experts:', error);
-      throw error;
-    }
-
-    console.log(`✅ ${experts?.length || 0} experts trouvés sur la plateforme`);
-
-    return res.json({
-      success: true,
-      data: {
-        experts: experts || []
-      }
-    });
-
-  } catch (error) {
-    console.error('❌ Erreur route experts/all:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Erreur lors de la récupération de tous les experts'
-    });
-  }
-}));
+// Route /experts/all déplacée plus haut (avant /experts/:id) pour éviter les conflits de routing
 
 // GET /api/admin/apporteurs/:id - Détails d'un apporteur
 router.get('/apporteurs/:id', asyncHandler(async (req, res) => {

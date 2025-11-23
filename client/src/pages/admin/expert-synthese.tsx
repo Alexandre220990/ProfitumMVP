@@ -198,19 +198,45 @@ const ExpertSynthese: React.FC = () => {
   // ========================================
 
   const buildAuthHeaders = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      toast.error('Session expirée, veuillez vous reconnecter');
+    try {
+      // Récupérer la session actuelle
+      let { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      // Si pas de session, tenter un refresh
+      if (!session || sessionError) {
+        console.log('🔄 Session expirée, tentative de refresh...');
+        const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession();
+        
+        if (refreshedSession && !refreshError) {
+          console.log('✅ Session rafraîchie avec succès');
+          session = refreshedSession;
+          // Mettre à jour localStorage
+          localStorage.setItem('token', refreshedSession.access_token);
+          localStorage.setItem('supabase_token', refreshedSession.access_token);
+        } else {
+          console.error('❌ Impossible de rafraîchir la session:', refreshError);
+          toast.error('Session expirée, veuillez vous reconnecter');
+          return null;
+        }
+      }
+
+      if (!session?.access_token) {
+        toast.error('Session expirée, veuillez vous reconnecter');
+        return null;
+      }
+
+      return {
+        session,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      };
+    } catch (error) {
+      console.error('❌ Erreur buildAuthHeaders:', error);
+      toast.error('Erreur d\'authentification, veuillez vous reconnecter');
       return null;
     }
-
-    return {
-      session,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`
-      }
-    };
   };
 
   const handleApproveExpert = async () => {
