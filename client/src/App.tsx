@@ -8,6 +8,7 @@ import { queryClient } from './lib/queryClient';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from "./components/ui/sonner";
 import ScrollToTop from './components/ScrollToTop';
+import LoadingScreen from './components/LoadingScreen';
 
 
 // Pages principales
@@ -182,7 +183,7 @@ function App() {
         <ClientProvider>
           <AdminProvider>
             <ScrollToTop />
-            <Suspense fallback={<div>Chargement...</div>}>
+            <Suspense fallback={<LoadingScreen />}>
               <div className="min-h-screen bg-gray-50">
                 <Routes>
                     {/* Routes publiques */}

@@ -29,7 +29,7 @@ export default defineConfig({
     video: 'retain-on-failure',
     // Logs détaillés pour faciliter le solutionage
     actionTimeout: 10000,
-    navigationTimeout: 30000,
+    navigationTimeout: 60000, // Augmenté à 60s pour les tests sur production
   },
   projects: [
     // Chromium désactivé - incompatible avec macOS 10.16 (Big Sur)

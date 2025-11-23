@@ -30,7 +30,10 @@ export class TestHelpers {
   // Prendre une capture d'écran avec nom personnalisé
   async takeScreenshot(name: string) {
     console.log(`[TEST] Capture d'écran: ${name}`);
-    await this.page.screenshot({ path: `test-results/screenshots/${name}.png` });
+    await this.page.screenshot({ 
+      path: `test-results/screenshots/${name}.png`,
+      timeout: 30000 // Timeout augmenté pour les pages complexes
+    });
   }
 
   // Attendre la navigation
