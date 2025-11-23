@@ -137,9 +137,14 @@ export function UniversalNotificationCenter({
   }, [notifications]);
 
   // Statistiques
+  // Pour AdminNotification: status peut être 'pending' (non lu), 'read' (lu), 'archived' (archivé)
+  // Pour notification: status peut être 'unread' (non lu), 'read' (lu), 'archived' (archivé)
   const totalCount = enrichedNotifications.filter((n) => n.status !== 'archived').length;
   const unreadCount = enrichedNotifications.filter(
-    (n) => (n.status === 'unread' || !n.is_read) && n.status !== 'archived'
+    (n) => {
+      const isUnread = n.status === 'unread' || n.status === 'pending' || !n.is_read;
+      return isUnread && n.status !== 'archived';
+    }
   ).length;
   const archivedCount = enrichedNotifications.filter((n) => n.status === 'archived').length;
   const lateCount = enrichedNotifications.filter(
@@ -155,7 +160,8 @@ export function UniversalNotificationCenter({
 
       let matchesFilter = true;
       if (filter === 'unread') {
-        matchesFilter = notification.status === 'unread' || !notification.is_read;
+        // Pour AdminNotification: 'pending' = non lu, pour notification: 'unread' = non lu
+        matchesFilter = notification.status === 'unread' || notification.status === 'pending' || !notification.is_read;
       } else if (filter === 'archived') {
         matchesFilter = notification.status === 'archived';
       } else if (filter === 'late') {

@@ -47,13 +47,31 @@ const API_BASE = import.meta.env.VITE_API_URL || 'https://profitummvp-production
 const normalizeNotification = (notification: any): SupabaseNotification => {
   if (!notification) return notification;
 
+  // Pour AdminNotification, status peut être 'pending', 'read', 'archived'
+  // Pour notification (clients/experts), status peut être 'unread', 'read', 'archived'
+  const normalizedStatus = notification.status || (notification.is_read ? 'read' : 'unread');
+  
+  // Déterminer is_read en fonction du status
+  let isRead: boolean;
+  if (typeof notification.is_read === 'boolean') {
+    isRead = notification.is_read;
+  } else {
+    // Si status est 'read' ou si status est 'pending' (pour AdminNotification, pending = non lu)
+    // ou si status n'est pas 'unread' et n'est pas 'pending'
+    if (normalizedStatus === 'read') {
+      isRead = true;
+    } else if (normalizedStatus === 'pending' || normalizedStatus === 'unread') {
+      isRead = false;
+    } else {
+      // Pour 'archived' ou autres, considérer comme lu si read_at existe
+      isRead = !!notification.read_at || false;
+    }
+  }
+
   return {
     ...notification,
-    status: notification.status || (notification.is_read ? 'read' : 'unread'),
-    is_read:
-      typeof notification.is_read === 'boolean'
-        ? notification.is_read
-        : (notification.status && notification.status !== 'unread') || false,
+    status: normalizedStatus,
+    is_read: isRead,
   };
 };
 
@@ -507,7 +525,11 @@ export function useSupabaseNotifications(): UseSupabaseNotificationsReturn {
   const unreadNotifications = useMemo(
     () =>
       notifications.filter(
-        (notif) => notif.status !== 'archived' && !notif.is_read
+        (notif) => {
+          // Pour AdminNotification: 'pending' = non lu, pour notification: 'unread' = non lu
+          const isUnread = notif.status === 'unread' || notif.status === 'pending' || !notif.is_read;
+          return notif.status !== 'archived' && isUnread;
+        }
       ),
     [notifications]
   );
@@ -515,9 +537,10 @@ export function useSupabaseNotifications(): UseSupabaseNotificationsReturn {
   const readNotifications = useMemo(
     () =>
       notifications.filter(
-        (notif) =>
-          notif.status === 'read' ||
-          (notif.is_read && notif.status !== 'archived')
+        (notif) => {
+          // Pour AdminNotification: 'read' = lu, pour notification: 'read' = lu
+          return (notif.status === 'read' || notif.is_read) && notif.status !== 'archived';
+        }
       ),
     [notifications]
   );

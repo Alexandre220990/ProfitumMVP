@@ -5176,20 +5176,27 @@ router.post('/dossiers/:id/assign-expert', async (req, res) => {
 // GET /api/admin/notifications - Récupérer les notifications admin
 router.get('/notifications', async (req, res) => {
   try {
-    const { status, priority, limit = 50 } = req.query;
+    const { status, priority, limit = 100 } = req.query;
     
+    // Par défaut, récupérer toutes les notifications (y compris archivées)
+    // Le front-end filtrera selon les besoins
     let query = supabaseClient
       .from('AdminNotification')
       .select('*')
-      .order('created_at', { ascending: false })
-      .limit(Number(limit));
+      .order('created_at', { ascending: false });
     
-    if (status) {
+    // Si un status spécifique est demandé, filtrer
+    if (status && status !== 'all') {
       query = query.eq('status', status);
     }
     
     if (priority) {
       query = query.eq('priority', priority);
+    }
+    
+    // Appliquer la limite seulement si demandée
+    if (limit && Number(limit) > 0) {
+      query = query.limit(Number(limit));
     }
     
     const { data: notifications, error } = await query;
@@ -5202,9 +5209,18 @@ router.get('/notifications', async (req, res) => {
       });
     }
     
+    // Normaliser les notifications pour le front-end
+    // S'assurer que is_read est défini en fonction du status
+    const normalizedNotifications = (notifications || []).map((notif: any) => ({
+      ...notif,
+      // Pour AdminNotification: 'pending' = non lu, 'read' = lu, 'archived' = archivé
+      is_read: notif.status === 'read' || (notif.read_at !== null && notif.read_at !== undefined),
+      notification_type: notif.type || notif.notification_type,
+    }));
+    
     return res.json({
       success: true,
-      data: { notifications: notifications || [] }
+      data: { notifications: normalizedNotifications }
     });
     
   } catch (error) {
@@ -5413,6 +5429,39 @@ router.delete('/notifications/:id', async (req, res) => {
   try {
     const { id } = req.params;
     
+    // Vérifier d'abord si la notification existe
+    const { data: existing, error: checkError } = await supabaseClient
+      .from('AdminNotification')
+      .select('id, status')
+      .eq('id', id)
+      .maybeSingle();
+    
+    if (checkError) {
+      console.error('❌ Erreur vérification notification:', checkError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la vérification de la notification'
+      });
+    }
+    
+    // Si la notification n'existe pas ou est déjà archivée, retourner succès
+    if (!existing) {
+      return res.json({
+        success: true,
+        message: 'Notification introuvable ou déjà supprimée',
+        data: { notification: null }
+      });
+    }
+    
+    if (existing.status === 'archived') {
+      return res.json({
+        success: true,
+        message: 'Notification déjà archivée',
+        data: { notification: existing }
+      });
+    }
+    
+    // Archiver la notification
     const { data, error } = await supabaseClient
       .from('AdminNotification')
       .update({ 
@@ -5422,7 +5471,7 @@ router.delete('/notifications/:id', async (req, res) => {
       })
       .eq('id', id)
       .select()
-      .single();
+      .maybeSingle();
     
     if (error) {
       console.error('❌ Erreur archivage notification:', error);
