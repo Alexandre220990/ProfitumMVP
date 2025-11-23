@@ -28,6 +28,7 @@ import {
 import { TypeSwitcher } from "@/components/TypeSwitcher";
 import { motion } from "framer-motion";
 import { PerformanceCharts } from "@/components/charts/PerformanceCharts";
+import LoadingScreen from "@/components/LoadingScreen";
 
 // ============================================================================
 // TYPES ET INTERFACES
@@ -1945,12 +1946,7 @@ const AdminDashboardOptimized: React.FC = () => {
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
         <div className="flex-1 p-6">
           {loading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="text-center">
-                <RefreshCw className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-4" />
-                <p className="text-gray-600">Chargement des données...</p>
-              </div>
-            </div>
+            <LoadingScreen />
           ) : (
             <>
               {/* Notifications temps réel */}

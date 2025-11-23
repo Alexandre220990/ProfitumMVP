@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import DossierTimeline from '@/components/dossier/DossierTimeline';
+import LoadingScreen from '@/components/LoadingScreen';
 import {
   User,
   Mail,
@@ -443,10 +444,7 @@ const DossierSynthese: React.FC = () => {
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <RefreshCw className="w-8 h-8 animate-spin text-blue-600" />
-            <span className="ml-3 text-gray-600">Chargement des données...</span>
-          </div>
+          <LoadingScreen />
         ) : !dossier ? (
           <div className="text-center py-20">
             <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-4" />

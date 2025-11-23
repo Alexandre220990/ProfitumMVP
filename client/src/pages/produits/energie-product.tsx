@@ -22,6 +22,7 @@ import {
 import { get } from "@/lib/api";
 import UniversalProductWorkflow from "@/components/UniversalProductWorkflow";
 import { TrendingUp } from "lucide-react";
+import LoadingScreen from "@/components/LoadingScreen";
 
 interface ClientProduitEligible {
   id: string;
@@ -116,18 +117,7 @@ const EnergieProductPage = () => {
         : 'énergie';
 
   if (loading) {
-    return (
-      <div>
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Chargement du dossier Énergie...</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (error || !clientProduit) {

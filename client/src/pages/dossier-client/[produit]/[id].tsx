@@ -10,6 +10,7 @@ import UniversalProductWorkflow from "@/components/UniversalProductWorkflow";
 import { WorkflowDocumentUpload } from '@/components/documents/WorkflowDocumentUpload';
 import { Separator } from "@/components/ui/separator";
 import { toast } from 'sonner';
+import LoadingScreen from '@/components/LoadingScreen';
 
 import { 
   ArrowLeft, 
@@ -742,16 +743,7 @@ export default function DossierClientProduit() {
 
   // Page de chargement
   if (loading) {
-    return (
-      <div>
-        <div className="flex items-center justify-center min-h-64">
-          <div className="text-center">
-            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
-            <p className="text-gray-600">Chargement du dossier...</p>
-          </div>
-        </div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   // Page d'erreur

@@ -171,9 +171,13 @@ router.get('/admin', enhancedAuthMiddleware, async (req: Request, res: Response)
       });
     }
 
+    // ✅ CORRECTION: Lire depuis la table 'notification' au lieu de 'AdminNotification'
+    // Les notifications sont créées dans 'notification' avec user_type='admin'
     const { data: notifications, error } = await supabase
-      .from('AdminNotification')
+      .from('notification')
       .select('*')
+      .eq('user_id', user.id)
+      .eq('user_type', 'admin')
       .order('created_at', { ascending: false })
       .limit(50);
 

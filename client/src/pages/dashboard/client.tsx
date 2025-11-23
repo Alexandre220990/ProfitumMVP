@@ -43,6 +43,7 @@ import { SectionTitle } from "@/components/dashboard/SectionTitle";
 import { EmptyEligibleProductsState } from "@/components/empty-eligible-products-state";
 import { toast } from 'sonner';
 import { config } from '@/config/env';
+import LoadingScreen from '@/components/LoadingScreen';
 
 // Composant StatCard pour les KPIs
 interface StatCardProps {
@@ -698,24 +699,7 @@ export default function DashboardClient() {
   };
 
   if (loadingProducts) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex flex-col items-center justify-center">
-        <Card className="p-8 text-center max-w-md">
-          <CardContent>
-            <div className="flex justify-center mb-6">
-              <div className="relative">
-                <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
-                <div className="absolute inset-0 rounded-full border-4 border-blue-200 animate-pulse"></div>
-              </div>
-            </div>
-            <CardTitle className="text-xl mb-2">Chargement de votre tableau de bord...</CardTitle>
-            <CardDescription>
-              Nous préparons vos données personnalisées
-            </CardDescription>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (!user) {

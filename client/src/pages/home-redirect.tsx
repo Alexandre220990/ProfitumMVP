@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import LoadingScreen from "@/components/LoadingScreen";
 
 /**
  * Simple composant de redirection vers la page d'accueil
@@ -43,9 +44,5 @@ export default function HomeRedirect() { const { user, isLoading } = useAuth();
   }, [isLoading, user, navigate]);
 
   // Afficher un indicateur de chargement pendant la redirection
-  return (
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
-    </div>
-  );
+  return <LoadingScreen />;
 } 

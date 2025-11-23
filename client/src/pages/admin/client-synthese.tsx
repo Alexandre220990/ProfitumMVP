@@ -26,6 +26,7 @@ import {
 import { useAuth } from '@/hooks/use-auth';
 import { get } from '@/lib/api';
 import { toast } from 'sonner';
+import LoadingScreen from '@/components/LoadingScreen';
 
 interface ClientData {
   id: string;
@@ -216,10 +217,7 @@ const ClientSynthese: React.FC = () => {
       </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <RefreshCw className="w-8 h-8 animate-spin text-blue-600" />
-            <span className="ml-3 text-gray-600">Chargement des données...</span>
-          </div>
+          <LoadingScreen />
         ) : !client ? (
           <div className="text-center py-20">
             <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-4" />

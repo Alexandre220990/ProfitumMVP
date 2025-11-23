@@ -18,6 +18,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { toast } from 'sonner';
 import { get } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
+import LoadingScreen from '@/components/LoadingScreen';
 import {
   ArrowLeft, Package, TrendingUp, Users, FileText,
   DollarSign, Calendar, Edit, Activity, Target,
@@ -253,14 +254,7 @@ export default function ProduitSynthese() {
   // ============================================================================
 
   if (authLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Chargement...</p>
-        </div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (!user || user.type !== 'admin') {

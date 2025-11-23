@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { UniversalNotificationCenter } from "@/components/notifications/UniversalNotificationCenter";
 import { Eye, Edit, Plus, ChevronsUpDown, Trash2, ChevronUp, ChevronDown, FolderOpen, Package, FileText, Users, TrendingUp, CheckCircle, XCircle, AlertCircle, Clock, Euro } from "lucide-react";
 import { KPISection } from "@/components/admin/KPISection";
+import LoadingScreen from "@/components/LoadingScreen";
 
 // Types pour les ProduitEligible
 interface ProduitEligible { id: string;
@@ -592,23 +593,13 @@ export default function GestionDossiers() { const { user } = useAuth();
       alert('Erreur lors de la suppression du produit'); }
   };
 
-  if (loading && dossiers.length === 0 && activeTab === 'dossiers') { return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Chargement des dossiers...</p>
-        </div>
-      </div>
-    ); }
+  if (loading && dossiers.length === 0 && activeTab === 'dossiers') { 
+    return <LoadingScreen />;
+  }
 
-  if (loadingProduits && produits.length === 0 && activeTab === 'produits') { return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Chargement des produits...</p>
-        </div>
-      </div>
-    ); }
+  if (loadingProduits && produits.length === 0 && activeTab === 'produits') { 
+    return <LoadingScreen />;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-red-50">

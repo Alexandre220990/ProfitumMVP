@@ -13,9 +13,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
 import { useNavigate, Navigate } from "react-router-dom";
 import { toast } from "sonner";
+import LoadingScreen from "@/components/LoadingScreen";
 import api from "@/lib/api";
 import { 
   Package, Plus, Eye, Edit, Trash2, 
@@ -32,6 +35,7 @@ interface ProduitEligible {
   nom: string;
   description: string;
   categorie?: string;
+  secteurs_activite?: string[]; // Liste des secteurs d'activité (JSONB dans la BDD)
   montant_min?: number;
   montant_max?: number;
   taux_min?: number;
@@ -77,6 +81,7 @@ export default function GestionProduits() {
     nom: '',
     description: '',
     categorie: '',
+    secteurs_activite: [] as string[],
     montant_min: '',
     montant_max: '',
     taux_min: '',
@@ -89,6 +94,7 @@ export default function GestionProduits() {
     nom: '',
     description: '',
     categorie: '',
+    secteurs_activite: [] as string[],
     montant_min: '',
     montant_max: '',
     taux_min: '',
@@ -97,19 +103,36 @@ export default function GestionProduits() {
     duree_max: ''
   });
 
+  // Liste des secteurs d'activité disponibles (alignés sur GENERAL_001)
+  const secteursActiviteOptions = [
+    'Transport et Logistique',
+    'Commerce et Distribution',
+    'Industrie et Fabrication',
+    'Services aux Entreprises',
+    'BTP et Construction',
+    'Restauration et Hôtellerie',
+    'Santé et Services Sociaux',
+    'Agriculture et Agroalimentaire',
+    'Services à la Personne',
+    'Autre secteur'
+  ];
+
+  // Liste des catégories disponibles
+  const categoriesOptions = [
+    'Optimisation Fiscale',
+    'Optimisation Sociale',
+    'Optimisation Énergétique',
+    'Services Juridiques et Recouvrement',
+    'Logiciels et Outils Numériques',
+    'Services Additionnels et Équipements'
+  ];
+
   // ============================================================================
   // AUTHENTIFICATION
   // ============================================================================
 
   if (authLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-red-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Chargement...</p>
-        </div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (!user || user.type !== 'admin') {
@@ -155,6 +178,25 @@ export default function GestionProduits() {
       }
       
       if (Array.isArray(produitsList) && produitsList.length > 0) {
+        // Filtrer "Optimisation Énergie" qui a été remplacé
+        produitsList = produitsList.filter(p => p.nom !== 'Optimisation Énergie');
+        
+        // Convertir secteurs_activite de JSONB (string ou array) en array
+        produitsList = produitsList.map((p: any) => {
+          if (p.secteurs_activite) {
+            if (typeof p.secteurs_activite === 'string') {
+              try {
+                p.secteurs_activite = JSON.parse(p.secteurs_activite);
+              } catch {
+                p.secteurs_activite = [];
+              }
+            }
+          } else {
+            p.secteurs_activite = [];
+          }
+          return p;
+        });
+        
         const produitsTries = sortProduits(produitsList);
         setProduits(produitsTries);
         console.log('✅ Produits chargés:', produitsTries.length);
@@ -241,6 +283,7 @@ export default function GestionProduits() {
           nom: '',
           description: '',
           categorie: '',
+          secteurs_activite: [],
           montant_min: '',
           montant_max: '',
           taux_min: '',
@@ -264,7 +307,11 @@ export default function GestionProduits() {
     if (!selectedProduit) return;
     
     try {
-      const response = await api.put(`/api/admin/produits/${selectedProduit.id}`, editForm);
+      const produitData = {
+        ...editForm,
+        secteurs_activite: editForm.secteurs_activite.length > 0 ? editForm.secteurs_activite : []
+      };
+      const response = await api.put(`/api/admin/produits/${selectedProduit.id}`, produitData);
       
       if (response.data.success) {
         toast.success("Produit modifié avec succès");
@@ -309,6 +356,17 @@ export default function GestionProduits() {
       nom: produit.nom,
       description: produit.description,
       categorie: produit.categorie || '',
+      secteurs_activite: Array.isArray(produit.secteurs_activite) 
+        ? produit.secteurs_activite 
+        : (typeof produit.secteurs_activite === 'string' 
+          ? (() => {
+              try {
+                return JSON.parse(produit.secteurs_activite);
+              } catch {
+                return [];
+              }
+            })()
+          : []),
       montant_min: produit.montant_min?.toString() || '',
       montant_max: produit.montant_max?.toString() || '',
       taux_min: produit.taux_min?.toString() || '',
@@ -428,13 +486,53 @@ export default function GestionProduits() {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="categorie">Catégorie</Label>
-                      <Input
-                        id="categorie"
-                        value={newProduit.categorie}
-                        onChange={(e) => setNewProduit(prev => ({ ...prev, categorie: e.target.value }))}
-                        placeholder="Ex: Taxe, Social, Immobilier..."
-                      />
+                      <Label htmlFor="categorie">Catégorie *</Label>
+                      <Select 
+                        value={newProduit.categorie} 
+                        onValueChange={(val) => setNewProduit(prev => ({ ...prev, categorie: val }))}
+                      >
+                        <SelectTrigger id="categorie">
+                          <SelectValue placeholder="Sélectionner une catégorie" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categoriesOptions.map((cat) => (
+                            <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="secteurs">Secteurs d'activité</Label>
+                      <p className="text-xs text-gray-500 mb-2">Sélectionnez les secteurs concernés (laisser vide = tous secteurs)</p>
+                      <div className="border rounded-md p-3 max-h-48 overflow-y-auto space-y-2">
+                        {secteursActiviteOptions.map((secteur) => (
+                          <div key={secteur} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`secteur-${secteur}`}
+                              checked={newProduit.secteurs_activite.includes(secteur)}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setNewProduit(prev => ({
+                                    ...prev,
+                                    secteurs_activite: [...prev.secteurs_activite, secteur]
+                                  }));
+                                } else {
+                                  setNewProduit(prev => ({
+                                    ...prev,
+                                    secteurs_activite: prev.secteurs_activite.filter(s => s !== secteur)
+                                  }));
+                                }
+                              }}
+                            />
+                            <label
+                              htmlFor={`secteur-${secteur}`}
+                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                            >
+                              {secteur}
+                            </label>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                     
                     <div className="border-t pt-4">
@@ -754,12 +852,53 @@ export default function GestionProduits() {
                 />
               </div>
               <div>
-                <Label htmlFor="edit-categorie">Catégorie</Label>
-                <Input
-                  id="edit-categorie"
-                  value={editForm.categorie}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, categorie: e.target.value }))}
-                />
+                <Label htmlFor="edit-categorie">Catégorie *</Label>
+                <Select 
+                  value={editForm.categorie} 
+                  onValueChange={(val) => setEditForm(prev => ({ ...prev, categorie: val }))}
+                >
+                  <SelectTrigger id="edit-categorie">
+                    <SelectValue placeholder="Sélectionner une catégorie" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categoriesOptions.map((cat) => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="edit-secteurs">Secteurs d'activité</Label>
+                <p className="text-xs text-gray-500 mb-2">Sélectionnez les secteurs concernés (laisser vide = tous secteurs)</p>
+                <div className="border rounded-md p-3 max-h-48 overflow-y-auto space-y-2">
+                  {secteursActiviteOptions.map((secteur) => (
+                    <div key={secteur} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`edit-secteur-${secteur}`}
+                        checked={editForm.secteurs_activite.includes(secteur)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setEditForm(prev => ({
+                              ...prev,
+                              secteurs_activite: [...prev.secteurs_activite, secteur]
+                            }));
+                          } else {
+                            setEditForm(prev => ({
+                              ...prev,
+                              secteurs_activite: prev.secteurs_activite.filter(s => s !== secteur)
+                            }));
+                          }
+                        }}
+                      />
+                      <label
+                        htmlFor={`edit-secteur-${secteur}`}
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                      >
+                        {secteur}
+                      </label>
+                    </div>
+                  ))}
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>

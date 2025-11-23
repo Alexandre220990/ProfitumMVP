@@ -1,47 +1,7 @@
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Shield, Award, FileCheck, TrendingUp, Star, Zap, CheckCircle, ArrowRight, Search, UserCheck, MessageSquare, Handshake, DollarSign, BarChart3, MapPin, Clock, Crown, Eye, Target, Calculator, Users } from "lucide-react";
+import { Shield, Award, FileCheck, TrendingUp, Star, Zap, CheckCircle, ArrowRight, Search, UserCheck, MessageSquare, Handshake, DollarSign, BarChart3, Clock, Crown, Calculator } from "lucide-react";
 import PublicHeader from "@/components/PublicHeader";
-
-// Données des experts vedettes (simulées)
-const featuredExperts = [
-  {
-    id: "1",
-    name: "Marie Dubois",
-    specializations: ["Optimisation fiscale", "Comptabilité"],
-    experience: "15+ ans",
-    location: "Paris",
-    rating: 4.9,
-    completedProjects: 127,
-    successRate: 98,
-    description: "Experte en optimisation fiscale pour PME et startups",
-    avatar: "MD"
-  },
-  {
-    id: "2", 
-    name: "Pierre Martin",
-    specializations: ["Audit énergétique", "Développement durable"],
-    experience: "12+ ans",
-    location: "Lyon",
-    rating: 4.8,
-    completedProjects: 89,
-    successRate: 96,
-    description: "Spécialiste en audit énergétique et solutions durables",
-    avatar: "PM"
-  },
-  {
-    id: "3",
-    name: "Sophie Bernard",
-    specializations: ["CIR", "Innovation"],
-    experience: "10+ ans", 
-    location: "Marseille",
-    rating: 4.9,
-    completedProjects: 156,
-    successRate: 99,
-    description: "Experte en Crédit d'Impôt Recherche et innovation",
-    avatar: "SB"
-  }
-];
+import { useNavigate } from "react-router-dom";
 
 // Statistiques du marketplace
 const marketplaceStats = [
@@ -77,7 +37,7 @@ const marketplaceProcess = [
   { 
     step: "04", 
     icon: Handshake, 
-    title: "Accompagnement sur-mesure", 
+    title: "Sur-mesure", 
     description: "Bénéficiez d'un suivi personnalisé et d'un accompagnement adapté à vos objectifs", 
     color: "from-orange-500 to-red-500" 
   }
@@ -116,6 +76,8 @@ const marketplaceBenefits = [
 ];
 
 export default function ExpertsVerifies() {
+  const navigate = useNavigate();
+  
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
       {/* Header avec navigation */}
@@ -209,60 +171,6 @@ export default function ExpertsVerifies() {
                   </div>
                 </div>
               ))}
-            </div>
-
-            {/* Sophisticated CTA section */}
-            <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto mb-16">
-              {/* Primary CTA - Découvrir les experts */}
-              <div className="group relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl blur-lg opacity-75 group-hover:opacity-100 transition-opacity duration-300"></div>
-                <div className="relative bg-gradient-to-br from-slate-800/90 to-slate-900/90 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-8 hover:border-blue-500/50 transition-all duration-300">
-                  <div className="flex items-center justify-center mb-6">
-                    <div className="relative">
-                      <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full blur-lg opacity-50"></div>
-                      <div className="relative bg-gradient-to-br from-blue-500 to-indigo-600 p-4 rounded-full shadow-2xl">
-                        <Users className="w-8 h-8 text-white" />
-                      </div>
-                    </div>
-                  </div>
-                  <h3 className="text-xl font-semibold text-white mb-3 text-center">Découvrir nos experts</h3>
-                  <p className="text-slate-300 text-sm text-center mb-6 leading-relaxed">
-                    Explorez notre réseau d'experts vérifiés et trouvez le professionnel idéal pour vos besoins
-                  </p>
-                  <Button 
-                    className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-4 rounded-xl shadow-2xl hover:shadow-blue-500/25 transition-all duration-300 transform hover:-translate-y-1 group-hover:scale-105"
-                  >
-                    <Target className="w-5 h-5 mr-3 group-hover:scale-110 transition-transform duration-300" />
-                    Explorer le marketplace
-                  </Button>
-                </div>
-              </div>
-
-              {/* Secondary CTA - Processus de sélection */}
-              <div className="group relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-emerald-600 to-teal-600 rounded-2xl blur-lg opacity-50 group-hover:opacity-75 transition-opacity duration-300"></div>
-                <div className="relative bg-gradient-to-br from-slate-800/90 to-slate-900/90 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-8 hover:border-emerald-500/50 transition-all duration-300">
-                  <div className="flex items-center justify-center mb-6">
-                    <div className="relative">
-                      <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full blur-lg opacity-50"></div>
-                      <div className="relative bg-gradient-to-br from-emerald-500 to-teal-600 p-4 rounded-full shadow-2xl">
-                        <Shield className="w-8 h-8 text-white" />
-                      </div>
-                    </div>
-                  </div>
-                  <h3 className="text-xl font-semibold text-white mb-3 text-center">Notre processus</h3>
-                  <p className="text-slate-300 text-sm text-center mb-6 leading-relaxed">
-                    Découvrez notre processus de sélection rigoureux en 7 étapes pour garantir la qualité
-                  </p>
-                  <Button 
-                    variant="outline"
-                    className="w-full border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/10 font-semibold py-4 rounded-xl backdrop-blur-sm transition-all duration-300 transform hover:-translate-y-1 group-hover:scale-105"
-                  >
-                    <Eye className="w-5 h-5 mr-3" />
-                    Voir le processus
-                  </Button>
-                </div>
-              </div>
             </div>
 
             {/* Trust indicators - simplified */}
@@ -422,93 +330,6 @@ export default function ExpertsVerifies() {
         </div>
       </section>
 
-      {/* Section Experts Vedettes - Style moderne */}
-      <section className="py-20 bg-white relative overflow-hidden">
-        <div className="absolute inset-0 opacity-5">
-          <div className="absolute top-1/4 right-1/4 w-64 h-64 bg-blue-200 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-1/4 left-1/4 w-96 h-96 bg-indigo-200 rounded-full blur-3xl"></div>
-        </div>
-        
-        <div className="relative z-10 max-w-7xl mx-auto px-6">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 text-blue-800 px-6 py-3 rounded-full text-sm font-semibold mb-6">
-              <Crown className="w-4 h-4" />
-              Nos experts vedettes
-            </div>
-            <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-6">
-              Découvrez nos <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">experts vedettes</span>
-            </h2>
-            <p className="text-xl text-slate-600 max-w-3xl mx-auto">
-              Ces experts ont aidé des centaines d'entreprises à optimiser leurs performances
-            </p>
-          </div>
-          
-          <div className="grid md:grid-cols-3 gap-8">
-            {featuredExperts.map((expert) => (
-              <div key={expert.id} className="group relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl blur-lg opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
-                <div className="relative bg-white/80 backdrop-blur-sm border border-slate-200/50 rounded-2xl p-8 hover:border-blue-300 transition-all duration-300 hover-lift">
-                  <div className="text-center mb-6">
-                    <div className="relative mx-auto mb-4">
-                      <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full blur-lg opacity-30 group-hover:opacity-50 transition-opacity duration-300"></div>
-                      <div className="relative w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-lg group-hover:shadow-xl transition-all duration-300">
-                        {expert.avatar}
-                      </div>
-                    </div>
-                    <h3 className="text-xl font-bold text-slate-900 mb-2">{expert.name}</h3>
-                    <div className="flex items-center justify-center mb-3">
-                      <div className="flex text-yellow-400">
-                        {[...Array(5)].map((_, i) => (
-                          <Star key={i} className={`w-4 h-4 ${i < Math.floor(expert.rating) ? 'fill-current' : ''}`} />
-                        ))}
-                      </div>
-                      <span className="ml-2 text-sm text-slate-600 font-semibold">{expert.rating}</span>
-                    </div>
-                    <div className="flex items-center justify-center text-sm text-slate-600 mb-2">
-                      <MapPin className="w-4 h-4 mr-1" />
-                      {expert.location}
-                    </div>
-                    <div className="flex items-center justify-center text-sm text-slate-600">
-                      <Clock className="w-4 h-4 mr-1" />
-                      {expert.experience}
-                    </div>
-                  </div>
-                  
-                  <p className="text-slate-700 mb-4 text-sm leading-relaxed text-center">
-                    {expert.description}
-                  </p>
-                  
-                  <div className="flex flex-wrap gap-2 justify-center mb-4">
-                    {expert.specializations.map((spec, index) => (
-                      <Badge key={index} variant="secondary" className="bg-blue-100 text-blue-700 text-xs">
-                        {spec}
-                      </Badge>
-                    ))}
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4 text-sm mb-6">
-                    <div className="text-center">
-                      <div className="font-semibold text-slate-900">{expert.completedProjects}</div>
-                      <div className="text-slate-600">Projets</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="font-semibold text-slate-900">{expert.successRate}%</div>
-                      <div className="text-slate-600">Succès</div>
-                    </div>
-                  </div>
-                  
-                  <Button className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
-                    <MessageSquare className="w-4 h-4 mr-2" />
-                    Contacter cet expert
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Section Avantages du Marketplace - Style moderne */}
       <section className="py-20 bg-gradient-to-br from-slate-50 via-white to-slate-100 relative overflow-hidden">
         <div className="absolute inset-0 opacity-5">
@@ -520,7 +341,7 @@ export default function ExpertsVerifies() {
           <div className="text-center mb-16">
             <div className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 text-blue-800 px-6 py-3 rounded-full text-sm font-semibold mb-6">
               <Zap className="w-4 h-4" />
-              Pourquoi choisir notre marketplace ?
+              Pourquoi choisir notre écosystème ?
             </div>
             <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-6">
               Des avantages <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">concrets</span>
@@ -557,88 +378,6 @@ export default function ExpertsVerifies() {
         </div>
       </section>
 
-      {/* Section Témoignages - Style moderne */}
-      <section className="py-20 bg-white relative overflow-hidden">
-        <div className="absolute inset-0 opacity-5">
-          <div className="absolute top-1/4 right-1/4 w-64 h-64 bg-blue-200 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-1/4 left-1/4 w-96 h-96 bg-indigo-200 rounded-full blur-3xl"></div>
-        </div>
-        
-        <div className="relative z-10 max-w-7xl mx-auto px-6">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 text-blue-800 px-6 py-3 rounded-full text-sm font-semibold mb-6">
-              <Star className="w-4 h-4" />
-              Ce que disent nos clients
-            </div>
-            <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-6">
-              Des milliers d'entreprises nous <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">font confiance</span>
-            </h2>
-            <p className="text-xl text-slate-600 max-w-3xl mx-auto">
-              Découvrez les témoignages de nos clients satisfaits
-            </p>
-          </div>
-          
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="group relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl blur-lg opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
-              <div className="relative bg-gradient-to-br from-slate-50 to-blue-50 p-8 rounded-2xl border border-slate-200/50 hover:border-blue-300 transition-all duration-300 hover-lift">
-                <div className="flex items-center mb-6">
-                  <div className="flex text-yellow-400">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="w-5 h-5 fill-current" />
-                    ))}
-                  </div>
-                </div>
-                <p className="text-slate-700 mb-6 italic text-lg leading-relaxed">
-                  "Grâce aux experts vérifiés de Profitum, nous avons économisé 25% sur nos charges 
-                  en seulement 3 mois. La qualité du travail est exceptionnelle !"
-                </p>
-                <div className="font-semibold text-slate-900 text-lg">Marie Dubois</div>
-                <div className="text-slate-600">Directrice Financière - TechStart</div>
-              </div>
-            </div>
-
-            <div className="group relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl blur-lg opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
-              <div className="relative bg-gradient-to-br from-slate-50 to-blue-50 p-8 rounded-2xl border border-slate-200/50 hover:border-blue-300 transition-all duration-300 hover-lift">
-                <div className="flex items-center mb-6">
-                  <div className="flex text-yellow-400">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="w-5 h-5 fill-current" />
-                    ))}
-                  </div>
-                </div>
-                <p className="text-slate-700 mb-6 italic text-lg leading-relaxed">
-                  "L'expertise et le professionnalisme des experts Profitum ont transformé 
-                  notre gestion administrative. Un vrai gain de temps et d'argent !"
-                </p>
-                <div className="font-semibold text-slate-900 text-lg">Pierre Martin</div>
-                <div className="text-slate-600">CEO - InnovationLab</div>
-              </div>
-            </div>
-
-            <div className="group relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl blur-lg opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
-              <div className="relative bg-gradient-to-br from-slate-50 to-blue-50 p-8 rounded-2xl border border-slate-200/50 hover:border-blue-300 transition-all duration-300 hover-lift">
-                <div className="flex items-center mb-6">
-                  <div className="flex text-yellow-400">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="w-5 h-5 fill-current" />
-                    ))}
-                  </div>
-                </div>
-                <p className="text-slate-700 mb-6 italic text-lg leading-relaxed">
-                  "Enfin une plateforme qui garantit la qualité ! Les experts Profitum 
-                  sont vraiment au top. Je recommande sans hésitation."
-                </p>
-                <div className="font-semibold text-slate-900 text-lg">Sophie Bernard</div>
-                <div className="text-slate-600">Entrepreneure - GreenTech</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* CTA Section - Style home page */}
       <section className="py-20 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-800 text-white relative overflow-hidden">
         <div className="absolute inset-0">
@@ -650,21 +389,35 @@ export default function ExpertsVerifies() {
         
         <div className="relative z-10 max-w-7xl mx-auto px-6 text-center">
           <h2 className="text-4xl md:text-5xl font-bold mb-6">
-            Prêt à travailler avec les <span className="bg-gradient-to-r from-blue-200 to-indigo-200 bg-clip-text text-transparent">meilleurs experts</span> ?
+            Optimisez vos performances et réduisez vos coûts dès maintenant avec des experts correspondant à vos besoins spécifiques.
           </h2>
           <p className="text-xl mb-8 text-blue-100 max-w-3xl mx-auto">
-            Rejoignez les milliers d'entreprises qui font déjà confiance à nos experts vérifiés 
-            pour optimiser leurs performances et réduire leurs coûts.
+            Des milliers d'entreprises font déjà confiance à nos experts... Pourquoi pas vous ?
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-6">
-            <Button className="bg-white text-blue-700 hover:bg-blue-50 px-8 py-4 text-lg font-semibold shadow-2xl hover:shadow-white/25 transition-all duration-300 transform hover:-translate-y-1">
+            <Button 
+              onClick={() => navigate("/simulateur")}
+              className="bg-white text-blue-700 hover:bg-blue-50 px-8 py-4 text-lg font-semibold shadow-2xl hover:shadow-white/25 transition-all duration-300 transform hover:-translate-y-1"
+            >
               <Calculator className="w-5 h-5 mr-3" />
-              Créer mon compte gratuitement
+              Essayez nos services dès maintenant
               <ArrowRight className="w-5 h-5 ml-3" />
             </Button>
-            <Button variant="outline" className="border-white text-white hover:bg-white hover:text-blue-700 px-8 py-4 text-lg font-semibold backdrop-blur-sm transition-all duration-300 transform hover:-translate-y-1">
-              <Users className="w-5 h-5 mr-3" />
-              Découvrir tous nos experts
+          </div>
+          <div className="mt-8">
+            <p className="text-lg mb-4 text-blue-100">
+              Vous êtes une société experte dans un domaine et souhaitez intégrer notre catalogue ? Rencontrons nous
+            </p>
+            <Button 
+              asChild
+              variant="outline" 
+              className="border-white text-white hover:bg-white hover:text-blue-700 px-8 py-4 text-lg font-semibold backdrop-blur-sm transition-all duration-300 transform hover:-translate-y-1"
+            >
+              <a href="https://www.profitum.app/welcome-expert" target="_blank" rel="noopener noreferrer">
+                <Handshake className="w-5 h-5 mr-3" />
+                Rejoindre notre écosystème
+                <ArrowRight className="w-5 h-5 ml-3" />
+              </a>
             </Button>
           </div>
           <div className="flex items-center justify-center space-x-6 text-sm text-blue-200">

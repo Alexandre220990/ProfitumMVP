@@ -96,12 +96,17 @@ export function NotificationCenter({ onNotificationAction, compact = false }: No
       });
 
       if (response.ok) {
+        // Mettre à jour l'état local immédiatement
         setNotifications(prev => 
           prev.map(n => n.id === notificationId ? { ...n, is_read: true } : n)
         );
+        // Recharger depuis le serveur pour garantir la cohérence
+        await loadNotifications();
       }
     } catch (error) {
       console.error('❌ Erreur marquage lu:', error);
+      // En cas d'erreur, recharger quand même pour récupérer l'état réel
+      await loadNotifications();
     }
   };
 

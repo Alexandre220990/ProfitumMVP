@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { STATUT_LABELS, type ClientProduitStatut } from '@/types/statuts';
 import { config } from '@/config';
+import LoadingScreen from '@/components/LoadingScreen';
 
 const getStatutLabel = (statut: string) => {
   return STATUT_LABELS[statut as ClientProduitStatut] || statut;
@@ -450,11 +451,7 @@ export default function CabinetProduitSynthese() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (!data) {

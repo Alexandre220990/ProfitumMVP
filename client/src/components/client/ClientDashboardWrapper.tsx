@@ -2,6 +2,7 @@ import React, { ReactNode } from 'react';
 import { useFirstLogin } from '@/hooks/use-first-login';
 import ChangePasswordModal from './ChangePasswordModal';
 import { useAuth } from '@/hooks/use-auth';
+import LoadingScreen from '@/components/LoadingScreen';
 
 interface ClientDashboardWrapperProps {
   children: ReactNode;
@@ -29,14 +30,7 @@ export default function ClientDashboardWrapper({ children }: ClientDashboardWrap
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Chargement...</p>
-        </div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   return (

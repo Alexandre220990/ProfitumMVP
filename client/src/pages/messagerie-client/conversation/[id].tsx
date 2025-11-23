@@ -2,6 +2,7 @@ import { useParams, Navigate } from "react-router-dom";
 import { useClient } from "@/contexts/ClientContext";
 import { useMemo } from "react";
 import MessagerieClient from '../../messagerie-client';
+import LoadingScreen from '@/components/LoadingScreen';
 
 export default function ConversationPage() {
   const { id: conversationId } = useParams();
@@ -15,12 +16,7 @@ export default function ConversationPage() {
 
   // Gestion du loading
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        <span className="ml-2">Chargement de la conversation...</span>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   // Redirection si conversation non trouvée

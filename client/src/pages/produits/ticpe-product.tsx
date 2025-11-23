@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import UniversalProductWorkflow from "@/components/UniversalProductWorkflow";
 import { get } from "@/lib/api";
+import LoadingScreen from "@/components/LoadingScreen";
 
 interface ClientProduitEligible {
   id: string;
@@ -109,18 +110,7 @@ const TICPEProductPage = () => {
   const badgeLabel = eligibilityRejected ? 'Non éligible' : eligibilityValidated ? 'Éligible' : 'En cours';
 
   if (loading) {
-    return (
-      <div>
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Chargement du dossier TICPE...</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (error || !clientProduit) {
