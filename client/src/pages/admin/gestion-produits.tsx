@@ -136,17 +136,30 @@ export default function GestionProduits() {
       console.log('📦 Données reçues:', response.data);
       
       // Vérifier le format de la réponse
-      if (response.data.success && Array.isArray(response.data.produits)) {
-        const produitsTries = sortProduits(response.data.produits);
-        setProduits(produitsTries);
-        console.log('✅ Produits chargés:', produitsTries.length);
+      // Le backend retourne: { success: true, data: { produits: [...] } }
+      let produitsList: ProduitEligible[] = [];
+      
+      if (response.data.success && response.data.data?.produits) {
+        produitsList = response.data.data.produits;
+      } else if (Array.isArray(response.data.data?.produits)) {
+        produitsList = response.data.data.produits;
       } else if (Array.isArray(response.data.produits)) {
         // Format legacy
-        const produitsTries = sortProduits(response.data.produits);
-        setProduits(produitsTries);
-        console.log('✅ Produits chargés (format legacy):', produitsTries.length);
+        produitsList = response.data.produits;
+      } else if (Array.isArray(response.data)) {
+        // Format direct array
+        produitsList = response.data;
       } else {
         console.warn('⚠️ Format de réponse invalide:', response.data);
+        produitsList = [];
+      }
+      
+      if (Array.isArray(produitsList) && produitsList.length > 0) {
+        const produitsTries = sortProduits(produitsList);
+        setProduits(produitsTries);
+        console.log('✅ Produits chargés:', produitsTries.length);
+      } else {
+        console.log('ℹ️ Aucun produit trouvé dans la réponse');
         setProduits([]);
       }
     } catch (error: any) {

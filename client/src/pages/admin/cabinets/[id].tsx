@@ -422,8 +422,11 @@ const AdminCabinetDetailPage: React.FC = () => {
   }, [cabinetId, lastCabinetId, dataLoaded]);
 
   useEffect(() => {
-    loadAllCabinetData();
-  }, [loadAllCabinetData]);
+    if (cabinetId && (cabinetId !== lastCabinetId || !dataLoaded)) {
+      loadAllCabinetData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cabinetId]);
 
   useEffect(() => {
     loadTimeline({ reset: true });
@@ -461,8 +464,45 @@ const AdminCabinetDetailPage: React.FC = () => {
     return () => clearTimeout(handler);
   }, [expertSearch, fetchAvailableExperts]);
 
-  if (!cabinetId || (loading && !cabinet)) {
-    return <div>Chargement...</div>;
+  if (!cabinetId) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center text-gray-500">ID cabinet manquant</div>
+      </div>
+    );
+  }
+
+  if (loading && !cabinet && !error) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Chargement du cabinet...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error && !cabinet) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="p-4 bg-red-50 text-red-700 rounded-lg">
+          <p className="font-semibold">Erreur</p>
+          <p>{error}</p>
+          <Button className="mt-4" onClick={() => loadAllCabinetData()}>
+            Réessayer
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!cabinet) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center text-gray-500">Cabinet non trouvé</div>
+      </div>
+    );
   }
 
   const hierarchyMembers = useMemo(() => {

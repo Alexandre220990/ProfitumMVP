@@ -3,7 +3,7 @@
  * Vue complète d'un produit éligible avec statistiques commerciales
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -209,6 +209,29 @@ export default function ProduitSynthese() {
     });
   };
 
+  const getClientDisplayName = useCallback((client: any, clientId: string) => {
+    if (!client) return `Client #${clientId}`;
+    
+    // Priorité 1: company_name
+    if (client.company_name && client.company_name.trim()) {
+      return client.company_name;
+    }
+    
+    // Priorité 2: first_name + last_name
+    const fullName = `${client.first_name || ''} ${client.last_name || ''}`.trim();
+    if (fullName) {
+      return fullName;
+    }
+    
+    // Priorité 3: email
+    if (client.email) {
+      return client.email;
+    }
+    
+    // Dernier recours: ID
+    return `Client #${clientId}`;
+  }, []);
+
   const timelineEvents = useMemo<TimelineEvent[]>(() => {
     if (!dossiers || dossiers.length === 0) return [];
 
@@ -219,15 +242,11 @@ export default function ProduitSynthese() {
         date: dossier.created_at,
         statut: dossier.statut,
         montant: dossier.montantFinal || 0,
-        client:
-          dossier.Client?.company_name ||
-          `${dossier.Client?.first_name || ''} ${dossier.Client?.last_name || ''}`.trim() ||
-          dossier.Client?.email ||
-          'Client inconnu',
+        client: getClientDisplayName(dossier.Client, dossier.clientId),
         dossierLink: `/admin/dossiers/${dossier.id}`,
         clientLink: dossier.Client?.id ? `/admin/clients/${dossier.Client.id}` : null
       }));
-  }, [dossiers]);
+  }, [dossiers, getClientDisplayName]);
 
   // ============================================================================
   // AUTHENTIFICATION
@@ -589,7 +608,7 @@ export default function ProduitSynthese() {
                               <div className="flex-1">
                                 <div className="flex items-center gap-2 mb-1">
                                   <p className="font-medium text-gray-900">
-                                    {dossier.Client?.company_name || `Client #${dossier.clientId}`}
+                                    {getClientDisplayName(dossier.Client, dossier.clientId)}
                                   </p>
                                   <Badge variant={dossier.statut === 'validated' ? 'default' : 'secondary'}>
                                     {dossier.statut}

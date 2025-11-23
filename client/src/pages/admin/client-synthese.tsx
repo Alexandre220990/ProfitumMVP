@@ -475,15 +475,9 @@ const ClientSynthese: React.FC = () => {
                                   variant="outline" 
                                   size="sm"
                                   onClick={() => {
-                                    if (dossier.produitId) {
-                                      navigate(`/admin/produits/${dossier.produitId}`);
-                                    } else if (dossier.ProduitEligible?.id) {
-                                      navigate(`/admin/produits/${dossier.ProduitEligible.id}`);
-                                    } else {
-                                      toast.error('Aucune fiche produit liée à ce dossier.');
-                                    }
+                                    navigate(`/admin/dossiers/${dossier.id}`);
                                   }}
-                                  title="Ouvrir la synthèse Produit"
+                                  title="Ouvrir la synthèse du dossier"
                                 >
                                   <Eye className="w-4 h-4" />
                                 </Button>

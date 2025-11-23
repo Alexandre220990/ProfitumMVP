@@ -59,7 +59,7 @@ export function useDashboardClientEffects() { const { user, isLoading } = useAut
     } else if (user && user.type !== 'client') {
       console.warn('⚠️ Utilisateur non-client détecté:', user.type, 'redirection vers dashboard approprié');
       if (user.type === 'admin') {
-        navigate('/admin/dashboard');
+        navigate('/admin/dashboard-optimized');
       } else if (user.type === 'expert') {
         navigate('/expert/dashboard');
       } else {

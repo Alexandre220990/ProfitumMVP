@@ -109,6 +109,7 @@ export interface Cabinet {
     dossiers_en_cours: number;
     dossiers_signes: number;
   };
+  produits_count?: number;
 }
 
 export interface CabinetMemberRecord {

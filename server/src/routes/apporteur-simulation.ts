@@ -27,6 +27,14 @@ router.post('/:prospectId/simulation', async (req: Request, res: Response) => {
       });
     }
     
+    if (!user.database_id) {
+      console.error('❌ database_id manquant pour utilisateur:', user.email);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur d\'authentification: identifiant utilisateur manquant'
+      });
+    }
+    
     const { answers, prospect_data } = req.body;
     
     if (!answers || typeof answers !== 'object') {

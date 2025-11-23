@@ -1,19 +1,24 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { adminCabinetService } from '@/services/admin-cabinet-service';
 import { Cabinet } from '@/types';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Users, Shield } from 'lucide-react';
+import { Plus, Search, Users, Shield, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 
+type SortColumn = 'name' | 'owner' | 'contact' | 'status' | 'performances' | 'members';
+type SortDirection = 'asc' | 'desc' | null;
+
 const AdminCabinetsPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [cabinets, setCabinets] = useState<Cabinet[]>([]);
   const [search, setSearch] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [sortColumn, setSortColumn] = useState<SortColumn | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>(null);
   const navigate = useNavigate();
 
   const fetchCabinets = async () => {
@@ -44,6 +49,87 @@ const AdminCabinetsPage: React.FC = () => {
 
   const handleViewCabinet = (id: string) => {
     navigate(`/admin/cabinets/${id}`);
+  };
+
+  const handleSort = (column: SortColumn) => {
+    if (sortColumn === column) {
+      if (sortDirection === 'asc') {
+        setSortDirection('desc');
+      } else if (sortDirection === 'desc') {
+        setSortColumn(null);
+        setSortDirection(null);
+      } else {
+        setSortDirection('asc');
+      }
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+  const sortedCabinets = useMemo(() => {
+    if (!sortColumn || !sortDirection) {
+      return cabinets;
+    }
+
+    const sorted = [...cabinets].sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
+
+      switch (sortColumn) {
+        case 'name':
+          aValue = a.name?.toLowerCase() || '';
+          bValue = b.name?.toLowerCase() || '';
+          break;
+        case 'owner':
+          aValue = a.owner?.name?.toLowerCase() || a.owner?.email?.toLowerCase() || '';
+          bValue = b.owner?.name?.toLowerCase() || b.owner?.email?.toLowerCase() || '';
+          break;
+        case 'contact':
+          aValue = a.email?.toLowerCase() || a.phone || '';
+          bValue = b.email?.toLowerCase() || b.phone || '';
+          break;
+        case 'status':
+          aValue = a.status || '';
+          bValue = b.status || '';
+          break;
+        case 'performances':
+          aValue = a.stats_summary?.dossiers_signes || 0;
+          bValue = b.stats_summary?.dossiers_signes || 0;
+          break;
+        case 'members':
+          aValue = a.stats_summary?.members || 0;
+          bValue = b.stats_summary?.members || 0;
+          break;
+        default:
+          return 0;
+      }
+
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return sortDirection === 'asc' 
+          ? aValue.localeCompare(bValue)
+          : bValue.localeCompare(aValue);
+      } else {
+        return sortDirection === 'asc' 
+          ? (aValue > bValue ? 1 : aValue < bValue ? -1 : 0)
+          : (aValue < bValue ? 1 : aValue > bValue ? -1 : 0);
+      }
+    });
+
+    return sorted;
+  }, [cabinets, sortColumn, sortDirection]);
+
+  const getSortIcon = (column: SortColumn) => {
+    if (sortColumn !== column) {
+      return <ArrowUpDown className="h-4 w-4 ml-1 opacity-50" />;
+    }
+    if (sortDirection === 'asc') {
+      return <ArrowUp className="h-4 w-4 ml-1" />;
+    }
+    if (sortDirection === 'desc') {
+      return <ArrowDown className="h-4 w-4 ml-1" />;
+    }
+    return <ArrowUpDown className="h-4 w-4 ml-1 opacity-50" />;
   };
 
   return (
@@ -92,30 +178,78 @@ const AdminCabinetsPage: React.FC = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Cabinet</TableHead>
-                <TableHead>Owner</TableHead>
-                <TableHead>Contact</TableHead>
-                <TableHead>Statut</TableHead>
-                <TableHead>Performances</TableHead>
-                <TableHead>Membres</TableHead>
+                <TableHead>
+                  <button
+                    onClick={() => handleSort('name')}
+                    className="flex items-center hover:text-gray-900 transition-colors"
+                  >
+                    Cabinet
+                    {getSortIcon('name')}
+                  </button>
+                </TableHead>
+                <TableHead>
+                  <button
+                    onClick={() => handleSort('owner')}
+                    className="flex items-center hover:text-gray-900 transition-colors"
+                  >
+                    Owner
+                    {getSortIcon('owner')}
+                  </button>
+                </TableHead>
+                <TableHead>
+                  <button
+                    onClick={() => handleSort('contact')}
+                    className="flex items-center hover:text-gray-900 transition-colors"
+                  >
+                    Contact
+                    {getSortIcon('contact')}
+                  </button>
+                </TableHead>
+                <TableHead>
+                  <button
+                    onClick={() => handleSort('status')}
+                    className="flex items-center hover:text-gray-900 transition-colors"
+                  >
+                    Statut
+                    {getSortIcon('status')}
+                  </button>
+                </TableHead>
+                <TableHead>
+                  <button
+                    onClick={() => handleSort('performances')}
+                    className="flex items-center hover:text-gray-900 transition-colors"
+                  >
+                    Performances
+                    {getSortIcon('performances')}
+                  </button>
+                </TableHead>
+                <TableHead>
+                  <button
+                    onClick={() => handleSort('members')}
+                    className="flex items-center hover:text-gray-900 transition-colors"
+                  >
+                    Membres
+                    {getSortIcon('members')}
+                  </button>
+                </TableHead>
                 <TableHead></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-4">
+                  <TableCell colSpan={7} className="text-center py-4">
                     Chargement...
                   </TableCell>
                 </TableRow>
-              ) : cabinets.length === 0 ? (
+              ) : sortedCabinets.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-4 text-gray-500">
+                  <TableCell colSpan={7} className="text-center py-4 text-gray-500">
                     Aucun cabinet trouvé
                   </TableCell>
                 </TableRow>
               ) : (
-                cabinets.map((cabinet) => (
+                sortedCabinets.map((cabinet) => (
                   <TableRow key={cabinet.id}>
                     <TableCell className="font-medium">
                       <div className="flex flex-col">
@@ -160,11 +294,11 @@ const AdminCabinetsPage: React.FC = () => {
                       <div className="flex items-center gap-3 text-sm">
                         <span className="flex items-center gap-1 text-gray-700">
                           <Shield className="h-3.5 w-3.5" />
-                          {cabinet.stats_summary?.members || cabinet.members?.length || 0}
+                          {cabinet.stats_summary?.members || 0}
                         </span>
                         <span className="flex items-center gap-1 text-gray-500">
                           <Users className="h-3.5 w-3.5" />
-                          {cabinet.produits?.length || 0} prod.
+                          {cabinet.produits_count || 0} prod.
                         </span>
                       </div>
                     </TableCell>

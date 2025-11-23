@@ -59,12 +59,12 @@ export default function AdminContactMessage() {
         setMessage(response.data);
       } else {
         toast.error('Message introuvable');
-        navigate('/admin');
+        navigate('/admin/dashboard-optimized');
       }
     } catch (error: any) {
       console.error('Erreur chargement message:', error);
       toast.error(error.message || 'Erreur lors du chargement du message');
-      navigate('/admin');
+      navigate('/admin/dashboard-optimized');
     } finally {
       setLoading(false);
     }
@@ -126,7 +126,7 @@ export default function AdminContactMessage() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => navigate('/admin')}
+            onClick={() => navigate('/admin/dashboard-optimized')}
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>

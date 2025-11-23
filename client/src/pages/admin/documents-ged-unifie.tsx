@@ -117,6 +117,15 @@ export default function DocumentsGEDUnifiePage() {
   const [dossierDocuments, setDossierDocuments] = useState<{ [key: string]: DocumentFile[] }>({});
   const [documentationDocs, setDocumentationDocs] = useState<any[]>([]);
   const [loadingDocs, setLoadingDocs] = useState(false);
+  
+  // États pour les détails des KPI
+  const [selectedKPI, setSelectedKPI] = useState<string | null>(null);
+  const [filesByClient, setFilesByClient] = useState<any[]>([]);
+  const [pendingClients, setPendingClients] = useState<any[]>([]);
+  const [uploadsTodayClients, setUploadsTodayClients] = useState<any[]>([]);
+  const [pendingType, setPendingType] = useState<'admin' | 'expert' | 'all'>('all');
+  const [expandedClients, setExpandedClients] = useState<Set<string>>(new Set());
+  const [loadingDetails, setLoadingDetails] = useState(false);
 
   // ========================================
   // UTILITAIRES
@@ -360,6 +369,69 @@ export default function DocumentsGEDUnifiePage() {
   const handleRefresh = () => {
     setRefreshKey(prev => prev + 1);
     loadAdminData();
+    if (selectedKPI) {
+      loadKPIDetails(selectedKPI);
+    }
+  };
+
+  // ========================================
+  // CHARGEMENT DES DÉTAILS DES KPI
+  // ========================================
+
+  const loadKPIDetails = async (kpiType: string, typeOverride?: 'admin' | 'expert' | 'all') => {
+    try {
+      setLoadingDetails(true);
+      const typeToUse = typeOverride !== undefined ? typeOverride : pendingType;
+      
+      switch (kpiType) {
+        case 'total_files':
+          const filesResponse = await get('/admin/documents/files-by-client');
+          if (filesResponse.success) {
+            setFilesByClient(filesResponse.data || []);
+          }
+          break;
+          
+        case 'pending':
+          const pendingResponse = await get(`/admin/documents/pending-clients?type=${typeToUse}`);
+          if (pendingResponse.success) {
+            setPendingClients(pendingResponse.data || []);
+          }
+          break;
+          
+        case 'uploads_today':
+          const uploadsResponse = await get('/admin/documents/uploads-today');
+          if (uploadsResponse.success) {
+            setUploadsTodayClients(uploadsResponse.data || []);
+          }
+          break;
+      }
+    } catch (error) {
+      console.error('Erreur chargement détails KPI:', error);
+      toast.error('Impossible de charger les détails');
+    } finally {
+      setLoadingDetails(false);
+    }
+  };
+
+  const handleKPIClick = (kpiType: string) => {
+    if (selectedKPI === kpiType) {
+      // Si déjà sélectionné, fermer
+      setSelectedKPI(null);
+    } else {
+      // Sinon, ouvrir et charger les détails
+      setSelectedKPI(kpiType);
+      loadKPIDetails(kpiType);
+    }
+  };
+
+  const toggleClientExpansion = (clientId: string) => {
+    const newExpanded = new Set(expandedClients);
+    if (newExpanded.has(clientId)) {
+      newExpanded.delete(clientId);
+    } else {
+      newExpanded.add(clientId);
+    }
+    setExpandedClients(newExpanded);
   };
 
   // ========================================
@@ -454,8 +526,11 @@ export default function DocumentsGEDUnifiePage() {
 
         {/* Statistiques rapides */}
         {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <Card>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            <Card 
+              className={`cursor-pointer transition-all hover:shadow-lg ${selectedKPI === 'total_files' ? 'ring-2 ring-blue-500' : ''}`}
+              onClick={() => handleKPIClick('total_files')}
+            >
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -467,19 +542,10 @@ export default function DocumentsGEDUnifiePage() {
               </CardContent>
             </Card>
             
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Espace Utilisé</p>
-                    <p className="text-2xl font-bold text-gray-900">{formatFileSize(stats.total_size)}</p>
-                  </div>
-                  <HardDrive className="w-8 h-8 text-green-600" />
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
+            <Card 
+              className={`cursor-pointer transition-all hover:shadow-lg ${selectedKPI === 'pending' ? 'ring-2 ring-orange-500' : ''}`}
+              onClick={() => handleKPIClick('pending')}
+            >
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -491,7 +557,10 @@ export default function DocumentsGEDUnifiePage() {
               </CardContent>
             </Card>
             
-            <Card>
+            <Card 
+              className={`cursor-pointer transition-all hover:shadow-lg ${selectedKPI === 'uploads_today' ? 'ring-2 ring-purple-500' : ''}`}
+              onClick={() => handleKPIClick('uploads_today')}
+            >
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -503,6 +572,196 @@ export default function DocumentsGEDUnifiePage() {
               </CardContent>
             </Card>
           </div>
+        )}
+
+        {/* Section détails KPI */}
+        {selectedKPI && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>
+                  {selectedKPI === 'total_files' && 'Fichiers par Client'}
+                  {selectedKPI === 'pending' && 'Clients en Attente de Validation'}
+                  {selectedKPI === 'uploads_today' && 'Clients ayant Uploadé Aujourd\'hui'}
+                </span>
+                <Button variant="ghost" size="sm" onClick={() => setSelectedKPI(null)}>
+                  <XCircle className="w-4 h-4" />
+                </Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loadingDetails ? (
+                <div className="text-center py-8">
+                  <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-gray-400" />
+                  <p className="text-gray-600">Chargement des détails...</p>
+                </div>
+              ) : (
+                <>
+                  {selectedKPI === 'total_files' && (
+                    <div className="space-y-4">
+                      {filesByClient.length === 0 ? (
+                        <p className="text-center text-gray-500 py-8">Aucun fichier trouvé</p>
+                      ) : (
+                        filesByClient.map((client: any) => (
+                          <div key={client.client_id} className="border rounded-lg p-4">
+                            <div 
+                              className="flex items-center justify-between cursor-pointer"
+                              onClick={() => toggleClientExpansion(client.client_id)}
+                            >
+                              <div className="flex-1">
+                                <h4 className="font-semibold text-gray-900">{client.client_name}</h4>
+                                <p className="text-sm text-gray-600">{client.client_email}</p>
+                                <div className="flex gap-4 mt-2">
+                                  <Badge variant="secondary">{client.total_docs} documents</Badge>
+                                  <Badge variant="default" className="bg-green-600">{client.validated_docs} validés</Badge>
+                                  <Badge variant="destructive">{client.rejected_docs} refusés</Badge>
+                                  <Badge variant="outline">{client.pending_docs} en attente</Badge>
+                                </div>
+                              </div>
+                              <Button variant="ghost" size="sm">
+                                {expandedClients.has(client.client_id) ? 'Masquer' : 'Afficher'}
+                              </Button>
+                            </div>
+                            {expandedClients.has(client.client_id) && (
+                              <div className="mt-4 space-y-2 border-t pt-4">
+                                {client.files.map((file: any) => (
+                                  <div key={file.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                                    <div className="flex-1">
+                                      <p className="text-sm font-medium">{file.filename}</p>
+                                      <div className="flex gap-2 mt-1">
+                                        <Badge 
+                                          variant={file.validation_status === 'validated' ? 'default' : file.validation_status === 'rejected' ? 'destructive' : 'secondary'}
+                                          className="text-xs"
+                                        >
+                                          {file.validation_status === 'validated' ? 'Validé' : file.validation_status === 'rejected' ? 'Refusé' : 'En attente'}
+                                        </Badge>
+                                        {file.file_size && (
+                                          <span className="text-xs text-gray-500">
+                                            {formatFileSize(file.file_size)}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+
+                  {selectedKPI === 'pending' && (
+                    <div className="space-y-4">
+                      <div className="flex gap-2 mb-4">
+                        <Button
+                          variant={pendingType === 'all' ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => {
+                            setPendingType('all');
+                            loadKPIDetails('pending', 'all');
+                          }}
+                        >
+                          Tous
+                        </Button>
+                        <Button
+                          variant={pendingType === 'admin' ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => {
+                            setPendingType('admin');
+                            loadKPIDetails('pending', 'admin');
+                          }}
+                        >
+                          En Attente Validation Admin
+                        </Button>
+                        <Button
+                          variant={pendingType === 'expert' ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => {
+                            setPendingType('expert');
+                            loadKPIDetails('pending', 'expert');
+                          }}
+                        >
+                          En Attente Validation Expert
+                        </Button>
+                      </div>
+                      {pendingClients.length === 0 ? (
+                        <p className="text-center text-gray-500 py-8">Aucun client en attente</p>
+                      ) : (
+                        pendingClients.map((client: any) => (
+                          <div key={client.dossier_id} className="border rounded-lg p-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1">
+                                <h4 className="font-semibold text-gray-900">{client.client_name}</h4>
+                                <p className="text-sm text-gray-600">{client.client_email}</p>
+                                <p className="text-sm text-gray-500 mt-1">Produit: {client.produit_name}</p>
+                                <div className="flex gap-2 mt-2">
+                                  <Badge variant="outline">
+                                    {client.pending_docs_count} document{client.pending_docs_count > 1 ? 's' : ''} en attente
+                                  </Badge>
+                                  {client.admin_status === 'pending' && (
+                                    <Badge variant="secondary">Admin: En attente</Badge>
+                                  )}
+                                  {client.expert_status === 'pending' && (
+                                    <Badge variant="secondary">Expert: En attente</Badge>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+
+                  {selectedKPI === 'uploads_today' && (
+                    <div className="space-y-4">
+                      {uploadsTodayClients.length === 0 ? (
+                        <p className="text-center text-gray-500 py-8">Aucun upload aujourd'hui</p>
+                      ) : (
+                        uploadsTodayClients.map((client: any) => (
+                          <div key={client.client_id} className="border rounded-lg p-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1">
+                                <h4 className="font-semibold text-gray-900">{client.client_name}</h4>
+                                <p className="text-sm text-gray-600">{client.client_email}</p>
+                                <Badge variant="secondary" className="mt-2">
+                                  {client.uploads_count} upload{client.uploads_count > 1 ? 's' : ''} aujourd'hui
+                                </Badge>
+                              </div>
+                            </div>
+                            <div className="mt-4 space-y-2">
+                              {client.files.map((file: any) => (
+                                <div key={file.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                                  <div className="flex-1">
+                                    <p className="text-sm font-medium">{file.filename}</p>
+                                    <div className="flex gap-2 mt-1">
+                                      <Badge 
+                                        variant={file.validation_status === 'validated' ? 'default' : file.validation_status === 'rejected' ? 'destructive' : 'secondary'}
+                                        className="text-xs"
+                                      >
+                                        {file.validation_status === 'validated' ? 'Validé' : file.validation_status === 'rejected' ? 'Refusé' : 'En attente'}
+                                      </Badge>
+                                      {file.file_size && (
+                                        <span className="text-xs text-gray-500">
+                                          {formatFileSize(file.file_size)}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
         )}
 
         {/* Onglets principaux */}

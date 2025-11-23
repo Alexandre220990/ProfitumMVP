@@ -134,7 +134,7 @@ const ExpertSynthese: React.FC = () => {
         setExpert(expertData);
       } else {
         toast.error('Expert non trouvé');
-        navigate('/admin/dashboard');
+        navigate('/admin/dashboard-optimized');
         return;
       }
 
@@ -834,17 +834,9 @@ const ExpertSynthese: React.FC = () => {
                                   variant="outline" 
                                   size="sm"
                                   onClick={() => {
-                                    if (dossier.produitId) {
-                                      navigate(`/admin/produits/${dossier.produitId}`);
-                                    } else if (dossier.ProduitEligible?.id) {
-                                      navigate(`/admin/produits/${dossier.ProduitEligible.id}`);
-                                    } else if (dossier.Client?.id) {
-                                      navigate(`/admin/clients/${dossier.Client.id}`);
-                                    } else {
-                                      toast.error('Impossible d\'ouvrir la fiche liée au dossier');
-                                    }
+                                    navigate(`/admin/dossiers/${dossier.id}`);
                                   }}
-                                  title="Voir la fiche liée"
+                                  title="Ouvrir la synthèse du dossier"
                                 >
                                   <Eye className="w-4 h-4" />
                                 </Button>

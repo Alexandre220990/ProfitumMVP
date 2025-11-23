@@ -610,7 +610,8 @@ const skipAuthForApporteurPublic = (req: Request, res: Response, next: NextFunct
 // pour éviter les conflits de routing Express
 
 // 1. Routes simulation apporteur - PROTÉGÉES (plus spécifiques)
-app.use('/api/apporteur/prospects', enhancedAuthMiddleware, requireUserType('apporteur'), apporteurSimulationRoutes);
+// Utilisation de simpleAuthMiddleware pour cohérence avec les autres routes apporteur
+app.use('/api/apporteur/prospects', simpleAuthMiddleware, requireUserType('apporteur'), apporteurSimulationRoutes);
 console.log('✅ Routes simulation apporteur montées sur /api/apporteur/prospects');
 
 // 2. Routes paramètres apporteur (profile, notifications, deactivate) - PROTÉGÉES

@@ -1,5 +1,5 @@
 import React, { Suspense, useEffect } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ClientProvider } from './contexts/ClientContext';
 import { AdminProvider } from './contexts/AdminContext';
@@ -351,8 +351,8 @@ function App() {
                     <Route element={<ProtectedRoute requiredType="admin" />}>
                       <Route path="/admin" element={<AdminLayout />}>
                         {/* Dashboard */}
-                        <Route index element={<AdminDashboard />} />
-                        <Route path="dashboard" element={<AdminDashboard />} />
+                        <Route index element={<Navigate to="/admin/dashboard-optimized" replace />} />
+                        <Route path="dashboard" element={<Navigate to="/admin/dashboard-optimized" replace />} />
                         <Route path="dashboard-optimized" element={<AdminDashboardOptimized />} />
                         
                         {/* Agenda */}

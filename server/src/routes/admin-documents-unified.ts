@@ -725,5 +725,267 @@ router.get('/labels', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * GET /api/admin/documents/files-by-client
+ * Liste des fichiers groupés par client avec compteurs
+ */
+router.get('/files-by-client', async (req: Request, res: Response) => {
+  try {
+    const { data, error } = await supabase
+      .from('ClientProcessDocument')
+      .select(`
+        id,
+        filename,
+        validation_status,
+        status,
+        file_size,
+        created_at,
+        client_id,
+        Client!inner (
+          id,
+          company_name,
+          email
+        )
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('❌ Erreur récupération fichiers par client:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur récupération fichiers'
+      });
+    }
+
+    // Grouper par client
+    const groupedByClient: { [key: string]: any } = {};
+    
+    (data || []).forEach((doc: any) => {
+      const clientId = doc.client_id;
+      if (!groupedByClient[clientId]) {
+        groupedByClient[clientId] = {
+          client_id: clientId,
+          client_name: doc.Client?.company_name || 'Client inconnu',
+          client_email: doc.Client?.email || '',
+          total_docs: 0,
+          validated_docs: 0,
+          rejected_docs: 0,
+          pending_docs: 0,
+          files: []
+        };
+      }
+      
+      groupedByClient[clientId].total_docs++;
+      if (doc.validation_status === 'validated' || doc.status === 'validated') {
+        groupedByClient[clientId].validated_docs++;
+      } else if (doc.validation_status === 'rejected' || doc.status === 'rejected') {
+        groupedByClient[clientId].rejected_docs++;
+      } else {
+        groupedByClient[clientId].pending_docs++;
+      }
+      
+      groupedByClient[clientId].files.push({
+        id: doc.id,
+        filename: doc.filename,
+        validation_status: doc.validation_status || doc.status,
+        file_size: doc.file_size,
+        created_at: doc.created_at
+      });
+    });
+
+    return res.json({
+      success: true,
+      data: Object.values(groupedByClient)
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route /files-by-client:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+/**
+ * GET /api/admin/documents/pending-clients
+ * Liste des clients avec documents en attente de validation
+ * Query param: type = 'admin' | 'expert'
+ */
+router.get('/pending-clients', async (req: Request, res: Response) => {
+  try {
+    const { type } = req.query; // 'admin' ou 'expert'
+
+    // Récupérer les dossiers (ClientProduitEligible) avec documents en attente
+    let query = supabase
+      .from('ClientProduitEligible')
+      .select(`
+        id,
+        clientId,
+        statut,
+        admin_eligibility_status,
+        expert_validation_status,
+        Client:clientId (
+          id,
+          company_name,
+          email
+        ),
+        ProduitEligible:produitId (
+          id,
+          nom
+        )
+      `);
+
+    // Filtrer selon le type de validation
+    if (type === 'admin') {
+      query = query.or('admin_eligibility_status.eq.pending,admin_eligibility_status.is.null');
+    } else if (type === 'expert') {
+      query = query.or('expert_validation_status.eq.pending,expert_validation_status.is.null');
+    } else {
+      // Les deux
+      query = query.or('admin_eligibility_status.eq.pending,admin_eligibility_status.is.null,expert_validation_status.eq.pending,expert_validation_status.is.null');
+    }
+
+    const { data: dossiers, error: dossiersError } = await query;
+
+    if (dossiersError) {
+      console.error('❌ Erreur récupération dossiers en attente:', dossiersError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur récupération dossiers'
+      });
+    }
+
+    // Récupérer les documents en attente pour ces dossiers
+    const dossierIds = (dossiers || []).map((d: any) => d.id);
+    
+    const { data: documents, error: docsError } = await supabase
+      .from('ClientProcessDocument')
+      .select(`
+        id,
+        client_produit_id,
+        filename,
+        validation_status,
+        status,
+        created_at
+      `)
+      .in('client_produit_id', dossierIds)
+      .or('validation_status.eq.pending,status.eq.pending');
+
+    if (docsError) {
+      console.error('❌ Erreur récupération documents:', docsError);
+    }
+
+    // Enrichir les dossiers avec les documents
+    const clientsWithDocs = (dossiers || []).map((dossier: any) => {
+      const docs = (documents || []).filter((doc: any) => doc.client_produit_id === dossier.id);
+      
+      // Gérer les relations Supabase qui peuvent être dans un tableau
+      const client = Array.isArray(dossier.Client) ? dossier.Client[0] : dossier.Client;
+      const produit = Array.isArray(dossier.ProduitEligible) ? dossier.ProduitEligible[0] : dossier.ProduitEligible;
+      
+      return {
+        dossier_id: dossier.id,
+        client_id: dossier.clientId || dossier["clientId"],
+        client_name: client?.company_name || client?.["company_name"] || 'Client inconnu',
+        client_email: client?.email || '',
+        produit_name: produit?.nom || 'Produit inconnu',
+        admin_status: dossier.admin_eligibility_status || 'pending',
+        expert_status: dossier.expert_validation_status || 'pending',
+        pending_docs_count: docs.length,
+        documents: docs
+      };
+    }).filter((c: any) => c.pending_docs_count > 0 || (type === 'admin' && (c.admin_status === 'pending' || !c.admin_status)) || (type === 'expert' && (c.expert_status === 'pending' || !c.expert_status)));
+
+    return res.json({
+      success: true,
+      data: clientsWithDocs
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route /pending-clients:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+/**
+ * GET /api/admin/documents/uploads-today
+ * Liste des clients ayant uploadé des documents aujourd'hui
+ */
+router.get('/uploads-today', async (req: Request, res: Response) => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayISO = today.toISOString();
+
+    const { data, error } = await supabase
+      .from('ClientProcessDocument')
+      .select(`
+        id,
+        filename,
+        validation_status,
+        status,
+        file_size,
+        created_at,
+        client_id,
+        Client!inner (
+          id,
+          company_name,
+          email
+        )
+      `)
+      .gte('created_at', todayISO)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('❌ Erreur récupération uploads aujourd\'hui:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur récupération uploads'
+      });
+    }
+
+    // Grouper par client
+    const groupedByClient: { [key: string]: any } = {};
+    
+    (data || []).forEach((doc: any) => {
+      const clientId = doc.client_id;
+      if (!groupedByClient[clientId]) {
+        groupedByClient[clientId] = {
+          client_id: clientId,
+          client_name: doc.Client?.company_name || 'Client inconnu',
+          client_email: doc.Client?.email || '',
+          uploads_count: 0,
+          files: []
+        };
+      }
+      
+      groupedByClient[clientId].uploads_count++;
+      groupedByClient[clientId].files.push({
+        id: doc.id,
+        filename: doc.filename,
+        validation_status: doc.validation_status || doc.status,
+        file_size: doc.file_size,
+        created_at: doc.created_at
+      });
+    });
+
+    return res.json({
+      success: true,
+      data: Object.values(groupedByClient)
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route /uploads-today:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
 export default router;
 

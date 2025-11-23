@@ -101,9 +101,7 @@ export class CabinetService {
         active_until,
         created_at,
         updated_at,
-        owner:owner_expert_id(id, name, first_name, last_name, email),
-        members:CabinetMember(count),
-        produits:CabinetProduitEligible(count)
+        owner:owner_expert_id(id, name, first_name, last_name, email)
       `)
       .order('created_at', { ascending: false });
 
@@ -115,16 +113,23 @@ export class CabinetService {
     if (error) throw error;
 
     const cabinetIds = (data || []).map(cab => cab.id);
-    const statsByCabinet = await this.getAggregatedTeamStats(cabinetIds);
+    
+    // Récupérer les stats agrégées et les counts de membres/produits
+    const [statsByCabinet, membersCounts, produitsCounts] = await Promise.all([
+      this.getAggregatedTeamStats(cabinetIds),
+      this.getMembersCounts(cabinetIds),
+      this.getProduitsCounts(cabinetIds)
+    ]);
 
     return (data || []).map(cabinet => ({
       ...cabinet,
-      stats_summary: statsByCabinet[cabinet.id] || {
-        members: 0,
-        dossiers_total: 0,
-        dossiers_en_cours: 0,
-        dossiers_signes: 0
-      }
+      stats_summary: {
+        members: membersCounts[cabinet.id] || 0,
+        dossiers_total: statsByCabinet[cabinet.id]?.dossiers_total || 0,
+        dossiers_en_cours: statsByCabinet[cabinet.id]?.dossiers_en_cours || 0,
+        dossiers_signes: statsByCabinet[cabinet.id]?.dossiers_signes || 0
+      },
+      produits_count: produitsCounts[cabinet.id] || 0
     }));
   }
 
@@ -758,7 +763,7 @@ export class CabinetService {
 
     if (error) throw error;
 
-    return (data || []).reduce<Record<string, { members: number; dossiers_total: number; dossiers_en_cours: number; dossiers_signes: number }>>(
+    return (data || []).reduce<Record<string, { dossiers_total: number; dossiers_en_cours: number; dossiers_signes: number }>>(
       (acc, row) => {
         const cabId = row.cabinet_id;
         if (!cabinetIds.includes(cabId)) {
@@ -766,13 +771,11 @@ export class CabinetService {
         }
         if (!acc[cabId]) {
           acc[cabId] = {
-            members: 0,
             dossiers_total: 0,
             dossiers_en_cours: 0,
             dossiers_signes: 0
           };
         }
-        acc[cabId].members += 1;
         acc[cabId].dossiers_total += row.dossiers_total;
         acc[cabId].dossiers_en_cours += row.dossiers_en_cours;
         acc[cabId].dossiers_signes += row.dossiers_signes;
@@ -780,6 +783,42 @@ export class CabinetService {
       },
       {}
     );
+  }
+
+  private static async getMembersCounts(cabinetIds: string[]): Promise<Record<string, number>> {
+    if (!cabinetIds.length) return {};
+
+    const { data, error } = await supabase
+      .from('CabinetMember')
+      .select('cabinet_id')
+      .in('cabinet_id', cabinetIds)
+      .in('status', ['active', 'invited']);
+
+    if (error) throw error;
+
+    return (data || []).reduce<Record<string, number>>((acc, row) => {
+      const cabId = row.cabinet_id;
+      acc[cabId] = (acc[cabId] || 0) + 1;
+      return acc;
+    }, {});
+  }
+
+  private static async getProduitsCounts(cabinetIds: string[]): Promise<Record<string, number>> {
+    if (!cabinetIds.length) return {};
+
+    const { data, error } = await supabase
+      .from('CabinetProduitEligible')
+      .select('cabinet_id')
+      .in('cabinet_id', cabinetIds)
+      .eq('is_active', true);
+
+    if (error) throw error;
+
+    return (data || []).reduce<Record<string, number>>((acc, row) => {
+      const cabId = row.cabinet_id;
+      acc[cabId] = (acc[cabId] || 0) + 1;
+      return acc;
+    }, {});
   }
 
   private static computeCabinetKpis(stats: CabinetTeamStatRow[]) {
