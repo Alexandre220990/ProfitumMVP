@@ -622,7 +622,7 @@ export default function GestionProduits() {
                         </TableCell>
                         <TableCell>
                           {produit.taux_min && produit.taux_max 
-                            ? `${(produit.taux_min * 100).toFixed(1)}% - ${(produit.taux_max * 100).toFixed(1)}%`
+                            ? `${produit.taux_min.toFixed(1)}% - ${produit.taux_max.toFixed(1)}%`
                             : 'N/A'
                           }
                         </TableCell>
@@ -709,7 +709,7 @@ export default function GestionProduits() {
                     <Label>Taux</Label>
                     <div className="text-sm">
                       {selectedProduit.taux_min && selectedProduit.taux_max 
-                        ? `${(selectedProduit.taux_min * 100).toFixed(1)}% - ${(selectedProduit.taux_max * 100).toFixed(1)}%`
+                        ? `${selectedProduit.taux_min.toFixed(1)}% - ${selectedProduit.taux_max.toFixed(1)}%`
                         : 'N/A'
                       }
                     </div>

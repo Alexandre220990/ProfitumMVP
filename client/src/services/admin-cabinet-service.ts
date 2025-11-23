@@ -25,10 +25,18 @@ class AdminCabinetService {
   private baseUrl = `${import.meta.env.VITE_API_URL || 'https://profitummvp-production.up.railway.app'}/api/admin/cabinets`;
 
   private getAuthHeaders() {
-    return {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${localStorage.getItem('token')}`
+    // Récupérer le token JWT depuis localStorage (priorité au token direct)
+    const authToken = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+    
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json'
     };
+    
+    if (authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`;
+    }
+    
+    return headers;
   }
 
   async getCabinets(params: { search?: string } = {}) {

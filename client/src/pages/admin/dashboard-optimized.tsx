@@ -2682,7 +2682,7 @@ const AdminDashboardOptimized: React.FC = () => {
                                                     </td>
                                                     <td className="px-4 py-3 text-slate-600">
                                                       {produit.taux_min !== null && produit.taux_min !== undefined && produit.taux_max !== null && produit.taux_max !== undefined
-                                                        ? `${(produit.taux_min * 100).toFixed(1)}% - ${(produit.taux_max * 100).toFixed(1)}%`
+                                                        ? `${produit.taux_min.toFixed(1)}% - ${produit.taux_max.toFixed(1)}%`
                                                         : 'N/A'
                                                       }
                                                     </td>

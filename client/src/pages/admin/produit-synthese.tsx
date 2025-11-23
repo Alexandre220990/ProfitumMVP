@@ -369,7 +369,7 @@ export default function ProduitSynthese() {
                         <p className="text-sm font-medium text-gray-500">Taux</p>
                         <p className="text-lg font-semibold text-gray-900">
                           {produit.taux_min !== null && produit.taux_min !== undefined && produit.taux_max !== null && produit.taux_max !== undefined
-                            ? `${(produit.taux_min * 100).toFixed(1)}% - ${(produit.taux_max * 100).toFixed(1)}%`
+                            ? `${produit.taux_min.toFixed(1)}% - ${produit.taux_max.toFixed(1)}%`
                             : 'Non défini'}
                         </p>
                       </div>

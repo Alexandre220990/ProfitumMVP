@@ -308,9 +308,10 @@ app.use('/api/expert', enhancedAuthMiddleware, requireUserType('expert'), expert
 
 // Routes admin - PROTÉGÉES avec permissions spécifiques
 // Routes admin avec authentification
-app.use('/api/admin', enhancedAuthMiddleware, requireUserType('admin'), adminRoutes);
+// IMPORTANT: Monter les routes spécifiques AVANT les routes générales pour éviter les conflits
 app.use('/api/admin/cabinets', enhancedAuthMiddleware, requireUserType('admin'), adminCabinetsRoutes);
 app.use('/api/admin/documents', enhancedAuthMiddleware, requireUserType('admin'), adminDocumentsUnifiedRoutes);
+app.use('/api/admin', enhancedAuthMiddleware, requireUserType('admin'), adminRoutes);
 
 // Routes de notifications admin - PROTÉGÉES
 app.use('/api/notifications', enhancedAuthMiddleware, adminNotificationsRoutes);
