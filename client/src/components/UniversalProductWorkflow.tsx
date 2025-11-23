@@ -294,6 +294,7 @@ const partnerRequestAttemptedRef = useRef(false);
         const isAdminValidated = adminStatus === 'validated' || adminValidatedStatuses.has(statut);
         const isAdminRejected = adminStatus === 'rejected' || adminRejectedStatuses.has(statut);
 
+        // ✅ PRIORISER current_step de la BDD s'il est défini et valide
         let nextStep = Math.max(1, produitData.current_step || 1);
         let eligibilityUnlocked = false;
 
@@ -301,14 +302,23 @@ const partnerRequestAttemptedRef = useRef(false);
           console.log('❌ DIAGNOSTIC: Éligibilité rejetée par admin → retour étape 1');
           eligibilityUnlocked = false;
           nextStep = 1;
+        } else if (isAdminValidated) {
+          // ✅ Si admin a validé, utiliser current_step de la BDD (qui devrait être 2) ou au minimum 2
+          console.log('✅ DIAGNOSTIC: Validation admin détectée → déblocage étape 2', {
+            adminStatus,
+            statut,
+            current_step_bdd: produitData.current_step,
+            nextStep_calcule: nextStep
+          });
+          eligibilityUnlocked = true;
+          // Prioriser current_step de la BDD si défini, sinon minimum 2
+          nextStep = produitData.current_step && produitData.current_step >= 2 
+            ? produitData.current_step 
+            : Math.max(nextStep, 2);
         } else if (statut === 'documents_manquants') {
           console.log('📄 DIAGNOSTIC: Documents complémentaires requis → étape minimale 3');
           eligibilityUnlocked = true;
           nextStep = Math.max(nextStep, 3);
-        } else if (isAdminValidated) {
-          console.log('✅ DIAGNOSTIC: Validation admin détectée → déblocage étape 2');
-          eligibilityUnlocked = true;
-          nextStep = Math.max(nextStep, 2);
         } else if (statut === 'expert_pending_validation' || statut === 'expert_assigned') {
           console.log('👥 DIAGNOSTIC: Attente validation expert → étape 2 minimum');
           eligibilityUnlocked = true;
@@ -410,6 +420,26 @@ const partnerRequestAttemptedRef = useRef(false);
       }
     }
   }, [getDossierNotifications, clientProduitId, loadClientProduit]);
+
+  // ✅ Polling périodique pour détecter les changements de statut (validation admin, etc.)
+  useEffect(() => {
+    if (!clientProduitId) return;
+
+    // Polling toutes les 15 secondes si on est en attente de validation admin
+    const shouldPoll = clientProduit?.statut === 'pending_admin_validation' || 
+                      clientProduit?.statut === 'eligible' ||
+                      clientProduit?.statut === 'documents_uploaded' ||
+                      (clientProduit?.admin_eligibility_status === 'pending' && !clientProduit?.expert_id);
+
+    if (!shouldPoll) return;
+
+    const intervalId = setInterval(() => {
+      console.log('🔄 Polling: Vérification des changements de statut...');
+      loadClientProduit();
+    }, 15000); // Toutes les 15 secondes
+
+    return () => clearInterval(intervalId);
+  }, [clientProduitId, clientProduit?.statut, clientProduit?.admin_eligibility_status, clientProduit?.expert_id, loadClientProduit]);
 
   // Initialiser les étapes au chargement
   useEffect(() => {
@@ -1780,58 +1810,10 @@ const partnerRequestAttemptedRef = useRef(false);
           );
         }
 
-        // Étape 4 : Audit technique - Bouton validation si audit terminé
+        // Étape 4 : Audit technique - Contenu maintenant intégré dans la Card de l'étape
+        // Cette section ne s'affiche plus car le contenu est intégré directement dans la liste des étapes
         if (currentStep === 4) {
-          // Si l'audit est terminé, afficher bouton de validation
-          const auditCompleted = clientProduit?.statut === 'validated' || 
-                                 clientProduit?.statut === 'audit_completed' ||
-                                 clientProduit?.statut === 'pending_client_validation';
-          
-          return (
-            <div className="text-center py-12 space-y-6">
-              <div>
-                <h3 className="text-xl font-semibold text-gray-800 mb-2">
-                  {currentWorkflowStep.name}
-                </h3>
-                <p className="text-gray-600">{currentWorkflowStep.description}</p>
-              </div>
-
-              {auditCompleted ? (
-                <Card className="max-w-2xl mx-auto border-green-200 bg-green-50">
-                  <CardContent className="p-6 text-center">
-                    <CheckCircle className="w-12 h-12 text-green-600 mx-auto mb-4" />
-                    <h4 className="text-lg font-semibold text-green-900 mb-2">
-                      ✅ Audit technique terminé
-                    </h4>
-                    <p className="text-sm text-green-800 mb-4">
-                      Votre expert a finalisé l'audit technique de votre dossier.
-                      Veuillez consulter les résultats et valider pour poursuivre.
-                    </p>
-                    <Button
-                      onClick={() => setShowAuditValidationModal(true)}
-                      className="bg-green-600 hover:bg-green-700"
-                    >
-                      <CheckCircle className="w-4 h-4 mr-2" />
-                      Consulter et valider l'audit
-                    </Button>
-                  </CardContent>
-                </Card>
-              ) : (
-                <Card className="max-w-2xl mx-auto border-blue-200 bg-blue-50">
-                  <CardContent className="p-6 text-center">
-                    <Clock className="w-12 h-12 text-blue-600 mx-auto mb-4" />
-                    <h4 className="text-lg font-semibold text-blue-900 mb-2">
-                      🔍 Audit en cours
-                    </h4>
-                    <p className="text-sm text-blue-800">
-                      Votre expert analyse votre dossier et prépare l'audit technique.
-                      Vous serez notifié dès que l'audit sera prêt pour validation.
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-          );
+          return null;
         }
 
         // Étapes 5-6 : Gestion administrative (gérée par expert côté backend)
@@ -2227,13 +2209,72 @@ const partnerRequestAttemptedRef = useRef(false);
                   />
                 </div>
               )}
+
+              {/* Contenu intégré pour l'étape 4 - Audit technique - SEULEMENT si on est à l'étape 4 */}
+              {step.id === 4 && currentStep === 4 && (
+                <div className="mt-4 pt-4 border-t border-gray-200/60">
+                  {(() => {
+                    const auditCompleted = clientProduit?.statut === 'validated' || 
+                                           clientProduit?.statut === 'audit_completed' ||
+                                           clientProduit?.statut === 'pending_client_validation';
+                    
+                    if (auditCompleted) {
+                      return (
+                        <div className="rounded-lg border border-green-200/80 bg-gradient-to-br from-green-50/90 via-white to-green-50/50 p-3.5 shadow-sm">
+                          <div className="flex items-start gap-2.5">
+                            <div className="flex-shrink-0 mt-0.5">
+                              <CheckCircle className="w-4.5 h-4.5 text-green-600" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="text-sm font-semibold text-gray-900 mb-1">
+                                Audit technique terminé
+                              </h4>
+                              <p className="text-xs text-gray-600 leading-relaxed mb-2.5">
+                                Votre expert a finalisé l'audit technique de votre dossier. Veuillez consulter les résultats et valider pour poursuivre.
+                              </p>
+                              <Button
+                                onClick={() => setShowAuditValidationModal(true)}
+                                size="sm"
+                                className="bg-green-600 hover:bg-green-700 text-xs h-7 px-3"
+                              >
+                                <CheckCircle className="w-3 h-3 mr-1.5" />
+                                Consulter et valider l'audit
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    } else {
+                      return (
+                        <div className="rounded-lg border border-blue-200/50 bg-gradient-to-br from-blue-50/70 via-white to-blue-50/30 p-3.5 shadow-sm">
+                          <div className="flex items-start gap-2.5">
+                            <div className="flex-shrink-0 mt-0.5">
+                              <div className="w-7 h-7 rounded-full bg-blue-100/80 flex items-center justify-center border border-blue-200/40">
+                                <Clock className="w-3.5 h-3.5 text-blue-600" />
+                              </div>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="text-sm font-semibold text-gray-900 mb-1">
+                                Audit en cours
+                              </h4>
+                              <p className="text-xs text-gray-600 leading-relaxed">
+                                Votre expert analyse votre dossier et prépare l'audit technique. Vous serez notifié dès que l'audit sera prêt pour validation.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+                  })()}
+                </div>
+              )}
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Contenu de l'étape courante - seulement pour les étapes 4+ (1, 2 et 3 sont intégrées) */}
-      {currentStep >= 4 && (
+      {/* Contenu de l'étape courante - seulement pour les étapes 5+ (1, 2, 3 et 4 sont intégrées) */}
+      {currentStep >= 5 && (
         <Card className="border-2 border-blue-200 bg-blue-50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">

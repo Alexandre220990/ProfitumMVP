@@ -569,7 +569,7 @@ export default function ClientStep3DocumentCollection({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
                       <p className="font-medium text-sm text-gray-900 truncate">
-                        {doc.original_filename || doc.filename}
+                        {doc.filename}
                       </p>
                       {isValidated && (
                         <Badge className="bg-green-600 text-white text-xs px-2 py-0">
@@ -588,13 +588,19 @@ export default function ClientStep3DocumentCollection({
                       )}
                     </div>
                     <div className="flex items-center gap-2 text-xs text-gray-500">
+                      {doc.original_filename && (
+                        <>
+                          <span className="font-normal">{doc.original_filename}</span>
+                          <span>•</span>
+                        </>
+                      )}
                       {doc.file_size && (
                         <span>{(doc.file_size / 1024).toFixed(0)} KB</span>
                       )}
-                      {doc.validated_at && (
+                      {doc.created_at && (
                         <>
                           <span>•</span>
-                          <span>{new Date(doc.validated_at).toLocaleDateString('fr-FR')}</span>
+                          <span>{new Date(doc.created_at).toLocaleDateString('fr-FR')}</span>
                         </>
                       )}
                     </div>
