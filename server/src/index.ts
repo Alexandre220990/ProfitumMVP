@@ -175,19 +175,29 @@ app.use(morgan('dev'));
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 500, // limite chaque IP à 500 requêtes par fenêtre (augmenté pour dashboards avec polling)
-  message: 'Trop de requêtes depuis cette IP, veuillez réessayer plus tard.',
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => {
     // Skip rate limiting pour les routes de notification, messaging et vues qui peuvent polling
+    // Skip aussi les routes d'authentification qui ont leur propre rate limiter spécifique
     const skipPaths = [
       '/api/health', 
       '/api/apporteur/views/notifications', 
       '/api/notifications',
       '/api/admin/notifications',
-      '/api/unified-messaging'
+      '/api/unified-messaging',
+      '/api/auth' // Routes d'authentification ont leur propre rate limiter
     ];
     return skipPaths.some(path => req.path.startsWith(path));
+  },
+  handler: (req, res) => {
+    console.log(`🚫 Rate limit global dépassé pour IP: ${req.ip}`);
+    res.status(429).json({
+      success: false,
+      message: 'Trop de requêtes depuis cette IP, veuillez réessayer plus tard.',
+      error: 'RATE_LIMIT_EXCEEDED',
+      retryAfter: 15 * 60 // En secondes
+    });
   }
 });
 
