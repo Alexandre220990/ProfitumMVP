@@ -5,6 +5,7 @@
 import express, { Request, Response } from 'express';
 import { notificationSSE } from '../services/notification-sse-service';
 import { enhancedAuthMiddleware } from '../middleware/auth-enhanced';
+import { sseRateLimiter } from '../middleware/rate-limiter';
 
 const router = express.Router();
 
@@ -21,8 +22,9 @@ const getSupabaseAnonKey = (): string => {
 /**
  * GET /api/notifications/stream - Connexion SSE pour recevoir les notifications en temps réel
  * Note: EventSource ne supporte pas les headers, donc le token est passé en query param
+ * Rate limiter spécifique SSE avec limites élevées pour permettre les reconnexions
  */
-router.get('/stream', async (req: Request, res: Response) => {
+router.get('/stream', sseRateLimiter, async (req: Request, res: Response) => {
   try {
     // Log toutes les connexions pour debug (on peut réduire plus tard)
     const shouldLogConnection = true; // Temporairement activé pour debug

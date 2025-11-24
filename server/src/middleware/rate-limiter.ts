@@ -90,3 +90,26 @@ export const generalRateLimiter = rateLimit({
   }
 });
 
+/**
+ * Rate limiter pour les connexions SSE (Server-Sent Events)
+ * Limite très élevée car les connexions SSE sont longues et peuvent se reconnecter fréquemment
+ * Limite: 100 connexions par minute par IP (pour éviter les abus tout en permettant les reconnexions)
+ */
+export const sseRateLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 100, // Limite de 100 connexions SSE par minute (très élevée pour permettre reconnexions)
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true, // Ne pas compter les connexions réussies (seulement les tentatives)
+  skipFailedRequests: false, // Compter les échecs pour détecter les abus
+  handler: (req, res) => {
+    console.log(`🚫 Rate limit SSE dépassé pour IP: ${req.ip} sur ${req.path}`);
+    res.status(429).json({
+      success: false,
+      message: 'Trop de tentatives de connexion SSE. Veuillez attendre quelques secondes avant de réessayer.',
+      error: 'SSE_RATE_LIMIT_EXCEEDED',
+      retryAfter: 60 // En secondes
+    });
+  }
+});
+

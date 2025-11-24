@@ -183,12 +183,23 @@ const limiter = rateLimit({
     const skipPaths = [
       '/api/health', 
       '/api/apporteur/views/notifications', 
-      '/api/notifications',
+      '/api/notifications', // Inclut /api/notifications/stream et toutes les sous-routes
       '/api/admin/notifications',
       '/api/unified-messaging',
       '/api/auth' // Routes d'authentification ont leur propre rate limiter
     ];
-    return skipPaths.some(path => req.path.startsWith(path));
+    
+    // Vérifier si le path commence par un des chemins à exclure
+    const shouldSkip = skipPaths.some(path => {
+      const pathMatch = req.path.startsWith(path);
+      // Log pour debug des routes SSE
+      if (req.path.includes('/stream') || req.path.includes('/notifications')) {
+        console.log(`🔍 Rate limiter skip check: path=${req.path}, skipPath=${path}, match=${pathMatch}`);
+      }
+      return pathMatch;
+    });
+    
+    return shouldSkip;
   },
   handler: (req, res) => {
     console.log(`🚫 Rate limit global dépassé pour IP: ${req.ip}`);
