@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
+import { config } from "@/config/env";
 
 interface AdminForm {
   email: string;
@@ -94,12 +95,13 @@ const FormulaireAdmin = () => {
         return;
       }
 
-      const response = await fetch('/api/admin/admins', {
+      const response = await fetch(`${config.API_URL}/api/admin/admins`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
+        credentials: 'include',
         body: JSON.stringify({
           email: form.email,
           name: form.name,
