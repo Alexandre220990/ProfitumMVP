@@ -5213,8 +5213,10 @@ router.get('/notifications', async (req, res) => {
     // S'assurer que is_read est défini en fonction du status
     const normalizedNotifications = (notifications || []).map((notif: any) => ({
       ...notif,
-      // Pour AdminNotification: 'pending' = non lu, 'read' = lu, 'archived' = archivé
-      is_read: notif.status === 'read' || (notif.read_at !== null && notif.read_at !== undefined),
+      // Pour AdminNotification: 'unread' = non lu, 'read' = lu, 'archived' = archivé
+      // Synchroniser is_read avec status si nécessaire
+      is_read: notif.is_read !== undefined ? notif.is_read : (notif.status === 'read' || (notif.read_at !== null && notif.read_at !== undefined)),
+      status: notif.status || 'unread', // Assurer que status existe
       notification_type: notif.type || notif.notification_type,
     }));
     
@@ -5381,16 +5383,16 @@ router.patch('/notifications/:id/read', async (req, res) => {
       userId = adminData.auth_user_id;
     }
     
-    // ✅ CORRECTION: Utiliser la table 'notification' au lieu de 'AdminNotification'
-    const { data, error } = await supabaseAdmin
-      .from('notification')
+    // ✅ CORRECTION: Utiliser la table 'AdminNotification' et mettre à jour status + is_read
+    const { data, error } = await supabaseClient
+      .from('AdminNotification')
       .update({ 
+        status: 'read',
         is_read: true,
         read_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
-      .eq('user_id', userId)
       .select();
     
     if (error) {

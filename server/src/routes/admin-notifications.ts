@@ -79,7 +79,8 @@ router.post('/admin/document-validation', enhancedAuthMiddleware, async (req: Re
         type: 'document_validation',
         title: `Validation d'éligibilité ${product_type}`,
         message: `Le client ${dossier.Client?.company_name || dossier.Client?.name || 'Inconnu'} a soumis des documents pour validation de l'éligibilité ${product_type}`,
-        status: 'pending',
+        status: 'unread',
+        is_read: false,
         priority: 'high',
         metadata: {
           client_produit_id,
