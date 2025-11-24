@@ -1,6 +1,6 @@
 /**
- * Composant Timeline pour afficher l'historique d'un dossier
- * Utilisable dans les pages synthèse Admin, Expert, Apporteur
+ * Composant Timeline pour afficher l'historique complet d'un client
+ * Fusionne : événements client + tous les événements de tous les dossiers + commentaires
  */
 
 import { useEffect, useState } from 'react';
@@ -22,7 +22,8 @@ import {
 
 interface TimelineEvent {
   id: string;
-  dossier_id: string;
+  client_id?: string;
+  dossier_id?: string;
   date: string;
   type: string;
   actor_type: 'client' | 'expert' | 'admin' | 'system' | 'apporteur';
@@ -36,8 +37,8 @@ interface TimelineEvent {
   action_url?: string;
 }
 
-interface DossierTimelineProps {
-  dossierId: string;
+interface ClientTimelineProps {
+  clientId: string;
   userType?: 'client' | 'expert' | 'admin' | 'apporteur';
   compact?: boolean;
   maxEvents?: number;
@@ -78,13 +79,13 @@ const getActorLabel = (actorType: string) => {
   }
 };
 
-export default function DossierTimeline({
-  dossierId,
+export default function ClientTimeline({
+  clientId,
   userType: _userType,
   compact = false,
-  maxEvents = 50,
+  maxEvents = 100,
   className = ''
-}: DossierTimelineProps) {
+}: ClientTimelineProps) {
   const { user } = useAuth();
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -108,7 +109,7 @@ export default function DossierTimeline({
       }
 
       // Construire URL avec filtres
-      let url = `${config.API_URL}/api/dossiers/${dossierId}/timeline?limit=${maxEvents}`;
+      let url = `${config.API_URL}/api/clients/${clientId}/timeline?limit=${maxEvents}`;
       
       if (filterType !== 'all') {
         url += `&type=${filterType}`;
@@ -139,7 +140,7 @@ export default function DossierTimeline({
       }
 
     } catch (err: any) {
-      console.error('❌ Erreur chargement timeline:', err);
+      console.error('❌ Erreur chargement timeline client:', err);
       setError(err.message || 'Impossible de charger la timeline');
     } finally {
       setLoading(false);
@@ -148,7 +149,7 @@ export default function DossierTimeline({
 
   useEffect(() => {
     loadTimeline();
-  }, [dossierId, filterType, filterActor, maxEvents]);
+  }, [clientId, filterType, filterActor, maxEvents]);
 
   const handleAddComment = async () => {
     if (!commentText.trim() || !user) return;
@@ -161,7 +162,7 @@ export default function DossierTimeline({
         throw new Error('Token non trouvé');
       }
 
-      const response = await fetch(`${config.API_URL}/api/dossiers/${dossierId}/timeline/comment`, {
+      const response = await fetch(`${config.API_URL}/api/clients/${clientId}/timeline/comment`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -186,7 +187,7 @@ export default function DossierTimeline({
       await loadTimeline();
 
     } catch (err: any) {
-      console.error('❌ Erreur ajout commentaire:', err);
+      console.error('❌ Erreur ajout commentaire client:', err);
       toast.error('Erreur', {
         description: err.message || 'Impossible d\'ajouter le commentaire'
       });
@@ -245,7 +246,7 @@ export default function DossierTimeline({
           <div className="flex items-center gap-2">
             <Calendar className="h-5 w-5 text-blue-600" />
             <CardTitle className="text-xl">
-              {compact ? 'Timeline' : 'Historique du dossier'}
+              {compact ? 'Timeline' : 'Timeline Client'}
             </CardTitle>
             <Badge variant="secondary">{total} événement{total > 1 ? 's' : ''}</Badge>
           </div>
@@ -282,8 +283,9 @@ export default function DossierTimeline({
                   <SelectItem value="all">Tous les types</SelectItem>
                   <SelectItem value="document">📄 Documents</SelectItem>
                   <SelectItem value="status_change">🔄 Changement statut</SelectItem>
+                  <SelectItem value="comment">💬 Commentaires</SelectItem>
+                  <SelectItem value="dossier_created">📄 Création dossier</SelectItem>
                   <SelectItem value="expert_action">👨‍🔧 Action expert</SelectItem>
-                  <SelectItem value="client_action">👤 Action client</SelectItem>
                   <SelectItem value="admin_action">👨‍💼 Action admin</SelectItem>
                 </SelectContent>
               </Select>
@@ -314,7 +316,7 @@ export default function DossierTimeline({
               <div className="flex items-center gap-2">
                 <MessageSquare className="h-4 w-4 text-blue-600" />
                 <label className="text-sm font-medium text-gray-700">
-                  Ajouter un commentaire
+                  Ajouter un commentaire sur ce client
                 </label>
               </div>
               <Textarea
@@ -367,7 +369,7 @@ export default function DossierTimeline({
           <div className="space-y-4">
             {events.map((event, index) => (
               <div
-                key={event.id}
+                key={event.id || index}
                 className={`relative pl-8 pb-4 ${
                   index !== events.length - 1 ? 'border-l-2 border-gray-200' : ''
                 }`}
@@ -386,13 +388,21 @@ export default function DossierTimeline({
                       <h4 className="font-semibold text-gray-900 mb-1">
                         {event.title}
                       </h4>
-                      <div className="flex items-center gap-2 mb-2">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
                         <Badge 
                           className={`text-xs ${getActorBadgeColor(event.actor_type)} text-white`}
                         >
                           {getActorLabel(event.actor_type)}
                         </Badge>
                         <span className="text-xs text-gray-600">{event.actor_name}</span>
+                        {event.dossier_id && (
+                          <>
+                            <span className="text-xs text-gray-400">•</span>
+                            <Badge variant="outline" className="text-xs">
+                              📄 Dossier
+                            </Badge>
+                          </>
+                        )}
                         <span className="text-xs text-gray-400">•</span>
                         <span className="text-xs text-gray-500">
                           {formatDate(event.date)}
@@ -435,3 +445,4 @@ export default function DossierTimeline({
     </Card>
   );
 }
+

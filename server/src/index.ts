@@ -90,6 +90,7 @@ import diagnosticRoutes from './routes/diagnostic';
 import dossierStepsRoutes from './routes/dossier-steps';
 import dossierCommentsRoutes from './routes/dossier-comments';
 import dossierTimelineRoutes from './routes/dossier-timeline';
+import clientTimelineRoutes from './routes/client-timeline';
 // SUPPRIMÉ: import documentsRoutes (obsolète, remplacé par documents-unified-all)
 import adminDocumentsUnifiedRoutes from './routes/admin-documents-unified';
 import documentsUnifiedAllRoutes from './routes/documents-unified-all';
@@ -619,7 +620,9 @@ app.use('/api/diagnostic', diagnosticRoutes);
 app.use('/api/dossier-steps', dossierStepsRoutes);
 app.use('/api/dossier', dossierCommentsRoutes);
 app.use('/api/dossiers', enhancedAuthMiddleware, dossierTimelineRoutes);
+app.use('/api/clients', enhancedAuthMiddleware, clientTimelineRoutes);
 console.log('🔧 Routes dossier-steps montées sur /api/dossier-steps');
+console.log('🔧 Routes client-timeline montées sur /api/clients');
 
 // ===== ROUTES APPORTEURS D'AFFAIRES PROTÉGÉES =====
 // NOTE: Les routes /register et /verify-sponsor sont PUBLIQUES et déjà montées ligne ~223

@@ -68,7 +68,7 @@ export class DossierTimelineService {
   }
 
   /**
-   * Récupérer la timeline d'un dossier
+   * Récupérer la timeline d'un dossier (inclut les commentaires DossierComment)
    */
   static async getTimeline(
     dossier_id: string,
@@ -80,41 +80,99 @@ export class DossierTimelineService {
     }
   ): Promise<{ success: boolean; events?: TimelineEvent[]; total?: number }> {
     try {
-      let query = supabase
+      // Récupérer les événements de la timeline
+      let timelineQuery = supabase
         .from('dossier_timeline')
-        .select('*', { count: 'exact' })
-        .eq('dossier_id', dossier_id)
-        .order('date', { ascending: false });
+        .select('*')
+        .eq('dossier_id', dossier_id);
 
-      // Filtres optionnels
       if (options?.type) {
-        query = query.eq('type', options.type);
+        timelineQuery = timelineQuery.eq('type', options.type);
       }
 
       if (options?.actor_type) {
-        query = query.eq('actor_type', options.actor_type);
+        timelineQuery = timelineQuery.eq('actor_type', options.actor_type);
       }
 
-      // Pagination
+      const { data: timelineEvents, error: timelineError } = await timelineQuery;
+
+      if (timelineError) {
+        console.error('❌ Erreur récupération timeline:', timelineError);
+      }
+
+      // Récupérer les commentaires DossierComment
+      let commentsQuery = supabase
+        .from('DossierComment')
+        .select('*')
+        .eq('dossier_id', dossier_id)
+        .is('deleted_at', null)
+        .eq('comment_type', 'manual');
+
+      if (options?.actor_type) {
+        commentsQuery = commentsQuery.eq('created_by_type', options.actor_type);
+      }
+
+      const { data: comments, error: commentsError } = await commentsQuery;
+
+      if (commentsError) {
+        console.error('❌ Erreur récupération commentaires:', commentsError);
+      }
+
+      // Fusionner et convertir les commentaires en événements timeline
+      const commentEvents: TimelineEvent[] = (comments || []).map((comment: any) => {
+        // Déterminer le type d'acteur
+        let actorType: 'client' | 'expert' | 'admin' | 'system' | 'apporteur' = 'system';
+        if (comment.created_by_type === 'admin') actorType = 'admin';
+        else if (comment.created_by_type === 'expert') actorType = 'expert';
+        else if (comment.created_by_type === 'apporteur') actorType = 'apporteur';
+
+        // Extraire le nom de l'acteur depuis le contenu ou utiliser le type
+        const contentMatch = comment.content.match(/^Commentaire (Admin|Expert|Apporteur) : (.+)$/);
+        const actorName = contentMatch ? contentMatch[1] : (comment.created_by_type || 'Système');
+        const description = contentMatch ? contentMatch[2] : comment.content;
+
+        return {
+          id: comment.id,
+          dossier_id: comment.dossier_id,
+          date: comment.created_at,
+          type: 'comment',
+          actor_type: actorType,
+          actor_id: comment.created_by,
+          actor_name: actorName,
+          title: `Commentaire ${actorName}`,
+          description: description,
+          icon: '💬',
+          color: actorType === 'admin' ? 'red' : actorType === 'expert' ? 'purple' : 'green'
+        };
+      });
+
+      // Fusionner tous les événements
+      const allEvents = [
+        ...(timelineEvents || []).map((e: any) => ({
+          ...e,
+          date: e.date || e.created_at
+        })),
+        ...commentEvents
+      ];
+
+      // Trier par date (plus récent en premier)
+      allEvents.sort((a, b) => {
+        const dateA = new Date(a.date || a.created_at || 0).getTime();
+        const dateB = new Date(b.date || b.created_at || 0).getTime();
+        return dateB - dateA;
+      });
+
+      // Appliquer la pagination
+      let paginatedEvents = allEvents;
       if (options?.limit) {
-        query = query.limit(options.limit);
-      }
-
-      if (options?.offset) {
-        query = query.range(options.offset, options.offset + (options.limit || 50) - 1);
-      }
-
-      const { data, error, count } = await query;
-
-      if (error) {
-        console.error('❌ Erreur récupération timeline:', error);
-        return { success: false };
+        const offset = options.offset || 0;
+        paginatedEvents = allEvents.slice(offset, offset + options.limit);
       }
 
       return {
         success: true,
-        events: data || [],
-        total: count || 0
+        events: paginatedEvents,
+        total: allEvents.length
       };
 
     } catch (error) {

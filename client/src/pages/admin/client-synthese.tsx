@@ -27,6 +27,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { get } from '@/lib/api';
 import { toast } from 'sonner';
 import LoadingScreen from '@/components/LoadingScreen';
+import ClientTimeline from '@/components/client/ClientTimeline';
 
 interface ClientData {
   id: string;
@@ -297,13 +298,14 @@ const ClientSynthese: React.FC = () => {
               </Card>
             </div>
 
-            {/* Tabs : Profil | Dossiers | Experts | Apporteur */}
+            {/* Tabs : Profil | Dossiers | Experts | Apporteur | Timeline */}
             <Tabs defaultValue="profil" className="w-full">
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className="grid w-full grid-cols-5">
                 <TabsTrigger value="profil">Profil</TabsTrigger>
                 <TabsTrigger value="dossiers">Dossiers ({stats.totalDossiers})</TabsTrigger>
                 <TabsTrigger value="experts">Experts ({experts.length})</TabsTrigger>
                 <TabsTrigger value="apporteur">Apporteur</TabsTrigger>
+                <TabsTrigger value="timeline">Timeline</TabsTrigger>
               </TabsList>
 
               {/* TAB PROFIL */}
@@ -615,6 +617,16 @@ const ClientSynthese: React.FC = () => {
                     )}
                   </CardContent>
                 </Card>
+              </TabsContent>
+
+              {/* TAB TIMELINE */}
+              <TabsContent value="timeline">
+                {id && (
+                  <ClientTimeline 
+                    clientId={id} 
+                    userType={user?.type as 'expert' | 'admin' | 'apporteur'} 
+                  />
+                )}
               </TabsContent>
             </Tabs>
           </div>
