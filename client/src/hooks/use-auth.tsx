@@ -93,6 +93,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         response = await loginExpert(credentials);
       } else if (credentials.type === 'apporteur') {
         response = await loginApporteur(credentials);
+      } else if (credentials.type === 'admin') {
+        const { loginAdmin } = await import('@/lib/auth-distinct');
+        response = await loginAdmin(credentials);
       } else {
         // Fallback vers l'ancienne méthode pour compatibilité
         response = await loginWithSupabase(credentials);

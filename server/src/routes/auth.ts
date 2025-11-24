@@ -558,6 +558,111 @@ router.post('/apporteur/login', loginRateLimiter, async (req, res) => {
   }
 });
 
+// POST /api/auth/admin/login - Connexion ADMIN
+router.post('/admin/login', loginRateLimiter, async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    console.log("🔑 Tentative de connexion ADMIN:", { email });
+
+    // 1. Authentifier avec Supabase Auth
+    const { data: authData, error: authError } = await supabaseAdmin.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if (authError || !authData?.user) {
+      console.error("❌ Erreur d'authentification:", authError);
+      return res.status(401).json({
+        success: false,
+        message: 'Email ou mot de passe incorrect'
+      });
+    }
+
+    const authUserId = authData.user.id;
+    const userEmail = authData.user.email;
+    
+    // 2. Trouver tous les profils liés à ce compte
+    const profiles = await findUserProfiles(authUserId, userEmail || '');
+    
+    if (profiles.length === 0) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Aucun profil actif trouvé pour cet utilisateur' 
+      });
+    }
+
+    // 3. Vérifier qu'il y a un profil admin
+    const adminProfile = profiles.find(p => p.type === 'admin');
+    
+    if (!adminProfile) {
+      // Multi-profils : retourner les profils disponibles
+      const availableTypes = profiles.map(p => ({
+        type: p.type,
+        name: getTypeName(p.data),
+        login_url: getLoginUrl(p.type)
+      }));
+      
+      return res.status(403).json({
+        success: false,
+        message: `Cet email est associé à un compte ${availableTypes[0].name}, pas un compte administrateur.`,
+        redirect_to_type: availableTypes[0].type,
+        available_types: availableTypes
+      });
+    }
+
+    const admin = adminProfile.data;
+    
+    // 4. Vérifier que l'admin est actif
+    if (admin.is_active === false) {
+      return res.status(403).json({
+        success: false,
+        message: 'Votre compte administrateur est désactivé. Contactez le support.'
+      });
+    }
+
+    // 5. Créer le token JWT
+    const token = jwt.sign(
+      {
+        id: authUserId,
+        email: userEmail,
+        type: 'admin',
+        database_id: admin.id,
+        available_types: profiles.map(p => p.type),
+        iat: Math.floor(Date.now() / 1000),
+        exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60) // 24 heures
+      },
+      jwtConfig.secret
+    );
+
+    // 6. Créer l'objet utilisateur (compatible avec les autres routes)
+    console.log("✅ Admin authentifié avec succès:", { email: userEmail, adminId: admin.id });
+
+    return res.json({
+      success: true,
+      data: {
+        token,
+        user: {
+          ...admin,
+          id: authUserId,
+          email: userEmail || '',
+          type: 'admin',
+          database_id: admin.id,
+          auth_user_id: authUserId,
+          available_types: profiles.map(p => p.type)
+        } as any
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur lors de la connexion ADMIN:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la connexion',
+      error: error instanceof Error ? error.message : 'Erreur inconnue'
+    });
+  }
+});
+
 // Route de connexion GÉNÉRIQUE (pour compatibilité)
 router.post('/login', loginRateLimiter, async (req, res) => {
   try {

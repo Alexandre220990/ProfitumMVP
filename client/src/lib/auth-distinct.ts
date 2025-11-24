@@ -127,3 +127,39 @@ export const loginApporteur = async (credentials: LoginCredentials): Promise<Aut
     };
   }
 };
+
+/**
+ * Se connecter en tant qu'ADMIN UNIQUEMENT
+ */
+export const loginAdmin = async (credentials: LoginCredentials): Promise<AuthResponse> => {
+  try {
+    console.log('🔑 Tentative de connexion ADMIN via API...');
+    
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/admin/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email: credentials.email,
+        password: credentials.password
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return {
+        success: false,
+        message: data.message || 'Erreur de connexion'
+      };
+    }
+
+    return data;
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Erreur de connexion'
+    };
+  }
+};
