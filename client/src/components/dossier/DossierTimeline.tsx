@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, RefreshCw, Calendar, Filter, MessageSquare, Send } from 'lucide-react';
+import { Loader2, RefreshCw, Calendar, Filter, MessageSquare, Send, Edit, Trash2, Plus } from 'lucide-react';
 import { config } from '@/config/env';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -19,6 +19,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { calendarService } from '@/services/calendar-service';
 
 interface TimelineEvent {
   id: string;
@@ -42,6 +52,14 @@ interface DossierTimelineProps {
   compact?: boolean;
   maxEvents?: number;
   className?: string;
+  dossierInfo?: {
+    client_id?: string;
+    client_name?: string;
+    client_company_name?: string;
+    client_phone?: string;
+    client_email?: string;
+    produit_name?: string;
+  };
 }
 
 const getColorClass = (color?: string) => {
@@ -83,7 +101,8 @@ export default function DossierTimeline({
   userType: _userType,
   compact = false,
   maxEvents = 50,
-  className = ''
+  className = '',
+  dossierInfo
 }: DossierTimelineProps) {
   const { user } = useAuth();
   const [events, setEvents] = useState<TimelineEvent[]>([]);
@@ -95,6 +114,16 @@ export default function DossierTimeline({
   const [showCommentForm, setShowCommentForm] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingCommentText, setEditingCommentText] = useState('');
+  const [showEventDialog, setShowEventDialog] = useState(false);
+  const [eventFormData, setEventFormData] = useState({
+    title: '',
+    description: '',
+    start_date: '',
+    end_date: '',
+    type: 'appointment' as const
+  });
 
   const loadTimeline = async () => {
     try {
@@ -195,6 +224,169 @@ export default function DossierTimeline({
     }
   };
 
+  const handleEditComment = (event: TimelineEvent) => {
+    // Extraire le contenu du commentaire (enlever le préfixe "Commentaire Admin/Expert/Apporteur : ")
+    const contentMatch = event.description?.match(/^Commentaire (Admin|Expert|Apporteur) : (.+)$/);
+    const description = contentMatch ? contentMatch[2] : event.description || '';
+    
+    setEditingCommentId(event.id);
+    setEditingCommentText(description);
+  };
+
+  const handleUpdateComment = async () => {
+    if (!editingCommentText.trim() || !editingCommentId || !user) return;
+
+    setSubmittingComment(true);
+    try {
+      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      
+      if (!token) {
+        throw new Error('Token non trouvé');
+      }
+
+      // Trouver le comment_id depuis l'event metadata ou chercher dans DossierComment
+      // Pour simplifier, on utilise l'event_id comme commentId (car les commentaires sont aussi dans dossier_timeline)
+      const response = await fetch(`${config.API_URL}/api/dossiers/${dossierId}/timeline/comment/${editingCommentId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          content: editingCommentText.trim()
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Erreur lors de la modification du commentaire');
+      }
+
+      toast.success('Commentaire modifié avec succès');
+      setEditingCommentId(null);
+      setEditingCommentText('');
+      
+      // Recharger la timeline
+      await loadTimeline();
+
+    } catch (err: any) {
+      console.error('❌ Erreur modification commentaire:', err);
+      toast.error('Erreur', {
+        description: err.message || 'Impossible de modifier le commentaire'
+      });
+    } finally {
+      setSubmittingComment(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer ce commentaire ?')) return;
+    if (!user) return;
+
+    setSubmittingComment(true);
+    try {
+      const token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
+      
+      if (!token) {
+        throw new Error('Token non trouvé');
+      }
+
+      const response = await fetch(`${config.API_URL}/api/dossiers/${dossierId}/timeline/comment/${commentId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Erreur lors de la suppression du commentaire');
+      }
+
+      toast.success('Commentaire supprimé avec succès');
+      
+      // Recharger la timeline
+      await loadTimeline();
+
+    } catch (err: any) {
+      console.error('❌ Erreur suppression commentaire:', err);
+      toast.error('Erreur', {
+        description: err.message || 'Impossible de supprimer le commentaire'
+      });
+    } finally {
+      setSubmittingComment(false);
+    }
+  };
+
+  const handleCreateEvent = () => {
+    // Préremplir avec les infos du dossier/client
+    const now = new Date();
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(9, 0, 0, 0);
+    const endTime = new Date(tomorrow);
+    endTime.setHours(9, 30, 0, 0);
+
+    const description = dossierInfo ? [
+      dossierInfo.client_name && `Client: ${dossierInfo.client_name}`,
+      dossierInfo.client_company_name && `Entreprise: ${dossierInfo.client_company_name}`,
+      dossierInfo.client_phone && `Téléphone: ${dossierInfo.client_phone}`,
+      dossierInfo.client_email && `Email: ${dossierInfo.client_email}`,
+      dossierInfo.produit_name && `Produit: ${dossierInfo.produit_name}`
+    ].filter(Boolean).join('\n') : '';
+
+    setEventFormData({
+      title: `Rappel - ${dossierInfo?.produit_name || 'Dossier'}`,
+      description,
+      start_date: tomorrow.toISOString().slice(0, 16),
+      end_date: endTime.toISOString().slice(0, 16),
+      type: 'appointment'
+    });
+    setShowEventDialog(true);
+  };
+
+  const handleSubmitEvent = async () => {
+    if (!eventFormData.title.trim()) {
+      toast.error('Le titre est requis');
+      return;
+    }
+
+    try {
+      const startDate = new Date(eventFormData.start_date);
+      const endDate = new Date(eventFormData.end_date);
+
+      await calendarService.createEvent({
+        title: eventFormData.title,
+        description: eventFormData.description || undefined,
+        start_date: startDate.toISOString(),
+        end_date: endDate.toISOString(),
+        type: eventFormData.type,
+        dossier_id: dossierId,
+        client_id: dossierInfo?.client_id,
+        priority: 'medium',
+        category: 'admin' as any
+      });
+
+      toast.success('Événement créé avec succès');
+      setShowEventDialog(false);
+      setEventFormData({
+        title: '',
+        description: '',
+        start_date: '',
+        end_date: '',
+        type: 'appointment'
+      });
+    } catch (err: any) {
+      console.error('❌ Erreur création événement:', err);
+      toast.error('Erreur', {
+        description: err.message || 'Impossible de créer l\'événement'
+      });
+    }
+  };
+
   // Vérifier si l'utilisateur peut ajouter des commentaires
   const canAddComment = user && ['admin', 'expert', 'apporteur'].includes(user.type);
 
@@ -252,14 +444,24 @@ export default function DossierTimeline({
           
           <div className="flex items-center gap-2">
             {canAddComment && !compact && (
-              <Button 
-                onClick={() => setShowCommentForm(!showCommentForm)} 
-                variant="outline" 
-                size="sm"
-              >
-                <MessageSquare className="h-4 w-4 mr-2" />
-                {showCommentForm ? 'Annuler' : 'Ajouter un commentaire'}
-              </Button>
+              <>
+                <Button 
+                  onClick={handleCreateEvent} 
+                  variant="outline" 
+                  size="sm"
+                >
+                  <Calendar className="h-4 w-4 mr-2" />
+                  Créer un rappel
+                </Button>
+                <Button 
+                  onClick={() => setShowCommentForm(!showCommentForm)} 
+                  variant="outline" 
+                  size="sm"
+                >
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  {showCommentForm ? 'Annuler' : 'Ajouter un commentaire'}
+                </Button>
+              </>
             )}
             {!compact && (
               <Button onClick={loadTimeline} variant="outline" size="sm">
@@ -399,13 +601,74 @@ export default function DossierTimeline({
                         </span>
                       </div>
                     </div>
+                    {/* Actions rapides pour les commentaires */}
+                    {event.type === 'comment' && event.actor_id === user?.database_id && (
+                      <div className="flex items-center gap-1 ml-2">
+                        {editingCommentId === event.id ? (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={handleUpdateComment}
+                              disabled={submittingComment}
+                              className="h-6 px-2"
+                            >
+                              <Send className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setEditingCommentId(null);
+                                setEditingCommentText('');
+                              }}
+                              disabled={submittingComment}
+                              className="h-6 px-2"
+                            >
+                              ✕
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleEditComment(event)}
+                              className="h-6 px-2"
+                            >
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleDeleteComment(event.id)}
+                              disabled={submittingComment}
+                              className="h-6 px-2 text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
 
-                  {/* Description */}
-                  {event.description && (
-                    <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">
-                      {event.description}
-                    </p>
+                  {/* Description - édition si en cours */}
+                  {editingCommentId === event.id ? (
+                    <div className="mt-2">
+                      <Textarea
+                        value={editingCommentText}
+                        onChange={(e) => setEditingCommentText(e.target.value)}
+                        className="min-h-[80px]"
+                        disabled={submittingComment}
+                      />
+                    </div>
+                  ) : (
+                    event.description && (
+                      <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">
+                        {event.description}
+                      </p>
+                    )
                   )}
 
                   {/* Action URL */}
@@ -432,6 +695,82 @@ export default function DossierTimeline({
           </div>
         )}
       </CardContent>
+
+      {/* Dialog pour créer un événement */}
+      <Dialog open={showEventDialog} onOpenChange={setShowEventDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Créer un rappel</DialogTitle>
+            <DialogDescription>
+              Créez un événement dans votre calendrier avec les informations du dossier préremplies.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 mt-4">
+            <div>
+              <Label htmlFor="event-title">Titre *</Label>
+              <Input
+                id="event-title"
+                value={eventFormData.title}
+                onChange={(e) => setEventFormData(prev => ({ ...prev, title: e.target.value }))}
+                placeholder="Ex: Rappel dossier"
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="event-description">Description</Label>
+              <Textarea
+                id="event-description"
+                value={eventFormData.description}
+                onChange={(e) => setEventFormData(prev => ({ ...prev, description: e.target.value }))}
+                rows={4}
+                placeholder="Informations du dossier préremplies..."
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="event-start">Date et heure de début *</Label>
+                <Input
+                  id="event-start"
+                  type="datetime-local"
+                  value={eventFormData.start_date}
+                  onChange={(e) => setEventFormData(prev => ({ ...prev, start_date: e.target.value }))}
+                  required
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="event-end">Date et heure de fin *</Label>
+                <Input
+                  id="event-end"
+                  type="datetime-local"
+                  value={eventFormData.end_date}
+                  onChange={(e) => setEventFormData(prev => ({ ...prev, end_date: e.target.value }))}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => setShowEventDialog(false)}
+              >
+                Annuler
+              </Button>
+              <Button
+                onClick={handleSubmitEvent}
+                disabled={!eventFormData.title.trim() || !eventFormData.start_date || !eventFormData.end_date}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Créer l'événement
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

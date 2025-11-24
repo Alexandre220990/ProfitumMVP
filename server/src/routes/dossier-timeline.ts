@@ -233,8 +233,17 @@ router.post('/:id/timeline/comment', enhancedAuthMiddleware, async (req: Request
       title: `Commentaire ${user.type === 'admin' ? 'Admin' : user.type === 'expert' ? 'Expert' : 'Apporteur'}`,
       description: content.trim(),
       icon: '💬',
-      color: user.type === 'admin' ? 'red' : user.type === 'expert' ? 'purple' : 'green'
+      color: user.type === 'admin' ? 'red' : user.type === 'expert' ? 'purple' : 'green',
+      metadata: { comment_id: comment.id } // Lier le commentaire à l'événement timeline
     });
+
+    // Mettre à jour le commentaire avec l'event_id de la timeline
+    if (timelineResult.event_id) {
+      await supabaseAdmin
+        .from('DossierComment')
+        .update({ metadata: { ...comment.metadata, timeline_event_id: timelineResult.event_id } })
+        .eq('id', comment.id);
+    }
 
     return res.json({
       success: true,
@@ -247,6 +256,180 @@ router.post('/:id/timeline/comment', enhancedAuthMiddleware, async (req: Request
 
   } catch (error: any) {
     console.error('❌ Erreur POST commentaire timeline:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur',
+      details: error.message
+    });
+  }
+});
+
+/**
+ * PUT /api/dossiers/:id/timeline/comment/:commentId
+ * Modifier un commentaire sur un dossier (seulement si l'utilisateur est l'auteur)
+ */
+router.put('/:id/timeline/comment/:commentId', enhancedAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const user = (req as AuthenticatedRequest).user;
+    const { id: dossier_id, commentId } = req.params;
+    const { content } = req.body;
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur non authentifié'
+      });
+    }
+
+    if (!content || !content.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Le contenu du commentaire est requis'
+      });
+    }
+
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabaseAdmin = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+
+    // Récupérer le commentaire pour vérifier que l'utilisateur est l'auteur
+    const { data: comment, error: commentError } = await supabaseAdmin
+      .from('DossierComment')
+      .select('*')
+      .eq('id', commentId)
+      .eq('dossier_id', dossier_id)
+      .eq('comment_type', 'manual')
+      .is('deleted_at', null)
+      .single();
+
+    if (commentError || !comment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Commentaire non trouvé'
+      });
+    }
+
+    // Vérifier que l'utilisateur est l'auteur
+    if (comment.created_by !== user.database_id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Vous ne pouvez modifier que vos propres commentaires'
+      });
+    }
+
+    // Mettre à jour le commentaire dans DossierComment
+    const { data: updatedComment, error: updateError } = await supabaseAdmin
+      .from('DossierComment')
+      .update({
+        content: `Commentaire ${user.type === 'admin' ? 'Admin' : user.type === 'expert' ? 'Expert' : 'Apporteur'} : ${content.trim()}`,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', commentId)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error('❌ Erreur mise à jour commentaire:', updateError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la mise à jour du commentaire'
+      });
+    }
+
+    // Mettre à jour aussi dans la timeline si l'event_id existe
+    const timelineEventId = comment.metadata?.timeline_event_id;
+    if (timelineEventId) {
+      await DossierTimelineService.updateEvent(timelineEventId, {
+        description: content.trim()
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: { comment: updatedComment },
+      message: 'Commentaire modifié avec succès'
+    });
+
+  } catch (error: any) {
+    console.error('❌ Erreur PUT commentaire dossier:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur',
+      details: error.message
+    });
+  }
+});
+
+/**
+ * DELETE /api/dossiers/:id/timeline/comment/:commentId
+ * Supprimer un commentaire sur un dossier (seulement si l'utilisateur est l'auteur)
+ */
+router.delete('/:id/timeline/comment/:commentId', enhancedAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const user = (req as AuthenticatedRequest).user;
+    const { id: dossier_id, commentId } = req.params;
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur non authentifié'
+      });
+    }
+
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabaseAdmin = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+
+    // Récupérer le commentaire pour vérifier que l'utilisateur est l'auteur
+    const { data: comment, error: commentError } = await supabaseAdmin
+      .from('DossierComment')
+      .select('*')
+      .eq('id', commentId)
+      .eq('dossier_id', dossier_id)
+      .eq('comment_type', 'manual')
+      .is('deleted_at', null)
+      .single();
+
+    if (commentError || !comment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Commentaire non trouvé'
+      });
+    }
+
+    // Vérifier que l'utilisateur est l'auteur
+    if (comment.created_by !== user.database_id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Vous ne pouvez supprimer que vos propres commentaires'
+      });
+    }
+
+    // Supprimer le commentaire (soft delete)
+    const { error: deleteError } = await supabaseAdmin
+      .from('DossierComment')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', commentId);
+
+    if (deleteError) {
+      console.error('❌ Erreur suppression commentaire:', deleteError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la suppression du commentaire'
+      });
+    }
+
+    // Supprimer aussi dans la timeline si l'event_id existe
+    const timelineEventId = comment.metadata?.timeline_event_id;
+    if (timelineEventId) {
+      await DossierTimelineService.deleteEvent(timelineEventId);
+    }
+
+    return res.json({
+      success: true,
+      message: 'Commentaire supprimé avec succès'
+    });
+
+  } catch (error: any) {
+    console.error('❌ Erreur DELETE commentaire dossier:', error);
     return res.status(500).json({
       success: false,
       message: 'Erreur serveur',

@@ -126,7 +126,7 @@ const calendarLimiter = rateLimit({
 // Schéma de validation pour un événement
 const eventSchema = Joi.object({
   title: Joi.string().min(1).max(255).required(),
-  description: Joi.string().max(1000).optional(),
+  description: Joi.string().max(1000).allow('', null).optional(),
   start_date: Joi.date().iso().required(),
   end_date: Joi.date().iso().greater(Joi.ref('start_date')).required(),
   type: Joi.string().valid('appointment', 'deadline', 'meeting', 'task', 'reminder').required(),
@@ -144,6 +144,7 @@ const eventSchema = Joi.object({
   dossier_name: Joi.string().max(255).optional(),
   client_id: Joi.string().uuid().optional(),
   expert_id: Joi.string().uuid().optional(),
+  apporteur_id: Joi.string().uuid().optional(),
   location: Joi.string().max(500).allow(null, '').optional(),
   is_online: Joi.boolean().default(false),
   meeting_url: Joi.string().max(500).allow(null, '').optional(),
@@ -151,7 +152,8 @@ const eventSchema = Joi.object({
   color: Joi.string().pattern(/^#[0-9A-Fa-f]{6}$/).default('#3B82F6'),
   is_recurring: Joi.boolean().default(false),
   recurrence_rule: Joi.string().optional(),
-  metadata: Joi.object().default({})
+  metadata: Joi.object().default({}),
+  participants: Joi.array().items(Joi.object()).optional()
 });
 
 // Schéma de validation pour une étape de dossier

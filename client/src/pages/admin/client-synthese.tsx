@@ -624,7 +624,13 @@ const ClientSynthese: React.FC = () => {
                 {id && (
                   <ClientTimeline 
                     clientId={id} 
-                    userType={user?.type as 'expert' | 'admin' | 'apporteur'} 
+                    userType={user?.type as 'expert' | 'admin' | 'apporteur'}
+                    clientInfo={{
+                      name: client ? `${client.first_name || ''} ${client.last_name || ''}`.trim() : undefined,
+                      company_name: client?.company_name,
+                      phone_number: client?.phone,
+                      email: client?.email
+                    }}
                   />
                 )}
               </TabsContent>

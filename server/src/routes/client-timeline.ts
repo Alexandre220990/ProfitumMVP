@@ -208,5 +208,157 @@ router.post('/:id/timeline/comment', enhancedAuthMiddleware, async (req: Request
   }
 });
 
+/**
+ * PUT /api/clients/:id/timeline/comment/:commentId
+ * Modifier un commentaire sur un client (seulement si l'utilisateur est l'auteur)
+ */
+router.put('/:id/timeline/comment/:commentId', enhancedAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const user = (req as AuthenticatedRequest).user;
+    const { id: client_id, commentId } = req.params;
+    const { content } = req.body;
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur non authentifié'
+      });
+    }
+
+    if (!content || !content.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Le contenu du commentaire est requis'
+      });
+    }
+
+    // Récupérer le commentaire pour vérifier que l'utilisateur est l'auteur
+    const { data: event, error: eventError } = await supabaseAdmin
+      .from('client_timeline')
+      .select('*')
+      .eq('id', commentId)
+      .eq('client_id', client_id)
+      .eq('type', 'comment')
+      .single();
+
+    if (eventError || !event) {
+      return res.status(404).json({
+        success: false,
+        message: 'Commentaire non trouvé'
+      });
+    }
+
+    // Vérifier que l'utilisateur est l'auteur
+    if (event.actor_id !== user.database_id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Vous ne pouvez modifier que vos propres commentaires'
+      });
+    }
+
+    // Mettre à jour le commentaire
+    const { data: updatedEvent, error: updateError } = await supabaseAdmin
+      .from('client_timeline')
+      .update({
+        description: content.trim(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', commentId)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error('❌ Erreur mise à jour commentaire:', updateError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la mise à jour du commentaire'
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: { event: updatedEvent },
+      message: 'Commentaire modifié avec succès'
+    });
+
+  } catch (error: any) {
+    console.error('❌ Erreur PUT commentaire client:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur',
+      details: error.message
+    });
+  }
+});
+
+/**
+ * DELETE /api/clients/:id/timeline/comment/:commentId
+ * Supprimer un commentaire sur un client (seulement si l'utilisateur est l'auteur)
+ */
+router.delete('/:id/timeline/comment/:commentId', enhancedAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const user = (req as AuthenticatedRequest).user;
+    const { id: client_id, commentId } = req.params;
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur non authentifié'
+      });
+    }
+
+    // Récupérer le commentaire pour vérifier que l'utilisateur est l'auteur
+    const { data: event, error: eventError } = await supabaseAdmin
+      .from('client_timeline')
+      .select('*')
+      .eq('id', commentId)
+      .eq('client_id', client_id)
+      .eq('type', 'comment')
+      .single();
+
+    if (eventError || !event) {
+      return res.status(404).json({
+        success: false,
+        message: 'Commentaire non trouvé'
+      });
+    }
+
+    // Vérifier que l'utilisateur est l'auteur
+    if (event.actor_id !== user.database_id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Vous ne pouvez supprimer que vos propres commentaires'
+      });
+    }
+
+    // Supprimer le commentaire
+    const { error: deleteError } = await supabaseAdmin
+      .from('client_timeline')
+      .delete()
+      .eq('id', commentId);
+
+    if (deleteError) {
+      console.error('❌ Erreur suppression commentaire:', deleteError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la suppression du commentaire'
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: 'Commentaire supprimé avec succès'
+    });
+
+  } catch (error: any) {
+    console.error('❌ Erreur DELETE commentaire client:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur',
+      details: error.message
+    });
+  }
+});
+
 export default router;
 

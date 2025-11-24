@@ -132,7 +132,7 @@ export class DossierTimelineService {
         const description = contentMatch ? contentMatch[2] : comment.content;
 
         return {
-          id: comment.id,
+          id: comment.id, // Utiliser l'ID du commentaire comme ID de l'événement
           dossier_id: comment.dossier_id,
           date: comment.created_at,
           type: 'comment',
@@ -142,7 +142,11 @@ export class DossierTimelineService {
           title: `Commentaire ${actorName}`,
           description: description,
           icon: '💬',
-          color: actorType === 'admin' ? 'red' : actorType === 'expert' ? 'purple' : 'green'
+          color: actorType === 'admin' ? 'red' : actorType === 'expert' ? 'purple' : 'green',
+          metadata: { 
+            comment_id: comment.id,
+            timeline_event_id: comment.metadata?.timeline_event_id 
+          }
         };
       });
 
