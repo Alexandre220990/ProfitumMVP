@@ -520,7 +520,10 @@ const AdminCabinetDetailPage: React.FC = () => {
     return flat;
   }, [cabinet?.hierarchy]);
 
-  const members = hierarchyMembers.length ? hierarchyMembers : cabinet?.members || [];
+  const members = useMemo(() => {
+    return hierarchyMembers.length ? hierarchyMembers : (cabinet?.members || []);
+  }, [hierarchyMembers, cabinet?.members]);
+
   const managerMembers = useMemo(
     () => members.filter((member: any) => member.team_role === 'MANAGER'),
     [members]
