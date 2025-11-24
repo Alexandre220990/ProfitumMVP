@@ -180,22 +180,20 @@ const limiter = rateLimit({
   skip: (req) => {
     // Skip rate limiting pour les routes de notification, messaging et vues qui peuvent polling
     // Skip aussi les routes d'authentification qui ont leur propre rate limiter spécifique
+    // IMPORTANT: req.path ne contient PAS le préfixe /api/ car le middleware est monté sur /api/
+    // Donc on vérifie le chemin SANS le préfixe /api/
     const skipPaths = [
-      '/api/health', 
-      '/api/apporteur/views/notifications', 
-      '/api/notifications', // Inclut /api/notifications/stream et toutes les sous-routes
-      '/api/admin/notifications',
-      '/api/unified-messaging',
-      '/api/auth' // Routes d'authentification ont leur propre rate limiter
+      '/health', 
+      '/apporteur/views/notifications', 
+      '/notifications', // Inclut /notifications/stream et toutes les sous-routes
+      '/admin/notifications',
+      '/unified-messaging',
+      '/auth' // Routes d'authentification ont leur propre rate limiter
     ];
     
     // Vérifier si le path commence par un des chemins à exclure
-    const shouldSkip = skipPaths.some(path => {
-      const pathMatch = req.path.startsWith(path);
-      // Log pour debug des routes SSE
-      if (req.path.includes('/stream') || req.path.includes('/notifications')) {
-        console.log(`🔍 Rate limiter skip check: path=${req.path}, skipPath=${path}, match=${pathMatch}`);
-      }
+    const shouldSkip = skipPaths.some(skipPath => {
+      const pathMatch = req.path.startsWith(skipPath);
       return pathMatch;
     });
     
