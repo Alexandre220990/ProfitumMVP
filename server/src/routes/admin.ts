@@ -2070,6 +2070,183 @@ router.post('/clients', asyncHandler(async (req, res) => {
   }
 }));
 
+// POST /api/admin/admins - Créer un nouvel administrateur
+router.post('/admins', asyncHandler(async (req, res) => {
+  try {
+    const adminId = (req as any).user.id;
+    const { email, name, password, role } = req.body;
+
+    // Validation des données requises
+    if (!email || !name || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email, nom et mot de passe sont requis'
+      });
+    }
+
+    // Validation du mot de passe
+    if (password.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: 'Le mot de passe doit contenir au moins 8 caractères'
+      });
+    }
+
+    // Vérifier si l'email existe déjà dans Supabase Auth
+    const { data: existingAuthUsers } = await supabaseClient.auth.admin.listUsers();
+    const emailExists = existingAuthUsers?.users?.some(u => u.email === email);
+
+    if (emailExists) {
+      return res.status(400).json({
+        success: false,
+        message: 'Un utilisateur avec cet email existe déjà'
+      });
+    }
+
+    // Vérifier si l'admin existe déjà dans la table Admin
+    const { data: existingAdmin } = await supabaseClient
+      .from('Admin')
+      .select('id, email')
+      .eq('email', email)
+      .single();
+
+    if (existingAdmin) {
+      return res.status(400).json({
+        success: false,
+        message: 'Un administrateur avec cet email existe déjà'
+      });
+    }
+
+    // 1. Créer l'utilisateur Supabase Auth avec le mot de passe fourni
+    const { data: authData, error: authError } = await supabaseClient.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: {
+        type: 'admin',
+        name: name
+      }
+    });
+
+    if (authError || !authData.user) {
+      console.error('❌ Erreur création utilisateur Auth:', authError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la création du compte utilisateur',
+        details: authError?.message
+      });
+    }
+
+    // 2. Créer l'entrée dans la table Admin
+    const { data: newAdmin, error: adminError } = await supabaseClient
+      .from('Admin')
+      .insert({
+        email,
+        name,
+        role: role || 'admin',
+        is_active: true,
+        auth_user_id: authData.user.id,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .select('id, email, name, role, is_active, auth_user_id, created_at')
+      .single();
+
+    if (adminError) {
+      console.error('❌ Erreur création admin:', adminError);
+      
+      // Nettoyer : supprimer l'utilisateur Auth créé si la création Admin échoue
+      try {
+        await supabaseClient.auth.admin.deleteUser(authData.user.id);
+      } catch (cleanupError) {
+        console.error('❌ Erreur lors du nettoyage:', cleanupError);
+      }
+      
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la création de l\'administrateur',
+        details: adminError.message
+      });
+    }
+
+    // 3. Envoyer l'email avec les identifiants au nouvel admin
+    try {
+      const { EmailService } = await import('../services/EmailService');
+      const emailSent = await EmailService.sendAdminCredentials(
+        newAdmin.email,
+        newAdmin.name,
+        password
+      );
+
+      if (!emailSent) {
+        console.warn('⚠️ L\'email n\'a pas pu être envoyé, mais l\'admin a été créé avec succès');
+        // Ne pas faire échouer la création si l'email échoue
+      } else {
+        console.log('✅ Email identifiants envoyé avec succès à:', newAdmin.email);
+      }
+    } catch (emailError) {
+      console.warn('⚠️ Erreur lors de l\'envoi de l\'email:', emailError);
+      // Ne pas faire échouer la création si l'email échoue
+    }
+
+    // 4. Logger l'action dans AdminAuditLog
+    try {
+      const { error: logError } = await supabaseClient.rpc('log_admin_action', {
+        p_admin_id: adminId,
+        p_action: 'CREATE_ADMIN',
+        p_table_name: 'Admin',
+        p_record_id: newAdmin.id,
+        p_old_values: null,
+        p_new_values: JSON.stringify({
+          email: newAdmin.email,
+          name: newAdmin.name,
+          role: newAdmin.role,
+          is_active: newAdmin.is_active
+        }),
+        p_description: `Création d'un nouvel administrateur : ${newAdmin.name} (${newAdmin.email})`,
+        p_severity: 'INFO'
+      });
+
+      if (logError) {
+        console.warn('⚠️ Erreur lors du logging de l\'action admin:', logError);
+        // Ne pas faire échouer la création si le logging échoue
+      }
+    } catch (logError) {
+      console.warn('⚠️ Erreur lors du logging de l\'action admin:', logError);
+    }
+
+    console.log('✅ Admin créé avec succès:', {
+      id: newAdmin.id,
+      email: newAdmin.email,
+      name: newAdmin.name,
+      created_by: adminId
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: 'Administrateur créé avec succès',
+      data: {
+        admin: {
+          id: newAdmin.id,
+          email: newAdmin.email,
+          name: newAdmin.name,
+          role: newAdmin.role,
+          is_active: newAdmin.is_active,
+          created_at: newAdmin.created_at
+        }
+      }
+    });
+
+  } catch (error: any) {
+    console.error('❌ Erreur création admin:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la création de l\'administrateur',
+      details: error.message
+    });
+  }
+}));
+
 // POST /api/admin/clients/:clientId/simulation - Créer simulation et calculer éligibilité
 router.post('/clients/:clientId/simulation', asyncHandler(async (req, res) => {
   try {

@@ -115,6 +115,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       href: '/admin/formulaire-client',
       icon: User,
       current: location.pathname === '/admin/formulaire-client'
+    },
+    {
+      name: 'Ajouter un admin',
+      href: '/admin/formulaire-admin',
+      icon: Shield,
+      current: location.pathname === '/admin/formulaire-admin'
     }
   ];
 

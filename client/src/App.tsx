@@ -111,6 +111,7 @@ const AdminMonitoring = React.lazy(() => import('./pages/admin/monitoring'));
 // const AdminValidationDashboard = React.lazy(() => import('./pages/admin/validation-dashboard'));
 const AdminFormulaireExpert = React.lazy(() => import('./pages/admin/formulaire-expert'));
 const AdminFormulaireClient = React.lazy(() => import('./pages/admin/formulaire-client-complet'));
+const AdminFormulaireAdmin = React.lazy(() => import('./pages/admin/formulaire-admin'));
 const AdminDocumentsGEDUnifie = React.lazy(() => import('./pages/admin/documents-ged-unifie')); // ✅ PAGE UNIFIÉE (GED + Documentation + Upload)
 const AdminClientSynthese = React.lazy(() => import('./pages/admin/client-synthese')); // ✅ PAGE SYNTHÈSE CLIENT
 const AdminExpertSynthese = React.lazy(() => import('./pages/admin/expert-synthese')); // ✅ PAGE SYNTHÈSE EXPERT
@@ -387,6 +388,7 @@ function App() {
                         <Route path="monitoring" element={<AdminMonitoring />} />
                         <Route path="formulaire-expert" element={<AdminFormulaireExpert />} />
                         <Route path="formulaire-client" element={<AdminFormulaireClient />} />
+                        <Route path="formulaire-admin" element={<AdminFormulaireAdmin />} />
                         <Route path="contact/:id" element={<AdminContactMessage />} />
                       </Route>
                       

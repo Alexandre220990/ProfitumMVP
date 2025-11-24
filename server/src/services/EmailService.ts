@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
+import * as nodemailer from 'nodemailer';
 
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
@@ -783,6 +784,150 @@ L'équipe Profitum`;
         `;
 
         return this.sendEmail(adminEmail, subject, html, text);
+    }
+
+    // ===== ENVOI EMAIL CRÉDENTIALS ADMIN =====
+    static async sendAdminCredentials(
+        adminEmail: string,
+        adminName: string,
+        temporaryPassword: string
+    ): Promise<boolean> {
+        try {
+            const template = this.getAdminCredentialsTemplate(adminEmail, adminName, temporaryPassword);
+            
+            // Utiliser nodemailer pour envoyer l'email réellement
+            const emailTransporter = nodemailer.createTransport({
+                host: process.env.SMTP_HOST || 'smtp.gmail.com',
+                port: parseInt(process.env.SMTP_PORT || '587'),
+                secure: false,
+                auth: {
+                    user: process.env.SMTP_USER,
+                    pass: process.env.SMTP_PASS
+                }
+            });
+
+            await emailTransporter.sendMail({
+                from: process.env.SMTP_FROM || process.env.SMTP_USER,
+                to: adminEmail,
+                subject: template.subject,
+                html: template.html,
+                text: template.text
+            });
+
+            console.log('✅ Email identifiants admin envoyé avec succès à:', adminEmail);
+            return true;
+
+        } catch (error) {
+            console.error('❌ Erreur envoi email identifiants admin:', error);
+            // Ne pas faire échouer la création de l'admin si l'email échoue
+            return false;
+        }
+    }
+
+    // ===== TEMPLATE EMAIL CRÉDENTIALS ADMIN =====
+    private static getAdminCredentialsTemplate(
+        adminEmail: string,
+        adminName: string,
+        temporaryPassword: string
+    ): EmailTemplate {
+        const subject = 'Bienvenue sur Profitum - Vos identifiants administrateur';
+        const loginUrl = `${process.env.FRONTEND_URL || process.env.CLIENT_URL || 'https://www.profitum.app'}/connect-admin`;
+        
+        const html = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <title>Identifiants Administrateur Profitum</title>
+                <style>
+                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                    .header { background: #2563eb; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+                    .content { padding: 30px; background: #f9fafb; border-radius: 0 0 8px 8px; }
+                    .credentials { background: white; padding: 25px; border-radius: 8px; margin: 20px 0; border: 2px solid #e5e7eb; }
+                    .credential-item { margin: 15px 0; padding: 12px; background: #f3f4f6; border-radius: 6px; }
+                    .credential-label { font-weight: 600; color: #374151; margin-bottom: 5px; }
+                    .credential-value { font-family: 'Courier New', monospace; font-size: 16px; color: #1f2937; background: white; padding: 8px; border-radius: 4px; }
+                    .button { display: inline-block; background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: 600; }
+                    .warning { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 4px; }
+                    .footer { text-align: center; padding: 20px; color: #666; font-size: 14px; margin-top: 30px; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>🔐 Identifiants Administrateur</h1>
+                    </div>
+                    <div class="content">
+                        <p>Bonjour <strong>${adminName}</strong>,</p>
+                        
+                        <p>Votre compte administrateur a été créé sur la plateforme Profitum. Vous pouvez maintenant accéder au dashboard administrateur avec les identifiants suivants :</p>
+                        
+                        <div class="credentials">
+                            <h3 style="margin-top: 0; color: #1f2937;">Vos identifiants de connexion :</h3>
+                            
+                            <div class="credential-item">
+                                <div class="credential-label">📧 Email :</div>
+                                <div class="credential-value">${adminEmail}</div>
+                            </div>
+                            
+                            <div class="credential-item">
+                                <div class="credential-label">🔑 Mot de passe provisoire :</div>
+                                <div class="credential-value">${temporaryPassword}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="warning">
+                            <strong>⚠️ Important :</strong> Pour votre sécurité, vous devez changer ce mot de passe provisoire lors de votre première connexion.
+                        </div>
+                        
+                        <div style="text-align: center;">
+                            <a href="${loginUrl}" class="button">Se connecter au dashboard admin</a>
+                        </div>
+                        
+                        <p style="margin-top: 30px;">Une fois connecté, vous aurez accès à toutes les fonctionnalités d'administration de la plateforme.</p>
+                        
+                        <p>Si vous avez des questions ou rencontrez des difficultés, n'hésitez pas à contacter l'équipe technique.</p>
+                        
+                        <p style="margin-top: 30px;">Cordialement,<br><strong>L'équipe Profitum</strong></p>
+                    </div>
+                    <div class="footer">
+                        <p>Profitum - Plateforme de gestion des aides financières</p>
+                        <p style="font-size: 12px; color: #9ca3af;">Cet email a été envoyé automatiquement, merci de ne pas y répondre.</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+        `;
+
+        const text = `
+            Identifiants Administrateur Profitum
+            
+            Bonjour ${adminName},
+            
+            Votre compte administrateur a été créé sur la plateforme Profitum. 
+            Vous pouvez maintenant accéder au dashboard administrateur avec les identifiants suivants :
+            
+            Email : ${adminEmail}
+            Mot de passe provisoire : ${temporaryPassword}
+            
+            ⚠️ IMPORTANT : Pour votre sécurité, vous devez changer ce mot de passe provisoire lors de votre première connexion.
+            
+            Lien de connexion : ${loginUrl}
+            
+            Une fois connecté, vous aurez accès à toutes les fonctionnalités d'administration de la plateforme.
+            
+            Si vous avez des questions ou rencontrez des difficultés, n'hésitez pas à contacter l'équipe technique.
+            
+            Cordialement,
+            L'équipe Profitum
+            
+            ---
+            Profitum - Plateforme de gestion des aides financières
+            Cet email a été envoyé automatiquement, merci de ne pas y répondre.
+        `;
+
+        return { subject, html, text };
     }
 
     // ===== MÉTHODE GÉNÉRIQUE D'ENVOI =====
