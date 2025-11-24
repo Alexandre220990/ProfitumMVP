@@ -179,8 +179,14 @@ const limiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => {
-    // Skip rate limiting pour les routes de notification et vues qui peuvent polling
-    const skipPaths = ['/api/health', '/api/apporteur/views/notifications', '/api/notifications'];
+    // Skip rate limiting pour les routes de notification, messaging et vues qui peuvent polling
+    const skipPaths = [
+      '/api/health', 
+      '/api/apporteur/views/notifications', 
+      '/api/notifications',
+      '/api/admin/notifications',
+      '/api/unified-messaging'
+    ];
     return skipPaths.some(path => req.path.startsWith(path));
   }
 });

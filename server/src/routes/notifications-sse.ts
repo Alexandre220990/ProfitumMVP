@@ -24,7 +24,11 @@ const getSupabaseAnonKey = (): string => {
  */
 router.get('/stream', async (req: Request, res: Response) => {
   try {
-    console.log('📡 SSE: Nouvelle tentative de connexion');
+    // Réduire les logs pour éviter la redondance (log seulement 1 fois sur 20)
+    const shouldLogConnection = Math.random() < 0.05;
+    if (shouldLogConnection) {
+      console.log('📡 SSE: Nouvelle tentative de connexion');
+    }
     
     // Récupérer le token depuis query param (EventSource ne peut pas passer de headers)
     const token = req.query.token as string;
@@ -38,62 +42,65 @@ router.get('/stream', async (req: Request, res: Response) => {
       return;
     }
 
-    console.log('🔍 SSE: Token reçu, longueur:', token.length);
-
-    // Vérifier le token JWT avec Supabase
-    const { createClient } = await import('@supabase/supabase-js');
+    // Valider le token JWT personnalisé (comme dans enhancedAuthMiddleware)
+    let userId: string;
+    let userType: string;
     
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseAnonKey = getSupabaseAnonKey();
-    
-    if (!supabaseUrl || !supabaseAnonKey) {
-      console.error('❌ SSE: Configuration Supabase manquante');
-      res.status(500).json({
-        success: false,
-        message: 'Configuration serveur invalide'
-      });
-      return;
-    }
-    
-    console.log('🔍 SSE: Configuration Supabase OK, création client...');
-    
-    // Créer un client avec le token de l'utilisateur pour validation
-    const supabaseWithToken = createClient(
-      supabaseUrl,
-      supabaseAnonKey,
-      {
-        global: {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
+    try {
+      const jwt = require('jsonwebtoken');
+      const { jwtConfig } = await import('../config/jwt');
+      const decoded = jwt.verify(token, jwtConfig.secret) as any;
+      
+      // Le JWT contient id (auth_user_id) et database_id (ID de la table Admin/Client/Expert)
+      userId = decoded.id; // auth_user_id pour les requêtes Supabase
+      userType = decoded.type || 'client';
+      
+    } catch (jwtError) {
+      // Si le JWT échoue, essayer avec Supabase Auth (pour compatibilité)
+      try {
+        const { createClient } = await import('@supabase/supabase-js');
+        const supabaseUrl = process.env.SUPABASE_URL;
+        const supabaseAnonKey = getSupabaseAnonKey();
+        
+        if (!supabaseUrl || !supabaseAnonKey) {
+          throw new Error('Configuration Supabase manquante');
         }
+        
+        const supabaseWithToken = createClient(
+          supabaseUrl,
+          supabaseAnonKey,
+          {
+            global: {
+              headers: {
+                Authorization: `Bearer ${token}`
+              }
+            }
+          }
+        );
+        
+        const { data, error: authError } = await supabaseWithToken.auth.getUser();
+        
+        if (authError || !data?.user) {
+          throw authError || new Error('Token invalide');
+        }
+        
+        userId = data.user.id;
+        userType = data.user.user_metadata?.type || 'client';
+      } catch (supabaseError) {
+        // Log seulement 1 fois sur 10 pour éviter les logs redondants
+        if (Math.random() < 0.1) {
+          console.error('❌ SSE Auth Error:', {
+            jwtError: jwtError instanceof Error ? jwtError.message : 'Erreur JWT',
+            supabaseError: supabaseError instanceof Error ? supabaseError.message : 'Erreur Supabase'
+          });
+        }
+        res.status(401).json({
+          success: false,
+          message: 'Token invalide ou expiré'
+        });
+        return;
       }
-    );
-    
-    console.log('🔍 SSE: Client Supabase créé, tentative getUser()');
-    
-    // Valider le token en récupérant l'utilisateur
-    const { data, error: authError } = await supabaseWithToken.auth.getUser();
-
-    if (authError || !data?.user) {
-      console.error('❌ SSE Auth Error:', {
-        message: authError?.message,
-        status: authError?.status,
-        hasData: !!data,
-        hasUser: !!data?.user
-      });
-      res.status(401).json({
-        success: false,
-        message: 'Token invalide ou expiré'
-      });
-      return;
     }
-
-    const user = data.user;
-    console.log('✅ SSE: Utilisateur validé:', user.id);
-
-    const userId = user.id;
-    const userType = user.user_metadata?.type || 'client';
 
     if (!userId) {
       res.status(401).json({
@@ -103,7 +110,11 @@ router.get('/stream', async (req: Request, res: Response) => {
       return;
     }
 
-    console.log(`📡 Nouvelle connexion SSE: ${userType} ${userId}`);
+    // Log seulement une fois toutes les 10 connexions pour éviter les logs redondants
+    const shouldLogUser = Math.random() < 0.1; // 10% de chance de logger
+    if (shouldLogUser) {
+      console.log(`📡 Connexion SSE: ${userType} ${userId.substring(0, 8)}...`);
+    }
 
     // Générer un ID unique pour ce client
     const clientId = `${userId}-${Date.now()}`;
@@ -125,13 +136,39 @@ router.get('/stream', async (req: Request, res: Response) => {
           process.env.SUPABASE_SERVICE_ROLE_KEY!
         );
 
-        const { data: unreadNotifications } = await supabase
-          .from('notification')
-          .select('*')
-          .eq('user_id', userId)
-          .eq('is_read', false)
-          .order('created_at', { ascending: false })
-          .limit(20);
+        // Pour les admins, vérifier aussi AdminNotification
+        let unreadNotifications: any[] = [];
+        
+        if (userType === 'admin') {
+          // Récupérer depuis AdminNotification (table globale pour admins)
+          const { data: adminNotifs } = await supabase
+            .from('AdminNotification')
+            .select('*')
+            .eq('status', 'unread')
+            .order('created_at', { ascending: false })
+            .limit(20);
+          
+          if (adminNotifs) {
+            unreadNotifications = adminNotifs.map((n: any) => ({
+              ...n,
+              notification_type: n.type,
+              is_read: n.is_read !== undefined ? n.is_read : n.status === 'read'
+            }));
+          }
+        } else {
+          // Pour les autres types, utiliser la table notification
+          const { data: notifs } = await supabase
+            .from('notification')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('is_read', false)
+            .order('created_at', { ascending: false })
+            .limit(20);
+          
+          if (notifs) {
+            unreadNotifications = notifs;
+          }
+        }
 
         if (unreadNotifications && unreadNotifications.length > 0) {
           res.write(`data: ${JSON.stringify({

@@ -3514,49 +3514,9 @@ router.post('/assignments/:id/assign', asyncHandler(async (req, res) => {
   }
 }));
 
-// GET /api/admin/notifications - Notifications système
-router.get('/notifications', asyncHandler(async (req, res) => {
-  try {
-    const { type, priority, page = 1, limit = 50 } = req.query;
-    const offset = (Number(page) - 1) * Number(limit);
-
-    let query = supabaseClient
-      .from('notification')
-      .select('*')
-      .eq('user_type', 'admin');
-
-    if (type) {
-      query = query.eq('notification_type', type);
-    }
-
-    if (priority) {
-      query = query.eq('priority', priority);
-    }
-
-    const { data: notifications, error, count } = await query
-      .range(offset, offset + Number(limit) - 1)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      return res.status(500).json({ success: false, message: 'Erreur lors de la récupération des notifications' });
-    }
-
-    return res.json({
-      success: true,
-      data: {
-        notifications: notifications || [],
-        pagination: {
-          page: Number(page),
-          limit: Number(limit),
-          total: count || 0
-        }
-      }
-    });
-  } catch (error) {
-    console.error('Erreur lors de la récupération des notifications:', error);
-    return res.status(500).json({ success: false, message: 'Erreur serveur' });
-  }
-}));
+// ⚠️ ROUTE SUPPRIMÉE - Utiliser la route ligne 5177 qui utilise AdminNotification
+// GET /api/admin/notifications - Cette route a été remplacée par celle ligne 5177 qui utilise AdminNotification
+// Ancienne route utilisant 'notification' avec user_type='admin' - SUPPRIMÉE
 
 // POST /api/admin/notifications - Créer une notification
 router.post('/notifications', asyncHandler(async (req, res) => {
@@ -5178,8 +5138,7 @@ router.get('/notifications', async (req, res) => {
   try {
     const { status, priority, limit = 100 } = req.query;
     
-    // Par défaut, récupérer toutes les notifications (y compris archivées)
-    // Le front-end filtrera selon les besoins
+    // Récupérer depuis AdminNotification (table globale pour tous les admins)
     let query = supabaseClient
       .from('AdminNotification')
       .select('*')
