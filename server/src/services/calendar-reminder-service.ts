@@ -45,10 +45,11 @@ export class CalendarReminderService {
       }
 
       if (!reminders || reminders.length === 0) {
+        // Ne pas logger si aucun rappel à traiter pour éviter les logs répétés
         return;
       }
 
-      console.log(`📅 Traitement de ${reminders.length} rappels d'événements`);
+      console.log(`📅 Traitement de ${reminders.length} rappel(s) d'événement(s)`);
 
       for (const reminder of reminders) {
         await this.processReminder(reminder, now);

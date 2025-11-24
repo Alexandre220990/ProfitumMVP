@@ -29,7 +29,7 @@ class NotificationSSEService {
       user_id: userId,
       user_type: userType as any,
       res,
-      lastEventId: Date.now()
+      lastEventId: 0 // Initialisé à 0 pour récupérer toutes les notifications non lues au démarrage
     };
 
     this.clients.set(clientId, client);
@@ -138,11 +138,11 @@ class NotificationSSEService {
    * Vérifier périodiquement les nouvelles notifications
    */
   private startPeriodicCheck() {
-    console.log('🔄 Démarrage vérification périodique notifications SSE (toutes les 5s)');
+    console.log('🔄 Démarrage vérification périodique notifications SSE (toutes les 15s)');
 
     this.checkInterval = setInterval(async () => {
       await this.checkNewNotifications();
-    }, 5000); // Vérifier toutes les 5 secondes
+    }, 15000); // Vérifier toutes les 15 secondes (réduit de 5s pour limiter les requêtes)
   }
 
   /**
@@ -159,14 +159,33 @@ class NotificationSSEService {
       return;
     }
 
+    let totalNewNotifications = 0;
+
     for (const [clientId, client] of this.clients.entries()) {
       try {
+        // Si c'est la première vérification (lastEventId = 0), récupérer le dernier ID pour éviter d'envoyer toutes les anciennes notifications
+        if (client.lastEventId === 0) {
+          const { data: lastNotif } = await supabase
+            .from('notification')
+            .select('id')
+            .eq('user_id', client.user_id)
+            .order('id', { ascending: false })
+            .limit(1)
+            .single();
+          
+          if (lastNotif) {
+            client.lastEventId = lastNotif.id;
+          }
+        }
+
         // Récupérer les nouvelles notifications depuis le dernier check
+        // Utiliser lastEventId pour filtrer seulement les nouvelles notifications
         const { data: notifications, error } = await supabase
           .from('notification')
           .select('*')
           .eq('user_id', client.user_id)
           .eq('is_read', false)
+          .gt('id', client.lastEventId || 0)
           .order('created_at', { ascending: false })
           .limit(10);
 
@@ -176,6 +195,11 @@ class NotificationSSEService {
         }
 
         if (notifications && notifications.length > 0) {
+          totalNewNotifications += notifications.length;
+          // Mettre à jour lastEventId avec le plus grand ID
+          const maxId = Math.max(...notifications.map(n => n.id));
+          client.lastEventId = maxId;
+
           // Envoyer chaque nouvelle notification
           notifications.forEach(notif => {
             this.sendToClient(clientId, {
@@ -188,6 +212,11 @@ class NotificationSSEService {
       } catch (error) {
         console.error(`❌ Erreur check notifications pour ${clientId}:`, error);
       }
+    }
+
+    // Logger uniquement s'il y a de nouvelles notifications
+    if (totalNewNotifications > 0) {
+      console.log(`📬 ${totalNewNotifications} nouvelle(s) notification(s) envoyée(s) via SSE`);
     }
   }
 

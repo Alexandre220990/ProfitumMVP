@@ -10,12 +10,7 @@ import rateLimit from 'express-rate-limit';
  */
 export const loginRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Limite de 5 requêtes par fenêtre
-  message: {
-    success: false,
-    message: 'Trop de tentatives de connexion. Veuillez réessayer dans 15 minutes.',
-    error: 'RATE_LIMIT_EXCEEDED'
-  },
+  max: 50, // Limite temporairement augmentée à 50 requêtes par fenêtre (pour développement)
   standardHeaders: true, // Retourne les informations de rate limit dans les headers `RateLimit-*`
   legacyHeaders: false, // Désactive les headers `X-RateLimit-*`
   skipSuccessfulRequests: false, // Compte aussi les requêtes réussies
@@ -38,11 +33,6 @@ export const loginRateLimiter = rateLimit({
 export const registerRateLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 heure
   max: 3, // Limite de 3 requêtes par fenêtre
-  message: {
-    success: false,
-    message: 'Trop de tentatives d\'inscription. Veuillez réessayer dans 1 heure.',
-    error: 'RATE_LIMIT_EXCEEDED'
-  },
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req, res) => {
@@ -63,11 +53,6 @@ export const registerRateLimiter = rateLimit({
 export const strictRateLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 heure
   max: 10, // Limite de 10 requêtes par fenêtre
-  message: {
-    success: false,
-    message: 'Trop de requêtes. Veuillez réessayer plus tard.',
-    error: 'RATE_LIMIT_EXCEEDED'
-  },
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req, res) => {
@@ -88,11 +73,6 @@ export const strictRateLimiter = rateLimit({
 export const generalRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // Limite de 100 requêtes par fenêtre
-  message: {
-    success: false,
-    message: 'Trop de requêtes. Veuillez réessayer plus tard.',
-    error: 'RATE_LIMIT_EXCEEDED'
-  },
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => {

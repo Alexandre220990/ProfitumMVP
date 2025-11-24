@@ -13,7 +13,7 @@ export const startCalendarRemindersCron = () => {
   // Traitement des rappels toutes les minutes
   cron.schedule('* * * * *', async () => {
     try {
-      console.log('📅 Vérification des rappels d\'événements...');
+      // Ne logger que si des rappels sont traités (log déplacé dans le service)
       await calendarReminderService.processReminders();
     } catch (error) {
       console.error('❌ Erreur cron job rappels calendrier:', error);
