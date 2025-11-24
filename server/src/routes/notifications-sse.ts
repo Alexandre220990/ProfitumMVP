@@ -24,8 +24,8 @@ const getSupabaseAnonKey = (): string => {
  */
 router.get('/stream', async (req: Request, res: Response) => {
   try {
-    // Réduire les logs pour éviter la redondance (log seulement 1 fois sur 20)
-    const shouldLogConnection = Math.random() < 0.05;
+    // Log toutes les connexions pour debug (on peut réduire plus tard)
+    const shouldLogConnection = true; // Temporairement activé pour debug
     if (shouldLogConnection) {
       console.log('📡 SSE: Nouvelle tentative de connexion');
     }
@@ -41,10 +41,16 @@ router.get('/stream', async (req: Request, res: Response) => {
       });
       return;
     }
+    
+    // Log du token (preview seulement pour sécurité)
+    if (shouldLogConnection) {
+      console.log('🔑 SSE: Token reçu (preview):', token.substring(0, 30) + '...');
+    }
 
     // Valider le token JWT personnalisé (comme dans enhancedAuthMiddleware)
     let userId: string;
     let userType: string;
+    let tokenValidated = false;
     
     try {
       const jwt = require('jsonwebtoken');
@@ -54,15 +60,28 @@ router.get('/stream', async (req: Request, res: Response) => {
       // Le JWT contient id (auth_user_id) et database_id (ID de la table Admin/Client/Expert)
       userId = decoded.id; // auth_user_id pour les requêtes Supabase
       userType = decoded.type || 'client';
+      tokenValidated = true;
+      
+      if (shouldLogConnection) {
+        console.log('✅ SSE: Token JWT personnalisé validé');
+      }
       
     } catch (jwtError) {
       // Si le JWT échoue, essayer avec Supabase Auth (pour compatibilité)
+      if (shouldLogConnection) {
+        console.log('🔄 SSE: Tentative validation avec Supabase Auth...');
+      }
+      
       try {
         const { createClient } = await import('@supabase/supabase-js');
         const supabaseUrl = process.env.SUPABASE_URL;
         const supabaseAnonKey = getSupabaseAnonKey();
         
         if (!supabaseUrl || !supabaseAnonKey) {
+          console.error('❌ SSE: Configuration Supabase manquante', {
+            hasUrl: !!supabaseUrl,
+            hasAnonKey: !!supabaseAnonKey
+          });
           throw new Error('Configuration Supabase manquante');
         }
         
@@ -80,23 +99,61 @@ router.get('/stream', async (req: Request, res: Response) => {
         
         const { data, error: authError } = await supabaseWithToken.auth.getUser();
         
-        if (authError || !data?.user) {
-          throw authError || new Error('Token invalide');
+        if (authError) {
+          console.error('❌ SSE: Erreur Supabase Auth:', {
+            message: authError.message,
+            status: authError.status,
+            name: authError.name
+          });
+          throw authError;
+        }
+        
+        if (!data?.user) {
+          console.error('❌ SSE: Aucun utilisateur retourné par Supabase');
+          throw new Error('Token invalide - utilisateur non trouvé');
         }
         
         userId = data.user.id;
         userType = data.user.user_metadata?.type || 'client';
-      } catch (supabaseError) {
-        // Log seulement 1 fois sur 10 pour éviter les logs redondants
-        if (Math.random() < 0.1) {
-          console.error('❌ SSE Auth Error:', {
-            jwtError: jwtError instanceof Error ? jwtError.message : 'Erreur JWT',
-            supabaseError: supabaseError instanceof Error ? supabaseError.message : 'Erreur Supabase'
+        tokenValidated = true;
+        
+        if (shouldLogConnection) {
+          console.log('✅ SSE: Token Supabase validé', {
+            userId: userId.substring(0, 8) + '...',
+            userType
           });
         }
+      } catch (supabaseError) {
+        // Log détaillé pour comprendre le problème (toujours logger pour debug)
+        const errorDetails = {
+          jwtError: jwtError instanceof Error ? jwtError.message : 'Erreur JWT',
+          supabaseError: supabaseError instanceof Error ? supabaseError.message : 'Erreur Supabase',
+          supabaseErrorName: supabaseError instanceof Error ? supabaseError.name : 'Unknown',
+          tokenPreview: token ? token.substring(0, 30) + '...' : 'null',
+          tokenLength: token ? token.length : 0,
+          hasSupabaseUrl: !!process.env.SUPABASE_URL,
+          hasSupabaseAnonKey: !!getSupabaseAnonKey()
+        };
+        
+        console.error('❌ SSE Auth Error (détaillé):', errorDetails);
+        
+        // Message d'erreur plus informatif
+        let errorMessage = 'Token invalide ou expiré';
+        if (supabaseError instanceof Error) {
+          if (supabaseError.message.includes('expired') || supabaseError.message.includes('expiré')) {
+            errorMessage = 'Token expiré - veuillez vous reconnecter';
+          } else if (supabaseError.message.includes('invalid') || supabaseError.message.includes('invalide')) {
+            errorMessage = 'Token invalide';
+          } else {
+            errorMessage = `Erreur d'authentification: ${supabaseError.message}`;
+          }
+        }
+        
         res.status(401).json({
           success: false,
-          message: 'Token invalide ou expiré'
+          message: errorMessage,
+          error: supabaseError instanceof Error ? supabaseError.message : 'Erreur d\'authentification',
+          code: 'SSE_AUTH_FAILED'
         });
         return;
       }

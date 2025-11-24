@@ -60,27 +60,37 @@ export function useNotificationSSE(options?: {
         // Essayer de récupérer un token frais depuis Supabase
         let token = localStorage.getItem('token') || localStorage.getItem('supabase_token');
         
-        // Si pas de token, essayer de récupérer la session Supabase
-        if (!token) {
-          console.log('🔄 Tentative récupération session Supabase pour SSE...');
-          try {
-            const { supabase } = await import('@/lib/supabase');
-            const { data: { session } } = await supabase.auth.getSession();
-            
-            if (session?.access_token) {
-              token = session.access_token;
-              localStorage.setItem('token', session.access_token);
-              console.log('✅ Token Supabase récupéré pour SSE');
-            } else {
-              console.warn('⚠️ Pas de session Supabase, connexion SSE désactivée');
-              setError('Non authentifié');
-              return;
-            }
-          } catch (error) {
-            console.error('❌ Erreur récupération session:', error);
-            setError('Erreur d\'authentification');
-            return;
+        // Toujours essayer de récupérer une session fraîche depuis Supabase pour s'assurer que le token n'est pas expiré
+        console.log('🔄 Vérification session Supabase pour SSE...');
+        try {
+          const { supabase } = await import('@/lib/supabase');
+          
+          // Récupérer la session actuelle (peut rafraîchir automatiquement si nécessaire)
+          const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+          
+          if (sessionError) {
+            console.error('❌ Erreur récupération session Supabase:', sessionError);
+            // Continuer avec le token en localStorage si disponible
+          } else if (session?.access_token) {
+            // Utiliser le token de la session fraîche
+            token = session.access_token;
+            localStorage.setItem('token', session.access_token);
+            localStorage.setItem('supabase_token', session.access_token);
+            console.log('✅ Token Supabase frais récupéré pour SSE');
+          } else {
+            console.warn('⚠️ Pas de session Supabase active');
+            // Continuer avec le token en localStorage si disponible
           }
+        } catch (error) {
+          console.error('❌ Erreur récupération session:', error);
+          // Continuer avec le token en localStorage si disponible
+        }
+        
+        // Si toujours pas de token après avoir essayé Supabase
+        if (!token) {
+          console.warn('⚠️ Pas de token disponible, connexion SSE désactivée');
+          setError('Non authentifié - veuillez vous reconnecter');
+          return;
         }
         
         if (!token) {
