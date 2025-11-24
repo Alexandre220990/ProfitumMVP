@@ -35,11 +35,11 @@ interface ExpertForm {
   autre_produit?: string;
   cabinet_role?: 'OWNER' | 'MANAGER' | 'EXPERT';
   rating: number;
-  compensation: number;
+  compensation: number; // Pour l'UI, sera converti en client_fee_percentage
   status: string;
   approval_status: string;
   experience: string;
-  city: string;
+  location: string; // Utilisé au lieu de city
   phone: string;
   description: string;
   siren: string;
@@ -48,10 +48,25 @@ interface ExpertForm {
   linkedin?: string;
   certifications?: string[];
   languages?: string[];
+  secteur_activite?: string[]; // Nouveau champ
   availability?: string;
   max_clients?: number;
   hourly_rate?: number;
 }
+
+// Secteurs d'activité alignés sur le simulateur (GENERAL_001)
+const secteursActiviteOptions = [
+  'Transport et Logistique',
+  'Commerce et Distribution',
+  'Industrie et Fabrication',
+  'Services aux Entreprises',
+  'BTP et Construction',
+  'Restauration et Hôtellerie',
+  'Santé et Services Sociaux',
+  'Agriculture et Agroalimentaire',
+  'Services à la Personne',
+  'Autre secteur'
+];
 
 
 const experienceOptions = [
@@ -117,7 +132,7 @@ const FormulaireExpert = () => {
     status: 'active',
     approval_status: 'pending',
     experience: '',
-    city: '',
+    location: '',
     phone: '',
     description: '',
     siren: '',
@@ -126,6 +141,7 @@ const FormulaireExpert = () => {
     linkedin: '',
     certifications: [],
     languages: ['Français'],
+    secteur_activite: [],
     availability: 'disponible',
     max_clients: 10,
     hourly_rate: 0
@@ -136,6 +152,7 @@ const FormulaireExpert = () => {
   const [selectedProduits, setSelectedProduits] = useState<string[]>([]);
   const [autreProduit, setAutreProduit] = useState('');
   const [cabinetRole, setCabinetRole] = useState<'OWNER' | 'MANAGER' | 'EXPERT' | ''>('');
+  const [selectedSecteurs, setSelectedSecteurs] = useState<string[]>([]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -245,27 +262,35 @@ const FormulaireExpert = () => {
         }
       }
       
+      // Convertir client_fee_percentage en compensation (pourcentage)
+      const compensationValue = expertData.client_fee_percentage 
+        ? Math.round(expertData.client_fee_percentage * 100) 
+        : 0;
+      
       setForm({
         ...expertData,
         first_name: firstName,
         last_name: lastName,
-        city: expertData.location || '', // Mapping location -> city
+        location: expertData.location || '', // Utiliser location directement
         phone: expertData.phone || '',
         website: expertData.website || '',
         linkedin: expertData.linkedin || '',
         languages: expertData.languages || ['Français'],
+        secteur_activite: expertData.secteur_activite || [],
         availability: expertData.availability || 'disponible',
         max_clients: expertData.max_clients || 10,
         hourly_rate: expertData.hourly_rate || 0,
         certifications: expertData.certifications || [],
         produits_eligibles: produitsIds,
         autre_produit: expertData.autre_produit || '',
-        cabinet_role: expertData.cabinet_role || undefined
+        cabinet_role: expertData.cabinet_role || undefined,
+        compensation: compensationValue
       });
       
       setSelectedProduits(produitsIds);
       setAutreProduit(expertData.autre_produit || '');
       setCabinetRole(expertData.cabinet_role || '');
+      setSelectedSecteurs(expertData.secteur_activite || []);
     } catch (err) {
       setError('Erreur lors du chargement de l\'expert');
       console.error('Erreur chargement expert: ', err);
@@ -318,13 +343,29 @@ const FormulaireExpert = () => {
 
       const method = isEditing ? 'PUT' : 'POST';
 
+      // Préparer les données à envoyer avec mapping correct
+      // Le backend accepte compensation et le convertit en client_fee_percentage
+      // Le backend accepte city et le mappe vers location
+      const formDataToSend: any = {
+        ...form,
+        // Le backend attend city et le mappe vers location (ligne 1456 dans admin.ts)
+        city: form.location,
+        // Le backend convertit compensation en client_fee_percentage (ligne 1441)
+        compensation: form.compensation,
+        // Inclure secteur_activite si présent
+        secteur_activite: form.secteur_activite || [],
+      };
+      
+      // Ne pas envoyer location directement, le backend utilise city
+      delete formDataToSend.location;
+
       const response = await fetch(url, {
         method,
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(form)
+        body: JSON.stringify(formDataToSend)
       });
 
       if (!response.ok) {
@@ -389,6 +430,24 @@ const FormulaireExpert = () => {
       setForm(prev => ({
         ...prev,
         languages: (prev.languages || []).filter(l => l !== language)
+      }));
+    }
+  };
+
+  const handleSecteurChange = (secteur: string, checked: boolean) => {
+    if (checked) {
+      const newSecteurs = [...selectedSecteurs, secteur];
+      setSelectedSecteurs(newSecteurs);
+      setForm(prev => ({
+        ...prev,
+        secteur_activite: newSecteurs
+      }));
+    } else {
+      const newSecteurs = selectedSecteurs.filter(s => s !== secteur);
+      setSelectedSecteurs(newSecteurs);
+      setForm(prev => ({
+        ...prev,
+        secteur_activite: newSecteurs
       }));
     }
   };
@@ -614,15 +673,15 @@ const FormulaireExpert = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="city" className="flex items-center">
+                      <Label htmlFor="location" className="flex items-center">
                         <MapPin className="w-4 h-4 mr-2" />
-                        Ville
+                        Ville / Localisation
                       </Label>
                       <Input
-                        id="city"
-                        value={form.city}
-                        onChange={(e) => handleInputChange('city', e.target.value)}
-                        placeholder="Paris"
+                        id="location"
+                        value={form.location}
+                        onChange={(e) => handleInputChange('location', e.target.value)}
+                        placeholder="Paris, Lyon, Marseille..."
                       />
                     </div>
                   </div>
@@ -794,7 +853,7 @@ const FormulaireExpert = () => {
 
                 <Separator />
 
-                {/* Produits éligibles */}
+                {/* Produits éligibles - Affichage par catégories */}
                 <div className="space-y-4">
                   <div className="flex items-center space-x-2">
                     <Shield className="w-5 h-5 text-purple-600" />
@@ -809,33 +868,83 @@ const FormulaireExpert = () => {
                     </div>
                   ) : (
                     <>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {produitsEligibles.map((produit) => (
-                          <Tooltip key={produit.id}>
-                            <TooltipTrigger asChild>
-                              <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 transition-colors">
-                                <Checkbox
-                                  id={produit.id}
-                                  checked={selectedProduits.includes(produit.id)}
-                                  onCheckedChange={(checked: boolean) => handleProduitChange(produit.id, checked as boolean)}
-                                />
-                                <Label htmlFor={produit.id} className="text-sm font-medium cursor-pointer flex-1">
-                                  {produit.nom}
-                                </Label>
-                              </div>
-                            </TooltipTrigger>
-                            {produit.description && (
-                              <TooltipContent>
-                                <p>{produit.description}</p>
-                              </TooltipContent>
-                            )}
-                          </Tooltip>
-                        ))}
-                      </div>
+                      {/* Grouper les produits par catégories */}
+                      {(() => {
+                        // Créer un map des catégories avec leurs produits
+                        const produitsParCategorie = produitsEligibles.reduce((acc, produit) => {
+                          const categorie = produit.categorie || 'Non catégorisé';
+                          if (!acc[categorie]) {
+                            acc[categorie] = [];
+                          }
+                          acc[categorie].push(produit);
+                          return acc;
+                        }, {} as Record<string, ProduitEligible[]>);
+
+                        // Définir l'ordre d'affichage des catégories
+                        const ordreCategories = [
+                          'Optimisation Fiscale',
+                          'Optimisation Sociale',
+                          'Optimisation Énergétique',
+                          'Services Juridiques et Recouvrement',
+                          'Logiciels et Outils Numériques',
+                          'Non catégorisé'
+                        ];
+
+                        // Descriptions des catégories
+                        const descriptionsCategories: Record<string, string> = {
+                          'Optimisation Fiscale': 'Optimisation de la fiscalité (FONCIER, TVA)',
+                          'Optimisation Sociale': 'Optimisation des charges sociales (DFS, MSA, URSSAF)',
+                          'Optimisation Énergétique': 'Optimisation énergétique (CEE, Optimisation fournisseur électricité, Optimisation fournisseur gaz, TICPE)',
+                          'Services Juridiques et Recouvrement': 'Services juridiques et recouvrement d\'impayés',
+                          'Logiciels et Outils Numériques': 'Logiciels et outils numériques (Logiciel Solid, Chronotachygraphes digitaux)'
+                        };
+
+                        return (
+                          <div className="space-y-6">
+                            {ordreCategories
+                              .filter(cat => produitsParCategorie[cat] && produitsParCategorie[cat].length > 0)
+                              .map((categorie) => (
+                                <div key={categorie} className="space-y-3">
+                                  <div className="flex items-start space-x-3 p-4 border-2 rounded-lg bg-gray-50">
+                                    <div className="flex-1">
+                                      <h4 className="font-semibold text-gray-900 mb-1">{categorie}</h4>
+                                      {descriptionsCategories[categorie] && (
+                                        <p className="text-xs text-gray-600">{descriptionsCategories[categorie]}</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 ml-4">
+                                    {produitsParCategorie[categorie].map((produit) => (
+                                      <Tooltip key={produit.id}>
+                                        <TooltipTrigger asChild>
+                                          <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 transition-colors">
+                                            <Checkbox
+                                              id={produit.id}
+                                              checked={selectedProduits.includes(produit.id)}
+                                              onCheckedChange={(checked: boolean) => handleProduitChange(produit.id, checked as boolean)}
+                                            />
+                                            <Label htmlFor={produit.id} className="text-sm font-medium cursor-pointer flex-1">
+                                              {produit.nom}
+                                            </Label>
+                                          </div>
+                                        </TooltipTrigger>
+                                        {produit.description && (
+                                          <TooltipContent>
+                                            <p>{produit.description}</p>
+                                          </TooltipContent>
+                                        )}
+                                      </Tooltip>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+                          </div>
+                        );
+                      })()}
                       
                       {/* Option "Autre" */}
-                      <div className="space-y-2">
-                        <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 transition-colors">
+                      <div className="space-y-2 mt-6">
+                        <div className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-gray-50 transition-colors">
                           <Checkbox
                             id="autre-produit"
                             checked={autreProduit.length > 0}
@@ -846,9 +955,12 @@ const FormulaireExpert = () => {
                               }
                             }}
                           />
-                          <Label htmlFor="autre-produit" className="text-sm font-medium cursor-pointer flex-1">
-                            Autre
-                          </Label>
+                          <div className="flex-1">
+                            <Label htmlFor="autre-produit" className="text-sm font-medium cursor-pointer">
+                              Autre
+                            </Label>
+                            <p className="text-xs text-gray-500 mt-1">Précisez un produit non listé</p>
+                          </div>
                         </div>
                         {autreProduit.length > 0 && (
                           <div className="ml-8">
@@ -874,6 +986,32 @@ const FormulaireExpert = () => {
                       )}
                     </>
                   )}
+                </div>
+
+                <Separator />
+
+                {/* Secteurs d'activité */}
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-2">
+                    <Building2 className="w-5 h-5 text-green-600" />
+                    <h3 className="text-lg font-semibold text-gray-900">Secteurs d'activité</h3>
+                  </div>
+                  <p className="text-sm text-gray-600">Dans quels secteurs d'activité intervient l'expert ?</p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {secteursActiviteOptions.map((secteur) => (
+                      <div key={secteur} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 transition-colors">
+                        <Checkbox
+                          id={`secteur-${secteur}`}
+                          checked={selectedSecteurs.includes(secteur)}
+                          onCheckedChange={(checked: boolean) => handleSecteurChange(secteur, checked as boolean)}
+                        />
+                        <Label htmlFor={`secteur-${secteur}`} className="text-sm font-medium cursor-pointer flex-1">
+                          {secteur}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 <Separator />
@@ -971,15 +1109,20 @@ const FormulaireExpert = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="hourly_rate">Taux horaire (€)</Label>
+                      <Label htmlFor="hourly_rate" className="flex items-center">
+                        Taux horaire (€)
+                        <Badge variant="secondary" className="ml-2 text-xs">Optionnel</Badge>
+                      </Label>
                       <Input
                         id="hourly_rate"
                         type="number"
                         min="0"
-                        value={form.hourly_rate}
-                        onChange={(e) => handleInputChange('hourly_rate', parseFloat(e.target.value) || 0)}
-                        placeholder="0"
+                        step="0.01"
+                        value={form.hourly_rate || ''}
+                        onChange={(e) => handleInputChange('hourly_rate', e.target.value ? parseFloat(e.target.value) : undefined)}
+                        placeholder="0.00"
                       />
+                      <p className="text-xs text-gray-500">Taux horaire optionnel de l'expert</p>
                     </div>
 
                     <div className="space-y-2">

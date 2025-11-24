@@ -1263,9 +1263,10 @@ router.put('/experts/:id', asyncHandler(async (req, res) => {
       website: updateData.website || null,
       linkedin: updateData.linkedin || null,
       languages: updateData.languages || ['Français'],
+      secteur_activite: updateData.secteur_activite || [], // Secteurs d'activité
       availability: updateData.availability || 'disponible',
       max_clients: updateData.max_clients || 10,
-      hourly_rate: updateData.hourly_rate || 0,
+      hourly_rate: updateData.hourly_rate !== undefined ? (updateData.hourly_rate || null) : undefined, // Optionnel, NULL accepté
       phone: updateData.phone || null,
       // Stocker autre_produit si fourni
       autre_produit: updateData.autre_produit || null,
@@ -1449,9 +1450,10 @@ router.post('/experts', asyncHandler(async (req, res) => {
       website: expertData.website || null,
       linkedin: expertData.linkedin || null,
       languages: expertData.languages || ['Français'],
+      secteur_activite: expertData.secteur_activite || [], // Secteurs d'activité de l'expert
       availability: expertData.availability || 'disponible',
       max_clients: expertData.max_clients || 10,
-      hourly_rate: expertData.hourly_rate || 0,
+      hourly_rate: expertData.hourly_rate || null, // Optionnel, NULL accepté
       phone: expertData.phone || null,
       location: expertData.city || null, // Mapping city -> location
       auth_user_id: authData.user.id, // 🔥 Lien vers Supabase Auth
