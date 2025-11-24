@@ -2092,18 +2092,7 @@ router.post('/admins', asyncHandler(async (req, res) => {
       });
     }
 
-    // Vérifier si l'email existe déjà dans Supabase Auth
-    const { data: existingAuthUsers } = await supabaseClient.auth.admin.listUsers();
-    const emailExists = existingAuthUsers?.users?.some(u => u.email === email);
-
-    if (emailExists) {
-      return res.status(400).json({
-        success: false,
-        message: 'Un utilisateur avec cet email existe déjà'
-      });
-    }
-
-    // Vérifier si l'admin existe déjà dans la table Admin
+    // Vérifier si l'admin existe déjà dans la table Admin (vérification rapide)
     const { data: existingAdmin } = await supabaseClient
       .from('Admin')
       .select('id, email')
@@ -2118,6 +2107,7 @@ router.post('/admins', asyncHandler(async (req, res) => {
     }
 
     // 1. Créer l'utilisateur Supabase Auth avec le mot de passe fourni
+    // Si l'email existe déjà dans Auth, Supabase retournera une erreur
     const { data: authData, error: authError } = await supabaseClient.auth.admin.createUser({
       email,
       password,
@@ -2130,6 +2120,17 @@ router.post('/admins', asyncHandler(async (req, res) => {
 
     if (authError || !authData.user) {
       console.error('❌ Erreur création utilisateur Auth:', authError);
+      
+      // Vérifier si l'erreur est due à un email déjà existant
+      if (authError?.message?.includes('already registered') || 
+          authError?.message?.includes('User already registered') ||
+          authError?.status === 422) {
+        return res.status(400).json({
+          success: false,
+          message: 'Un utilisateur avec cet email existe déjà dans le système'
+        });
+      }
+      
       return res.status(500).json({
         success: false,
         message: 'Erreur lors de la création du compte utilisateur',
@@ -2242,6 +2243,116 @@ router.post('/admins', asyncHandler(async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'Erreur lors de la création de l\'administrateur',
+      details: error.message
+    });
+  }
+}));
+
+// PUT /api/admin/profile/password - Changer le mot de passe de l'admin connecté
+router.put('/profile/password', asyncHandler(async (req, res) => {
+  try {
+    const adminId = (req as any).user.id;
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+
+    // Validation
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tous les champs sont requis'
+      });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: 'Le nouveau mot de passe doit contenir au moins 8 caractères'
+      });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Les nouveaux mots de passe ne correspondent pas'
+      });
+    }
+
+    // Récupérer l'admin
+    const { data: admin, error: adminError } = await supabaseClient
+      .from('Admin')
+      .select('id, email, auth_user_id')
+      .eq('id', adminId)
+      .single();
+
+    if (adminError || !admin) {
+      return res.status(404).json({
+        success: false,
+        message: 'Administrateur non trouvé'
+      });
+    }
+
+    // Vérifier l'ancien mot de passe en tentant une connexion
+    const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
+      email: admin.email!,
+      password: currentPassword
+    });
+
+    if (authError || !authData?.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Mot de passe actuel incorrect'
+      });
+    }
+
+    // Mettre à jour le mot de passe dans Supabase Auth
+    if (admin.auth_user_id) {
+      const { error: updateError } = await supabaseClient.auth.admin.updateUserById(
+        admin.auth_user_id,
+        { password: newPassword }
+      );
+
+      if (updateError) {
+        console.error('❌ Erreur mise à jour mot de passe:', updateError);
+        return res.status(500).json({
+          success: false,
+          message: 'Erreur lors de la mise à jour du mot de passe',
+          details: updateError.message
+        });
+      }
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: 'Aucun compte d\'authentification associé'
+      });
+    }
+
+    // Logger l'action
+    try {
+      await supabaseClient.rpc('log_admin_action', {
+        p_admin_id: adminId,
+        p_action: 'CHANGE_PASSWORD',
+        p_table_name: 'Admin',
+        p_record_id: adminId,
+        p_old_values: null,
+        p_new_values: JSON.stringify({ password_changed: true }),
+        p_description: 'Changement de mot de passe administrateur',
+        p_severity: 'INFO'
+      });
+    } catch (logError) {
+      console.warn('⚠️ Erreur lors du logging:', logError);
+    }
+
+    console.log('✅ Mot de passe admin mis à jour avec succès:', admin.email);
+
+    return res.json({
+      success: true,
+      message: 'Mot de passe modifié avec succès'
+    });
+
+  } catch (error: any) {
+    console.error('❌ Erreur changement mot de passe admin:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors du changement de mot de passe',
       details: error.message
     });
   }

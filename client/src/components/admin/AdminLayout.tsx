@@ -19,7 +19,8 @@ import {
   ChevronDown,
   User,
   Shield,
-  Building2
+  Building2,
+  UserCircle
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -295,6 +296,16 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                       <p className="text-gray-500">{user?.email}</p>
                       <Badge className="mt-1 bg-red-100 text-red-800">Administrateur</Badge>
                     </div>
+                    <button
+                      onClick={() => {
+                        navigate('/admin/profil');
+                        setUserMenuOpen(false);
+                      }}
+                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      <UserCircle className="mr-3 h-4 w-4" />
+                      Profil
+                    </button>
                     <button
                       onClick={handleLogout}
                       className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"

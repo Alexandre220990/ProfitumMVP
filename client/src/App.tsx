@@ -119,6 +119,7 @@ const AdminExpertSynthese = React.lazy(() => import('./pages/admin/expert-synthe
 const AdminDossierSynthese = React.lazy(() => import('./pages/admin/dossier-synthese')); // ✅ PAGE SYNTHÈSE DOSSIER
 const AdminProduitSynthese = React.lazy(() => import('./pages/admin/produit-synthese')); // ✅ PAGE SYNTHÈSE PRODUIT
 const AdminApporteurSynthese = React.lazy(() => import('./pages/admin/apporteur-synthese'));
+const AdminProfil = React.lazy(() => import('./pages/admin/profil'));
 const AdminCabinetsList = React.lazy(() => import('./pages/admin/cabinets/index'));
 const AdminCabinetDetail = React.lazy(() => import('./pages/admin/cabinets/[id]'));
 const AdminCabinetNew = React.lazy(() => import('./pages/admin/cabinets/new'));
@@ -381,6 +382,7 @@ function App() {
                         <Route path="dossiers/:id" element={<AdminDossierSynthese />} />
                         <Route path="apporteurs/:id" element={<AdminApporteurSynthese />} />
                         <Route path="produits/:id" element={<AdminProduitSynthese />} />
+                        <Route path="profil" element={<AdminProfil />} />
                         <Route path="gestion-dossiers" element={<AdminGestionDossiers />} />
                         <Route path="gestion-produits" element={<AdminGestionProduits />} />
                         
