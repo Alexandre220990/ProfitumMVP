@@ -2073,7 +2073,7 @@ const AdminDashboardOptimized: React.FC = () => {
                                   <div 
                                     key={dossier.id}
                                     className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
-                                    onClick={() => navigate(`/admin/dossiers?dossierId=${dossier.id}`)}
+                                    onClick={() => navigate(`/admin/dossiers/${dossier.id}`)}
                                   >
                                     <div className="flex items-center justify-between">
                                       <div className="flex-1">
@@ -2118,7 +2118,7 @@ const AdminDashboardOptimized: React.FC = () => {
                                   <div 
                                     key={expert.id}
                                     className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
-                                    onClick={() => navigate(`/admin/experts?expertId=${expert.id}`)}
+                                    onClick={() => navigate(`/admin/experts/${expert.id}`)}
                                   >
                                     <div className="flex items-center justify-between">
                                       <div className="flex-1">
@@ -2168,7 +2168,7 @@ const AdminDashboardOptimized: React.FC = () => {
                                     <div 
                                       key={dossier.id}
                                       className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
-                                      onClick={() => navigate(`/admin/dossiers?dossierId=${dossier.id}`)}
+                                      onClick={() => navigate(`/admin/dossiers/${dossier.id}`)}
                                     >
                                       <div className="flex items-center justify-between">
                                         <div className="flex-1">
@@ -2217,7 +2217,7 @@ const AdminDashboardOptimized: React.FC = () => {
                                   <div 
                                     key={expert.id}
                                     className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
-                                    onClick={() => navigate(`/admin/experts?expertId=${expert.id}`)}
+                                    onClick={() => navigate(`/admin/experts/${expert.id}`)}
                                   >
                                     <div className="flex items-center justify-between">
                                       <div className="flex-1">
