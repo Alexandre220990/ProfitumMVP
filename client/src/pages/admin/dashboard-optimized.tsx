@@ -23,7 +23,7 @@ import {
   Download, Settings, TrendingUp, DollarSign,
   Bell, Mail, Target, CheckCircle, XCircle,
   Handshake, Package, Trash2, Calendar, Lock,
-  Building, Phone, Plus
+  Building, Phone, Plus, User
 } from "lucide-react";
 import { TypeSwitcher } from "@/components/TypeSwitcher";
 import { motion } from "framer-motion";
@@ -161,6 +161,17 @@ const AdminDashboardOptimized: React.FC = () => {
   const [selectedDossierForExpert, setSelectedDossierForExpert] = useState<any>(null);
   const [availableExperts, setAvailableExperts] = useState<any[]>([]);
   const [loadingExperts, setLoadingExperts] = useState(false);
+  
+  // Affichage urgences/alertes
+  const [selectedAlertType, setSelectedAlertType] = useState<'urgences' | 'alertes' | null>(null);
+  const [urgencesData, setUrgencesData] = useState<{
+    dossiers: any[];
+    experts: any[];
+  }>({ dossiers: [], experts: [] });
+  const [alertesData, setAlertesData] = useState<{
+    dossiers: any[];
+    experts: any[];
+  }>({ dossiers: [], experts: [] });
   
   // Historique et Commentaires
   const [histoireModalOpen, setHistoireModalOpen] = useState(false);
@@ -620,6 +631,32 @@ const AdminDashboardOptimized: React.FC = () => {
       const alertesUrgentes = validationsDocuments + expertsPendingValidation;
       // Alertes normales : Dossiers en retard + Nouveaux experts en attente <48h
       const alertesNormales = dossiersEnRetard + expertsPendingRecents;
+      
+      // Stocker les données d'urgences
+      const dossiersUrgents = dossiers.filter((d: any) => 
+        d.statut === 'documents_uploaded' || d.statut === 'eligible_confirmed'
+      );
+      const expertsUrgents = experts.filter((e: any) => {
+        if (e.approval_status !== 'pending') return false;
+        const createdAt = new Date(e.created_at);
+        const diffHours = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+        return diffHours > 48;
+      });
+      setUrgencesData({ dossiers: dossiersUrgents, experts: expertsUrgents });
+      
+      // Stocker les données d'alertes
+      const dossiersAlertes = dossiers.filter((d: any) => {
+        const createdAt = new Date(d.created_at);
+        const diffDays = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24);
+        return (d.statut === 'pending' || d.statut === 'in_progress') && diffDays > 21;
+      });
+      const expertsAlertes = experts.filter((e: any) => {
+        if (e.approval_status !== 'pending') return false;
+        const createdAt = new Date(e.created_at);
+        const diffHours = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+        return diffHours <= 48;
+      });
+      setAlertesData({ dossiers: dossiersAlertes, experts: expertsAlertes });
 
       // Calculer les données du mois précédent pour la croissance
       const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -1967,11 +2004,23 @@ const AdminDashboardOptimized: React.FC = () => {
                         <TypeSwitcher />
                         
                         <div className="flex gap-2">
-                          <Badge variant="default" className="bg-green-100 text-green-800">
+                          <Badge 
+                            variant="default" 
+                            className={`bg-green-100 text-green-800 cursor-pointer hover:bg-green-200 transition-colors ${
+                              selectedAlertType === 'urgences' ? 'ring-2 ring-green-500' : ''
+                            }`}
+                            onClick={() => setSelectedAlertType(selectedAlertType === 'urgences' ? null : 'urgences')}
+                          >
                             <Check className="w-3 h-3 mr-1" />
                             {kpiData.alertesUrgentes === 0 ? 'Aucune urgence' : `${kpiData.alertesUrgentes} urgences`}
                           </Badge>
-                          <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                          <Badge 
+                            variant="secondary" 
+                            className={`bg-yellow-100 text-yellow-800 cursor-pointer hover:bg-yellow-200 transition-colors ${
+                              selectedAlertType === 'alertes' ? 'ring-2 ring-yellow-500' : ''
+                            }`}
+                            onClick={() => setSelectedAlertType(selectedAlertType === 'alertes' ? null : 'alertes')}
+                          >
                             <Clock className="w-3 h-3 mr-1" />
                             {kpiData.alertesNormales} alertes
                           </Badge>
@@ -1981,6 +2030,232 @@ const AdminDashboardOptimized: React.FC = () => {
                   </CardContent>
                 </Card>
               </div>
+
+              {/* Affichage des urgences/alertes détaillées */}
+              {selectedAlertType && (
+                <div className="mb-6">
+                  <Card className="border-2 border-blue-300">
+                    <CardHeader>
+                      <CardTitle className="flex items-center justify-between">
+                        <span className="flex items-center gap-2">
+                          {selectedAlertType === 'urgences' ? (
+                            <>
+                              <Check className="w-5 h-5 text-red-600" />
+                              <span>Urgences ({kpiData.alertesUrgentes})</span>
+                            </>
+                          ) : (
+                            <>
+                              <Clock className="w-5 h-5 text-yellow-600" />
+                              <span>Alertes ({kpiData.alertesNormales})</span>
+                            </>
+                          )}
+                        </span>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => setSelectedAlertType(null)}
+                        >
+                          <XCircle className="w-4 h-4" />
+                        </Button>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {selectedAlertType === 'urgences' ? (
+                        <div className="space-y-4">
+                          {/* Dossiers urgents */}
+                          {urgencesData.dossiers.length > 0 && (
+                            <div>
+                              <h4 className="font-semibold text-sm text-gray-700 mb-2">
+                                Dossiers à valider ({urgencesData.dossiers.length})
+                              </h4>
+                              <div className="space-y-2">
+                                {urgencesData.dossiers.map((dossier: any) => (
+                                  <div 
+                                    key={dossier.id}
+                                    className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
+                                    onClick={() => navigate(`/admin/dossiers?dossierId=${dossier.id}`)}
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                          <Package className="w-4 h-4 text-blue-600" />
+                                          <span className="font-medium text-sm">
+                                            {dossier.ProduitEligible?.nom || dossier.produitId || 'Dossier'}
+                                          </span>
+                                          <Badge variant="outline" className="text-xs">
+                                            {dossier.statut}
+                                          </Badge>
+                                        </div>
+                                        {dossier.Client && (
+                                          <p className="text-xs text-gray-600">
+                                            Client: {dossier.Client.company_name || dossier.Client.email || 'N/A'}
+                                          </p>
+                                        )}
+                                        {dossier.montantFinal && (
+                                          <p className="text-xs text-gray-600">
+                                            Montant: {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(dossier.montantFinal)}
+                                          </p>
+                                        )}
+                                      </div>
+                                      <Button variant="ghost" size="sm">
+                                        <Eye className="w-4 h-4" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Experts urgents */}
+                          {urgencesData.experts.length > 0 && (
+                            <div>
+                              <h4 className="font-semibold text-sm text-gray-700 mb-2">
+                                Experts en attente {'>'}48h ({urgencesData.experts.length})
+                              </h4>
+                              <div className="space-y-2">
+                                {urgencesData.experts.map((expert: any) => (
+                                  <div 
+                                    key={expert.id}
+                                    className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
+                                    onClick={() => navigate(`/admin/experts?expertId=${expert.id}`)}
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                          <User className="w-4 h-4 text-purple-600" />
+                                          <span className="font-medium text-sm">
+                                            {expert.first_name || expert.name ? `${expert.first_name || expert.name?.split(' ')[0] || ''} ${expert.last_name || expert.name?.split(' ').slice(1).join(' ') || ''}`.trim() || expert.company_name : expert.company_name}
+                                          </span>
+                                          <Badge variant="outline" className="text-xs">
+                                            {expert.approval_status}
+                                          </Badge>
+                                        </div>
+                                        <p className="text-xs text-gray-600">
+                                          Entreprise: {expert.company_name || 'N/A'}
+                                        </p>
+                                        <p className="text-xs text-gray-600">
+                                          Email: {expert.email || 'N/A'}
+                                        </p>
+                                      </div>
+                                      <Button variant="ghost" size="sm">
+                                        <Eye className="w-4 h-4" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {urgencesData.dossiers.length === 0 && urgencesData.experts.length === 0 && (
+                            <p className="text-center text-gray-500 py-4">Aucune urgence</p>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {/* Dossiers en retard */}
+                          {alertesData.dossiers.length > 0 && (
+                            <div>
+                              <h4 className="font-semibold text-sm text-gray-700 mb-2">
+                                Dossiers en retard {'>'}21 jours ({alertesData.dossiers.length})
+                              </h4>
+                              <div className="space-y-2">
+                                {alertesData.dossiers.map((dossier: any) => {
+                                  const createdAt = new Date(dossier.created_at);
+                                  const diffDays = Math.floor((new Date().getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
+                                  return (
+                                    <div 
+                                      key={dossier.id}
+                                      className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
+                                      onClick={() => navigate(`/admin/dossiers?dossierId=${dossier.id}`)}
+                                    >
+                                      <div className="flex items-center justify-between">
+                                        <div className="flex-1">
+                                          <div className="flex items-center gap-2 mb-1">
+                                            <Package className="w-4 h-4 text-orange-600" />
+                                            <span className="font-medium text-sm">
+                                              {dossier.ProduitEligible?.nom || dossier.produitId || 'Dossier'}
+                                            </span>
+                                            <Badge variant="outline" className="text-xs">
+                                              {dossier.statut}
+                                            </Badge>
+                                            <Badge variant="outline" className="text-xs bg-orange-100">
+                                              {diffDays} jours
+                                            </Badge>
+                                          </div>
+                                          {dossier.Client && (
+                                            <p className="text-xs text-gray-600">
+                                              Client: {dossier.Client.company_name || dossier.Client.email || 'N/A'}
+                                            </p>
+                                          )}
+                                          {dossier.montantFinal && (
+                                            <p className="text-xs text-gray-600">
+                                              Montant: {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(dossier.montantFinal)}
+                                            </p>
+                                          )}
+                                        </div>
+                                        <Button variant="ghost" size="sm">
+                                          <Eye className="w-4 h-4" />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Experts récents */}
+                          {alertesData.experts.length > 0 && (
+                            <div>
+                              <h4 className="font-semibold text-sm text-gray-700 mb-2">
+                                Nouveaux experts en attente &lt;48h ({alertesData.experts.length})
+                              </h4>
+                              <div className="space-y-2">
+                                {alertesData.experts.map((expert: any) => (
+                                  <div 
+                                    key={expert.id}
+                                    className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
+                                    onClick={() => navigate(`/admin/experts?expertId=${expert.id}`)}
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                          <User className="w-4 h-4 text-blue-600" />
+                                          <span className="font-medium text-sm">
+                                            {expert.first_name || expert.name ? `${expert.first_name || expert.name?.split(' ')[0] || ''} ${expert.last_name || expert.name?.split(' ').slice(1).join(' ') || ''}`.trim() || expert.company_name : expert.company_name}
+                                          </span>
+                                          <Badge variant="outline" className="text-xs">
+                                            {expert.approval_status}
+                                          </Badge>
+                                        </div>
+                                        <p className="text-xs text-gray-600">
+                                          Entreprise: {expert.company_name || 'N/A'}
+                                        </p>
+                                        <p className="text-xs text-gray-600">
+                                          Email: {expert.email || 'N/A'}
+                                        </p>
+                                      </div>
+                                      <Button variant="ghost" size="sm">
+                                        <Eye className="w-4 h-4" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {alertesData.dossiers.length === 0 && alertesData.experts.length === 0 && (
+                            <p className="text-center text-gray-500 py-4">Aucune alerte</p>
+                          )}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
 
               {/* Section dynamique */}
               <div className="mt-8">
