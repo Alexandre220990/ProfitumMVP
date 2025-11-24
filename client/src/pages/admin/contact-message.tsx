@@ -3,12 +3,11 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import { get, patch } from "@/lib/api";
 import { 
   ArrowLeft, Mail, Phone, MessageSquare, Calendar, 
-  CheckCircle, Archive, Reply, User, FileText
+  Archive, Reply, User
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -19,20 +18,20 @@ interface ContactMessage {
   phone?: string;
   subject?: string;
   message: string;
-  status: 'new' | 'read' | 'replied' | 'archived';
+  status: 'unread' | 'read' | 'replied' | 'archived';
   created_at: string;
   updated_at: string;
 }
 
 const statusLabels = {
-  new: 'Nouveau',
+  unread: 'Non lu',
   read: 'Lu',
   replied: 'Répondu',
   archived: 'Archivé'
 };
 
 const statusColors = {
-  new: 'bg-blue-100 text-blue-800',
+  unread: 'bg-blue-100 text-blue-800',
   read: 'bg-gray-100 text-gray-800',
   replied: 'bg-green-100 text-green-800',
   archived: 'bg-slate-100 text-slate-800'
@@ -41,7 +40,6 @@ const statusColors = {
 export default function AdminContactMessage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
   const [message, setMessage] = useState<ContactMessage | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -55,8 +53,14 @@ export default function AdminContactMessage() {
     try {
       setLoading(true);
       const response = await get(`/admin/contact/${id}`);
-      if (response.success && response.data) {
-        setMessage(response.data);
+      if (response.success && response.data && typeof response.data === 'object' && 'id' in response.data) {
+        // Normaliser le statut si nécessaire (new -> unread, pour compatibilité avec anciennes données)
+        const data = response.data as any;
+        const normalizedData: ContactMessage = {
+          ...data,
+          status: (data.status === 'new' ? 'unread' : data.status) as 'unread' | 'read' | 'replied' | 'archived'
+        };
+        setMessage(normalizedData);
       } else {
         toast.error('Message introuvable');
         navigate('/admin/dashboard-optimized');
@@ -75,9 +79,15 @@ export default function AdminContactMessage() {
     
     try {
       setUpdating(true);
-      const response = await patch(`/admin/contact/${id}/status`, { status: newStatus });
-      if (response.success) {
-        setMessage(prev => prev ? { ...prev, status: newStatus as any, updated_at: new Date().toISOString() } : null);
+      // Normaliser le statut si nécessaire (new -> unread, pour compatibilité)
+      const normalizedStatus = (newStatus === 'new' ? 'unread' : newStatus) as 'unread' | 'read' | 'replied' | 'archived';
+      const response = await patch(`/admin/contact/${id}/status`, { status: normalizedStatus });
+      if (response.success && response.data) {
+        setMessage(prev => prev ? { 
+          ...prev, 
+          status: (normalizedStatus as 'unread' | 'read' | 'replied' | 'archived'), 
+          updated_at: new Date().toISOString() 
+        } : null);
         toast.success('Statut mis à jour');
       } else {
         toast.error('Erreur lors de la mise à jour');
@@ -229,7 +239,7 @@ export default function AdminContactMessage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="new">Nouveau</SelectItem>
+                <SelectItem value="unread">Non lu</SelectItem>
                 <SelectItem value="read">Lu</SelectItem>
                 <SelectItem value="replied">Répondu</SelectItem>
                 <SelectItem value="archived">Archivé</SelectItem>

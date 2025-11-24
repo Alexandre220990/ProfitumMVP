@@ -359,6 +359,7 @@ const AdminDashboardOptimized: React.FC = () => {
 
   // 📡 Connexion SSE pour notifications temps réel
   useNotificationSSE({
+    silent: true, // Ne pas afficher les toasts d'erreur sur le dashboard
     onNotification: (notification) => {
       console.log('🔔 Nouvelle notification reçue via SSE:', notification);
       // La notification toast est déjà gérée par le hook

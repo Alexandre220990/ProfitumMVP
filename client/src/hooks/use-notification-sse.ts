@@ -29,6 +29,7 @@ export function useNotificationSSE(options?: {
   onNotification?: (notification: SSENotification) => void;
   onKPIRefresh?: () => void;
   enabled?: boolean;
+  silent?: boolean; // Si true, ne pas afficher les toasts d'erreur (pour dashboard)
 }) {
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -206,7 +207,10 @@ export function useNotificationSSE(options?: {
                 console.error('❌ Refresh token échoué:', refreshError);
                 refreshFailed = true; // Marquer comme échoué
                 setError('Session expirée - veuillez vous reconnecter');
-                toast.error('Session expirée. Veuillez vous reconnecter pour activer les notifications.');
+                // Ne pas afficher le toast si silent est activé (dashboard)
+                if (!options?.silent) {
+                  toast.error('Session expirée. Veuillez vous reconnecter pour activer les notifications.');
+                }
                 return; // Ne pas continuer les reconnexions
               }
             } catch (refreshError: any) {
@@ -216,7 +220,10 @@ export function useNotificationSSE(options?: {
                 console.error('❌ Rate limiting Supabase (429), arrêt des tentatives');
                 refreshFailed = true;
                 setError('Trop de tentatives - veuillez attendre quelques minutes');
-                toast.error('Trop de tentatives de connexion. Veuillez attendre quelques minutes.');
+                // Ne pas afficher le toast si silent est activé (dashboard)
+                if (!options?.silent) {
+                  toast.error('Trop de tentatives de connexion. Veuillez attendre quelques minutes.');
+                }
                 return;
               }
               refreshFailed = true;
@@ -243,7 +250,10 @@ export function useNotificationSSE(options?: {
           } else {
             console.error('❌ Nombre maximum de tentatives de reconnexion atteint');
             setError('Impossible de se reconnecter - reconnectez-vous');
-            toast.error('Notifications temps réel indisponibles. Veuillez vous reconnecter.');
+            // Ne pas afficher le toast si silent est activé (dashboard)
+            if (!options?.silent) {
+              toast.error('Notifications temps réel indisponibles. Veuillez vous reconnecter.');
+            }
           }
         };
 

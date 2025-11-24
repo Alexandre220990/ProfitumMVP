@@ -5248,22 +5248,55 @@ router.patch('/contact/:id/status', async (req, res) => {
       });
     }
 
-    if (!status || !['new', 'read', 'replied', 'archived'].includes(status)) {
+    // Aligner les statuts : unread, read, replied, archived
+    // Mapping : new -> unread, read -> read, replied -> replied, archived -> archived
+    let normalizedStatus = status;
+    if (status === 'new') {
+      normalizedStatus = 'unread';
+    }
+    // 'replied' reste 'replied' (statut distinct)
+    
+    if (!normalizedStatus || !['unread', 'read', 'replied', 'archived'].includes(normalizedStatus)) {
       return res.status(400).json({
         success: false,
-        message: 'Statut invalide'
+        message: 'Statut invalide. Valeurs acceptées: new (unread), read, replied, archived'
       });
     }
 
     const { data, error } = await supabaseAdmin
       .from('contact_messages')
       .update({ 
-        status,
+        status: normalizedStatus, // Utiliser le statut normalisé
         updated_at: new Date().toISOString()
       })
       .eq('id', id)
       .select()
       .single();
+    
+    // Mettre à jour la notification AdminNotification correspondante si elle existe
+    if (!error && data) {
+      const { data: notifications } = await supabaseClient
+        .from('AdminNotification')
+        .select('id')
+        .eq('type', 'contact_message')
+        .contains('metadata', { contact_message_id: id });
+      
+      if (notifications && notifications.length > 0) {
+        // Mettre à jour toutes les notifications de contact correspondantes
+        for (const notif of notifications) {
+          await supabaseClient
+            .from('AdminNotification')
+            .update({
+              status: normalizedStatus,
+              is_read: normalizedStatus === 'read' || normalizedStatus === 'replied', // replied est considéré comme lu
+              read_at: (normalizedStatus === 'read' || normalizedStatus === 'replied') ? new Date().toISOString() : null,
+              archived_at: normalizedStatus === 'archived' ? new Date().toISOString() : null,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', notif.id);
+        }
+      }
+    }
 
     if (error || !data) {
       console.error('❌ Erreur mise à jour statut:', error);
@@ -5453,6 +5486,158 @@ router.patch('/notifications/:id/read', async (req, res) => {
     
   } catch (error) {
     console.error('❌ Erreur route notification read:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+// PATCH /api/admin/notifications/:id/unread - Marquer notification comme non lue
+router.patch('/notifications/:id/unread', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = (req as any).user as AuthUser;
+    
+    if (!user || user.type !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux administrateurs'
+      });
+    }
+    
+    // Vérifier que la notification existe
+    const { data: existing, error: checkError } = await supabaseClient
+      .from('AdminNotification')
+      .select('id, status')
+      .eq('id', id)
+      .maybeSingle();
+    
+    if (checkError) {
+      console.error('❌ Erreur vérification notification:', checkError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la vérification de la notification'
+      });
+    }
+    
+    if (!existing) {
+      return res.status(404).json({
+        success: false,
+        message: 'Notification introuvable'
+      });
+    }
+    
+    // Marquer comme non lu
+    const { data, error } = await supabaseClient
+      .from('AdminNotification')
+      .update({ 
+        status: 'unread',
+        is_read: false,
+        read_at: null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .maybeSingle();
+    
+    if (error) {
+      console.error('❌ Erreur mise à jour notification:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la mise à jour de la notification'
+      });
+    }
+    
+    return res.json({
+      success: true,
+      message: 'Notification marquée comme non lue',
+      data: { notification: data }
+    });
+    
+  } catch (error) {
+    console.error('❌ Erreur route notification unread:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+// PATCH /api/admin/notifications/:id/unarchive - Réintégrer notification depuis archivé
+router.patch('/notifications/:id/unarchive', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = (req as any).user as AuthUser;
+    
+    if (!user || user.type !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux administrateurs'
+      });
+    }
+    
+    // Vérifier que la notification existe et est archivée
+    const { data: existing, error: checkError } = await supabaseClient
+      .from('AdminNotification')
+      .select('id, status, read_at, is_read')
+      .eq('id', id)
+      .maybeSingle();
+    
+    if (checkError) {
+      console.error('❌ Erreur vérification notification:', checkError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la vérification de la notification'
+      });
+    }
+    
+    if (!existing) {
+      return res.status(404).json({
+        success: false,
+        message: 'Notification introuvable'
+      });
+    }
+    
+    if (existing.status !== 'archived') {
+      return res.status(400).json({
+        success: false,
+        message: 'Cette notification n\'est pas archivée'
+      });
+    }
+    
+    // Réintégrer la notification : si elle avait été lue avant archivage, la remettre en "read", sinon en "unread"
+    const wasRead = existing.is_read || existing.read_at !== null;
+    const newStatus = wasRead ? 'read' : 'unread';
+    
+    const { data, error } = await supabaseClient
+      .from('AdminNotification')
+      .update({ 
+        status: newStatus,
+        is_read: wasRead,
+        archived_at: null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .maybeSingle();
+    
+    if (error) {
+      console.error('❌ Erreur réintégration notification:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la réintégration de la notification'
+      });
+    }
+    
+    return res.json({
+      success: true,
+      message: `Notification réintégrée (${newStatus})`,
+      data: { notification: data }
+    });
+    
+  } catch (error) {
+    console.error('❌ Erreur route notification unarchive:', error);
     return res.status(500).json({
       success: false,
       message: 'Erreur serveur'

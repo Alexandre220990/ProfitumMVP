@@ -111,6 +111,26 @@ export function useSupabaseNotifications(): UseSupabaseNotificationsReturn {
           };
         }
 
+        if (action === 'unread') {
+          return {
+            url: `${API_BASE}/api/admin/notifications/${notificationId}/unread`,
+            options: {
+              method: 'PATCH',
+              headers: defaultHeaders,
+            } as RequestInit,
+          };
+        }
+
+        if (action === 'unarchive') {
+          return {
+            url: `${API_BASE}/api/admin/notifications/${notificationId}/unarchive`,
+            options: {
+              method: 'PATCH',
+              headers: defaultHeaders,
+            } as RequestInit,
+          };
+        }
+
         if (action === 'archive' || action === 'delete') {
           return {
             url: `${API_BASE}/api/admin/notifications/${notificationId}`,
@@ -121,7 +141,6 @@ export function useSupabaseNotifications(): UseSupabaseNotificationsReturn {
           };
         }
 
-        // Endpoint unread/unarchive indisponible pour les admins
         return null;
       }
 
