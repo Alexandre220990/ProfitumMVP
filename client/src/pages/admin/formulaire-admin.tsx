@@ -86,8 +86,11 @@ const FormulaireAdmin = () => {
     setSuccess('');
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      // Utiliser le token JWT depuis localStorage au lieu de la session Supabase
+      // pour éviter les problèmes de déconnexion
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setError('Vous devez être connecté pour créer un administrateur');
         navigate('/connect-admin');
         return;
       }
@@ -95,7 +98,7 @@ const FormulaireAdmin = () => {
       const response = await fetch('/api/admin/admins', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({

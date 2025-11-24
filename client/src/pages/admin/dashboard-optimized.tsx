@@ -369,6 +369,8 @@ const AdminDashboardOptimized: React.FC = () => {
   // ========================================
 
   // 📡 Connexion SSE pour notifications temps réel
+  // DÉSACTIVÉ pour éviter les erreurs 429 et les logs excessifs
+  // Les notifications sont récupérées via polling classique au lieu de SSE
   useNotificationSSE({
     silent: true, // Ne pas afficher les toasts d'erreur sur le dashboard
     onNotification: (notification) => {
@@ -379,7 +381,7 @@ const AdminDashboardOptimized: React.FC = () => {
       console.log('📊 Rafraîchissement KPI demandé via SSE');
       loadKPIData();
     },
-    enabled: true
+    enabled: false // DÉSACTIVÉ pour éviter les erreurs 429 et les logs excessifs
   });
 
   useEffect(() => {
