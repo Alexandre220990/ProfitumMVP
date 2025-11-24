@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useCookieConsent } from '@/hooks/use-cookie-consent';
 import { Button } from '@/components/ui/button';
 
@@ -13,12 +14,12 @@ export function CookieBanner() {
           <div className="flex-1 text-sm text-gray-600">
             <p>
               Nous utilisons des cookies pour améliorer votre expérience et analyser l'utilisation du site.{' '}
-              <a 
-                href="/privacy" 
+              <Link 
+                to="/privacy" 
                 className="text-blue-600 hover:text-blue-800 underline"
               >
                 En savoir plus
-              </a>
+              </Link>
             </p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">

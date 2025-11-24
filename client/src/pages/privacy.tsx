@@ -161,14 +161,39 @@ export default function PrivacyPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="prose max-w-none">
-              <p>Nous utilisons des cookies pour :</p>
+              <p>
+                Nous utilisons des cookies et technologies similaires pour améliorer votre expérience sur notre site. 
+                Conformément au RGPD, nous vous informons de l'utilisation de ces technologies et vous donnons le contrôle sur leur utilisation.
+              </p>
+              
+              <h4 className="mt-6 mb-3 font-semibold">Types de cookies utilisés :</h4>
+              
+              <h5 className="mt-4 mb-2 font-medium">Cookies strictement nécessaires</h5>
+              <p>Ces cookies sont essentiels au fonctionnement du site et ne peuvent pas être désactivés :</p>
               <ul>
-                <li>Maintenir votre session connectée</li>
-                <li>Mémoriser vos préférences</li>
-                <li>Analyser l'utilisation de notre site</li>
-                <li>Améliorer nos services</li>
+                <li><strong>Cookies d'authentification :</strong> Pour maintenir votre session connectée (sb_access_token, supabase_access_token, sb_refresh_token)</li>
+                <li><strong>Cookies de préférences :</strong> Pour mémoriser vos préférences d'interface (sidebar:state)</li>
               </ul>
-              <p>Vous pouvez contrôler l'utilisation des cookies via les paramètres de votre navigateur.</p>
+              
+              <h5 className="mt-4 mb-2 font-medium">Cookies de performance et d'analyse</h5>
+              <p>Ces cookies nous aident à comprendre comment vous utilisez notre site :</p>
+              <ul>
+                <li><strong>Microsoft Clarity :</strong> Outil d'analyse comportementale qui nous permet d'améliorer l'expérience utilisateur. Ces cookies sont uniquement chargés après votre consentement explicite via notre bannière de cookies.</li>
+              </ul>
+              
+              <h4 className="mt-6 mb-3 font-semibold">Gestion de vos préférences :</h4>
+              <p>
+                Vous pouvez à tout moment modifier vos préférences concernant les cookies :
+              </p>
+              <ul>
+                <li>Via la bannière de cookies qui s'affiche lors de votre première visite</li>
+                <li>En modifiant les paramètres de votre navigateur</li>
+                <li>En nous contactant à l'adresse privacy@profitum.app</li>
+              </ul>
+              
+              <p className="mt-4 text-sm text-gray-600">
+                <strong>Note :</strong> La désactivation de certains cookies peut affecter le fonctionnement de certaines fonctionnalités du site.
+              </p>
             </CardContent>
           </Card>
 
