@@ -193,8 +193,7 @@ const limiter = rateLimit({
     
     // Vérifier si le path commence par un des chemins à exclure
     const shouldSkip = skipPaths.some(skipPath => {
-      const pathMatch = req.path.startsWith(skipPath);
-      return pathMatch;
+      return req.path.startsWith(skipPath);
     });
     
     return shouldSkip;
