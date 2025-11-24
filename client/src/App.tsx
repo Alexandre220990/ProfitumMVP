@@ -9,6 +9,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from "./components/ui/sonner";
 import ScrollToTop from './components/ScrollToTop';
 import LoadingScreen from './components/LoadingScreen';
+import { CookieBanner } from './components/CookieBanner';
 
 
 // Pages principales
@@ -412,6 +413,7 @@ function App() {
                   <Analytics />
                 </div>
                 <Toaster />
+                <CookieBanner />
               </Suspense>
             </AdminProvider>
           </ClientProvider>
