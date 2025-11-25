@@ -2938,6 +2938,145 @@ router.delete('/clients/:id/notes', asyncHandler(async (req, res) => {
   }
 }));
 
+// POST /api/admin/clients/:id/client-produit-eligible - Créer un ClientProduitEligible pour un client
+router.post('/clients/:id/client-produit-eligible', asyncHandler(async (req, res) => {
+  try {
+    const { id: clientId } = req.params;
+    const adminId = (req as any).user?.database_id;
+    const adminName = (req as any).user?.name || (req as any).user?.email || 'Administrateur';
+    
+    const {
+      produitId,
+      montantFinal,
+      tauxFinal,
+      dureeFinale,
+      clientFeePercentage,
+      profitumFeePercentage,
+      notes,
+      calcul_details
+    } = req.body;
+
+    // Validation des champs obligatoires
+    if (!produitId || montantFinal === undefined || tauxFinal === undefined || dureeFinale === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: 'Les champs produitId, montantFinal, tauxFinal et dureeFinale sont obligatoires'
+      });
+    }
+
+    // Vérifier que le client existe
+    const { data: client, error: clientError } = await supabaseClient
+      .from('Client')
+      .select('id, email, company_name, first_name, last_name')
+      .eq('id', clientId)
+      .single();
+
+    if (clientError || !client) {
+      return res.status(404).json({
+        success: false,
+        message: 'Client non trouvé'
+      });
+    }
+
+    // Vérifier que le produit existe
+    const { data: produit, error: produitError } = await supabaseClient
+      .from('ProduitEligible')
+      .select('id, nom, categorie')
+      .eq('id', produitId)
+      .single();
+
+    if (produitError || !produit) {
+      return res.status(404).json({
+        success: false,
+        message: 'Produit non trouvé'
+      });
+    }
+
+    // Déterminer le statut initial
+    const statut = montantFinal >= 1000 ? 'eligible' : 'to_confirm';
+
+    // Créer le ClientProduitEligible
+    const { data: newDossier, error: insertError } = await supabaseClient
+      .from('ClientProduitEligible')
+      .insert({
+        clientId: clientId,
+        produitId: produitId,
+        statut: statut,
+        montantFinal: parseFloat(montantFinal),
+        tauxFinal: parseFloat(tauxFinal),
+        dureeFinale: parseInt(dureeFinale),
+        notes: notes || `Créé manuellement par ${adminName}`,
+        calcul_details: calcul_details || {},
+        metadata: {
+          source: 'admin_manual_creation',
+          created_by: adminId,
+          created_by_name: adminName,
+          created_at: new Date().toISOString(),
+          client_fee_percentage: clientFeePercentage ? parseFloat(clientFeePercentage) : 0.30,
+          profitum_fee_percentage: profitumFeePercentage ? parseFloat(profitumFeePercentage) : 0.30
+        },
+        priorite: montantFinal >= 10000 ? 1 : montantFinal >= 5000 ? 2 : 3,
+        dateEligibilite: new Date().toISOString(),
+        current_step: 0,
+        progress: 0
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error('Erreur création ClientProduitEligible:', insertError);
+      throw insertError;
+    }
+
+    // Ajouter un événement à la timeline
+    await ClientTimelineService.addEvent({
+      client_id: clientId,
+      date: new Date().toISOString(),
+      type: 'dossier_created',
+      actor_type: 'admin',
+      actor_id: adminId,
+      actor_name: adminName,
+      title: `Dossier créé: ${produit.nom}`,
+      description: `Un nouveau dossier a été créé pour le produit ${produit.nom} avec un montant de ${montantFinal}€`,
+      metadata: {
+        dossier_id: newDossier.id,
+        produit_id: produitId,
+        produit_nom: produit.nom,
+        montant: montantFinal,
+        statut: statut
+      },
+      icon: '📁',
+      color: 'blue'
+    });
+
+    // Log de l'action
+    await supabaseClient
+      .from('AdminAuditLog')
+      .insert({
+        admin_id: (req as any).user?.id,
+        action: 'client_produit_eligible_created',
+        table_name: 'ClientProduitEligible',
+        record_id: newDossier.id,
+        new_values: newDossier,
+        ip_address: req.ip,
+        user_agent: req.get('User-Agent')
+      });
+
+    return res.json({
+      success: true,
+      data: newDossier,
+      message: 'Dossier créé avec succès'
+    });
+
+  } catch (error: any) {
+    console.error('Erreur création ClientProduitEligible:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Erreur lors de la création du dossier'
+    });
+  }
+}));
+
 // Route pour récupérer tous les dossiers clients (ClientProduitEligible)
 router.get('/dossiers', async (req, res) => {
   try {

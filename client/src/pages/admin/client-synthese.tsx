@@ -27,12 +27,16 @@ import {
   X
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
-import { get, put, del } from '@/lib/api';
+import { get, put, del, post } from '@/lib/api';
 import { toast } from 'sonner';
 import LoadingScreen from '@/components/LoadingScreen';
 import ClientTimeline from '@/components/client/ClientTimeline';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Plus } from 'lucide-react';
 
 interface ClientData {
   id: string;
@@ -96,6 +100,21 @@ const ClientSynthese: React.FC = () => {
   const [editingNotes, setEditingNotes] = useState(false);
   const [notesValue, setNotesValue] = useState('');
   const [showDeleteNotesDialog, setShowDeleteNotesDialog] = useState(false);
+  const [showAddDossierDialog, setShowAddDossierDialog] = useState(false);
+  const [produitsEligibles, setProduitsEligibles] = useState<any[]>([]);
+  const [selectedProduit, setSelectedProduit] = useState<string>('');
+  const [produitQuestions, setProduitQuestions] = useState<any[]>([]);
+  const [formAnswers, setFormAnswers] = useState<Record<string, number>>({});
+  const [formData, setFormData] = useState({
+    montantFinal: '',
+    tauxFinal: '',
+    dureeFinale: '',
+    clientFeePercentage: '30',
+    profitumFeePercentage: '30',
+    notes: ''
+  });
+  const [loadingProduits, setLoadingProduits] = useState(false);
+  const [creatingDossier, setCreatingDossier] = useState(false);
 
   // Statistiques calculées
   const [stats, setStats] = useState({
@@ -227,6 +246,180 @@ const ClientSynthese: React.FC = () => {
     } catch (error: any) {
       console.error('Erreur suppression notes:', error);
       toast.error(error?.message || 'Erreur lors de la suppression des notes');
+    }
+  };
+
+  const loadProduitsEligibles = async () => {
+    setLoadingProduits(true);
+    try {
+      const response = await get('/admin/produits');
+      if (response.success && response.data) {
+        const produits = (response.data as any)?.produits || [];
+        setProduitsEligibles(produits);
+      } else {
+        toast.error('Erreur lors du chargement des produits');
+      }
+    } catch (error: any) {
+      console.error('Erreur chargement produits:', error);
+      toast.error('Erreur lors du chargement des produits');
+    } finally {
+      setLoadingProduits(false);
+    }
+  };
+
+  const groupProduitsByCategory = () => {
+    const grouped: Record<string, any[]> = {};
+    produitsEligibles.forEach((produit: any) => {
+      const categorie = produit.categorie || 'Non catégorisé';
+      if (!grouped[categorie]) {
+        grouped[categorie] = [];
+      }
+      grouped[categorie].push(produit);
+    });
+    
+    // Trier les catégories
+    const ordreCategories = [
+      'Optimisation Fiscale',
+      'Optimisation Sociale',
+      'Optimisation Énergétique',
+      'Services Juridiques et Recouvrement',
+      'Logiciels et Outils Numériques',
+      'Non catégorisé'
+    ];
+    
+    const sorted: Record<string, any[]> = {};
+    ordreCategories.forEach(cat => {
+      if (grouped[cat]) {
+        sorted[cat] = grouped[cat].sort((a, b) => (a.nom || '').localeCompare(b.nom || ''));
+      }
+    });
+    
+    // Ajouter les autres catégories
+    Object.keys(grouped).forEach(cat => {
+      if (!sorted[cat]) {
+        sorted[cat] = grouped[cat].sort((a, b) => (a.nom || '').localeCompare(b.nom || ''));
+      }
+    });
+    
+    return sorted;
+  };
+
+  const handleProduitChange = async (produitId: string) => {
+    setSelectedProduit(produitId);
+    setFormAnswers({});
+    
+    // Récupérer le produit sélectionné
+    const produit = produitsEligibles.find((p: any) => p.id === produitId);
+    if (!produit) return;
+
+    // Récupérer les questions nécessaires basées sur parametres_requis
+    if (produit.parametres_requis && Array.isArray(produit.parametres_requis)) {
+      try {
+        // Charger toutes les questions du questionnaire
+        const questionsResponse = await get('/simulator/questions');
+        if (questionsResponse.success && questionsResponse.data) {
+          // L'API peut retourner { questions: [...] } ou directement un tableau
+          const allQuestions = (questionsResponse.data as any)?.questions || 
+                              (Array.isArray(questionsResponse.data) ? questionsResponse.data : []);
+          
+          // Filtrer les questions qui correspondent aux paramètres requis
+          const requiredQuestions = allQuestions.filter((q: any) => {
+            // Vérifier si la question correspond à un paramètre requis
+            const questionCode = q.question_id || q.code || q.id;
+            const questionText = (q.question_text || q.texte || '').toLowerCase();
+            
+            return produit.parametres_requis.some((param: string) => {
+              // Mapping des paramètres vers les codes de questions
+              const paramToQuestionMap: Record<string, string[]> = {
+                'ca': ['ca', 'chiffre_affaires', 'revenu_annuel'],
+                'nb_employes': ['nb_employes', 'nombre_employes', 'nb_employes_tranche'],
+                'secteur': ['secteur', 'secteur_activite'],
+                'possede_vehicules': ['possede_vehicules', 'vehicules'],
+                'types_vehicules': ['types_vehicules', 'type_vehicule'],
+                'litres_carburant_mois': ['litres_carburant_mois', 'carburant'],
+                'nb_chauffeurs': ['nb_chauffeurs', 'chauffeurs'],
+                'proprietaire_locaux': ['proprietaire_locaux', 'proprietaire'],
+                'montant_taxe_fonciere': ['montant_taxe_fonciere', 'taxe_fonciere'],
+                'ca_tranche': ['ca_tranche', 'chiffre_affaires_tranche'],
+                'contrats_energie': ['contrats_energie', 'energie'],
+                'montant_factures_energie_mois': ['montant_factures_energie_mois', 'factures_energie'],
+                'niveau_impayes': ['niveau_impayes', 'impayes']
+              };
+              
+              const possibleCodes = paramToQuestionMap[param] || [param];
+              return possibleCodes.some(code => {
+                const codeLower = code.toLowerCase();
+                return questionCode?.toLowerCase().includes(codeLower) ||
+                       questionText.includes(codeLower);
+              });
+            });
+          });
+          
+          setProduitQuestions(requiredQuestions);
+        }
+      } catch (error: any) {
+        console.error('Erreur chargement questions:', error);
+        // Si erreur, on continue sans questions
+        setProduitQuestions([]);
+      }
+    } else {
+      setProduitQuestions([]);
+    }
+  };
+
+  const resetForm = () => {
+    setSelectedProduit('');
+    setProduitQuestions([]);
+    setFormAnswers({});
+    setFormData({
+      montantFinal: '',
+      tauxFinal: '',
+      dureeFinale: '',
+      clientFeePercentage: '30',
+      profitumFeePercentage: '30',
+      notes: ''
+    });
+  };
+
+  const handleCreateDossier = async () => {
+    if (!id || !selectedProduit) return;
+    
+    setCreatingDossier(true);
+    try {
+      const produit = produitsEligibles.find((p: any) => p.id === selectedProduit);
+      if (!produit) {
+        toast.error('Produit non trouvé');
+        return;
+      }
+
+      const response = await post(`/admin/clients/${id}/client-produit-eligible`, {
+        produitId: selectedProduit,
+        montantFinal: parseFloat(formData.montantFinal),
+        tauxFinal: parseFloat(formData.tauxFinal),
+        dureeFinale: parseInt(formData.dureeFinale),
+        clientFeePercentage: parseFloat(formData.clientFeePercentage) / 100,
+        profitumFeePercentage: parseFloat(formData.profitumFeePercentage) / 100,
+        notes: formData.notes || undefined,
+        calcul_details: {
+          answers: formAnswers,
+          parametres_requis: produit.parametres_requis || []
+        }
+      });
+
+      if (response.success) {
+        toast.success('Dossier créé avec succès');
+        setShowAddDossierDialog(false);
+        resetForm();
+        // Recharger les données
+        loadClientData();
+      } else {
+        throw new Error(response.message || 'Erreur lors de la création');
+      }
+    } catch (error: any) {
+      console.error('Erreur création dossier:', error);
+      toast.error(error?.message || 'Erreur lors de la création du dossier');
+    } finally {
+      setCreatingDossier(false);
     }
   };
 
@@ -580,10 +773,22 @@ const ClientSynthese: React.FC = () => {
               <TabsContent value="dossiers">
                 <Card>
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <FileText className="w-5 h-5" />
-                      Dossiers ClientProduitEligible ({dossiers.length})
-                    </CardTitle>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2">
+                        <FileText className="w-5 h-5" />
+                        Dossiers ClientProduitEligible ({dossiers.length})
+                      </CardTitle>
+                      <Button 
+                        onClick={() => {
+                          setShowAddDossierDialog(true);
+                          loadProduitsEligibles();
+                        }}
+                        className="flex items-center gap-2"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Ajouter un dossier
+                      </Button>
+                    </div>
                   </CardHeader>
                   <CardContent>
                     {dossiers.length > 0 ? (
@@ -812,6 +1017,173 @@ const ClientSynthese: React.FC = () => {
               </Button>
               <Button variant="destructive" onClick={handleDeleteNotes}>
                 Supprimer
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog pour ajouter un dossier */}
+        <Dialog open={showAddDossierDialog} onOpenChange={setShowAddDossierDialog}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Ajouter un ClientProduitEligible</DialogTitle>
+              <DialogDescription>
+                Créez un nouveau dossier pour ce client en sélectionnant un produit et en renseignant les informations nécessaires.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-6 py-4">
+              {/* Sélection du produit */}
+              <div className="space-y-2">
+                <Label htmlFor="produit">Produit *</Label>
+                {loadingProduits ? (
+                  <p className="text-sm text-gray-500">Chargement des produits...</p>
+                ) : (
+                  <Select value={selectedProduit} onValueChange={handleProduitChange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionnez un produit" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(groupProduitsByCategory()).map(([categorie, produits]) => (
+                        <div key={categorie}>
+                          <div className="px-2 py-1.5 text-xs font-semibold text-gray-500 bg-gray-50">
+                            {categorie || 'Non catégorisé'}
+                          </div>
+                          {produits.map((produit: any) => (
+                            <SelectItem key={produit.id} value={produit.id}>
+                              {produit.nom}
+                            </SelectItem>
+                          ))}
+                        </div>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+
+              {/* Questions nécessaires pour le produit sélectionné */}
+              {selectedProduit && produitQuestions.length > 0 && (
+                <div className="space-y-4 border-t pt-4">
+                  <h3 className="font-semibold text-sm">Règles de calcul et données nécessaires au calcul</h3>
+                  {produitQuestions.map((question: any) => (
+                    <div key={question.id} className="space-y-2">
+                      <Label htmlFor={`question-${question.id}`}>{question.question_text}</Label>
+                      <Input
+                        id={`question-${question.id}`}
+                        type="number"
+                        placeholder="Entrez un nombre"
+                        value={formAnswers[question.id] || ''}
+                        onChange={(e) => {
+                          const value = e.target.value ? parseFloat(e.target.value) : 0;
+                          setFormAnswers(prev => ({ ...prev, [question.id]: value }));
+                        }}
+                        required
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Champs de calcul */}
+              <div className="space-y-4 border-t pt-4">
+                <h3 className="font-semibold text-sm">Informations du dossier</h3>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="montantFinal">Montant Final (€) *</Label>
+                    <Input
+                      id="montantFinal"
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={formData.montantFinal}
+                      onChange={(e) => setFormData(prev => ({ ...prev, montantFinal: e.target.value }))}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="tauxFinal">Taux Final (%) *</Label>
+                    <Input
+                      id="tauxFinal"
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={formData.tauxFinal}
+                      onChange={(e) => setFormData(prev => ({ ...prev, tauxFinal: e.target.value }))}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="dureeFinale">Durée Finale (mois) *</Label>
+                    <Input
+                      id="dureeFinale"
+                      type="number"
+                      placeholder="12"
+                      value={formData.dureeFinale}
+                      onChange={(e) => setFormData(prev => ({ ...prev, dureeFinale: e.target.value }))}
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Commissionnement Waterfall */}
+              <div className="space-y-4 border-t pt-4">
+                <h3 className="font-semibold text-sm">Structure de commissionnement Waterfall</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="clientFeePercentage">% Fee Client → Expert *</Label>
+                    <Input
+                      id="clientFeePercentage"
+                      type="number"
+                      step="0.01"
+                      placeholder="30"
+                      value={formData.clientFeePercentage}
+                      onChange={(e) => setFormData(prev => ({ ...prev, clientFeePercentage: e.target.value }))}
+                      required
+                    />
+                    <p className="text-xs text-gray-500">Pourcentage que le client paie à l'expert</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="profitumFeePercentage">% Fee Expert → Profitum *</Label>
+                    <Input
+                      id="profitumFeePercentage"
+                      type="number"
+                      step="0.01"
+                      placeholder="30"
+                      value={formData.profitumFeePercentage}
+                      onChange={(e) => setFormData(prev => ({ ...prev, profitumFeePercentage: e.target.value }))}
+                      required
+                    />
+                    <p className="text-xs text-gray-500">Pourcentage que l'expert paie à Profitum</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div className="space-y-2">
+                <Label htmlFor="notes">Notes</Label>
+                <Textarea
+                  id="notes"
+                  placeholder="Notes optionnelles..."
+                  value={formData.notes}
+                  onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                  rows={3}
+                />
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => {
+                setShowAddDossierDialog(false);
+                resetForm();
+              }}>
+                Annuler
+              </Button>
+              <Button 
+                onClick={handleCreateDossier}
+                disabled={creatingDossier || !selectedProduit || !formData.montantFinal || !formData.tauxFinal || !formData.dureeFinale}
+              >
+                {creatingDossier ? 'Création...' : 'Créer le dossier'}
               </Button>
             </DialogFooter>
           </DialogContent>
