@@ -21,6 +21,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ChevronDown, ChevronUp, X } from 'lucide-react';
 
 // ============================================================================
 // TYPES ET INTERFACES
@@ -1300,6 +1302,13 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
   const [availableParticipants, setAvailableParticipants] = useState<ParticipantOption[]>([]);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [showParticipantsModal, setShowParticipantsModal] = useState(false);
+  const [openParticipantSections, setOpenParticipantSections] = useState<Record<string, boolean>>({
+    client: false,
+    expert: false,
+    apporteur: false,
+    admin: false
+  });
   const canAssignExpert = ['admin', 'apporteur'].includes(user?.type || '');
   const canAssignApporteur = user?.type === 'admin';
 
@@ -1431,7 +1440,44 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
     };
   };
 
-  // Ajouter un participant
+  // Gestion des participants optionnels
+  const handleAddParticipant = (participant: ParticipantOption) => {
+    if (!formData.participants.find((p: any) => p.id === participant.id)) {
+      setFormData(prev => ({
+        ...prev,
+        participants: [...prev.participants, {
+          id: participant.id,
+          name: participant.name,
+          email: participant.email,
+          type: participant.type
+        }]
+      }));
+    }
+  };
+
+  const handleRemoveParticipant = (participantId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      participants: prev.participants.filter((p: any) => p.id !== participantId)
+    }));
+  };
+
+  const toggleParticipantSection = (type: string) => {
+    setOpenParticipantSections(prev => ({
+      ...prev,
+      [type]: !prev[type]
+    }));
+  };
+
+  // Labels pour les types de participants
+  const participantTypeLabels: Record<ParticipantType, string> = {
+    client: 'Clients',
+    expert: 'Experts',
+    apporteur: 'Apporteurs',
+    admin: 'Administrateurs',
+    user: 'Autres'
+  };
+
 
   // Effet pour mettre à jour automatiquement l'heure de fin quand l'heure de début change
   React.useEffect(() => {
@@ -1480,7 +1526,15 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
       is_online: formData.is_online || false,
       client_id: formData.client_id || undefined,
       expert_id: formData.expert_id || undefined,
-      apporteur_id: formData.apporteur_id || undefined
+      apporteur_id: formData.apporteur_id || undefined,
+      dossier_id: formData.dossier_id || undefined,
+      color: formData.color || '#3B82F6',
+      participants: formData.participants.length > 0 ? formData.participants.map((p: any) => ({
+        user_id: p.id,
+        user_type: p.type,
+        user_email: p.email,
+        user_name: p.name
+      })) : undefined
     };
     
     console.log('🔍 Données d\'événement envoyées:', eventData);
@@ -1639,6 +1693,51 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
             )}
           </div>
 
+          {/* Participants optionnels */}
+          <div className="space-y-2">
+            <Label>Participants <span className="text-xs text-gray-500">(optionnel)</span></Label>
+            <p className="text-xs text-gray-500 mb-2">Ajoutez des participants qui recevront une notification pour cet événement</p>
+            
+            {/* Liste des participants sélectionnés */}
+            {formData.participants.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-2">
+                {formData.participants.map((participant: any) => (
+                  <Badge 
+                    key={participant.id} 
+                    variant="secondary" 
+                    className="flex items-center gap-1 px-3 py-1"
+                  >
+                    <Users className="w-3 h-3" />
+                    {participant.name}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveParticipant(participant.id)}
+                      className="ml-1 hover:text-red-600 transition-colors"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            )}
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                loadAvailableParticipants();
+                setShowParticipantsModal(true);
+              }}
+              className="w-full"
+            >
+              <Users className="w-4 h-4 mr-2" />
+              {formData.participants.length > 0 
+                ? `Modifier les participants (${formData.participants.length})` 
+                : 'Ajouter des participants'}
+            </Button>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="start_date">Date et heure de début *</Label>
@@ -1724,6 +1823,99 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
           </div>
         </form>
 
+        {/* Modal de sélection de participants */}
+        <Dialog open={showParticipantsModal} onOpenChange={setShowParticipantsModal}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Ajouter des participants</DialogTitle>
+              <DialogDescription>
+                Sélectionnez les personnes à inviter à cet événement. Elles recevront une notification.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4 mt-4">
+              {participantTypeOrder.map((type) => {
+                const group = participantGroups[type];
+                const visibleGroup = group?.filter(participant => !(participant.type === 'client' && participant.isTemporary)) || [];
+                if (visibleGroup.length === 0) return null;
+
+                const isOpen = openParticipantSections[type] || false;
+                const isAlreadyAdded = (participantId: string) => 
+                  formData.participants.find((p: any) => p.id === participantId);
+
+                return (
+                  <Collapsible
+                    key={type}
+                    open={isOpen}
+                    onOpenChange={() => toggleParticipantSection(type)}
+                  >
+                    <CollapsibleTrigger className="w-full flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm">{participantTypeLabels[type] || type}</span>
+                        <Badge variant="secondary" className="text-xs">
+                          {visibleGroup.length}
+                        </Badge>
+                      </div>
+                      {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-2 space-y-2">
+                      <div className="max-h-60 overflow-y-auto space-y-2 p-2 border rounded-lg bg-gray-50">
+                        {visibleGroup.map((participant) => {
+                          const alreadyAdded = isAlreadyAdded(participant.id);
+                          return (
+                            <button
+                              key={participant.id}
+                              type="button"
+                              onClick={() => !alreadyAdded && handleAddParticipant(participant)}
+                              disabled={alreadyAdded}
+                              className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                                alreadyAdded 
+                                  ? 'bg-gray-100 border-gray-200 opacity-50 cursor-not-allowed' 
+                                  : 'hover:bg-blue-50 hover:border-blue-300 border-gray-200 cursor-pointer bg-white'
+                              }`}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-xs font-medium">
+                                  {participant.name?.charAt(0).toUpperCase() || '?'}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-sm truncate">{participant.name}</p>
+                                  {participant.email && (
+                                    <p className="text-xs text-gray-500 truncate">{participant.email}</p>
+                                  )}
+                                </div>
+                                {alreadyAdded && (
+                                  <Badge variant="secondary" className="text-xs">Ajouté</Badge>
+                                )}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                );
+              })}
+
+              {participantTypeOrder.every(type => (participantGroups[type] || []).length === 0) && (
+                <div className="text-center py-8 text-gray-500">
+                  <Users className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                  <p>Aucun participant disponible</p>
+                </div>
+              )}
+            </div>
+            
+            <div className="flex justify-end gap-2 mt-6 pt-4 border-t">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setShowParticipantsModal(false)}
+              >
+                Fermer
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </DialogContent>
     </Dialog>
   );

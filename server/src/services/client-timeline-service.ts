@@ -224,7 +224,57 @@ export class ClientTimelineService {
         console.log('ℹ️ Table client_timeline non disponible');
       }
 
-      // 4. Ajouter les événements de création/modification des dossiers
+      // 4. Récupérer les RDV liés au client
+      try {
+        let rdvQuery = supabase
+          .from('RDV')
+          .select('*')
+          .eq('client_id', client_id);
+
+        if (options?.type && options.type === 'rdv') {
+          // Si on filtre par type rdv, on garde la requête
+        } else if (options?.type && options.type !== 'rdv') {
+          // Si on filtre par un autre type, on exclut les RDV
+          rdvQuery = rdvQuery.limit(0);
+        }
+
+        const { data: rdvs, error: rdvError } = await rdvQuery;
+
+        if (!rdvError && rdvs) {
+          rdvs.forEach((rdv: any) => {
+            const rdvDate = new Date(`${rdv.scheduled_date}T${rdv.scheduled_time}`);
+            allEvents.push({
+              id: `rdv-${rdv.id}`,
+              client_id,
+              dossier_id: rdv.dossier_id || rdv.metadata?.dossier_id || undefined,
+              date: rdvDate.toISOString(),
+              type: 'rdv',
+              actor_type: 'admin', // Par défaut, peut être ajusté selon created_by
+              actor_id: rdv.created_by || null,
+              actor_name: 'Système',
+              title: `Rendez-vous : ${rdv.title || 'Sans titre'}`,
+              description: rdv.description || `Rendez-vous prévu le ${rdvDate.toLocaleDateString('fr-FR')} à ${rdvDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}${rdv.location ? ` - ${rdv.location}` : ''}`,
+              metadata: {
+                rdv_id: rdv.id,
+                scheduled_date: rdv.scheduled_date,
+                scheduled_time: rdv.scheduled_time,
+                duration_minutes: rdv.duration_minutes,
+                location: rdv.location,
+                meeting_url: rdv.meeting_url,
+                meeting_type: rdv.meeting_type,
+                ...(rdv.metadata || {})
+              },
+              icon: '📅',
+              color: 'blue',
+              action_url: `${process.env.FRONTEND_URL || ''}/admin/agenda-admin?event=${rdv.id}`
+            });
+          });
+        }
+      } catch (rdvErr) {
+        console.warn('⚠️ Erreur récupération RDV pour timeline client:', rdvErr);
+      }
+
+      // 5. Ajouter les événements de création/modification des dossiers
       (dossiers || []).forEach((dossier: any) => {
         const produitNom = getProduitNom(dossier);
         
@@ -259,14 +309,14 @@ export class ClientTimelineService {
         }
       });
 
-      // 5. Trier par date (plus récent en premier)
+      // 6. Trier par date (plus récent en premier)
       allEvents.sort((a, b) => {
         const dateA = new Date(a.date || 0).getTime();
         const dateB = new Date(b.date || 0).getTime();
         return dateB - dateA;
       });
 
-      // 6. Appliquer la pagination
+      // 7. Appliquer la pagination
       let paginatedEvents = allEvents;
       if (options?.limit) {
         const offset = options.offset || 0;

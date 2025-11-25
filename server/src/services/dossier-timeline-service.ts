@@ -150,13 +150,68 @@ export class DossierTimelineService {
         };
       });
 
+      // Récupérer les RDV liés au dossier
+      const rdvEvents: TimelineEvent[] = [];
+      try {
+        let rdvQuery = supabase
+          .from('RDV')
+          .select('*')
+          .or(`dossier_id.eq.${dossier_id},metadata->>dossier_id.eq.${dossier_id}`);
+
+        if (options?.type && options.type === 'rdv') {
+          // Si on filtre par type rdv, on garde la requête
+        } else if (options?.type && options.type !== 'rdv') {
+          // Si on filtre par un autre type, on exclut les RDV
+          rdvQuery = rdvQuery.limit(0);
+        }
+
+        const { data: rdvs, error: rdvError } = await rdvQuery;
+
+        if (!rdvError && rdvs) {
+          rdvs.forEach((rdv: any) => {
+            // Vérifier que le RDV est bien lié à ce dossier
+            if (rdv.dossier_id === dossier_id || rdv.metadata?.dossier_id === dossier_id) {
+              const rdvDate = new Date(`${rdv.scheduled_date}T${rdv.scheduled_time}`);
+              rdvEvents.push({
+                id: `rdv-${rdv.id}`,
+                dossier_id,
+                date: rdvDate.toISOString(),
+                type: 'rdv',
+                actor_type: 'admin', // Par défaut, peut être ajusté selon created_by
+                actor_id: rdv.created_by || null,
+                actor_name: 'Système',
+                title: `Rendez-vous : ${rdv.title || 'Sans titre'}`,
+                description: rdv.description || `Rendez-vous prévu le ${rdvDate.toLocaleDateString('fr-FR')} à ${rdvDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}${rdv.location ? ` - ${rdv.location}` : ''}`,
+                metadata: {
+                  rdv_id: rdv.id,
+                  client_id: rdv.client_id,
+                  scheduled_date: rdv.scheduled_date,
+                  scheduled_time: rdv.scheduled_time,
+                  duration_minutes: rdv.duration_minutes,
+                  location: rdv.location,
+                  meeting_url: rdv.meeting_url,
+                  meeting_type: rdv.meeting_type,
+                  ...(rdv.metadata || {})
+                },
+                icon: '📅',
+                color: 'blue',
+                action_url: `${process.env.FRONTEND_URL || ''}/admin/agenda-admin?event=${rdv.id}`
+              });
+            }
+          });
+        }
+      } catch (rdvErr) {
+        console.warn('⚠️ Erreur récupération RDV pour timeline dossier:', rdvErr);
+      }
+
       // Fusionner tous les événements
       const allEvents = [
         ...(timelineEvents || []).map((e: any) => ({
           ...e,
           date: e.date || e.created_at
         })),
-        ...commentEvents
+        ...commentEvents,
+        ...rdvEvents
       ];
 
       // Trier par date (plus récent en premier)

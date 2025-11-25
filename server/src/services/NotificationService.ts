@@ -411,19 +411,24 @@ Voulez-vous accepter ce prospect ?`;
             const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
             // Extraire les données selon le contexte
-            const userId = data.user_id || data.recipient_id || data.expert_id;
+            const userId = data.userId || data.user_id || data.recipient_id || data.expert_id;
             const title = data.title || 'Notification système';
             const message = data.message || 'Notification automatique';
-            const type = data.type || 'system';
+            const notificationType = data.type || data.notification_type || 'system';
+            const userType = data.user_type || data.userType || 'admin';
 
             const { error } = await supabase
                 .from('notification')
                 .insert({
                     user_id: userId,
+                    user_type: userType,
                     title,
                     message,
-                    type,
+                    notification_type: notificationType,
+                    priority: data.priority || 'medium',
+                    is_read: false,
                     status: 'unread',
+                    action_data: data.metadata || {},
                     created_at: new Date().toISOString()
                 });
 

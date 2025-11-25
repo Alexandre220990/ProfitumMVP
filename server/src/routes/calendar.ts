@@ -10,6 +10,8 @@ import { asyncHandler } from '../utils/asyncHandler';
 import { rateLimit } from 'express-rate-limit';
 import Joi from 'joi';
 import { NotificationService } from '../services/NotificationService';
+import { ClientTimelineService } from '../services/client-timeline-service';
+import { DossierTimelineService } from '../services/dossier-timeline-service';
 
 const router = express.Router();
 
@@ -78,10 +80,15 @@ function transformCalendarEventToRDV(eventData: any): any {
     ? 'video' 
     : (eventData.phone_number ? 'phone' : 'physical');
 
-  // Construire metadata avec color
+  // Construire metadata avec color et informations complémentaires
   const metadata = {
     ...(eventData.metadata || {}),
-    color: eventData.color || '#3B82F6'
+    color: eventData.color || '#3B82F6',
+    // Stocker les IDs dans metadata pour enrichir l'événement (même si colonnes dédiées existent)
+    ...(eventData.client_id && { client_id: eventData.client_id }),
+    ...(eventData.expert_id && { expert_id: eventData.expert_id }),
+    ...(eventData.apporteur_id && { apporteur_id: eventData.apporteur_id }),
+    ...(eventData.dossier_id && { dossier_id: eventData.dossier_id })
   };
 
   // Ne garder que les colonnes qui existent dans la table RDV
@@ -142,7 +149,12 @@ const eventSchema = Joi.object({
   is_recurring: Joi.boolean().default(false),
   recurrence_rule: Joi.string().optional(),
   metadata: Joi.object().default({}),
-  participants: Joi.array().items(Joi.object()).optional()
+  participants: Joi.array().items(Joi.object({
+    user_id: Joi.string().uuid().required(),
+    user_type: Joi.string().valid('client', 'expert', 'apporteur', 'admin').required(),
+    user_email: Joi.string().email().optional(),
+    user_name: Joi.string().optional()
+  })).optional()
 });
 
 // Schéma de validation pour une étape de dossier
@@ -398,51 +410,30 @@ router.post('/events', calendarLimiter, validateEvent, asyncHandler(async (req: 
     };
 
     // Ajouter l'ID client/expert selon le type d'utilisateur
-    // IMPORTANT: client_id est NOT NULL dans la table RDV
+    // client_id est maintenant optionnel pour permettre des événements personnels
     if (authUser.type === 'client') {
       newEvent.client_id = authUser.database_id;
     } else if (authUser.type === 'expert') {
       newEvent.expert_id = authUser.database_id;
-      // Si un client_id est fourni, l'utiliser
+      // Si un client_id est fourni, l'utiliser (optionnel pour événements personnels)
       if (eventData.client_id) {
         newEvent.client_id = eventData.client_id;
-      } else {
-        // Sinon, erreur : un expert doit spécifier un client
-        console.error('❌ Expert doit spécifier un client_id');
-        return res.status(400).json({ 
-          success: false, 
-          message: 'Vous devez sélectionner un client pour ce rendez-vous',
-          field: 'client_id'
-        });
       }
     } else if (authUser.type === 'apporteur') {
       newEvent.apporteur_id = authUser.database_id;
-      // Pour un apporteur, client_id doit être fourni
+      // Si un client_id est fourni, l'utiliser (optionnel)
       if (eventData.client_id) {
         newEvent.client_id = eventData.client_id;
-      } else {
-        console.error('❌ Apporteur doit spécifier un client_id');
-        return res.status(400).json({ 
-          success: false, 
-          message: 'Vous devez sélectionner un client/prospect pour ce rendez-vous',
-          field: 'client_id'
-        });
       }
       // Si un expert_id est fourni, l'ajouter
       if (eventData.expert_id) {
         newEvent.expert_id = eventData.expert_id;
       }
     } else if (authUser.type === 'admin') {
-      // Pour un admin, client_id doit être fourni
+      // Pour un admin, client_id est optionnel (peut créer un événement personnel)
+      // Ces champs servent à enrichir l'événement et le relier aux timelines
       if (eventData.client_id) {
         newEvent.client_id = eventData.client_id;
-      } else {
-        console.error('❌ Admin doit spécifier un client_id');
-        return res.status(400).json({ 
-          success: false, 
-          message: 'Vous devez sélectionner un client pour ce rendez-vous',
-          field: 'client_id'
-        });
       }
       // Si un expert_id est fourni, l'ajouter
       if (eventData.expert_id) {
@@ -451,6 +442,15 @@ router.post('/events', calendarLimiter, validateEvent, asyncHandler(async (req: 
       // Si un apporteur_id est fourni, l'ajouter
       if (eventData.apporteur_id) {
         newEvent.apporteur_id = eventData.apporteur_id;
+      }
+      // Si un dossier_id est fourni, l'ajouter (peut être dans metadata si colonne n'existe pas)
+      if (eventData.dossier_id) {
+        newEvent.dossier_id = eventData.dossier_id;
+        // Stocker aussi dans metadata pour traçabilité
+        newEvent.metadata = {
+          ...(newEvent.metadata || {}),
+          dossier_id: eventData.dossier_id
+        };
       }
     }
 
@@ -510,14 +510,15 @@ router.post('/events', calendarLimiter, validateEvent, asyncHandler(async (req: 
       // Notification pour l'organisateur
       await NotificationService.sendSystemNotification({
         userId: authUser.id,
+        user_type: authUser.type,
         title: 'Rappel événement calendrier',
         message: `Rappel pour l'événement "${event.title}" le ${eventDate.toLocaleDateString('fr-FR')} à ${eventDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`,
+        type: 'calendar_reminder',
         metadata: {
           event_title: event.title,
           event_date: eventDate.toLocaleDateString('fr-FR'),
           event_time: eventDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
           event_duration: `${event.duration_minutes || 60} min`,
-          event_type: event.type,
           event_location: event.location || 'Non spécifié',
           event_description: event.description || 'Aucune description',
           event_url: `${process.env.FRONTEND_URL}/calendar/event/${event.id}`,
@@ -525,32 +526,219 @@ router.post('/events', calendarLimiter, validateEvent, asyncHandler(async (req: 
         }
       });
 
-      // Notifications pour les participants si spécifiés
-      if (eventData.participants && Array.isArray(eventData.participants)) {
-        for (const participantId of eventData.participants) {
-          if (participantId !== authUser.id) {
-            await NotificationService.sendSystemNotification({
-              userId: participantId,
-              title: 'Invitation événement calendrier',
-              message: `Vous êtes invité à l'événement "${event.title}" le ${eventDate.toLocaleDateString('fr-FR')} à ${eventDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`,
-              metadata: {
-                event_title: event.title,
-                event_date: eventDate.toLocaleDateString('fr-FR'),
-                event_time: eventDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
-                event_location: event.location || 'Non spécifié',
-                organizer_name: (authUser as any).name || 'Organisateur',
-                event_description: event.description || 'Aucune description',
-                accept_url: `${process.env.FRONTEND_URL}/calendar/event/${event.id}/accept`,
-                decline_url: `${process.env.FRONTEND_URL}/calendar/event/${event.id}/decline`,
-                recipient_name: 'Participant' // TODO: Récupérer le nom du participant
-              }
-            });
+      // Créer les participants dans RDV_Participants si spécifiés
+      if (eventData.participants && Array.isArray(eventData.participants) && eventData.participants.length > 0) {
+        const participantRecords = [];
+        
+        for (const participant of eventData.participants) {
+          // Récupérer auth_user_id depuis database_id selon le type
+          let authUserId: string | null = null;
+          
+          try {
+            if (participant.user_type === 'client') {
+              const { data: client } = await supabase
+                .from('Client')
+                .select('auth_user_id')
+                .eq('id', participant.user_id)
+                .single();
+              authUserId = client?.auth_user_id || null;
+            } else if (participant.user_type === 'expert') {
+              const { data: expert } = await supabase
+                .from('Expert')
+                .select('auth_user_id')
+                .eq('id', participant.user_id)
+                .single();
+              authUserId = expert?.auth_user_id || null;
+            } else if (participant.user_type === 'apporteur') {
+              const { data: apporteur } = await supabase
+                .from('ApporteurAffaires')
+                .select('auth_user_id')
+                .eq('id', participant.user_id)
+                .single();
+              authUserId = apporteur?.auth_user_id || null;
+            } else if (participant.user_type === 'admin') {
+              const { data: admin } = await supabase
+                .from('Admin')
+                .select('auth_user_id')
+                .eq('id', participant.user_id)
+                .single();
+              authUserId = admin?.auth_user_id || null;
+            }
+          } catch (error) {
+            console.warn(`⚠️ Impossible de récupérer auth_user_id pour participant ${participant.user_id}:`, error);
+          }
+
+          participantRecords.push({
+            rdv_id: event.id,
+            user_id: authUserId,
+            user_type: participant.user_type,
+            user_email: participant.user_email || null,
+            user_name: participant.user_name || null,
+            status: 'pending',
+            created_at: new Date().toISOString()
+          });
+        }
+
+        if (participantRecords.length > 0) {
+          const { error: participantsError } = await supabase
+            .from('RDV_Participants')
+            .insert(participantRecords);
+
+          if (participantsError) {
+            console.error('❌ Erreur création participants:', participantsError);
+          } else {
+            console.log(`✅ ${participantRecords.length} participant(s) créé(s)`);
+          }
+        }
+
+        // Envoyer les notifications aux participants
+        for (const participant of eventData.participants) {
+          // Récupérer auth_user_id pour la notification
+          let authUserId: string | null = null;
+          
+          try {
+            if (participant.user_type === 'client') {
+              const { data: client } = await supabase
+                .from('Client')
+                .select('auth_user_id')
+                .eq('id', participant.user_id)
+                .single();
+              authUserId = client?.auth_user_id || null;
+            } else if (participant.user_type === 'expert') {
+              const { data: expert } = await supabase
+                .from('Expert')
+                .select('auth_user_id')
+                .eq('id', participant.user_id)
+                .single();
+              authUserId = expert?.auth_user_id || null;
+            } else if (participant.user_type === 'apporteur') {
+              const { data: apporteur } = await supabase
+                .from('ApporteurAffaires')
+                .select('auth_user_id')
+                .eq('id', participant.user_id)
+                .single();
+              authUserId = apporteur?.auth_user_id || null;
+            } else if (participant.user_type === 'admin') {
+              const { data: admin } = await supabase
+                .from('Admin')
+                .select('auth_user_id')
+                .eq('id', participant.user_id)
+                .single();
+              authUserId = admin?.auth_user_id || null;
+            }
+
+            if (authUserId && authUserId !== authUser.id) {
+              await NotificationService.sendSystemNotification({
+                userId: authUserId,
+                user_type: participant.user_type,
+                title: 'Invitation événement calendrier',
+                message: `Vous êtes invité à l'événement "${event.title}" le ${eventDate.toLocaleDateString('fr-FR')} à ${eventDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`,
+                type: 'calendar_invitation',
+                metadata: {
+                  event_title: event.title,
+                  event_date: eventDate.toLocaleDateString('fr-FR'),
+                  event_time: eventDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+                  event_location: event.location || 'Non spécifié',
+                  organizer_name: (authUser as any).name || 'Organisateur',
+                  event_description: event.description || 'Aucune description',
+                  accept_url: `${process.env.FRONTEND_URL}/calendar/event/${event.id}/accept`,
+                  decline_url: `${process.env.FRONTEND_URL}/calendar/event/${event.id}/decline`,
+                  recipient_name: participant.user_name || 'Participant'
+                }
+              });
+            }
+          } catch (notificationError) {
+            console.warn(`⚠️ Erreur notification participant ${participant.user_id}:`, notificationError);
           }
         }
       }
     } catch (notificationError) {
       console.warn('⚠️ Erreur envoi notifications calendrier:', notificationError);
       // Ne pas faire échouer la création d'événement si les notifications échouent
+    }
+
+    // Ajouter l'événement aux timelines appropriées (client et/ou dossier)
+    try {
+      const eventDateTime = `${event.scheduled_date}T${event.scheduled_time}`;
+      const eventDate = new Date(eventDateTime);
+      
+      // Récupérer le nom de l'acteur
+      let actorName = 'Système';
+      let actorType: 'client' | 'expert' | 'admin' | 'system' | 'apporteur' = 'system';
+      
+      if (authUser.type === 'admin') {
+        actorType = 'admin';
+        actorName = (authUser as any).name || 'Administrateur';
+      } else if (authUser.type === 'expert') {
+        actorType = 'expert';
+        actorName = (authUser as any).name || 'Expert';
+      } else if (authUser.type === 'apporteur') {
+        actorType = 'apporteur';
+        actorName = (authUser as any).name || 'Apporteur';
+      } else if (authUser.type === 'client') {
+        actorType = 'client';
+        actorName = (authUser as any).name || 'Client';
+      }
+
+      // Créer l'événement dans la timeline client si client_id est présent
+      if (event.client_id) {
+        await ClientTimelineService.addEvent({
+          client_id: event.client_id,
+          dossier_id: event.dossier_id || (event.metadata?.dossier_id) || undefined,
+          date: eventDate.toISOString(),
+          type: 'rdv',
+          actor_type: actorType,
+          actor_id: authUser.database_id,
+          actor_name: actorName,
+          title: `Rendez-vous : ${event.title}`,
+          description: event.description || `Rendez-vous prévu le ${eventDate.toLocaleDateString('fr-FR')} à ${eventDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}${event.location ? ` - ${event.location}` : ''}`,
+          metadata: {
+            rdv_id: event.id,
+            scheduled_date: event.scheduled_date,
+            scheduled_time: event.scheduled_time,
+            duration_minutes: event.duration_minutes,
+            location: event.location,
+            meeting_url: event.meeting_url,
+            meeting_type: event.meeting_type,
+            ...(event.metadata || {})
+          },
+          icon: '📅',
+          color: 'blue',
+          action_url: `${process.env.FRONTEND_URL}/admin/agenda-admin?event=${event.id}`
+        });
+      }
+
+      // Créer l'événement dans la timeline dossier si dossier_id est présent
+      if (event.dossier_id || event.metadata?.dossier_id) {
+        const dossierId = event.dossier_id || event.metadata?.dossier_id;
+        await DossierTimelineService.addEvent({
+          dossier_id: dossierId,
+          date: eventDate.toISOString(),
+          type: 'rdv',
+          actor_type: actorType,
+          actor_id: authUser.database_id,
+          actor_name: actorName,
+          title: `Rendez-vous : ${event.title}`,
+          description: event.description || `Rendez-vous prévu le ${eventDate.toLocaleDateString('fr-FR')} à ${eventDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}${event.location ? ` - ${event.location}` : ''}`,
+          metadata: {
+            rdv_id: event.id,
+            client_id: event.client_id,
+            scheduled_date: event.scheduled_date,
+            scheduled_time: event.scheduled_time,
+            duration_minutes: event.duration_minutes,
+            location: event.location,
+            meeting_url: event.meeting_url,
+            meeting_type: event.meeting_type,
+            ...(event.metadata || {})
+          },
+          icon: '📅',
+          color: 'blue',
+          action_url: `${process.env.FRONTEND_URL}/admin/agenda-admin?event=${event.id}`
+        });
+      }
+    } catch (timelineError) {
+      console.warn('⚠️ Erreur ajout événement aux timelines:', timelineError);
+      // Ne pas faire échouer la création d'événement si l'ajout aux timelines échoue
     }
 
     return res.status(201).json({
