@@ -309,24 +309,50 @@ export class ClientTimelineService {
         }
       });
 
-      // 6. Trier par date (plus récent en premier)
-      allEvents.sort((a, b) => {
+      // 6. Dédupliquer les événements (notamment les RDV qui peuvent apparaître plusieurs fois)
+      const uniqueEventsMap = new Map<string, TimelineEvent>();
+      
+      allEvents.forEach((event) => {
+        // Créer une clé unique basée sur l'ID et le type
+        let uniqueKey: string;
+        
+        if (event.id) {
+          // Si l'événement a déjà un ID, l'utiliser
+          uniqueKey = event.id;
+        } else if (event.type === 'rdv' && event.metadata?.rdv_id) {
+          // Pour les RDV, utiliser l'ID du RDV comme clé unique
+          uniqueKey = `rdv-${event.metadata.rdv_id}`;
+        } else {
+          // Pour les autres événements, créer une clé basée sur type + date + titre
+          uniqueKey = `${event.type}-${event.date}-${event.title}`;
+        }
+        
+        // Ne garder que le premier événement trouvé avec cette clé
+        if (!uniqueEventsMap.has(uniqueKey)) {
+          uniqueEventsMap.set(uniqueKey, event);
+        }
+      });
+      
+      const deduplicatedEvents = Array.from(uniqueEventsMap.values());
+
+      // 7. Trier par date (plus récent en premier)
+      deduplicatedEvents.sort((a, b) => {
         const dateA = new Date(a.date || 0).getTime();
         const dateB = new Date(b.date || 0).getTime();
         return dateB - dateA;
       });
 
-      // 7. Appliquer la pagination
-      let paginatedEvents = allEvents;
+      // 8. Appliquer la pagination
+      let paginatedEvents = deduplicatedEvents;
       if (options?.limit) {
         const offset = options.offset || 0;
-        paginatedEvents = allEvents.slice(offset, offset + options.limit);
+        paginatedEvents = deduplicatedEvents.slice(offset, offset + options.limit);
       }
 
       return {
         success: true,
         events: paginatedEvents,
-        total: allEvents.length
+        total: deduplicatedEvents.length
       };
 
     } catch (error) {
