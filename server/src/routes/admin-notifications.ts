@@ -174,6 +174,7 @@ router.get('/admin', enhancedAuthMiddleware, async (req: Request, res: Response)
 
     // ✅ CORRECTION: Lire depuis la table 'notification' au lieu de 'AdminNotification'
     // Les notifications sont créées dans 'notification' avec user_type='admin'
+    // Utiliser user.id (auth_user_id) car les notifications sont créées avec auth_user_id
     const { data: notifications, error } = await supabase
       .from('notification')
       .select('*')
