@@ -33,6 +33,7 @@ import LoadingScreen from '@/components/LoadingScreen';
 import ClientTimeline from '@/components/client/ClientTimeline';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -115,6 +116,8 @@ const ClientSynthese: React.FC = () => {
   });
   const [loadingProduits, setLoadingProduits] = useState(false);
   const [creatingDossier, setCreatingDossier] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deletingClient, setDeletingClient] = useState(false);
 
   // Statistiques calculées
   const [stats, setStats] = useState({
@@ -423,6 +426,29 @@ const ClientSynthese: React.FC = () => {
     }
   };
 
+  const handleDeleteClient = async () => {
+    if (!id) return;
+    
+    setDeletingClient(true);
+    try {
+      const response = await del(`/admin/clients/${id}`);
+      if (response.success) {
+        toast.success('Client supprimé définitivement');
+        setShowDeleteDialog(false);
+        // Rediriger vers la liste des clients après suppression
+        setTimeout(() => {
+          navigate('/admin/gestion-clients');
+        }, 1000);
+      } else {
+        throw new Error(response.message || 'Erreur lors de la suppression');
+      }
+    } catch (error: any) {
+      console.error('Erreur suppression client:', error);
+      toast.error(error?.message || 'Erreur lors de la suppression du client');
+      setDeletingClient(false);
+    }
+  };
+
   return (
     <div className="w-full">
       {/* Header */}
@@ -455,6 +481,71 @@ const ClientSynthese: React.FC = () => {
               <RefreshCw className="w-4 h-4 mr-2" />
               Actualiser
             </Button>
+            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" className="gap-2">
+                  <Trash2 className="w-4 h-4" />
+                  Supprimer définitivement
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="max-w-2xl">
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="text-xl font-bold text-red-600 flex items-center gap-2">
+                    <AlertTriangle className="w-6 h-6" />
+                    Suppression définitive du client
+                  </AlertDialogTitle>
+                  <AlertDialogDescription className="text-base space-y-3 pt-2">
+                    <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded">
+                      <p className="font-semibold text-red-900 mb-2">
+                        ⚠️ Cette action est IRREVERSIBLE et supprimera définitivement :
+                      </p>
+                      <ul className="list-disc list-inside text-red-800 space-y-1 ml-2">
+                        <li>Le client et toutes ses informations</li>
+                        <li>Tous les dossiers associés ({stats.totalDossiers} dossier{stats.totalDossiers > 1 ? 's' : ''})</li>
+                        <li>Tous les documents et fichiers</li>
+                        <li>Toutes les simulations</li>
+                        <li>Tous les rendez-vous et événements</li>
+                        <li>Toutes les notifications</li>
+                        <li>L'historique complet du client</li>
+                      </ul>
+                    </div>
+                    <div className="bg-yellow-50 border border-yellow-200 p-3 rounded mt-3">
+                      <p className="text-sm text-yellow-900">
+                        <strong>Client :</strong> {getClientDisplayName()}
+                      </p>
+                      <p className="text-sm text-yellow-900">
+                        <strong>Email :</strong> {client?.email}
+                      </p>
+                    </div>
+                    <p className="text-red-600 font-semibold mt-3">
+                      Cette action ne peut pas être annulée. Êtes-vous absolument certain de vouloir continuer ?
+                    </p>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+                  <AlertDialogCancel disabled={deletingClient}>
+                    Annuler
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDeleteClient}
+                    disabled={deletingClient}
+                    className="bg-red-600 hover:bg-red-700 text-white"
+                  >
+                    {deletingClient ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                        Suppression en cours...
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Oui, supprimer définitivement
+                      </>
+                    )}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
       </div>

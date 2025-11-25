@@ -2674,43 +2674,130 @@ router.put('/clients/:id/status', asyncHandler(async (req, res) => {
   }
 }));
 
-// DELETE /api/admin/clients/:id - Supprimer un client
+// DELETE /api/admin/clients/:id - Supprimer un client définitivement
 router.delete('/clients/:id', asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
     const adminId = (req as any).user.id;
 
     // Récupérer les informations du client avant suppression
-    const { data: client } = await supabaseClient
+    const { data: client, error: clientFetchError } = await supabaseClient
       .from('Client')
       .select('*')
       .eq('id', id)
       .single();
 
-    // Supprimer les données associées (en cascade si possible)
-    await supabaseClient
-      .from('ClientProduitEligible')
-      .delete()
-      .eq('clientId', id);
+    if (clientFetchError || !client) {
+      return res.status(404).json({
+        success: false,
+        message: 'Client non trouvé'
+      });
+    }
 
-    await supabaseClient
-      .from('Audit')
-      .delete()
-      .eq('client_id', id);
+    console.log(`🗑️ Suppression définitive du client ${id} (${client.email}) par l'admin ${adminId}`);
 
-    await supabaseClient
-      .from('client_charte_signature')
-      .delete()
-      .eq('client_id', id);
+    // ⚠️ IMPORTANT: Supprimer dans l'ordre pour respecter les contraintes FK
+    // Ordre basé sur les règles FK : NO ACTION d'abord, puis CASCADE/SET NULL
 
-    // Supprimer le client
-    const { error } = await supabaseClient
+    // PRIORITÉ 1 : Tables avec NO ACTION (doivent être supprimées AVANT les clients)
+    try {
+      await supabaseClient.from('RDV_Task').delete().eq('client_id', id);
+      await supabaseClient.from('RDV_Timeline').delete().eq('client_id', id);
+    } catch (err: any) {
+      // Ignorer si les tables n'existent pas
+      if (!err.message?.includes('does not exist')) {
+        console.warn('Erreur suppression RDV_Task/Timeline:', err.message);
+      }
+    }
+
+    // PRIORITÉ 2 : Documents et fichiers
+    await supabaseClient.from('ClientProcessDocument').delete().eq('client_id', id);
+    await supabaseClient.from('SharedClientDocument').delete().eq('client_id', id);
+    try {
+      await supabaseClient.from('GEDDocument').delete().eq('created_by', id);
+    } catch (err: any) {
+      if (!err.message?.includes('does not exist')) {
+        console.warn('Erreur suppression GEDDocument:', err.message);
+      }
+    }
+    await supabaseClient.from('document_request').delete().eq('client_id', id);
+
+    // PRIORITÉ 3 : Dossiers et produits
+    await supabaseClient.from('Dossier').delete().eq('clientId', id);
+    await supabaseClient.from('ClientProduitEligible').delete().eq('clientId', id);
+    try {
+      await supabaseClient.from('ClientStatut').delete().eq('client_id', id);
+    } catch (err: any) {
+      if (!err.message?.includes('does not exist')) {
+        console.warn('Erreur suppression ClientStatut:', err.message);
+      }
+    }
+
+    // PRIORITÉ 4 : Rendez-vous
+    await supabaseClient.from('RDV').delete().eq('client_id', id);
+    try {
+      await supabaseClient.from('Appointment').delete().eq('clientId', id);
+      await supabaseClient.from('Reminder').delete().eq('client_id', id);
+    } catch (err: any) {
+      if (!err.message?.includes('does not exist')) {
+        console.warn('Erreur suppression Appointment/Reminder:', err.message);
+      }
+    }
+
+    // PRIORITÉ 5 : Simulations
+    await supabaseClient.from('simulations').delete().eq('client_id', id);
+    try {
+      await supabaseClient.from('simulationhistory').delete().eq('client_id', id);
+    } catch (err: any) {
+      if (!err.message?.includes('does not exist')) {
+        console.warn('Erreur suppression simulationhistory:', err.message);
+      }
+    }
+
+    // PRIORITÉ 6 : Expert et assignations
+    await supabaseClient.from('expertassignment').delete().eq('client_id', id);
+    try {
+      await supabaseClient.from('ClientExpert').delete().eq('client_id', id);
+    } catch (err: any) {
+      if (!err.message?.includes('does not exist')) {
+        console.warn('Erreur suppression ClientExpert:', err.message);
+      }
+    }
+
+    // PRIORITÉ 7 : Signatures et timeline
+    await supabaseClient.from('client_charte_signature').delete().eq('client_id', id);
+    try {
+      await supabaseClient.from('client_timeline').delete().eq('client_id', id);
+    } catch (err: any) {
+      if (!err.message?.includes('does not exist')) {
+        console.warn('Erreur suppression client_timeline:', err.message);
+      }
+    }
+
+    // PRIORITÉ 8 : Notifications
+    await supabaseClient
+      .from('notification')
+      .delete()
+      .eq('user_id', id)
+      .eq('user_type', 'client');
+
+    // PRIORITÉ 9 : Audits (peut ne pas exister dans toutes les bases)
+    try {
+      await supabaseClient.from('Audit').delete().or(`clientId.eq.${id},client_id.eq.${id}`);
+    } catch (err: any) {
+      if (!err.message?.includes('does not exist')) {
+        console.warn('Erreur suppression Audit:', err.message);
+      }
+    }
+
+    // ENFIN : Supprimer le client
+    const { error: deleteError } = await supabaseClient
       .from('Client')
       .delete()
       .eq('id', id);
 
-    if (error) {
-      throw error;
+    if (deleteError) {
+      throw deleteError;
     }
 
     // Log de l'action
@@ -2723,19 +2810,26 @@ router.delete('/clients/:id', asyncHandler(async (req, res) => {
         record_id: id,
         old_values: client,
         ip_address: req.ip,
-        user_agent: req.get('User-Agent')
+        user_agent: req.get('User-Agent'),
+        metadata: {
+          email: client.email,
+          company_name: client.company_name,
+          deleted_at: new Date().toISOString()
+        }
       });
 
-    res.json({
+    console.log(`✅ Client ${id} supprimé définitivement avec toutes ses dépendances`);
+
+    return res.json({
       success: true,
-      message: 'Client supprimé avec succès'
+      message: 'Client supprimé définitivement avec toutes ses données associées'
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Erreur suppression client:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      message: 'Erreur lors de la suppression du client'
+      message: error.message || 'Erreur lors de la suppression du client'
     });
   }
 }));
