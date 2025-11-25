@@ -979,6 +979,17 @@ router.post("/register", registerRateLimiter, async (req: Request, res: Response
     // On ne stocke PAS de mot de passe dans les tables métier
     if (type === 'client') {
       // Préparation des données client complètes
+      // Convertir les chaînes vides en NULL pour les champs numériques
+      const nombreEmployesValue = nombreEmployes === '' || nombreEmployes === null || nombreEmployes === undefined 
+        ? null 
+        : Number(nombreEmployes);
+      const revenuAnnuelValue = revenuAnnuel === '' || revenuAnnuel === null || revenuAnnuel === undefined 
+        ? null 
+        : Number(revenuAnnuel);
+      const ancienneteEntrepriseValue = ancienneteEntreprise === '' || ancienneteEntreprise === null || ancienneteEntreprise === undefined 
+        ? null 
+        : Number(ancienneteEntreprise);
+
       const clientData = {
         // Ne PAS utiliser l'ID Supabase Auth comme ID de la table (générer nouveau UUID)
         auth_user_id: authData.user.id, // 🔥 Lien vers Supabase Auth
@@ -995,10 +1006,10 @@ router.post("/register", registerRateLimiter, async (req: Request, res: Response
         postal_code,
         siren,
         type,
-        revenuAnnuel: revenuAnnuel || null,
+        revenuAnnuel: revenuAnnuelValue,
         secteurActivite: secteurActivite || null,
-        nombreEmployes: nombreEmployes || null,
-        ancienneteEntreprise: ancienneteEntreprise || null,
+        nombreEmployes: nombreEmployesValue,
+        ancienneteEntreprise: ancienneteEntrepriseValue,
         typeProjet: typeProjet || null,
         is_active: true,
         created_at: new Date().toISOString(),
