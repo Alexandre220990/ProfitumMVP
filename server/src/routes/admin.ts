@@ -5,6 +5,7 @@ import { asyncHandler } from '../utils/asyncHandler';
 import { AuthUser } from '../types/auth';
 import messagesRouter from './admin/messages';
 import { normalizeDossierStatus } from '../utils/dossierStatus';
+import { ClientTimelineService } from '../services/client-timeline-service';
 
 const router = express.Router();
 
@@ -1991,6 +1992,14 @@ router.post('/clients', asyncHandler(async (req, res) => {
     }
 
     // 2. Créer l'entrée dans la table Client
+    // Convertir les chaînes vides en NULL pour les champs numériques
+    const nombreEmployesValue = nombreEmployes === '' || nombreEmployes === null || nombreEmployes === undefined 
+      ? null 
+      : Number(nombreEmployes);
+    const revenuAnnuelValue = revenuAnnuel === '' || revenuAnnuel === null || revenuAnnuel === undefined 
+      ? null 
+      : Number(revenuAnnuel);
+
     const { data: newClient, error: clientError } = await supabaseClient
       .from('Client')
       .insert({
@@ -2007,8 +2016,8 @@ router.post('/clients', asyncHandler(async (req, res) => {
         postal_code,
         siren,
         secteurActivite,
-        nombreEmployes,
-        revenuAnnuel,
+        nombreEmployes: nombreEmployesValue,
+        revenuAnnuel: revenuAnnuelValue,
         type: 'client',
         statut: 'actif',
         notes,
@@ -2051,6 +2060,27 @@ router.post('/clients', asyncHandler(async (req, res) => {
       email: newClient.email,
       authUserId: authData.user.id
     });
+
+    // Ajouter les notes à la timeline si elles existent
+    if (notes && notes.trim()) {
+      const adminName = (req as any).user?.name || (req as any).user?.email || 'Administrateur';
+      await ClientTimelineService.addEvent({
+        client_id: newClient.id,
+        date: new Date().toISOString(),
+        type: 'admin_action',
+        actor_type: 'admin',
+        actor_id: (req as any).user?.database_id || null,
+        actor_name: adminName,
+        title: 'Notes internes ajoutées',
+        description: notes.trim(),
+        metadata: {
+          action: 'notes_added',
+          created_via: 'admin_form'
+        },
+        icon: '📝',
+        color: 'orange'
+      });
+    }
 
     return res.status(201).json({
       success: true,
@@ -2706,6 +2736,204 @@ router.delete('/clients/:id', asyncHandler(async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Erreur lors de la suppression du client'
+    });
+  }
+}));
+
+// PUT /api/admin/clients/:id/notes - Modifier les notes internes d'un client
+router.put('/clients/:id/notes', asyncHandler(async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { notes } = req.body;
+    const adminId = (req as any).user?.database_id;
+    const adminName = (req as any).user?.name || (req as any).user?.email || 'Administrateur';
+
+    // Récupérer les anciennes notes
+    const { data: oldClient } = await supabaseClient
+      .from('Client')
+      .select('notes')
+      .eq('id', id)
+      .single();
+
+    if (!oldClient) {
+      return res.status(404).json({
+        success: false,
+        message: 'Client non trouvé'
+      });
+    }
+
+    // Mettre à jour les notes
+    const { data: updatedClient, error } = await supabaseClient
+      .from('Client')
+      .update({
+        notes: notes || null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    // Ajouter un événement à la timeline
+    const hadNotes = oldClient.notes && oldClient.notes.trim();
+    const hasNotes = notes && notes.trim();
+    
+    if (hasNotes) {
+      // Si on modifie ou ajoute des notes
+      await ClientTimelineService.addEvent({
+        client_id: id,
+        date: new Date().toISOString(),
+        type: 'admin_action',
+        actor_type: 'admin',
+        actor_id: adminId,
+        actor_name: adminName,
+        title: hadNotes ? 'Notes internes modifiées' : 'Notes internes ajoutées',
+        description: notes.trim(),
+        metadata: {
+          action: hadNotes ? 'notes_updated' : 'notes_added',
+          previous_notes: hadNotes ? oldClient.notes : null
+        },
+        icon: '📝',
+        color: 'orange'
+      });
+    } else if (hadNotes) {
+      // Si on supprime les notes
+      await ClientTimelineService.addEvent({
+        client_id: id,
+        date: new Date().toISOString(),
+        type: 'admin_action',
+        actor_type: 'admin',
+        actor_id: adminId,
+        actor_name: adminName,
+        title: 'Notes internes supprimées',
+        description: 'Les notes internes ont été supprimées',
+        metadata: {
+          action: 'notes_deleted',
+          previous_notes: oldClient.notes
+        },
+        icon: '🗑️',
+        color: 'red'
+      });
+    }
+
+    // Log de l'action
+    await supabaseClient
+      .from('AdminAuditLog')
+      .insert({
+        admin_id: (req as any).user?.id,
+        action: 'client_notes_updated',
+        table_name: 'Client',
+        record_id: id,
+        old_values: { notes: oldClient.notes },
+        new_values: { notes: notes || null },
+        ip_address: req.ip,
+        user_agent: req.get('User-Agent')
+      });
+
+    return res.json({
+      success: true,
+      data: updatedClient,
+      message: 'Notes mises à jour avec succès'
+    });
+
+  } catch (error) {
+    console.error('Erreur modification notes client:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la modification des notes'
+    });
+  }
+}));
+
+// DELETE /api/admin/clients/:id/notes - Supprimer les notes internes d'un client
+router.delete('/clients/:id/notes', asyncHandler(async (req, res) => {
+  try {
+    const { id } = req.params;
+    const adminId = (req as any).user?.database_id;
+    const adminName = (req as any).user?.name || (req as any).user?.email || 'Administrateur';
+
+    // Récupérer les anciennes notes
+    const { data: oldClient } = await supabaseClient
+      .from('Client')
+      .select('notes')
+      .eq('id', id)
+      .single();
+
+    if (!oldClient) {
+      return res.status(404).json({
+        success: false,
+        message: 'Client non trouvé'
+      });
+    }
+
+    if (!oldClient.notes || !oldClient.notes.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Aucune note à supprimer'
+      });
+    }
+
+    // Supprimer les notes
+    const { data: updatedClient, error } = await supabaseClient
+      .from('Client')
+      .update({
+        notes: null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    // Ajouter un événement à la timeline
+    await ClientTimelineService.addEvent({
+      client_id: id,
+      date: new Date().toISOString(),
+      type: 'admin_action',
+      actor_type: 'admin',
+      actor_id: adminId,
+      actor_name: adminName,
+      title: 'Notes internes supprimées',
+      description: 'Les notes internes ont été supprimées',
+      metadata: {
+        action: 'notes_deleted',
+        previous_notes: oldClient.notes
+      },
+      icon: '🗑️',
+      color: 'red'
+    });
+
+    // Log de l'action
+    await supabaseClient
+      .from('AdminAuditLog')
+      .insert({
+        admin_id: (req as any).user?.id,
+        action: 'client_notes_deleted',
+        table_name: 'Client',
+        record_id: id,
+        old_values: { notes: oldClient.notes },
+        new_values: { notes: null },
+        ip_address: req.ip,
+        user_agent: req.get('User-Agent')
+      });
+
+    return res.json({
+      success: true,
+      data: updatedClient,
+      message: 'Notes supprimées avec succès'
+    });
+
+  } catch (error) {
+    console.error('Erreur suppression notes client:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la suppression des notes'
     });
   }
 }));

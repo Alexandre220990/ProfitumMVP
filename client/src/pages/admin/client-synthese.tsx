@@ -21,13 +21,18 @@ import {
   AlertTriangle,
   Edit,
   RefreshCw,
-  Eye
+  Eye,
+  Trash2,
+  Save,
+  X
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
-import { get } from '@/lib/api';
+import { get, put, del } from '@/lib/api';
 import { toast } from 'sonner';
 import LoadingScreen from '@/components/LoadingScreen';
 import ClientTimeline from '@/components/client/ClientTimeline';
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
 interface ClientData {
   id: string;
@@ -39,6 +44,7 @@ interface ClientData {
   address?: string;
   statut: string;
   apporteur_id?: string;
+  notes?: string;
   created_at: string;
   updated_at: string;
 }
@@ -87,6 +93,9 @@ const ClientSynthese: React.FC = () => {
   const [dossiers, setDossiers] = useState<DossierData[]>([]);
   const [apporteur, setApporteur] = useState<ApporteurData | null>(null);
   const [experts, setExperts] = useState<any[]>([]);
+  const [editingNotes, setEditingNotes] = useState(false);
+  const [notesValue, setNotesValue] = useState('');
+  const [showDeleteNotesDialog, setShowDeleteNotesDialog] = useState(false);
 
   // Statistiques calculées
   const [stats, setStats] = useState({
@@ -179,6 +188,46 @@ const ClientSynthese: React.FC = () => {
   const getClientDisplayName = () => {
     if (!client) return 'N/A';
     return client.company_name || `${client.first_name || ''} ${client.last_name || ''}`.trim() || client.email;
+  };
+
+  const handleSaveNotes = async () => {
+    if (!id) return;
+    
+    try {
+      const response = await put(`/admin/clients/${id}/notes`, { notes: notesValue });
+      if (response.success) {
+        setClient(prev => prev ? { ...prev, notes: notesValue } : null);
+        setEditingNotes(false);
+        toast.success('Notes mises à jour avec succès');
+        // Recharger les données pour avoir la timeline à jour
+        loadClientData();
+      } else {
+        throw new Error(response.message || 'Erreur lors de la mise à jour');
+      }
+    } catch (error: any) {
+      console.error('Erreur mise à jour notes:', error);
+      toast.error(error?.message || 'Erreur lors de la mise à jour des notes');
+    }
+  };
+
+  const handleDeleteNotes = async () => {
+    if (!id) return;
+    
+    try {
+      const response = await del(`/admin/clients/${id}/notes`);
+      if (response.success) {
+        setClient(prev => prev ? { ...prev, notes: undefined } : null);
+        setShowDeleteNotesDialog(false);
+        toast.success('Notes supprimées avec succès');
+        // Recharger les données pour avoir la timeline à jour
+        loadClientData();
+      } else {
+        throw new Error(response.message || 'Erreur lors de la suppression');
+      }
+    } catch (error: any) {
+      console.error('Erreur suppression notes:', error);
+      toast.error(error?.message || 'Erreur lors de la suppression des notes');
+    }
   };
 
   return (
@@ -376,6 +425,87 @@ const ClientSynthese: React.FC = () => {
                               year: 'numeric'
                             })}
                           </p>
+                        </div>
+
+                        <div>
+                          <label className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                            <FileText className="w-4 h-4" />
+                            Notes internes
+                            {user?.type === 'admin' && (
+                              <div className="ml-auto flex gap-2">
+                                {!editingNotes ? (
+                                  <>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        setNotesValue(client.notes || '');
+                                        setEditingNotes(true);
+                                      }}
+                                      className="h-6 px-2"
+                                    >
+                                      <Edit className="w-3 h-3" />
+                                    </Button>
+                                    {client.notes && (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setShowDeleteNotesDialog(true)}
+                                        className="h-6 px-2 text-red-600 hover:text-red-700"
+                                      >
+                                        <Trash2 className="w-3 h-3" />
+                                      </Button>
+                                    )}
+                                  </>
+                                ) : (
+                                  <>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={handleSaveNotes}
+                                      className="h-6 px-2 text-green-600 hover:text-green-700"
+                                    >
+                                      <Save className="w-3 h-3" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        setEditingNotes(false);
+                                        setNotesValue('');
+                                      }}
+                                      className="h-6 px-2"
+                                    >
+                                      <X className="w-3 h-3" />
+                                    </Button>
+                                  </>
+                                )}
+                              </div>
+                            )}
+                          </label>
+                          {editingNotes ? (
+                            <div className="mt-1">
+                              <Textarea
+                                value={notesValue}
+                                onChange={(e) => setNotesValue(e.target.value)}
+                                placeholder="Notes internes (non visibles par le client)..."
+                                rows={4}
+                                className="bg-white"
+                              />
+                              <p className="text-xs text-amber-600 mt-1">⚠️ Ces notes ne sont pas visibles par le client</p>
+                            </div>
+                          ) : (
+                            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mt-1">
+                              {client.notes ? (
+                                <>
+                                  <p className="text-sm text-gray-700 whitespace-pre-wrap">{client.notes}</p>
+                                  <p className="text-xs text-amber-600 mt-2">⚠️ Ces notes ne sont pas visibles par le client</p>
+                                </>
+                              ) : (
+                                <p className="text-sm text-gray-500 italic">Aucune note interne</p>
+                              )}
+                            </div>
+                          )}
                         </div>
 
                         <div>
@@ -637,6 +767,26 @@ const ClientSynthese: React.FC = () => {
             </Tabs>
           </div>
         )}
+
+        {/* Dialog de confirmation suppression notes */}
+        <Dialog open={showDeleteNotesDialog} onOpenChange={setShowDeleteNotesDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Supprimer les notes internes</DialogTitle>
+              <DialogDescription>
+                Êtes-vous sûr de vouloir supprimer les notes internes de ce client ? Cette action est irréversible.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowDeleteNotesDialog(false)}>
+                Annuler
+              </Button>
+              <Button variant="destructive" onClick={handleDeleteNotes}>
+                Supprimer
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
     </div>
   );
 };
