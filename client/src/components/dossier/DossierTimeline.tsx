@@ -4,9 +4,10 @@
  */
 
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, RefreshCw, Calendar, Filter, MessageSquare, Send, Edit, Trash2, Plus } from 'lucide-react';
+import { Loader2, RefreshCw, Calendar, Filter, MessageSquare, Send, Edit, Trash2 } from 'lucide-react';
 import { config } from '@/config/env';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -19,16 +20,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { calendarService } from '@/services/calendar-service';
 
 interface TimelineEvent {
   id: string;
@@ -105,6 +96,7 @@ export default function DossierTimeline({
   dossierInfo
 }: DossierTimelineProps) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -116,14 +108,6 @@ export default function DossierTimeline({
   const [submittingComment, setSubmittingComment] = useState(false);
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingCommentText, setEditingCommentText] = useState('');
-  const [showEventDialog, setShowEventDialog] = useState(false);
-  const [eventFormData, setEventFormData] = useState({
-    title: '',
-    description: '',
-    start_date: '',
-    end_date: '',
-    type: 'appointment' as const
-  });
 
   const loadTimeline = async () => {
     try {
@@ -322,7 +306,7 @@ export default function DossierTimeline({
   };
 
   const handleCreateEvent = () => {
-    // Préremplir avec les infos du dossier/client
+    // Préremplir avec les infos du dossier/client et naviguer vers agenda-admin
     const now = new Date();
     const tomorrow = new Date(now);
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -338,53 +322,21 @@ export default function DossierTimeline({
       dossierInfo.produit_name && `Produit: ${dossierInfo.produit_name}`
     ].filter(Boolean).join('\n') : '';
 
-    setEventFormData({
+    // Stocker les données préremplies dans localStorage
+    const prefillData = {
       title: `Rappel - ${dossierInfo?.produit_name || 'Dossier'}`,
       description,
       start_date: tomorrow.toISOString().slice(0, 16),
       end_date: endTime.toISOString().slice(0, 16),
-      type: 'appointment'
-    });
-    setShowEventDialog(true);
-  };
-
-  const handleSubmitEvent = async () => {
-    if (!eventFormData.title.trim()) {
-      toast.error('Le titre est requis');
-      return;
-    }
-
-    try {
-      const startDate = new Date(eventFormData.start_date);
-      const endDate = new Date(eventFormData.end_date);
-
-      await calendarService.createEvent({
-        title: eventFormData.title,
-        description: eventFormData.description || undefined,
-        start_date: startDate.toISOString(),
-        end_date: endDate.toISOString(),
-        type: eventFormData.type,
-        dossier_id: dossierId,
-        client_id: dossierInfo?.client_id,
-        priority: 'medium',
-        category: 'admin' as any
-      });
-
-      toast.success('Événement créé avec succès');
-      setShowEventDialog(false);
-      setEventFormData({
-        title: '',
-        description: '',
-        start_date: '',
-        end_date: '',
-        type: 'appointment'
-      });
-    } catch (err: any) {
-      console.error('❌ Erreur création événement:', err);
-      toast.error('Erreur', {
-        description: err.message || 'Impossible de créer l\'événement'
-      });
-    }
+      dossier_id: dossierId,
+      client_id: dossierInfo?.client_id,
+      priority: 'medium'
+    };
+    
+    localStorage.setItem('calendar_event_prefill', JSON.stringify(prefillData));
+    
+    // Naviguer vers agenda-admin
+    navigate('/admin/agenda-admin');
   };
 
   // Vérifier si l'utilisateur peut ajouter des commentaires
@@ -695,82 +647,6 @@ export default function DossierTimeline({
           </div>
         )}
       </CardContent>
-
-      {/* Dialog pour créer un événement */}
-      <Dialog open={showEventDialog} onOpenChange={setShowEventDialog}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Créer un rappel</DialogTitle>
-            <DialogDescription>
-              Créez un événement dans votre calendrier avec les informations du dossier préremplies.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4 mt-4">
-            <div>
-              <Label htmlFor="event-title">Titre *</Label>
-              <Input
-                id="event-title"
-                value={eventFormData.title}
-                onChange={(e) => setEventFormData(prev => ({ ...prev, title: e.target.value }))}
-                placeholder="Ex: Rappel dossier"
-                required
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="event-description">Description</Label>
-              <Textarea
-                id="event-description"
-                value={eventFormData.description}
-                onChange={(e) => setEventFormData(prev => ({ ...prev, description: e.target.value }))}
-                rows={4}
-                placeholder="Informations du dossier préremplies..."
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="event-start">Date et heure de début *</Label>
-                <Input
-                  id="event-start"
-                  type="datetime-local"
-                  value={eventFormData.start_date}
-                  onChange={(e) => setEventFormData(prev => ({ ...prev, start_date: e.target.value }))}
-                  required
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="event-end">Date et heure de fin *</Label>
-                <Input
-                  id="event-end"
-                  type="datetime-local"
-                  value={eventFormData.end_date}
-                  onChange={(e) => setEventFormData(prev => ({ ...prev, end_date: e.target.value }))}
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-2 pt-4">
-              <Button
-                variant="outline"
-                onClick={() => setShowEventDialog(false)}
-              >
-                Annuler
-              </Button>
-              <Button
-                onClick={handleSubmitEvent}
-                disabled={!eventFormData.title.trim() || !eventFormData.start_date || !eventFormData.end_date}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Créer l'événement
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </Card>
   );
 }

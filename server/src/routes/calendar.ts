@@ -78,10 +78,9 @@ function transformCalendarEventToRDV(eventData: any): any {
     ? 'video' 
     : (eventData.phone_number ? 'phone' : 'physical');
 
-  // Construire metadata avec type et color
+  // Construire metadata avec color
   const metadata = {
     ...(eventData.metadata || {}),
-    event_type: eventData.type, // appointment, deadline, meeting, task, reminder
     color: eventData.color || '#3B82F6'
   };
 
@@ -96,7 +95,6 @@ function transformCalendarEventToRDV(eventData: any): any {
     location: eventData.location || null,
     meeting_url: eventData.meeting_url || null,
     status: 'scheduled', // Valeur par défaut
-    category: eventData.category || 'qualification',
     priority,
     metadata,
     notes: eventData.description || null // Dupliquer description dans notes pour compatibilité
@@ -129,17 +127,8 @@ const eventSchema = Joi.object({
   description: Joi.string().max(1000).allow('', null).optional(),
   start_date: Joi.date().iso().required(),
   end_date: Joi.date().iso().greater(Joi.ref('start_date')).required(),
-  type: Joi.string().valid('appointment', 'deadline', 'meeting', 'task', 'reminder').required(),
   priority: Joi.string().valid('low', 'medium', 'high', 'critical').default('medium'),
   status: Joi.string().valid('pending', 'confirmed', 'completed', 'cancelled').forbidden(),
-  category: Joi.string().valid(
-    'qualification',
-    'presentation_expert',
-    'proposition_commerciale',
-    'signature',
-    'suivi',
-    'autre'
-  ).default('qualification'),
   dossier_id: Joi.string().uuid().optional(),
   dossier_name: Joi.string().max(255).optional(),
   client_id: Joi.string().uuid().optional(),

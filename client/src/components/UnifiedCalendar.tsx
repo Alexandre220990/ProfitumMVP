@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, Users, User, FileText, AlertTriangle, Edit, Trash2, Bell, MapPin, Video, List, CalendarDays, RefreshCw } from 'lucide-react';
+import React, { useState, useCallback, useEffect } from 'react';
+import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, Users, FileText, AlertTriangle, Edit, Trash2, Bell, MapPin, Video, List, CalendarDays, RefreshCw } from 'lucide-react';
 import { format, isSameDay, startOfWeek, endOfWeek, addDays, subDays, startOfMonth, endOfMonth, addMinutes, addMonths, subMonths, addWeeks, subWeeks } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -13,7 +13,6 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -100,6 +99,33 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentFilter, setCurrentFilter] = useState('all');
+  
+  // Vérifier si des données préremplies sont disponibles (depuis timeline)
+  useEffect(() => {
+    const prefillData = localStorage.getItem('calendar_event_prefill');
+    if (prefillData) {
+      try {
+        const data = JSON.parse(prefillData);
+        // Créer un événement temporaire avec les données préremplies
+        const prefillEvent: Partial<CalendarEvent> = {
+          title: data.title || '',
+          description: data.description || '',
+          start_date: data.start_date ? new Date(data.start_date).toISOString() : '',
+          end_date: data.end_date ? new Date(data.end_date).toISOString() : '',
+          client_id: data.client_id,
+          dossier_id: data.dossier_id,
+          priority: data.priority || 'medium'
+        };
+        setSelectedEvent(prefillEvent as CalendarEvent);
+        setShowEventDialog(true);
+        // Nettoyer après utilisation
+        localStorage.removeItem('calendar_event_prefill');
+      } catch (err) {
+        console.error('Erreur parsing prefill data:', err);
+        localStorage.removeItem('calendar_event_prefill');
+      }
+    }
+  }, []);
 
   // Hook calendrier unifié
   const {
@@ -1198,13 +1224,6 @@ interface ParticipantOption {
   isTemporary?: boolean;
 }
 
-const participantTypeLabels: Record<ParticipantType, string> = {
-  client: 'Clients',
-  expert: 'Experts',
-  apporteur: 'Apporteurs',
-  admin: 'Administrateurs',
-  user: 'Autres'
-};
 
 const participantTypeOrder: ParticipantType[] = ['client', 'expert', 'apporteur', 'admin', 'user'];
 
@@ -1234,35 +1253,53 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
     return addMinutes(startDate, 30);
   };
   
+  // Vérifier si des données préremplies sont disponibles (depuis timeline)
+  const getPrefillData = () => {
+    if (event) return null; // Ne pas utiliser prefill si on édite un événement existant
+    try {
+      const prefill = localStorage.getItem('calendar_event_prefill');
+      if (prefill) {
+        const data = JSON.parse(prefill);
+        localStorage.removeItem('calendar_event_prefill');
+        return data;
+      }
+    } catch (err) {
+      console.error('Erreur parsing prefill:', err);
+      localStorage.removeItem('calendar_event_prefill');
+    }
+    return null;
+  };
+
+  const prefillData = React.useMemo(() => getPrefillData(), [open, event]);
+
   const [formData, setFormData] = useState({
-    title: event?.title || '',
-    description: event?.description || '',
+    title: event?.title || prefillData?.title || '',
+    description: event?.description || prefillData?.description || '',
     start_date: event?.start_date 
       ? formatDateTimeLocal(new Date(event.start_date))
-      : formatDateTimeLocal(new Date()),
+      : prefillData?.start_date 
+        ? formatDateTimeLocal(new Date(prefillData.start_date))
+        : formatDateTimeLocal(new Date()),
     end_date: event?.end_date 
       ? formatDateTimeLocal(new Date(event.end_date))
-      : formatDateTimeLocal(getDefaultEndTime(new Date())),
-    type: event?.type || 'appointment',
-    priority: event?.priority || 'medium',
-    category: event?.category || 'qualification',
+      : prefillData?.end_date
+        ? formatDateTimeLocal(new Date(prefillData.end_date))
+        : formatDateTimeLocal(getDefaultEndTime(new Date())),
+    priority: event?.priority || prefillData?.priority || 'medium',
     location: event?.location || '',
     is_online: event?.is_online || false,
     meeting_url: event?.meeting_url || '',
     color: event?.color || '#3B82F6',
-    client_id: event?.client_id || '',
+    client_id: event?.client_id || prefillData?.client_id || '',
     expert_id: event?.expert_id || '',
     apporteur_id: (event as any)?.apporteur_id || '',
+    dossier_id: (event as any)?.dossier_id || prefillData?.dossier_id || '',
     participants: event?.participants || []
   });
 
-  // État pour gérer le modal de sélection de participants
-  const [showParticipantsModal, setShowParticipantsModal] = useState(false);
   const [availableParticipants, setAvailableParticipants] = useState<ParticipantOption[]>([]);
-  const [loadingParticipants, setLoadingParticipants] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const requiresClientSelection = ['admin', 'expert', 'apporteur'].includes(user?.type || '');
   const canAssignExpert = ['admin', 'apporteur'].includes(user?.type || '');
   const canAssignApporteur = user?.type === 'admin';
 
@@ -1298,11 +1335,24 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
     if (open && ['admin', 'expert', 'apporteur', 'client'].includes(user?.type || '')) {
       loadAvailableParticipants();
     }
-  }, [open, user?.type]);
+    
+    // Réinitialiser formData si prefillData change
+    if (open && prefillData && !event) {
+      setFormData(prev => ({
+        ...prev,
+        title: prefillData.title || prev.title,
+        description: prefillData.description || prev.description,
+        start_date: prefillData.start_date ? formatDateTimeLocal(new Date(prefillData.start_date)) : prev.start_date,
+        end_date: prefillData.end_date ? formatDateTimeLocal(new Date(prefillData.end_date)) : prev.end_date,
+        client_id: prefillData.client_id || prev.client_id,
+        dossier_id: prefillData.dossier_id || prev.dossier_id,
+        priority: prefillData.priority || prev.priority
+      }));
+    }
+  }, [open, user?.type, prefillData, event]);
 
   // Charger tous les participants disponibles
   const loadAvailableParticipants = async () => {
-    setLoadingParticipants(true);
     try {
       const token = localStorage.getItem('token');
       const headers = { 'Authorization': `Bearer ${token}` };
@@ -1345,8 +1395,6 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
       setAvailableParticipants(participants);
     } catch (error) {
       console.error('Erreur chargement participants:', error);
-    } finally {
-      setLoadingParticipants(false);
     }
   };
 
@@ -1384,23 +1432,6 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
   };
 
   // Ajouter un participant
-  const handleAddParticipant = (participant: any) => {
-    if (!formData.participants.find((p: any) => p.id === participant.id)) {
-      setFormData(prev => ({
-        ...prev,
-        participants: [...prev.participants, participant]
-      }));
-    }
-    setShowParticipantsModal(false);
-  };
-
-  // Retirer un participant
-  const handleRemoveParticipant = (participantId: string) => {
-    setFormData(prev => ({
-      ...prev,
-      participants: prev.participants.filter((p: any) => p.id !== participantId)
-    }));
-  };
 
   // Effet pour mettre à jour automatiquement l'heure de fin quand l'heure de début change
   React.useEffect(() => {
@@ -1421,11 +1452,7 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
     console.log('🔍 Données du formulaire avant traitement:', formData);
 
     const errors: Record<string, string> = {};
-    if (requiresClientSelection && !formData.client_id) {
-      errors.client_id = user?.type === 'apporteur'
-        ? 'Sélectionnez un client/prospect'
-        : 'Sélectionnez un client';
-    }
+    // Plus de validation obligatoire pour client_id - tout est optionnel sauf titre et dates
 
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
@@ -1443,11 +1470,14 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
       : getDefaultEndTime(startDate);
     
     const eventData = {
-      ...formData,
+      title: formData.title,
+      description: formData.description || undefined,
       start_date: startDate.toISOString(),
       end_date: endDate.toISOString(),
+      priority: formData.priority || 'medium',
       location: formData.location || null,
       meeting_url: formData.meeting_url || null,
+      is_online: formData.is_online || false,
       client_id: formData.client_id || undefined,
       expert_id: formData.expert_id || undefined,
       apporteur_id: formData.apporteur_id || undefined
@@ -1482,32 +1512,14 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="title">Titre *</Label>
-              <Input
-                id="title"
-                value={formData.title}
-                onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                required
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="type">Type *</Label>
-              <Select value={formData.type} onValueChange={(value) => setFormData(prev => ({ ...prev, type: value as any }))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="appointment">Rendez-vous</SelectItem>
-                  <SelectItem value="meeting">Réunion</SelectItem>
-                  <SelectItem value="task">Tâche</SelectItem>
-                  <SelectItem value="deadline">Échéance</SelectItem>
-                  <SelectItem value="reminder">Rappel</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div>
+            <Label htmlFor="title">Titre *</Label>
+            <Input
+              id="title"
+              value={formData.title}
+              onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+              required
+            />
           </div>
 
           <div>
@@ -1520,151 +1532,112 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
             />
           </div>
 
-          {/* Participants additionnels (optionnel) */}
+          {/* L'événement concerne : (pour enrichir les infos, pas participants officiels) */}
           <div className="space-y-2">
-            <Label>Participants <span className="text-xs text-gray-500">(optionnel)</span></Label>
-            <div className="flex flex-wrap gap-2 mb-2">
-              {formData.participants.length > 0 ? (
-                formData.participants.map((participant: any) => (
-                  <Badge 
-                    key={participant.id} 
-                    variant="secondary" 
-                    className="flex items-center gap-1 px-3 py-1"
-                  >
-                    <User className="w-3 h-3" />
-                    {participant.name}
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveParticipant(participant.id)}
-                      className="ml-1 hover:text-red-600 transition-colors"
-                    >
-                      ×
-                    </button>
-                  </Badge>
-                ))
-              ) : (
-                <p className="text-xs text-gray-500">Aucun participant ajouté</p>
+            <Label>L'événement concerne : <span className="text-xs text-gray-500">(optionnel)</span></Label>
+            <p className="text-xs text-gray-500 mb-2">Ces informations permettent d'enrichir l'événement sans ajouter de participants officiels</p>
+          </div>
+          
+          {/* L'événement concerne : Client, Expert, Apporteur (optionnel) */}
+          <div className="grid gap-4 bg-slate-50 p-4 rounded-lg border border-slate-200 md:grid-cols-2">
+            <div className="space-y-1">
+              <Label htmlFor="client_id" className="text-slate-900">
+                Client <span className="text-xs text-gray-500">(optionnel)</span>
+              </Label>
+              <Select
+                value={formData.client_id}
+                onValueChange={(value) => {
+                  setFormData(prev => ({ ...prev, client_id: value }));
+                  setFieldErrors(prev => ({ ...prev, client_id: '' }));
+                }}
+                disabled={clientOptions.length === 0}
+              >
+                <SelectTrigger className={cn('bg-white', fieldErrors.client_id && 'border-red-500')}>
+                  <SelectValue placeholder={clientOptions.length === 0 ? 'Aucun client disponible' : 'Sélectionner un client'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {clientOptions.map((client) => (
+                    <SelectItem key={client.id} value={client.id}>
+                      {client.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {fieldErrors.client_id && (
+                <p className="text-xs text-red-600">{fieldErrors.client_id}</p>
               )}
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                loadAvailableParticipants();
-                setShowParticipantsModal(true);
-              }}
-              className="w-full"
-            >
-              <Users className="w-4 h-4 mr-2" />
-              Ajouter un participant
-            </Button>
-          </div>
 
-          {requiresClientSelection && (
-            <div className="grid gap-4 bg-slate-50 p-4 rounded-lg border border-slate-200 md:grid-cols-2">
+            {canAssignExpert && (
               <div className="space-y-1">
-                <Label htmlFor="client_id" className="text-slate-900">
-                  {user?.type === 'apporteur' ? 'Client / Prospect *' : 'Client *'}
+                <Label htmlFor="expert_id" className="text-slate-900">
+                  Expert <span className="text-xs text-gray-500">(optionnel)</span>
                 </Label>
                 <Select
-                  value={formData.client_id}
-                  onValueChange={(value) => {
-                    setFormData(prev => ({ ...prev, client_id: value }));
-                    setFieldErrors(prev => ({ ...prev, client_id: '' }));
-                  }}
-                  disabled={clientOptions.length === 0}
+                  value={formData.expert_id}
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, expert_id: value }))}
+                  disabled={expertOptions.length === 0}
                 >
-                  <SelectTrigger className={cn('bg-white', fieldErrors.client_id && 'border-red-500')}>
-                    <SelectValue placeholder={clientOptions.length === 0 ? 'Aucun client disponible' : 'Sélectionner un client'} />
+                  <SelectTrigger className="bg-white flex-1">
+                    <SelectValue placeholder={expertOptions.length === 0 ? 'Aucun expert' : 'Sélectionner un expert'} />
                   </SelectTrigger>
                   <SelectContent>
-                    {clientOptions.map((client) => (
-                      <SelectItem key={client.id} value={client.id}>
-                        {client.name}
+                    {expertOptions.map((expert) => (
+                      <SelectItem key={expert.id} value={expert.id}>
+                        {expert.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {fieldErrors.client_id && (
-                  <p className="text-xs text-red-600">{fieldErrors.client_id}</p>
-                )}
-                {clientOptions.length === 0 && (
-                  <p className="text-xs text-slate-500">
-                    Aucun client disponible. Ajoutez un participant ou créez un client avant de planifier ce rendez-vous.
-                  </p>
+                {formData.expert_id && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setFormData(prev => ({ ...prev, expert_id: '' }))}
+                    className="mt-1"
+                  >
+                    Retirer l'expert
+                  </Button>
                 )}
               </div>
+            )}
 
-              {canAssignExpert && (
-                <div className="space-y-1">
-                  <Label htmlFor="expert_id" className="text-slate-900">
-                    Expert {user?.type === 'apporteur' ? '(optionnel)' : ''}
-                  </Label>
-                  <Select
-                    value={formData.expert_id}
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, expert_id: value }))}
-                    disabled={expertOptions.length === 0}
+            {canAssignApporteur && (
+              <div className="space-y-1 md:col-span-2">
+                <Label htmlFor="apporteur_id" className="text-slate-900">
+                  Apporteur <span className="text-xs text-gray-500">(optionnel)</span>
+                </Label>
+                <Select
+                  value={formData.apporteur_id}
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, apporteur_id: value }))}
+                  disabled={apporteurOptions.length === 0}
+                >
+                  <SelectTrigger className="bg-white flex-1">
+                    <SelectValue placeholder={apporteurOptions.length === 0 ? 'Aucun apporteur' : 'Sélectionner un apporteur'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {apporteurOptions.map((apporteur) => (
+                      <SelectItem key={apporteur.id} value={apporteur.id}>
+                        {apporteur.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {formData.apporteur_id && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setFormData(prev => ({ ...prev, apporteur_id: '' }))}
+                    className="mt-1"
                   >
-                    <SelectTrigger className="bg-white flex-1">
-                      <SelectValue placeholder={expertOptions.length === 0 ? 'Aucun expert' : 'Sélectionner un expert'} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {expertOptions.map((expert) => (
-                        <SelectItem key={expert.id} value={expert.id}>
-                          {expert.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {formData.expert_id && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setFormData(prev => ({ ...prev, expert_id: '' }))}
-                    >
-                      Retirer l'expert
-                    </Button>
-                  )}
-                </div>
-              )}
-
-              {canAssignApporteur && (
-                <div className="space-y-1 md:col-span-2">
-                  <Label htmlFor="apporteur_id" className="text-slate-900">
-                    Apporteur (optionnel)
-                  </Label>
-                  <Select
-                    value={formData.apporteur_id}
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, apporteur_id: value }))}
-                    disabled={apporteurOptions.length === 0}
-                  >
-                    <SelectTrigger className="bg-white flex-1">
-                      <SelectValue placeholder={apporteurOptions.length === 0 ? 'Aucun apporteur' : 'Sélectionner un apporteur'} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {apporteurOptions.map((apporteur) => (
-                        <SelectItem key={apporteur.id} value={apporteur.id}>
-                          {apporteur.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {formData.apporteur_id && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setFormData(prev => ({ ...prev, apporteur_id: '' }))}
-                    >
-                      Retirer l'apporteur
-                    </Button>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
+                    Retirer l'apporteur
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -1690,38 +1663,19 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="priority">Priorité</Label>
-              <Select value={formData.priority} onValueChange={(value) => setFormData(prev => ({ ...prev, priority: value as any }))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low">Faible</SelectItem>
-                  <SelectItem value="medium">Moyenne</SelectItem>
-                  <SelectItem value="high">Élevée</SelectItem>
-                  <SelectItem value="critical">Critique</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div>
-              <Label htmlFor="category">Étape Commerciale</Label>
-              <Select value={formData.category} onValueChange={(value) => setFormData(prev => ({ ...prev, category: value as any }))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="qualification">🔍 Qualification</SelectItem>
-                  <SelectItem value="presentation_expert">👤 Présentation expert</SelectItem>
-                  <SelectItem value="proposition_commerciale">📄 Proposition commerciale</SelectItem>
-                  <SelectItem value="signature">✅ Signature</SelectItem>
-                  <SelectItem value="suivi">📋 Suivi</SelectItem>
-                  <SelectItem value="autre">🔹 Autre</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div>
+            <Label htmlFor="priority">Priorité</Label>
+            <Select value={formData.priority} onValueChange={(value) => setFormData(prev => ({ ...prev, priority: value as any }))}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="low">Faible</SelectItem>
+                <SelectItem value="medium">Moyenne</SelectItem>
+                <SelectItem value="high">Élevée</SelectItem>
+                <SelectItem value="critical">Critique</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div>
@@ -1770,84 +1724,6 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
           </div>
         </form>
 
-        {/* Modal de sélection de participants */}
-        <Dialog open={showParticipantsModal} onOpenChange={setShowParticipantsModal}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Ajouter un participant</DialogTitle>
-              <DialogDescription>
-                Sélectionnez une personne à inviter à cet événement
-              </DialogDescription>
-            </DialogHeader>
-            
-            {loadingParticipants ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              </div>
-            ) : participantTypeOrder.every(type => (participantGroups[type] || []).length === 0) ? (
-              <div className="text-center py-8 text-gray-500">
-                <Users className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                <p>Aucun participant disponible</p>
-              </div>
-            ) : (
-              <div className="space-y-2 max-h-96 overflow-y-auto">
-                {participantTypeOrder.map((type) => {
-                  const group = participantGroups[type];
-                  const visibleGroup = group?.filter(participant => !(participant.type === 'client' && participant.isTemporary)) || [];
-                  if (visibleGroup.length === 0) return null;
-                  return (
-                    <div key={type} className="space-y-2">
-                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                        {participantTypeLabels[type]}
-                      </p>
-                      {visibleGroup.map((participant) => {
-                        const isAlreadyAdded = formData.participants.find((p: any) => p.id === participant.id);
-                        return (
-                          <button
-                            key={participant.id}
-                            type="button"
-                            onClick={() => !isAlreadyAdded && handleAddParticipant(participant)}
-                            disabled={isAlreadyAdded}
-                            className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                              isAlreadyAdded 
-                                ? 'bg-gray-50 border-gray-200 opacity-50 cursor-not-allowed' 
-                                : 'hover:bg-blue-50 hover:border-blue-300 border-gray-200 cursor-pointer'
-                            }`}
-                          >
-                            <div className="flex items-center gap-3">
-                              <Avatar className="h-8 w-8">
-                                <AvatarFallback className="bg-blue-100 text-blue-600 text-xs">
-                                  {participant.name?.charAt(0).toUpperCase() || '?'}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className="flex-1 min-w-0">
-                                <p className="font-medium text-sm truncate">{participant.name}</p>
-                                <p className="text-xs text-gray-500 truncate">{participant.email}</p>
-                              </div>
-                              {isAlreadyAdded && (
-                                <Badge variant="secondary" className="text-xs">Ajouté</Badge>
-                              )}
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-            
-            <div className="flex justify-end">
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => setShowParticipantsModal(false)}
-              >
-                Fermer
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
       </DialogContent>
     </Dialog>
   );
