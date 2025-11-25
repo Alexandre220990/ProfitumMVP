@@ -977,20 +977,21 @@ const AdminDashboardOptimized: React.FC = () => {
               !client.email?.includes('@profitum.temp')
             );
             
-            // Enrichir avec le nombre de dossiers à valider
+            // Enrichir avec le nombre de dossiers à valider et le total de dossiers
             const dossiersResponse = await get('/admin/dossiers/all');
             if (dossiersResponse.success) {
               const allDossiers = (dossiersResponse.data as any)?.dossiers || [];
               
               data = realClients.map((client: any) => {
-                const clientDossiersAValider = allDossiers.filter((d: any) => 
-                  d.clientId === client.id && 
-                  (d.statut === 'documents_uploaded' || d.statut === 'eligible_confirmed')
+                const clientDossiers = allDossiers.filter((d: any) => d.clientId === client.id);
+                const clientDossiersAValider = clientDossiers.filter((d: any) => 
+                  d.statut === 'documents_uploaded' || d.statut === 'eligible_confirmed'
                 ).length;
                 
                 return {
                   ...client,
-                  dossiersAValider: clientDossiersAValider
+                  dossiersAValider: clientDossiersAValider,
+                  dossiersCount: clientDossiers.length
                 };
               });
             } else {
@@ -2490,85 +2491,92 @@ const AdminDashboardOptimized: React.FC = () => {
                                             </Button>
                                           </div>
                                           
-                                          <div className="space-y-1.5 max-h-96 overflow-y-auto">
+                                          <div className="space-y-3 max-h-96 overflow-y-auto">
                                             {selectedTileData.slice(0, 10).map((client: any) => (
                                               <div 
                                                 key={client.id} 
-                                                className="group relative p-2.5 border border-gray-200 rounded-md hover:border-green-300 hover:shadow-sm transition-all duration-200 bg-white hover:bg-gradient-to-r hover:from-white hover:to-green-50/30"
+                                                onClick={() => navigate(`/admin/clients/${client.id}`)}
+                                                className="group relative p-4 border border-gray-200 rounded-xl hover:border-green-400 hover:shadow-lg transition-all duration-300 bg-white hover:bg-gradient-to-br hover:from-white hover:to-green-50/40 cursor-pointer transform hover:-translate-y-0.5"
                                               >
-                                                <div className="flex items-center gap-3">
-                                                  {/* Avatar/Icône Entreprise */}
-                                                  <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center text-white font-semibold text-sm shadow-sm">
+                                                <div className="flex items-start gap-4">
+                                                  {/* Avatar/Icône Entreprise - Plus grand et plus premium */}
+                                                  <div className="flex-shrink-0 w-14 h-14 rounded-xl bg-gradient-to-br from-green-500 via-emerald-500 to-teal-600 flex items-center justify-center text-white font-bold text-lg shadow-md ring-2 ring-green-100 group-hover:ring-green-300 transition-all">
                                                     {(client.company_name || client.first_name || 'C')[0].toUpperCase()}
                                                   </div>
                                                   
-                                                  {/* Informations principales (Colonne 1) */}
+                                                  {/* Informations principales */}
                                                   <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-2 mb-0.5">
-                                                      <h5 className="font-semibold text-gray-900 text-sm truncate">
-                                                        {client.company_name || `${client.first_name || ''} ${client.last_name || ''}`.trim() || 'N/A'}
-                                                      </h5>
-                                                      <Badge 
-                                                        variant={client.statut === 'active' || client.statut === 'actif' ? 'default' : 'secondary'}
-                                                        className="text-[10px] px-1.5 py-0 h-4"
-                                                      >
-                                                        {client.statut}
-                                                      </Badge>
-                                                      {client.dossiersAValider > 0 && (
-                                                        <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4 animate-pulse">
-                                                          ⚠️ {client.dossiersAValider}
-                                                        </Badge>
-                                                      )}
-                                                    </div>
-                                                    <div className="flex items-center gap-3 text-xs text-gray-600">
-                                                      <span className="flex items-center gap-1">
-                                                        <Mail className="w-3 h-3" />
-                                                        {client.email?.length > 25 ? `${client.email.substring(0, 25)}...` : client.email}
-                                                      </span>
-                                                      {client.phone_number && (
-                                                        <span className="flex items-center gap-1">
-                                                          <Phone className="w-3 h-3" />
-                                                          {client.phone_number}
-                                                        </span>
-                                                      )}
-                                                    </div>
-                                                  </div>
-                                                  
-                                                  {/* Informations métier (Colonne 2) */}
-                                                  <div className="hidden lg:flex flex-col gap-0.5 text-xs text-gray-600 min-w-[160px]">
-                                                    {client.secteurActivite && (
-                                                      <div className="flex items-center gap-1.5">
-                                                        <Building className="w-3 h-3 text-blue-500" />
-                                                        <span className="truncate">{client.secteurActivite}</span>
+                                                    <div className="flex items-start justify-between gap-3 mb-2">
+                                                      <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                                                          <h5 className="font-bold text-gray-900 text-base truncate">
+                                                            {client.company_name || `${client.first_name || ''} ${client.last_name || ''}`.trim() || 'N/A'}
+                                                          </h5>
+                                                          <Badge 
+                                                            variant={client.statut === 'active' || client.statut === 'actif' ? 'default' : 'secondary'}
+                                                            className="text-[11px] px-2 py-0.5 h-5 font-medium"
+                                                          >
+                                                            {client.statut}
+                                                          </Badge>
+                                                          {client.dossiersAValider > 0 && (
+                                                            <Badge variant="destructive" className="text-[11px] px-2 py-0.5 h-5 font-medium animate-pulse">
+                                                              ⚠️ {client.dossiersAValider}
+                                                            </Badge>
+                                                          )}
+                                                        </div>
+                                                        <div className="flex items-center gap-4 text-sm text-gray-600 mb-2">
+                                                          <span className="flex items-center gap-1.5">
+                                                            <Mail className="w-3.5 h-3.5 text-gray-400" />
+                                                            <span className="truncate max-w-[200px]">{client.email?.length > 30 ? `${client.email.substring(0, 30)}...` : client.email}</span>
+                                                          </span>
+                                                          {client.phone_number && (
+                                                            <span className="flex items-center gap-1.5">
+                                                              <Phone className="w-3.5 h-3.5 text-gray-400" />
+                                                              {client.phone_number}
+                                                            </span>
+                                                          )}
+                                                        </div>
+                                                        
+                                                        {/* Informations métier */}
+                                                        <div className="flex items-center gap-4 text-xs text-gray-500">
+                                                          {client.secteurActivite ? (
+                                                            <div className="flex items-center gap-1.5">
+                                                              <Building className="w-3.5 h-3.5 text-blue-500" />
+                                                              <span className="truncate max-w-[150px]">{client.secteurActivite}</span>
+                                                            </div>
+                                                          ) : (
+                                                            <span className="text-gray-400 italic">Infos entreprise manquantes</span>
+                                                          )}
+                                                          {client.nombreEmployes && (
+                                                            <div className="flex items-center gap-1.5">
+                                                              <Users className="w-3.5 h-3.5 text-purple-500" />
+                                                              <span>{client.nombreEmployes} emp.</span>
+                                                            </div>
+                                                          )}
+                                                        </div>
                                                       </div>
-                                                    )}
-                                                    {client.nombreEmployes && (
-                                                      <div className="flex items-center gap-1.5">
-                                                        <Users className="w-3 h-3 text-purple-500" />
-                                                        <span>{client.nombreEmployes} emp.</span>
+                                                      
+                                                      {/* Colonne droite - Dossiers et Date */}
+                                                      <div className="flex flex-col items-end gap-2 text-right">
+                                                        {/* Nombre de dossiers */}
+                                                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border border-green-200">
+                                                          <FileText className="w-4 h-4 text-green-600" />
+                                                          <span className="font-bold text-green-700 text-sm">{client.dossiersCount || 0}</span>
+                                                        </div>
+                                                        
+                                                        {/* Date de création */}
+                                                        <div className="text-xs text-gray-500">
+                                                          <div className="font-medium text-[10px] text-gray-400 uppercase tracking-wide mb-0.5">Créé</div>
+                                                          <div className="font-semibold">{new Date(client.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' })}</div>
+                                                        </div>
                                                       </div>
-                                                    )}
-                                                    {!client.secteurActivite && !client.nombreEmployes && (
-                                                      <span className="text-gray-400 italic text-[10px]">Infos entreprise manquantes</span>
-                                                    )}
-                                                  </div>
-                                                  
-                                                  {/* Date & Actions (Colonne 3) */}
-                                                  <div className="flex items-center gap-2">
-                                                    <div className="text-right text-xs text-gray-500 hidden md:block min-w-[70px]">
-                                                      <div className="font-medium text-[10px] text-gray-400 uppercase tracking-wide">Créé</div>
-                                                      <div>{new Date(client.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' })}</div>
                                                     </div>
-                                                    <Button 
-                                                      variant="ghost" 
-                                                      size="sm"
-                                                      onClick={() => navigate(`/admin/clients/${client.id}`)}
-                                                      className="h-8 w-8 p-0 hover:bg-green-100 group-hover:visible invisible lg:visible"
-                                                      title="Voir la synthèse du client"
-                                                    >
-                                                      <Eye className="w-4 h-4" />
-                                                    </Button>
                                                   </div>
+                                                </div>
+                                                
+                                                {/* Indicateur de clic subtil */}
+                                                <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                  <Eye className="w-4 h-4 text-green-600" />
                                                 </div>
                                               </div>
                                             ))}
