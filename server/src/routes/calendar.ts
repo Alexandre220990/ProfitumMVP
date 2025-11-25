@@ -313,8 +313,10 @@ router.get('/events', calendarLimiter, asyncHandler(async (req: Request, res: Re
     } else if (authUser.type === 'apporteur') {
       // Apporteurs voient leurs RDV (où ils sont participants)
       query = query.eq('apporteur_id', authUser.database_id);
+    } else if (authUser.type === 'admin') {
+      // Admins voient uniquement leurs propres RDV (créés par eux)
+      query = query.eq('created_by', authUser.database_id);
     }
-    // Admin voit tous les événements
 
     // Filtres optionnels
     if (start_date) {

@@ -343,8 +343,10 @@ router.get('/', async (req: Request, res: Response) => {
       query = query.eq('expert_id', user.database_id);
     } else if (user.type === 'apporteur') {
       query = query.eq('apporteur_id', user.database_id);
+    } else if (user.type === 'admin') {
+      // Admins voient uniquement leurs propres RDV (créés par eux)
+      query = query.eq('created_by', user.database_id);
     }
-    // Admin voit tout
 
     // Filtres optionnels
     if (start_date) {
@@ -820,7 +822,7 @@ router.put('/:id', async (req: Request, res: Response) => {
       existingRDV.client_id === user.database_id ||
       existingRDV.expert_id === user.database_id ||
       existingRDV.apporteur_id === user.database_id ||
-      user.type === 'admin';
+      (user.type === 'admin' && existingRDV.created_by === user.database_id);
 
     if (!canUpdate) {
       return res.status(403).json({
@@ -1604,14 +1606,13 @@ router.delete('/:id', async (req: Request, res: Response) => {
       });
     }
 
-    const canDelete = 
-      rdv.created_by === user.database_id ||
-      user.type === 'admin';
+    // Seul le créateur peut supprimer son RDV (y compris les admins)
+    const canDelete = rdv.created_by === user.database_id;
 
     if (!canDelete) {
       return res.status(403).json({
         success: false,
-        message: 'Seul le créateur ou un admin peut supprimer ce RDV'
+        message: 'Seul le créateur peut supprimer ce RDV'
       });
     }
 
