@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -85,6 +86,7 @@ interface DocumentFile {
 
 export default function DocumentsGEDUnifiePage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   
   // Gestion d'erreur pour le hook
   let documentStorage;
@@ -387,21 +389,24 @@ export default function DocumentsGEDUnifiePage() {
         case 'total_files':
           const filesResponse = await get('/admin/documents/files-by-client');
           if (filesResponse.success) {
-            setFilesByClient(filesResponse.data || []);
+            const filesData = Array.isArray(filesResponse.data) ? filesResponse.data : [];
+            setFilesByClient(filesData);
           }
           break;
           
         case 'pending':
           const pendingResponse = await get(`/admin/documents/pending-clients?type=${typeToUse}`);
           if (pendingResponse.success) {
-            setPendingClients(pendingResponse.data || []);
+            const pendingData = Array.isArray(pendingResponse.data) ? pendingResponse.data : [];
+            setPendingClients(pendingData);
           }
           break;
           
         case 'uploads_today':
           const uploadsResponse = await get('/admin/documents/uploads-today');
           if (uploadsResponse.success) {
-            setUploadsTodayClients(uploadsResponse.data || []);
+            const uploadsData = Array.isArray(uploadsResponse.data) ? uploadsResponse.data : [];
+            setUploadsTodayClients(uploadsData);
           }
           break;
       }
@@ -690,7 +695,17 @@ export default function DocumentsGEDUnifiePage() {
                         <p className="text-center text-gray-500 py-8">Aucun client en attente</p>
                       ) : (
                         pendingClients.map((client: any) => (
-                          <div key={client.dossier_id} className="border rounded-lg p-4">
+                          <div 
+                            key={client.dossier_id} 
+                            className="border rounded-lg p-4 cursor-pointer hover:bg-gray-50 hover:shadow-md transition-all"
+                            onClick={() => {
+                              if (client.client_id) {
+                                navigate(`/admin/clients/${client.client_id}`);
+                              } else {
+                                toast.error('ID client non disponible');
+                              }
+                            }}
+                          >
                             <div className="flex items-center justify-between">
                               <div className="flex-1">
                                 <h4 className="font-semibold text-gray-900">{client.client_name}</h4>
