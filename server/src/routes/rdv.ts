@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { createClient } from '@supabase/supabase-js';
 import { RDVEmailService } from '../services/RDVEmailService';
+import { EventNotificationSync } from '../services/event-notification-sync';
 
 const router = Router();
 
@@ -697,6 +698,14 @@ router.post('/', async (req: Request, res: Response) => {
       });
     }
 
+    // Synchroniser les notifications d'événement
+    try {
+      await EventNotificationSync.syncEventNotifications(rdv);
+    } catch (syncError) {
+      console.error('⚠️ Erreur synchronisation notifications événement:', syncError);
+      // Ne pas faire échouer la création si la synchronisation échoue
+    }
+
     // Créer les liaisons produits si fournis
     if (rdvData.products && Array.isArray(rdvData.products)) {
       const produits = rdvData.products.map((p: any) => ({
@@ -767,6 +776,14 @@ router.post('/', async (req: Request, res: Response) => {
         console.error('⚠️ Erreur envoi email expert:', emailError);
         // Ne pas bloquer la création du RDV si l'email échoue
       }
+    }
+
+    // Synchroniser les notifications d'événement
+    try {
+      await EventNotificationSync.syncEventNotifications(rdv);
+    } catch (syncError) {
+      console.error('⚠️ Erreur synchronisation notifications événement:', syncError);
+      // Ne pas faire échouer la création si la synchronisation échoue
     }
 
     return res.status(201).json({
@@ -877,6 +894,14 @@ router.put('/:id', async (req: Request, res: Response) => {
         status: updatedRDV.status,
         completed_at: new Date().toISOString()
       });
+    }
+
+    // Synchroniser les notifications d'événement
+    try {
+      await EventNotificationSync.syncEventNotifications(updatedRDV);
+    } catch (syncError) {
+      console.error('⚠️ Erreur synchronisation notifications événement:', syncError);
+      // Ne pas faire échouer la mise à jour si la synchronisation échoue
     }
 
     return res.json({
@@ -1531,6 +1556,13 @@ router.put('/:id/respond', async (req: Request, res: Response) => {
       });
     }
 
+    // Synchroniser les notifications d'événement
+    try {
+      await EventNotificationSync.syncEventNotifications(updatedRDV);
+    } catch (syncError) {
+      console.error('⚠️ Erreur synchronisation notifications événement:', syncError);
+    }
+
     // Créer notifications pour les autres participants
     const participants = [
       { id: rdv.client_id, type: 'client' },
@@ -1699,10 +1731,12 @@ router.post('/:id/mark-completed', async (req: Request, res: Response) => {
       updateData.cancellation_reason = cancellation_reason;
     }
 
-    const { error: updateError } = await supabase
+    const { data: updatedRDV, error: updateError } = await supabase
       .from('RDV')
       .update(updateData)
-      .eq('id', id);
+      .eq('id', id)
+      .select('*, Client(*), Expert(*), ApporteurAffaires(*)')
+      .single();
 
     if (updateError) {
       console.error('❌ Erreur mise à jour RDV:', updateError);
@@ -1710,6 +1744,13 @@ router.post('/:id/mark-completed', async (req: Request, res: Response) => {
         success: false,
         message: 'Erreur lors de la mise à jour du RDV'
       });
+    }
+
+    // Synchroniser les notifications d'événement
+    try {
+      await EventNotificationSync.syncEventNotifications(updatedRDV);
+    } catch (syncError) {
+      console.error('⚠️ Erreur synchronisation notifications événement:', syncError);
     }
 
     // Envoyer notifications aux autres participants

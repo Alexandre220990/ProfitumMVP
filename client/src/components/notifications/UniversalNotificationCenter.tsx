@@ -152,7 +152,20 @@ export function UniversalNotificationCenter({
 
   // Filtrage dynamique selon le rôle
   const filteredNotifications = useMemo(() => {
-    return enrichedNotifications.filter((notification: any) => {
+    // Trier les notifications (événements en premier)
+    const sortedNotifications = [...enrichedNotifications].sort((a, b) => {
+      const aIsEvent = a.metadata?.event_id || 
+        ['event_upcoming', 'event_in_progress', 'event_completed'].includes(a.notification_type || '');
+      const bIsEvent = b.metadata?.event_id || 
+        ['event_upcoming', 'event_in_progress', 'event_completed'].includes(b.notification_type || '');
+      
+      if (aIsEvent && !bIsEvent) return -1;
+      if (!aIsEvent && bIsEvent) return 1;
+      
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+    
+    return sortedNotifications.filter((notification: any) => {
       const matchesSearch =
         notification.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         notification.message?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -334,6 +347,50 @@ export function UniversalNotificationCenter({
     return date.toLocaleDateString('fr-FR');
   };
 
+  /**
+   * Formater le temps restant pour un événement (compteur statique)
+   */
+  const formatEventTimeRemaining = (notification: any): string | null => {
+    const metadata = notification.metadata || {};
+    const eventStatus = metadata.event_status || 
+      (notification.notification_type === 'event_upcoming' ? 'upcoming' :
+       notification.notification_type === 'event_in_progress' ? 'in_progress' :
+       notification.notification_type === 'event_completed' ? 'completed' : null);
+
+    if (!eventStatus || !metadata.scheduled_date || !metadata.scheduled_time) {
+      return null;
+    }
+
+    const now = new Date();
+    const eventStart = new Date(`${metadata.scheduled_date}T${metadata.scheduled_time}`);
+    const durationMs = (metadata.duration_minutes || 60) * 60 * 1000;
+    const eventEnd = new Date(eventStart.getTime() + durationMs);
+
+    if (eventStatus === 'upcoming') {
+      const timeRemaining = eventStart.getTime() - now.getTime();
+      if (timeRemaining <= 0) return 'Maintenant';
+      
+      const hours = Math.floor(timeRemaining / (1000 * 60 * 60));
+      const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
+      
+      if (hours > 0) {
+        return `Dans ${hours}h${minutes > 0 ? ` ${minutes}min` : ''}`;
+      } else {
+        return `Dans ${minutes}min`;
+      }
+    } else if (eventStatus === 'in_progress') {
+      const timeRemaining = eventEnd.getTime() - now.getTime();
+      if (timeRemaining <= 0) return 'Terminé';
+      
+      const hours = Math.floor(timeRemaining / (1000 * 60 * 60));
+      const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
+      
+      return `Se termine dans ${hours > 0 ? `${hours}h ` : ''}${minutes}min`;
+    } else {
+      return 'Terminé';
+    }
+  };
+
   const getRoleLabel = () => {
     switch (userRole) {
       case 'client': return 'Client';
@@ -353,13 +410,32 @@ export function UniversalNotificationCenter({
       metadata.produit ||
       (metadata.dossier_id ? `Dossier ${metadata.dossier_id.slice(0, 8)}…` : null);
     const isArchived = notification.status === 'archived';
+    
+    // Vérifier si c'est une notification d'événement
+    const isEventNotification = 
+      notification.notification_type === 'event_upcoming' ||
+      notification.notification_type === 'event_in_progress' ||
+      notification.notification_type === 'event_completed' ||
+      metadata.event_id;
+    
+    const eventTimeRemaining = isEventNotification ? formatEventTimeRemaining(notification) : null;
+    const eventStatus = metadata.event_status || 
+      (notification.notification_type === 'event_upcoming' ? 'upcoming' :
+       notification.notification_type === 'event_in_progress' ? 'in_progress' :
+       notification.notification_type === 'event_completed' ? 'completed' : null);
 
     return (
       <Card
         key={notification.id}
         className={cn(
           "transition-all duration-200 hover:shadow-md",
-          notification.sla.isLate && !isArchived
+          isEventNotification && eventStatus === 'in_progress' && !isArchived
+            ? "border-l-4 border-l-orange-500 bg-orange-50"
+            : isEventNotification && eventStatus === 'completed' && !isArchived
+            ? "border-l-4 border-l-green-500 bg-green-50"
+            : isEventNotification && eventStatus === 'upcoming' && !isArchived
+            ? "border-l-4 border-l-blue-500 bg-blue-50"
+            : notification.sla.isLate && !isArchived
             ? "border-l-4 border-l-red-500 bg-red-50"
             : !isArchived && notification.status === 'unread'
             ? "border-l-4 border-l-blue-500 bg-blue-50"
@@ -407,6 +483,16 @@ export function UniversalNotificationCenter({
                 <p className="text-sm text-gray-600 line-clamp-2">
                   {notification.message}
                 </p>
+                {isEventNotification && eventTimeRemaining && (
+                  <div className={cn(
+                    "text-xs font-semibold px-2 py-1 rounded inline-block",
+                    eventStatus === 'upcoming' && "bg-blue-100 text-blue-700",
+                    eventStatus === 'in_progress' && "bg-orange-100 text-orange-700",
+                    eventStatus === 'completed' && "bg-green-100 text-green-700"
+                  )}>
+                    {eventTimeRemaining}
+                  </div>
+                )}
                 {(metadata.next_step_label || metadata.next_step_description) && (
                   <div className="text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-md px-3 py-2 space-y-1">
                     <div className="font-medium text-gray-700">
