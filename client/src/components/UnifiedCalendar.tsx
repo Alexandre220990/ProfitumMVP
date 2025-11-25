@@ -1138,14 +1138,12 @@ const EventDetailsDialog: React.FC<EventDetailsDialogProps> = ({
             </div>
           )}
 
-          {/* Participants */}
-          {(event.client_info || event.expert_info) && (
+          {/* L'événement concerne */}
+          {(event.client_info || event.expert_info || (event as any).apporteur_info) && (
             <div>
-              <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                <Users className="h-4 w-4" />
-                Participants
-              </h4>
-              <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+              <h4 className="font-semibold text-gray-900 mb-2">L'événement concerne :</h4>
+              <p className="text-xs text-gray-500 mb-2">Ces informations permettent d'enrichir l'événement sans ajouter de participants officiels</p>
+              <div className="bg-slate-50 rounded-lg p-3 space-y-2 border border-slate-200">
                 {event.client_info && (
                   <div className="text-sm">
                     <div className="font-medium text-gray-900">👤 Client</div>
@@ -1168,6 +1166,54 @@ const EventDetailsDialog: React.FC<EventDetailsDialogProps> = ({
                     </div>
                   </div>
                 )}
+                {(event as any).apporteur_info && (
+                  <div className="text-sm">
+                    <div className="font-medium text-gray-900">🤝 Apporteur</div>
+                    <div className="text-gray-700 ml-5">
+                      {(event as any).apporteur_info.full_name}
+                      {(event as any).apporteur_info.company_name && (
+                        <span className="text-gray-500"> • {(event as any).apporteur_info.company_name}</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Participants (vrais participants qui reçoivent des notifications) */}
+          {event.participants && Array.isArray(event.participants) && event.participants.length > 0 && (
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Participants
+              </h4>
+              <p className="text-xs text-gray-500 mb-2">Ces personnes ont été invitées et recevront des notifications</p>
+              <div className="bg-blue-50 rounded-lg p-3 space-y-2 border border-blue-200">
+                {event.participants.map((participant: any, index: number) => (
+                  <div key={participant.id || index} className="text-sm">
+                    <div className="font-medium text-gray-900">
+                      {participant.type === 'client' && '👤'}
+                      {participant.type === 'expert' && '🎯'}
+                      {participant.type === 'apporteur' && '🤝'}
+                      {participant.type === 'admin' && '👨‍💼'}
+                      {' '}
+                      {participant.name || participant.email || 'Participant'}
+                    </div>
+                    {participant.email && (
+                      <div className="text-gray-600 ml-5 text-xs">{participant.email}</div>
+                    )}
+                    {participant.status && (
+                      <div className="text-xs ml-5 mt-1">
+                        <Badge variant={participant.status === 'accepted' ? 'default' : participant.status === 'declined' ? 'destructive' : 'secondary'} className="text-xs">
+                          {participant.status === 'pending' && 'En attente'}
+                          {participant.status === 'accepted' && 'Accepté'}
+                          {participant.status === 'declined' && 'Refusé'}
+                        </Badge>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
           )}

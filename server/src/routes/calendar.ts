@@ -352,6 +352,32 @@ router.get('/events', calendarLimiter, asyncHandler(async (req: Request, res: Re
       return res.status(500).json({ success: false, message: 'Erreur serveur' });
     }
 
+    // Récupérer les participants pour tous les événements
+    const eventIds = (events || []).map(e => e.id);
+    let participantsMap: Record<string, any[]> = {};
+    
+    if (eventIds.length > 0) {
+      const { data: participants, error: participantsError } = await supabase
+        .from('RDV_Participants')
+        .select('rdv_id, user_id, user_type, user_name, user_email, status')
+        .in('rdv_id', eventIds);
+
+      if (!participantsError && participants) {
+        participants.forEach((p: any) => {
+          if (!participantsMap[p.rdv_id]) {
+            participantsMap[p.rdv_id] = [];
+          }
+          participantsMap[p.rdv_id].push({
+            id: p.user_id,
+            name: p.user_name,
+            email: p.user_email,
+            type: p.user_type,
+            status: p.status
+          });
+        });
+      }
+    }
+
     // Log de l'activité
     await logCalendarActivity(
       authUser.database_id,
@@ -362,8 +388,12 @@ router.get('/events', calendarLimiter, asyncHandler(async (req: Request, res: Re
       { filters: req.query }
     );
 
-    // Transformer les RDV en format CalendarEvent pour compatibilité API
-    const transformedEvents = (events || []).map(transformRDVToCalendarEvent);
+    // Transformer les RDV en format CalendarEvent pour compatibilité API avec participants
+    const transformedEvents = (events || []).map(rdv => {
+      const event = transformRDVToCalendarEvent(rdv);
+      event.participants = participantsMap[rdv.id] || [];
+      return event;
+    });
     
     return res.json({
       success: true,
