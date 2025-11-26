@@ -36,7 +36,7 @@ router.post('/', async (req, res) => {
         phone: phone ? phone.trim() : null,
         subject: subject ? subject.trim() : null,
         message: message.trim(),
-        status: 'new',
+        status: 'unread',
         created_at: new Date().toISOString()
       })
       .select('id')
