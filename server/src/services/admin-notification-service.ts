@@ -295,8 +295,8 @@ export class AdminNotificationService {
 
       const notificationIds: string[] = [];
 
-      // Créer une notification globale dans AdminNotification (pas par admin)
-      const { data: notification, error } = await supabase
+      // Créer une notification globale dans AdminNotification (table globale)
+      const { data: adminNotification, error: adminNotifError } = await supabase
         .from('AdminNotification')
         .insert({
           type: 'contact_message',
@@ -322,18 +322,67 @@ export class AdminNotificationService {
         .select()
         .single();
 
-      if (!error && notification) {
-        notificationIds.push(notification.id);
+      if (!adminNotifError && adminNotification) {
+        notificationIds.push(adminNotification.id);
+      }
 
-        // 📡 Envoyer via SSE en temps réel à tous les admins
-        const sse = getSSEService();
-        if (sse) {
-          // Envoyer à tous les admins connectés
-          for (const adminId of adminIds) {
-            sse.sendNotificationToUser(adminId, notification);
-          }
-          sse.sendKPIRefresh();
+      // Créer aussi une notification dans la table 'notification' pour chaque admin
+      // (pour la route /api/notifications/admin qui lit depuis cette table)
+      const title = `📧 Nouveau message de contact`;
+      const message = `${data.name} (${data.email}) vous a envoyé un message${data.subject ? ` : ${data.subject}` : ''}`;
+      
+      for (const adminId of adminIds) {
+        const { data: userNotification, error: userNotifError } = await supabase
+          .from('notification')
+          .insert({
+            user_id: adminId,
+            user_type: 'admin',
+            title: title,
+            message: message,
+            notification_type: 'contact_message',
+            priority: 'medium',
+            is_read: false,
+            status: 'unread',
+            action_url: `/admin/contact/${data.contact_message_id}`,
+            action_data: {
+              contact_message_id: data.contact_message_id,
+              name: data.name,
+              email: data.email,
+              phone: data.phone,
+              subject: data.subject,
+              message: data.message,
+              action_required: 'view_contact'
+            },
+            metadata: {
+              contact_message_id: data.contact_message_id,
+              name: data.name,
+              email: data.email,
+              phone: data.phone,
+              subject: data.subject,
+              message: data.message,
+              action_required: 'view_contact'
+            },
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .select()
+          .single();
+
+        if (!userNotifError && userNotification) {
+          notificationIds.push(userNotification.id);
         }
+      }
+
+      // 📡 Envoyer via SSE en temps réel à tous les admins
+      const sse = getSSEService();
+      if (sse) {
+        // Envoyer la notification AdminNotification à tous les admins connectés
+        if (adminNotification) {
+          for (const adminId of adminIds) {
+            sse.sendNotificationToUser(adminId, adminNotification);
+          }
+        }
+        sse.sendKPIRefresh();
       }
 
       return {

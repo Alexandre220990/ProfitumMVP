@@ -7302,6 +7302,23 @@ router.post('/leads', asyncHandler(async (req, res) => {
 
     console.log('✅ Lead créé avec succès:', lead?.id);
 
+    // Créer une notification admin pour ce lead (comme pour les messages de contact publics)
+    try {
+      const { AdminNotificationService } = await import('../services/admin-notification-service');
+      await AdminNotificationService.notifyNewContactMessage({
+        contact_message_id: lead.id,
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        phone: phone ? phone.trim() : null,
+        subject: leadSubject,
+        message: contexte.trim()
+      });
+      console.log('✅ Notification admin créée pour le lead');
+    } catch (notifError) {
+      console.error('❌ Erreur création notification lead:', notifError);
+      // On continue même si la notification échoue
+    }
+
     return res.json({
       success: true,
       data: {
