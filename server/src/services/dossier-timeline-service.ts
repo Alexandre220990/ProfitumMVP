@@ -476,6 +476,7 @@ export class DossierTimelineService {
     expert_name: string;
     montant_final: number;
     rapport_url?: string;
+    rapport_detaille?: string;
     notes?: string;
   }): Promise<void> {
     await this.addEvent({
@@ -484,8 +485,8 @@ export class DossierTimelineService {
       actor_type: 'expert',
       actor_name: data.expert_name,
       title: '✅ Audit terminé',
-      description: `Expert ${data.expert_name} - Montant final : ${data.montant_final.toLocaleString('fr-FR')} €${data.notes ? '\nNote: ' + data.notes : ''}${data.rapport_url ? '\n[📎 Voir rapport]' : ''}`,
-      metadata: { montant_final: data.montant_final, rapport_url: data.rapport_url, notes: data.notes },
+      description: `Expert ${data.expert_name} - Montant final : ${data.montant_final.toLocaleString('fr-FR')} €${data.notes ? '\nNote: ' + data.notes : ''}${data.rapport_url ? '\n[📎 Voir rapport]' : ''}${data.rapport_detaille ? '\n📋 Rapport détaillé disponible' : ''}`,
+      metadata: { montant_final: data.montant_final, rapport_url: data.rapport_url, rapport_detaille: data.rapport_detaille, notes: data.notes },
       icon: '✅',
       color: 'green',
       action_url: data.rapport_url

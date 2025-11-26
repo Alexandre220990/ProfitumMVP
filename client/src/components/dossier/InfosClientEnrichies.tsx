@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import ExpertDocumentsTab from '@/components/expert/ExpertDocumentsTab';
 import DossierTimeline from '@/components/dossier/DossierTimeline';
+import RapportAuditTab from '@/components/dossier/RapportAuditTab';
 import {
   Building2,
   Phone,
@@ -12,12 +13,9 @@ import {
   Users,
   Globe,
   History,
-  Clock,
-  CheckCircle,
-  Star,
   FileText,
   User,
-  Activity
+  FileCheck
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -128,17 +126,6 @@ const formatDate = (dateString?: string) => {
   });
 };
 
-const formatDateTime = (dateString?: string) => {
-  if (!dateString) return 'N/A';
-  return new Date(dateString).toLocaleString('fr-FR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-};
-
 // ============================================================================
 // COMPOSANT PRINCIPAL
 // ============================================================================
@@ -194,9 +181,9 @@ export default function InfosClientEnrichies({
               <Users className="h-4 w-4 mr-2" />
               Apporteur
             </TabsTrigger>
-            <TabsTrigger value="activite">
-              <Activity className="h-4 w-4 mr-2" />
-              Activité
+            <TabsTrigger value="rapport-audit">
+              <FileCheck className="h-4 w-4 mr-2" />
+              Rapport d'audit
             </TabsTrigger>
           </TabsList>
 
@@ -477,121 +464,18 @@ export default function InfosClientEnrichies({
             )}
           </TabsContent>
 
-          {/* ONGLET 6: Activité */}
-          <TabsContent value="activite" className="space-y-6">
-            <div className="bg-white p-6 rounded-lg border">
-              <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                <Activity className="h-5 w-5 text-blue-600" />
-                Activité & Engagement
-              </h3>
-              
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-gray-600" />
-                    <span className="text-sm font-medium text-gray-700">Créé le</span>
-                  </div>
-                  <span className="font-semibold text-gray-900">{formatDateTime(client.dateCreation)}</span>
-                </div>
-
-                {client.first_simulation_at && (
-                  <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-blue-600" />
-                      <span className="text-sm font-medium text-blue-700">Première simulation</span>
-                    </div>
-                    <span className="font-semibold text-blue-900">{formatDateTime(client.first_simulation_at)}</span>
-                  </div>
-                )}
-
-                {client.first_login && client.derniereConnexion && (
-                  <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                      <span className="text-sm font-medium text-green-700">Premier login</span>
-                    </div>
-                    <span className="font-semibold text-green-900">{formatDateTime(client.derniereConnexion)}</span>
-                  </div>
-                )}
-
-                {client.expert_contacted_at && (
-                  <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <Phone className="h-4 w-4 text-purple-600" />
-                      <span className="text-sm font-medium text-purple-700">Expert contacté</span>
-                    </div>
-                    <span className="font-semibold text-purple-900">{formatDate(client.expert_contacted_at)}</span>
-                  </div>
-                )}
-
-                {client.converted_at && (
-                  <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <Star className="h-4 w-4 text-emerald-600" />
-                      <span className="text-sm font-medium text-emerald-700">Converti</span>
-                    </div>
-                    <span className="font-semibold text-emerald-900">{formatDate(client.converted_at)}</span>
-                  </div>
-                )}
-
-                {client.derniereConnexion && (
-                  <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <Activity className="h-4 w-4 text-orange-600" />
-                      <span className="text-sm font-medium text-orange-700">Dernière connexion</span>
-                    </div>
-                    <span className="font-semibold text-orange-900">{formatDateTime(client.derniereConnexion)}</span>
-                  </div>
-                )}
-
-                {client.last_activity_at && (
-                  <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-yellow-600" />
-                      <span className="text-sm font-medium text-yellow-700">Dernière activité</span>
-                    </div>
-                    <span className="font-semibold text-yellow-900">
-                      {formatDistanceToNow(new Date(client.last_activity_at), { addSuffix: true, locale: fr })}
-                    </span>
-                  </div>
-                )}
-
-                {client.last_admin_contact && (
-                  <div className="flex items-center justify-between p-3 bg-indigo-50 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-indigo-600" />
-                      <span className="text-sm font-medium text-indigo-700">Dernier contact admin</span>
-                    </div>
-                    <span className="font-semibold text-indigo-900">
-                      {formatDistanceToNow(new Date(client.last_admin_contact), { addSuffix: true, locale: fr })}
-                    </span>
-                  </div>
-                )}
+          {/* ONGLET 6: Rapport d'audit */}
+          <TabsContent value="rapport-audit" className="space-y-6">
+            {dossierId ? (
+              <RapportAuditTab dossierId={dossierId} />
+            ) : (
+              <div className="bg-gray-50 p-8 rounded-lg text-center">
+                <FileCheck className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                <p className="text-gray-600">
+                  Rapport d'audit disponible uniquement dans la vue dossier
+                </p>
               </div>
-
-              {/* Notes client */}
-              {client.notes && (
-                <div className="mt-6 pt-6 border-t">
-                  <h4 className="font-semibold mb-2 text-sm text-gray-700">📝 Notes client</h4>
-                  <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded whitespace-pre-wrap">
-                    {client.notes}
-                  </p>
-                </div>
-              )}
-
-              {/* Notes admin (lecture seule pour expert) */}
-              {client.admin_notes && (
-                <div className="mt-4">
-                  <h4 className="font-semibold mb-2 text-sm text-gray-700 flex items-center gap-2">
-                    🔒 Notes admin
-                    <Badge variant="outline" className="text-xs">Lecture seule</Badge>
-                  </h4>
-                  <p className="text-sm text-gray-700 bg-blue-50 p-3 rounded border border-blue-200 whitespace-pre-wrap">
-                    {client.admin_notes}
-                  </p>
-                </div>
-              )}
-            </div>
+            )}
           </TabsContent>
         </Tabs>
       </CardContent>

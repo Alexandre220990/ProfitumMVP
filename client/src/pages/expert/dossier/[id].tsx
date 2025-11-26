@@ -11,6 +11,7 @@ import InfosClientEnrichies from '@/components/dossier/InfosClientEnrichies';
 import ExpertDocumentRequestModal from '@/components/expert/ExpertDocumentRequestModal';
 import ExpertDossierActions from '@/components/expert/ExpertDossierActions';
 import ReviseAuditModal from '@/components/expert/ReviseAuditModal';
+import FinaliserRapportAuditModal from '@/components/expert/FinaliserRapportAuditModal';
 import type { ClientProduitStatut } from '@/types/statuts';
 import { STATUT_COLORS, STATUT_LABELS, getProgressFromStatut } from '@/types/statuts';
 import {
@@ -27,7 +28,8 @@ import {
   MessageSquare,
   Save,
   Send,
-  FileSearch
+  FileSearch,
+  FileCheck
 } from 'lucide-react';
 
 // ============================================================================
@@ -39,7 +41,7 @@ interface ClientProduitEligible {
   clientId: string;
   produitId: string;
   expert_id: string;
-  statut: 'eligible' | 'en_cours' | 'termine' | 'annule';
+  statut: 'eligible' | 'en_cours' | 'termine' | 'annule' | 'documents_completes' | 'audit_rejected_by_client' | 'audit_completed' | string;
   metadata?: {
     validation_state?: string;
     workflow_stage?: string;
@@ -130,6 +132,7 @@ export default function ExpertDossierSynthese() {
   const [documentsReloadKey, setDocumentsReloadKey] = useState(0);
   const [searchParams] = useSearchParams();
   const [showReviseModal, setShowReviseModal] = useState(false);
+  const [showFinaliserRapportModal, setShowFinaliserRapportModal] = useState(false);
 
   // Vérifier si on doit ouvrir le modal de révision
   useEffect(() => {
@@ -490,6 +493,33 @@ export default function ExpertDossierSynthese() {
                 }
               }}
             />
+          </div>
+        )}
+
+        {/* Bouton Finaliser le rapport d'audit (quand documents_completes) */}
+        {id && cpe && cpe.statut === 'documents_completes' && (
+          <div className="mb-8">
+            <Card className="border-green-200 bg-green-50">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-1">
+                      📋 Finaliser le rapport d'audit
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      Tous les documents sont validés. Vous pouvez maintenant finaliser le rapport d'audit avec le montant final et les détails.
+                    </p>
+                  </div>
+                  <Button
+                    onClick={() => setShowFinaliserRapportModal(true)}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    <FileCheck className="h-4 w-4 mr-2" />
+                    Finaliser le rapport d'audit
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         )}
 
@@ -878,6 +908,32 @@ export default function ExpertDossierSynthese() {
                 const response = await get<ClientProduitEligible>(`/api/expert/dossier/${id}`);
                 if (response.success && response.data) {
                   setCPE(response.data);
+                }
+              } catch (error) {
+                console.error('Erreur rechargement CPE:', error);
+              }
+            };
+            loadCPE();
+          }}
+        />
+      )}
+
+      {/* Modal Finaliser le rapport d'audit */}
+      {id && cpe && (
+        <FinaliserRapportAuditModal
+          isOpen={showFinaliserRapportModal}
+          onClose={() => setShowFinaliserRapportModal(false)}
+          dossierId={id}
+          currentMontant={cpe.montantFinal || 0}
+          onSuccess={() => {
+            // Recharger les données du dossier
+            const loadCPE = async () => {
+              if (!id) return;
+              try {
+                const response = await get<ClientProduitEligible>(`/api/expert/dossier/${id}`);
+                if (response.success && response.data) {
+                  setCPE(response.data);
+                  toast.success('✅ Rapport d\'audit finalisé avec succès');
                 }
               } catch (error) {
                 console.error('Erreur rechargement CPE:', error);

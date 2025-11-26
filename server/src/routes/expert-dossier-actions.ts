@@ -994,7 +994,7 @@ router.post('/dossier/:id/complete-audit', enhancedAuthMiddleware, async (req: R
   try {
     const user = (req as AuthenticatedRequest).user;
     const { id: client_produit_id } = req.params;
-    const { montant_final, rapport_url, notes, client_fee_percentage } = req.body;
+    const { montant_final, rapport_url, rapport_detaille, notes, client_fee_percentage, audit_documents } = req.body;
 
     if (!user || user.type !== 'expert') {
       return res.status(403).json({
@@ -1007,6 +1007,13 @@ router.post('/dossier/:id/complete-audit', enhancedAuthMiddleware, async (req: R
       return res.status(400).json({
         success: false,
         message: 'Montant final requis'
+      });
+    }
+
+    if (!rapport_detaille || !rapport_detaille.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Le rapport d\'audit détaillé est requis'
       });
     }
 
@@ -1144,6 +1151,7 @@ router.post('/dossier/:id/complete-audit', enhancedAuthMiddleware, async (req: R
             montant_initial: dossier.montantFinal,
             montant_final: montant_final,
             rapport_url: rapport_url || null,
+            rapport_detaille: rapport_detaille.trim(),
             notes: notes || '',
             client_fee_percentage_negotiated: negotiatedClientFeePercentage,
             client_fee_percentage_default: defaultClientFeePercentage,
@@ -1160,6 +1168,30 @@ router.post('/dossier/:id/complete-audit', enhancedAuthMiddleware, async (req: R
       throw updateError;
     }
 
+    // Enregistrer les documents du rapport dans la table audit_documents
+    if (audit_documents && Array.isArray(audit_documents) && audit_documents.length > 0) {
+      const documentsToInsert = audit_documents.map((doc: any) => ({
+        client_produit_eligible_id: client_produit_id,
+        expert_id: user.database_id,
+        file_name: doc.file_name,
+        file_url: doc.file_url,
+        file_size: doc.file_size || null,
+        file_type: doc.file_type || null,
+        description: doc.description || null
+      }));
+
+      const { error: documentsError } = await supabase
+        .from('audit_documents')
+        .insert(documentsToInsert);
+
+      if (documentsError) {
+        console.error('⚠️ Erreur insertion documents audit:', documentsError);
+        // Ne pas bloquer si l'insertion des documents échoue
+      } else {
+        console.log(`✅ ${documentsToInsert.length} document(s) du rapport enregistré(s)`);
+      }
+    }
+
     console.log(`✅ Audit terminé - Montant final: ${montant_final} €`);
 
     // Infos client
@@ -1173,21 +1205,26 @@ router.post('/dossier/:id/complete-audit', enhancedAuthMiddleware, async (req: R
         expert_name: expertNameFallback,
         montant_final: montant_final,
         rapport_url: rapport_url,
+        rapport_detaille: rapport_detaille,
         notes: notes
       });
     } catch (timelineError) {
       console.error('⚠️ Erreur timeline (non bloquant):', timelineError);
     }
 
-    // 🔔 NOTIFICATION → CLIENT (avec mention CGV)
+    // 🔔 NOTIFICATION → CLIENT (avec mention CGV et rapport détaillé)
     if (clientInfo?.auth_user_id) {
+      const rapportMessage = rapport_detaille 
+        ? ` Le rapport d'audit détaillé est disponible dans votre espace.`
+        : '';
+      
       await supabase
         .from('notification')
         .insert({
           user_id: clientInfo.auth_user_id,
           user_type: 'client',
-          title: `✅ Audit terminé - ${dossier.ProduitEligible?.nom || 'Dossier'}`,
-          message: `Montant estimé : ${montant_final.toLocaleString('fr-FR')} €. Veuillez confirmer l'audit pour demander le remboursement. ** En validant, vous acceptez les CGV et le contrat de l'expert avec son commissionnement.`,
+          title: `✅ Rapport d'audit finalisé - ${dossier.ProduitEligible?.nom || 'Dossier'}`,
+          message: `Montant estimé : ${montant_final.toLocaleString('fr-FR')} €.${rapportMessage} Veuillez confirmer l'audit pour demander le remboursement. ** En validant, vous acceptez les CGV et le contrat de l'expert avec son commissionnement.`,
           notification_type: 'audit_completed',
           priority: 'high',
           is_read: false,
@@ -1198,6 +1235,7 @@ router.post('/dossier/:id/complete-audit', enhancedAuthMiddleware, async (req: R
             expert_name: expertNameFallback,
             montant_final: montant_final,
             rapport_url: rapport_url,
+            rapport_detaille: rapport_detaille,
             completed_at: new Date().toISOString(),
             next_step: 'validate_audit',
             cgv_acceptance_required: true
@@ -1219,8 +1257,8 @@ router.post('/dossier/:id/complete-audit', enhancedAuthMiddleware, async (req: R
           await supabase.from('notification').insert({
             user_id: admin.auth_user_id,
             user_type: 'admin',
-            title: `📋 Audit terminé - En attente validation client`,
-            message: `${expertNameFallback} - ${clientName} - Montant : ${montant_final.toLocaleString('fr-FR')} €`,
+            title: `📋 Rapport d'audit finalisé - En attente validation client`,
+            message: `${expertNameFallback} a finalisé le rapport d'audit pour ${clientName} - Montant : ${montant_final.toLocaleString('fr-FR')} €. Le rapport détaillé est disponible.`,
             notification_type: 'admin_info',
             priority: 'medium',
             is_read: false,
@@ -1244,8 +1282,8 @@ router.post('/dossier/:id/complete-audit', enhancedAuthMiddleware, async (req: R
         await supabase.from('notification').insert({
           user_id: apporteurData.auth_user_id,
           user_type: 'apporteur',
-          title: `ℹ️ Audit terminé - ${dossier.ProduitEligible?.nom || 'Dossier'}`,
-          message: `Audit complété pour votre client - Montant : ${montant_final.toLocaleString('fr-FR')} €`,
+          title: `ℹ️ Rapport d'audit finalisé - ${dossier.ProduitEligible?.nom || 'Dossier'}`,
+          message: `Le rapport d'audit a été finalisé pour votre client ${clientName} - Montant : ${montant_final.toLocaleString('fr-FR')} €`,
           notification_type: 'apporteur_info',
           priority: 'medium',
           is_read: false,
@@ -1267,6 +1305,81 @@ router.post('/dossier/:id/complete-audit', enhancedAuthMiddleware, async (req: R
     return res.status(500).json({
       success: false,
       message: 'Erreur lors de la finalisation de l\'audit',
+      details: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/expert/dossier/:id/audit-documents
+ * Récupérer les documents joints au rapport d'audit
+ */
+router.get('/dossier/:id/audit-documents', enhancedAuthMiddleware, async (req: Request, res: Response) => {
+  try {
+    const user = (req as AuthenticatedRequest).user;
+    const { id: client_produit_id } = req.params;
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Non authentifié'
+      });
+    }
+
+    // Vérifier que le dossier existe
+    const { data: dossier, error: dossierError } = await supabase
+      .from('ClientProduitEligible')
+      .select('id, expert_id, "clientId"')
+      .eq('id', client_produit_id)
+      .single();
+
+    if (dossierError || !dossier) {
+      return res.status(404).json({
+        success: false,
+        message: 'Dossier non trouvé'
+      });
+    }
+
+    // Vérifier les permissions selon le type d'utilisateur
+    if (user.type === 'expert' && dossier.expert_id !== user.database_id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Ce dossier ne vous est pas assigné'
+      });
+    }
+
+    if (user.type === 'client' && dossier.clientId !== user.database_id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès non autorisé'
+      });
+    }
+
+    // Récupérer les documents du rapport d'audit
+    const { data: documents, error: docsError } = await supabase
+      .from('audit_documents')
+      .select('*')
+      .eq('client_produit_eligible_id', client_produit_id)
+      .order('uploaded_at', { ascending: false });
+
+    if (docsError) {
+      console.error('❌ Erreur récupération documents audit:', docsError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la récupération des documents'
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: documents || []
+    });
+
+  } catch (error: any) {
+    console.error('❌ Erreur route audit-documents:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur',
       details: error.message
     });
   }
