@@ -1271,77 +1271,97 @@ const AdminDashboardOptimized: React.FC = () => {
           </div>
         </div>
 
-        {/* Tableau des clients */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        {/* Tableau des clients - Design haut de gamme */}
+        <div className="bg-white rounded-2xl shadow-lg border border-slate-200/60 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-slate-50 border-b border-slate-200">
+              <thead className="bg-gradient-to-r from-slate-50 to-slate-100/50 border-b border-slate-200">
                 <tr>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">
+                  <th className="px-8 py-5 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
                     Entreprise
                   </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">
+                  <th className="px-8 py-5 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
                     Contact
                   </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">
+                  <th className="px-8 py-5 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
                     Statut
                   </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">
+                  <th className="px-8 py-5 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
                     Inscription
                   </th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-900">
+                  <th className="px-8 py-5 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200">
+              <tbody className="divide-y divide-slate-100">
                 {clients.map((client: any) => (
-                  <tr key={client.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div>
-                        <div className="font-medium text-slate-900">
-                          {client.company_name || 'Entreprise'}
+                  <tr 
+                    key={client.id} 
+                    onClick={() => navigate(`/admin/clients/${client.id}`)}
+                    className="group cursor-pointer hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-indigo-50/30 transition-all duration-200 hover:shadow-sm"
+                  >
+                    <td className="px-8 py-5">
+                      <div className="flex items-center gap-3">
+                        <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-semibold text-sm shadow-md group-hover:shadow-lg transition-shadow">
+                          {(client.company_name || 'E')[0].toUpperCase()}
                         </div>
-                        {client.siren && (
-                          <div className="text-sm text-slate-500">
-                            SIREN: {client.siren}
+                        <div>
+                          <div className="font-semibold text-slate-900 group-hover:text-blue-700 transition-colors">
+                            {client.company_name || 'Entreprise'}
+                          </div>
+                          {client.siren && (
+                            <div className="text-xs text-slate-500 mt-0.5 font-mono">
+                              SIREN: {client.siren}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-8 py-5">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 text-sm text-slate-900">
+                          <Mail className="h-3.5 w-3.5 text-slate-400" />
+                          <span className="truncate max-w-[200px]">{client.email}</span>
+                        </div>
+                        {client.phone_number && (
+                          <div className="flex items-center gap-2 text-sm text-slate-600">
+                            <Phone className="h-3.5 w-3.5 text-slate-400" />
+                            <span>{client.phone_number}</span>
                           </div>
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <div>
-                        <div className="text-sm text-slate-900">{client.email}</div>
-                        {client.phone_number && (
-                          <div className="text-sm text-slate-500">{client.phone_number}</div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
+                    <td className="px-8 py-5">
                       <Badge 
                         variant={client.statut === 'actif' ? 'default' : 'secondary'}
-                        className="text-xs"
+                        className={`text-xs font-medium px-3 py-1 ${
+                          client.statut === 'actif' 
+                            ? 'bg-emerald-100 text-emerald-700 border-emerald-200' 
+                            : 'bg-amber-100 text-amber-700 border-amber-200'
+                        }`}
                       >
                         {client.statut || 'actif'}
                       </Badge>
                     </td>
-                    <td className="px-6 py-4 text-sm text-slate-600">
-                      {new Date(client.created_at).toLocaleDateString('fr-FR')}
+                    <td className="px-8 py-5">
+                      <div className="flex items-center gap-2 text-sm text-slate-600">
+                        <Calendar className="h-3.5 w-3.5 text-slate-400" />
+                        <span>{new Date(client.created_at).toLocaleDateString('fr-FR')}</span>
+                      </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-8 py-5">
                       <div className="flex items-center gap-2">
                         <Button
-                          variant="secondary"
+                          variant="outline"
                           size="sm"
-                          onClick={() => window.open(`/admin/client-details/${client.id}`, '_blank')}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/admin/messagerie-admin?user=${client.id}`);
+                          }}
+                          className="border-slate-300 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-all"
                         >
-                          Voir détails
-                        </Button>
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={() => window.open(`/admin/messagerie-admin?user=${client.id}`, '_blank')}
-                        >
+                          <Mail className="h-3.5 w-3.5 mr-1.5" />
                           Contacter
                         </Button>
                       </div>
