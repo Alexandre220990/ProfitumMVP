@@ -48,7 +48,17 @@ interface ClientData {
   last_name?: string;
   email: string;
   phone?: string;
+  phone_number?: string;
   address?: string;
+  city?: string;
+  postal_code?: string;
+  siren?: string;
+  secteurActivite?: string;
+  chiffreAffaires?: number;
+  revenuAnnuel?: number;
+  nombreEmployes?: number;
+  ancienneteEntreprise?: number;
+  dateCreation?: string;
   statut: string;
   apporteur_id?: string;
   notes?: string;
@@ -741,10 +751,11 @@ const ClientSynthese: React.FC = () => {
               </Card>
             </div>
 
-            {/* Tabs : Profil | Timeline | Dossiers | Experts | Apporteur */}
+            {/* Tabs : Profil | Entreprise | Timeline | Dossiers | Experts | Apporteur */}
             <Tabs defaultValue="profil" className="w-full">
-              <TabsList className="grid w-full grid-cols-5">
+              <TabsList className="grid w-full grid-cols-6">
                 <TabsTrigger value="profil">Profil</TabsTrigger>
+                <TabsTrigger value="entreprise">Entreprise</TabsTrigger>
                 <TabsTrigger value="timeline">Timeline</TabsTrigger>
                 <TabsTrigger value="dossiers">Dossiers ({stats.totalDossiers})</TabsTrigger>
                 <TabsTrigger value="experts">Experts ({experts.length})</TabsTrigger>
@@ -858,12 +869,139 @@ const ClientSynthese: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Notes internes en pleine largeur */}
-                    <div className="mb-4">
+                    {/* Bouton modifier */}
+                    <div className="pt-2 border-t border-gray-100">
+                      <Button variant="outline" size="sm" className="font-medium">
+                        <Edit className="w-3.5 h-3.5 mr-1.5" />
+                        Modifier le profil
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* TAB ENTREPRISE */}
+              <TabsContent value="entreprise">
+                <Card className="border-0 shadow-lg">
+                  <CardHeader className="border-b bg-gradient-to-r from-gray-50 to-white pb-3">
+                    <CardTitle className="flex items-center gap-3 text-lg">
+                      <div className="p-1.5 bg-blue-100 rounded-lg">
+                        <Building className="w-4 h-4 text-blue-600" />
+                      </div>
+                      <span className="text-gray-900 font-semibold">Informations Entreprise</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4">
+                    {/* Informations entreprise en grid 2 colonnes */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 block">
+                          Raison sociale
+                        </label>
+                        <p className="text-base font-bold text-gray-900 leading-tight">
+                          {client.company_name || 'Non renseigné'}
+                        </p>
+                      </div>
+
+                      {client.siren && (
+                        <div>
+                          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 block">
+                            N° SIREN
+                          </label>
+                          <p className="text-sm text-gray-900 font-medium">{client.siren}</p>
+                        </div>
+                      )}
+
+                      {client.secteurActivite && (
+                        <div>
+                          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 block">
+                            Secteur d'activité
+                          </label>
+                          <p className="text-sm text-gray-900 font-medium">{client.secteurActivite}</p>
+                        </div>
+                      )}
+
+                      {client.chiffreAffaires !== undefined && client.chiffreAffaires !== null && (
+                        <div>
+                          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 block">
+                            Chiffre d'affaires annuel
+                          </label>
+                          <p className="text-sm text-gray-900 font-medium">
+                            {client.chiffreAffaires ? `${client.chiffreAffaires.toLocaleString('fr-FR')} €` : 'N/A'}
+                          </p>
+                        </div>
+                      )}
+
+                      {client.revenuAnnuel !== undefined && client.revenuAnnuel !== null && (
+                        <div>
+                          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 block">
+                            Revenu annuel
+                          </label>
+                          <p className="text-sm text-gray-900 font-medium">
+                            {client.revenuAnnuel ? `${client.revenuAnnuel.toLocaleString('fr-FR')} €` : 'N/A'}
+                          </p>
+                        </div>
+                      )}
+
+                      {client.nombreEmployes !== undefined && client.nombreEmployes !== null && (
+                        <div>
+                          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 block">
+                            Effectif
+                          </label>
+                          <p className="text-sm text-gray-900 font-medium">
+                            {client.nombreEmployes ? `${client.nombreEmployes} employé${client.nombreEmployes > 1 ? 's' : ''}` : 'Non renseigné'}
+                          </p>
+                        </div>
+                      )}
+
+                      {client.ancienneteEntreprise !== undefined && client.ancienneteEntreprise !== null && (
+                        <div>
+                          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 block">
+                            Ancienneté entreprise
+                          </label>
+                          <p className="text-sm text-gray-900 font-medium">
+                            {client.ancienneteEntreprise ? `${client.ancienneteEntreprise} an${client.ancienneteEntreprise > 1 ? 's' : ''}` : 'Non renseigné'}
+                          </p>
+                        </div>
+                      )}
+
+                      {client.dateCreation && (
+                        <div>
+                          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                            <Calendar className="w-3 h-3" />
+                            Date de création
+                          </label>
+                          <p className="text-sm text-gray-900 font-medium">
+                            {new Date(client.dateCreation).toLocaleDateString('fr-FR', {
+                              day: 'numeric',
+                              month: 'long',
+                              year: 'numeric'
+                            })}
+                          </p>
+                        </div>
+                      )}
+
+                      {client.address && (
+                        <div>
+                          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                            <MapPin className="w-3 h-3" />
+                            Adresse
+                          </label>
+                          <p className="text-sm text-gray-900 font-medium leading-relaxed">
+                            {client.address}
+                            {client.city && `, ${client.city}`}
+                            {client.postal_code && ` ${client.postal_code}`}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Notes client en pleine largeur */}
+                    <div className="mb-4 border-t pt-4">
                       <div className="flex items-center justify-between mb-2">
                         <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
                           <FileText className="w-3 h-3" />
-                          Notes internes
+                          📝 Notes client
                         </label>
                         {user?.type === 'admin' && (
                           <div className="flex gap-1">
@@ -947,14 +1085,6 @@ const ClientSynthese: React.FC = () => {
                         </div>
                       )}
                     </div>
-
-                    {/* Bouton modifier */}
-                    <div className="pt-2 border-t border-gray-100">
-                      <Button variant="outline" size="sm" className="font-medium">
-                        <Edit className="w-3.5 h-3.5 mr-1.5" />
-                        Modifier le profil
-                      </Button>
-                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -998,97 +1128,90 @@ const ClientSynthese: React.FC = () => {
                   </CardHeader>
                   <CardContent>
                     {dossiers.length > 0 ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                         {dossiers.map((dossier: DossierData) => (
                           <div
                             key={dossier.id}
                             onClick={() => navigate(`/admin/dossiers/${dossier.id}`)}
-                            className="group relative bg-gradient-to-br from-white to-gray-50 border border-gray-200 rounded-xl p-6 hover:shadow-lg hover:border-blue-300 transition-all duration-300 cursor-pointer overflow-hidden"
+                            className="group relative bg-white border border-gray-200 rounded-lg p-3 hover:shadow-md hover:border-blue-400 transition-all duration-200 cursor-pointer"
                           >
-                            {/* Effet de brillance au survol */}
-                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
-                            
-                            {/* Header avec nom du produit en valeur */}
-                            <div className="mb-4">
-                              <div className="flex items-start justify-between mb-3">
-                                <div className="flex-1">
-                                  <h3 className="text-2xl font-bold text-gray-900 mb-1 group-hover:text-blue-600 transition-colors">
-                                    {dossier.ProduitEligible?.nom || 'N/A'}
-                                  </h3>
-                                  <Badge 
-                                    variant={
-                                      dossier.statut === 'eligible' ? 'default' :
-                                      dossier.statut === 'validated' ? 'default' :
-                                      dossier.statut === 'pending' ? 'secondary' : 'outline'
-                                    }
-                                    className="text-xs"
-                                  >
-                                    {dossier.statut}
-                                  </Badge>
-                                </div>
-                                <div className="p-2 bg-blue-50 rounded-lg group-hover:bg-blue-100 transition-colors">
-                                  <Briefcase className="w-5 h-5 text-blue-600" />
-                                </div>
+                            {/* Header compact avec produit et statut */}
+                            <div className="flex items-start justify-between mb-2.5">
+                              <div className="flex-1 min-w-0">
+                                <h3 className="text-sm font-bold text-gray-900 mb-1 group-hover:text-blue-600 transition-colors truncate">
+                                  {dossier.ProduitEligible?.nom || 'N/A'}
+                                </h3>
+                                <Badge 
+                                  variant={
+                                    dossier.statut === 'eligible' ? 'default' :
+                                    dossier.statut === 'validated' ? 'default' :
+                                    dossier.statut === 'pending' ? 'secondary' : 'outline'
+                                  }
+                                  className="text-[10px] px-1.5 py-0 h-4"
+                                >
+                                  {dossier.statut}
+                                </Badge>
                               </div>
+                              <Briefcase className="w-3.5 h-3.5 text-gray-400 group-hover:text-blue-600 transition-colors flex-shrink-0 ml-1.5" />
                             </div>
 
-                            {/* Métriques principales */}
-                            <div className="space-y-3 mb-4">
+                            {/* Métriques en ligne compacte */}
+                            <div className="space-y-1.5 mb-2.5">
                               {dossier.montantFinal && (
-                                <div className="flex items-center justify-between p-2 bg-green-50 rounded-lg">
-                                  <div className="flex items-center gap-2">
-                                    <DollarSign className="w-4 h-4 text-green-600" />
-                                    <span className="text-xs text-gray-600">Montant</span>
+                                <div className="flex items-center justify-between text-xs">
+                                  <div className="flex items-center gap-1 text-gray-600">
+                                    <DollarSign className="w-3 h-3 text-green-600" />
+                                    <span>Montant</span>
                                   </div>
-                                  <span className="text-lg font-bold text-green-600">
+                                  <span className="font-bold text-green-600">
                                     {dossier.montantFinal.toLocaleString('fr-FR')}€
                                   </span>
                                 </div>
                               )}
                               {dossier.tauxFinal && (
-                                <div className="flex items-center justify-between p-2 bg-blue-50 rounded-lg">
-                                  <div className="flex items-center gap-2">
-                                    <TrendingUp className="w-4 h-4 text-blue-600" />
-                                    <span className="text-xs text-gray-600">Taux</span>
+                                <div className="flex items-center justify-between text-xs">
+                                  <div className="flex items-center gap-1 text-gray-600">
+                                    <TrendingUp className="w-3 h-3 text-blue-600" />
+                                    <span>Taux</span>
                                   </div>
-                                  <span className="text-lg font-bold text-blue-600">
+                                  <span className="font-bold text-blue-600">
                                     {(dossier.tauxFinal * 100).toFixed(2)}%
                                   </span>
                                 </div>
                               )}
-                              <div className="flex items-center justify-between p-2 bg-purple-50 rounded-lg">
-                                <div className="flex items-center gap-2">
-                                  <Target className="w-4 h-4 text-purple-600" />
-                                  <span className="text-xs text-gray-600">Progression</span>
+                              <div className="flex items-center justify-between text-xs">
+                                <div className="flex items-center gap-1 text-gray-600">
+                                  <Target className="w-3 h-3 text-purple-600" />
+                                  <span>Progression</span>
                                 </div>
-                                <span className="text-lg font-bold text-purple-600">
+                                <span className="font-bold text-purple-600">
                                   {dossier.progress || 0}%
                                 </span>
                               </div>
                             </div>
 
-                            {/* Footer avec date et expert */}
-                            <div className="pt-4 border-t border-gray-200 space-y-2">
-                              <div className="flex items-center gap-2 text-xs text-gray-500">
-                                <Calendar className="w-3 h-3" />
-                                <span>{new Date(dossier.created_at).toLocaleDateString('fr-FR')}</span>
+                            {/* Footer compact avec date et expert */}
+                            <div className="pt-2 border-t border-gray-100 space-y-1">
+                              <div className="flex items-center gap-1 text-[10px] text-gray-500">
+                                <Calendar className="w-2.5 h-2.5" />
+                                <span>{new Date(dossier.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' })}</span>
                               </div>
                               {dossier.Expert && (
-                                <div className="flex items-center gap-2 text-xs">
-                                  <UserCheck className="w-3 h-3 text-blue-600" />
-                                  <span className="text-gray-600">
-                                    <strong>{dossier.Expert.first_name} {dossier.Expert.last_name}</strong>
+                                <div className="flex items-center gap-1 text-[10px] text-gray-600">
+                                  <UserCheck className="w-2.5 h-2.5 text-blue-600" />
+                                  <span className="truncate">
+                                    {dossier.Expert.first_name} {dossier.Expert.last_name}
                                   </span>
                                   {dossier.Expert.rating && (
-                                    <span className="text-yellow-600">⭐ {dossier.Expert.rating}/5</span>
+                                    <span className="text-yellow-600 ml-0.5">⭐{dossier.Expert.rating}</span>
                                   )}
                                 </div>
                               )}
                             </div>
 
-                            {/* Indicateur de clic */}
-                            <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <Eye className="w-4 h-4 text-blue-600" />
+                            {/* Indicateur de clic discret */}
+                            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Eye className="w-3 h-3 text-blue-600" />
                             </div>
                           </div>
                         ))}

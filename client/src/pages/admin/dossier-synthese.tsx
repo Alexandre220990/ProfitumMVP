@@ -7,7 +7,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import DossierTimeline from '@/components/dossier/DossierTimeline';
 import LoadingScreen from '@/components/LoadingScreen';
 import {
@@ -28,7 +27,8 @@ import {
   Send,
   Building,
   Percent,
-  UserCheck
+  UserCheck,
+  Edit
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { get } from '@/lib/api';
@@ -98,6 +98,7 @@ const DossierSynthese: React.FC = () => {
   const [availableExperts, setAvailableExperts] = useState<any[]>([]);
   const [selectedExpert, setSelectedExpert] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showExpertSelectionDialog, setShowExpertSelectionDialog] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -396,6 +397,15 @@ const DossierSynthese: React.FC = () => {
             </div>
             <div className="flex items-center gap-2">
               {dossier?.statut && getStatutBadge(dossier.statut)}
+              {dossier?.Client?.id && (
+                <Button 
+                  onClick={() => navigate(`/admin/clients/${dossier.Client!.id}`)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  <User className="w-4 h-4 mr-2" />
+                  Accès rapide au client
+                </Button>
+              )}
               <Button variant="outline" onClick={loadDossierData}>
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Actualiser
@@ -444,16 +454,6 @@ const DossierSynthese: React.FC = () => {
                 <MessageSquare className="w-4 h-4 mr-2" />
                 Message au client
               </Button>
-              {dossier.Client?.id && (
-                <Button 
-                  onClick={() => navigate(`/admin/clients/${dossier.Client!.id}`)}
-                  variant="outline"
-                  className="border-gray-300 text-gray-700 hover:bg-gray-50"
-                >
-                  <User className="w-4 h-4 mr-2" />
-                  Voir le client
-                </Button>
-              )}
             </div>
           )}
         </div>
@@ -873,7 +873,7 @@ const DossierSynthese: React.FC = () => {
 
         {/* Dialog d'assignation expert */}
         <Dialog open={showExpertDialog} onOpenChange={setShowExpertDialog}>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-2xl">
             <DialogHeader className="space-y-3">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-purple-100 rounded-lg">
@@ -907,98 +907,55 @@ const DossierSynthese: React.FC = () => {
               )}
               
               <div className="space-y-3">
-                <Label htmlFor="expert-select" className="text-sm font-semibold text-gray-700">
+                <Label className="text-sm font-semibold text-gray-700">
                   Expert <span className="text-red-500">*</span>
                 </Label>
-                <Select value={selectedExpert} onValueChange={setSelectedExpert}>
-                  <SelectTrigger 
-                    id="expert-select"
-                    className="w-full h-11 border-gray-300 focus:border-purple-500 focus:ring-purple-500"
-                  >
-                    <SelectValue placeholder="Sélectionner un expert..." />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-[400px]">
-                    {availableExperts.length === 0 ? (
-                      <div className="p-4 text-center text-sm text-gray-500">
-                        Aucun expert disponible pour ce produit
-                      </div>
-                    ) : (
-                      availableExperts.map((expert) => (
-                        <SelectItem 
-                          key={expert.id} 
-                          value={expert.id}
-                          className="py-2.5 cursor-pointer"
-                        >
-                          <div className="flex items-start gap-3 w-full">
-                            <div className="flex-1 min-w-0">
-                              <div className="font-semibold text-gray-900 truncate">
-                                {expert.first_name && expert.last_name 
-                                  ? `${expert.first_name} ${expert.last_name}` 
-                                  : expert.name || expert.email}
-                              </div>
-                              {expert.company_name && (
-                                <div className="text-sm text-gray-600 truncate mt-0.5">
-                                  {expert.company_name}
-                                </div>
-                              )}
-                              {expert.specializations && expert.specializations.length > 0 && (
-                                <div className="flex flex-wrap gap-1 mt-1.5">
-                                  {expert.specializations.slice(0, 2).map((spec: string, idx: number) => (
-                                    <span 
-                                      key={idx}
-                                      className="text-xs px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded"
-                                    >
-                                      {spec}
-                                    </span>
-                                  ))}
-                                  {expert.specializations.length > 2 && (
-                                    <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">
-                                      +{expert.specializations.length - 2}
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                            {expert.rating && (
-                              <div className="flex items-center gap-1 text-yellow-600 flex-shrink-0">
-                                <span className="text-xs font-medium">{expert.rating.toFixed(1)}</span>
-                              </div>
-                            )}
-                          </div>
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
                 
-                {/* Affichage de l'expert sélectionné */}
-                {selectedExpert && (() => {
-                  const expert = availableExperts.find(e => e.id === selectedExpert);
-                  if (!expert) return null;
-                  
-                  return (
-                    <div className="p-4 bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-200 rounded-lg">
-                      <div className="flex items-start gap-3">
-                        <div className="p-2 bg-purple-100 rounded-lg flex-shrink-0">
-                          <UserCheck className="w-5 h-5 text-purple-600" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h4 className="font-semibold text-gray-900">
-                              {expert.first_name && expert.last_name 
+                {/* Bouton pour ouvrir la sélection */}
+                {!selectedExpert ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowExpertSelectionDialog(true)}
+                    className="w-full h-12 border-2 border-dashed border-gray-300 hover:border-purple-400 hover:bg-purple-50 transition-all"
+                  >
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    Sélectionner un expert...
+                  </Button>
+                ) : (
+                  <div className="p-4 bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-200 rounded-lg">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 bg-purple-100 rounded-lg flex-shrink-0">
+                        <UserCheck className="w-5 h-5 text-purple-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="font-semibold text-gray-900">
+                            {(() => {
+                              const expert = availableExperts.find(e => e.id === selectedExpert);
+                              return expert?.first_name && expert?.last_name 
                                 ? `${expert.first_name} ${expert.last_name}` 
-                                : expert.name || expert.email}
-                            </h4>
-                            {expert.rating && (
+                                : expert?.name || expert?.email || 'Expert sélectionné';
+                            })()}
+                          </h4>
+                          {(() => {
+                            const expert = availableExperts.find(e => e.id === selectedExpert);
+                            return expert?.rating && (
                               <Badge variant="outline" className="text-xs">
                                 ⭐ {expert.rating.toFixed(1)}
                               </Badge>
-                            )}
-                          </div>
-                          {expert.company_name && (
+                            );
+                          })()}
+                        </div>
+                        {(() => {
+                          const expert = availableExperts.find(e => e.id === selectedExpert);
+                          return expert?.company_name && (
                             <p className="text-sm text-gray-700 mb-2">{expert.company_name}</p>
-                          )}
-                          {expert.specializations && expert.specializations.length > 0 && (
+                          );
+                        })()}
+                        {(() => {
+                          const expert = availableExperts.find(e => e.id === selectedExpert);
+                          return expert?.specializations && expert.specializations.length > 0 && (
                             <div className="flex flex-wrap gap-1.5 mt-2">
                               {expert.specializations.map((spec: string, idx: number) => (
                                 <Badge 
@@ -1010,12 +967,21 @@ const DossierSynthese: React.FC = () => {
                                 </Badge>
                               ))}
                             </div>
-                          )}
-                        </div>
+                          );
+                        })()}
                       </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowExpertSelectionDialog(true)}
+                        className="text-purple-600 hover:text-purple-700 hover:bg-purple-100"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
                     </div>
-                  );
-                })()}
+                  </div>
+                )}
                 
                 {availableExperts.length > 0 && !selectedExpert && (
                   <p className="text-xs text-gray-500">
@@ -1053,6 +1019,127 @@ const DossierSynthese: React.FC = () => {
                     Assigner l'expert
                   </>
                 )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog de sélection d'expert */}
+        <Dialog open={showExpertSelectionDialog} onOpenChange={setShowExpertSelectionDialog}>
+          <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-bold flex items-center gap-3">
+                <UserPlus className="w-6 h-6 text-purple-600" />
+                Sélectionner un expert
+              </DialogTitle>
+              <DialogDescription className="text-base">
+                {availableExperts.length} expert{availableExperts.length > 1 ? 's' : ''} disponible{availableExperts.length > 1 ? 's' : ''} pour ce produit
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="flex-1 overflow-y-auto py-4 pr-2 -mr-2">
+              {availableExperts.length === 0 ? (
+                <div className="text-center py-12">
+                  <UserPlus className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500">Aucun expert disponible pour ce produit</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-4">
+                  {availableExperts.map((expert) => {
+                    const isSelected = selectedExpert === expert.id;
+                    const expertName = expert.first_name && expert.last_name 
+                      ? `${expert.first_name} ${expert.last_name}` 
+                      : expert.name || expert.email;
+                    
+                    return (
+                      <div
+                        key={expert.id}
+                        onClick={() => {
+                          setSelectedExpert(expert.id);
+                          setShowExpertSelectionDialog(false);
+                        }}
+                        className={`group relative p-5 rounded-xl border-2 transition-all duration-300 cursor-pointer ${
+                          isSelected
+                            ? 'border-purple-500 bg-gradient-to-br from-purple-50 to-indigo-50 shadow-lg ring-2 ring-purple-200'
+                            : 'border-gray-200 bg-white hover:border-purple-300 hover:shadow-md'
+                        }`}
+                      >
+                        {/* Indicateur de sélection */}
+                        {isSelected && (
+                          <div className="absolute top-4 right-4">
+                            <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center shadow-lg">
+                              <UserCheck className="w-5 h-5 text-white" />
+                            </div>
+                          </div>
+                        )}
+                        
+                        <div className="flex items-start gap-4">
+                          {/* Avatar */}
+                          <div className="relative flex-shrink-0">
+                            <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md">
+                              {expertName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)}
+                            </div>
+                            {expert.rating && (
+                              <div className="absolute -bottom-1 -right-1 bg-yellow-400 rounded-full p-1 shadow-md">
+                                <span className="text-xs font-bold text-yellow-900">⭐ {expert.rating.toFixed(1)}</span>
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Informations */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex-1">
+                                <h3 className="text-lg font-bold text-gray-900 mb-1 group-hover:text-purple-600 transition-colors">
+                                  {expertName}
+                                </h3>
+                                {expert.company_name && (
+                                  <p className="text-sm font-medium text-gray-600 mb-3">
+                                    {expert.company_name}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            
+                            {/* Spécialisations */}
+                            {expert.specializations && expert.specializations.length > 0 && (
+                              <div className="flex flex-wrap gap-2">
+                                {expert.specializations.map((spec: string, idx: number) => (
+                                  <Badge 
+                                    key={idx}
+                                    variant="secondary"
+                                    className={`text-xs px-3 py-1 ${
+                                      isSelected
+                                        ? 'bg-purple-200 text-purple-800 border-purple-300'
+                                        : 'bg-gray-100 text-gray-700 border-gray-200'
+                                    }`}
+                                  >
+                                    {spec}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* Effet hover */}
+                        {!isSelected && (
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-50/0 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-xl pointer-events-none"></div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            
+            <DialogFooter>
+              <Button 
+                variant="outline" 
+                onClick={() => setShowExpertSelectionDialog(false)}
+                className="w-full sm:w-auto"
+              >
+                Fermer
               </Button>
             </DialogFooter>
           </DialogContent>
