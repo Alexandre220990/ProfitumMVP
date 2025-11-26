@@ -87,6 +87,10 @@
     {
       "source": "/validation-pending-apporteur",
       "destination": "/index.html"
+    },
+    {
+      "source": "/contact",
+      "destination": "/index.html"
     }
   ]
 } 
