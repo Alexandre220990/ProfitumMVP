@@ -325,10 +325,12 @@ app.use('/api/documents-secure', documentsDownloadRoutes);
 // Routes notifications expert - PROTÉGÉES
 app.use('/api/expert/notifications', enhancedAuthMiddleware, requireUserType('expert'), expertNotificationsRoutes);
 
-// Routes expert - PROTÉGÉES avec permissions spécifiques  
+// Routes expert - PROTÉGÉES avec permissions spécifiques
+// IMPORTANT: expertDossierActionsRoutes doit être monté AVANT expertRoutes
+// pour éviter les conflits de routes (ex: /dossier/:id/complete-audit)
+app.use('/api/expert', enhancedAuthMiddleware, requireUserType('expert'), expertDossierActionsRoutes);
 app.use('/api/expert', enhancedAuthMiddleware, requireUserType('expert'), expertRoutes);
 app.use('/api/expert/analytics', enhancedAuthMiddleware, requireUserType('expert'), expertAnalyticsRoutes);
-app.use('/api/expert', enhancedAuthMiddleware, requireUserType('expert'), expertDossierActionsRoutes);
 app.use('/api/expert', enhancedAuthMiddleware, requireUserType('expert'), expertDocumentsRoutes);
 
 // Routes admin - PROTÉGÉES avec permissions spécifiques

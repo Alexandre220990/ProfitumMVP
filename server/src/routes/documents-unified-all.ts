@@ -358,7 +358,34 @@ router.get('/stats', async (req: Request, res: Response) => {
  * POST /api/documents/upload
  * Upload document avec permissions auto
  */
-router.post('/upload', upload.single('file'), async (req: Request, res: Response) => {
+router.post('/upload', (req: Request, res: Response, next: any): void => {
+  upload.single('file')(req, res, (err: any) => {
+    if (err) {
+      console.error('❌ Erreur multer:', err);
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        res.status(400).json({ 
+          success: false, 
+          message: 'Fichier trop volumineux (max 50MB)' 
+        });
+        return;
+      }
+      if (err.message && err.message.includes('Unexpected field')) {
+        res.status(400).json({ 
+          success: false, 
+          message: 'Champ de fichier invalide. Utilisez le champ "file".' 
+        });
+        return;
+      }
+      res.status(400).json({ 
+        success: false, 
+        message: 'Erreur lors du traitement du fichier',
+        details: err.message 
+      });
+      return;
+    }
+    next();
+  });
+}, async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
     const file = (req as any).file;

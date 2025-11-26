@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { get, post, put } from '@/lib/api';
 import { toast } from 'sonner';
+import { useAuth } from '@/hooks/use-auth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -40,7 +41,8 @@ interface ClientProduitEligible {
   id: string;
   clientId: string;
   produitId: string;
-  expert_id: string;
+  expert_id?: string | null;
+  expert_pending_id?: string | null;
   statut: 'eligible' | 'en_cours' | 'termine' | 'annule' | 'documents_completes' | 'audit_rejected_by_client' | 'audit_completed' | string;
   metadata?: {
     validation_state?: string;
@@ -120,6 +122,7 @@ const getStatutBadgeClass = (statut?: string) => {
 export default function ExpertDossierSynthese() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [cpe, setCPE] = useState<ClientProduitEligible | null>(null);
@@ -274,6 +277,58 @@ export default function ExpertDossierSynthese() {
     } catch (error) {
       console.error('Erreur envoi rapport:', error);
       toast.error('Erreur lors de l\'envoi du rapport');
+    }
+  };
+
+  // Accepter le dossier
+  const handleAcceptDossier = async () => {
+    if (!id) return;
+
+    try {
+      const response = await post(`/api/expert/dossier/${id}/accept`, {
+        notes: expertNotes || ''
+      });
+
+      if (response.success) {
+        toast.success('Dossier accepté avec succès');
+        // Recharger le dossier
+        const dossierResponse = await get<ClientProduitEligible>(`/api/expert/dossier/${id}`);
+        if (dossierResponse.success && dossierResponse.data) {
+          setCPE(dossierResponse.data);
+        }
+      } else {
+        toast.error(response.message || 'Erreur lors de l\'acceptation');
+      }
+    } catch (error: any) {
+      console.error('Erreur acceptation dossier:', error);
+      toast.error(error.message || 'Erreur lors de l\'acceptation du dossier');
+    }
+  };
+
+  // Refuser le dossier
+  const handleRejectDossier = async () => {
+    if (!id) return;
+
+    const reason = prompt('Veuillez indiquer la raison du refus :');
+    if (!reason || reason.trim() === '') {
+      toast.error('Une raison est requise pour refuser le dossier');
+      return;
+    }
+
+    try {
+      const response = await post(`/api/expert/dossier/${id}/reject`, {
+        reason: reason.trim()
+      });
+
+      if (response.success) {
+        toast.success('Dossier refusé');
+        navigate('/dashboard/expert');
+      } else {
+        toast.error(response.message || 'Erreur lors du refus');
+      }
+    } catch (error: any) {
+      console.error('Erreur refus dossier:', error);
+      toast.error(error.message || 'Erreur lors du refus du dossier');
     }
   };
 
@@ -444,6 +499,73 @@ export default function ExpertDossierSynthese() {
           </Card>
         </div>
 
+        {/* Bouton Finaliser le rapport d'audit (quand documents_completes) */}
+        {id && cpe && cpe.statut === 'documents_completes' && (
+          <div className="mb-8">
+            <Card className="border-green-200 bg-green-50">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-1">
+                      📋 Finaliser le rapport d'audit
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      Tous les documents sont validés. Vous pouvez maintenant finaliser le rapport d'audit avec le montant final et les détails.
+                    </p>
+                  </div>
+                  <Button
+                    onClick={() => setShowFinaliserRapportModal(true)}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    <FileCheck className="h-4 w-4 mr-2" />
+                    Finaliser le rapport d'audit
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Section Accepter/Refuser le dossier */}
+        {cpe && cpe.expert_pending_id && !cpe.expert_id && user?.database_id === cpe.expert_pending_id && (
+          <div className="mb-8">
+            <Card className="border-orange-200 bg-orange-50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-orange-900">
+                  <AlertTriangle className="h-5 w-5" />
+                  Nouveau dossier assigné
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="bg-white p-6 rounded-lg">
+                  <h3 className="font-semibold mb-4">Un nouveau dossier vous est assigné</h3>
+                  <p className="text-gray-700 mb-4">
+                    {cpe.Client?.company_name || cpe.Client?.name} souhaite vous confier un dossier {cpe.ProduitEligible?.nom || 'DFS'} ({formatCurrency(cpe.montantFinal || 0)}). 
+                    Souhaitez-vous traiter ce dossier ?
+                  </p>
+                  <div className="flex gap-4">
+                    <Button
+                      onClick={handleAcceptDossier}
+                      className="flex-1 bg-green-600 hover:bg-green-700"
+                    >
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Accepter
+                    </Button>
+                    <Button
+                      onClick={handleRejectDossier}
+                      variant="destructive"
+                      className="flex-1"
+                    >
+                      <XCircle className="h-4 w-4 mr-2" />
+                      Refuser
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         {/* Informations Client Enrichies */}
         {cpe.Client && (
           <div className="mb-8">
@@ -493,33 +615,6 @@ export default function ExpertDossierSynthese() {
                 }
               }}
             />
-          </div>
-        )}
-
-        {/* Bouton Finaliser le rapport d'audit (quand documents_completes) */}
-        {id && cpe && cpe.statut === 'documents_completes' && (
-          <div className="mb-8">
-            <Card className="border-green-200 bg-green-50">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold text-gray-900 mb-1">
-                      📋 Finaliser le rapport d'audit
-                    </h3>
-                    <p className="text-sm text-gray-600">
-                      Tous les documents sont validés. Vous pouvez maintenant finaliser le rapport d'audit avec le montant final et les détails.
-                    </p>
-                  </div>
-                  <Button
-                    onClick={() => setShowFinaliserRapportModal(true)}
-                    className="bg-green-600 hover:bg-green-700"
-                  >
-                    <FileCheck className="h-4 w-4 mr-2" />
-                    Finaliser le rapport d'audit
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
           </div>
         )}
 
