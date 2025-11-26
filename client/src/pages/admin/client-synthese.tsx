@@ -745,201 +745,206 @@ const ClientSynthese: React.FC = () => {
               {/* TAB PROFIL */}
               <TabsContent value="profil">
                 <Card className="border-0 shadow-lg">
-                  <CardHeader className="border-b bg-gradient-to-r from-gray-50 to-white pb-4">
-                    <CardTitle className="flex items-center gap-3 text-xl">
-                      <div className="p-2 bg-blue-100 rounded-lg">
-                        <User className="w-5 h-5 text-blue-600" />
+                  <CardHeader className="border-b bg-gradient-to-r from-gray-50 to-white pb-3">
+                    <CardTitle className="flex items-center gap-3 text-lg">
+                      <div className="p-1.5 bg-blue-100 rounded-lg">
+                        <User className="w-4 h-4 text-blue-600" />
                       </div>
                       <span className="text-gray-900 font-semibold">Informations du Client</span>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="p-6">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                      {/* Colonne gauche - Informations principales */}
-                      <div className="space-y-6">
-                        <div className="pb-4 border-b border-gray-100">
-                          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block">
-                            Nom / Entreprise
-                          </label>
-                          <p className="text-xl font-bold text-gray-900 leading-tight">{getClientDisplayName()}</p>
-                        </div>
+                  <CardContent className="p-4">
+                    {/* Informations principales en grid 3 colonnes */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                      <div>
+                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 block">
+                          Nom / Entreprise
+                        </label>
+                        <p className="text-base font-bold text-gray-900 leading-tight">{getClientDisplayName()}</p>
+                      </div>
 
-                        <div className="pb-4 border-b border-gray-100">
-                          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-2">
-                            <Mail className="w-3.5 h-3.5" />
-                            Email
+                      <div>
+                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                          <Mail className="w-3 h-3" />
+                          Email
+                        </label>
+                        <a 
+                          href={`mailto:${client.email}`}
+                          className="text-sm text-gray-900 hover:text-blue-600 transition-colors font-medium block"
+                        >
+                          {client.email}
+                        </a>
+                      </div>
+
+                      {client.phone && (
+                        <div>
+                          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                            <Phone className="w-3 h-3" />
+                            Téléphone
                           </label>
                           <a 
-                            href={`mailto:${client.email}`}
-                            className="text-base text-gray-900 hover:text-blue-600 transition-colors font-medium"
+                            href={`tel:${client.phone}`}
+                            className="text-sm text-gray-900 hover:text-blue-600 transition-colors font-medium block"
                           >
-                            {client.email}
+                            {client.phone}
                           </a>
                         </div>
+                      )}
+                    </div>
 
-                        {client.phone && (
-                          <div className="pb-4 border-b border-gray-100">
-                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-2">
-                              <Phone className="w-3.5 h-3.5" />
-                              Téléphone
-                            </label>
-                            <a 
-                              href={`tel:${client.phone}`}
-                              className="text-base text-gray-900 hover:text-blue-600 transition-colors font-medium"
-                            >
-                              {client.phone}
-                            </a>
-                          </div>
-                        )}
+                    {/* Adresse et statut en grid 2 colonnes */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      {client.address && (
+                        <div>
+                          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                            <MapPin className="w-3 h-3" />
+                            Adresse
+                          </label>
+                          <p className="text-sm text-gray-900 font-medium leading-relaxed">{client.address}</p>
+                        </div>
+                      )}
 
-                        {client.address && (
-                          <div className="pb-4 border-b border-gray-100">
-                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-2">
-                              <MapPin className="w-3.5 h-3.5" />
-                              Adresse
-                            </label>
-                            <p className="text-base text-gray-900 font-medium leading-relaxed">{client.address}</p>
+                      <div>
+                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 block">
+                          Statut
+                        </label>
+                        <div>
+                          <Badge 
+                            variant={client.statut === 'actif' || client.statut === 'active' ? 'default' : 'secondary'}
+                            className="text-xs px-2 py-0.5 font-medium"
+                          >
+                            {client.statut}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Dates en grid 2 colonnes */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                          <Calendar className="w-3 h-3" />
+                          Date de création
+                        </label>
+                        <p className="text-sm text-gray-900 font-medium">
+                          {new Date(client.created_at).toLocaleDateString('fr-FR', {
+                            day: 'numeric',
+                            month: 'long',
+                            year: 'numeric'
+                          })}
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 block">
+                          Dernière mise à jour
+                        </label>
+                        <p className="text-sm text-gray-900 font-medium">
+                          {new Date(client.updated_at).toLocaleDateString('fr-FR', {
+                            day: 'numeric',
+                            month: 'long',
+                            year: 'numeric'
+                          })}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Notes internes en pleine largeur */}
+                    <div className="mb-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                          <FileText className="w-3 h-3" />
+                          Notes internes
+                        </label>
+                        {user?.type === 'admin' && (
+                          <div className="flex gap-1">
+                            {!editingNotes ? (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setNotesValue(client.notes || '');
+                                    setEditingNotes(true);
+                                  }}
+                                  className="h-6 px-2 hover:bg-gray-100"
+                                >
+                                  <Edit className="w-3 h-3" />
+                                </Button>
+                                {client.notes && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setShowDeleteNotesDialog(true)}
+                                    className="h-6 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </Button>
+                                )}
+                              </>
+                            ) : (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={handleSaveNotes}
+                                  className="h-6 px-2 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                >
+                                  <Save className="w-3 h-3" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setEditingNotes(false);
+                                    setNotesValue('');
+                                  }}
+                                  className="h-6 px-2 hover:bg-gray-100"
+                                >
+                                  <X className="w-3 h-3" />
+                                </Button>
+                              </>
+                            )}
                           </div>
                         )}
                       </div>
-
-                      {/* Colonne droite - Statut et métadonnées */}
-                      <div className="space-y-6">
-                        <div className="pb-4 border-b border-gray-100">
-                          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block">
-                            Statut
-                          </label>
-                          <div>
-                            <Badge 
-                              variant={client.statut === 'actif' || client.statut === 'active' ? 'default' : 'secondary'}
-                              className="text-sm px-3 py-1 font-medium"
-                            >
-                              {client.statut}
-                            </Badge>
-                          </div>
-                        </div>
-
-                        <div className="pb-4 border-b border-gray-100">
-                          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-2">
-                            <Calendar className="w-3.5 h-3.5" />
-                            Date de création
-                          </label>
-                          <p className="text-base text-gray-900 font-medium">
-                            {new Date(client.created_at).toLocaleDateString('fr-FR', {
-                              day: 'numeric',
-                              month: 'long',
-                              year: 'numeric'
-                            })}
+                      {editingNotes ? (
+                        <div>
+                          <Textarea
+                            value={notesValue}
+                            onChange={(e) => setNotesValue(e.target.value)}
+                            placeholder="Notes internes (non visibles par le client)..."
+                            rows={6}
+                            className="bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500 w-full"
+                          />
+                          <p className="text-xs text-amber-600 mt-1.5 flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3" />
+                            Ces notes ne sont pas visibles par le client
                           </p>
                         </div>
-
-                        <div className="pb-4 border-b border-gray-100">
-                          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-2">
-                            <FileText className="w-3.5 h-3.5" />
-                            Notes internes
-                            {user?.type === 'admin' && (
-                              <div className="ml-auto flex gap-1">
-                                {!editingNotes ? (
-                                  <>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => {
-                                        setNotesValue(client.notes || '');
-                                        setEditingNotes(true);
-                                      }}
-                                      className="h-7 px-2 hover:bg-gray-100"
-                                    >
-                                      <Edit className="w-3.5 h-3.5" />
-                                    </Button>
-                                    {client.notes && (
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => setShowDeleteNotesDialog(true)}
-                                        className="h-7 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                      >
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                      </Button>
-                                    )}
-                                  </>
-                                ) : (
-                                  <>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={handleSaveNotes}
-                                      className="h-7 px-2 text-green-600 hover:text-green-700 hover:bg-green-50"
-                                    >
-                                      <Save className="w-3.5 h-3.5" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => {
-                                        setEditingNotes(false);
-                                        setNotesValue('');
-                                      }}
-                                      className="h-7 px-2 hover:bg-gray-100"
-                                    >
-                                      <X className="w-3.5 h-3.5" />
-                                    </Button>
-                                  </>
-                                )}
-                              </div>
-                            )}
-                          </label>
-                          {editingNotes ? (
-                            <div className="mt-3">
-                              <Textarea
-                                value={notesValue}
-                                onChange={(e) => setNotesValue(e.target.value)}
-                                placeholder="Notes internes (non visibles par le client)..."
-                                rows={5}
-                                className="bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                              />
-                              <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
+                      ) : (
+                        <div className="bg-gradient-to-br from-amber-50 to-amber-100/50 border border-amber-200 rounded-lg p-3 shadow-sm min-h-[80px] max-h-[300px] overflow-y-auto">
+                          {client.notes ? (
+                            <>
+                              <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed font-medium">{client.notes}</p>
+                              <p className="text-xs text-amber-700 mt-2 flex items-center gap-1 font-medium">
                                 <AlertTriangle className="w-3 h-3" />
                                 Ces notes ne sont pas visibles par le client
                               </p>
-                            </div>
+                            </>
                           ) : (
-                            <div className="bg-gradient-to-br from-amber-50 to-amber-100/50 border border-amber-200 rounded-lg p-4 mt-3 shadow-sm">
-                              {client.notes ? (
-                                <>
-                                  <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed font-medium">{client.notes}</p>
-                                  <p className="text-xs text-amber-700 mt-3 flex items-center gap-1 font-medium">
-                                    <AlertTriangle className="w-3 h-3" />
-                                    Ces notes ne sont pas visibles par le client
-                                  </p>
-                                </>
-                              ) : (
-                                <p className="text-sm text-gray-500 italic">Aucune note interne</p>
-                              )}
-                            </div>
+                            <p className="text-sm text-gray-500 italic">Aucune note interne</p>
                           )}
                         </div>
+                      )}
+                    </div>
 
-                        <div className="pb-4 border-b border-gray-100">
-                          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block">
-                            Dernière mise à jour
-                          </label>
-                          <p className="text-base text-gray-900 font-medium">
-                            {new Date(client.updated_at).toLocaleDateString('fr-FR', {
-                              day: 'numeric',
-                              month: 'long',
-                              year: 'numeric'
-                            })}
-                          </p>
-                        </div>
-
-                        <div className="pt-2">
-                          <Button variant="outline" size="sm" className="font-medium">
-                            <Edit className="w-4 h-4 mr-2" />
-                            Modifier le profil
-                          </Button>
-                        </div>
-                      </div>
+                    {/* Bouton modifier */}
+                    <div className="pt-2 border-t border-gray-100">
+                      <Button variant="outline" size="sm" className="font-medium">
+                        <Edit className="w-3.5 h-3.5 mr-1.5" />
+                        Modifier le profil
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>

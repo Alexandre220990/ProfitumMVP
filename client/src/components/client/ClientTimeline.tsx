@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 interface TimelineEvent {
   id: string;
@@ -107,6 +108,8 @@ export default function ClientTimeline({
   const [submittingComment, setSubmittingComment] = useState(false);
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingCommentText, setEditingCommentText] = useState('');
+  const [selectedEvent, setSelectedEvent] = useState<TimelineEvent | null>(null);
+  const [showEventDialog, setShowEventDialog] = useState(false);
 
   const loadTimeline = async () => {
     try {
@@ -625,12 +628,15 @@ export default function ClientTimeline({
 
                   {/* Action URL */}
                   {event.action_url && (
-                    <a
-                      href={event.action_url}
+                    <button
+                      onClick={() => {
+                        setSelectedEvent(event);
+                        setShowEventDialog(true);
+                      }}
                       className="text-xs text-blue-600 hover:text-blue-800 hover:underline mt-1 inline-block"
                     >
                       → Voir détails
-                    </a>
+                    </button>
                   )}
                 </div>
               </div>
@@ -647,6 +653,66 @@ export default function ClientTimeline({
           </div>
         )}
       </CardContent>
+
+      {/* Dialog pour afficher les détails de l'événement */}
+      <Dialog open={showEventDialog} onOpenChange={setShowEventDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <span className="text-lg">{selectedEvent?.icon || '📋'}</span>
+              <span>{selectedEvent?.title || 'Détails de l\'événement'}</span>
+            </DialogTitle>
+            <DialogDescription>
+              {selectedEvent && (
+                <div className="space-y-2 mt-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge 
+                      className={`text-xs ${getActorBadgeColor(selectedEvent.actor_type)} text-white`}
+                    >
+                      {getActorLabel(selectedEvent.actor_type)}
+                    </Badge>
+                    <span className="text-sm text-gray-600">{selectedEvent.actor_name}</span>
+                    <span className="text-xs text-gray-400">•</span>
+                    <span className="text-xs text-gray-500">
+                      {formatDate(selectedEvent.date)}
+                    </span>
+                  </div>
+                  {selectedEvent.description && (
+                    <div className="mt-4">
+                      <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">
+                        {selectedEvent.description}
+                      </p>
+                    </div>
+                  )}
+                  {selectedEvent.metadata && (
+                    <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                      <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2">Métadonnées</h4>
+                      <pre className="text-xs text-gray-700 overflow-x-auto">
+                        {JSON.stringify(selectedEvent.metadata, null, 2)}
+                      </pre>
+                    </div>
+                  )}
+                  {selectedEvent.action_url && (
+                    <div className="mt-4">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (selectedEvent.action_url) {
+                            window.open(selectedEvent.action_url, '_blank');
+                          }
+                        }}
+                      >
+                        Ouvrir dans une nouvelle page
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

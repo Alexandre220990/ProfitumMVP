@@ -241,17 +241,59 @@ export class ClientTimelineService {
         const { data: rdvs, error: rdvError } = await rdvQuery;
 
         if (!rdvError && rdvs) {
+          // Récupérer tous les IDs uniques des créateurs de RDV
+          const rdvCreatorIds = [...new Set(rdvs.map((rdv: any) => rdv.created_by).filter(Boolean))];
+          
+          // Récupérer tous les admins et experts en une fois
+          const rdvCreators = new Map<string, { type: 'admin' | 'expert' | 'system', email?: string }>();
+          
+          if (rdvCreatorIds.length > 0) {
+            try {
+              const { data: admins } = await supabase
+                .from('Admin')
+                .select('id, email')
+                .in('id', rdvCreatorIds);
+              
+              (admins || []).forEach((admin: any) => {
+                rdvCreators.set(admin.id, { type: 'admin', email: admin.email });
+              });
+
+              const { data: experts } = await supabase
+                .from('Expert')
+                .select('id, email')
+                .in('id', rdvCreatorIds);
+              
+              (experts || []).forEach((expert: any) => {
+                if (!rdvCreators.has(expert.id)) {
+                  rdvCreators.set(expert.id, { type: 'expert', email: expert.email });
+                }
+              });
+            } catch (err) {
+              console.warn('⚠️ Erreur récupération créateurs RDV:', err);
+            }
+          }
+
           rdvs.forEach((rdv: any) => {
             const rdvDate = new Date(`${rdv.scheduled_date}T${rdv.scheduled_time}`);
+            // Déterminer le type d'acteur selon created_by
+            let actorType: 'client' | 'expert' | 'admin' | 'system' | 'apporteur' = 'system';
+            let actorName = 'Système';
+            
+            if (rdv.created_by && rdvCreators.has(rdv.created_by)) {
+              const creator = rdvCreators.get(rdv.created_by)!;
+              actorType = creator.type;
+              actorName = creator.type === 'admin' ? 'Administrateur' : 'Expert';
+            }
+            
             allEvents.push({
               id: `rdv-${rdv.id}`,
               client_id,
               dossier_id: rdv.dossier_id || rdv.metadata?.dossier_id || undefined,
               date: rdvDate.toISOString(),
               type: 'rdv',
-              actor_type: 'admin', // Par défaut, peut être ajusté selon created_by
+              actor_type: actorType,
               actor_id: rdv.created_by || null,
-              actor_name: 'Système',
+              actor_name: actorName,
               title: `Rendez-vous : ${rdv.title || 'Sans titre'}`,
               description: rdv.description || `Rendez-vous prévu le ${rdvDate.toLocaleDateString('fr-FR')} à ${rdvDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}${rdv.location ? ` - ${rdv.location}` : ''}`,
               metadata: {
@@ -310,7 +352,15 @@ export class ClientTimelineService {
       });
 
       // 6. Dédupliquer les événements (notamment les RDV qui peuvent apparaître plusieurs fois)
+      // Priorité : Admin > Expert > Apporteur > Système
       const uniqueEventsMap = new Map<string, TimelineEvent>();
+      const actorPriority: Record<string, number> = {
+        'admin': 4,
+        'expert': 3,
+        'apporteur': 2,
+        'system': 1,
+        'client': 0
+      };
       
       allEvents.forEach((event) => {
         // Créer une clé unique basée sur l'ID et le type
@@ -322,27 +372,96 @@ export class ClientTimelineService {
         } else if (event.type === 'rdv' && event.metadata?.rdv_id) {
           // Pour les RDV, utiliser l'ID du RDV comme clé unique
           uniqueKey = `rdv-${event.metadata.rdv_id}`;
+        } else if (event.type === 'dossier_created' && event.dossier_id) {
+          // Pour les créations de dossier, utiliser dossier_id comme clé
+          uniqueKey = `dossier-created-${event.dossier_id}`;
         } else {
           // Pour les autres événements, créer une clé basée sur type + date + titre
           uniqueKey = `${event.type}-${event.date}-${event.title}`;
         }
         
-        // Ne garder que le premier événement trouvé avec cette clé
-        if (!uniqueEventsMap.has(uniqueKey)) {
+        // Si l'événement existe déjà, vérifier la priorité
+        const existingEvent = uniqueEventsMap.get(uniqueKey);
+        if (existingEvent) {
+          const existingPriority = actorPriority[existingEvent.actor_type] || 0;
+          const newPriority = actorPriority[event.actor_type] || 0;
+          
+          // Garder l'événement avec la priorité la plus élevée (Admin > Expert > Apporteur > Système)
+          if (newPriority > existingPriority) {
+            uniqueEventsMap.set(uniqueKey, event);
+          }
+        } else {
           uniqueEventsMap.set(uniqueKey, event);
         }
       });
       
       const deduplicatedEvents = Array.from(uniqueEventsMap.values());
 
-      // 7. Trier par date (plus récent en premier)
+      // 7. Enrichir les événements avec les emails des acteurs (pour distinguer les admins)
+      const actorIds = new Set<string>();
+      deduplicatedEvents.forEach(event => {
+        if (event.actor_id && (event.actor_type === 'admin' || event.actor_type === 'expert' || event.actor_type === 'apporteur')) {
+          actorIds.add(event.actor_id);
+        }
+      });
+
+      // Récupérer les emails des acteurs
+      const actorEmails = new Map<string, string>();
+      if (actorIds.size > 0) {
+        try {
+          // Admins
+          const { data: admins } = await supabase
+            .from('Admin')
+            .select('id, email')
+            .in('id', Array.from(actorIds));
+          
+          (admins || []).forEach((admin: any) => {
+            actorEmails.set(admin.id, admin.email);
+          });
+
+          // Experts
+          const { data: experts } = await supabase
+            .from('Expert')
+            .select('id, email')
+            .in('id', Array.from(actorIds));
+          
+          (experts || []).forEach((expert: any) => {
+            actorEmails.set(expert.id, expert.email);
+          });
+
+          // Apporteurs
+          const { data: apporteurs } = await supabase
+            .from('ApporteurAffaires')
+            .select('id, email')
+            .in('id', Array.from(actorIds));
+          
+          (apporteurs || []).forEach((apporteur: any) => {
+            actorEmails.set(apporteur.id, apporteur.email);
+          });
+        } catch (err) {
+          console.warn('⚠️ Erreur récupération emails acteurs:', err);
+        }
+      }
+
+      // Enrichir les événements avec les emails
+      deduplicatedEvents.forEach(event => {
+        if (event.actor_id && actorEmails.has(event.actor_id)) {
+          const email = actorEmails.get(event.actor_id);
+          // Ajouter l'email à actor_name si c'est un admin
+          if (event.actor_type === 'admin' && email) {
+            event.actor_name = `${event.actor_name} (${email})`;
+          }
+        }
+      });
+
+      // 8. Trier par date (plus récent en premier)
       deduplicatedEvents.sort((a, b) => {
         const dateA = new Date(a.date || 0).getTime();
         const dateB = new Date(b.date || 0).getTime();
         return dateB - dateA;
       });
 
-      // 8. Appliquer la pagination
+      // 9. Appliquer la pagination
       let paginatedEvents = deduplicatedEvents;
       if (options?.limit) {
         const offset = options.offset || 0;
