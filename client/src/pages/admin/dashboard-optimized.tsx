@@ -2316,91 +2316,71 @@ const AdminDashboardOptimized: React.FC = () => {
                           </CardTitle>
                         </CardHeader>
                         <CardContent>
-                          {/* Tuiles Écosystème */}
-                          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
+                          {/* Tuiles Écosystème - Une seule ligne compacte */}
+                          <div className="flex gap-2 mb-6 overflow-x-auto">
                             {/* Clients */}
                             <div 
-                              className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                              className={`flex-1 min-w-[120px] p-2 rounded-lg border cursor-pointer transition-all ${
                                 selectedEcosystemTile === 'clients' 
                                   ? 'border-green-500 bg-green-50 shadow-md' 
                                   : 'border-gray-200 hover:border-green-300 hover:bg-green-50'
                               }`}
                               onClick={() => setSelectedEcosystemTile('clients')}
                             >
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <p className="text-sm text-gray-600">Clients actifs</p>
-                                  <p className="text-2xl font-bold text-green-600">{kpiData.totalClients}</p>
-                                </div>
-                                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                                  <Users className="w-4 h-4 text-green-600" />
-                                </div>
+                              <div className="flex flex-col items-center justify-center">
+                                <p className="text-xs text-gray-600 mb-1">Clients actifs</p>
+                                <p className="text-lg font-bold text-green-600">{kpiData.totalClients}</p>
                               </div>
                             </div>
 
                             {/* Experts */}
                             <div 
-                              className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                              className={`flex-1 min-w-[120px] p-2 rounded-lg border cursor-pointer transition-all ${
                                 selectedEcosystemTile === 'experts' 
                                   ? 'border-blue-500 bg-blue-50 shadow-md' 
                                   : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50'
                               }`}
                               onClick={() => setSelectedEcosystemTile('experts')}
                             >
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <p className="text-sm text-gray-600">Experts</p>
-                                  <p className="text-2xl font-bold text-blue-600">{kpiData.totalExperts}</p>
-                                </div>
-                                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                                  <UserCheck className="w-4 h-4 text-blue-600" />
-                                </div>
+                              <div className="flex flex-col items-center justify-center">
+                                <p className="text-xs text-gray-600 mb-1">Experts</p>
+                                <p className="text-lg font-bold text-blue-600">{kpiData.totalExperts}</p>
                               </div>
                             </div>
 
                             {/* Apporteurs */}
                             <div 
-                              className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                              className={`flex-1 min-w-[120px] p-2 rounded-lg border cursor-pointer transition-all ${
                                 selectedEcosystemTile === 'apporteurs' 
                                   ? 'border-purple-500 bg-purple-50 shadow-md' 
                                   : 'border-gray-200 hover:border-purple-300 hover:bg-purple-50'
                               }`}
                               onClick={() => setSelectedEcosystemTile('apporteurs')}
                             >
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <p className="text-sm text-gray-600">Apporteurs</p>
-                                  <p className="text-2xl font-bold text-purple-600">{kpiData.apporteursTotal}</p>
-                                </div>
-                                <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                                  <Handshake className="w-4 h-4 text-purple-600" />
-                                </div>
+                              <div className="flex flex-col items-center justify-center">
+                                <p className="text-xs text-gray-600 mb-1">Apporteurs</p>
+                                <p className="text-lg font-bold text-purple-600">{kpiData.apporteursTotal}</p>
                               </div>
                             </div>
 
                             {/* Dossiers */}
                             <div 
-                              className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                              className={`flex-1 min-w-[120px] p-2 rounded-lg border cursor-pointer transition-all ${
                                 selectedEcosystemTile === 'dossiers' 
                                   ? 'border-indigo-500 bg-indigo-50 shadow-md' 
                                   : 'border-gray-200 hover:border-indigo-300 hover:bg-indigo-50'
                               }`}
                               onClick={() => setSelectedEcosystemTile('dossiers')}
                             >
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <p className="text-sm text-gray-600">Dossiers en cours</p>
-                                  <p className="text-2xl font-bold text-indigo-600">{kpiData.totalDossiers}</p>
-                                </div>
-                                <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
-                                  <FileText className="w-4 h-4 text-indigo-600" />
-                                </div>
+                              <div className="flex flex-col items-center justify-center">
+                                <p className="text-xs text-gray-600 mb-1">Dossiers en cours</p>
+                                <p className="text-lg font-bold text-indigo-600">{kpiData.totalDossiers}</p>
                               </div>
                             </div>
 
                             {/* Produits */}
                             <div 
-                              className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                              className={`flex-1 min-w-[120px] p-2 rounded-lg border cursor-pointer transition-all ${
                                 selectedEcosystemTile === 'produits' 
                                   ? 'border-orange-500 bg-orange-50 shadow-md' 
                                   : 'border-gray-200 hover:border-orange-300 hover:bg-orange-50'
@@ -2410,36 +2390,26 @@ const AdminDashboardOptimized: React.FC = () => {
                                 setSelectedEcosystemTile('produits');
                               }}
                             >
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <p className="text-sm text-gray-600">Produits éligibles</p>
-                                  <p className="text-2xl font-bold text-orange-600">{kpiData.totalProduits || 0}</p>
-                                </div>
-                                <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
-                                  <Package className="w-4 h-4 text-orange-600" />
-                                </div>
+                              <div className="flex flex-col items-center justify-center">
+                                <p className="text-xs text-gray-600 mb-1">Produits éligibles</p>
+                                <p className="text-lg font-bold text-orange-600">{kpiData.totalProduits || 0}</p>
                               </div>
                             </div>
 
                             {/* Performance */}
                             <div 
-                              className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                              className={`flex-1 min-w-[120px] p-2 rounded-lg border cursor-pointer transition-all ${
                                 selectedEcosystemTile === 'performance' 
                                   ? 'border-emerald-500 bg-emerald-50 shadow-md' 
                                   : 'border-gray-200 hover:border-emerald-300 hover:bg-emerald-50'
                               }`}
                               onClick={() => setSelectedEcosystemTile('performance')}
                             >
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <p className="text-sm text-gray-600">Performance</p>
-                                  <p className={`text-2xl font-bold ${kpiData.croissanceRevenus >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                    {kpiData.croissanceRevenus >= 0 ? '+' : ''}{kpiData.croissanceRevenus}%
-                                  </p>
-                                </div>
-                                <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center">
-                                  <TrendingUp className="w-4 h-4 text-emerald-600" />
-                                </div>
+                              <div className="flex flex-col items-center justify-center">
+                                <p className="text-xs text-gray-600 mb-1">Performance</p>
+                                <p className={`text-lg font-bold ${kpiData.croissanceRevenus >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                  {kpiData.croissanceRevenus >= 0 ? '+' : ''}{kpiData.croissanceRevenus}%
+                                </p>
                               </div>
                             </div>
                           </div>
