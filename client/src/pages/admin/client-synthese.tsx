@@ -1254,23 +1254,38 @@ const ClientSynthese: React.FC = () => {
             <div className="space-y-6 py-4">
               {/* Sélection du produit */}
               <div className="space-y-2">
-                <Label htmlFor="produit">Produit *</Label>
+                <Label htmlFor="produit" className="text-sm font-semibold text-gray-700">
+                  Produit <span className="text-red-500">*</span>
+                </Label>
                 {loadingProduits ? (
-                  <p className="text-sm text-gray-500">Chargement des produits...</p>
+                  <div className="flex items-center gap-2 p-3 border border-gray-200 rounded-lg bg-gray-50">
+                    <RefreshCw className="w-4 h-4 animate-spin text-gray-400" />
+                    <p className="text-sm text-gray-500">Chargement des produits...</p>
+                  </div>
                 ) : (
                   <Select value={selectedProduit} onValueChange={handleProduitChange}>
-                    <SelectTrigger>
+                    <SelectTrigger 
+                      id="produit"
+                      className="w-full h-11 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                    >
                       <SelectValue placeholder="Sélectionnez un produit" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="max-h-[400px]">
                       {Object.entries(groupProduitsByCategory()).map(([categorie, produits]) => (
                         <div key={categorie}>
-                          <div className="px-2 py-1.5 text-xs font-semibold text-gray-500 bg-gray-50">
+                          <div className="px-3 py-2 text-xs font-semibold text-gray-600 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 sticky top-0">
                             {categorie || 'Non catégorisé'}
                           </div>
                           {produits.map((produit: any) => (
-                            <SelectItem key={produit.id} value={produit.id}>
-                              {produit.nom}
+                            <SelectItem 
+                              key={produit.id} 
+                              value={produit.id}
+                              className="py-2.5 cursor-pointer hover:bg-blue-50"
+                            >
+                              <div className="flex items-center gap-2">
+                                <Briefcase className="w-4 h-4 text-blue-600" />
+                                <span className="font-medium">{produit.nom}</span>
+                              </div>
                             </SelectItem>
                           ))}
                         </div>

@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import DossierTimeline from '@/components/dossier/DossierTimeline';
 import LoadingScreen from '@/components/LoadingScreen';
 import {
@@ -260,7 +261,7 @@ const DossierSynthese: React.FC = () => {
       }
 
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/dossiers/${dossier?.id}/assign-expert`, {
-        method: 'PUT',
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
@@ -531,10 +532,10 @@ const DossierSynthese: React.FC = () => {
             <Tabs defaultValue="details" className="w-full">
               <TabsList className="grid grid-cols-5 w-full max-w-3xl">
                 <TabsTrigger value="details">Détails</TabsTrigger>
+                <TabsTrigger value="historique">Timeline</TabsTrigger>
                 <TabsTrigger value="client">Client</TabsTrigger>
                 <TabsTrigger value="documents">Documents ({dossier.documents_sent?.length || 0})</TabsTrigger>
                 <TabsTrigger value="expert">Expert assigné</TabsTrigger>
-                <TabsTrigger value="historique">Historique du dossier</TabsTrigger>
               </TabsList>
 
               {/* Onglet Détails */}
@@ -592,6 +593,24 @@ const DossierSynthese: React.FC = () => {
                     )}
                   </CardContent>
                 </Card>
+              </TabsContent>
+
+              {/* Onglet Timeline */}
+              <TabsContent value="historique" className="space-y-4 mt-6">
+                {id && user && (
+                  <DossierTimeline 
+                    dossierId={id} 
+                    userType={user.type as 'expert' | 'admin' | 'apporteur'}
+                    dossierInfo={{
+                      client_id: dossier.Client?.id,
+                      client_name: getClientDisplayName(),
+                      client_company_name: dossier.Client?.company_name,
+                      client_phone: dossier.Client?.phone,
+                      client_email: dossier.Client?.email,
+                      produit_name: dossier.ProduitEligible?.nom
+                    }}
+                  />
+                )}
               </TabsContent>
 
               {/* Onglet Client */}
@@ -787,24 +806,6 @@ const DossierSynthese: React.FC = () => {
                   </CardContent>
                 </Card>
               </TabsContent>
-
-              {/* Onglet Historique du dossier */}
-              <TabsContent value="historique" className="space-y-4 mt-6">
-                {id && user && (
-                  <DossierTimeline 
-                    dossierId={id} 
-                    userType={user.type as 'expert' | 'admin' | 'apporteur'}
-                    dossierInfo={{
-                      client_id: dossier.Client?.id,
-                      client_name: getClientDisplayName(),
-                      client_company_name: dossier.Client?.company_name,
-                      client_phone: dossier.Client?.phone,
-                      client_email: dossier.Client?.email,
-                      produit_name: dossier.ProduitEligible?.nom
-                    }}
-                  />
-                )}
-              </TabsContent>
             </Tabs>
           </div>
         )}
@@ -856,49 +857,101 @@ const DossierSynthese: React.FC = () => {
 
         {/* Dialog d'assignation expert */}
         <Dialog open={showExpertDialog} onOpenChange={setShowExpertDialog}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Assigner un expert au dossier</DialogTitle>
-              <DialogDescription>
-                Sélectionnez un expert disponible pour traiter ce dossier.
-              </DialogDescription>
+          <DialogContent className="max-w-lg">
+            <DialogHeader className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-purple-100 rounded-lg">
+                  <UserPlus className="w-5 h-5 text-purple-600" />
+                </div>
+                <div>
+                  <DialogTitle className="text-xl font-semibold">Assigner un expert au dossier</DialogTitle>
+                  <DialogDescription className="mt-1">
+                    Sélectionnez un expert disponible pour traiter ce dossier.
+                  </DialogDescription>
+                </div>
+              </div>
             </DialogHeader>
-            <div className="space-y-4 py-4">
+            
+            <div className="space-y-5 py-4">
               {dossier && dossier.statut !== 'eligibility_validated' && (
-                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <div className="flex items-start gap-2">
-                    <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
+                <div className="p-4 bg-amber-50 border-l-4 border-amber-400 rounded-r-lg">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-yellow-900">
+                      <p className="text-sm font-semibold text-amber-900 mb-1">
                         Avertissement
                       </p>
-                      <p className="text-sm text-yellow-700 mt-1">
-                        Le dossier n'a pas encore été validé par l'admin (statut actuel: <strong>{dossier.statut}</strong>). 
+                      <p className="text-sm text-amber-800 leading-relaxed">
+                        Le dossier n'a pas encore été validé par l'admin (statut actuel: <strong className="font-semibold">{dossier.statut}</strong>). 
                         L'expert sera assigné, mais le client devra toujours compléter les étapes de validation.
                       </p>
                     </div>
                   </div>
                 </div>
               )}
-              <div>
-                <Label htmlFor="expert-select">Expert *</Label>
-                <select
-                  id="expert-select"
-                  value={selectedExpert}
-                  onChange={(e) => setSelectedExpert(e.target.value)}
-                  className="mt-2 w-full border rounded-md p-2"
-                >
-                  <option value="">Sélectionner un expert...</option>
-                  {availableExperts.map((expert) => (
-                    <option key={expert.id} value={expert.id}>
-                      {expert.first_name} {expert.last_name} - {expert.company_name} 
-                      {expert.specializations && ` (${expert.specializations.join(', ')})`}
-                    </option>
-                  ))}
-                </select>
+              
+              <div className="space-y-2">
+                <Label htmlFor="expert-select" className="text-sm font-semibold text-gray-700">
+                  Expert <span className="text-red-500">*</span>
+                </Label>
+                <Select value={selectedExpert} onValueChange={setSelectedExpert}>
+                  <SelectTrigger 
+                    id="expert-select"
+                    className="w-full h-11 border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                  >
+                    <SelectValue placeholder="Sélectionner un expert..." />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[300px]">
+                    {availableExperts.length === 0 ? (
+                      <div className="p-4 text-center text-sm text-gray-500">
+                        Aucun expert disponible
+                      </div>
+                    ) : (
+                      availableExperts.map((expert) => (
+                        <SelectItem 
+                          key={expert.id} 
+                          value={expert.id}
+                          className="py-3 cursor-pointer"
+                        >
+                          <div className="flex flex-col gap-1">
+                            <div className="font-medium text-gray-900">
+                              {expert.first_name} {expert.last_name}
+                            </div>
+                            <div className="text-sm text-gray-600">
+                              {expert.company_name}
+                            </div>
+                            {expert.specializations && expert.specializations.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {expert.specializations.slice(0, 3).map((spec: string, idx: number) => (
+                                  <span 
+                                    key={idx}
+                                    className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full"
+                                  >
+                                    {spec}
+                                  </span>
+                                ))}
+                                {expert.specializations.length > 3 && (
+                                  <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full">
+                                    +{expert.specializations.length - 3}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+                {availableExperts.length > 0 && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    {availableExperts.length} expert{availableExperts.length > 1 ? 's' : ''} disponible{availableExperts.length > 1 ? 's' : ''}
+                  </p>
+                )}
               </div>
             </div>
-            <DialogFooter>
+            
+            <DialogFooter className="gap-2 sm:gap-0">
               <Button 
                 variant="outline" 
                 onClick={() => {
@@ -906,16 +959,26 @@ const DossierSynthese: React.FC = () => {
                   setSelectedExpert('');
                 }}
                 disabled={isProcessing}
+                className="flex-1 sm:flex-initial"
               >
                 Annuler
               </Button>
               <Button 
                 onClick={handleAssignExpert}
                 disabled={isProcessing || !selectedExpert}
-                className="bg-purple-600 hover:bg-purple-700"
+                className="bg-purple-600 hover:bg-purple-700 text-white flex-1 sm:flex-initial"
               >
-                <UserPlus className="w-4 h-4 mr-2" />
-                {isProcessing ? 'Assignation...' : 'Assigner l\'expert'}
+                {isProcessing ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    Assignation...
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    Assigner l'expert
+                  </>
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>
