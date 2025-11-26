@@ -374,18 +374,24 @@ const DossierSynthese: React.FC = () => {
         {/* Header */}
         <div className="mb-6">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                Synthèse Dossier
-              </h1>
-              <p className="text-gray-600">
-                {loading ? 'Chargement...' : `${dossier?.ProduitEligible?.nom || 'Produit'} - ${getClientDisplayName()}`}
-              </p>
+            <div className="flex-1">
+              <div className="flex items-baseline gap-3 mb-3">
+                <h1 className="text-2xl font-semibold text-gray-700">
+                  Synthèse Dossier
+                </h1>
+                {!loading && dossier && (
+                  <span className="text-2xl font-bold text-gray-900">
+                    {dossier.ProduitEligible?.nom || 'Produit'} - {getClientDisplayName()}
+                  </span>
+                )}
+              </div>
               {dossier?.Client?.company_name && (
-                <p className="text-sm text-gray-500 flex items-center gap-1">
-                  <Building className="w-4 h-4" />
-                  {dossier.Client.company_name}
-                </p>
+                <div className="flex items-center gap-2">
+                  <Building className="w-5 h-5 text-gray-600" />
+                  <p className="text-lg font-semibold text-gray-900">
+                    {dossier.Client.company_name}
+                  </p>
+                </div>
               )}
             </div>
             <div className="flex items-center gap-2">
@@ -876,7 +882,7 @@ const DossierSynthese: React.FC = () => {
                 <div>
                   <DialogTitle className="text-xl font-semibold">Assigner un expert au dossier</DialogTitle>
                   <DialogDescription className="mt-1">
-                    Sélectionnez un expert disponible pour traiter ce dossier.
+                    Sélectionnez un expert disponible pour traiter ce dossier. Seuls les experts ayant le produit éligible du dossier dans leur catalogue sont affichés.
                   </DialogDescription>
                 </div>
               </div>
@@ -900,7 +906,7 @@ const DossierSynthese: React.FC = () => {
                 </div>
               )}
               
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <Label htmlFor="expert-select" className="text-sm font-semibold text-gray-700">
                   Expert <span className="text-red-500">*</span>
                 </Label>
@@ -911,40 +917,51 @@ const DossierSynthese: React.FC = () => {
                   >
                     <SelectValue placeholder="Sélectionner un expert..." />
                   </SelectTrigger>
-                  <SelectContent className="max-h-[300px]">
+                  <SelectContent className="max-h-[400px]">
                     {availableExperts.length === 0 ? (
                       <div className="p-4 text-center text-sm text-gray-500">
-                        Aucun expert disponible
+                        Aucun expert disponible pour ce produit
                       </div>
                     ) : (
                       availableExperts.map((expert) => (
                         <SelectItem 
                           key={expert.id} 
                           value={expert.id}
-                          className="py-3 cursor-pointer"
+                          className="py-2.5 cursor-pointer"
                         >
-                          <div className="flex flex-col gap-1">
-                            <div className="font-medium text-gray-900">
-                              {expert.first_name} {expert.last_name}
+                          <div className="flex items-start gap-3 w-full">
+                            <div className="flex-1 min-w-0">
+                              <div className="font-semibold text-gray-900 truncate">
+                                {expert.first_name && expert.last_name 
+                                  ? `${expert.first_name} ${expert.last_name}` 
+                                  : expert.name || expert.email}
+                              </div>
+                              {expert.company_name && (
+                                <div className="text-sm text-gray-600 truncate mt-0.5">
+                                  {expert.company_name}
+                                </div>
+                              )}
+                              {expert.specializations && expert.specializations.length > 0 && (
+                                <div className="flex flex-wrap gap-1 mt-1.5">
+                                  {expert.specializations.slice(0, 2).map((spec: string, idx: number) => (
+                                    <span 
+                                      key={idx}
+                                      className="text-xs px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded"
+                                    >
+                                      {spec}
+                                    </span>
+                                  ))}
+                                  {expert.specializations.length > 2 && (
+                                    <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">
+                                      +{expert.specializations.length - 2}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
                             </div>
-                            <div className="text-sm text-gray-600">
-                              {expert.company_name}
-                            </div>
-                            {expert.specializations && expert.specializations.length > 0 && (
-                              <div className="flex flex-wrap gap-1 mt-1">
-                                {expert.specializations.slice(0, 3).map((spec: string, idx: number) => (
-                                  <span 
-                                    key={idx}
-                                    className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full"
-                                  >
-                                    {spec}
-                                  </span>
-                                ))}
-                                {expert.specializations.length > 3 && (
-                                  <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full">
-                                    +{expert.specializations.length - 3}
-                                  </span>
-                                )}
+                            {expert.rating && (
+                              <div className="flex items-center gap-1 text-yellow-600 flex-shrink-0">
+                                <span className="text-xs font-medium">{expert.rating.toFixed(1)}</span>
                               </div>
                             )}
                           </div>
@@ -953,9 +970,56 @@ const DossierSynthese: React.FC = () => {
                     )}
                   </SelectContent>
                 </Select>
-                {availableExperts.length > 0 && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    {availableExperts.length} expert{availableExperts.length > 1 ? 's' : ''} disponible{availableExperts.length > 1 ? 's' : ''}
+                
+                {/* Affichage de l'expert sélectionné */}
+                {selectedExpert && (() => {
+                  const expert = availableExperts.find(e => e.id === selectedExpert);
+                  if (!expert) return null;
+                  
+                  return (
+                    <div className="p-4 bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-200 rounded-lg">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-purple-100 rounded-lg flex-shrink-0">
+                          <UserCheck className="w-5 h-5 text-purple-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className="font-semibold text-gray-900">
+                              {expert.first_name && expert.last_name 
+                                ? `${expert.first_name} ${expert.last_name}` 
+                                : expert.name || expert.email}
+                            </h4>
+                            {expert.rating && (
+                              <Badge variant="outline" className="text-xs">
+                                ⭐ {expert.rating.toFixed(1)}
+                              </Badge>
+                            )}
+                          </div>
+                          {expert.company_name && (
+                            <p className="text-sm text-gray-700 mb-2">{expert.company_name}</p>
+                          )}
+                          {expert.specializations && expert.specializations.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 mt-2">
+                              {expert.specializations.map((spec: string, idx: number) => (
+                                <Badge 
+                                  key={idx}
+                                  variant="secondary"
+                                  className="text-xs bg-purple-100 text-purple-700 border-purple-200"
+                                >
+                                  {spec}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+                
+                {availableExperts.length > 0 && !selectedExpert && (
+                  <p className="text-xs text-gray-500">
+                    {availableExperts.length} expert{availableExperts.length > 1 ? 's' : ''} disponible{availableExperts.length > 1 ? 's' : ''} pour ce produit
                   </p>
                 )}
               </div>
