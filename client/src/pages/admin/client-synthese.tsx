@@ -24,7 +24,8 @@ import {
   Eye,
   Trash2,
   Save,
-  X
+  X,
+  Briefcase
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { get, put, del, post } from '@/lib/api';
@@ -989,76 +990,97 @@ const ClientSynthese: React.FC = () => {
                   </CardHeader>
                   <CardContent>
                     {dossiers.length > 0 ? (
-                      <div className="space-y-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {dossiers.map((dossier: DossierData) => (
-                          <div key={dossier.id} className="p-4 border rounded-lg hover:bg-gray-50">
-                            <div className="flex justify-between items-start">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <Badge variant={
-                                    dossier.statut === 'eligible' ? 'default' :
-                                    dossier.statut === 'validated' ? 'default' :
-                                    dossier.statut === 'pending' ? 'secondary' : 'outline'
-                                  }>
+                          <div
+                            key={dossier.id}
+                            onClick={() => navigate(`/admin/dossiers/${dossier.id}`)}
+                            className="group relative bg-gradient-to-br from-white to-gray-50 border border-gray-200 rounded-xl p-6 hover:shadow-lg hover:border-blue-300 transition-all duration-300 cursor-pointer overflow-hidden"
+                          >
+                            {/* Effet de brillance au survol */}
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                            
+                            {/* Header avec nom du produit en valeur */}
+                            <div className="mb-4">
+                              <div className="flex items-start justify-between mb-3">
+                                <div className="flex-1">
+                                  <h3 className="text-2xl font-bold text-gray-900 mb-1 group-hover:text-blue-600 transition-colors">
+                                    {dossier.ProduitEligible?.nom || 'N/A'}
+                                  </h3>
+                                  <Badge 
+                                    variant={
+                                      dossier.statut === 'eligible' ? 'default' :
+                                      dossier.statut === 'validated' ? 'default' :
+                                      dossier.statut === 'pending' ? 'secondary' : 'outline'
+                                    }
+                                    className="text-xs"
+                                  >
                                     {dossier.statut}
                                   </Badge>
-                                  <h4 className="font-semibold text-gray-800">
-                                    {dossier.ProduitEligible?.nom || 'N/A'}
-                                  </h4>
                                 </div>
-
-                                <div className="grid grid-cols-2 gap-3 text-sm text-gray-600">
-                                  {dossier.montantFinal && (
-                                    <div className="flex items-center gap-2">
-                                      <DollarSign className="w-4 h-4 text-green-600" />
-                                      <span className="font-medium text-green-600">
-                                        {dossier.montantFinal.toLocaleString('fr-FR')}€
-                                      </span>
-                                    </div>
-                                  )}
-                                  {dossier.tauxFinal && (
-                                    <div className="flex items-center gap-2">
-                                      <TrendingUp className="w-4 h-4 text-blue-600" />
-                                      <span className="font-medium text-blue-600">
-                                        {(dossier.tauxFinal * 100).toFixed(2)}%
-                                      </span>
-                                    </div>
-                                  )}
-                                  <div className="flex items-center gap-2">
-                                    <Target className="w-4 h-4" />
-                                    Progress: {dossier.progress || 0}%
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <Calendar className="w-4 h-4" />
-                                    {new Date(dossier.created_at).toLocaleDateString('fr-FR')}
-                                  </div>
+                                <div className="p-2 bg-blue-50 rounded-lg group-hover:bg-blue-100 transition-colors">
+                                  <Briefcase className="w-5 h-5 text-blue-600" />
                                 </div>
+                              </div>
+                            </div>
 
-                                {dossier.Expert && (
-                                  <div className="mt-2 flex items-center gap-2 text-sm">
-                                    <UserCheck className="w-4 h-4 text-blue-600" />
-                                    <span className="text-gray-600">
-                                      Expert: <strong>{dossier.Expert.first_name} {dossier.Expert.last_name}</strong>
-                                    </span>
-                                    {dossier.Expert.rating && (
-                                      <span className="text-yellow-600">⭐ {dossier.Expert.rating}/5</span>
-                                    )}
+                            {/* Métriques principales */}
+                            <div className="space-y-3 mb-4">
+                              {dossier.montantFinal && (
+                                <div className="flex items-center justify-between p-2 bg-green-50 rounded-lg">
+                                  <div className="flex items-center gap-2">
+                                    <DollarSign className="w-4 h-4 text-green-600" />
+                                    <span className="text-xs text-gray-600">Montant</span>
                                   </div>
-                                )}
+                                  <span className="text-lg font-bold text-green-600">
+                                    {dossier.montantFinal.toLocaleString('fr-FR')}€
+                                  </span>
+                                </div>
+                              )}
+                              {dossier.tauxFinal && (
+                                <div className="flex items-center justify-between p-2 bg-blue-50 rounded-lg">
+                                  <div className="flex items-center gap-2">
+                                    <TrendingUp className="w-4 h-4 text-blue-600" />
+                                    <span className="text-xs text-gray-600">Taux</span>
+                                  </div>
+                                  <span className="text-lg font-bold text-blue-600">
+                                    {(dossier.tauxFinal * 100).toFixed(2)}%
+                                  </span>
+                                </div>
+                              )}
+                              <div className="flex items-center justify-between p-2 bg-purple-50 rounded-lg">
+                                <div className="flex items-center gap-2">
+                                  <Target className="w-4 h-4 text-purple-600" />
+                                  <span className="text-xs text-gray-600">Progression</span>
+                                </div>
+                                <span className="text-lg font-bold text-purple-600">
+                                  {dossier.progress || 0}%
+                                </span>
                               </div>
+                            </div>
 
-                              <div className="flex flex-col gap-1">
-                                <Button 
-                                  variant="outline" 
-                                  size="sm"
-                                  onClick={() => {
-                                    navigate(`/admin/dossiers/${dossier.id}`);
-                                  }}
-                                  title="Ouvrir la synthèse du dossier"
-                                >
-                                  <Eye className="w-4 h-4" />
-                                </Button>
+                            {/* Footer avec date et expert */}
+                            <div className="pt-4 border-t border-gray-200 space-y-2">
+                              <div className="flex items-center gap-2 text-xs text-gray-500">
+                                <Calendar className="w-3 h-3" />
+                                <span>{new Date(dossier.created_at).toLocaleDateString('fr-FR')}</span>
                               </div>
+                              {dossier.Expert && (
+                                <div className="flex items-center gap-2 text-xs">
+                                  <UserCheck className="w-3 h-3 text-blue-600" />
+                                  <span className="text-gray-600">
+                                    <strong>{dossier.Expert.first_name} {dossier.Expert.last_name}</strong>
+                                  </span>
+                                  {dossier.Expert.rating && (
+                                    <span className="text-yellow-600">⭐ {dossier.Expert.rating}/5</span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Indicateur de clic */}
+                            <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Eye className="w-4 h-4 text-blue-600" />
                             </div>
                           </div>
                         ))}

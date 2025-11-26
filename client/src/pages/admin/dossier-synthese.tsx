@@ -13,7 +13,6 @@ import {
   User,
   Mail,
   Phone,
-  Calendar,
   FileText,
   DollarSign,
   Target,
@@ -21,15 +20,14 @@ import {
   AlertTriangle,
   RefreshCw,
   Eye,
-  Award,
   Briefcase,
   MessageSquare,
   UserPlus,
   XCircle,
   Send,
   Building,
-  Clock,
-  Percent
+  Percent,
+  UserCheck
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { get } from '@/lib/api';
@@ -531,11 +529,12 @@ const DossierSynthese: React.FC = () => {
 
             {/* Onglets */}
             <Tabs defaultValue="details" className="w-full">
-              <TabsList className="grid grid-cols-4 w-full max-w-2xl">
+              <TabsList className="grid grid-cols-5 w-full max-w-3xl">
                 <TabsTrigger value="details">Détails</TabsTrigger>
                 <TabsTrigger value="client">Client</TabsTrigger>
                 <TabsTrigger value="documents">Documents ({dossier.documents_sent?.length || 0})</TabsTrigger>
-                <TabsTrigger value="historique">Historique</TabsTrigger>
+                <TabsTrigger value="expert">Expert assigné</TabsTrigger>
+                <TabsTrigger value="historique">Historique du dossier</TabsTrigger>
               </TabsList>
 
               {/* Onglet Détails */}
@@ -577,34 +576,6 @@ const DossierSynthese: React.FC = () => {
                           {dossier.tauxFinal ? `${(dossier.tauxFinal * 100).toFixed(2)}%` : 'Non calculé'}
                         </p>
                       </div>
-                      <div>
-                        <span className="text-gray-600">Expert Assigné</span>
-                        <div className="mt-1">
-                          {dossier.Expert ? (
-                            <button
-                              onClick={() => navigate(`/admin/experts/${dossier.Expert!.id}`)}
-                              className="font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
-                            >
-                              {`${dossier.Expert.first_name || ''} ${dossier.Expert.last_name || ''}`.trim() || dossier.Expert.name}
-                            </button>
-                          ) : (
-                            <p className="font-medium text-gray-900">Aucun</p>
-                          )}
-                        </div>
-                      </div>
-                      {dossier.Expert?.Cabinet && (
-                        <div>
-                          <span className="text-gray-600">Cabinet</span>
-                          <div className="mt-1">
-                            <button
-                              onClick={() => navigate(`/admin/cabinets/${dossier.Expert!.Cabinet!.id}`)}
-                              className="font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
-                            >
-                              {dossier.Expert.Cabinet.name}
-                            </button>
-                          </div>
-                        </div>
-                      )}
                       <div>
                         <span className="text-gray-600">Date de création</span>
                         <p className="font-medium text-gray-900 mt-1">
@@ -733,67 +704,108 @@ const DossierSynthese: React.FC = () => {
                 </Card>
               </TabsContent>
 
-              {/* Onglet Historique */}
-              <TabsContent value="historique" className="space-y-4 mt-6">
+              {/* Onglet Expert assigné */}
+              <TabsContent value="expert" className="space-y-4 mt-6">
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <Clock className="w-5 h-5 text-indigo-600" />
-                      Historique des Actions
+                      <UserCheck className="w-5 h-5 text-purple-600" />
+                      Expert Assigné
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-3">
-                      <div className="flex items-start gap-3 p-3 border-l-4 border-blue-500 bg-blue-50 rounded">
-                        <Calendar className="w-4 h-4 text-blue-600 mt-1" />
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-gray-900">Création du dossier</p>
-                          <p className="text-xs text-gray-600">{new Date(dossier.created_at).toLocaleString('fr-FR')}</p>
+                    {dossier.Expert ? (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="text-gray-600">Nom</span>
+                            <div className="mt-1">
+                              <button
+                                onClick={() => navigate(`/admin/experts/${dossier.Expert!.id}`)}
+                                className="font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                              >
+                                {`${dossier.Expert.first_name || ''} ${dossier.Expert.last_name || ''}`.trim() || dossier.Expert.name}
+                              </button>
+                            </div>
+                          </div>
+                          {dossier.Expert.email && (
+                            <div>
+                              <span className="text-gray-600 flex items-center gap-1">
+                                <Mail className="w-3 h-3" />
+                                Email
+                              </span>
+                              <p className="font-medium text-gray-900 mt-1">{dossier.Expert.email}</p>
+                            </div>
+                          )}
+                          {dossier.Expert.company_name && (
+                            <div>
+                              <span className="text-gray-600 flex items-center gap-1">
+                                <Building className="w-3 h-3" />
+                                Entreprise
+                              </span>
+                              <p className="font-medium text-gray-900 mt-1">{dossier.Expert.company_name}</p>
+                            </div>
+                          )}
+                          {dossier.Expert.Cabinet && (
+                            <div>
+                              <span className="text-gray-600">Cabinet</span>
+                              <div className="mt-1">
+                                <button
+                                  onClick={() => navigate(`/admin/cabinets/${dossier.Expert!.Cabinet!.id}`)}
+                                  className="font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                                >
+                                  {dossier.Expert.Cabinet.name}
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        <div className="pt-4 border-t border-gray-200">
+                          <Button
+                            onClick={() => navigate(`/admin/experts/${dossier.Expert!.id}`)}
+                            variant="outline"
+                            className="w-full sm:w-auto"
+                          >
+                            <Eye className="w-4 h-4 mr-2" />
+                            Voir le profil de l'expert
+                          </Button>
                         </div>
                       </div>
-
-                      {dossier.pre_eligibility_validated_at && (
-                        <div className="flex items-start gap-3 p-3 border-l-4 border-green-500 bg-green-50 rounded">
-                          <CheckCircle className="w-4 h-4 text-green-600 mt-1" />
-                          <div className="flex-1">
-                            <p className="text-sm font-medium text-gray-900">Pré-éligibilité validée</p>
-                            <p className="text-xs text-gray-600">{new Date(dossier.pre_eligibility_validated_at).toLocaleString('fr-FR')}</p>
-                          </div>
-                        </div>
-                      )}
-
-                      {dossier.eligibility_validated_at && (
-                        <div className="flex items-start gap-3 p-3 border-l-4 border-emerald-500 bg-emerald-50 rounded">
-                          <Award className="w-4 h-4 text-emerald-600 mt-1" />
-                          <div className="flex-1">
-                            <p className="text-sm font-medium text-gray-900">Éligibilité validée</p>
-                            <p className="text-xs text-gray-600">{new Date(dossier.eligibility_validated_at).toLocaleString('fr-FR')}</p>
-                          </div>
-                        </div>
-                      )}
-
-                      {dossier.updated_at !== dossier.created_at && (
-                        <div className="flex items-start gap-3 p-3 border-l-4 border-gray-300 bg-gray-50 rounded">
-                          <RefreshCw className="w-4 h-4 text-gray-600 mt-1" />
-                          <div className="flex-1">
-                            <p className="text-sm font-medium text-gray-900">Dernière modification</p>
-                            <p className="text-xs text-gray-600">{new Date(dossier.updated_at).toLocaleString('fr-FR')}</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                    ) : (
+                      <div className="text-center py-12">
+                        <UserCheck className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                        <p className="text-gray-500 mb-4">Aucun expert assigné à ce dossier</p>
+                        <Button
+                          onClick={() => setShowExpertDialog(true)}
+                          className="bg-purple-600 hover:bg-purple-700"
+                        >
+                          <UserPlus className="w-4 h-4 mr-2" />
+                          Assigner un expert
+                        </Button>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
-            </Tabs>
 
-            {/* Timeline & Commentaires */}
-            {id && user && (
-              <DossierTimeline 
-                dossierId={id} 
-                userType={user.type as 'expert' | 'admin' | 'apporteur'} 
-              />
-            )}
+              {/* Onglet Historique du dossier */}
+              <TabsContent value="historique" className="space-y-4 mt-6">
+                {id && user && (
+                  <DossierTimeline 
+                    dossierId={id} 
+                    userType={user.type as 'expert' | 'admin' | 'apporteur'}
+                    dossierInfo={{
+                      client_id: dossier.Client?.id,
+                      client_name: getClientDisplayName(),
+                      client_company_name: dossier.Client?.company_name,
+                      client_phone: dossier.Client?.phone,
+                      client_email: dossier.Client?.email,
+                      produit_name: dossier.ProduitEligible?.nom
+                    }}
+                  />
+                )}
+              </TabsContent>
+            </Tabs>
           </div>
         )}
 
