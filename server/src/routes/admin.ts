@@ -3032,6 +3032,102 @@ router.delete('/clients/:id/notes', asyncHandler(async (req, res) => {
   }
 }));
 
+// POST /api/admin/clients/:id/client-produit-eligible/calculate - Calculer les valeurs à partir des réponses
+router.post('/clients/:id/client-produit-eligible/calculate', asyncHandler(async (req, res) => {
+  try {
+    const { produitId, answers } = req.body;
+
+    if (!produitId) {
+      return res.status(400).json({
+        success: false,
+        message: 'produitId est obligatoire'
+      });
+    }
+
+    // Récupérer le produit avec sa formule
+    const { data: produit, error: produitError } = await supabaseClient
+      .from('ProduitEligible')
+      .select('id, nom, formule_calcul, parametres_requis, taux_min, taux_max, duree_min, duree_max')
+      .eq('id', produitId)
+      .single();
+
+    if (produitError || !produit) {
+      return res.status(404).json({
+        success: false,
+        message: 'Produit non trouvé'
+      });
+    }
+
+    // Mapper les réponses vers les variables de formule
+    const { data: mappedAnswers, error: mapError } = await supabaseClient.rpc('mapper_reponses_vers_variables', {
+      p_reponses: answers || {}
+    });
+
+    if (mapError) {
+      console.error('Erreur mapping réponses:', mapError);
+      // Continuer avec les réponses brutes si le mapping échoue
+    }
+
+    const reponsesMappees = mappedAnswers || answers || {};
+
+    // Calculer le montant avec la fonction SQL
+    const { data: calculResult, error: calcError } = await supabaseClient.rpc('calculer_montant_produit', {
+      p_produit_id: produitId,
+      p_reponses: reponsesMappees
+    });
+
+    if (calcError) {
+      console.error('Erreur calcul produit:', calcError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors du calcul du montant',
+        error: calcError.message
+      });
+    }
+
+    // Extraire les valeurs du résultat
+    const montantFinal = calculResult?.montant || 0;
+    const calculDetails = calculResult?.details || {};
+    const isEligible = calculResult?.is_eligible || false;
+
+    // Déterminer tauxFinal et dureeFinale selon le produit
+    // Par défaut, utiliser les valeurs min/max du produit ou des valeurs par défaut
+    let tauxFinal = produit.taux_min || 0.35; // 35% par défaut
+    let dureeFinale = produit.duree_min || 12; // 12 mois par défaut
+
+    // Si le produit a des taux min/max, utiliser la moyenne ou le min
+    if (produit.taux_min && produit.taux_max) {
+      tauxFinal = (produit.taux_min + produit.taux_max) / 2;
+    } else if (produit.taux_min) {
+      tauxFinal = produit.taux_min;
+    }
+
+    // Convertir tauxFinal en décimal si nécessaire (si > 1, c'est un pourcentage)
+    if (tauxFinal > 1) {
+      tauxFinal = tauxFinal / 100;
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        montantFinal: Math.round(montantFinal * 100) / 100,
+        tauxFinal: Math.round(tauxFinal * 10000) / 10000, // 4 décimales
+        dureeFinale,
+        isEligible,
+        calculDetails,
+        reponsesMappees
+      }
+    });
+
+  } catch (error: any) {
+    console.error('Erreur calcul ClientProduitEligible:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Erreur lors du calcul'
+    });
+  }
+}));
+
 // POST /api/admin/clients/:id/client-produit-eligible - Créer un ClientProduitEligible pour un client
 router.post('/clients/:id/client-produit-eligible', asyncHandler(async (req, res) => {
   try {
@@ -3086,6 +3182,12 @@ router.post('/clients/:id/client-produit-eligible', asyncHandler(async (req, res
       });
     }
 
+    // Normaliser tauxFinal : si > 1, c'est un pourcentage, convertir en décimal
+    let tauxFinalNormalized = parseFloat(tauxFinal);
+    if (tauxFinalNormalized > 1) {
+      tauxFinalNormalized = tauxFinalNormalized / 100;
+    }
+
     // Déterminer le statut initial
     const statut = montantFinal >= 1000 ? 'eligible' : 'to_confirm';
 
@@ -3097,7 +3199,7 @@ router.post('/clients/:id/client-produit-eligible', asyncHandler(async (req, res
         produitId: produitId,
         statut: statut,
         montantFinal: parseFloat(montantFinal),
-        tauxFinal: parseFloat(tauxFinal),
+        tauxFinal: tauxFinalNormalized, // Utiliser la valeur normalisée
         dureeFinale: parseInt(dureeFinale),
         notes: notes || `Créé manuellement par ${adminName}`,
         calcul_details: calcul_details || {},

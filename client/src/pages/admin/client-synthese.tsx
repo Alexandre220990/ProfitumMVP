@@ -105,7 +105,7 @@ const ClientSynthese: React.FC = () => {
   const [produitsEligibles, setProduitsEligibles] = useState<any[]>([]);
   const [selectedProduit, setSelectedProduit] = useState<string>('');
   const [produitQuestions, setProduitQuestions] = useState<any[]>([]);
-  const [formAnswers, setFormAnswers] = useState<Record<string, number>>({});
+  const [formAnswers, setFormAnswers] = useState<Record<string, number | string>>({});
   const [formData, setFormData] = useState({
     montantFinal: '',
     tauxFinal: '',
@@ -310,6 +310,12 @@ const ClientSynthese: React.FC = () => {
   const handleProduitChange = async (produitId: string) => {
     setSelectedProduit(produitId);
     setFormAnswers({});
+    setFormData(prev => ({
+      ...prev,
+      montantFinal: '',
+      tauxFinal: '',
+      dureeFinale: ''
+    }));
     
     // Récupérer le produit sélectionné
     const produit = produitsEligibles.find((p: any) => p.id === produitId);
@@ -325,36 +331,42 @@ const ClientSynthese: React.FC = () => {
           const allQuestions = (questionsResponse.data as any)?.questions || 
                               (Array.isArray(questionsResponse.data) ? questionsResponse.data : []);
           
+          // Mapping amélioré des paramètres requis vers les codes de questions
+          const paramToQuestionCodeMap: Record<string, string[]> = {
+            'secteur': ['GENERAL_001'],
+            'ca': ['GENERAL_002', 'CALCUL_CA'],
+            'ca_tranche': ['GENERAL_002'],
+            'nb_employes': ['GENERAL_003', 'CALCUL_EMPLOYES'],
+            'nb_employes_tranche': ['GENERAL_003'],
+            'proprietaire_locaux': ['GENERAL_004'],
+            'contrats_energie': ['GENERAL_005'],
+            'possede_vehicules': ['TICPE_001'],
+            'types_vehicules': ['TICPE_003'],
+            'litres_carburant_mois': ['TICPE_002', 'CALCUL_TICPE_LITRES'],
+            'nb_chauffeurs': ['DFS_001', 'CALCUL_DFS_CHAUFFEURS'],
+            'montant_taxe_fonciere': ['FONCIER_001', 'CALCUL_FONCIER_MONTANT'],
+            'montant_factures_energie_mois': ['ENERGIE_001', 'CALCUL_ENERGIE_FACTURES'],
+            'niveau_impayes': ['RECOUVR_001']
+          };
+          
           // Filtrer les questions qui correspondent aux paramètres requis
           const requiredQuestions = allQuestions.filter((q: any) => {
-            // Vérifier si la question correspond à un paramètre requis
             const questionCode = q.question_id || q.code || q.id;
             const questionText = (q.question_text || q.texte || '').toLowerCase();
             
             return produit.parametres_requis.some((param: string) => {
-              // Mapping des paramètres vers les codes de questions
-              const paramToQuestionMap: Record<string, string[]> = {
-                'ca': ['ca', 'chiffre_affaires', 'revenu_annuel'],
-                'nb_employes': ['nb_employes', 'nombre_employes', 'nb_employes_tranche'],
-                'secteur': ['secteur', 'secteur_activite'],
-                'possede_vehicules': ['possede_vehicules', 'vehicules'],
-                'types_vehicules': ['types_vehicules', 'type_vehicule'],
-                'litres_carburant_mois': ['litres_carburant_mois', 'carburant'],
-                'nb_chauffeurs': ['nb_chauffeurs', 'chauffeurs'],
-                'proprietaire_locaux': ['proprietaire_locaux', 'proprietaire'],
-                'montant_taxe_fonciere': ['montant_taxe_fonciere', 'taxe_fonciere'],
-                'ca_tranche': ['ca_tranche', 'chiffre_affaires_tranche'],
-                'contrats_energie': ['contrats_energie', 'energie'],
-                'montant_factures_energie_mois': ['montant_factures_energie_mois', 'factures_energie'],
-                'niveau_impayes': ['niveau_impayes', 'impayes']
-              };
+              // D'abord essayer avec le mapping direct
+              const possibleCodes = paramToQuestionCodeMap[param];
+              if (possibleCodes) {
+                return possibleCodes.some(code => 
+                  questionCode?.toLowerCase() === code.toLowerCase()
+                );
+              }
               
-              const possibleCodes = paramToQuestionMap[param] || [param];
-              return possibleCodes.some(code => {
-                const codeLower = code.toLowerCase();
-                return questionCode?.toLowerCase().includes(codeLower) ||
-                       questionText.includes(codeLower);
-              });
+              // Fallback : recherche dans le texte
+              const paramLower = param.toLowerCase();
+              return questionCode?.toLowerCase().includes(paramLower) ||
+                     questionText.includes(paramLower);
             });
           });
           
@@ -369,6 +381,85 @@ const ClientSynthese: React.FC = () => {
       setProduitQuestions([]);
     }
   };
+
+  // Fonction pour calculer automatiquement les valeurs à partir des réponses
+  const calculateValues = async () => {
+    if (!selectedProduit || !id) return;
+    
+    // Vérifier que toutes les questions requises sont remplies
+    const produit = produitsEligibles.find((p: any) => p.id === selectedProduit);
+    if (!produit) return;
+    
+    const allRequiredFilled = produitQuestions.every((q: any) => {
+      const questionId = q.question_id || q.code || q.id;
+      const answer = formAnswers[questionId];
+      return answer !== undefined && answer !== '' && answer !== null && (typeof answer === 'number' ? !isNaN(answer) : true);
+    });
+    
+    if (!allRequiredFilled) {
+      // Réinitialiser les valeurs si toutes les questions ne sont pas remplies
+      setFormData(prev => ({
+        ...prev,
+        montantFinal: '',
+        tauxFinal: '',
+        dureeFinale: ''
+      }));
+      return;
+    }
+    
+    try {
+      // Préparer les réponses au format attendu par l'API
+      const answersForAPI: Record<string, any> = {};
+      produitQuestions.forEach((q: any) => {
+        const questionId = q.question_id || q.code || q.id;
+        const value = formAnswers[questionId];
+        if (value !== undefined && value !== '') {
+          answersForAPI[questionId] = value;
+        }
+      });
+      
+      // Appeler l'endpoint de calcul
+      const response = await post(`/admin/clients/${id}/client-produit-eligible/calculate`, {
+        produitId: selectedProduit,
+        answers: answersForAPI
+      });
+      
+      if (response.success && response.data) {
+        const data = response.data as {
+          montantFinal?: number;
+          tauxFinal?: number;
+          dureeFinale?: number;
+        };
+        
+        // Mettre à jour les champs avec les valeurs calculées
+        setFormData(prev => ({
+          ...prev,
+          montantFinal: data.montantFinal?.toString() || '',
+          tauxFinal: data.tauxFinal ? (data.tauxFinal * 100).toString() : '', // Convertir en pourcentage pour l'affichage
+          dureeFinale: data.dureeFinale?.toString() || ''
+        }));
+        
+        toast.success('Valeurs calculées automatiquement');
+      }
+    } catch (error: any) {
+      console.error('Erreur calcul automatique:', error);
+      // Ne pas afficher d'erreur si c'est juste que les questions ne sont pas toutes remplies
+      if (error?.message && !error.message.includes('obligatoire')) {
+        toast.error('Erreur lors du calcul automatique');
+      }
+    }
+  };
+
+  // Recalculer quand les réponses changent
+  useEffect(() => {
+    if (selectedProduit && produitQuestions.length > 0) {
+      const timer = setTimeout(() => {
+        calculateValues();
+      }, 500); // Debounce de 500ms
+      
+      return () => clearTimeout(timer);
+    }
+  }, [formAnswers, selectedProduit, produitQuestions]);
 
   const resetForm = () => {
     setSelectedProduit('');
@@ -395,16 +486,26 @@ const ClientSynthese: React.FC = () => {
         return;
       }
 
+      // Préparer les réponses au format attendu
+      const answersForAPI: Record<string, any> = {};
+      produitQuestions.forEach((q: any) => {
+        const questionId = q.question_id || q.code || q.id;
+        const value = formAnswers[questionId];
+        if (value !== undefined && value !== '') {
+          answersForAPI[questionId] = value;
+        }
+      });
+
       const response = await post(`/admin/clients/${id}/client-produit-eligible`, {
         produitId: selectedProduit,
         montantFinal: parseFloat(formData.montantFinal),
-        tauxFinal: parseFloat(formData.tauxFinal),
+        tauxFinal: parseFloat(formData.tauxFinal), // Le backend convertira en décimal si nécessaire
         dureeFinale: parseInt(formData.dureeFinale),
         clientFeePercentage: parseFloat(formData.clientFeePercentage) / 100,
         profitumFeePercentage: parseFloat(formData.profitumFeePercentage) / 100,
         notes: formData.notes || undefined,
         calcul_details: {
-          answers: formAnswers,
+          answers: answersForAPI,
           parametres_requis: produit.parametres_requis || []
         }
       });
@@ -1155,29 +1256,85 @@ const ClientSynthese: React.FC = () => {
               {/* Questions nécessaires pour le produit sélectionné */}
               {selectedProduit && produitQuestions.length > 0 && (
                 <div className="space-y-4 border-t pt-4">
-                  <h3 className="font-semibold text-sm">Règles de calcul et données nécessaires au calcul</h3>
-                  {produitQuestions.map((question: any) => (
-                    <div key={question.id} className="space-y-2">
-                      <Label htmlFor={`question-${question.id}`}>{question.question_text}</Label>
-                      <Input
-                        id={`question-${question.id}`}
-                        type="number"
-                        placeholder="Entrez un nombre"
-                        value={formAnswers[question.id] || ''}
-                        onChange={(e) => {
-                          const value = e.target.value ? parseFloat(e.target.value) : 0;
-                          setFormAnswers(prev => ({ ...prev, [question.id]: value }));
-                        }}
-                        required
-                      />
-                    </div>
-                  ))}
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold text-sm">Règles de calcul et données nécessaires au calcul</h3>
+                    <Badge variant="outline" className="text-xs">
+                      Calcul automatique activé
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-gray-500 mb-4">
+                    Remplissez les champs ci-dessous pour que le montant, le taux et la durée soient calculés automatiquement.
+                  </p>
+                  {produitQuestions.map((question: any) => {
+                    const questionId = question.question_id || question.code || question.id;
+                    const questionType = question.question_type || question.type || 'text';
+                    const isNumber = questionType === 'nombre' || questionType === 'number';
+                    
+                    return (
+                      <div key={question.id || questionId} className="space-y-2">
+                        <Label htmlFor={`question-${questionId}`}>
+                          {question.question_text || question.texte}
+                          {question.description && (
+                            <span className="text-xs text-gray-500 ml-2">({question.description})</span>
+                          )}
+                        </Label>
+                        {isNumber ? (
+                          <Input
+                            id={`question-${questionId}`}
+                            type="number"
+                            step="0.01"
+                            placeholder="Entrez un nombre"
+                            value={formAnswers[questionId] || ''}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              setFormAnswers(prev => ({ 
+                                ...prev, 
+                                [questionId]: value ? parseFloat(value) : undefined 
+                              }));
+                            }}
+                            required
+                          />
+                        ) : (
+                          <Input
+                            id={`question-${questionId}`}
+                            type="text"
+                            placeholder="Entrez votre réponse"
+                            value={formAnswers[questionId] || ''}
+                            onChange={(e) => {
+                              setFormAnswers(prev => ({ 
+                                ...prev, 
+                                [questionId]: e.target.value 
+                              }));
+                            }}
+                            required
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 
               {/* Champs de calcul */}
               <div className="space-y-4 border-t pt-4">
-                <h3 className="font-semibold text-sm">Informations du dossier</h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-sm">Informations du dossier</h3>
+                  {selectedProduit && produitQuestions.length > 0 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={calculateValues}
+                      disabled={!produitQuestions.every((q: any) => {
+                        const questionId = q.question_id || q.code || q.id;
+                        const answer = formAnswers[questionId];
+                        return answer !== undefined && answer !== '' && answer !== null;
+                      })}
+                    >
+                      Recalculer
+                    </Button>
+                  )}
+                </div>
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="montantFinal">Montant Final (€) *</Label>
@@ -1190,6 +1347,9 @@ const ClientSynthese: React.FC = () => {
                       onChange={(e) => setFormData(prev => ({ ...prev, montantFinal: e.target.value }))}
                       required
                     />
+                    {selectedProduit && produitQuestions.length > 0 && (
+                      <p className="text-xs text-gray-500">Calculé automatiquement</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="tauxFinal">Taux Final (%) *</Label>
@@ -1197,11 +1357,14 @@ const ClientSynthese: React.FC = () => {
                       id="tauxFinal"
                       type="number"
                       step="0.01"
-                      placeholder="0.00"
+                      placeholder="35.00"
                       value={formData.tauxFinal}
                       onChange={(e) => setFormData(prev => ({ ...prev, tauxFinal: e.target.value }))}
                       required
                     />
+                    {selectedProduit && produitQuestions.length > 0 && (
+                      <p className="text-xs text-gray-500">Calculé automatiquement</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="dureeFinale">Durée Finale (mois) *</Label>
@@ -1213,6 +1376,9 @@ const ClientSynthese: React.FC = () => {
                       onChange={(e) => setFormData(prev => ({ ...prev, dureeFinale: e.target.value }))}
                       required
                     />
+                    {selectedProduit && produitQuestions.length > 0 && (
+                      <p className="text-xs text-gray-500">Calculé automatiquement</p>
+                    )}
                   </div>
                 </div>
               </div>
