@@ -1403,6 +1403,41 @@ router.post('/events/:id/participants', calendarLimiter, asyncHandler(async (req
   }
 }));
 
+/**
+ * GET /api/calendar/admins - Récupérer la liste des administrateurs (accessible à tous les utilisateurs authentifiés)
+ */
+router.get('/admins', calendarLimiter, asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) {
+    return res.status(401).json({ success: false, message: 'Non authentifié' });
+  }
+
+  try {
+    const { limit = 200 } = req.query;
+
+    const { data: admins, error } = await supabase
+      .from('Admin')
+      .select('id, name, email, is_active, created_at')
+      .eq('is_active', true)
+      .order('name', { ascending: true })
+      .limit(Number(limit));
+
+    if (error) {
+      console.error('❌ Erreur récupération admins:', error);
+      return res.status(500).json({ success: false, message: 'Erreur serveur' });
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        admins: admins || []
+      }
+    });
+  } catch (error) {
+    console.error('❌ Erreur route admins:', error);
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+}));
+
 // ============================================================================
 // ROUTES RAPPELS
 // ============================================================================

@@ -2101,6 +2101,46 @@ router.post('/clients', asyncHandler(async (req, res) => {
   }
 }));
 
+// GET /api/admin/admins - Liste des administrateurs
+router.get('/admins', asyncHandler(async (req, res) => {
+  try {
+    const { page = 1, limit = 200, search } = req.query;
+    const offset = (Number(page) - 1) * Number(limit);
+
+    let query = supabaseClient
+      .from('Admin')
+      .select('id, name, email, is_active, created_at')
+      .eq('is_active', true)
+      .order('name', { ascending: true });
+
+    if (search) {
+      query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%`);
+    }
+
+    query = query.range(offset, offset + Number(limit) - 1);
+
+    const { data: admins, error } = await query;
+
+    if (error) {
+      throw error;
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        admins: admins || []
+      }
+    });
+
+  } catch (error: any) {
+    console.error('Erreur récupération admins:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des administrateurs'
+    });
+  }
+}));
+
 // POST /api/admin/admins - Créer un nouvel administrateur
 router.post('/admins', asyncHandler(async (req, res) => {
   try {

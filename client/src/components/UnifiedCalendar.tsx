@@ -1417,17 +1417,25 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
         requests.push(
           { type: 'client', url: `${config.API_URL}/api/admin/clients?limit=200` },
           { type: 'expert', url: `${config.API_URL}/api/admin/experts?limit=200` },
-          { type: 'apporteur', url: `${config.API_URL}/api/admin/apporteurs?limit=200` }
+          { type: 'apporteur', url: `${config.API_URL}/api/admin/apporteurs?limit=200` },
+          { type: 'admin', url: `${config.API_URL}/api/calendar/admins?limit=200` }
         );
       } else if (user?.type === 'expert') {
-        requests.push({ type: 'client', url: `${config.API_URL}/api/admin/clients?limit=200` });
+        requests.push(
+          { type: 'client', url: `${config.API_URL}/api/admin/clients?limit=200` },
+          { type: 'admin', url: `${config.API_URL}/api/calendar/admins?limit=200` }
+        );
       } else if (user?.type === 'apporteur') {
         requests.push(
           { type: 'client', url: `${config.API_URL}/api/apporteur/prospects` },
-          { type: 'expert', url: `${config.API_URL}/api/experts` }
+          { type: 'expert', url: `${config.API_URL}/api/experts` },
+          { type: 'admin', url: `${config.API_URL}/api/calendar/admins?limit=200` }
         );
       } else if (user?.type === 'client') {
-        requests.push({ type: 'expert', url: `${config.API_URL}/api/experts` });
+        requests.push(
+          { type: 'expert', url: `${config.API_URL}/api/experts` },
+          { type: 'admin', url: `${config.API_URL}/api/calendar/admins?limit=200` }
+        );
       }
 
       const participants: ParticipantOption[] = [];
@@ -1460,10 +1468,12 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
     if (Array.isArray(data.clients)) return data.clients;
     if (Array.isArray(data.experts)) return data.experts;
     if (Array.isArray(data.apporteurs)) return data.apporteurs;
+    if (Array.isArray(data.admins)) return data.admins;
     if (data.data) {
       if (Array.isArray(data.data.clients)) return data.data.clients;
       if (Array.isArray(data.data.experts)) return data.data.experts;
       if (Array.isArray(data.data.apporteurs)) return data.data.apporteurs;
+      if (Array.isArray(data.data.admins)) return data.data.admins;
       if (Array.isArray(data.data.prospects)) return data.data.prospects;
       if (Array.isArray(data.data.data)) return data.data.data;
     }
