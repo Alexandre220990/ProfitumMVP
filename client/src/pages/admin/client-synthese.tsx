@@ -25,7 +25,8 @@ import {
   Trash2,
   Save,
   X,
-  Briefcase
+  Briefcase,
+  Building
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { get, put, del, post } from '@/lib/api';
@@ -565,16 +566,23 @@ const ClientSynthese: React.FC = () => {
         </Button>
 
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              Synthèse Client
-            </h1>
-            <p className="text-gray-600">
-              {loading ? 'Chargement...' : getClientDisplayName()}
-            </p>
-            {client?.company_name && (
-              <p className="text-sm text-gray-500">
-                🏢 {client.company_name}
+          <div className="flex-1">
+            <div className="flex items-baseline gap-3 mb-2">
+              <h1 className="text-2xl font-semibold text-gray-700">
+                Synthèse Client
+              </h1>
+              {!loading && client?.company_name && (
+                <div className="flex items-center gap-2">
+                  <Building className="w-5 h-5 text-gray-600" />
+                  <span className="text-2xl font-bold text-gray-900">
+                    {client.company_name}
+                  </span>
+                </div>
+              )}
+            </div>
+            {!client?.company_name && !loading && (
+              <p className="text-lg text-gray-600">
+                {getClientDisplayName()}
               </p>
             )}
           </div>
