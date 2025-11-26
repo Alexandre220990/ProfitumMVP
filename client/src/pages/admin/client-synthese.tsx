@@ -435,9 +435,9 @@ const ClientSynthese: React.FC = () => {
       if (response.success) {
         toast.success('Client supprimé définitivement');
         setShowDeleteDialog(false);
-        // Rediriger vers la liste des clients après suppression
+        // Rediriger vers le dashboard optimisé après suppression
         setTimeout(() => {
-          navigate('/admin/gestion-clients');
+          navigate('/admin/dashboard-optimized');
         }, 1000);
       } else {
         throw new Error(response.message || 'Erreur lors de la suppression');
