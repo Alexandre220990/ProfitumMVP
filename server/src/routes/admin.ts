@@ -7189,4 +7189,134 @@ router.post('/dossiers/normalize-statuses', asyncHandler(async (_req, res) => {
   });
 }));
 
+// POST /api/admin/leads - Créer un lead (admin uniquement)
+router.post('/leads', asyncHandler(async (req, res) => {
+  try {
+    const { name, email, phone, subject, contexte } = req.body;
+
+    // Validation des champs obligatoires
+    if (!name || !email || !contexte) {
+      return res.status(400).json({
+        success: false,
+        message: 'Les champs nom, email et contexte sont obligatoires'
+      });
+    }
+
+    // Validation de l'email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Format d\'email invalide'
+      });
+    }
+
+    // Récupérer l'ID de l'admin qui envoie le lead
+    const user = (req as any).user;
+    const adminId = user?.database_id || user?.id || null;
+    
+    // Insérer le lead dans la table contact_messages
+    // On utilise le champ subject pour marquer que c'est un lead si le champ type n'existe pas
+    const leadSubject = subject 
+      ? `[LEAD] ${subject.trim()}` 
+      : '[LEAD] Lead ajouté manuellement';
+    
+    // Préparer les données d'insertion avec sender_id et sender_type
+    const leadData: any = {
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      phone: phone ? phone.trim() : null,
+      subject: leadSubject,
+      message: contexte.trim(),
+      status: 'unread',
+      created_at: new Date().toISOString()
+    };
+    
+    // Ajouter sender_id et sender_type si l'admin est identifié
+    if (adminId) {
+      leadData.sender_id = adminId;
+      leadData.sender_type = 'admin';
+    }
+    
+    const { data: lead, error } = await supabaseAdmin
+      .from('contact_messages')
+      .insert(leadData)
+      .select('id')
+      .single();
+
+    if (error) {
+      console.error('❌ Erreur insertion lead:', error);
+      
+      // Si la table n'existe pas, on la crée automatiquement
+      if (error.code === '42P01') {
+        console.log('⚠️ Table contact_messages n\'existe pas, création en cours...');
+        return res.status(500).json({
+          success: false,
+          message: 'Table de contact non configurée. Veuillez créer la table contact_messages dans Supabase.'
+        });
+      }
+
+      // Si les champs sender_id/sender_type n'existent pas, on réessaye sans
+      if (error.message?.includes('column') && (error.message?.includes('sender_id') || error.message?.includes('sender_type'))) {
+        console.log('⚠️ Champs sender_id/sender_type n\'existent pas, insertion sans...');
+        const leadDataRetry: any = {
+          name: name.trim(),
+          email: email.trim().toLowerCase(),
+          phone: phone ? phone.trim() : null,
+          subject: leadSubject,
+          message: contexte.trim(),
+          status: 'unread',
+          created_at: new Date().toISOString()
+        };
+        
+        const { data: leadRetry, error: errorRetry } = await supabaseAdmin
+          .from('contact_messages')
+          .insert(leadDataRetry)
+          .select('id')
+          .single();
+        
+        if (errorRetry) {
+          return res.status(500).json({
+            success: false,
+            message: 'Erreur lors de l\'enregistrement du lead',
+            error: errorRetry.message
+          });
+        }
+        
+        console.log('✅ Lead créé avec succès (sans sender_id):', leadRetry?.id);
+        return res.json({
+          success: true,
+          data: {
+            id: leadRetry?.id,
+            message: 'Lead enregistré avec succès'
+          }
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de l\'enregistrement du lead',
+        error: error.message
+      });
+    }
+
+    console.log('✅ Lead créé avec succès:', lead?.id);
+
+    return res.json({
+      success: true,
+      data: {
+        id: lead?.id,
+        message: 'Lead enregistré avec succès'
+      }
+    });
+
+  } catch (error: any) {
+    console.error('❌ Erreur route leads:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+}));
+
 export default router;

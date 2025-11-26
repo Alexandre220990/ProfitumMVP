@@ -2212,4 +2212,154 @@ router.post('/contact-admin', async (req: Request, res: Response) => {
   }
 });
 
+// POST /api/expert/leads - Créer un lead (expert uniquement)
+router.post('/leads', async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Non authentifié'
+      });
+    }
+
+    const authUser = req.user as AuthUser;
+    
+    if (authUser.type !== 'expert') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux experts'
+      });
+    }
+
+    const { name, email, phone, subject, contexte } = req.body;
+
+    // Validation des champs obligatoires
+    if (!name || !email || !contexte) {
+      return res.status(400).json({
+        success: false,
+        message: 'Les champs nom, email et contexte sont obligatoires'
+      });
+    }
+
+    // Validation de l'email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Format d\'email invalide'
+      });
+    }
+
+    // Récupérer l'ID de l'expert qui envoie le lead
+    const expertId = authUser.database_id || authUser.id || null;
+    
+    // Insérer le lead dans la table contact_messages
+    const leadSubject = subject 
+      ? `[LEAD] ${subject.trim()}` 
+      : '[LEAD] Lead ajouté par expert';
+    
+    // Préparer les données d'insertion avec sender_id et sender_type
+    const leadData: any = {
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      phone: phone ? phone.trim() : null,
+      subject: leadSubject,
+      message: contexte.trim(),
+      status: 'unread',
+      created_at: new Date().toISOString()
+    };
+    
+    // Ajouter sender_id et sender_type si l'expert est identifié
+    if (expertId) {
+      leadData.sender_id = expertId;
+      leadData.sender_type = 'expert';
+    }
+    
+    // Utiliser supabaseAdmin pour contourner RLS
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabaseAdmin = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+    
+    const { data: lead, error } = await supabaseAdmin
+      .from('contact_messages')
+      .insert(leadData)
+      .select('id')
+      .single();
+
+    if (error) {
+      console.error('❌ Erreur insertion lead expert:', error);
+      
+      // Si la table n'existe pas
+      if (error.code === '42P01') {
+        return res.status(500).json({
+          success: false,
+          message: 'Table de contact non configurée'
+        });
+      }
+
+      // Si les champs sender_id/sender_type n'existent pas, on réessaye sans
+      if (error.message?.includes('column') && (error.message?.includes('sender_id') || error.message?.includes('sender_type'))) {
+        console.log('⚠️ Champs sender_id/sender_type n\'existent pas, insertion sans...');
+        const leadDataRetry: any = {
+          name: name.trim(),
+          email: email.trim().toLowerCase(),
+          phone: phone ? phone.trim() : null,
+          subject: leadSubject,
+          message: contexte.trim(),
+          status: 'unread',
+          created_at: new Date().toISOString()
+        };
+        
+        const { data: leadRetry, error: errorRetry } = await supabaseAdmin
+          .from('contact_messages')
+          .insert(leadDataRetry)
+          .select('id')
+          .single();
+        
+        if (errorRetry) {
+          return res.status(500).json({
+            success: false,
+            message: 'Erreur lors de l\'enregistrement du lead',
+            error: errorRetry.message
+          });
+        }
+        
+        console.log('✅ Lead créé avec succès (sans sender_id):', leadRetry?.id);
+        return res.json({
+          success: true,
+          data: {
+            id: leadRetry?.id,
+            message: 'Lead enregistré avec succès'
+          }
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de l\'enregistrement du lead',
+        error: error.message
+      });
+    }
+
+    console.log('✅ Lead créé avec succès par expert:', lead?.id);
+
+    return res.json({
+      success: true,
+      data: {
+        id: lead?.id,
+        message: 'Lead enregistré avec succès'
+      }
+    });
+
+  } catch (error: any) {
+    console.error('❌ Erreur route leads expert:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
 export default router; 

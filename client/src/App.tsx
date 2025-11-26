@@ -113,6 +113,7 @@ const AdminMonitoring = React.lazy(() => import('./pages/admin/monitoring'));
 const AdminFormulaireExpert = React.lazy(() => import('./pages/admin/formulaire-expert'));
 const AdminFormulaireClient = React.lazy(() => import('./pages/admin/formulaire-client-complet'));
 const AdminFormulaireAdmin = React.lazy(() => import('./pages/admin/formulaire-admin'));
+const AjouterLead = React.lazy(() => import('./pages/admin/ajouter-lead'));
 const AdminDocumentsGEDUnifie = React.lazy(() => import('./pages/admin/documents-ged-unifie')); // ✅ PAGE UNIFIÉE (GED + Documentation + Upload)
 const AdminClientSynthese = React.lazy(() => import('./pages/admin/client-synthese')); // ✅ PAGE SYNTHÈSE CLIENT
 const AdminExpertSynthese = React.lazy(() => import('./pages/admin/expert-synthese')); // ✅ PAGE SYNTHÈSE EXPERT
@@ -131,6 +132,7 @@ const ExpertMesAffaires = React.lazy(() => import('./pages/expert/mes-affaires')
 const ExpertAgenda = React.lazy(() => import('./pages/expert/agenda'));
 const ExpertDossier = React.lazy(() => import('./pages/expert/dossier/[id]'));
 const ExpertClient = React.lazy(() => import('./pages/expert/client/[id]'));
+const ExpertAjouterLead = React.lazy(() => import('./pages/expert/ajouter-lead'));
 
 // Cabinet pages (expert/owner)
 const CabinetProduitSynthese = React.lazy(() => import('./pages/cabinet/produit/[produitId]'));
@@ -330,6 +332,9 @@ function App() {
                         {/* Profil & Aide */}
                         <Route path="profile/expert" element={<ProfileExpert />} />
                         <Route path="aide-expert" element={<AideExpert />} />
+                        
+                        {/* Ajouter un lead */}
+                        <Route path="ajouter-lead" element={<ExpertAjouterLead />} />
                       </Route>
                       
                       {/* Routes cabinet (owner) */}
@@ -392,6 +397,7 @@ function App() {
                         <Route path="formulaire-expert" element={<AdminFormulaireExpert />} />
                         <Route path="formulaire-client" element={<AdminFormulaireClient />} />
                         <Route path="formulaire-admin" element={<AdminFormulaireAdmin />} />
+                        <Route path="ajouter-lead" element={<AjouterLead />} />
                         <Route path="contact/:id" element={<AdminContactMessage />} />
                       </Route>
                       

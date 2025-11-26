@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
 import { useMessagingBadge } from '@/hooks/use-messaging-badge';
@@ -18,7 +18,8 @@ import {
   Menu,
   X,
   ChevronDown,
-  Settings
+  Settings,
+  Target
 } from 'lucide-react';
 
 interface ExpertLayoutProps {
@@ -43,8 +44,8 @@ export default function ExpertLayout({ children }: ExpertLayoutProps) {
   const { unreadCount: notificationsCount } = useNotificationBadge();
 
   // États pour les badges dynamiques
-  const [pendingAffaires, setPendingAffaires] = useState(0);
-  const [todayMeetings, setTodayMeetings] = useState(0);
+  const [pendingAffaires] = useState(0);
+  const [todayMeetings] = useState(0);
 
   const handleLogout = async () => {
     await logout();
@@ -108,6 +109,12 @@ export default function ExpertLayout({ children }: ExpertLayoutProps) {
       href: '/expert/aide-expert',
       icon: HelpCircle,
       current: location.pathname === '/expert/aide-expert'
+    },
+    {
+      name: 'Ajouter un lead',
+      href: '/expert/ajouter-lead',
+      icon: Target,
+      current: location.pathname === '/expert/ajouter-lead'
     }
   ];
 

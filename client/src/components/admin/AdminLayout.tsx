@@ -20,7 +20,8 @@ import {
   User,
   Shield,
   Building2,
-  UserCircle
+  UserCircle,
+  Target
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -122,6 +123,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       href: '/admin/formulaire-admin',
       icon: Shield,
       current: location.pathname === '/admin/formulaire-admin'
+    },
+    {
+      name: 'Ajouter un lead',
+      href: '/admin/ajouter-lead',
+      icon: Target,
+      current: location.pathname === '/admin/ajouter-lead'
     }
   ];
 
