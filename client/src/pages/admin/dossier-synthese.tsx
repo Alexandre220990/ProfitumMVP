@@ -492,7 +492,7 @@ const DossierSynthese: React.FC = () => {
                 <CardContent>
                   <div className="flex flex-col">
                     <span className="text-2xl font-bold text-blue-600">
-                      {dossier.tauxFinal ? `${dossier.tauxFinal}%` : 'N/A'}
+                      {dossier.tauxFinal ? `${(dossier.tauxFinal * 100).toFixed(2)}%` : 'N/A'}
                     </span>
                   </div>
                 </CardContent>
@@ -574,7 +574,7 @@ const DossierSynthese: React.FC = () => {
                       <div>
                         <span className="text-gray-600">Taux Final</span>
                         <p className="font-medium text-blue-600 mt-1">
-                          {dossier.tauxFinal ? `${dossier.tauxFinal}%` : 'Non calculé'}
+                          {dossier.tauxFinal ? `${(dossier.tauxFinal * 100).toFixed(2)}%` : 'Non calculé'}
                         </p>
                       </div>
                       <div>

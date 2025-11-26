@@ -1015,7 +1015,7 @@ const ClientSynthese: React.FC = () => {
                                     <div className="flex items-center gap-2">
                                       <TrendingUp className="w-4 h-4 text-blue-600" />
                                       <span className="font-medium text-blue-600">
-                                        {dossier.tauxFinal}%
+                                        {(dossier.tauxFinal * 100).toFixed(2)}%
                                       </span>
                                     </div>
                                   )}

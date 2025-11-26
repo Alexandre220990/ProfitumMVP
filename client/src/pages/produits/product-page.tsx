@@ -119,20 +119,24 @@ export default function ProductPage() { const { productId, userId } = useParams(
     }
   };
 
-  if (loading) { return (
-      <div className="flex-grow flex items-center justify-center">
+  if (loading) { 
+    return (
+      <>
+        <div className="flex-grow flex items-center justify-center">
           <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
           <span className="ml-3 text-lg">Chargement du produit...</span>
         </div>
         <div className="bg-gray-100 py-6 text-center text-gray-600">
           <p>© {new Date().getFullYear() } Financial Tracker. Tous droits réservés.</p>
         </div>
-      </div>
+      </>
     );
   }
 
-  if (error || !product) { return (
-      <div className="flex-grow container mx-auto px-4 py-12">
+  if (error || !product) { 
+    return (
+      <>
+        <div className="flex-grow container mx-auto px-4 py-12">
           <Link to="/dashboard/client">
             <Button variant="ghost" className="mb-6">
               <ArrowLeft className="mr-2 h-4 w-4" /> Retour au tableau de bord
@@ -158,12 +162,13 @@ export default function ProductPage() { const { productId, userId } = useParams(
         <div className="bg-gray-100 py-6 text-center text-gray-600">
           <p>© { new Date().getFullYear() } Financial Tracker. Tous droits réservés.</p>
         </div>
-      </div>
+      </>
     );
   }
 
   return (
-    <div className="flex-grow container mx-auto px-4 py-12">
+    <>
+      <div className="flex-grow container mx-auto px-4 py-12">
         <Link to="/dashboard/client">
           <Button variant="ghost" className="mb-6">
             <ArrowLeft className="mr-2 h-4 w-4" /> Retour au tableau de bord
@@ -207,7 +212,7 @@ export default function ProductPage() { const { productId, userId } = useParams(
                 { product.tauxFinal && (
                   <div className="bg-blue-50 p-4 rounded-lg">
                     <h4 className="text-sm font-medium text-gray-500">Taux d'intérêt</h4>
-                    <p className="text-xl font-semibold">{product.tauxFinal } %</p>
+                    <p className="text-xl font-semibold">{(product.tauxFinal * 100).toFixed(2)} %</p>
                   </div>
                 )}
                 
@@ -234,6 +239,6 @@ export default function ProductPage() { const { productId, userId } = useParams(
       <div className="bg-gray-100 py-6 text-center text-gray-600">
         <p>© { new Date().getFullYear() } Financial Tracker. Tous droits réservés.</p>
       </div>
-    </div>
+    </>
   );
 } 

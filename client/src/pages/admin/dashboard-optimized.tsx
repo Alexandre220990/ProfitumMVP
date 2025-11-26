@@ -145,6 +145,7 @@ const AdminDashboardOptimized: React.FC = () => {
   const [loadingTileData, setLoadingTileData] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filteredTileData, setFilteredTileData] = useState<any[]>([]);
+  const [clientTypeFilter, setClientTypeFilter] = useState<'client' | 'temporaire' | 'all'>('client');
   
   // Filtres avancés
   const [filterDateStart, setFilterDateStart] = useState<string>('');
@@ -544,9 +545,9 @@ const AdminDashboardOptimized: React.FC = () => {
       const produits = produitsResponse.success ? (produitsResponse.data as any)?.produits || [] : [];
       console.log('📦 Produits catalogue chargés:', produits.length, 'produits');
       
-      // Calculer les KPIs (EXCLURE les clients temporaires)
+      // Calculer les KPIs (EXCLURE les clients temporaires - utiliser le champ type)
       const realClients = clients.filter((client: any) => 
-        !client.email?.includes('@profitum.temp')
+        client.type === 'client' || !client.type || client.type === null
       );
       
       const totalClients = realClients.length;
@@ -972,17 +973,16 @@ const AdminDashboardOptimized: React.FC = () => {
           if (clientsResponse.success) {
             const clients = (clientsResponse.data as any)?.clients || [];
             
-            // ✅ FILTRER les clients temporaires
-            const realClients = clients.filter((client: any) => 
-              !client.email?.includes('@profitum.temp')
-            );
+            // ✅ FILTRER selon le type (client/temporaire) - le filtrage par typeFilter sera fait dans le rendu
+            // On garde tous les clients ici, le filtrage se fera selon clientTypeFilter
+            const allClients = clients;
             
             // Enrichir avec le nombre de dossiers à valider et le total de dossiers
             const dossiersResponse = await get('/admin/dossiers/all');
             if (dossiersResponse.success) {
               const allDossiers = (dossiersResponse.data as any)?.dossiers || [];
               
-              data = realClients.map((client: any) => {
+              data = allClients.map((client: any) => {
                 const clientDossiers = allDossiers.filter((d: any) => d.clientId === client.id);
                 const clientDossiersAValider = clientDossiers.filter((d: any) => 
                   d.statut === 'documents_uploaded' || d.statut === 'eligible_confirmed'
@@ -995,7 +995,7 @@ const AdminDashboardOptimized: React.FC = () => {
                 };
               });
             } else {
-              data = realClients;
+              data = allClients;
             }
           } else {
             console.error('❌ Erreur chargement clients:', clientsResponse.message);
@@ -2496,23 +2496,50 @@ const AdminDashboardOptimized: React.FC = () => {
                                           <RefreshCw className="w-6 h-6 animate-spin text-green-600" />
                                           <span className="ml-2 text-gray-600">Chargement des clients...</span>
                                         </div>
-                                      ) : selectedTileData.length > 0 ? (
+                                      ) : (() => {
+                                        // Filtrer selon le type de client
+                                        const filteredClients = selectedTileData.filter((client: any) => {
+                                          if (clientTypeFilter === 'all') return true;
+                                          return client.type === clientTypeFilter;
+                                        });
+                                        
+                                        return filteredClients.length > 0 ? (
                                         <div className="space-y-3">
                                           <div className="flex justify-between items-center">
                                             <h4 className="font-semibold text-gray-800">
-                                              Clients actifs ({selectedTileData.length})
+                                              {clientTypeFilter === 'client' ? 'Clients actifs' : clientTypeFilter === 'temporaire' ? 'Prospects simulateur' : 'Tous les clients'} ({filteredClients.length})
                                             </h4>
-                                            <Button 
-                                              variant="outline" 
-                                              size="sm"
-                                              onClick={() => setActiveSection('clients')}
-                                            >
-                                              Voir tous
-                                            </Button>
+                                            <div className="flex items-center gap-2">
+                                              <div className="flex gap-1">
+                                                <Button 
+                                                  variant={clientTypeFilter === 'client' ? 'default' : 'outline'}
+                                                  size="sm"
+                                                  onClick={() => setClientTypeFilter('client')}
+                                                  className="text-xs"
+                                                >
+                                                  Clients actifs
+                                                </Button>
+                                                <Button 
+                                                  variant={clientTypeFilter === 'temporaire' ? 'default' : 'outline'}
+                                                  size="sm"
+                                                  onClick={() => setClientTypeFilter('temporaire')}
+                                                  className="text-xs"
+                                                >
+                                                  Prospects simulateur
+                                                </Button>
+                                              </div>
+                                              <Button 
+                                                variant="outline" 
+                                                size="sm"
+                                                onClick={() => setActiveSection('clients')}
+                                              >
+                                                Voir tous
+                                              </Button>
+                                            </div>
                                           </div>
                                           
                                           <div className="space-y-3 max-h-96 overflow-y-auto">
-                                            {selectedTileData.slice(0, 10).map((client: any) => (
+                                            {filteredClients.slice(0, 10).map((client: any) => (
                                               <div 
                                                 key={client.id} 
                                                 onClick={() => navigate(`/admin/clients/${client.id}`)}
@@ -2601,19 +2628,24 @@ const AdminDashboardOptimized: React.FC = () => {
                                               </div>
                                             ))}
                                             
-                                            {selectedTileData.length > 10 && (
+                                            {filteredClients.length > 10 && (
                                               <div className="text-center py-2 text-sm text-gray-500">
-                                                ... et {selectedTileData.length - 10} autres clients
+                                                ... et {filteredClients.length - 10} autres clients
                                               </div>
                                             )}
                                           </div>
                                         </div>
-                                      ) : (
-                                        <div className="text-center py-8">
-                                          <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                                          <p className="text-gray-500">Aucun client trouvé</p>
-                                        </div>
-                                      )}
+                                        ) : (
+                                          <div className="text-center py-8">
+                                            <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                                            <p className="text-gray-500">
+                                              {clientTypeFilter === 'client' ? 'Aucun client actif trouvé' : 
+                                               clientTypeFilter === 'temporaire' ? 'Aucun prospect simulateur trouvé' : 
+                                               'Aucun client trouvé'}
+                                            </p>
+                                          </div>
+                                        );
+                                      })()}
                                     </div>
                                   )}
                                   
@@ -2973,7 +3005,7 @@ const AdminDashboardOptimized: React.FC = () => {
                                                     </div>
                                                     {dossier.tauxFinal && (
                                                       <div className="text-sm font-medium text-blue-600 text-right">
-                                                        {dossier.tauxFinal}%
+                                                        {(dossier.tauxFinal * 100).toFixed(2)}%
                                                       </div>
                                                     )}
                                                     
