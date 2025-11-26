@@ -316,22 +316,32 @@ const DossierSynthese: React.FC = () => {
   };
 
   const loadAvailableExperts = async () => {
+    if (!id || !dossier?.produitId) {
+      console.error('Impossible de charger les experts : dossier ou produitId manquant');
+      return;
+    }
+    
     try {
-      const response = await get('/admin/experts/all');
+      const response = await get(`/admin/dossiers/${id}/available-experts`);
       if (response.success && response.data) {
         const experts = (response.data as any).experts || [];
-        setAvailableExperts(experts.filter((e: any) => e.approval_status === 'approved' && e.status === 'active'));
+        setAvailableExperts(experts);
+      } else {
+        toast.error('Erreur lors du chargement des experts disponibles');
+        setAvailableExperts([]);
       }
     } catch (error) {
       console.error('Erreur chargement experts:', error);
+      toast.error('Erreur lors du chargement des experts disponibles');
+      setAvailableExperts([]);
     }
   };
 
   useEffect(() => {
-    if (showExpertDialog) {
+    if (showExpertDialog && dossier?.produitId) {
       loadAvailableExperts();
     }
-  }, [showExpertDialog]);
+  }, [showExpertDialog, dossier?.produitId]);
 
   if (!user || user.type !== 'admin') {
     return <Navigate to="/login" />;

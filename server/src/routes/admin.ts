@@ -3268,6 +3268,7 @@ router.post('/clients/:id/client-produit-eligible', asyncHandler(async (req, res
     // Ajouter un événement à la timeline
     await ClientTimelineService.addEvent({
       client_id: clientId,
+      dossier_id: newDossier.id,
       date: new Date().toISOString(),
       type: 'dossier_created',
       actor_type: 'admin',
@@ -5946,6 +5947,123 @@ router.patch('/dossiers/:id/statut', async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'Erreur serveur'
+    });
+  }
+});
+
+// GET /api/admin/dossiers/:id/available-experts - Récupérer les experts disponibles pour un dossier (filtrés par produit éligible)
+router.get('/dossiers/:id/available-experts', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    console.log(`🔍 [ADMIN] Récupération experts disponibles pour dossier ${id}`);
+
+    // Récupérer le dossier avec le produit éligible
+    const { data: dossierData, error: dossierFetchError } = await supabaseClient
+      .from('ClientProduitEligible')
+      .select(`
+        id,
+        produitId,
+        ProduitEligible:produitId (
+          id,
+          nom
+        )
+      `)
+      .eq('id', id)
+      .single();
+
+    if (dossierFetchError || !dossierData) {
+      console.error('❌ Erreur récupération dossier:', dossierFetchError);
+      return res.status(404).json({
+        success: false,
+        message: 'Dossier non trouvé'
+      });
+    }
+
+    const produitId = dossierData.produitId;
+    if (!produitId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Le dossier n\'a pas de produit éligible associé'
+      });
+    }
+
+    // Récupérer les experts qui ont ce produit dans leur catalogue via ExpertProduitEligible
+    const { data: expertProduits, error: expertProduitsError } = await supabaseClient
+      .from('ExpertProduitEligible')
+      .select(`
+        expert_id,
+        produit_id,
+        niveau_expertise,
+        statut,
+        Expert!inner (
+          id,
+          name,
+          first_name,
+          last_name,
+          email,
+          company_name,
+          specializations,
+          rating,
+          status,
+          approval_status,
+          description
+        )
+      `)
+      .eq('produit_id', produitId)
+      .eq('statut', 'actif')
+      .eq('Expert.status', 'active')
+      .eq('Expert.approval_status', 'approved');
+
+    if (expertProduitsError) {
+      console.error('❌ Erreur récupération experts:', expertProduitsError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la récupération des experts'
+      });
+    }
+
+    // Dédupliquer les experts et formater les données
+    const uniqueExperts = new Map<string, any>();
+    
+    for (const ep of expertProduits || []) {
+      const expert: any = ep.Expert;
+      if (expert && !Array.isArray(expert) && expert.id && !uniqueExperts.has(expert.id)) {
+        uniqueExperts.set(expert.id, {
+          id: expert.id,
+          name: expert.name || (expert.first_name && expert.last_name ? `${expert.first_name} ${expert.last_name}` : expert.email),
+          first_name: expert.first_name,
+          last_name: expert.last_name,
+          email: expert.email,
+          company_name: expert.company_name,
+          specializations: expert.specializations || [],
+          rating: expert.rating || 4.0,
+          status: expert.status,
+          approval_status: expert.approval_status,
+          description: expert.description,
+          niveau_expertise: ep.niveau_expertise
+        });
+      }
+    }
+
+    const experts = Array.from(uniqueExperts.values());
+
+    console.log(`✅ ${experts.length} expert(s) disponible(s) pour le produit ${produitId}`);
+
+    return res.json({
+      success: true,
+      data: {
+        experts: experts,
+        produit: dossierData.ProduitEligible
+      }
+    });
+
+  } catch (error: any) {
+    console.error('❌ Erreur route available-experts:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur',
+      details: error.message
     });
   }
 });

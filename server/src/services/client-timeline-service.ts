@@ -351,7 +351,7 @@ export class ClientTimelineService {
         }
       });
 
-      // 6. Dédupliquer les événements (notamment les RDV qui peuvent apparaître plusieurs fois)
+      // 6. Dédupliquer les événements (notamment les RDV et dossiers qui peuvent apparaître plusieurs fois)
       // Priorité : Admin > Expert > Apporteur > Système
       const uniqueEventsMap = new Map<string, TimelineEvent>();
       const actorPriority: Record<string, number> = {
@@ -363,21 +363,38 @@ export class ClientTimelineService {
       };
       
       allEvents.forEach((event) => {
-        // Créer une clé unique basée sur l'ID et le type
+        // Créer une clé unique basée sur le type d'événement et ses identifiants
         let uniqueKey: string;
         
-        if (event.id) {
-          // Si l'événement a déjà un ID, l'utiliser
-          uniqueKey = event.id;
-        } else if (event.type === 'rdv' && event.metadata?.rdv_id) {
-          // Pour les RDV, utiliser l'ID du RDV comme clé unique
-          uniqueKey = `rdv-${event.metadata.rdv_id}`;
-        } else if (event.type === 'dossier_created' && event.dossier_id) {
-          // Pour les créations de dossier, utiliser dossier_id comme clé
-          uniqueKey = `dossier-created-${event.dossier_id}`;
-        } else {
-          // Pour les autres événements, créer une clé basée sur type + date + titre
-          uniqueKey = `${event.type}-${event.date}-${event.title}`;
+        // Pour les RDV : utiliser rdv_id depuis metadata ou depuis l'ID de l'événement
+        if (event.type === 'rdv') {
+          const rdvId = event.metadata?.rdv_id || (event.id?.startsWith('rdv-') ? event.id.replace('rdv-', '') : null);
+          if (rdvId) {
+            uniqueKey = `rdv-${rdvId}`;
+          } else {
+            // Fallback : utiliser l'ID de l'événement s'il existe
+            uniqueKey = event.id || `${event.type}-${event.date}-${event.title}`;
+          }
+        }
+        // Pour les créations de dossier : utiliser dossier_id (direct ou depuis metadata) comme clé unique
+        else if (event.type === 'dossier_created') {
+          const dossierId = event.dossier_id || event.metadata?.dossier_id;
+          if (dossierId) {
+            uniqueKey = `dossier-created-${dossierId}`;
+          } else {
+            // Fallback : utiliser l'ID de l'événement s'il existe
+            uniqueKey = event.id || `${event.type}-${event.date}-${event.title}`;
+          }
+        }
+        // Pour les autres événements : utiliser l'ID s'il existe, sinon créer une clé basée sur type + date + titre
+        else {
+          // Si l'événement a un ID qui n'est pas un ID généré automatiquement, l'utiliser
+          if (event.id && !event.id.startsWith('rdv-') && !event.id.startsWith('dossier-created-') && !event.id.startsWith('dossier-updated-')) {
+            uniqueKey = event.id;
+          } else {
+            // Pour les autres événements, créer une clé basée sur type + date + titre
+            uniqueKey = `${event.type}-${event.date}-${event.title}`;
+          }
         }
         
         // Si l'événement existe déjà, vérifier la priorité
