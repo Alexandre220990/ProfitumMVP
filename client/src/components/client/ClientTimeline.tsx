@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, RefreshCw, Calendar, Filter, MessageSquare, Send, Edit, Trash2 } from 'lucide-react';
+import { Loader2, RefreshCw, Calendar, Filter, MessageSquare, Send, Edit, Trash2, Clock, MapPin, Video } from 'lucide-react';
 import { config } from '@/config/env';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -664,7 +664,33 @@ export default function ClientTimeline({
             </DialogTitle>
             <DialogDescription>
               {selectedEvent && (
-                <div className="space-y-2 mt-2">
+                <div className="space-y-4 mt-4">
+                  {/* Date/Heure du rendez-vous mise en avant */}
+                  {selectedEvent.metadata?.scheduled_date && selectedEvent.metadata?.scheduled_time && (
+                    <div className="p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Clock className="w-5 h-5 text-blue-600" />
+                        <h4 className="text-sm font-semibold text-blue-900">Date et heure du rendez-vous</h4>
+                      </div>
+                      <p className="text-lg font-bold text-blue-700">
+                        {(() => {
+                          const dateStr = selectedEvent.metadata.scheduled_date;
+                          const timeStr = selectedEvent.metadata.scheduled_time;
+                          const date = new Date(`${dateStr}T${timeStr}`);
+                          return date.toLocaleDateString('fr-FR', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric'
+                          }) + ' ' + date.toLocaleTimeString('fr-FR', {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          });
+                        })()}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Informations acteur */}
                   <div className="flex items-center gap-2 flex-wrap">
                     <Badge 
                       className={`text-xs ${getActorBadgeColor(selectedEvent.actor_type)} text-white`}
@@ -677,6 +703,8 @@ export default function ClientTimeline({
                       {formatDate(selectedEvent.date)}
                     </span>
                   </div>
+
+                  {/* Description */}
                   {selectedEvent.description && (
                     <div className="mt-4">
                       <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">
@@ -684,14 +712,111 @@ export default function ClientTimeline({
                       </p>
                     </div>
                   )}
-                  {selectedEvent.metadata && (
-                    <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                      <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2">Métadonnées</h4>
-                      <pre className="text-xs text-gray-700 overflow-x-auto">
-                        {JSON.stringify(selectedEvent.metadata, null, 2)}
-                      </pre>
-                    </div>
-                  )}
+
+                  {/* Métadonnées filtrées */}
+                  {selectedEvent.metadata && (() => {
+                    const filteredMetadata: any = {};
+                    
+                    // Filtrer selon les critères
+                    if (selectedEvent.metadata.location !== null && selectedEvent.metadata.location !== undefined) {
+                      filteredMetadata.location = selectedEvent.metadata.location;
+                    }
+                    if (selectedEvent.metadata.meeting_url !== null && selectedEvent.metadata.meeting_url !== undefined) {
+                      filteredMetadata.meeting_url = selectedEvent.metadata.meeting_url;
+                    }
+                    if (selectedEvent.metadata.meeting_type) {
+                      filteredMetadata.meeting_type = selectedEvent.metadata.meeting_type;
+                    }
+                    if (selectedEvent.metadata.scheduled_date) {
+                      filteredMetadata.scheduled_date = selectedEvent.metadata.scheduled_date;
+                    }
+                    if (selectedEvent.metadata.scheduled_time) {
+                      filteredMetadata.scheduled_time = selectedEvent.metadata.scheduled_time;
+                    }
+
+                    // Afficher seulement si on a des métadonnées à afficher
+                    if (Object.keys(filteredMetadata).length > 0) {
+                      return (
+                        <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                          <h4 className="text-xs font-semibold text-gray-500 uppercase mb-3">Métadonnées</h4>
+                          <div className="space-y-2">
+                            {filteredMetadata.location && (
+                              <div className="flex items-start gap-2">
+                                <MapPin className="w-4 h-4 text-gray-500 mt-0.5" />
+                                <div>
+                                  <span className="text-xs font-medium text-gray-600">Lieu :</span>
+                                  <p className="text-sm text-gray-700">{filteredMetadata.location}</p>
+                                </div>
+                              </div>
+                            )}
+                            {filteredMetadata.meeting_url && (
+                              <div className="flex items-start gap-2">
+                                <Video className="w-4 h-4 text-gray-500 mt-0.5" />
+                                <div>
+                                  <span className="text-xs font-medium text-gray-600">URL de réunion :</span>
+                                  <a 
+                                    href={filteredMetadata.meeting_url} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-sm text-blue-600 hover:text-blue-800 hover:underline block"
+                                  >
+                                    {filteredMetadata.meeting_url}
+                                  </a>
+                                </div>
+                              </div>
+                            )}
+                            {filteredMetadata.meeting_type && (
+                              <div className="flex items-start gap-2">
+                                <Calendar className="w-4 h-4 text-gray-500 mt-0.5" />
+                                <div>
+                                  <span className="text-xs font-medium text-gray-600">Type de réunion :</span>
+                                  <p className="text-sm text-gray-700">
+                                    {filteredMetadata.meeting_type === 'physical' ? 'Présentiel' :
+                                     filteredMetadata.meeting_type === 'video' ? 'Visioconférence' :
+                                     filteredMetadata.meeting_type === 'phone' ? 'Téléphone' :
+                                     filteredMetadata.meeting_type}
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                            {filteredMetadata.scheduled_date && (
+                              <div className="flex items-start gap-2">
+                                <Calendar className="w-4 h-4 text-gray-500 mt-0.5" />
+                                <div>
+                                  <span className="text-xs font-medium text-gray-600">Date prévue :</span>
+                                  <p className="text-sm text-gray-700">
+                                    {new Date(filteredMetadata.scheduled_date).toLocaleDateString('fr-FR', {
+                                      day: '2-digit',
+                                      month: '2-digit',
+                                      year: 'numeric'
+                                    })}
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                            {filteredMetadata.scheduled_time && (
+                              <div className="flex items-start gap-2">
+                                <Clock className="w-4 h-4 text-gray-500 mt-0.5" />
+                                <div>
+                                  <span className="text-xs font-medium text-gray-600">Heure prévue :</span>
+                                  <p className="text-sm text-gray-700">
+                                    {(() => {
+                                      const timeStr = filteredMetadata.scheduled_time;
+                                      const [hours, minutes] = timeStr.split(':');
+                                      return `${hours}:${minutes}`;
+                                    })()}
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+
+                  {/* Bouton action */}
                   {selectedEvent.action_url && (
                     <div className="mt-4">
                       <Button
