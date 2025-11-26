@@ -6,7 +6,6 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   ArrowLeft,
-  User,
   Mail,
   Phone,
   MapPin,
@@ -751,134 +750,15 @@ const ClientSynthese: React.FC = () => {
               </Card>
             </div>
 
-            {/* Tabs : Profil | Entreprise | Timeline | Dossiers | Experts | Apporteur */}
-            <Tabs defaultValue="profil" className="w-full">
-              <TabsList className="grid w-full grid-cols-6">
-                <TabsTrigger value="profil">Profil</TabsTrigger>
+            {/* Tabs : Entreprise | Timeline | Dossiers | Experts | Apporteur */}
+            <Tabs defaultValue="entreprise" className="w-full">
+              <TabsList className="grid w-full grid-cols-5">
                 <TabsTrigger value="entreprise">Entreprise</TabsTrigger>
                 <TabsTrigger value="timeline">Timeline</TabsTrigger>
                 <TabsTrigger value="dossiers">Dossiers ({stats.totalDossiers})</TabsTrigger>
                 <TabsTrigger value="experts">Experts ({experts.length})</TabsTrigger>
                 <TabsTrigger value="apporteur">Apporteur</TabsTrigger>
               </TabsList>
-
-              {/* TAB PROFIL */}
-              <TabsContent value="profil">
-                <Card className="border-0 shadow-lg">
-                  <CardHeader className="border-b bg-gradient-to-r from-gray-50 to-white pb-3">
-                    <CardTitle className="flex items-center gap-3 text-lg">
-                      <div className="p-1.5 bg-blue-100 rounded-lg">
-                        <User className="w-4 h-4 text-blue-600" />
-                      </div>
-                      <span className="text-gray-900 font-semibold">Informations du Client</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-4">
-                    {/* Informations principales en grid 3 colonnes */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                      <div>
-                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 block">
-                          Nom / Entreprise
-                        </label>
-                        <p className="text-base font-bold text-gray-900 leading-tight">{getClientDisplayName()}</p>
-                      </div>
-
-                      <div>
-                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                          <Mail className="w-3 h-3" />
-                          Email
-                        </label>
-                        <a 
-                          href={`mailto:${client.email}`}
-                          className="text-sm text-gray-900 hover:text-blue-600 transition-colors font-medium block"
-                        >
-                          {client.email}
-                        </a>
-                      </div>
-
-                      {client.phone && (
-                        <div>
-                          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                            <Phone className="w-3 h-3" />
-                            Téléphone
-                          </label>
-                          <a 
-                            href={`tel:${client.phone}`}
-                            className="text-sm text-gray-900 hover:text-blue-600 transition-colors font-medium block"
-                          >
-                            {client.phone}
-                          </a>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Adresse et statut en grid 2 colonnes */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                      {client.address && (
-                        <div>
-                          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                            <MapPin className="w-3 h-3" />
-                            Adresse
-                          </label>
-                          <p className="text-sm text-gray-900 font-medium leading-relaxed">{client.address}</p>
-                        </div>
-                      )}
-
-                      <div>
-                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 block">
-                          Statut
-                        </label>
-                        <div>
-                          <Badge 
-                            variant={client.statut === 'actif' || client.statut === 'active' ? 'default' : 'secondary'}
-                            className="text-xs px-2 py-0.5 font-medium"
-                          >
-                            {client.statut}
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Dates en grid 2 colonnes */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                      <div>
-                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                          <Calendar className="w-3 h-3" />
-                          Date de création
-                        </label>
-                        <p className="text-sm text-gray-900 font-medium">
-                          {new Date(client.created_at).toLocaleDateString('fr-FR', {
-                            day: 'numeric',
-                            month: 'long',
-                            year: 'numeric'
-                          })}
-                        </p>
-                      </div>
-
-                      <div>
-                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 block">
-                          Dernière mise à jour
-                        </label>
-                        <p className="text-sm text-gray-900 font-medium">
-                          {new Date(client.updated_at).toLocaleDateString('fr-FR', {
-                            day: 'numeric',
-                            month: 'long',
-                            year: 'numeric'
-                          })}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Bouton modifier */}
-                    <div className="pt-2 border-t border-gray-100">
-                      <Button variant="outline" size="sm" className="font-medium">
-                        <Edit className="w-3.5 h-3.5 mr-1.5" />
-                        Modifier le profil
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
 
               {/* TAB ENTREPRISE */}
               <TabsContent value="entreprise">
@@ -902,6 +782,34 @@ const ClientSynthese: React.FC = () => {
                           {client.company_name || 'Non renseigné'}
                         </p>
                       </div>
+
+                      <div>
+                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                          <Mail className="w-3 h-3" />
+                          Email
+                        </label>
+                        <a 
+                          href={`mailto:${client.email}`}
+                          className="text-sm text-gray-900 hover:text-blue-600 transition-colors font-medium block"
+                        >
+                          {client.email}
+                        </a>
+                      </div>
+
+                      {(client.phone || client.phone_number) && (
+                        <div>
+                          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                            <Phone className="w-3 h-3" />
+                            Téléphone
+                          </label>
+                          <a 
+                            href={`tel:${client.phone || client.phone_number}`}
+                            className="text-sm text-gray-900 hover:text-blue-600 transition-colors font-medium block"
+                          >
+                            {client.phone || client.phone_number}
+                          </a>
+                        </div>
+                      )}
 
                       {client.siren && (
                         <div>

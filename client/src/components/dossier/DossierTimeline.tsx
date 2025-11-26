@@ -324,7 +324,7 @@ export default function DossierTimeline({
 
     // Stocker les données préremplies dans localStorage
     const prefillData = {
-      title: `Rappel - ${dossierInfo?.produit_name || 'Dossier'}`,
+      title: `RDV - ${dossierInfo?.produit_name || 'Dossier'}`,
       description,
       start_date: tomorrow.toISOString().slice(0, 16),
       end_date: endTime.toISOString().slice(0, 16),

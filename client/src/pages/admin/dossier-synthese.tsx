@@ -621,7 +621,7 @@ const DossierSynthese: React.FC = () => {
                       client_id: dossier.Client?.id,
                       client_name: getClientDisplayName(),
                       client_company_name: dossier.Client?.company_name,
-                      client_phone: dossier.Client?.phone,
+                      client_phone: (dossier.Client as any)?.phone_number || dossier.Client?.phone,
                       client_email: dossier.Client?.email,
                       produit_name: dossier.ProduitEligible?.nom
                     }}

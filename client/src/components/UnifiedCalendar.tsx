@@ -953,6 +953,7 @@ export const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
         open={showEventDialog}
         onOpenChange={setShowEventDialog}
         event={selectedEvent}
+        selectedDate={selectedDate}
         onSubmit={handleEventSubmit}
         onCancel={() => {
           setShowEventDialog(false);
@@ -1258,6 +1259,7 @@ interface EventDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   event?: CalendarEvent | null;
+  selectedDate?: Date | null;
   onSubmit: (event: any) => void;
   onCancel: () => void;
 }
@@ -1288,7 +1290,7 @@ const looksTemporary = (value?: string | null) => {
   return normalized.includes('client temporaire') || normalized.includes('temporaire') || normalized.includes('temporary');
 };
 
-const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, onSubmit, onCancel }) => {
+const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, selectedDate, onSubmit, onCancel }) => {
   const { user } = useAuth();
   
   // Fonction pour formater l'heure en format datetime-local
@@ -1405,6 +1407,38 @@ const EventDialog: React.FC<EventDialogProps> = ({ open, onOpenChange, event, on
       }));
     }
   }, [open, user?.type, prefillData, event]);
+
+  // Mettre à jour les dates quand selectedDate change (si le formulaire est ouvert et qu'on n'édite pas un événement)
+  React.useEffect(() => {
+    if (open && selectedDate && !event) {
+      // Préserver l'heure si elle existe déjà dans formData
+      const currentStart = formData.start_date ? new Date(formData.start_date) : null;
+      const currentEnd = formData.end_date ? new Date(formData.end_date) : null;
+      
+      // Calculer la nouvelle date de début avec l'heure préservée ou 9h par défaut
+      const newStartDate = new Date(selectedDate);
+      if (currentStart) {
+        newStartDate.setHours(currentStart.getHours(), currentStart.getMinutes(), 0, 0);
+      } else {
+        newStartDate.setHours(9, 0, 0, 0);
+      }
+      
+      // Calculer la nouvelle date de fin avec la durée préservée ou 30 minutes par défaut
+      const newEndDate = new Date(newStartDate);
+      if (currentStart && currentEnd) {
+        const duration = currentEnd.getTime() - currentStart.getTime();
+        newEndDate.setTime(newStartDate.getTime() + duration);
+      } else {
+        newEndDate.setTime(newStartDate.getTime() + 30 * 60 * 1000); // 30 minutes
+      }
+      
+      setFormData(prev => ({
+        ...prev,
+        start_date: formatDateTimeLocal(newStartDate),
+        end_date: formatDateTimeLocal(newEndDate)
+      }));
+    }
+  }, [selectedDate, open, event]);
 
   // Charger tous les participants disponibles
   const loadAvailableParticipants = async () => {

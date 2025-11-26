@@ -473,10 +473,9 @@ router.post('/events', calendarLimiter, validateEvent, asyncHandler(async (req: 
       if (eventData.apporteur_id) {
         newEvent.apporteur_id = eventData.apporteur_id;
       }
-      // Si un dossier_id est fourni, l'ajouter (peut être dans metadata si colonne n'existe pas)
+      // Si un dossier_id est fourni, le stocker uniquement dans metadata (pas de colonne directe dans RDV)
       if (eventData.dossier_id) {
-        newEvent.dossier_id = eventData.dossier_id;
-        // Stocker aussi dans metadata pour traçabilité
+        // Stocker dans metadata pour traçabilité
         newEvent.metadata = {
           ...(newEvent.metadata || {}),
           dossier_id: eventData.dossier_id
@@ -714,7 +713,7 @@ router.post('/events', calendarLimiter, validateEvent, asyncHandler(async (req: 
       if (event.client_id) {
         await ClientTimelineService.addEvent({
           client_id: event.client_id,
-          dossier_id: event.dossier_id || (event.metadata?.dossier_id) || undefined,
+          dossier_id: (event.metadata?.dossier_id) || undefined,
           date: eventDate.toISOString(),
           type: 'rdv',
           actor_type: actorType,
@@ -739,8 +738,8 @@ router.post('/events', calendarLimiter, validateEvent, asyncHandler(async (req: 
       }
 
       // Créer l'événement dans la timeline dossier si dossier_id est présent
-      if (event.dossier_id || event.metadata?.dossier_id) {
-        const dossierId = event.dossier_id || event.metadata?.dossier_id;
+      if (event.metadata?.dossier_id) {
+        const dossierId = event.metadata.dossier_id;
         await DossierTimelineService.addEvent({
           dossier_id: dossierId,
           date: eventDate.toISOString(),
