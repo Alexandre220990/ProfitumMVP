@@ -4,6 +4,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import { NOTIFICATION_SLA_CONFIG, calculateSLAStatus } from '../config/notification-sla-config';
 
 const supabaseUrl = process.env.SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -302,7 +303,7 @@ export class AdminNotificationService {
           type: 'contact_message',
           title: `📧 Nouveau message de contact`,
           message: `${data.name} (${data.email}) vous a envoyé un message${data.subject ? ` : ${data.subject}` : ''}`,
-          priority: 'medium',
+          priority: NOTIFICATION_SLA_CONFIG.contact_message.defaultPriority,
           status: 'unread',
           is_read: false,
           action_url: `/admin/contact/${data.contact_message_id}`,
@@ -314,7 +315,12 @@ export class AdminNotificationService {
             phone: data.phone,
             subject: data.subject,
             message: data.message,
-            action_required: 'view_contact'
+            action_required: 'view_contact',
+            sla: {
+              targetHours: NOTIFICATION_SLA_CONFIG.contact_message.targetHours,
+              acceptableHours: NOTIFICATION_SLA_CONFIG.contact_message.acceptableHours,
+              criticalHours: NOTIFICATION_SLA_CONFIG.contact_message.criticalHours
+            }
           },
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
@@ -331,7 +337,14 @@ export class AdminNotificationService {
       const title = `📧 Nouveau message de contact`;
       const message = `${data.name} (${data.email}) vous a envoyé un message${data.subject ? ` : ${data.subject}` : ''}`;
       
+      // Utiliser le SLA pour déterminer la priorité
+      const slaConfig = NOTIFICATION_SLA_CONFIG.contact_message;
+      const priority = slaConfig.defaultPriority;
+      
       for (const adminId of adminIds) {
+        const createdAt = new Date().toISOString();
+        const slaStatus = calculateSLAStatus('contact_message', createdAt);
+        
         const { data: userNotification, error: userNotifError } = await supabase
           .from('notification')
           .insert({
@@ -340,7 +353,7 @@ export class AdminNotificationService {
             title: title,
             message: message,
             notification_type: 'contact_message',
-            priority: 'medium',
+            priority: priority,
             is_read: false,
             status: 'unread',
             action_url: `/admin/contact/${data.contact_message_id}`,
@@ -360,10 +373,17 @@ export class AdminNotificationService {
               phone: data.phone,
               subject: data.subject,
               message: data.message,
-              action_required: 'view_contact'
+              action_required: 'view_contact',
+              sla: {
+                targetHours: slaConfig.targetHours,
+                acceptableHours: slaConfig.acceptableHours,
+                criticalHours: slaConfig.criticalHours,
+                status: slaStatus.status,
+                hoursRemaining: slaStatus.hoursRemaining
+              }
             },
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            created_at: createdAt,
+            updated_at: createdAt
           })
           .select()
           .single();

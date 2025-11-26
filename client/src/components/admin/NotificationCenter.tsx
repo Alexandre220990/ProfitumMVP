@@ -22,10 +22,18 @@ import {
   Trash2,
   Mail,
   Phone,
-  User
+  User,
+  Zap,
+  Timer
 } from 'lucide-react';
 import { config } from '@/config/env';
 import { useNavigate } from 'react-router-dom';
+import { 
+  calculateSLAStatus, 
+  formatTimeRemaining, 
+  formatTimeElapsed,
+  getSLAStatusClasses
+} from '@/utils/notification-sla';
 
 interface Notification {
   id: string;
@@ -34,10 +42,11 @@ interface Notification {
   title: string;
   message: string;
   notification_type: string;
-  priority: 'low' | 'normal' | 'medium' | 'high';
+  priority: 'low' | 'normal' | 'medium' | 'high' | 'urgent';
   is_read: boolean;
   action_url?: string;
   action_data?: any;
+  metadata?: any;
   created_at: string;
 }
 
@@ -155,21 +164,37 @@ export function NotificationCenter({ onNotificationAction, compact = false }: No
     }
   };
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high': return 'text-red-600 bg-red-50 border-red-200';
-      case 'medium': return 'text-orange-600 bg-orange-50 border-orange-200';
-      case 'normal': return 'text-blue-600 bg-blue-50 border-blue-200';
-      default: return 'text-gray-600 bg-gray-50 border-gray-200';
-    }
-  };
-
   const getPriorityIcon = (priority: string) => {
     switch (priority) {
+      case 'urgent': return <Zap className="w-4 h-4" />;
       case 'high': return <AlertTriangle className="w-4 h-4" />;
       case 'medium': return <Clock className="w-4 h-4" />;
       default: return <Bell className="w-4 h-4" />;
     }
+  };
+
+  const getNotificationTileClasses = (notification: Notification) => {
+    const baseClasses = 'p-4 rounded-lg border-2 cursor-pointer transition-all hover:shadow-md';
+    
+    // Indicateur visuel pour non lue
+    const unreadClasses = !notification.is_read 
+      ? 'bg-blue-50/80 border-blue-300 shadow-sm ring-2 ring-blue-200/50' 
+      : 'bg-white border-gray-200';
+    
+    // Indicateur visuel pour urgence
+    const urgentClasses = (notification.priority === 'urgent' || notification.priority === 'high') && !notification.is_read
+      ? 'ring-2 ring-red-300/50 border-red-300'
+      : '';
+    
+    // Calculer le statut SLA
+    const slaStatus = calculateSLAStatus(notification.notification_type, notification.created_at);
+    const slaClasses = slaStatus.status === 'overdue' 
+      ? 'ring-2 ring-red-500/30 border-red-400'
+      : slaStatus.status === 'critical'
+      ? 'ring-1 ring-red-300/30'
+      : '';
+    
+    return `${baseClasses} ${unreadClasses} ${urgentClasses} ${slaClasses}`;
   };
 
   const getTypeIcon = (type: string) => {
@@ -183,12 +208,23 @@ export function NotificationCenter({ onNotificationAction, compact = false }: No
 
   const filteredNotifications = notifications.filter(n => {
     if (filter === 'unread') return !n.is_read;
-    if (filter === 'urgent') return n.priority === 'high' && !n.is_read;
+    if (filter === 'urgent') {
+      const isUrgent = (n.priority === 'high' || n.priority === 'urgent') && !n.is_read;
+      if (isUrgent) return true;
+      // Inclure aussi les notifications avec SLA dépassé
+      const slaStatus = calculateSLAStatus(n.notification_type, n.created_at);
+      return slaStatus.status === 'overdue' || slaStatus.status === 'critical';
+    }
     return true;
   });
 
   const unreadCount = notifications.filter(n => !n.is_read).length;
-  const urgentCount = notifications.filter(n => n.priority === 'high' && !n.is_read).length;
+  const urgentCount = notifications.filter(n => {
+    const isUrgent = (n.priority === 'high' || n.priority === 'urgent') && !n.is_read;
+    if (isUrgent) return true;
+    const slaStatus = calculateSLAStatus(n.notification_type, n.created_at);
+    return (slaStatus.status === 'overdue' || slaStatus.status === 'critical') && !n.is_read;
+  }).length;
 
   if (loading) {
     return (
@@ -249,28 +285,40 @@ export function NotificationCenter({ onNotificationAction, compact = false }: No
         ) : (
           <ScrollArea className={compact ? 'h-[300px]' : 'h-[500px]'}>
             <div className="space-y-3">
-              {filteredNotifications.map((notification) => (
+              {filteredNotifications.map((notification) => {
+                const slaStatus = calculateSLAStatus(notification.notification_type, notification.created_at);
+                const isUrgent = notification.priority === 'urgent' || notification.priority === 'high';
+                
+                return (
                 <div
                   key={notification.id}
-                  className={`
-                    p-4 rounded-lg border-2 cursor-pointer transition-all
-                    ${!notification.is_read ? 'bg-blue-50/50 border-blue-200' : 'bg-white border-gray-200'}
-                    ${getPriorityColor(notification.priority)}
-                    hover:shadow-md
-                  `}
+                  className={getNotificationTileClasses(notification)}
                   onClick={() => handleNotificationClick(notification)}
                 >
                   <div className="flex items-start gap-3">
+                    {/* Indicateur visuel non lue - point bleu */}
+                    {!notification.is_read && (
+                      <div className="flex-shrink-0 mt-1.5">
+                        <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
+                      </div>
+                    )}
+                    
                     <div className="flex-shrink-0 mt-1">
                       {getTypeIcon(notification.notification_type)}
                     </div>
                     
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-semibold text-sm text-gray-900">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className={`font-semibold text-sm ${!notification.is_read ? 'text-gray-900 font-bold' : 'text-gray-700'}`}>
                             {notification.title}
                           </h4>
+                          {isUrgent && (
+                            <Badge variant="destructive" className="text-xs px-1.5 py-0">
+                              <Zap className="w-3 h-3 mr-1" />
+                              Urgent
+                            </Badge>
+                          )}
                           {getPriorityIcon(notification.priority)}
                         </div>
                         <Button
@@ -286,19 +334,35 @@ export function NotificationCenter({ onNotificationAction, compact = false }: No
                         </Button>
                       </div>
                       
-                      <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                      <p className={`text-sm mt-1 line-clamp-2 ${!notification.is_read ? 'text-gray-800 font-medium' : 'text-gray-600'}`}>
                         {notification.message}
                       </p>
                       
-                      <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
-                        <span>{new Date(notification.created_at).toLocaleString('fr-FR')}</span>
+                      <div className="flex items-center gap-3 mt-2 text-xs flex-wrap">
+                        <span className="text-gray-500">{formatTimeElapsed(slaStatus.hoursElapsed)}</span>
+                        
+                        {/* Badge SLA */}
+                        {slaStatus.status !== 'ok' && (
+                          <Badge className={`text-xs ${getSLAStatusClasses(slaStatus.status)}`}>
+                            <Timer className="w-3 h-3 mr-1" />
+                            {slaStatus.status === 'overdue' 
+                              ? 'SLA dépassé' 
+                              : slaStatus.status === 'critical'
+                              ? `Critique: ${formatTimeRemaining(slaStatus.hoursRemaining)}`
+                              : `Attention: ${formatTimeRemaining(slaStatus.hoursRemaining)}`}
+                          </Badge>
+                        )}
+                        
                         {notification.action_data?.product_type && (
                           <Badge variant="outline" className="text-xs">
                             {notification.action_data.product_type}
                           </Badge>
                         )}
+                        
                         {!notification.is_read && (
-                          <Badge className="bg-blue-500 text-white">Nouveau</Badge>
+                          <Badge className="bg-blue-500 text-white text-xs font-semibold">
+                            Non lu
+                          </Badge>
                         )}
                       </div>
 
@@ -344,7 +408,8 @@ export function NotificationCenter({ onNotificationAction, compact = false }: No
                     </div>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </ScrollArea>
         )}
