@@ -553,11 +553,19 @@ const partnerRequestAttemptedRef = useRef(false);
   // S'assurer que l'étape 1 est toujours accessible au début
   // ⚠️ FIX : Ne forcer le retour à l'étape 1 QUE si on est au-delà de l'étape 2 sans validation
   useEffect(() => {
-    if (!eligibilityValidated && currentStep > 2) {
-      console.log('⚠️ DIAGNOSTIC: Force retour étape 1 car pas validé et étape > 2');
+    // Ne pas forcer le retour à l'étape 1 si un expert est déjà assigné
+    // (cas où l'admin a assigné un expert avant validation d'éligibilité)
+    if (!eligibilityValidated && currentStep > 2 && !selectedExpert) {
+      console.log('⚠️ DIAGNOSTIC: Force retour étape 1 car pas validé, étape > 2 et pas d\'expert assigné');
       setCurrentStep(1);
+    } else if (!eligibilityValidated && currentStep > 2 && selectedExpert) {
+      console.log('✅ DIAGNOSTIC: Expert assigné avant validation, étape 2 accessible');
+      // Si un expert est assigné, permettre l'accès à l'étape 2 minimum
+      if (currentStep < 2) {
+        setCurrentStep(2);
+      }
     }
-  }, [eligibilityValidated, currentStep]);
+  }, [eligibilityValidated, currentStep, selectedExpert]);
 
   useEffect(() => {
     if (!clientProduit) {
@@ -689,10 +697,18 @@ const partnerRequestAttemptedRef = useRef(false);
           // ✅ FIX : Marquer comme complété si on est au-delà de l'étape 2
           if (currentStep > 2) {
             status = 'completed';
+          } else if (selectedExpert) {
+            // Si un expert est déjà assigné (par admin ou client), l'étape est complétée
+            status = 'completed';
+            console.log(`📊 DIAGNOSTIC Étape 2: Expert déjà assigné, étape complétée`);
           } else if (eligibilityValidated) {
-            status = selectedExpert ? 'completed' : 'in_progress';
+            // Si éligibilité validée mais pas d'expert, étape en cours
+            status = 'in_progress';
             console.log(`📊 DIAGNOSTIC Étape 2: eligibilityValidated=${eligibilityValidated}, status=${status}`);
           } else {
+            // Si expert assigné par admin avant validation, permettre l'accès
+            // Sinon, étape reste pending
+            status = 'pending';
             console.log(`📊 DIAGNOSTIC Étape 2: eligibilityValidated=${eligibilityValidated}, RESTE PENDING`);
           }
           break;
@@ -2059,7 +2075,7 @@ const partnerRequestAttemptedRef = useRef(false);
               )}
 
               {/* Contenu intégré pour l'étape 2 - Sélection expert - SEULEMENT si on est à l'étape 2 */}
-              {step.id === 2 && currentStep === 2 && eligibilityValidated && (
+              {step.id === 2 && currentStep === 2 && (eligibilityValidated || selectedExpert) && (
                 <div className="mt-4 pt-4 border-t border-gray-200 space-y-4">
                   {tempSelectedExpert && !expertConfirmed ? (
                     /* Expert sélectionné temporairement - Demander confirmation */

@@ -411,7 +411,7 @@ const DossierSynthese: React.FC = () => {
                   </Button>
                 </>
               )}
-              {dossier.statut === 'eligibility_validated' && !dossier.expert_id && (
+              {!dossier.expert_id && (
                 <Button 
                   onClick={() => setShowExpertDialog(true)}
                   disabled={isProcessing}
@@ -852,6 +852,22 @@ const DossierSynthese: React.FC = () => {
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
+              {dossier && dossier.statut !== 'eligibility_validated' && (
+                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-yellow-900">
+                        Avertissement
+                      </p>
+                      <p className="text-sm text-yellow-700 mt-1">
+                        Le dossier n'a pas encore été validé par l'admin (statut actuel: <strong>{dossier.statut}</strong>). 
+                        L'expert sera assigné, mais le client devra toujours compléter les étapes de validation.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
               <div>
                 <Label htmlFor="expert-select">Expert *</Label>
                 <select

@@ -1871,7 +1871,8 @@ router.get('/clients', asyncHandler(async (req, res) => {
         statut,
         created_at,
         derniereConnexion,
-        siren
+        siren,
+        type
       `);
 
     // Filtres
@@ -5212,6 +5213,7 @@ router.get('/clients/all', asyncHandler(async (req, res) => {
         statut,
         created_at,
         updated_at,
+        type,
         produits_eligibles(
           id,
           produitId,
@@ -5914,7 +5916,7 @@ router.post('/dossiers/:id/assign-expert', async (req, res) => {
     const { id } = req.params;
     const { expert_id } = req.body;
     
-    console.log(`👨‍🏫 Assignation expert ${expert_id} au dossier ${id}`);
+    console.log(`👨‍🏫 [ADMIN] Assignation expert ${expert_id} au dossier ${id}`);
 
     if (!expert_id) {
       return res.status(400).json({
@@ -5923,10 +5925,43 @@ router.post('/dossiers/:id/assign-expert', async (req, res) => {
       });
     }
 
+    // Récupérer le dossier avec les relations nécessaires
+    const { data: dossierData, error: dossierFetchError } = await supabaseClient
+      .from('ClientProduitEligible')
+      .select(`
+        id,
+        clientId,
+        produitId,
+        statut,
+        montantFinal,
+        Client:clientId (
+          id,
+          company_name,
+          first_name,
+          last_name,
+          email
+        ),
+        ProduitEligible:produitId (
+          id,
+          nom,
+          type_produit
+        )
+      `)
+      .eq('id', id)
+      .single();
+
+    if (dossierFetchError || !dossierData) {
+      console.error('❌ Erreur récupération dossier:', dossierFetchError);
+      return res.status(404).json({
+        success: false,
+        message: 'Dossier non trouvé'
+      });
+    }
+
     // Vérifier que l'expert existe et est approuvé
     const { data: expert, error: expertError } = await supabaseClient
       .from('Expert')
-      .select('id, first_name, last_name, approval_status')
+      .select('id, first_name, last_name, name, email, approval_status, status, specializations')
       .eq('id', expert_id)
       .single();
 
@@ -5944,8 +5979,19 @@ router.post('/dossiers/:id/assign-expert', async (req, res) => {
       });
     }
 
+    if (expert.status !== 'active') {
+      return res.status(400).json({
+        success: false,
+        message: 'L\'expert n\'est pas actif'
+      });
+    }
+
+    const expertName = expert.name || 
+      (expert.first_name && expert.last_name ? `${expert.first_name} ${expert.last_name}` : expert.email) ||
+      'Expert';
+
     // Assigner l'expert au dossier
-    const { data: dossier, error } = await supabaseClient
+    const { data: dossier, error: updateError } = await supabaseClient
       .from('ClientProduitEligible')
       .update({ 
         expert_id,
@@ -5955,24 +6001,101 @@ router.post('/dossiers/:id/assign-expert', async (req, res) => {
       .select()
       .single();
 
-    if (error) {
-      console.error('❌ Erreur assignation expert:', error);
+    if (updateError) {
+      console.error('❌ Erreur assignation expert:', updateError);
       return res.status(500).json({
         success: false,
         message: 'Erreur lors de l\'assignation de l\'expert'
       });
     }
 
-    console.log(`✅ Expert ${expert.first_name} ${expert.last_name} assigné`);
+    // Créer l'entrée dans expertassignment (pour cohérence avec le workflow client)
+    const clientInfo = Array.isArray(dossierData.Client) ? dossierData.Client[0] : dossierData.Client;
+    const produitInfo = Array.isArray(dossierData.ProduitEligible) ? dossierData.ProduitEligible[0] : dossierData.ProduitEligible;
+    
+    const { data: assignment, error: assignError } = await supabaseClient
+      .from('expertassignment')
+      .insert({
+        expert_id: expert_id,
+        client_id: dossierData.clientId,
+        client_produit_eligible_id: id,
+        status: 'pending',
+        assignment_date: new Date().toISOString(),
+        notes: `Assignation par admin pour dossier ${id}`
+      })
+      .select()
+      .single();
+
+    if (assignError) {
+      console.error('⚠️ Erreur création assignation (non bloquant):', assignError);
+      // On continue quand même, ce n'est pas bloquant
+    } else {
+      console.log('✅ Entrée expertassignment créée');
+    }
+
+    // 📅 TIMELINE : Ajouter événement assignation expert
+    try {
+      const { DossierTimelineService } = await import('../services/dossier-timeline-service');
+      
+      const clientName = clientInfo?.company_name || 
+        (clientInfo?.first_name && clientInfo?.last_name 
+          ? `${clientInfo.first_name} ${clientInfo.last_name}` 
+          : clientInfo?.email) ||
+        'Client';
+      const productName = produitInfo?.nom || 'Produit';
+      
+      await DossierTimelineService.expertAssigne({
+        dossier_id: id,
+        expert_id: expert_id,
+        expert_name: expertName,
+        product_name: productName,
+        client_name: clientName
+      });
+
+      console.log('✅ Événement timeline ajouté (expert assigné par admin)');
+    } catch (timelineError) {
+      console.error('⚠️ Erreur timeline (non bloquant):', timelineError);
+    }
+
+    // 🔔 NOTIFICATION : Envoyer notification à l'expert
+    try {
+      const { ExpertNotificationService } = await import('../services/expert-notification-service');
+      
+      const clientName = clientInfo?.first_name && clientInfo?.last_name
+        ? `${clientInfo.first_name} ${clientInfo.last_name}`
+        : clientInfo?.company_name || 'Client';
+      
+      const produitNom = produitInfo?.nom || 'Produit';
+      const produitType = produitInfo?.type_produit || produitInfo?.nom || 'Produit';
+      
+      await ExpertNotificationService.notifyDossierPendingAcceptance({
+        expert_id: expert_id,
+        client_produit_id: id,
+        client_id: dossierData.clientId,
+        client_company: clientInfo?.company_name,
+        client_name: clientName,
+        product_type: produitType,
+        product_name: produitNom,
+        estimated_amount: dossierData.montantFinal || 0
+      });
+      
+      console.log('✅ Notification envoyée à l\'expert');
+    } catch (notifError) {
+      console.error('⚠️ Erreur notification expert (non bloquant):', notifError);
+    }
+
+    console.log(`✅ Expert ${expertName} assigné au dossier ${id} par admin`);
     
     return res.json({
       success: true,
       data: { 
         dossier,
+        assignment,
         expert: {
           id: expert.id,
           first_name: expert.first_name,
-          last_name: expert.last_name
+          last_name: expert.last_name,
+          name: expertName
         }
       }
     });
