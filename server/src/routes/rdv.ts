@@ -2079,5 +2079,99 @@ router.post('/:id/mark-completed', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * POST /api/rdv/sync-all-notifications - Synchroniser les notifications de tous les RDV
+ * Route admin uniquement pour mettre à jour les notifications des RDV existants
+ */
+router.post('/sync-all-notifications', async (req: Request, res: Response) => {
+  try {
+    const user = req.user as AuthenticatedUser;
+
+    if (!user || user.type !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès réservé aux administrateurs'
+      });
+    }
+
+    const now = new Date();
+    
+    // Récupérer tous les RDV qui devraient avoir des notifications
+    const { data: rdvs, error: rdvsError } = await supabase
+      .from('RDV')
+      .select('*')
+      .in('status', ['scheduled', 'confirmed', 'completed'])
+      .or(`scheduled_date.gte.${now.toISOString().split('T')[0]},status.eq.completed`)
+      .order('scheduled_date', { ascending: true });
+
+    if (rdvsError) {
+      console.error('❌ Erreur récupération RDV:', rdvsError);
+      return res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la récupération des RDV'
+      });
+    }
+
+    if (!rdvs || rdvs.length === 0) {
+      return res.json({
+        success: true,
+        message: 'Aucun RDV à synchroniser',
+        data: {
+          total: 0,
+          success: 0,
+          errors: 0,
+          skipped: 0
+        }
+      });
+    }
+
+    let successCount = 0;
+    let errorCount = 0;
+    let skippedCount = 0;
+    const errors: string[] = [];
+
+    for (const rdv of rdvs) {
+      try {
+        const eventStart = new Date(`${rdv.scheduled_date}T${rdv.scheduled_time}`);
+        const eventEnd = new Date(eventStart.getTime() + (rdv.duration_minutes || 60) * 60000);
+        const hoursUntilStart = (eventStart.getTime() - now.getTime()) / (1000 * 60 * 60);
+        const isCompleted = rdv.status === 'completed' || now >= eventEnd;
+
+        // Vérifier si le RDV doit avoir des notifications
+        if (hoursUntilStart > 24 && !isCompleted) {
+          skippedCount++;
+          continue;
+        }
+
+        await EventNotificationSync.syncEventNotifications(rdv);
+        successCount++;
+      } catch (error: any) {
+        errorCount++;
+        errors.push(`${rdv.id}: ${error.message || error}`);
+        console.error(`❌ Erreur synchronisation RDV ${rdv.id}:`, error);
+      }
+    }
+
+    return res.json({
+      success: true,
+      message: `Synchronisation terminée: ${successCount} succès, ${errorCount} erreurs, ${skippedCount} ignorés`,
+      data: {
+        total: rdvs.length,
+        success: successCount,
+        errors: errorCount,
+        skipped: skippedCount,
+        errorDetails: errors.length > 0 ? errors : undefined
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur route POST /rdv/sync-all-notifications:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
 export default router;
 
