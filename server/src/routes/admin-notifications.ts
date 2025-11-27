@@ -156,6 +156,7 @@ router.post('/admin/document-validation', enhancedAuthMiddleware, async (req: Re
 router.get('/admin', enhancedAuthMiddleware, async (req: Request, res: Response) => {
   try {
     const user = (req as AuthenticatedRequest).user;
+    const { status, priority, limit = 50 } = req.query;
     
     if (!user) {
       return res.status(401).json({
@@ -172,28 +173,118 @@ router.get('/admin', enhancedAuthMiddleware, async (req: Request, res: Response)
       });
     }
 
-    // ✅ CORRECTION: Lire depuis la table 'notification' au lieu de 'AdminNotification'
-    // Les notifications sont créées dans 'notification' avec user_type='admin'
-    // Utiliser user.id (auth_user_id) car les notifications sont créées avec auth_user_id
-    const { data: notifications, error } = await supabase
-      .from('notification')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('user_type', 'admin')
-      .order('created_at', { ascending: false })
-      .limit(50);
+    console.log('🔍 Récupération notifications admin - user:', {
+      id: user.id,
+      type: user.type,
+      database_id: user.database_id
+    });
 
-    if (error) {
-      console.error('❌ Erreur récupération notifications:', error);
-      return res.status(500).json({
-        success: false,
-        message: 'Erreur lors de la récupération des notifications'
-      });
+    // Récupérer depuis AdminNotification (table globale pour tous les admins)
+    let adminNotificationQuery = supabase
+      .from('AdminNotification')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (status && status !== 'all') {
+      adminNotificationQuery = adminNotificationQuery.eq('status', status);
     }
+    
+    if (priority) {
+      adminNotificationQuery = adminNotificationQuery.eq('priority', priority);
+    }
+    
+    if (limit && Number(limit) > 0) {
+      adminNotificationQuery = adminNotificationQuery.limit(Number(limit));
+    }
+    
+    const { data: adminNotifications, error: adminError } = await adminNotificationQuery;
+    
+    if (adminError) {
+      console.error('❌ Erreur récupération AdminNotification:', adminError);
+    }
+
+    // Récupérer aussi depuis notification (pour les notifications d'événement et autres)
+    const userId = user.id || user.database_id;
+    let eventNotifications: any[] = [];
+    
+    if (userId) {
+      console.log(`🔍 Recherche notifications événement pour user_id: ${userId}`);
+      
+      let eventNotificationQuery = supabase
+        .from('notification')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('user_type', 'admin')
+        .order('created_at', { ascending: false });
+      
+      // Si un status spécifique est demandé, filtrer
+      if (status && status !== 'all') {
+        if (status === 'unread') {
+          eventNotificationQuery = eventNotificationQuery.eq('is_read', false);
+        } else if (status === 'read') {
+          eventNotificationQuery = eventNotificationQuery.eq('is_read', true);
+        } else if (status === 'archived') {
+          eventNotificationQuery = eventNotificationQuery.eq('status', 'archived');
+        }
+      }
+      
+      if (priority) {
+        eventNotificationQuery = eventNotificationQuery.eq('priority', priority);
+      }
+      
+      if (limit && Number(limit) > 0) {
+        eventNotificationQuery = eventNotificationQuery.limit(Number(limit));
+      }
+      
+      const { data: eventNotifs, error: eventError } = await eventNotificationQuery;
+      
+      if (eventError) {
+        console.error('❌ Erreur récupération notifications événement:', eventError);
+      } else {
+        eventNotifications = eventNotifs || [];
+        console.log(`✅ ${eventNotifications.length} notifications d'événement trouvées`);
+      }
+    } else {
+      console.warn('⚠️ Aucun user_id trouvé dans user, impossible de récupérer les notifications d\'événement');
+    }
+
+    // Normaliser les notifications AdminNotification
+    const normalizedAdminNotifications = (adminNotifications || []).map((notif: any) => ({
+      ...notif,
+      is_read: notif.is_read !== undefined ? notif.is_read : (notif.status === 'read' || (notif.read_at !== null && notif.read_at !== undefined)),
+      status: notif.status || 'unread',
+      notification_type: notif.type || notif.notification_type,
+    }));
+
+    // Normaliser les notifications d'événement
+    const normalizedEventNotifications = (eventNotifications || []).map((notif: any) => ({
+      ...notif,
+      is_read: notif.is_read !== undefined ? notif.is_read : (notif.status === 'read'),
+      status: notif.status || (notif.is_read ? 'read' : 'unread'),
+      notification_type: notif.notification_type || notif.type,
+      type: notif.notification_type || notif.type,
+    }));
+
+    // Fusionner les deux listes
+    const allNotifications = [...normalizedAdminNotifications, ...normalizedEventNotifications];
+    
+    // Trier par date de création (plus récentes en premier)
+    allNotifications.sort((a, b) => {
+      const dateA = new Date(a.created_at || 0).getTime();
+      const dateB = new Date(b.created_at || 0).getTime();
+      return dateB - dateA;
+    });
+    
+    // Appliquer la limite globale si nécessaire
+    const limitedNotifications = limit && Number(limit) > 0 
+      ? allNotifications.slice(0, Number(limit))
+      : allNotifications;
+    
+    console.log(`✅ Notifications récupérées: ${normalizedAdminNotifications.length} AdminNotification + ${normalizedEventNotifications.length} événements = ${limitedNotifications.length} total`);
 
     return res.json({
       success: true,
-      data: notifications || []
+      data: limitedNotifications
     });
 
   } catch (error) {

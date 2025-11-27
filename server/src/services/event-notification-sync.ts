@@ -240,7 +240,7 @@ export class EventNotificationSync {
         
         // Récupérer l'auth_user_id du créateur
         let creatorAuthUserId: string | null = null;
-        let creatorType: 'admin' | 'expert' | 'client' | null = null;
+        let creatorType: 'admin' | 'expert' | 'client' | 'apporteur' | null = null;
         let creatorName: string = '';
 
           // Essayer de trouver le créateur dans Admin
@@ -267,17 +267,30 @@ export class EventNotificationSync {
             creatorType = 'expert';
             creatorName = `${expert.first_name || ''} ${expert.last_name || ''}`.trim() || 'Expert';
           } else {
-            // Essayer Client
-            const { data: client } = await supabase
-              .from('Client')
+            // Essayer ApporteurAffaires
+            const { data: apporteur } = await supabase
+              .from('ApporteurAffaires')
               .select('auth_user_id, first_name, last_name')
               .eq('id', rdv.created_by)
               .single();
             
-            if (client?.auth_user_id) {
-              creatorAuthUserId = client.auth_user_id;
-              creatorType = 'client';
-              creatorName = `${client.first_name || ''} ${client.last_name || ''}`.trim() || 'Client';
+            if (apporteur?.auth_user_id) {
+              creatorAuthUserId = apporteur.auth_user_id;
+              creatorType = 'apporteur';
+              creatorName = `${apporteur.first_name || ''} ${apporteur.last_name || ''}`.trim() || 'Apporteur';
+            } else {
+              // Essayer Client
+              const { data: client } = await supabase
+                .from('Client')
+                .select('auth_user_id, first_name, last_name')
+                .eq('id', rdv.created_by)
+                .single();
+              
+              if (client?.auth_user_id) {
+                creatorAuthUserId = client.auth_user_id;
+                creatorType = 'client';
+                creatorName = `${client.first_name || ''} ${client.last_name || ''}`.trim() || 'Client';
+              }
             }
           }
         }
@@ -400,27 +413,48 @@ export class EventNotificationSync {
             });
             console.log(`✅ Créateur (expert) ajouté comme destinataire: ${expert.auth_user_id}`);
           } else {
-            console.log(`⚠️ Expert ${rdv.created_by} non trouvé ou sans auth_user_id, essai Client...`);
-            // Essayer Client
-            const { data: client, error: clientError } = await supabase
-              .from('Client')
+            console.log(`⚠️ Expert ${rdv.created_by} non trouvé ou sans auth_user_id, essai ApporteurAffaires...`);
+            // Essayer ApporteurAffaires
+            const { data: apporteur, error: apporteurError } = await supabase
+              .from('ApporteurAffaires')
               .select('auth_user_id, first_name, last_name')
               .eq('id', rdv.created_by)
               .single();
             
-            if (clientError) {
-              console.warn(`⚠️ Erreur recherche client ${rdv.created_by}:`, clientError.message);
+            if (apporteurError) {
+              console.warn(`⚠️ Erreur recherche apporteur ${rdv.created_by}:`, apporteurError.message);
             }
             
-            if (client?.auth_user_id) {
+            if (apporteur?.auth_user_id) {
               recipients.push({
-                user_id: client.auth_user_id,
-                user_type: 'client',
-                name: `${client.first_name || ''} ${client.last_name || ''}`.trim() || 'Client',
+                user_id: apporteur.auth_user_id,
+                user_type: 'apporteur',
+                name: `${apporteur.first_name || ''} ${apporteur.last_name || ''}`.trim() || 'Apporteur',
               });
-              console.log(`✅ Créateur (client) ajouté comme destinataire: ${client.auth_user_id}`);
+              console.log(`✅ Créateur (apporteur) ajouté comme destinataire: ${apporteur.auth_user_id}`);
             } else {
-              console.error(`❌ Impossible de trouver le créateur ${rdv.created_by} dans Admin, Expert ou Client`);
+              console.log(`⚠️ Apporteur ${rdv.created_by} non trouvé ou sans auth_user_id, essai Client...`);
+              // Essayer Client
+              const { data: client, error: clientError } = await supabase
+                .from('Client')
+                .select('auth_user_id, first_name, last_name')
+                .eq('id', rdv.created_by)
+                .single();
+              
+              if (clientError) {
+                console.warn(`⚠️ Erreur recherche client ${rdv.created_by}:`, clientError.message);
+              }
+              
+              if (client?.auth_user_id) {
+                recipients.push({
+                  user_id: client.auth_user_id,
+                  user_type: 'client',
+                  name: `${client.first_name || ''} ${client.last_name || ''}`.trim() || 'Client',
+                });
+                console.log(`✅ Créateur (client) ajouté comme destinataire: ${client.auth_user_id}`);
+              } else {
+                console.error(`❌ Impossible de trouver le créateur ${rdv.created_by} dans Admin, Expert, ApporteurAffaires ou Client`);
+              }
             }
           }
         }

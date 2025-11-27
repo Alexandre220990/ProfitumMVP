@@ -6271,40 +6271,95 @@ router.post('/dossiers/:id/assign-expert', async (req, res) => {
 router.get('/notifications', async (req, res) => {
   try {
     const { status, priority, limit = 100 } = req.query;
+    const authUser = (req as any).user as AuthUser;
+    
+    console.log('🔍 Récupération notifications admin - authUser:', {
+      id: authUser?.id,
+      type: authUser?.type,
+      database_id: authUser?.database_id
+    });
     
     // Récupérer depuis AdminNotification (table globale pour tous les admins)
-    let query = supabaseClient
+    let adminNotificationQuery = supabaseClient
       .from('AdminNotification')
       .select('*')
       .order('created_at', { ascending: false });
     
     // Si un status spécifique est demandé, filtrer
     if (status && status !== 'all') {
-      query = query.eq('status', status);
+      adminNotificationQuery = adminNotificationQuery.eq('status', status);
     }
     
     if (priority) {
-      query = query.eq('priority', priority);
+      adminNotificationQuery = adminNotificationQuery.eq('priority', priority);
     }
     
     // Appliquer la limite seulement si demandée
     if (limit && Number(limit) > 0) {
-      query = query.limit(Number(limit));
+      adminNotificationQuery = adminNotificationQuery.limit(Number(limit));
     }
     
-    const { data: notifications, error } = await query;
+    const { data: adminNotifications, error: adminError } = await adminNotificationQuery;
     
-    if (error) {
-      console.error('❌ Erreur récupération notifications:', error);
-      return res.status(500).json({
-        success: false,
-        message: 'Erreur lors de la récupération des notifications'
-      });
+    if (adminError) {
+      console.error('❌ Erreur récupération AdminNotification:', adminError);
     }
     
-    // Normaliser les notifications pour le front-end
-    // S'assurer que is_read est défini en fonction du status
-    const normalizedNotifications = (notifications || []).map((notif: any) => ({
+    // Récupérer aussi depuis notification (pour les notifications d'événement)
+    let eventNotifications: any[] = [];
+    const userId = authUser?.id || authUser?.database_id || authUser?.auth_user_id;
+    
+    if (userId) {
+      console.log(`🔍 Recherche notifications événement pour user_id: ${userId}`);
+      
+      let eventNotificationQuery = supabaseClient
+        .from('notification')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('user_type', 'admin')
+        .order('created_at', { ascending: false });
+      
+      // Filtrer par type de notification d'événement
+      eventNotificationQuery = eventNotificationQuery.in('notification_type', [
+        'event_upcoming',
+        'event_in_progress',
+        'event_completed'
+      ]);
+      
+      // Si un status spécifique est demandé, filtrer
+      if (status && status !== 'all') {
+        if (status === 'unread') {
+          eventNotificationQuery = eventNotificationQuery.eq('is_read', false);
+        } else if (status === 'read') {
+          eventNotificationQuery = eventNotificationQuery.eq('is_read', true);
+        } else if (status === 'archived') {
+          eventNotificationQuery = eventNotificationQuery.eq('status', 'archived');
+        }
+      }
+      
+      if (priority) {
+        eventNotificationQuery = eventNotificationQuery.eq('priority', priority);
+      }
+      
+      // Appliquer la limite seulement si demandée
+      if (limit && Number(limit) > 0) {
+        eventNotificationQuery = eventNotificationQuery.limit(Number(limit));
+      }
+      
+      const { data: eventNotifs, error: eventError } = await eventNotificationQuery;
+      
+      if (eventError) {
+        console.error('❌ Erreur récupération notifications événement:', eventError);
+      } else {
+        eventNotifications = eventNotifs || [];
+        console.log(`✅ ${eventNotifications.length} notifications d'événement trouvées`);
+      }
+    } else {
+      console.warn('⚠️ Aucun user_id trouvé dans authUser, impossible de récupérer les notifications d\'événement');
+    }
+    
+    // Normaliser les notifications AdminNotification pour le front-end
+    const normalizedAdminNotifications = (adminNotifications || []).map((notif: any) => ({
       ...notif,
       // Pour AdminNotification: 'unread' = non lu, 'read' = lu, 'archived' = archivé
       // Synchroniser is_read avec status si nécessaire
@@ -6313,9 +6368,37 @@ router.get('/notifications', async (req, res) => {
       notification_type: notif.type || notif.notification_type,
     }));
     
+    // Normaliser les notifications d'événement pour le front-end
+    const normalizedEventNotifications = (eventNotifications || []).map((notif: any) => ({
+      ...notif,
+      // Pour notification: is_read est déjà défini, status peut être 'unread', 'read', 'archived'
+      is_read: notif.is_read !== undefined ? notif.is_read : (notif.status === 'read'),
+      status: notif.status || (notif.is_read ? 'read' : 'unread'),
+      notification_type: notif.notification_type || notif.type,
+      // Mapper les champs pour correspondre au format AdminNotification si nécessaire
+      type: notif.notification_type || notif.type,
+    }));
+    
+    // Fusionner les deux listes de notifications
+    const allNotifications = [...normalizedAdminNotifications, ...normalizedEventNotifications];
+    
+    // Trier par date de création (plus récentes en premier)
+    allNotifications.sort((a, b) => {
+      const dateA = new Date(a.created_at || 0).getTime();
+      const dateB = new Date(b.created_at || 0).getTime();
+      return dateB - dateA;
+    });
+    
+    // Appliquer la limite globale si nécessaire
+    const limitedNotifications = limit && Number(limit) > 0 
+      ? allNotifications.slice(0, Number(limit))
+      : allNotifications;
+    
+    console.log(`✅ Notifications récupérées: ${normalizedAdminNotifications.length} AdminNotification + ${normalizedEventNotifications.length} événements = ${limitedNotifications.length} total`);
+    
     return res.json({
       success: true,
-      data: { notifications: normalizedNotifications }
+      data: { notifications: limitedNotifications }
     });
     
   } catch (error) {

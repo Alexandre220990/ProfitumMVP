@@ -944,6 +944,9 @@ export class ApporteurService {
                 return { success: false, error: 'Apporteur non trouvé' };
             }
 
+            // ✅ CORRECTION: Utiliser auth_user_id car les notifications sont créées avec auth_user_id
+            const authUserId = apporteur.auth_user_id || apporteur.id;
+            
             const page = Math.max(Number(filters.page) || 1, 1);
             const limit = Math.min(Math.max(Number(filters.limit) || 20, 1), 100);
             const from = (page - 1) * limit;
@@ -952,7 +955,7 @@ export class ApporteurService {
             let query = supabase
                 .from('notification')
                 .select('*', { count: 'exact' })
-                .eq('user_id', apporteur.id)
+                .eq('user_id', authUserId)
                 .eq('user_type', 'apporteur')
                 .order('created_at', { ascending: false })
                 .range(from, to);
