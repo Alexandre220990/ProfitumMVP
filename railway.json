@@ -10,6 +10,6 @@
     "restartPolicyMaxRetries": 10,
     "healthcheckPath": "/api/health",
     "healthcheckTimeout": 300,
-    "startCommand": "NODE_OPTIONS='--max-old-space-size=6144' npm start"
+    "startCommand": "npm start"
   }
 } 
