@@ -328,7 +328,13 @@ app.use('/api/expert/notifications', enhancedAuthMiddleware, requireUserType('ex
 // Routes expert - PROTÉGÉES avec permissions spécifiques
 // IMPORTANT: expertDossierActionsRoutes doit être monté AVANT expertRoutes
 // pour éviter les conflits de routes (ex: /dossier/:id/complete-audit)
-app.use('/api/expert', enhancedAuthMiddleware, requireUserType('expert'), expertDossierActionsRoutes);
+app.use('/api/expert', enhancedAuthMiddleware, requireUserType('expert'), (req, res, next) => {
+  // Debug: logger les routes expert pour comprendre le routage
+  if (req.path.includes('complete-audit')) {
+    console.log('🔍 Route complete-audit détectée:', req.method, req.path);
+  }
+  next();
+}, expertDossierActionsRoutes);
 app.use('/api/expert', enhancedAuthMiddleware, requireUserType('expert'), expertRoutes);
 app.use('/api/expert/analytics', enhancedAuthMiddleware, requireUserType('expert'), expertAnalyticsRoutes);
 app.use('/api/expert', enhancedAuthMiddleware, requireUserType('expert'), expertDocumentsRoutes);

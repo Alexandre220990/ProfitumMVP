@@ -989,8 +989,10 @@ router.post('/dossier/:id/start-audit', enhancedAuthMiddleware, async (req: Requ
 /**
  * POST /api/expert/dossier/:id/complete-audit
  * Expert termine l'audit avec montant final et rapport
+q * Note: enhancedAuthMiddleware est déjà appliqué au niveau du montage dans index.ts
  */
-router.post('/dossier/:id/complete-audit', enhancedAuthMiddleware, async (req: Request, res: Response) => {
+router.post('/dossier/:id/complete-audit', async (req: Request, res: Response) => {
+  console.log('🔍 Route complete-audit appelée:', req.method, req.path, req.params);
   try {
     const user = (req as AuthenticatedRequest).user;
     const { id: client_produit_id } = req.params;
