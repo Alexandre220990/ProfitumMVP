@@ -467,6 +467,8 @@ export function UniversalNotificationCenter({
        notification.notification_type === 'event_in_progress' ? 'in_progress' :
        notification.notification_type === 'event_completed' ? 'completed' : null);
 
+    const isUnread = !notification.is_read && !isArchived;
+    
     return (
       <Card
         key={notification.id}
@@ -480,9 +482,11 @@ export function UniversalNotificationCenter({
             ? "border-l-4 border-l-blue-500 bg-blue-50"
             : notification.sla.isLate && !isArchived
             ? "border-l-4 border-l-red-500 bg-red-50"
-            : !isArchived && notification.status === 'unread'
-            ? "border-l-4 border-l-blue-500 bg-blue-50"
-            : ""
+            : isUnread
+            ? "border-l-4 border-l-blue-500 bg-blue-50 shadow-sm"
+            : !isArchived
+            ? "border-l-2 border-l-gray-200 bg-white"
+            : "opacity-60"
         )}
       >
         <CardContent
@@ -495,14 +499,26 @@ export function UniversalNotificationCenter({
         >
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start space-x-3 flex-1">
-              <div className="mt-1">
+              <div className={cn(
+                "mt-1",
+                isUnread && "opacity-100",
+                !isUnread && "opacity-60"
+              )}>
                 {getTypeIcon(notification.notification_type)}
               </div>
               <div className="flex-1 min-w-0 space-y-1">
                 <div className="flex items-center flex-wrap gap-2">
-                  <h4 className="font-medium text-gray-900 truncate">
-                    {notification.title}
-                  </h4>
+                  <div className="flex items-center gap-2">
+                    <h4 className={cn(
+                      "truncate",
+                      isUnread ? "font-semibold text-gray-900" : "font-medium text-gray-700"
+                    )}>
+                      {notification.title}
+                    </h4>
+                    {isUnread && (
+                      <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
+                    )}
+                  </div>
                   <Badge
                     variant="secondary"
                     className={cn("text-xs capitalize", getPriorityColor(notification.priority))}
@@ -523,7 +539,10 @@ export function UniversalNotificationCenter({
                     </Badge>
                   )}
                 </div>
-                <p className="text-sm text-gray-600 line-clamp-2">
+                <p className={cn(
+                  "text-sm line-clamp-2",
+                  isUnread ? "text-gray-700" : "text-gray-600"
+                )}>
                   {notification.message}
                 </p>
                 {isEventNotification && eventTimeRemaining && (
@@ -725,25 +744,52 @@ export function UniversalNotificationCenter({
                 </div>
               ) : (
                 <>
-                  {filteredNotifications.slice(0, showAll ? filteredNotifications.length : expandLimit).map((notification) => (
-                    <Card key={notification.id} className={cn(
-                      "transition-all hover:shadow-md",
-                      !notification.is_read && "border-l-4 border-l-blue-500 bg-blue-50",
-                      notification.action_url && "cursor-pointer hover:border-blue-300"
-                    )}>
-                      <CardContent className="p-3">
-                        <div className="flex items-start justify-between gap-3">
-                          <div 
-                            className="flex items-start space-x-2 flex-1 min-w-0 cursor-pointer"
-                            onClick={() => handleNotificationClick(notification)}
-                          >
-                            {getTypeIcon(notification.notification_type)}
-                            <div className="flex-1 min-w-0">
-                              <h4 className="text-sm font-medium truncate">{notification.title}</h4>
-                              <p className="text-xs text-gray-600 line-clamp-2">{notification.message}</p>
-                              <span className="text-xs text-gray-400">{formatDate(notification.created_at)}</span>
+                  {filteredNotifications.slice(0, showAll ? filteredNotifications.length : expandLimit).map((notification) => {
+                    const isArchived = notification.status === 'archived';
+                    const isUnread = !notification.is_read && !isArchived;
+                    
+                    return (
+                      <Card key={notification.id} className={cn(
+                        "transition-all hover:shadow-md",
+                        isUnread && "border-l-4 border-l-blue-500 bg-blue-50 shadow-sm",
+                        !isUnread && !isArchived && "border-l-2 border-l-gray-200 bg-white",
+                        isArchived && "opacity-60",
+                        notification.action_url && "cursor-pointer hover:border-blue-300"
+                      )}>
+                        <CardContent className="p-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div 
+                              className="flex items-start space-x-2 flex-1 min-w-0 cursor-pointer"
+                              onClick={() => handleNotificationClick(notification)}
+                            >
+                              <div className={cn(
+                                "mt-0.5",
+                                isUnread && "opacity-100",
+                                !isUnread && "opacity-60"
+                              )}>
+                                {getTypeIcon(notification.notification_type)}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <h4 className={cn(
+                                    "text-sm truncate",
+                                    isUnread ? "font-semibold text-gray-900" : "font-medium text-gray-700"
+                                  )}>
+                                    {notification.title}
+                                  </h4>
+                                  {isUnread && (
+                                    <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
+                                  )}
+                                </div>
+                                <p className={cn(
+                                  "text-xs line-clamp-2 mt-1",
+                                  isUnread ? "text-gray-700" : "text-gray-600"
+                                )}>
+                                  {notification.message}
+                                </p>
+                                <span className="text-xs text-gray-400 mt-1 block">{formatDate(notification.created_at)}</span>
+                              </div>
                             </div>
-                          </div>
                           
                           {/* Actions pour chaque notification */}
                           <div className="flex items-center gap-2 flex-shrink-0">
@@ -773,7 +819,8 @@ export function UniversalNotificationCenter({
                         </div>
                       </CardContent>
                     </Card>
-                  ))}
+                    );
+                  })}
                   
                   {/* Bouton Voir plus/moins */}
                   {filteredNotifications.length > expandLimit && (

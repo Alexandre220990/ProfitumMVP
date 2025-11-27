@@ -150,7 +150,22 @@ export class EventNotificationSync {
         meeting_type: rdv.meeting_type,
       };
 
-      const actionUrl = `/agenda-client?event=${rdv.id}`;
+      // Générer l'URL d'action selon le type d'utilisateur
+      const getActionUrl = (userType: string): string => {
+        switch (userType) {
+          case 'admin':
+            return `/admin/agenda-admin?event=${rdv.id}`;
+          case 'expert':
+            return `/expert/agenda?event=${rdv.id}`;
+          case 'apporteur':
+            return `/apporteur/agenda?event=${rdv.id}`;
+          case 'client':
+          default:
+            return `/agenda-client?event=${rdv.id}`;
+        }
+      };
+
+      const actionUrl = getActionUrl(recipient.user_type);
 
       if (existingNotifications && existingNotifications.length > 0) {
         // Mettre à jour la notification existante

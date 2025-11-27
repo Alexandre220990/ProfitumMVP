@@ -960,11 +960,50 @@ router.post('/:id/report', async (req: Request, res: Response) => {
       });
     }
 
-    if (rdv.status !== 'completed') {
+    // Vérifier si le RDV est complété OU si le RDV est passé (date/heure dans le passé)
+    const now = new Date();
+    const rdvDateTime = new Date(`${rdv.scheduled_date}T${rdv.scheduled_time}`);
+    const rdvEndDateTime = new Date(rdvDateTime.getTime() + (rdv.duration_minutes || 60) * 60000);
+    const isRDVPast = now >= rdvEndDateTime;
+    const isRDVCompleted = rdv.status === 'completed';
+    
+    // Autoriser l'ajout du rapport si :
+    // 1. Le RDV est complété
+    // 2. OU le RDV est passé (date/heure dans le passé) - tous les participants peuvent ajouter un rapport
+    const canAddReport = isRDVCompleted || isRDVPast;
+
+    if (!canAddReport) {
       return res.status(400).json({
         success: false,
-        message: 'Le RDV doit être complété avant d\'ajouter un résumé'
+        message: 'Le RDV doit être complété ou passé pour ajouter un résumé'
       });
+    }
+
+    // Si le RDV n'est pas encore marqué comme complété mais est passé, le marquer automatiquement
+    if (!isRDVCompleted && isRDVPast) {
+      console.log(`📝 RDV ${id} passé mais non complété - marquage automatique comme complété`);
+      await supabase
+        .from('RDV')
+        .update({
+          status: 'completed',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id);
+      
+      // Synchroniser les notifications d'événement après changement de statut
+      try {
+        const { data: updatedRDV } = await supabase
+          .from('RDV')
+          .select('*')
+          .eq('id', id)
+          .single();
+        
+        if (updatedRDV) {
+          await EventNotificationSync.syncEventNotifications(updatedRDV);
+        }
+      } catch (syncError) {
+        console.warn('⚠️ Erreur synchronisation notifications après complétion:', syncError);
+      }
     }
 
     const summary: string = req.body?.summary;
@@ -1125,10 +1164,22 @@ router.put('/:id/report', async (req: Request, res: Response) => {
       });
     }
 
-    if (rdv.status !== 'completed') {
+    // Vérifier si le RDV est complété OU si le RDV est passé (date/heure dans le passé)
+    const now = new Date();
+    const rdvDateTime = new Date(`${rdv.scheduled_date}T${rdv.scheduled_time}`);
+    const rdvEndDateTime = new Date(rdvDateTime.getTime() + (rdv.duration_minutes || 60) * 60000);
+    const isRDVPast = now >= rdvEndDateTime;
+    const isRDVCompleted = rdv.status === 'completed';
+    
+    // Autoriser la modification du rapport si :
+    // 1. Le RDV est complété
+    // 2. OU le RDV est passé (date/heure dans le passé) - tous les participants peuvent modifier un rapport
+    const canModifyReport = isRDVCompleted || isRDVPast;
+
+    if (!canModifyReport) {
       return res.status(400).json({
         success: false,
-        message: 'Le RDV doit être complété avant de modifier un résumé'
+        message: 'Le RDV doit être complété ou passé pour modifier un résumé'
       });
     }
 
